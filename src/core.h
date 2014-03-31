@@ -13,7 +13,7 @@
 #include "logger.h"
 #include "exception.hpp"
 #include "json_spirit.h"
-
+#include "module_factory.hpp"
 /// The main model core
 /**
  * The main model core, handles initialization of the model
@@ -43,6 +43,7 @@ private:
     std::string _module_config;
     log_level _log_level;
     boost::shared_ptr< text_sink > _log_sink;
+    module_factory _mfactory;
 };
 
 

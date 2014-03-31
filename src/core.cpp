@@ -1,4 +1,5 @@
 #include "core.h"
+#include "module_base.hpp"
 
 core::core()
 {
@@ -15,7 +16,15 @@ core::core()
 
 
        boost::shared_ptr< std::ofstream > pStream2(new std::ofstream("CHM.log"));
-       assert(pStream2->is_open());
+       
+       if (!pStream2->is_open())
+       {
+           BOOST_THROW_EXCEPTION(file_write_error() 
+                                << boost::errinfo_errno(errno)
+                                << boost::errinfo_file_name("CHM.log")
+                            );
+       }
+      
        pBackend->add_stream(pStream2);
     }
 
@@ -28,9 +37,15 @@ core::core()
    );
 
     logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
+    logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
     
     logging::core::get()->add_sink(_log_sink);
-    
+
+//    logging::core::get()->set_exception_handler(
+//               logging::make_exception_handler< boost::exception>(exception_log_handler()));
+//    
+    LOG_DEBUG << "Logger initialized. Writing to cout and CHM.log";
+
 }
 
 core::~core()
@@ -56,15 +71,12 @@ void core::read_module_file(std::string file)
         
     }
 
-    //holds the top level object { ... }
+    bool found_modules = false;
+    //get the top-level object { ... }
     json_spirit::Value value;
-
     json_spirit::read( is, value );
- 
-    //get the top-level 
     const json_spirit::Object& top_level = value.get_obj();
 
-    
     //loop over the top-level options
     for(auto& itr : top_level )
     {
@@ -72,8 +84,35 @@ void core::read_module_file(std::string file)
         const std::string& name  = pair.name_;
         const json_spirit::Value&  value = pair.value_;
         
-        std::cout << name << std::endl;
+        if ( name == "modules") 
+        {
+            found_modules = true; //found the module section
+            
+            //loop over the list of requested modules
+            // these are in the format "type":"ID"
+            for(auto& jtr : value.get_obj())
+            {
+                const json_spirit::Pair& pair = jtr;
+                const std::string& name  = pair.name_;
+                const std::string&  ID = pair.value_.get_str();
+
+                LOG_DEBUG << "Module type=" << name << " ID=" <<ID;
+                ModuleBase* lol = _mfactory.get(ID);
+                
+            }
+    }
+
         
+        
+        
+        
+    }
+    
+    if (found_modules == false)
+    {
+        BOOST_THROW_EXCEPTION(no_modules_defined() 
+                                << errstr_info(std::string("No module section found in ") + file)
+                            );
     }
 }
 
@@ -85,12 +124,11 @@ void core::read_config_file( std::string file )
         BOOST_THROW_EXCEPTION(file_read_error() 
                                 << boost::errinfo_errno(errno) 
                                 << boost::errinfo_file_name(file)
-                                << boost::errinfo_type_info_name("LOL")
                             );
 
     }
 
-
+    LOG_DEBUG << "Reading configuration file " << file;
     //holds the top level object { ... }
     json_spirit::Value value;
 
@@ -107,8 +145,7 @@ void core::read_config_file( std::string file )
         const std::string& name  = pair.name_;
         const json_spirit::Value&  value = pair.value_;
 	
-	std::cout << name <<  std::endl;
-	
+
 	//check for debug specification
 	if (name == "debug")
 	{
@@ -130,11 +167,14 @@ void core::read_config_file( std::string file )
                 {
                   _log_level = log_level::debug; //default to debug 
                 }
-	                      
+                
+                LOG_DEBUG <<  "Setting log severity to " << _log_level;
+
                 _log_sink->set_filter(
                    severity >= _log_level
                 );
                 
+                                
 		
 	    }
 
@@ -143,13 +183,13 @@ void core::read_config_file( std::string file )
         else if(name == "modules")
         {
             _module_config = pair.value_.get_str();
-            BOOST_LOG_SEV(logger::get(),log_level::debug) << "Found module config file at " << _module_config;
+            LOG_DEBUG << "Found module config file at " << _module_config;
             read_module_file(_module_config);
             
         }
     }
     
     
-    BOOST_LOG_SEV(logger::get(),log_level::debug) << "Successfully opened the configuration file: " << file;
-    BOOST_LOG_SEV(logger::get(),log_level::debug) << "Writting logs to stdout and CHM.log at level: " << _log_level;
+    LOG_DEBUG << "Finished initialization";
+
 }

@@ -17,13 +17,9 @@ int main (int argc, char *argv[])
     }
     catch( boost::exception& e)
     {
-        std::cout << boost::diagnostic_information(e);
+       LOG_ERROR << boost::diagnostic_information(e);
     }
 
-
-	
-// 	mesh terrain;
-// 	terrain.read_mesh("mesh.config");
 
 
 	return 0;

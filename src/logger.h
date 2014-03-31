@@ -10,6 +10,7 @@
 
 #include <boost/log/utility/empty_deleter.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/utility/exception_handler.hpp>
 
 #include <boost/log/sources/global_logger_storage.hpp>
 #include <boost/log/sources/severity_logger.hpp>
@@ -20,7 +21,7 @@
 #include <boost/log/sinks/text_ostream_backend.hpp>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-
+//#include <boost/log/attributes/named_scope.hpp>
 
 namespace logging = boost::log;
 namespace src = boost::log::sources;
@@ -61,3 +62,6 @@ typedef sinks::synchronous_sink< sinks::text_ostream_backend> text_sink;
 BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(logger, sev_logger)
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", log_level)
 
+#define	LOG_DEBUG       BOOST_LOG_SEV(logger::get(), log_level::debug) //<< "[" << __FILENAME__ << ", " << __LINE__ << "] "
+#define	LOG_WARNING 	BOOST_LOG_SEV(logger::get(), log_level::warning) //<< "[" << __FILE__ << ", " << __LINE__ << "] "
+#define	LOG_ERROR 	BOOST_LOG_SEV(logger::get(), log_level::error) //<< "[" << __FILE__ << ", " << __LINE__ << "] "

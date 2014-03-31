@@ -3,21 +3,25 @@
 
 
 
-ModuleBase* ModuleFactory::get(std::string ID)
+ModuleBase* module_factory::get(std::string ID)
 {
         sev_logger& lg = logger::get();
-        BOOST_LOG_SEV(lg,log_level::debug) << "Requested module of type " << ID;
+        LOG_DEBUG << "Module ID=" << ID;
         
         ModuleBase* mod = NULL;
-        if( ID == "test")
+        if( ID == "TestModule")
                 mod =  new TestModule(ID);
         else
                 mod =  NULL;
         
         if(mod == NULL)
-            BOOST_LOG_SEV(lg,log_level::debug) << "Unable to find module";
+        {
+            BOOST_THROW_EXCEPTION(module_not_found() 
+                                  << errstr_info( std::string("Module not found ") + ID)
+                            );
+        }
         else
-            BOOST_LOG_SEV(lg,log_level::debug) << "Succesfully instantiated module " << ID;
-        
-        return mod;
+        {
+            return mod;
+        }
 }
