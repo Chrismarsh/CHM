@@ -1,0 +1,7 @@
+/doc/
+/nbproject/
+/CMakeFiles/
+/bin/
+*.cmake
+/CHM.log
+Makefile
