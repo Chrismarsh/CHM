@@ -3,6 +3,7 @@
 
 core::core()
 {
+    BOOST_LOG_FUNCTION();
     _module_config = "";
     
     _log_level = debug;
@@ -30,8 +31,12 @@ core::core()
 
    _log_sink->set_formatter
    (
-       expr::format("[%1%] [%2%]: %3%")
+       expr::format("%1% %2% [%3%]: %4%")
            % expr::attr< boost::posix_time::ptime  >("TimeStamp")
+           % expr::format_named_scope("Scope",
+                keywords::format = "%n:%l",
+                keywords::iteration = expr::reverse,
+                keywords::depth = 1)
            % expr::attr< log_level>("Severity")
            % expr::smessage
    );
@@ -60,6 +65,7 @@ bool core::is_debug()
 
 void core::read_module_file(std::string file)
 {
+    BOOST_LOG_FUNCTION();
     std::ifstream is( file );
     
     if (is.fail())
@@ -118,6 +124,7 @@ void core::read_module_file(std::string file)
 
 void core::read_config_file( std::string file )
 {
+    BOOST_LOG_FUNCTION();
     std::ifstream is( file );
     if (is.fail())
     {

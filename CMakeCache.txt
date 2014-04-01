@@ -41,6 +41,12 @@ Boost_LOG_LIBRARY_DEBUG:FILEPATH=/usr/lib64/libboost_log.so
 //Boost log library (release)
 Boost_LOG_LIBRARY_RELEASE:FILEPATH=/usr/lib64/libboost_log.so
 
+//Boost regex library (debug)
+Boost_REGEX_LIBRARY_DEBUG:FILEPATH=/usr/lib64/libboost_regex.so
+
+//Boost regex library (release)
+Boost_REGEX_LIBRARY_RELEASE:FILEPATH=/usr/lib64/libboost_regex.so
+
 //Boost system library (debug)
 Boost_SYSTEM_LIBRARY_DEBUG:FILEPATH=/usr/lib64/libboost_system.so
 
@@ -221,6 +227,33 @@ DOXYGEN_DOT_EXECUTABLE:FILEPATH=DOXYGEN_DOT_EXECUTABLE-NOTFOUND
 //Doxygen documentation generation tool (http://www.doxygen.org)
 DOXYGEN_EXECUTABLE:FILEPATH=DOXYGEN_EXECUTABLE-NOTFOUND
 
+//TBB debug library directory
+TBB_DEBUG_LIBRARY_DIRS:PATH=
+
+//Path to a file.
+TBB_INCLUDE_DIR:PATH=/usr/include
+
+//TBB include directory
+TBB_INCLUDE_DIRS:PATH=/usr/include
+
+//Intel TBB install directory
+TBB_INSTALL_DIR:PATH=/opt/intel/tbb;/usr/local/include;/usr/include
+
+//Path to a library.
+TBB_LIBRARY:FILEPATH=/usr/lib64/libtbb.so
+
+//Path to a library.
+TBB_LIBRARY_DEBUG:FILEPATH=TBB_LIBRARY_DEBUG-NOTFOUND
+
+//TBB library directory
+TBB_LIBRARY_DIRS:PATH=/usr/lib64
+
+//Path to a library.
+TBB_MALLOC_LIBRARY:FILEPATH=/usr/lib64/libtbbmalloc.so
+
+//Path to a library.
+TBB_MALLOC_LIBRARY_DEBUG:FILEPATH=TBB_MALLOC_LIBRARY_DEBUG-NOTFOUND
+
 
 ########################
 # INTERNAL cache entries
@@ -244,6 +277,10 @@ Boost_LIBRARY_DIR-ADVANCED:INTERNAL=1
 Boost_LOG_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: Boost_LOG_LIBRARY_RELEASE
 Boost_LOG_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: Boost_REGEX_LIBRARY_DEBUG
+Boost_REGEX_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: Boost_REGEX_LIBRARY_RELEASE
+Boost_REGEX_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: Boost_SYSTEM_LIBRARY_DEBUG
 Boost_SYSTEM_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: Boost_SYSTEM_LIBRARY_RELEASE
@@ -395,8 +432,26 @@ DOXYGEN_DOT_EXECUTABLE-ADVANCED:INTERNAL=1
 DOXYGEN_EXECUTABLE-ADVANCED:INTERNAL=1
 //Details about finding Threads
 FIND_PACKAGE_MESSAGE_DETAILS_Threads:INTERNAL=[TRUE][v()]
+//ADVANCED property for variable: TBB_DEBUG_LIBRARY_DIRS
+TBB_DEBUG_LIBRARY_DIRS-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: TBB_INCLUDE_DIR
+TBB_INCLUDE_DIR-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: TBB_INCLUDE_DIRS
+TBB_INCLUDE_DIRS-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: TBB_INSTALL_DIR
+TBB_INSTALL_DIR-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: TBB_LIBRARY
+TBB_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: TBB_LIBRARY_DEBUG
+TBB_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: TBB_LIBRARY_DIRS
+TBB_LIBRARY_DIRS-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: TBB_MALLOC_LIBRARY
+TBB_MALLOC_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: TBB_MALLOC_LIBRARY_DEBUG
+TBB_MALLOC_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 //Components requested for this build tree.
-_Boost_COMPONENTS_SEARCHED:INTERNAL=date_time;filesystem;log;system;thread
+_Boost_COMPONENTS_SEARCHED:INTERNAL=date_time;filesystem;log;regex;system;thread
 //Last used Boost_INCLUDE_DIR value.
 _Boost_INCLUDE_DIR_LAST:INTERNAL=/usr/include
 //Last used Boost_LIBRARY_DIR value.

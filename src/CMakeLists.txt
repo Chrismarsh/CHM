@@ -19,12 +19,16 @@ find_package(Boost
              date_time
              log
              thread
+             regex
              REQUIRED)
 
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package (Threads)
+find_package (Threads REQUIRED)
+
+find_package(TBB REQUIRED)
+
 
 set(JSON_SPIRIT_SRCS
 	json_spirit/json_spirit_reader.cpp 
@@ -41,14 +45,18 @@ set(CHM_SOURCES
 	mesh.cpp
 	core.cpp
         module_factory.cpp
+        observation.cpp
+        regex_tokenizer.cpp
 )
 set (HEADER_FILES
 	json_spirit
         modules
 	${BOOST_INCLUDE_PATH}
+        ${TBB_INCLUDE_DIRS}
 )
 set( LIB_FILES
 	${Boost_LIBRARIES}
+        ${TBB_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )
 

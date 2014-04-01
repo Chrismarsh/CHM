@@ -21,7 +21,9 @@
 #include <boost/log/sinks/text_ostream_backend.hpp>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-//#include <boost/log/attributes/named_scope.hpp>
+
+#include <boost/log/attributes/named_scope.hpp>
+#include <boost/log/expressions/formatters/named_scope.hpp>
 
 namespace logging = boost::log;
 namespace src = boost::log::sources;
@@ -61,7 +63,9 @@ typedef sinks::synchronous_sink< sinks::text_ostream_backend> text_sink;
 
 BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(logger, sev_logger)
 BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", log_level)
+//BOOST_LOG_ATTRIBUTE_KEYWORD(scope, "Scope", attrs::named_scope::value_type)
 
-#define	LOG_DEBUG       BOOST_LOG_SEV(logger::get(), log_level::debug) //<< "[" << __FILENAME__ << ", " << __LINE__ << "] "
-#define	LOG_WARNING 	BOOST_LOG_SEV(logger::get(), log_level::warning) //<< "[" << __FILE__ << ", " << __LINE__ << "] "
-#define	LOG_ERROR 	BOOST_LOG_SEV(logger::get(), log_level::error) //<< "[" << __FILE__ << ", " << __LINE__ << "] "
+
+#define	LOG_DEBUG       BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), log_level::debug) 
+#define	LOG_WARNING 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), log_level::warning) 
+#define	LOG_ERROR 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), log_level::error) 

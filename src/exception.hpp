@@ -18,6 +18,10 @@ struct module_error : virtual exception_base { };
 struct module_not_found : virtual module_error { };
 struct no_modules_defined : virtual module_error {};
 
+//regex tokenizer errors
+struct tokenizer_error : virtual exception_base{};
+struct invalid_rexp : virtual tokenizer_error {} ;
+struct bad_lexical_cast : virtual tokenizer_error {};
 
 
 typedef boost::error_info<struct errstr_info_,std::string> errstr_info;
