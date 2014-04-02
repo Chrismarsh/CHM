@@ -230,3 +230,11 @@ void core::read_config_file( std::string file )
     LOG_DEBUG << "Finished initialization";
 
 }
+
+void core::run()
+{
+    //interpolate the forcing data over the mesh
+    
+    //run all selected algorithms
+    
+}

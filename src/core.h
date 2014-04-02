@@ -29,12 +29,15 @@ public:
    * starts with { ... }.
    * @param file The file to open
   **/
-	void read_config_file(std::string file);
+    void read_config_file(std::string file);
 
-	core();
-	~core();
-	
-	bool is_debug();
+    core();
+    ~core();
+
+    bool is_debug();
+
+
+    void run();
 // 	log_level get_log_level();
 // 	void set_log_level(log_level level);
 	     
@@ -48,6 +51,7 @@ private:
     
     
     std::vector < boost::shared_ptr<station> > _stations;
+    
 };
 
 

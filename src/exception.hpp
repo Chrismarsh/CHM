@@ -30,6 +30,11 @@ struct forcing_lookup_error : virtual forcing_error{};
 struct forcing_badcast : virtual forcing_error{};
 struct forcing_no_regexmatch : virtual forcing_error{};
 
+//interpolation errors
+struct interp_error : virtual exception_base{};
+struct interp_unknown_type : virtual interp_error {};
+
+
 typedef boost::error_info<struct errstr_info_,std::string> errstr_info;
 
 

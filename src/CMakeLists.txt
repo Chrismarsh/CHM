@@ -29,6 +29,8 @@ find_package (Threads REQUIRED)
 
 find_package(TBB REQUIRED)
 
+find_package(GSL REQUIRED)
+
 
 set(JSON_SPIRIT_SRCS
 	json_spirit/json_spirit_reader.cpp 
@@ -54,10 +56,12 @@ set (HEADER_FILES
         modules
 	${BOOST_INCLUDE_PATH}
         ${TBB_INCLUDE_DIRS}
+        ${GSL_INCLUDE_DIRS}
 )
 set( LIB_FILES
 	${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
+        ${GSL_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )
 
