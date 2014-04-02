@@ -19,6 +19,7 @@
 #include <tbb/concurrent_vector.h>
 
 #include "regex_tokenizer.hpp"
+#include "exception.hpp"
 
 /*
         Class: forcing_data
@@ -56,6 +57,7 @@ private:
         int m_cols;
         int m_rows;
         bool m_isOpen;
+        std::string _file;
 
 public:
         /*
@@ -260,118 +262,120 @@ public:
         ~forcing_data();
 
         /*
-                Function: begin
-                         Returns an iterator at the start of the observations
+        Function: begin
+                 Returns an iterator at the start of the observations
 
-                Parameters: 
-                        None
+        Parameters: 
+                None
 
-                Throws:
-                        Never
+        Throws:
+                Never
 
-                Returns:   
-                        forcing_data::const_iterator - Iterator positioned at the begining of the observation
+        Returns:   
+                forcing_data::const_iterator - Iterator positioned at the begining of the observation
         */
         const_iterator begin();
 
 
         /*
-                Function: end
-                         Returns an iterator of one past the end of the observations
+        Function: end
+                 Returns an iterator of one past the end of the observations
 
-                Parameters: 
-                        None
+        Parameters: 
+                None
 
-                Throws:
-                        Never
+        Throws:
+                Never
 
-                Returns:   
-                        forcing_data::const_iterator - Iterator positioned one past the end of the observations
+        Returns:   
+                forcing_data::const_iterator - Iterator positioned one past the end of the observations
         */
         const_iterator end();
 
         /*
-                Function: open
-                         Opens an observation file. An observation file is organized in a tab, ",", or space delimited  columns, with
-                        each column representing an independent observation, and each row is a timesteps measurement. For example:
-                        >Date					Rh	Tair	Precip	Notes
-                        >20080220T000000		50	-12		2		Station_1
-                        >20080221T000015		40	-10		0		Station_1
-                        >		[...]
-                        Some restrictions:
-                                - No more than 2147483647 steps. At 1s intervals, this equates to roughly 68 years.
-                                - Consistent units. You mustn't have mm on one line, then meters on the next, for the same observation
-                                - Has to be on a constant time step. The first interval is taken as the interval for the rest of the file
-                                - Missing values are not currently allowed - that is, each row must be complete with n entries where n is number of variables.
-                                - Whitespace, tab or comma delimited. Allows for mixed usage. ex 1234, 4543 890 is legal
-                                - Values can be one of
-                                        - String (special characters are allowed, no commas)
-                                                Will match any thing with:
-                                                >~`!@#$%^&*(){[}]|\:;"'<>.?/
-                                                >OR has upper case / lower case letters
-                                        - Integer
-                                                Will match the following styles:
-                                                >+1234
-                                                >-1234
-                                                >1234567890
-                                        - Floating point
-                                                Will match the following styles:
-                                                >12.34
-                                                >12.
-                                                >.34
-                                                >12.345
-                                                >1234.45
-                                                >+12.34
-                                                >-12.34
-                                                >+1234.567e-89
-                                                >-1234.567e89
-                                        - Time
-                                                - Must be in one column in the following ISO 8601 date time form:
-                                                        - 20080131T235959
-                                                          YYYYMMDDThhmmss
+        Function: open
+                 Opens an observation file. An observation file is organized in a tab, ",", or space delimited  columns, with
+                each column representing an independent observation, and each row is a timesteps measurement. For example:
+                >Date					Rh	Tair	Precip	Notes
+                >20080220T000000		50	-12		2		Station_1
+                >20080221T000015		40	-10		0		Station_1
+                >		[...]
+                Some restrictions:
+                        - No more than 2147483647 steps. At 1s intervals, this equates to roughly 68 years.
+                        - Consistent units. You mustn't have mm on one line, then meters on the next, for the same observation
+                        - Has to be on a constant time step. The first interval is taken as the interval for the rest of the file
+                        - Missing values are not currently allowed - that is, each row must be complete with n entries where n is number of variables.
+                        - Whitespace, tab or comma delimited. Allows for mixed usage. ex 1234, 4543 890 is legal
+                        - Values can be one of
+                                - String (special characters are allowed, no commas)
+                                        Will match any thing with:
+                                        >~`!@#$%^&*(){[}]|\:;"'<>.?/
+                                        >OR has upper case / lower case letters
+                                - Integer
+                                        Will match the following styles:
+                                        >+1234
+                                        >-1234
+                                        >1234567890
+                                - Floating point
+                                        Will match the following styles:
+                                        >12.34
+                                        >12.
+                                        >.34
+                                        >12.345
+                                        >1234.45
+                                        >+12.34
+                                        >-12.34
+                                        >+1234.567e-89
+                                        >-1234.567e89
+                                - Time
+                                        - Must be in one column in the following ISO 8601 date time form:
+                                                - 20080131T235959
+                                                  YYYYMMDDThhmmss
 
 
-                Parameters: 
-                        std::string path - Fully quantified path to the file
+        Parameters: 
+                std::string path - Fully quantified path to the file
 
-                Throws:
-                        std::runtime_error - On error
+        Throws:
+                std::runtime_error - On error
 
-                Returns:   
-                         void 
+        Returns:   
+                 void 
         */
         void open(std::string path);
 
         /*
-                Function: to_file
-                         Writes the internal observation structure to file. Order of columns is not preserved due to how the data is stored.
+        Function: to_file
+                 Writes the internal observation structure to file. Order of columns is not preserved due to how the data is stored.
 
-                Parameters: 
-                        std::string file - File to save to
+        Parameters: 
+                std::string file - File to save to
 
-                Throws:
-                        std::runtime_error On error
+        Throws:
+                std::runtime_error On error
 
-                Returns:   
-                        void 
+        Returns:   
+                void 
         */
         void to_file(std::string file);
 
 
 
         /*
-                Function: is_open
-                         Determines if a file was successfully opened
+        Function: is_open
+                 Determines if a file was successfully opened
 
-                Parameters: 
+        Parameters: 
 
-                Throws:
-                        Never
+        Throws:
+                Never
 
-                Returns:   
-                        bool - True if opened
+        Returns:   
+                bool - True if opened
         */
         bool is_open();
+        
+        std::string get_opened_file();
 
 
         /*
@@ -422,200 +426,3 @@ public:
 
 
 };
-/*
-Class: Station
-Concept of a met station.
-Allows the station to have a location (x,y) and a station ID. 
-As well, it wraps the iterators of the forcing_data instance.
-
-Example:
->Station s("ExampleStation1","obs.txt",5,400);
->s.now().get<int>("RH");
->s.next();
-*/
-class Station : boost::noncopyable
-{
-public:
-        /*
-        Function: Station
-        Default constructor
-
-        Parameters: 
-        None
-
-        Throws:
-        Never
-
-        Returns:   
-        - 
-        */
-        Station();
-
-        /*
-        Function: Station
-        Creates a station from 
-
-        Parameters: 
-        std::string ID - Station ID
-        std::string file - Met file to open
-        unsigned int x - X coord
-        unsigned int y - Y coord
-        float elevation - Station elevation
-
-        Throws:
-        std::runtime_error - on error
-
-        Returns:   
-        - 
-        */
-        Station(std::string ID, std::string file, unsigned int x, unsigned int y, float elevation);
-
-        /*
-        Function: open
-        Opens a given met file
-
-        Parameters: 
-        std::string file - path to met file.
-
-        Throws:
-        std::runtime_error - on error
-
-        Returns:   
-        void 
-        */
-        void open(std::string file);
-
-
-        /*
-        Function: now
-        Returns the data for the current time step
-
-        Parameters: 
-        None
-
-        Throws:
-        Never
-
-        Returns:   
-        forcing_data::timestep - The current timestep. See <timestep>
-        */
-        forcing_data::timestep now();
-
-
-        /*
-        Function: next
-        Gets the next timestep	
-
-        Parameters: 
-        None
-
-        Throws:
-        Never
-
-        Returns:   
-        bool - Returns true if this is the last timestep
-        */
-        bool next();
-
-        /*
-        Function: get_x
-        Gets the X coordinate. Begins a 0.
-
-        Parameters: 
-        None
-
-        Throws:
-        Never
-
-        Returns:   
-        unsigned int - X corrdinate of the station
-        */
-        unsigned int get_x();
-
-        /*
-        Function: get_y
-        Gets the Y coordinate. Begins at 0
-
-        Parameters: 
-        None
-
-        Throws:
-        Never
-
-        Returns:   
-        unsigned int - Y corrdinate of the station
-        */
-        unsigned int get_y();
-
-
-        /*
-        Function: set_x
-        Sets the X coordinate. Begins at 0
-
-        Parameters: 
-        unsigned int x - X coordinate
-
-        Throws:
-        Never
-
-        Returns:   
-        void - 
-        */
-        void set_x(unsigned int x);
-
-
-        /*
-        Function: set_y
-        Sets the Y coordinate. Begins at 0
-
-        Parameters: 
-        unsigned int y - Y coordinate
-
-        Throws:
-        Never
-
-        Returns:   
-        void - 
-        */
-        void set_y(unsigned int y);
-
-
-        /*
-                Function: get_elevation
-                         Returns the station's elevation
-
-                Parameters: 
-
-                Throws:
-                        Never
-
-                Returns:   
-                        float - Station elevation
-        */
-        float get_elevation();
-
-
-        /*
-                Function: set_elevation
-                        Sets the station elevation	 
-
-                Parameters: 
-                        float elevation - Station elevation
-
-                Throws:
-                        Never
-
-                Returns:   
-                        void 
-        */
-        void set_elevation(float elevation);
-
-private:
-        std::string m_ID;
-        forcing_data* m_obs;
-        forcing_data::const_iterator m_itr;
-        unsigned int m_x;
-        unsigned int m_y;
-        float m_elevation;
-};
-

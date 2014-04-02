@@ -10,10 +10,12 @@
 #include <boost/make_shared.hpp>
 
 
+
 #include "logger.h"
 #include "exception.hpp"
 #include "json_spirit.h"
 #include "module_factory.hpp"
+#include "station.hpp"
 /// The main model core
 /**
  * The main model core, handles initialization of the model
@@ -27,7 +29,6 @@ public:
    * starts with { ... }.
    * @param file The file to open
   **/
-        void read_module_file(std::string file);
 	void read_config_file(std::string file);
 
 	core();
@@ -44,6 +45,9 @@ private:
     log_level _log_level;
     boost::shared_ptr< text_sink > _log_sink;
     module_factory _mfactory;
+    
+    
+    std::vector < boost::shared_ptr<station> > _stations;
 };
 
 

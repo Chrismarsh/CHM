@@ -1,6 +1,6 @@
 
 
-#include "observation.hpp"
+#include "forcing_data.hpp"
 
 void forcing_data::open( std::string path )
 {
@@ -15,7 +15,10 @@ void forcing_data::open( std::string path )
         std::vector<std::string> header;
 
         if(!file.is_open())
-                throw std::runtime_error(std::string("Unable to open file ") + path);
+            BOOST_THROW_EXCEPTION( file_read_error()
+                                    << boost::errinfo_errno(errno) 
+                                    << boost::errinfo_file_name(path));
+
 
         bool done = false;
         token.set_regex("[^,\\r\\n\\s]+"); //anything but whitespace or ,
@@ -41,7 +44,11 @@ void forcing_data::open( std::string path )
                 ObsTable::const_accessor a;
                 if(!m_variables.insert(a,*itr))
                 {
-                        throw std::runtime_error("Failed to insert " + *itr);
+                    BOOST_THROW_EXCEPTION(forcing_insertion_error()
+                                            << errstr_info( std::string("Failed to insert ") + *itr)
+                                            << boost::errinfo_file_name(path)
+                            );
+
                 }
         }
 
@@ -94,14 +101,21 @@ void forcing_data::open( std::string path )
                                         {
                                                 ObsTable::accessor a;
                                                 if(!m_variables.find(a,*headerItr))
-                                                        throw std::runtime_error("Failed to find " + *headerItr);
+                                                                    BOOST_THROW_EXCEPTION(forcing_lookup_error() 
+                                                                        << errstr_info( std::string("Failed to find ") + *headerItr)
+                                                                        << boost::errinfo_file_name(path)
+                                                                    );
+
                                                 try
                                                 {
                                                         a->second.push_back(boost::lexical_cast<int>(ints[0]));
                                                 }
                                                 catch (...)
                                                 {
-                                                        throw std::runtime_error("Failed to cast " + ints[0] + " to an int.");
+                                                    BOOST_THROW_EXCEPTION(forcing_badcast()
+                                                                        << errstr_info( "Failed to cast " + ints[0] + " to an int.")
+                                                                        << boost::errinfo_file_name(path)
+                                                                    );
                                                 }
 
 
@@ -110,14 +124,20 @@ void forcing_data::open( std::string path )
                                         {
                                                 ObsTable::accessor a;
                                                 if(!m_variables.find(a,*headerItr))
-                                                        throw std::runtime_error("Failed to find " + *headerItr);
+                                                        BOOST_THROW_EXCEPTION(forcing_lookup_error() 
+                                                                        << errstr_info( std::string("Failed to find ") + *headerItr)
+                                                                        << boost::errinfo_file_name(path)
+                                                                    );
                                                 try
                                                 {
                                                         a->second.push_back(boost::lexical_cast<float>(floats[0]));
                                                 }
                                                 catch (...)
                                                 {
-                                                        throw std::runtime_error("Failed to cast " + floats[0] + " to an int.");
+                                                    BOOST_THROW_EXCEPTION(forcing_badcast()
+                                                                        << errstr_info( "Failed to cast " + floats[0] + " to an int.")
+                                                                        << boost::errinfo_file_name(path)
+                                                                    );
                                                 }
 
 
@@ -130,7 +150,10 @@ void forcing_data::open( std::string path )
                                                         dateHeader = *headerItr;
 
                                                 if(!m_variables.find(a,*headerItr))
-                                                        throw std::runtime_error("Failed to find " + *headerItr);
+                                                        BOOST_THROW_EXCEPTION(forcing_lookup_error() 
+                                                                        << errstr_info( std::string("Failed to find ") + *headerItr)
+                                                                        << boost::errinfo_file_name(path)
+                                                                    );
 
                                                 a->second.push_back(boost::posix_time::from_iso_string(dates[0]));
 
@@ -143,14 +166,20 @@ void forcing_data::open( std::string path )
 
                                                 ObsTable::accessor a;
                                                 if(!m_variables.find(a,*headerItr))
-                                                        throw std::runtime_error("Failed to find " + *headerItr);
+                                                        BOOST_THROW_EXCEPTION(forcing_lookup_error() 
+                                                                        << errstr_info( std::string("Failed to find ") + *headerItr)
+                                                                        << boost::errinfo_file_name(path)
+                                                                    );
 
                                                 a->second.push_back(strings[0]);
                                         }	
                                         else 
                                         {
                                                 //something has gone horribly wrong
-                                                throw std::runtime_error("Unable to match any regex for " + *itr);
+                                                BOOST_THROW_EXCEPTION(forcing_no_regexmatch()
+                                                                        << errstr_info( "Unable to match any regex for " + *itr)
+                                                                        << boost::errinfo_file_name(path)
+                                                                    );
                                         }
 
                                         //next header
@@ -160,8 +189,10 @@ void forcing_data::open( std::string path )
                                 }
                                 if(cols_so_far != m_cols)
                                 {
-                                        throw std::runtime_error("Failed to read in the correct number of columns on line: " + boost::lexical_cast<std::string>(lines) +
-                                                ". Read in: "+boost::lexical_cast<std::string>(cols_so_far)+" ; should have been:" + boost::lexical_cast<std::string>(m_cols));
+                                    BOOST_THROW_EXCEPTION(forcing_badcast() 
+                                                          << errstr_info( "Expected " + boost::lexical_cast<std::string>(m_cols) + "lines")
+                                                          << boost::errinfo_file_name(path)
+                                                        );
                                 }
                                 m_rows++;
                         }
@@ -169,6 +200,7 @@ void forcing_data::open( std::string path )
         } //end of file read
 
         m_isOpen = true;
+        _file = path;
 
         //check to make sure what we have read in makes sense
         //Check for:
@@ -201,13 +233,16 @@ void forcing_data::open( std::string path )
 
                 ObsTable::const_accessor a ;
                 if(!m_variables.find(a,headerItems[l]))
-                        throw std::runtime_error("Failed to find " + headerItems[l]);
+                        BOOST_THROW_EXCEPTION(forcing_lookup_error() 
+                            << errstr_info( std::string("Failed to find ") + headerItems[l])
+                            << boost::errinfo_file_name(path)
+                             );
 
                 //check all cols are the same sizes
                 if(first->second.size() != a->second.size())
-                        throw std::runtime_error ("Row " + a->first + " is a different size.");
-
-
+                    BOOST_THROW_EXCEPTION(forcing_lookup_error() 
+                            << errstr_info( "Row " + a->first + " is a different size.")
+                            << boost::errinfo_file_name(path));
         }
 
         first.release();
@@ -216,6 +251,10 @@ void forcing_data::open( std::string path )
 
 }
 
+std::string forcing_data::get_opened_file()
+{
+    return _file;
+}
 
 forcing_data::forcing_data()
 {
@@ -235,7 +274,9 @@ void forcing_data::to_file( std::string file )
         out.open(file.c_str());
 
         if(!out.is_open())
-                throw std::runtime_error("Unable to open file " + file + " for output.");
+             BOOST_THROW_EXCEPTION( file_read_error()
+                                    << boost::errinfo_errno(errno) 
+                                    << boost::errinfo_file_name(file));
 
         std::string* headerItems = new std::string[m_variables.size()];
 
@@ -287,7 +328,9 @@ forcing_data::const_iterator forcing_data::begin()
                 timestep::ConstItrMap::accessor a;
                 if(!step.m_currentStep.m_itrs.insert(a,itr->first))
                 {
-                        throw std::runtime_error("Failed to insert " + itr->first);
+                        BOOST_THROW_EXCEPTION( forcing_insertion_error()
+                                    << errstr_info("Failed to insert " + itr->first) 
+                                    );
                 }
                 a->second = itr->second.begin();
 
@@ -309,7 +352,9 @@ forcing_data::const_iterator forcing_data::end()
 
                 if(!step.m_currentStep.m_itrs.insert(a,itr->first))
                 {
-                        throw std::runtime_error("Failed to insert " + itr->first);
+                        BOOST_THROW_EXCEPTION( forcing_insertion_error()
+                                    << errstr_info("Failed to insert " + itr->first) 
+                                    );
                 }
                 a->second = itr->second.end();
 
@@ -583,7 +628,9 @@ boost::gregorian::date forcing_data::timestep::get_gregorian()
         }
 
         //if we get this far, didn't find it, so bail
-        throw std::runtime_error("No date variable found");
+        BOOST_THROW_EXCEPTION( forcing_error()
+                                    << errstr_info("No date variable found") 
+                                    );
 
 }
 
@@ -607,79 +654,8 @@ boost::posix_time::ptime forcing_data::timestep::get_posix()
         }
 
         //if we get this far, didn't find it, so bail
-        throw std::runtime_error("No date variable found");
+        BOOST_THROW_EXCEPTION( forcing_error()
+                                    << errstr_info("No date variable found") 
+                                    );
 
 }
-
-
-Station::Station()
-{
-        m_x = 0;
-        m_y = 0;
-        m_elevation = 0.0;
-        m_obs = NULL;
-
-}
-
-Station::Station( std::string ID, std::string file, unsigned int x, unsigned int y, float elevation )
-{
-        m_ID = ID;
-        m_x = x;
-        m_y = y;
-        m_elevation = elevation;
-        m_obs = NULL; //initialized in openfile
-        open(file);
-}
-
-void Station::open( std::string file )
-{
-        m_obs = new forcing_data();
-        m_obs->open(file);
-
-        m_itr = m_obs->begin();
-}
-
-forcing_data::timestep Station::now()
-{
-        return *m_itr;
-}
-
-bool Station::next()
-{
-        m_itr++;
-        if(m_itr == m_obs->end())
-                return false;
-        else
-                return true;
-}
-
-unsigned int Station::get_x()
-{
-        return m_x;
-}
-
-unsigned int Station::get_y()
-{
-        return m_y;
-}
-
-void Station::set_x( unsigned int x )
-{
-        m_x = x;
-}
-
-void Station::set_y( unsigned int y )
-{
-        m_y = y;
-}
-
-float Station::get_elevation()
-{
-        return m_elevation;
-}
-
-void Station::set_elevation( float elevation )
-{
-        m_elevation = elevation;
-}
-

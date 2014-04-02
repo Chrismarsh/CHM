@@ -45,8 +45,9 @@ set(CHM_SOURCES
 	mesh.cpp
 	core.cpp
         module_factory.cpp
-        observation.cpp
+        forcing_data.cpp
         regex_tokenizer.cpp
+        station.cpp
 )
 set (HEADER_FILES
 	json_spirit

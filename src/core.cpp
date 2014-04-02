@@ -45,10 +45,7 @@ core::core()
     logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
     
     logging::core::get()->add_sink(_log_sink);
-
-//    logging::core::get()->set_exception_handler(
-//               logging::make_exception_handler< boost::exception>(exception_log_handler()));
-//    
+  
     LOG_DEBUG << "Logger initialized. Writing to cout and CHM.log";
 
 }
@@ -63,64 +60,6 @@ bool core::is_debug()
   return _is_debug;
 }
 
-void core::read_module_file(std::string file)
-{
-    BOOST_LOG_FUNCTION();
-    std::ifstream is( file );
-    
-    if (is.fail())
-    {
-        BOOST_THROW_EXCEPTION(file_read_error() 
-                                << boost::errinfo_errno(errno)
-                                << boost::errinfo_file_name(file)
-                            );
-        
-    }
-
-    bool found_modules = false;
-    //get the top-level object { ... }
-    json_spirit::Value value;
-    json_spirit::read( is, value );
-    const json_spirit::Object& top_level = value.get_obj();
-
-    //loop over the top-level options
-    for(auto& itr : top_level )
-    {
-        const json_spirit::Pair& pair = itr;
-        const std::string& name  = pair.name_;
-        const json_spirit::Value&  value = pair.value_;
-        
-        if ( name == "modules") 
-        {
-            found_modules = true; //found the module section
-            
-            //loop over the list of requested modules
-            // these are in the format "type":"ID"
-            for(auto& jtr : value.get_obj())
-            {
-                const json_spirit::Pair& pair = jtr;
-                const std::string& name  = pair.name_;
-                const std::string&  ID = pair.value_.get_str();
-
-                LOG_DEBUG << "Module type=" << name << " ID=" <<ID;
-                ModuleBase* lol = _mfactory.get(ID);
-                
-            }
-    }
-
-        
-        
-        
-        
-    }
-    
-    if (found_modules == false)
-    {
-        BOOST_THROW_EXCEPTION(no_modules_defined() 
-                                << errstr_info(std::string("No module section found in ") + file)
-                            );
-    }
-}
 
 void core::read_config_file( std::string file )
 {
@@ -143,7 +82,7 @@ void core::read_config_file( std::string file )
  
     //get the top-level 
     const json_spirit::Object& top_level = value.get_obj();
-
+    bool found_modules = false;
     
     //loop over the top-level options
     for(auto& itr : top_level )
@@ -189,11 +128,102 @@ void core::read_config_file( std::string file )
 	}
         else if(name == "modules")
         {
-            _module_config = pair.value_.get_str();
-            LOG_DEBUG << "Found module config file at " << _module_config;
-            read_module_file(_module_config);
+            const json_spirit::Pair& pair = itr;
+            const std::string& name  = pair.name_;
+            const json_spirit::Value&  value = pair.value_;
+            found_modules = true; //found the module section
+            
+            //loop over the list of requested modules
+            // these are in the format "type":"ID"
+            for(auto& jtr : value.get_obj())
+            {
+                const json_spirit::Pair& pair = jtr;
+                const std::string& name  = pair.name_;
+                const std::string&  ID = pair.value_.get_str();
+
+                LOG_DEBUG << "Module type=" << name << " ID=" <<ID;
+                ModuleBase* lol = _mfactory.get(ID);
+                delete lol;
+                
+            }
             
         }
+        else if(name == "forcing")
+        {
+            LOG_DEBUG << "Found forcing section";
+            //loop over the list of forcing data
+            for(auto& jtr : value.get_obj())
+            {
+                const json_spirit::Pair& pair = jtr;
+                const std::string& name  = pair.name_;
+                const json_spirit::Value& value = pair.value_;
+                
+                
+                if (name == "station")
+                {
+                    boost::shared_ptr<station> s = boost::make_shared<station>();
+                    
+                        
+                    
+                        for(auto& ktr : value.get_obj())
+                        {
+
+                                const json_spirit::Pair& pair = ktr;
+                                const std::string& name  = pair.name_;
+
+
+                                if(name == "ID")
+                                {
+                                    s->set_ID(pair.value_.get_str());
+                                }
+                                else if(name == "easting")
+                                {
+                                    s->set_x(pair.value_.get_real());
+                                }
+                                else if(name == "northing")
+                                {
+                                    s->set_y(pair.value_.get_real());
+                                }
+                                else if(name == "elevation")
+                                {
+                                    s->set_z(pair.value_.get_real());
+                                }
+                                else if(name == "file")
+                                {
+                                    s->open(pair.value_.get_str());
+                                }
+                                else 
+                                {
+                                    LOG_DEBUG << "Unknown value '" << name << "'";
+                                }
+
+                        }
+
+                        LOG_DEBUG << "New station created " << *s;
+                        _stations.push_back(s);
+                   
+                }
+                else
+                {
+                    LOG_DEBUG << "Unknown forcing type " << name << ", skipping";
+                }
+                
+                
+            }
+        }
+        else
+        {
+            const json_spirit::Pair& pair = itr;
+            const std::string& name  = pair.name_;
+            LOG_DEBUG << "Unknown section '" << name <<"', skipping";
+        }
+    }
+    
+    if (found_modules == false)
+    {
+        BOOST_THROW_EXCEPTION(no_modules_defined() 
+                                << errstr_info(std::string("No module section found in ") + file)
+                            );
     }
     
     

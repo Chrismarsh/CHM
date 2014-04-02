@@ -23,6 +23,12 @@ struct tokenizer_error : virtual exception_base{};
 struct invalid_rexp : virtual tokenizer_error {} ;
 struct bad_lexical_cast : virtual tokenizer_error {};
 
+//forcing data errors
+struct forcing_error : virtual exception_base{};
+struct forcing_insertion_error : virtual forcing_error{};
+struct forcing_lookup_error : virtual forcing_error{};
+struct forcing_badcast : virtual forcing_error{};
+struct forcing_no_regexmatch : virtual forcing_error{};
 
 typedef boost::error_info<struct errstr_info_,std::string> errstr_info;
 
