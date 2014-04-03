@@ -9,7 +9,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -stdlib=libc++")
 endif()
 
-#find_package(CGAL REQUIRED)
+
+#sym link /opt/matlab-7sp1 to the real matlab root will make this work properly
+find_package(Matlab REQUIRED)
+
+find_package(Armadillo 3.0 REQUIRED)
 
 find_package(Boost
              1.54.0
@@ -41,37 +45,54 @@ set(JSON_SPIRIT_SRCS
 set(MODULE_SRCS
         modules/TestModule.cpp
 )
- 
-set(CHM_SOURCES 
+
+set(LIBMAW_SRCS
+    libmaw/graphics.cpp
+    libmaw/matlab_engine.cpp
+)
+set(CHM_SRCS 
 	main.cpp
-	mesh.cpp
 	core.cpp
         module_factory.cpp
         forcing_data.cpp
         regex_tokenizer.cpp
         station.cpp
+
+        mesh/mesh.cpp
 )
 set (HEADER_FILES
 	json_spirit
+        mesh
         modules
+        libmaw
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+set (EXT_HEADER_FILES
 	${BOOST_INCLUDE_PATH}
         ${TBB_INCLUDE_DIRS}
         ${GSL_INCLUDE_DIRS}
-)
+        ${AMRADILLO_INCLUDE_DIR}
+        ${MATLAB_INCLUDE_DIR}
+    )
 set( LIB_FILES
 	${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
         ${GSL_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
+        ${ARMADILLO_LIBRARIES} 
+	${MATLAB_ENG_LIBRARY} 
+	${MATLAB_MX_LIBRARY}  
 )
 
-include_directories(${HEADER_FILES})
+include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
 
 add_executable(
 	CHM 
-	${CHM_SOURCES} 
+	${CHM_SRCS} 
         ${MODULE_SRCS}
-	${JSON_SPIRIT_SRCS} 
+	${JSON_SPIRIT_SRCS}
+        ${LIBMAW_SRCS}
 )
 
 target_link_libraries(

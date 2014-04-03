@@ -14,6 +14,12 @@
 # EXTERNAL cache entries
 ########################
 
+//Path to a file.
+ARMADILLO_INCLUDE_DIR:PATH=/usr/include
+
+//Path to a library.
+ARMADILLO_LIBRARY:FILEPATH=/usr/lib64/libarmadillo.so
+
 //Boost date_time library (debug)
 Boost_DATE_TIME_LIBRARY_DEBUG:FILEPATH=/usr/lib64/libboost_date_time.so
 
@@ -230,8 +236,17 @@ DOXYGEN_EXECUTABLE:FILEPATH=/usr/bin/doxygen
 //Path to a program.
 GSL_CONFIG_EXECUTABLE:FILEPATH=/usr/bin/gsl-config
 
-//The directory containing a CMake configuration file for GSL.
-GSL_DIR:PATH=GSL_DIR-NOTFOUND
+//Path to a library.
+MATLAB_ENG_LIBRARY:FILEPATH=/opt/matlab-7sp1/bin/glnxa64/libeng.so
+
+//Path to a file.
+MATLAB_INCLUDE_DIR:PATH=/opt/matlab-7sp1/extern/include
+
+//Path to a library.
+MATLAB_MEX_LIBRARY:FILEPATH=/opt/matlab-7sp1/bin/glnxa64/libmex.so
+
+//Path to a library.
+MATLAB_MX_LIBRARY:FILEPATH=/opt/matlab-7sp1/bin/glnxa64/libmx.so
 
 //TBB debug library directory
 TBB_DEBUG_LIBRARY_DIRS:PATH=
@@ -265,6 +280,10 @@ TBB_MALLOC_LIBRARY_DEBUG:FILEPATH=TBB_MALLOC_LIBRARY_DEBUG-NOTFOUND
 # INTERNAL cache entries
 ########################
 
+//ADVANCED property for variable: ARMADILLO_INCLUDE_DIR
+ARMADILLO_INCLUDE_DIR-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: ARMADILLO_LIBRARY
+ARMADILLO_LIBRARY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: Boost_DATE_TIME_LIBRARY_DEBUG
 Boost_DATE_TIME_LIBRARY_DEBUG-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: Boost_DATE_TIME_LIBRARY_RELEASE
@@ -436,10 +455,20 @@ CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
 DOXYGEN_DOT_EXECUTABLE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: DOXYGEN_EXECUTABLE
 DOXYGEN_EXECUTABLE-ADVANCED:INTERNAL=1
+//Details about finding Armadillo
+FIND_PACKAGE_MESSAGE_DETAILS_Armadillo:INTERNAL=[/usr/lib64/libarmadillo.so][/usr/include][v4.100.2(3.0)]
 //Details about finding Doxygen
 FIND_PACKAGE_MESSAGE_DETAILS_Doxygen:INTERNAL=[/usr/bin/doxygen][v1.8.6()]
 //Details about finding Threads
 FIND_PACKAGE_MESSAGE_DETAILS_Threads:INTERNAL=[TRUE][v()]
+//ADVANCED property for variable: MATLAB_ENG_LIBRARY
+MATLAB_ENG_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: MATLAB_INCLUDE_DIR
+MATLAB_INCLUDE_DIR-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: MATLAB_MEX_LIBRARY
+MATLAB_MEX_LIBRARY-ADVANCED:INTERNAL=1
+//ADVANCED property for variable: MATLAB_MX_LIBRARY
+MATLAB_MX_LIBRARY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: TBB_DEBUG_LIBRARY_DIRS
 TBB_DEBUG_LIBRARY_DIRS-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: TBB_INCLUDE_DIR

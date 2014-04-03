@@ -47,6 +47,8 @@ core::core()
     logging::core::get()->add_sink(_log_sink);
   
     LOG_DEBUG << "Logger initialized. Writing to cout and CHM.log";
+    
+    _mesh = boost::make_shared<mesh>();
 
 }
 

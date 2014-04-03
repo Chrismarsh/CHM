@@ -16,6 +16,7 @@
 #include "json_spirit.h"
 #include "module_factory.hpp"
 #include "station.hpp"
+#include "mesh.hpp"
 /// The main model core
 /**
  * The main model core, handles initialization of the model
@@ -51,6 +52,8 @@ private:
     
     
     std::vector < boost::shared_ptr<station> > _stations;
+    
+    boost::shared_ptr<mesh> _mesh;
     
 };
 

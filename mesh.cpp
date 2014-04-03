@@ -1,13 +1,22 @@
-#include "mesh.h"
-
-
+#include "mesh.hpp"
 
 mesh::mesh()
 {
-
-
+    _engine = boost::make_shared<maw::matlab_engine>();
+    _gfx = boost::make_shared<maw::graphics>();
+    
+    _engine->start();
+    _engine->set_working_dir();
+   
+    LOG_DEBUG << "Matlab engine started";
+    
 }
 
+mesh::~mesh()
+{
+    
+    
+}
 
 void mesh::read_mesh(std::string file)
 {
@@ -65,5 +74,3 @@ void mesh::read_mesh(std::string file)
     
 
 }
-
-
