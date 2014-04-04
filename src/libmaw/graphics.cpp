@@ -32,19 +32,35 @@
 namespace maw
 {
 
-
+void graphics::spin_until_close(double handle)
+{
+    
+    std::string plot_handle = "libmaw_handle_"+boost::lexical_cast<std::string>(std::rand());
+    _engine->put_scalar(plot_handle,  handle);
+   
+    int closed = 1;
+    do
+    {
+        _engine->evaluate("h_graphics_handle=ishandle("+plot_handle+")");
+ 
+        closed = (int) _engine->get_scaler("h_graphics_handle");
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+//         _engine->evaluate("com.mathworks.mde.desk.MLDesktop.getInstance.showCommandWindow");
+    }while(closed==1);
+}
 //returns the handle from matlab
 //vertices should be in the form [x(:) y(:) z(:)]
 //faces should be in the form  tri.Triangulation
 double graphics::plot_patch( std::string vertices, std::string faces, std::string face_data )
 {
+        LOG_DEBUG << "Plot patch called";
 	std::string command = std::string("patch_handle = patch('Vertices',") + 	vertices + 
 		std::string(",'Faces',") + 	faces +
 		std::string(",'facevertexcdata',") + face_data +
 		std::string(",'facecolor','flat', 'edgecolor','none');");//[201/256 201/256 201/256]
-	m_engine->evaluate(command.c_str());
+	_engine->evaluate(command.c_str());
 
-	mxArray* handle =  m_engine->get("patch_handle");
+	mxArray* handle =  _engine->get("patch_handle");
 
 	if(handle)
 		return (mxGetScalar(handle));
@@ -54,15 +70,15 @@ double graphics::plot_patch( std::string vertices, std::string faces, std::strin
 
 graphics::graphics( matlab_engine *engine )
 {
-	m_engine = engine;
+	_engine = engine;
 }
 
 double graphics::update_patch( double handle, std::string vertices, std::string face_data )
 {
 	std::string command = std::string("set(")+ boost::lexical_cast<std::string,double>(handle) + std::string(",'Vertices',") + vertices  + std::string(",'facevertexcdata',") + face_data + std::string(")");
-	m_engine->evaluate(command.c_str());
-	//m_engine->evaluate("refreshdata");
-	mxArray* h =  m_engine->get("patch_handle");
+	_engine->evaluate(command.c_str());
+	//_engine->evaluate("refreshdata");
+	mxArray* h =  _engine->get("patch_handle");
 
 	return (mxGetScalar(h));
 
@@ -70,28 +86,28 @@ double graphics::update_patch( double handle, std::string vertices, std::string 
 
 double graphics::add_title( std::string title, int fontsize /*= 14*/,std::string color /*='black'*/ )
 {
-	m_engine->evaluate("if exist('ht','var')==1 delete(ht.th); end");
+	_engine->evaluate("if exist('ht','var')==1 delete(ht.th); end");
 	std::string command = std::string("ht = mtit('") + title + std::string("','fontsize',") + boost::lexical_cast<std::string,int>(fontsize) + std::string(")");
-	m_engine->evaluate(command);
-	mxArray* ht =  m_engine->get("ht");
-	m_engine->evaluate(std::string("set(ht.th,'color','") + color + std::string("')"));
+	_engine->evaluate(command);
+	mxArray* ht =  _engine->get("ht");
+	_engine->evaluate(std::string("set(ht.th,'color','") + color + std::string("')"));
 	return (mxGetScalar(ht));
 }
 
 void graphics::hold_on()
 {
-	m_engine->evaluate("hold on");
+	_engine->evaluate("hold on");
 }
 
 void graphics::hold_off()
 {
-	m_engine->evaluate("hold off");
+	_engine->evaluate("hold off");
 }
 
 double graphics::plot_line( std::string x, std::string y, std::string options/*=""*/ )
 {
 	double ret = -1;
-	if (m_engine)
+	if (_engine)
 	{
 		std::string command = std::string("plot_handle=plot(") + x +std::string(",") + y + std::string(",'-'");
 
@@ -105,9 +121,9 @@ double graphics::plot_line( std::string x, std::string y, std::string options/*=
 		}
 
 
-		m_engine->evaluate(command);
-		ret = m_engine->get_scaler("plot_handle");
-		m_engine->evaluate("clear plot_handle");
+		_engine->evaluate(command);
+		ret = _engine->get_scaler("plot_handle");
+		_engine->evaluate("clear plot_handle");
 		
 	}
 	return ret;
@@ -115,15 +131,15 @@ double graphics::plot_line( std::string x, std::string y, std::string options/*=
 
 double graphics::plot_line(const d_vec x, const d_vec y,std::string options/*=""*/ )
 {
-	m_engine->put_double_vector("x",x);
-	m_engine->put_double_vector("y",y);
+	_engine->put_double_vector("x",x);
+	_engine->put_double_vector("y",y);
 
 	std::string x_name = "x";
 	std::string y_name = "y";
 
 	double handle = plot_line(x_name,y_name,options);
 
-	m_engine->evaluate("clear x y plot_handle");
+	_engine->evaluate("clear x y plot_handle");
 
 	return handle;
 
@@ -136,15 +152,15 @@ graphics::~graphics()
 
 void graphics::save_to_file( std::string fname )
 {
-	m_engine->evaluate(std::string("export_figure('") + fname +std::string("','-png');"));
+	_engine->evaluate(std::string("export_figure('") + fname +std::string("','-png');"));
 }
 
 void graphics::colorbar( std::string toggle/*="on"*/ )
 {
 	if(toggle == "on")
-		m_engine->evaluate("colorbar");
+		_engine->evaluate("colorbar");
 	else
-		m_engine->evaluate("colorbar('off')");
+		_engine->evaluate("colorbar('off')");
 }
 
 }

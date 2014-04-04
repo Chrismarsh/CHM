@@ -105,6 +105,20 @@ public:
 	
 	*/
 	void put(std::string name, mxArray* var );
+        
+        /*
+	Method: put_scaler
+		Copies a mxArray type into the Matlab engine with a specified name
+	Parameters: 
+		std::string name - Name of the matrix in the Matlab engine
+		double  var - Scalar to put
+	Returns:   
+		void - 
+	Throws: 
+		runtime_error on failure
+	
+	*/
+	void put_scalar(std::string name, double var );
 
 
 	/*

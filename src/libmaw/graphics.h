@@ -31,7 +31,14 @@
 
 #include <string>
 #include <boost/lexical_cast.hpp>
+
+#include <chrono>
+#include <thread>
+#include <cstdlib>
+
+
 #include "matlab_engine.h"
+#include "logger.h"
 
 namespace maw
 {
@@ -59,10 +66,12 @@ public:
 	double add_title(std::string title, int fontsize = 14,std::string color="black");
 
 	void save_to_file(std::string fname);
+        
+        void spin_until_close(double handle);
 
 
 private:
-	matlab_engine* m_engine;
+	matlab_engine* _engine;
 	
 };
 

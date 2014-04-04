@@ -44,11 +44,15 @@ void mesh::add_mesh(std::string file, std::string ID)
 //    _engine->evaluate("mxDomain=mxDomain(:,1:3)"); //because we are reading in the skyview data along with the dem, future calls assume a nx3 matrix.
 //    std::cout << "Creating face normals...";
 //    tri->compute_face_normals();
-    _engine->evaluate("save('lol.mat')");
+   
     _meshes.push_back(tri);
     
     _engine->evaluate("ff=figure; set(gcf,'units','normalized','outerposition',[0 0 1 1]);");
    _engine->evaluate("set(ff,'Renderer','OpenGL')");
-    _gfx->plot_patch("[mxDomain(:,1) mxDomain(:,2) mxDomain(:,3)]","tri","mxDomain(:,3)");
+    double handle = _gfx->plot_patch("[mxDomain(:,1) mxDomain(:,2) mxDomain(:,3)]","tri","mxDomain(:,3)");
+    
+    _gfx->spin_until_close(handle);
+    
+    
 
 }

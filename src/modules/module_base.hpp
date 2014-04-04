@@ -12,7 +12,7 @@ public:
         {
             //nothing
         };
-        ~ModuleBase()
+        virtual ~ModuleBase()
         {
             //nothing
         };

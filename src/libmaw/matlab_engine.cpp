@@ -32,217 +32,221 @@
 namespace maw
 {
 
+    void matlab_engine::start()
+    {
+        if (!(m_engine = engOpen("\0")))
+        {
+            throw std::runtime_error("Can't start MATLAB engine");
+        }
+    }
 
-void matlab_engine::start()
-{
-	if (!(m_engine = engOpen("\0"))) 
-	{
-		throw std::runtime_error("Can't start MATLAB engine");
-	}
-}
+    void matlab_engine::stop()
+    {
+        if (m_engine)
+        {
+            if (engEvalString(m_engine, "close") == 1)
+                throw std::runtime_error(get_last_error().c_str());
+        }
+        m_engine = NULL;
+    }
 
-void matlab_engine::stop()
-{
-	if(m_engine)
-	{
-		if (engEvalString(m_engine, "close") == 1)
-			throw std::runtime_error(get_last_error().c_str());
-	}
-	m_engine = NULL;
-}
+    void matlab_engine::evaluate(std::string command)
+    {
+        if (m_engine)
+        {
+            engEvalString(m_engine, "lasterror('reset')");
+            engEvalString(m_engine, command.c_str());
 
-void matlab_engine::evaluate( std::string command )
-{
-	if(m_engine)
-	{
-		engEvalString(m_engine,"lasterror('reset')");
-		engEvalString(m_engine, command.c_str());
+            std::string err = get_last_error().c_str();
+            if (err != "")
+                throw std::runtime_error((std::string(__FILE__) + std::string(":") + boost::lexical_cast<std::string, int>(__LINE__) + std::string(":") + get_last_error() + std::string("\nCommand: ") + command).c_str());
+        } else
+        {
+            throw std::runtime_error("No MATLAB engine open");
+        }
+    }
 
-		std::string err = get_last_error().c_str();
-		if (err != "")
-			throw std::runtime_error( (std::string(__FILE__) + std::string(":") + boost::lexical_cast<std::string,int>(__LINE__) + std::string(":") + get_last_error() + std::string("\nCommand: ") + command).c_str());
-	}
-	else
-	{
-		throw std::runtime_error("No MATLAB engine open");
-	}
-}
+    void matlab_engine::put(std::string name, mxArray* var)
+    {
+        if (m_engine)
+        {
+            if (engPutVariable(m_engine, name.c_str(), var) == 1)
+                throw std::runtime_error(get_last_error().c_str());
+        } else
+        {
+            throw std::runtime_error("No MATLAB engine open");
+        }
+    }
 
-void matlab_engine::put( std::string name, mxArray* var )
-{
-	if(m_engine)
-	{
-		if( engPutVariable(m_engine, name.c_str(), var) == 1)
-			throw std::runtime_error(get_last_error().c_str());
-	}
-	else
-	{
-		throw std::runtime_error("No MATLAB engine open");
-	}
-}
+    mxArray* matlab_engine::get(std::string name)
+    {
 
-mxArray* matlab_engine::get( std::string name )
-{
+        if (m_engine)
+        {
+            mxArray* temp = engGetVariable(m_engine, name.c_str());
+            if (!temp)
+                throw std::runtime_error(get_last_error().c_str());
+            else
+                return temp;
 
-		if(m_engine)
-		{
-			mxArray* temp = engGetVariable(m_engine, name.c_str());
-			if (!temp)
-				throw std::runtime_error(get_last_error().c_str());
-			else
-				return temp;
+        } else
+        {
+            throw std::runtime_error("No MATLAB engine open");
+        }
+    }
 
-		}
-		else
-		{
-			throw std::runtime_error("No MATLAB engine open");
-		}
-}
+    matlab_engine::~matlab_engine()
+    {
+        if (m_engine)
+        {
+            engEvalString(m_engine, "close");
+        }
+        m_engine = NULL;
+    }
 
-matlab_engine::~matlab_engine()
-{
-	if(m_engine)
-	{
-		engEvalString(m_engine, "close");
-	}
-	m_engine = NULL;
-}
+    matlab_engine::matlab_engine()
+    {
+        m_engine = NULL;
+    }
 
-matlab_engine::matlab_engine()
-{
-	m_engine = NULL;
-}
+    void matlab_engine::set_working_dir(std::string dir)
+    {
+        if (m_engine)
+        {
+            if (engEvalString(m_engine, (std::string("cd '") + dir + std::string("'")).c_str()) == 1)
+                throw std::runtime_error(get_last_error().c_str());
+        } else
+        {
+            throw std::runtime_error("No MATLAB engine open");
+        }
+    }
 
-void matlab_engine::set_working_dir( std::string dir )
-{
-	if(m_engine)
-	{
-		if (engEvalString(m_engine, (std::string("cd '")+dir+std::string("'")).c_str())==1)
-			throw std::runtime_error(get_last_error().c_str());
-	}
-	else
-	{
-		throw std::runtime_error("No MATLAB engine open");
-	}
-}
+    void matlab_engine::set_working_dir()
+    {
+        char path[FILENAME_MAX];
+        GetCurrentDir(path, FILENAME_MAX);
 
-void matlab_engine::set_working_dir()
-{
-	char path[FILENAME_MAX];
-	GetCurrentDir(path, FILENAME_MAX);
+        set_working_dir(std::string(path));
 
-	set_working_dir(std::string(path));
+    }
 
-}
+    std::string matlab_engine::get_last_error()
+    {
+        if (m_engine)
+        {
+            int retval = engEvalString(m_engine, "myErr=lasterror");
+            // get the struct
+            mxArray *err = engGetVariable(m_engine, "myErr");
+            char str[512];
+            if (err && mxIsStruct(err))
+            {
+                // get the error message string field
+                mxArray *errStr = mxGetField(err, 0, "message");
+                if ((errStr != NULL) && mxIsChar(errStr))
+                {
+                    // get the string
+                    retval = mxGetString(errStr, str, sizeof (str) / sizeof (str[0]));
+                }
+            }
+            mxDestroyArray(err);
+            err = NULL;
+            return std::string(str);
+        } else
+        {
+            return "";
+        }
+    }
 
-std::string matlab_engine::get_last_error()
-{
-	if(m_engine)
-	{
-		int retval = engEvalString(m_engine,"myErr=lasterror");
-		// get the struct
-		mxArray *err = engGetVariable(m_engine,"myErr");
-		char str[512];
-		if(err && mxIsStruct(err) )
-		{
-			// get the error message string field
-			mxArray *errStr = mxGetField(err,0,"message");
-			if( (errStr != NULL) && mxIsChar(errStr) )
-			{
-				// get the string
-				retval = mxGetString(errStr,str,sizeof(str)/sizeof(str[0]));
-			}
-		}
-		mxDestroyArray(err);
-		err=NULL;
-		return std::string(str);
-	}
-	else
-	{
-		return "";
-	}
-}
+    void matlab_engine::put_scalar(std::string name, double var)
+    {
+        mxArray* mx = mxCreateDoubleMatrix(1,1, mxREAL);
+        memcpy(mxGetPr(mx), &var, sizeof (double));
+        put(name, mx);
+        mxDestroyArray(mx);
+    }
 
-void matlab_engine::put_double_matrix( std::string name, const d_mat mat )
-{
-	mxArray*  mx = mxCreateDoubleMatrix(mat->n_rows, mat->n_cols, mxREAL);
-	memcpy(mxGetPr(mx),mat->memptr(),mat->n_elem*sizeof(double));
-	put(name,mx);
-	mxDestroyArray(mx);
-}
+    void matlab_engine::put_double_matrix(std::string name, const d_mat mat)
+    {
+        mxArray* mx = mxCreateDoubleMatrix(mat->n_rows, mat->n_cols, mxREAL);
+        memcpy(mxGetPr(mx), mat->memptr(), mat->n_elem * sizeof (double));
+        put(name, mx);
+        mxDestroyArray(mx);
+    }
 
-d_mat matlab_engine::get_double_matrix( std::string name)
-{
-	mxArray* mx = get(name);
+    d_mat matlab_engine::get_double_matrix(std::string name)
+    {
+        mxArray* mx = get(name);
 
-	if(!mx)
-	{
-		d_mat(); //"null" ptr
-	}
+        if (!mx)
+        {
+            d_mat(); //"null" ptr
+        }
 
-	d_mat  out_matrix(new arma::mat(mxGetM(mx),mxGetN(mx)));
+        d_mat out_matrix(new arma::mat(mxGetM(mx), mxGetN(mx)));
 
-	memcpy(out_matrix->memptr(),mxGetPr(mx),out_matrix->n_elem*sizeof(double));
+        memcpy(out_matrix->memptr(), mxGetPr(mx), out_matrix->n_elem * sizeof (double));
 
-	mxDestroyArray(mx);
+        mxDestroyArray(mx);
 
-	return out_matrix;
+        return out_matrix;
 
-}
+    }
 
-d_vec matlab_engine::get_double_vector( std::string name )
-{
-	mxArray* mx = get(name);
+    d_vec matlab_engine::get_double_vector(std::string name)
+    {
+        mxArray* mx = get(name);
 
-	if(!mx)
-	{
-		return d_vec(); //"null" ptr
-	}
+        if (!mx)
+        {
+            return d_vec(); //"null" ptr
+        }
 
-	size_t M = mxGetM(mx);
-	size_t N = mxGetN(mx);
+        size_t M = mxGetM(mx);
+        size_t N = mxGetN(mx);
 
-	d_vec  out_vec(new arma::vec(M));
-
-
-	memcpy(out_vec->memptr(),mxGetPr(mx),out_vec->n_elem*sizeof(double));
-
-	mxDestroyArray(mx);
-
-	return out_vec;
-
-}
-
-double matlab_engine::get_scaler( std::string name )
-{
-	if(m_engine)
-	{
-		return *(mxGetPr(get(name)));
-	}
-	return 0.0;
+        d_vec out_vec(new arma::vec(M));
 
 
-}
+        memcpy(out_vec->memptr(), mxGetPr(mx), out_vec->n_elem * sizeof (double));
 
-void matlab_engine::put_double_vector( std::string name, const d_vec vec )
-{
-	mxArray*  mx = mxCreateDoubleMatrix(vec->n_rows, 1, mxREAL);
-	memcpy(mxGetPr(mx),vec->memptr(),vec->n_elem*sizeof(double));
-	put(name,mx);
-	mxDestroyArray(mx);
-}
+        mxDestroyArray(mx);
 
-void matlab_engine::add_dir_to_path( std::string dir )
-{
-	if(m_engine)
-	{
-		if (engEvalString(m_engine, (std::string("addpath('")+dir+std::string("')")).c_str())==1)
-			throw std::runtime_error(get_last_error().c_str());
-	}
-	else
-	{
-		throw std::runtime_error("No MATLAB engine open");
-	}
-}
+        return out_vec;
+
+    }
+
+    double matlab_engine::get_scaler(std::string name)
+    {
+        if (m_engine)
+        {
+            mxArray* mx =  this->get(name);
+            double d = mxGetScalar(mx);
+            mxDestroyArray(mx);
+            return d;
+        }
+        return 0.0;
+
+
+    }
+
+    void matlab_engine::put_double_vector(std::string name, const d_vec vec)
+    {
+        mxArray* mx = mxCreateDoubleMatrix(vec->n_rows, 1, mxREAL);
+        memcpy(mxGetPr(mx), vec->memptr(), vec->n_elem * sizeof (double));
+        put(name, mx);
+        mxDestroyArray(mx);
+    }
+
+    void matlab_engine::add_dir_to_path(std::string dir)
+    {
+        if (m_engine)
+        {
+            if (engEvalString(m_engine, (std::string("addpath('") + dir + std::string("')")).c_str()) == 1)
+                throw std::runtime_error(get_last_error().c_str());
+        } else
+        {
+            throw std::runtime_error("No MATLAB engine open");
+        }
+    }
 
 }

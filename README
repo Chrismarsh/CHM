@@ -1,4 +1,15 @@
 
+TROUBLE SHOOTING:
+OSX: 
+Create a symbolic link from /usr/bin to the matlab install
+sudo ln -s /Applications/MATLAB_R2013a.app/bin/matlab /usr/bin/matlab
+
+Linux:
+Usage of the matlab engine requires install csh
+
 Dependencies:
-CGAL
-Spirit JSON (http://www.codeproject.com/Articles/20027/JSON-Spirit-A-C-JSON-Parser-Generator-Implemented)
+Matlab
+Armadillo
+boost
+GNU GSL
+Intel TBB
