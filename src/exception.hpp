@@ -34,6 +34,9 @@ struct forcing_no_regexmatch : virtual forcing_error{};
 struct interp_error : virtual exception_base{};
 struct interp_unknown_type : virtual interp_error {};
 
+//configuration errors
+struct config_error : virtual exception_base{};
+struct missing_value_error : virtual exception_base{};
 
 typedef boost::error_info<struct errstr_info_,std::string> errstr_info;
 

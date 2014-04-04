@@ -20,7 +20,7 @@
 #include <iostream>
 #include <armadillo>
 
-#include <libmaw.h>
+#include "libmaw.h"
 #include "triangle.h"
 
 class triangulation
@@ -60,6 +60,8 @@ private:
 
 	//ptr to the matlab engine
 	maw::matlab_engine* m_engine;
+        
+        std::string ID;
 
 };
 

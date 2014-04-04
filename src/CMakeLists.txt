@@ -59,6 +59,9 @@ set(CHM_SRCS
         station.cpp
 
         mesh/mesh.cpp
+        mesh/bounding_rect.cpp
+        mesh/triangle.cpp
+        mesh/triangulation.cpp
 )
 set (HEADER_FILES
 	json_spirit

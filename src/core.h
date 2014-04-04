@@ -25,9 +25,35 @@
 class core
 {
 public:
+    
+    
   /**
    * Reads the main JSON configuration file. It assumes the base of the JSON is an object. That is, the file
    * starts with { ... }.
+    Within this file are a collection of meshes that are expected to have the same number of x,y
+    * points. This is done so that, for example, elevation, forest cover, sky-view factor, etc 
+    * may be added individually. Generation of the meshes should be done via the utilities for this.
+    * An example of mesh.config is:
+    * \code	
+    *  {
+    *    "meshes":
+    *    {
+    *            "DEM":
+    *            {
+    *                    "file": "mesh.asc"
+    *            }
+    *            ,
+    *            "Veg":
+    *            {
+    *                    "file": "veg.asc"
+    *            },
+    *            "svf":
+    *            {
+    *                    "file": "svf.asc"
+    *            }
+    *    }	
+    *   }
+    *   \endcode
    * @param file The file to open
   **/
     void read_config_file(std::string file);
@@ -54,6 +80,9 @@ private:
     std::vector < boost::shared_ptr<station> > _stations;
     
     boost::shared_ptr<mesh> _mesh;
+    
+    boost::shared_ptr<maw::matlab_engine> _engine;
+    
     
 };
 

@@ -1,16 +1,11 @@
 #include "mesh.hpp"
 
-mesh::mesh()
+mesh::mesh(boost::shared_ptr<maw::matlab_engine> engine)
 {
-    _engine = new maw::matlab_engine();
-    _gfx = new maw::graphics(_engine);
-    
-    _engine->start();
-    _engine->set_working_dir();
-   
-    LOG_DEBUG << "Matlab engine started";
-    
+    _engine = engine;    
+    _gfx = boost::make_shared<maw::graphics>(_engine.get());
 }
+
 
 mesh::~mesh()
 {
@@ -18,59 +13,42 @@ mesh::~mesh()
     
 }
 
-void mesh::read_mesh(std::string file)
+void mesh::add_mesh(std::string file, std::string ID)
 {
-    std::ifstream is( file );
-
-    //holds the top level object { ... }
-    json_spirit::Value value;
-
-    json_spirit::read( is, value );
- 
-    //get the top-level 
-    const json_spirit::Object& top_level = value.get_obj();
-
+    _engine->evaluate(std::string("load ") + file);
+    maw::d_mat xyz = _engine->get_double_matrix(file.substr(0,file.length()-4));
     
-    //loop over the top-level mesh list
-    for(auto& itr : top_level )
-    {
-        const json_spirit::Pair& pair = itr;
-        const std::string& name  = pair.name_;
-        const json_spirit::Value&  value = pair.value_;
-	
-	std::cout << name <<  std::endl;
-	
-	//deal with the mesh enumeration
-	if (name == "meshes")
-	{
-	  for(auto& jtr : value.get_obj())
-	  {
-	    _mesh_config m;
-	    const json_spirit::Pair& pair = jtr;
-   
-	    if( pair.name_ == "")
-	    {
-	     std::cout << "empty mesh name!" << std::endl;
-	     return;
-	    }
-	    std::cout <<  "Found mesh " << pair.name_ << std::endl;
-	    m.name =  pair.name_;
-	    
-	    //will only be key-value pairs now
-	    for(auto& ktr : pair.value_.get_obj())
-	    {
-		const json_spirit::Pair& pair = ktr;
-		if(pair.name_ == "file")
-		{
-		  m.file = pair.value_.get_str();
-		}
-		std::cout << "\t" << pair.name_ << ":" <<pair.value_.get_str()  << std::endl;
-	    }
-	    _meshes.push_back(m);
-	  }
-	  
-	}
-    }
+    //_engine->evaluate( std::string("clear ") + file.substr(0,file.length()-4) );
     
+    LOG_DEBUG << "Creating triangulation for " + ID;
+    
+    boost::shared_ptr<triangulation> tri = boost::make_shared<triangulation>(_engine.get());
+    
+    auto x = xyz->unsafe_col(0);
+    auto y = xyz->unsafe_col(1);
+    auto z = xyz->unsafe_col(2);
+    tri->create_delaunay(&x,&y,&z);
+    
+    LOG_DEBUG << "Sending triangulation to matlab...";
+
+    _engine->put_double_matrix("tri",tri->matlab_tri_matrix());
+                
+    LOG_DEBUG << "Sending domain data to matlab...";
+    _engine->put_double_matrix("mxDomain",xyz);
+
+//    LOG_DEBUG << "Creating 3D bounding box...";
+//    _engine->evaluate("[~,cornerpoints,~,~,~] = minboundbox(mxDomain(:,1),mxDomain(:,2),mxDomain(:,3))");
+//    maw::d_mat cornerpoints = _engine->get_double_matrix("cornerpoints");
+//    _engine->evaluate("clear cornerpoints");
+
+//    _engine->evaluate("mxDomain=mxDomain(:,1:3)"); //because we are reading in the skyview data along with the dem, future calls assume a nx3 matrix.
+//    std::cout << "Creating face normals...";
+//    tri->compute_face_normals();
+    _engine->evaluate("save('lol.mat')");
+    _meshes.push_back(tri);
+    
+    _engine->evaluate("ff=figure; set(gcf,'units','normalized','outerposition',[0 0 1 1]);");
+   _engine->evaluate("set(ff,'Renderer','OpenGL')");
+    _gfx->plot_patch("[mxDomain(:,1) mxDomain(:,2) mxDomain(:,3)]","tri","mxDomain(:,3)");
 
 }
