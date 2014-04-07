@@ -114,68 +114,99 @@ IF(WIN32)
 
 ELSE(WIN32)
 
-  IF((NOT DEFINED MATLAB_ROOT) 
-      OR ("${MATLAB_ROOT}" STREQUAL ""))
-    # get path to the Matlab root directory
-    EXECUTE_PROCESS(
-      COMMAND which matlab
-      COMMAND xargs readlink
-      COMMAND xargs dirname
-      COMMAND xargs dirname
-      COMMAND xargs echo -n
-      OUTPUT_VARIABLE MATLAB_ROOT
-      )
-  ENDIF((NOT DEFINED MATLAB_ROOT) 
-    OR ("${MATLAB_ROOT}" STREQUAL ""))
+	IF((NOT DEFINED MATLAB_ROOT) 
+	  OR ("${MATLAB_ROOT}" STREQUAL ""))
+		# get path to the Matlab root directory
 
-  # Check if this is a Mac
-  IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+		#try to find matlab on the path and resolve the symbolic link
+		EXECUTE_PROCESS(
+		  COMMAND which matlab
+		  COMMAND xargs readlink -f 
+		  OUTPUT_VARIABLE sym_link
+		)
 
-    SET(LIBRARY_EXTENSION .dylib)
+		#not a symbolic link, so do not need to resolve the symlink
+		if(${sym_link} STREQUAL "")
+			EXECUTE_PROCESS(
+				COMMAND which matlab
+				COMMAND xargs dirname
+				COMMAND xargs dirname
+				COMMAND xargs echo -n
+				OUTPUT_VARIABLE MATLAB_ROOT
+				)
+		else()
+			EXECUTE_PROCESS(
+				COMMAND which matlab
+				COMMAND xargs readlink -f 
+				COMMAND xargs dirname
+				COMMAND xargs dirname
+				COMMAND xargs echo -n
+				OUTPUT_VARIABLE MATLAB_ROOT
+				)
+		endif()
 
-    # If this is a Mac and the attempts to find MATLAB_ROOT have so far failed, 
-    # we look in the applications folder
-    IF((NOT DEFINED MATLAB_ROOT) OR ("${MATLAB_ROOT}" STREQUAL ""))
+	ENDIF((NOT DEFINED MATLAB_ROOT) 
+	OR ("${MATLAB_ROOT}" STREQUAL ""))
 
-    # Search for a version of Matlab available, starting from the most modern one to older versions
-      FOREACH(MATVER "R2013b" "R2013a" "R2012b" "R2012a" "R2011b" "R2011a" "R2010b" "R2010a" "R2009b" "R2009a" "R2008b")
-        IF((NOT DEFINED MATLAB_ROOT) OR ("${MATLAB_ROOT}" STREQUAL ""))
-          IF(EXISTS /Applications/MATLAB_${MATVER}.app)
-            SET(MATLAB_ROOT /Applications/MATLAB_${MATVER}.app)
+	# Check if this is a Mac
+	IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+		SET(LIBRARY_EXTENSION .dylib)
+	ELSE()
+		SET(LIBRARY_EXTENSION .so)
+	ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+
+
+	# If this is a Mac and the attempts to find MATLAB_ROOT have so far failed, 
+	# we look in the applications folder
+	IF((NOT DEFINED MATLAB_ROOT) OR ("${MATLAB_ROOT}" STREQUAL ""))
+
+	  #Search for a version of Matlab available, starting from the most modern one to older versions
+	  FOREACH(MATVER "R2014a" "R2013b" "R2013a" "R2012b" "R2012a" "R2011b" "R2011a" "R2010b" "R2010a" "R2009b" "R2009a" "R2008b")
+	    IF((NOT DEFINED MATLAB_ROOT) OR ("${MATLAB_ROOT}" STREQUAL ""))
+	      IF(EXISTS /Applications/MATLAB_${MATVER}.app)
+	        SET(MATLAB_ROOT /Applications/MATLAB_${MATVER}.app)
+	        SET(MATLAB_VERSION ${MATVER})
+		  ELSEIF(EXISTS /opt/MATLAB/${MATVER})
+	        SET(MATLAB_ROOT /opt/MATLAB/${MATVER})
+	        SET(MATLAB_VERSION ${MATVER})
+	      ELSEIF(EXISTS /usr/local/MATLAB/${MATVER})
+	      	SET(MATLAB_ROOT /usr/local/MATLAB/${MATVER})
+	      	SET(MATLAB_VERSION ${MATVER})
+	      ENDIF()
+	    ENDIF()
+	  ENDFOREACH(MATVER)
+	ENDIF()
+
+	IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+		IF(NOT CMAKE_SIZEOF_VOID_P EQUAL 4) #check for x64
+			SET(arch "glnxa64/")
+		ENDIF()
+	ENDIF()
+	
+
     
-          ENDIF(EXISTS /Applications/MATLAB_${MATVER}.app)
-        ENDIF((NOT DEFINED MATLAB_ROOT) OR ("${MATLAB_ROOT}" STREQUAL ""))
-      ENDFOREACH(MATVER)
-
-    ENDIF((NOT DEFINED MATLAB_ROOT) OR ("${MATLAB_ROOT}" STREQUAL ""))
-
-  ELSE(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    SET(LIBRARY_EXTENSION .so)
-
-  ENDIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-
   # Get path to the MEX libraries
   EXECUTE_PROCESS(
     #COMMAND find "${MATLAB_ROOT}/extern/lib" -name libmex${LIBRARY_EXTENSION} # Peter
-	COMMAND find "${MATLAB_ROOT}/bin" -name libmex${LIBRARY_EXTENSION} # Standard
+	COMMAND find "${MATLAB_ROOT}/bin/${arch}" -name libmex${LIBRARY_EXTENSION} # Standard
     COMMAND xargs echo -n
     OUTPUT_VARIABLE MATLAB_MEX_LIBRARY
     )
   EXECUTE_PROCESS(
     #COMMAND find "${MATLAB_ROOT}/extern/lib" -name libmx${LIBRARY_EXTENSION} # Peter
-	COMMAND find "${MATLAB_ROOT}/bin" -name libmx${LIBRARY_EXTENSION} # Standard
+	COMMAND find "${MATLAB_ROOT}/bin/${arch}" -name libmx${LIBRARY_EXTENSION} # Standard
     COMMAND xargs echo -n
     OUTPUT_VARIABLE MATLAB_MX_LIBRARY
     )
   EXECUTE_PROCESS(
     #COMMAND find "${MATLAB_ROOT}/extern/lib" -name libmat${LIBRARY_EXTENSION} # Peter
-	COMMAND find "${MATLAB_ROOT}/bin" -name libmat${LIBRARY_EXTENSION} # Standard
+	COMMAND find "${MATLAB_ROOT}/bin/${arch}" -name libmat${LIBRARY_EXTENSION} # Standard
     COMMAND xargs echo -n
     OUTPUT_VARIABLE MATLAB_MAT_LIBRARY
     )
   EXECUTE_PROCESS(
     #COMMAND find "${MATLAB_ROOT}/extern/lib" -name libeng${LIBRARY_EXTENSION} # Peter
-	COMMAND find "${MATLAB_ROOT}/bin" -name libeng${LIBRARY_EXTENSION} # Standard
+	COMMAND find "${MATLAB_ROOT}/bin/${arch}" -name libeng${LIBRARY_EXTENSION} # Standard
     COMMAND xargs echo -n
     OUTPUT_VARIABLE MATLAB_ENG_LIBRARY
     )
@@ -185,7 +216,6 @@ ELSE(WIN32)
     "mex.h"
     PATHS "${MATLAB_ROOT}/extern/include"
     )
-
 ENDIF(WIN32)
 
 # This is common to UNIX and Win32:
@@ -197,6 +227,7 @@ SET(MATLAB_LIBRARIES
 
 IF(MATLAB_INCLUDE_DIR AND MATLAB_LIBRARIES)
   SET(MATLAB_FOUND 1)
+  message(STATUS "Found Matlab: ${MATLAB_ROOT}")
 ENDIF(MATLAB_INCLUDE_DIR AND MATLAB_LIBRARIES)
 
 MARK_AS_ADVANCED(

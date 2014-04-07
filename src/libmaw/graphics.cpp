@@ -45,7 +45,7 @@ void graphics::spin_until_close(double handle)
  
         closed = (int) _engine->get_scaler("h_graphics_handle");
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-//         _engine->evaluate("com.mathworks.mde.desk.MLDesktop.getInstance.showCommandWindow");
+
     }while(closed==1);
 }
 //returns the handle from matlab

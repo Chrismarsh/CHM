@@ -10,6 +10,7 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 
+
 add_subdirectory(src)
 
 # add a target to generate API documentation with Doxygen
