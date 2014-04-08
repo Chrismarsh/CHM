@@ -13,6 +13,8 @@ int main (int argc, char *argv[])
         core kernel;
 
         kernel.read_config_file("CHM.config") ;
+        
+        kernel.run();
     }
     catch( boost::exception& e)
     {

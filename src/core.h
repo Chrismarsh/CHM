@@ -65,8 +65,7 @@ public:
 
 
     void run();
-// 	log_level get_log_level();
-// 	void set_log_level(log_level level);
+
 	     
 
 private:

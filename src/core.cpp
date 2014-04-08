@@ -276,7 +276,20 @@ void core::read_config_file(std::string file)
 
 void core::run()
 {
-    //interpolate the forcing data over the mesh
+    
+    
+    //iterate over all the mesh elements
+    for(size_t i=0;
+            //this assumes that all the meshes are the same size
+            i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
+            i++)
+    {
+        
+        //interpolate the forcing data over the mesh
+        
+    }
+    _mesh->plot("DEM");
+    
 
     //run all selected algorithms
 

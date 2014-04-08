@@ -25,7 +25,7 @@ void station::open( std::string file )
 {
     try
     {
-        _obs = new forcing_data();
+        _obs = new time_series();
         _obs->open(file);
 
         _itr = _obs->begin();
@@ -37,7 +37,7 @@ void station::open( std::string file )
     }
 }
 
-forcing_data::timestep station::now()
+time_series::timestep station::now()
 {
         return *_itr;
 }

@@ -26,7 +26,7 @@
                 Holds the meterological data.
                 forcing_data classes must currently not be copied or assigned from other instances.
 */
-class forcing_data : boost::noncopyable
+class time_series : boost::noncopyable
 {
 private:
 
@@ -249,17 +249,17 @@ public:
 
 
         private:
-                friend class forcing_data;
+                friend class time_series;
                 typedef tbb::concurrent_hash_map<std::string, Variable::const_iterator ,HashCompare> ConstItrMap;
 
-                ConstItrMap m_itrs;//hods the iterators
+                ConstItrMap m_itrs;//holds the iterators
         };
 
 
 
         class const_iterator;
-        forcing_data();
-        ~forcing_data();
+        time_series();
+        ~time_series();
 
         /*
         Function: begin
@@ -410,15 +410,15 @@ public:
         private:
                 //the following satisfies the reqs for a boost::facade bidirectional iterator
                 friend class boost::iterator_core_access;
-                friend class forcing_data;
+                friend class time_series;
 
-                const forcing_data::timestep& dereference() const;
+                const time_series::timestep& dereference() const;
                 bool equal(const_iterator const& other) const;
                 void increment();
                 void decrement();
 
                 //iterators for the current step
-                forcing_data::timestep m_currentStep;
+                time_series::timestep m_currentStep;
 
         };
 

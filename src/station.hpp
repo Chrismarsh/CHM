@@ -84,7 +84,7 @@ public:
     Returns:   
     forcing_data::timestep - The current timestep. See <timestep>
      */
-    forcing_data::timestep now();
+    time_series::timestep now();
 
 
     /*
@@ -205,8 +205,8 @@ friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:
         std::string _ID;
-        forcing_data* _obs;
-        forcing_data::const_iterator _itr;
+        time_series* _obs;
+        time_series::const_iterator _itr;
         unsigned int _x;
         unsigned int _y;
         float _z;

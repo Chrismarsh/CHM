@@ -40,7 +40,8 @@ struct missing_value_error : virtual exception_base{};
 
 typedef boost::error_info<struct errstr_info_,std::string> errstr_info;
 
-
+//mesh errors
+struct mesh_error : virtual exception_base{};
 
 
 
