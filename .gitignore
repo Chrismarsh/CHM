@@ -5,3 +5,5 @@
 /CHM.log
 Makefile
 *.fuse_*
+CMakeCache.txt
+cmake_install.cmake
