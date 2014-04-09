@@ -251,7 +251,7 @@ std::string time_series::get_opened_file()
     return _file;
 }
 
-time_series::forcing_data()
+time_series::time_series()
 {
     m_cols = 0;
     m_rows = 0;

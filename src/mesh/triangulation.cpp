@@ -51,6 +51,7 @@ void triangulation::create_delaunay( arma::vec* x, arma::vec* y, arma::vec* z)
 // 		const mwSize* size = mxGetDimensions(tri);
 //  		m_size = size[0]; //first element is the # of rows
 		m_size = tri->n_rows;
+                m_data_size = num_nodes;
 
 	//double* t = mxGetPr(tri);
 
@@ -59,27 +60,27 @@ void triangulation::create_delaunay( arma::vec* x, arma::vec* y, arma::vec* z)
 			//col major lookup!!!
 			//get the row index data from the matlab triangulation structure
 			//note: all these indexes will be off by 1 because matlab indexing starts at 1 and not 0
-				int v1 = int((*tri)(i+0*m_size)); //v1 -= 1;
-				int v2 = int((*tri)(i+1*m_size)); //v2 -= 1;
-				int v3 = int((*tri)(i+2*m_size)); //v3 -= 1;
+				int v1 = int((*tri)(i+0*m_size)); v1 -= 1;
+				int v2 = int((*tri)(i+1*m_size)); v2 -= 1;
+				int v3 = int((*tri)(i+2*m_size)); v3 -= 1;
 
 				point vertex1,vertex2,vertex3;
-				vertex1.x = (*x)(v1-1);
-				vertex1.y = (*y)(v1-1);
-				vertex1.z = (*z)(v1-1);
+				vertex1.x = (*x)(v1);
+				vertex1.y = (*y)(v1);
+				vertex1.z = (*z)(v1);
 
-				vertex2.x = (*x)(v2-1);
-				vertex2.y = (*y)(v2-1);
-				vertex2.z = (*z)(v2-1);
+				vertex2.x = (*x)(v2);
+				vertex2.y = (*y)(v2);
+				vertex2.z = (*z)(v2);
 
-				vertex3.x = (*x)(v3-1);
-				vertex3.y = (*y)(v3-1);
-				vertex3.z = (*z)(v2-1);
+				vertex3.x = (*x)(v3);
+				vertex3.y = (*y)(v3);
+				vertex3.z = (*z)(v3);
 
 				m_triangles.push_back(new triangle(vertex1,vertex2,vertex3,0));
-				m_triangles[i]->global_id[0] = v1;
-				m_triangles[i]->global_id[1] = v2;
-				m_triangles[i]->global_id[2] = v3;
+				m_triangles[i]->global_id[0] = v1+1; //+1 for matlab
+				m_triangles[i]->global_id[1] = v2+1;
+				m_triangles[i]->global_id[2] = v3+1;
 
 				m_triangles[i]->triangle_id = i;
 		}
@@ -211,7 +212,7 @@ triangle* triangulation::find_containing_triangle( double x,double y )
 	return NULL;
 }
 
-maw::d_mat triangulation::matlab_tri_matrix()
+maw::d_mat triangulation::mf_tri_matrix()
 {
 	maw::d_mat tri(new arma::mat(m_size,3));
 	size_t i=0;
@@ -226,3 +227,40 @@ maw::d_mat triangulation::matlab_tri_matrix()
 	return tri;
 }
 
+maw::d_mat triangulation::mf_elevation_data() 
+{
+    maw::d_mat data(new arma::mat(m_data_size,3)); //special case as we actually have *less*
+
+    for(auto& it : m_triangles)
+    {
+        
+        (*data)(it->global_id[0]-1,0) = it->get_vertex(0).x;
+        (*data)(it->global_id[0]-1,1) = it->get_vertex(0).y;
+        (*data)(it->global_id[0]-1,2) = it->get_vertex(0).z;
+
+        (*data)(it->global_id[1]-1,0) = it->get_vertex(1).x;
+        (*data)(it->global_id[1]-1,1) = it->get_vertex(1).y;
+        (*data)(it->global_id[1]-1,2) = it->get_vertex(1).z;
+
+        (*data)(it->global_id[2]-1,0) = it->get_vertex(2).x;
+        (*data)(it->global_id[2]-1,1) = it->get_vertex(2).y;
+        (*data)(it->global_id[2]-1,2) = it->get_vertex(2).z;
+    }
+
+    return data;
+}
+
+maw::d_vec triangulation::mf_face_data(std::string ID)
+{
+    maw::d_vec data(new arma::vec(m_size));
+
+    int i = 0;
+    for(auto& it : m_triangles)
+    {
+        (*data)(i) = it->get_face_data(ID);
+        ++i;
+
+    }
+
+    return data;
+}

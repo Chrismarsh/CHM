@@ -16,73 +16,51 @@
 
 #pragma once
 
-#include <vector>
+
 #include <armadillo>
+
+
+#include <vector>
 #include <iostream>
+#include <string>
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+#include <tbb/concurrent_hash_map.h>
+#include <tbb/concurrent_vector.h>
+
+
+#include <boost/crc.hpp>      // for boost::crc_basic, boost::crc_optimal
+#include <boost/cstdint.hpp>  // for boost::uint16_t
+#include <boost/utility.hpp>
+#include <boost/algorithm/string/case_conv.hpp>
+
+
 
 #include "point.h"
+#include "exception.hpp"
 
+
+
+
+
+        
 class triangle
 {
-public:
-	//use xyz triples in the vector
-	//store the index like matlab
-	triangle(point vertex1, point vertex2, point vertex3, size_t cur_rec_depth=1);
-	triangle(size_t cur_rec_depth);
-
-
-	/*Setters*/
-
-	//recomputes the subtriangles
-	void update_subtri();
-	void set_vertex_values( point vertex1, point vertex2, point vertex3);
-	void set_facenormal(arma::vec& normal);
-
-	/*Getters*/
-	
-	//returns the v-th vertex[0-2] of the triangle
-//	point operator()(size_t v);
-	point get_vertex(size_t vertex);
-	point get_center();
-	double azimuth();
-	double slope();
-
-	void compute_azimuth();
-	void compute_slope();
-
-	//get the t-th subtriangle
-	triangle& sub_tri(size_t t);
-
-
-	bool contains(double x, double y);
-	bool contains(point xy);
-	int intersects(triangle* t);
-	arma::vec get_facenormal();
-
-	//information for the physical model
-	double radiation_dir;
-	double radiation_diff;
-	double shadow;
-	double z_prime;
-	double area;
-	double cosi;
-
-	point center;
-	point rot_center;
-	//this is the index used by matlab's triangulation
-	//it is [1 .. N] where N is number of triangles
-	//it starts at 1 because Matlab's indexing starts at 1
-	size_t global_id[3];
-
-	//we are some i-th triangle.
-	int    triangle_id;
-		
-
+    
 private:
 
+            // Used to compare the hashes of the main data structure
+        //not case sensitive
+        class HashCompare
+        {
+        public:
+                static size_t hash( const std::string& x);
+                static bool equal(const std::string& s1, const std::string& s2);
+        };
+        typedef tbb::concurrent_vector< double > ts;
+        typedef tbb::concurrent_hash_map<std::string, ts ,HashCompare> face_data;
+        
 	//list of the vertexes
 	point m_vertex_list[3];
 
@@ -113,6 +91,62 @@ private:
 
 
 
+        face_data _data;
+        
+public:
+	//use xyz triples in the vector
+	//store the index like matlab
+	triangle(point vertex1, point vertex2, point vertex3, size_t cur_rec_depth=1);
+	triangle(size_t cur_rec_depth);
+
+
+	/*Setters*/
+
+	//recomputes the subtriangles
+	void update_subtri();
+	void set_vertex_values( point vertex1, point vertex2, point vertex3);
+	void set_facenormal(arma::vec& normal);
+
+	/*Getters*/
+
+	point get_vertex(size_t vertex);
+	point get_center();
+	double azimuth();
+	double slope();
+
+	void compute_azimuth();
+	void compute_slope();
+
+	//get the t-th subtriangle
+	triangle& sub_tri(size_t t);
+
+
+	bool contains(double x, double y);
+	bool contains(point xy);
+	int intersects(triangle* t);
+	arma::vec get_facenormal();
+
+        void add_face_data(std::string ID, double data);
+        double get_face_data(std::string ID);
+        
+	//information for the physical model
+	double radiation_dir;
+	double radiation_diff;
+	double shadow;
+	double z_prime;
+	double area;
+	double cosi;
+
+	point center;
+	point rot_center;
+	//this is the index used by matlab's triangulation
+	//it is [1 .. N] where N is number of triangles
+	//it starts at 1 because Matlab's indexing starts at 1
+	size_t global_id[3];
+
+	//we are some i-th triangle.
+	int    triangle_id;
+		
 
 
 };

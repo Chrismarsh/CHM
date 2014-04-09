@@ -54,14 +54,27 @@ void graphics::spin_until_close(double handle)
 double graphics::plot_patch( std::string vertices, std::string faces, std::string face_data )
 {
         LOG_DEBUG << "Plot patch called";
-	std::string command = std::string("patch_handle = patch('Vertices',") + 	vertices + 
+        std::string plot_handle = "patch_handle"+boost::lexical_cast<std::string>(std::rand());
+        
+        _engine->evaluate(plot_handle + "=figure");
+//        _engine->evaluate("hold on");
+//        _engine->evaluate("set(" + plot_handle + ",'Renderer','OpenGL')");
+        
+        //reuse the name here for the actual handle
+	std::string command = plot_handle + 
+                std::string(" = patch('Vertices',") + 	vertices + 
 		std::string(",'Faces',") + 	faces +
 		std::string(",'facevertexcdata',") + face_data +
-		std::string(",'facecolor','flat', 'edgecolor','none');");//[201/256 201/256 201/256]
+		std::string(",'facecolor','flat', 'edgecolor','none');");
+        
 	_engine->evaluate(command.c_str());
+        
+//        _engine->evaluate("hold off");
 
-	mxArray* handle =  _engine->get("patch_handle");
+	mxArray* handle =  _engine->get(plot_handle);
 
+        
+                
 	if(handle)
 		return (mxGetScalar(handle));
 	else
@@ -71,6 +84,10 @@ double graphics::plot_patch( std::string vertices, std::string faces, std::strin
 graphics::graphics( matlab_engine *engine )
 {
 	_engine = engine;
+        
+        //required to fix the dual-monitor gongshow
+        _engine->evaluate("set(0,'DefaultFigureRenderer','OpenGL')");
+        _engine->evaluate("set(0,'DefaultFigureRendererMode', 'manual')");
 }
 
 double graphics::update_patch( double handle, std::string vertices, std::string face_data )
@@ -84,10 +101,10 @@ double graphics::update_patch( double handle, std::string vertices, std::string 
 
 }
 
-double graphics::add_title( std::string title, int fontsize /*= 14*/,std::string color /*='black'*/ )
+double graphics::add_title(std::string title, int fontsize /*= 14*/,std::string color /*= "black"*/ )
 {
-	_engine->evaluate("if exist('ht','var')==1 delete(ht.th); end");
-	std::string command = std::string("ht = mtit('") + title + std::string("','fontsize',") + boost::lexical_cast<std::string,int>(fontsize) + std::string(")");
+//	_engine->evaluate("if exist('ht','var')==1 delete(ht.th); end");
+	std::string command = std::string("ht = mtit('")  + title + std::string("','fontsize',") + boost::lexical_cast<std::string,int>(fontsize) + std::string(")");
 	_engine->evaluate(command);
 	mxArray* ht =  _engine->get("ht");
 	_engine->evaluate(std::string("set(ht.th,'color','") + color + std::string("')"));

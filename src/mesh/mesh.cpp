@@ -24,12 +24,16 @@ void mesh::plot(std::string ID)
     
     LOG_DEBUG << "Sending triangulation to matlab...";
 
-    _engine->put_double_matrix("tri",a->second->matlab_tri_matrix());
-    
-    _engine->evaluate("ff=figure; set(gcf,'units','normalized','outerposition',[0 0 1 1]);");
-    _engine->evaluate("set(ff,'Renderer','OpenGL')");
-    double handle = _gfx->plot_patch("[mxDomain(:,1) mxDomain(:,2) mxDomain(:,3)]","tri","mxDomain(:,3)");
-    
+    _engine->put_double_matrix("tri",a->second->mf_tri_matrix());
+
+    LOG_DEBUG << "Sending data to matlab...";
+    _engine->put_double_matrix("ploting_data",a->second->mf_elevation_data());
+
+//    _engine->evaluate("ff=figure; set(gcf,'units','normalized','outerposition',[0 0 1 1]);");
+//    _engine->evaluate("set(ff,'Renderer','OpenGL')");
+    double handle = _gfx->plot_patch("[ploting_data(:,1) ploting_data(:,2) ploting_data(:,3)]","tri","ploting_data(:,3)");
+    _gfx->add_title("Using internal");
+
     _gfx->spin_until_close(handle);
     
     
@@ -53,7 +57,7 @@ void mesh::add_mesh(std::string file, std::string ID)
     
     LOG_DEBUG << "Sending triangulation to matlab...";
 
-    _engine->put_double_matrix("tri",tri->matlab_tri_matrix());
+    _engine->put_double_matrix("tri",tri->mf_tri_matrix());
                 
     LOG_DEBUG << "Sending domain data to matlab...";
     _engine->put_double_matrix("mxDomain",xyz);

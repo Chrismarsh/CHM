@@ -279,16 +279,20 @@ void core::run()
     
     
     //iterate over all the mesh elements
-    for(size_t i=0;
-            //this assumes that all the meshes are the same size
-            i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
-            i++)
-    {
-        
-        //interpolate the forcing data over the mesh
-        
-    }
+//    for(size_t i=0;
+//            //this assumes that all the meshes are the same size
+//            i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
+//            i++)
+//    {
+//        
+//        //interpolate the forcing data over the mesh
+//        
+//    }
     _mesh->plot("DEM");
+    _engine->evaluate("save lol.mat");
+    
+    
+    
     
 
     //run all selected algorithms

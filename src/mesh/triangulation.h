@@ -48,17 +48,17 @@ public:
 	triangle* find_containing_triangle(double x, double y);
 
 	//creates the triangulation matrix for matlab
-	maw::d_mat matlab_tri_matrix();
+	maw::d_mat mf_tri_matrix();
+        maw::d_mat mf_elevation_data();
+        maw::d_vec mf_face_data(std::string ID);
         
-
-
-
 
 private:
 	//the triangles
 	std::vector<triangle*> m_triangles;
 
 	size_t m_size;  //number of triangulations
+        size_t m_data_size;
 
 	//ptr to the matlab engine
 	maw::matlab_engine* m_engine;

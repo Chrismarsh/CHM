@@ -16,6 +16,23 @@
 
 #include "triangle.h"
 
+size_t triangle::HashCompare::hash(const std::string& x)
+{
+    boost::crc_32_type crc32;
+    std::string xlower = boost::algorithm::to_lower_copy<std::string>(x);
+    crc32.process_bytes(xlower.c_str(), xlower.length());
+
+    return crc32.checksum();
+}
+
+bool triangle::HashCompare::equal(const std::string& s1, const std::string& s2)
+{
+    std::string ss1 = boost::algorithm::to_lower_copy<std::string>(s1);
+    std::string ss2 = boost::algorithm::to_lower_copy<std::string>(s2);
+
+    return ss1 == ss2;
+}
+
 triangle::triangle( point vertex1, point vertex2, point vertex3, size_t cur_rec_depth/*=1*/)
 {
 	m_cur_rec_depth = cur_rec_depth;
@@ -85,6 +102,35 @@ void triangle::set_vertex_values( point vertex1, point vertex2, point vertex3)
 		update_subtri();
 	}
 	
+}
+
+void triangle::add_face_data(std::string ID, double data)
+{
+    face_data::accessor a;
+
+    if(!_data.insert(a,ID)) //insert creates a new pair if not found
+    {
+        BOOST_THROW_EXCEPTION(mesh_insertion_error()
+                    << errstr_info(std::string("Failed to insert ") + ID)
+                    );
+    }
+
+    a->second.push_back(data);
+    
+}
+
+double triangle::get_face_data(std::string ID)
+{
+    face_data::accessor a;
+    if(!_data.find(a,ID)) //insert creates a new pair if not found
+    {
+        BOOST_THROW_EXCEPTION(mesh_insertion_error()
+                    << errstr_info(std::string("Failed to insert ") + ID)
+                    );
+    }
+    
+    return *(a->second.end());
+
 }
 
 void triangle::update_subtri()
@@ -354,19 +400,6 @@ int triangle::intersects( triangle* t )
 			}
 		}
 		return intersect == true ? 1:0;
-
-
-// 		double p1[2]={t->get_vertex(0).x,t->get_vertex(0).y};
-// 		double q1[2]={t->get_vertex(1).x,t->get_vertex(1).y};
-// 		double r1[2]={t->get_vertex(2).x,t->get_vertex(2).y};
-// 
-// 		double p2[2]={this->get_vertex(0).x,this->get_vertex(0).y};
-// 		double q2[2]={this->get_vertex(1).x,this->get_vertex(1).y};
-// 		double r2[2]={this->get_vertex(2).x,this->get_vertex(2).y};
-// 
-// 		int intersect = tri_tri_overlap_test_2d(p1,q1,r1,p2,q2,r2);
-// 		return intersect;
-
 		
 	}
 	else
@@ -392,20 +425,6 @@ bool triangle::contains(double x, double y)
 
 	double x3=m_vertex_list[2].x;
 	double y3=m_vertex_list[2].y;
-
-
-// 
-// 	 double Area_PP1P2 =  1.0/2.0 *abs((x*y1-x*y2+x1*y2-x1*y+x2*y-x2*y1));
-// 	 double Area_PP2P3 =  1.0/2.0 *abs((x*y2-x*y3+x2*y3-x2*y+x3*y-x3*y2));
-// 	 double Area_PP3P1 =  1.0/2.0 *abs((x*y3-x*y1+x3*y1-x3*y+x1*y-x1*y3));
-// 	 double Area_P1P2P3 = 1.0/2.0 *abs((x1*y2-x1*y3+x2*y3-x2*y1+x3*y1-x3*y2));
-// 
-// 	double sum = Area_PP1P2 + Area_PP2P3 + Area_PP3P1;
-// 
-// 	if( (sum - Area_P1P2P3) < 0.01)
-// 		return true;
-// 	else
-// 		return false;
 
 
 	double lambda1= ((y2-y3)*(x-x3)+(x3-x2)*(y-y3))/((y2-y3)*(x1-x3)+(x3-x2)*(y1-y3));
