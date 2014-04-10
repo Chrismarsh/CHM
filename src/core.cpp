@@ -4,7 +4,6 @@
 core::core()
 {
     BOOST_LOG_FUNCTION();
-    _module_config = "";
 
     _log_level = debug;
 
@@ -152,8 +151,10 @@ void core::read_config_file(std::string file)
                 const std::string& ID = pair.value_.get_str();
 
                 LOG_DEBUG << "Module type=" << name << " ID=" << ID;
-                ModuleBase* lol = _mfactory.get(ID);
-                delete lol;
+                
+                boost::shared_ptr<module_base> m(_mfactory.get(ID));
+                _modules.push_back(m);
+                
 
             }
 
@@ -279,17 +280,23 @@ void core::run()
     
     
     //iterate over all the mesh elements
-//    for(size_t i=0;
-//            //this assumes that all the meshes are the same size
-//            i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
-//            i++)
-//    {
-//        
-//        //interpolate the forcing data over the mesh
-//        
-//    }
-    _mesh->plot("DEM");
-    _engine->evaluate("save lol.mat");
+    for(size_t i=0;
+            //this assumes that all the meshes are the same size
+            i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
+            i++)
+    {
+        //current mesh element
+        auto& m = (*_mesh)(i);
+        
+        //interpolate the forcing data over the mesh
+        
+        //module calls
+        for(auto& itr : _modules)
+        {
+            itr->run(m);
+        }
+    }
+    _mesh->plot("rand");
     
     
     

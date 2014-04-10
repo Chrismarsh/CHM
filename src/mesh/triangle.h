@@ -39,12 +39,10 @@
 
 #include "point.h"
 #include "exception.hpp"
+#include "logger.h"
 
 
 
-
-
-        
 class triangle
 {
     

@@ -3,12 +3,12 @@
 
 
 
-ModuleBase* module_factory::get(std::string ID)
+module_base* module_factory::get(std::string ID)
 {
         sev_logger& lg = logger::get();
         LOG_DEBUG << "Module ID=" << ID;
         
-        ModuleBase* mod = NULL;
+        module_base* mod = NULL;
         if( ID == "TestModule")
                 mod =  new TestModule(ID);
         else

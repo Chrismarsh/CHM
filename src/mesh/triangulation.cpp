@@ -257,7 +257,8 @@ maw::d_vec triangulation::mf_face_data(std::string ID)
     int i = 0;
     for(auto& it : m_triangles)
     {
-        (*data)(i) = it->get_face_data(ID);
+        double d = it->get_face_data(ID);
+        (*data)(i) = d;
         ++i;
 
     }

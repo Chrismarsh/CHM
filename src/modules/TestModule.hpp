@@ -2,14 +2,16 @@
 
 #include "../logger.h"
 #include "module_base.hpp"
+
+#include <cstdlib>
 #include <string>
 
-class TestModule : public ModuleBase
+class TestModule : public module_base
 {
     public:
         TestModule(std::string ID);
         ~TestModule();
-        void run();
+        virtual void run(mesh_elem& elem);
 
 };
 

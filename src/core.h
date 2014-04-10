@@ -70,7 +70,7 @@ public:
 
 private:
     bool _is_debug;
-    std::string _module_config;
+
     log_level _log_level;
     boost::shared_ptr< text_sink > _log_sink;
     module_factory _mfactory;
@@ -81,6 +81,12 @@ private:
     boost::shared_ptr<mesh> _mesh;
     
     boost::shared_ptr<maw::matlab_engine> _engine;
+    
+    
+    
+    //holds all the modules that are to be run on each mesh element
+    std::vector< module > _modules;
+    
     
     
 };

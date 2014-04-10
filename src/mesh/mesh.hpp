@@ -43,6 +43,6 @@ private:
     
     
     typedef tbb::concurrent_hash_map<std::string, boost::shared_ptr< triangulation > , hash_compare> mesh_hash;
-    mesh_hash _meshes;
+    boost::shared_ptr< triangulation > _mesh;
     
 };

@@ -1,20 +1,29 @@
 #pragma once
 
 #include <string>
+#include <boost/shared_ptr.hpp>
 
-class ModuleBase
+#include "triangle.h"
+
+typedef triangle mesh_elem;
+
+class module_base
 {
 public:
         std::string ID;
-        virtual void run()=0;
         
-        ModuleBase()
+        module_base()
         {
             //nothing
         };
-        virtual ~ModuleBase()
+        virtual ~module_base()
         {
             //nothing
         };
+        
+        virtual void run(mesh_elem& elem)=0;
 };
 
+
+
+typedef boost::shared_ptr< module_base > module;

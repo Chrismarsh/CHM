@@ -13,5 +13,5 @@
 class module_factory
 {
 public:
-    ModuleBase* get(std::string ID);
+    module_base* get(std::string ID);
 };

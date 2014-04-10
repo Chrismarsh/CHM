@@ -13,28 +13,38 @@ mesh::~mesh()
     
     
 }
+
+mesh::mesh_elem& mesh::operator()(size_t t)
+{
+    return _mesh->operator()(t);
+}
+
+size_t mesh::size()
+{
+    return _mesh->size();
+}
+
 void mesh::plot(std::string ID)
 {
-    mesh_hash::const_accessor a;
-    bool r = _meshes.find(a,ID);
-    if(!r)
-    {
-        BOOST_THROW_EXCEPTION( mesh_error() << errstr_info("Specified mesh not found: " + ID));
-    }
     
     LOG_DEBUG << "Sending triangulation to matlab...";
+    _engine->put_double_matrix("tri",_mesh->mf_tri_matrix());
 
-    _engine->put_double_matrix("tri",a->second->mf_tri_matrix());
-
-    LOG_DEBUG << "Sending data to matlab...";
-    _engine->put_double_matrix("ploting_data",a->second->mf_elevation_data());
+    LOG_DEBUG << "Sending elevation data to matlab...";
+    _engine->put_double_matrix("elevation_data",_mesh->mf_elevation_data());
+    
+    LOG_DEBUG << "Sending face data to matlab...";
+    _engine->put_double_matrix("face_data",_mesh->mf_face_data(ID));
+    
 
 //    _engine->evaluate("ff=figure; set(gcf,'units','normalized','outerposition',[0 0 1 1]);");
 //    _engine->evaluate("set(ff,'Renderer','OpenGL')");
-    double handle = _gfx->plot_patch("[ploting_data(:,1) ploting_data(:,2) ploting_data(:,3)]","tri","ploting_data(:,3)");
-    _gfx->add_title("Using internal");
+    double handle = _gfx->plot_patch("[elevation_data(:,1) elevation_data(:,2) elevation_data(:,3)]","tri","face_data(:)");
+    _gfx->add_title(ID);
 
     _gfx->spin_until_close(handle);
+    _engine->evaluate("save lol.mat");
+    _engine->evaluate("clear tri elevation_data face_data");
     
     
 }
@@ -48,19 +58,19 @@ void mesh::add_mesh(std::string file, std::string ID)
     
     LOG_DEBUG << "Creating triangulation for " + ID;
     
-    boost::shared_ptr<triangulation> tri = boost::make_shared<triangulation>(_engine.get());
+    _mesh = boost::make_shared<triangulation>(_engine.get());
     
     auto x = xyz->unsafe_col(0);
     auto y = xyz->unsafe_col(1);
     auto z = xyz->unsafe_col(2);
-    tri->create_delaunay(&x,&y,&z);
+    _mesh->create_delaunay(&x,&y,&z);
     
-    LOG_DEBUG << "Sending triangulation to matlab...";
-
-    _engine->put_double_matrix("tri",tri->mf_tri_matrix());
-                
-    LOG_DEBUG << "Sending domain data to matlab...";
-    _engine->put_double_matrix("mxDomain",xyz);
+//    LOG_DEBUG << "Sending triangulation to matlab...";
+//
+//    _engine->put_double_matrix("tri",tri->mf_tri_matrix());
+//                
+//    LOG_DEBUG << "Sending domain data to matlab...";
+//    _engine->put_double_matrix("mxDomain",xyz);
 
 //    LOG_DEBUG << "Creating 3D bounding box...";
 //    _engine->evaluate("[~,cornerpoints,~,~,~] = minboundbox(mxDomain(:,1),mxDomain(:,2),mxDomain(:,3))");
@@ -71,18 +81,17 @@ void mesh::add_mesh(std::string file, std::string ID)
 //    std::cout << "Creating face normals...";
 //    tri->compute_face_normals();
    
-    mesh_hash::accessor a;
-    bool r = _meshes.insert(a,ID);
-    if(!r)
-    {
-        BOOST_THROW_EXCEPTION( mesh_error()
-                            << errstr_info("Failed to insert mesh " + ID) 
-                            );
-    }
-    a->second = tri;
-    a.release();
-    
-//    _meshes.push_back(tri);
+//    mesh_hash::accessor a;
+//    bool r = _meshes.insert(a,ID);
+//    if(!r)
+//    {
+//        BOOST_THROW_EXCEPTION( mesh_error()
+//                            << errstr_info("Failed to insert mesh " + ID) 
+//                            );
+//    }
+//    a->second = tri;
+//    a.release();
+
     
 
     
