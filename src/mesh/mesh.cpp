@@ -78,8 +78,9 @@ void mesh::add_mesh(std::string file, std::string ID)
 //    _engine->evaluate("clear cornerpoints");
 
 //    _engine->evaluate("mxDomain=mxDomain(:,1:3)"); //because we are reading in the skyview data along with the dem, future calls assume a nx3 matrix.
-//    std::cout << "Creating face normals...";
-//    tri->compute_face_normals();
+    
+    LOG_DEBUG << "Creating face normals";
+    _mesh->compute_face_normals();
    
 //    mesh_hash::accessor a;
 //    bool r = _meshes.insert(a,ID);
