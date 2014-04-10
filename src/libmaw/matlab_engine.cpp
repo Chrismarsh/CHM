@@ -97,6 +97,7 @@ namespace maw
 
     matlab_engine::~matlab_engine()
     {
+        LOG_DEBUG << "Closing Matlab instance";
         if (m_engine)
         {
             engEvalString(m_engine, "close");

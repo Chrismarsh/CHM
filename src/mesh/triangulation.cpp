@@ -91,6 +91,7 @@ void triangulation::create_delaunay(arma::vec* x, arma::vec* y, arma::vec* z)
         //clean up in matlab
         m_engine->evaluate("clear t xy tri;");
     }
+    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(m_size) +" triangles";
 }
 
 size_t triangulation::size()

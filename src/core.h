@@ -17,6 +17,7 @@
 #include "module_factory.hpp"
 #include "station.hpp"
 #include "mesh.hpp"
+#include "interpolation.hpp"
 /// The main model core
 /**
  * The main model core, handles initialization of the model
@@ -76,7 +77,7 @@ private:
     module_factory _mfactory;
     
     
-    std::vector < boost::shared_ptr<station> > _stations;
+    tbb::concurrent_vector< boost::shared_ptr<station> > _stations;
     
     boost::shared_ptr<mesh> _mesh;
     

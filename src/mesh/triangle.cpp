@@ -70,6 +70,18 @@ bool triangle::contains( point xy )
 	return contains(xy.x,xy.y);
 }
 
+double triangle::get_x()
+{
+    return center.x;
+}
+double triangle::get_y()
+{
+    return center.y;
+}
+double triangle::get_z()
+{
+    return center.z;
+}     
 void triangle::set_vertex_values( point vertex1, point vertex2, point vertex3)
 {
 	m_vertex_list[0].x = vertex1.x;

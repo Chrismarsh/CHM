@@ -46,6 +46,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/smart_ptr.hpp>
 
+#include "logger.h"
+
 namespace maw
 {
 	typedef boost::shared_ptr<arma::mat>  d_mat;

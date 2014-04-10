@@ -19,7 +19,7 @@
 #include <vector>
 #include <iostream>
 #include <armadillo>
-
+#include <boost/lexical_cast.hpp>
 #include "libmaw.h"
 #include "triangle.h"
 

@@ -109,6 +109,9 @@ public:
 
 	point get_vertex(size_t vertex);
 	point get_center();
+        double get_x();
+        double get_y();
+        double get_z();
 	double azimuth();
 	double slope();
 
@@ -148,3 +151,5 @@ public:
 
 
 };
+
+typedef triangle mesh_elem;

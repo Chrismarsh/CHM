@@ -10,9 +10,11 @@ module_base* module_factory::get(std::string ID)
         
         module_base* mod = NULL;
         if( ID == "TestModule")
-                mod =  new TestModule(ID);
+            mod =  new TestModule(ID);
+        else if (ID == "Solar")
+            mod = new Solar(ID);
         else
-                mod =  NULL;
+            mod =  NULL;
         
         if(mod == NULL)
         {

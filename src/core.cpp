@@ -63,7 +63,7 @@ core::core()
 
 core::~core()
 {
-
+    LOG_DEBUG << "Terminating";
 }
 
 bool core::is_debug()
@@ -288,6 +288,13 @@ void core::run()
         //current mesh element
         auto& m = (*_mesh)(i);
         
+        interpolation interp;
+        //interpolate the station data to the current element
+
+        double intr = interp("idw", _stations, m, "RH");
+        m.add_face_data("RH",intr);
+
+        
         //interpolate the forcing data over the mesh
         
         //module calls
@@ -296,8 +303,8 @@ void core::run()
             itr->run(m);
         }
     }
-    _mesh->plot("rand");
-    
+    _mesh->plot("solar_S_angle");
+    _mesh->plot("RH");
     
     
     

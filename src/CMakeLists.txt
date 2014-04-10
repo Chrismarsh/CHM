@@ -44,6 +44,7 @@ set(JSON_SPIRIT_SRCS
 
 set(MODULE_SRCS
         modules/TestModule.cpp
+        modules/Solar.cpp
 )
 
 set(LIBMAW_SRCS
@@ -62,12 +63,17 @@ set(CHM_SRCS
         mesh/bounding_rect.cpp
         mesh/triangle.cpp
         mesh/triangulation.cpp
+
+        interpolation/interpolation.cpp
+        interpolation/inv_dist.cpp
+        interpolation/spline.cpp
 )
 set (HEADER_FILES
 	json_spirit
         mesh
         modules
         libmaw
+        interpolation
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
