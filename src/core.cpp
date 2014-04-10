@@ -291,8 +291,8 @@ void core::run()
         interpolation interp;
         //interpolate the station data to the current element
 
-        double intr = interp("idw", _stations, m, "RH");
-        m.add_face_data("RH",intr);
+        double intr = interp("idw", _stations, m, "Tair");
+        m.add_face_data("T",intr);
 
         
         //interpolate the forcing data over the mesh
@@ -303,10 +303,10 @@ void core::run()
             itr->run(m);
         }
     }
-    _mesh->plot("solar_S_angle");
-    _mesh->plot("RH");
+   // _mesh->plot("solar_S_angle");
+    _mesh->plot("T");
     
-    
+   
     
 
     //run all selected algorithms

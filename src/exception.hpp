@@ -45,5 +45,6 @@ struct mesh_error : virtual exception_base{};
 struct mesh_insertion_error : virtual mesh_error{};
 struct mesh_lookup_error : virtual mesh_error{};
 
+struct interpolation_error : virtual exception_base{};
 
 //boost::errinfo_type_info_name("LOL")
