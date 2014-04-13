@@ -13,25 +13,25 @@
 #include <iostream>
 #include <string>
 
-#include "interpolation_base.hpp"
+
 
 #include "station.hpp"
 #include "triangle.h"
 
+#include "interp_alg_base.hpp"
 #include "inv_dist.hpp"
 #include "spline.hpp"
 
 
 typedef tbb::concurrent_vector< boost::shared_ptr<station> > station_list;
 
-class interpolation
+class interp_2d
 {
 public:
-    interpolation();
-    ~interpolation();
-    double operator()(std::string method, station_list const& stations, mesh_elem& elem, std::string variable);
+    interp_2d();
+    ~interp_2d();
+    double operator()(std::string method, mesh_elem& elem, station_list&  stations, std::string variable, boost::shared_ptr<interp_visitor> visitor);
 };
-
 
 
 

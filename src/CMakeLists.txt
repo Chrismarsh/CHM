@@ -58,15 +58,17 @@ set(CHM_SRCS
         forcing_data.cpp
         regex_tokenizer.cpp
         station.cpp
+        timer.cpp
 
         mesh/mesh.cpp
         mesh/bounding_rect.cpp
         mesh/triangle.cpp
         mesh/triangulation.cpp
 
-        interpolation/interpolation.cpp
+        interpolation/interp_2d.cpp
         interpolation/inv_dist.cpp
-        interpolation/spline.cpp
+        interpolation/interp_t_air.cpp
+        interpolation/interp_rh.cpp
 )
 set (HEADER_FILES
 	json_spirit

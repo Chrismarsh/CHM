@@ -277,8 +277,13 @@ void core::read_config_file(std::string file)
 
 void core::run()
 {
+    LOG_DEBUG << "Entering main loop";
     
+    timer c;
+    c.tic();
     
+    interp_t_air interp;
+    interp_rh irh;
     //iterate over all the mesh elements
     for(size_t i=0;
             //this assumes that all the meshes are the same size
@@ -288,13 +293,11 @@ void core::run()
         //current mesh element
         auto& m = (*_mesh)(i);
         
-        interpolation interp;
         //interpolate the station data to the current element
-
-        double intr = interp("idw", _stations, m, "Tair");
-        m.add_face_data("T",intr);
-
         
+        interp("LLRA_var", m, _stations, "Tair");
+        irh("LLRA_rh_var", m, _stations, "Tair"); //is actually for RH, need to fix
+
         //interpolate the forcing data over the mesh
         
         //module calls
@@ -303,9 +306,11 @@ void core::run()
             itr->run(m);
         }
     }
-   // _mesh->plot("solar_S_angle");
-    _mesh->plot("T");
-    
+    double elapsed = c.toc();
+    LOG_DEBUG << "Took " << elapsed <<"s";
+//    _mesh->plot("solar_S_angle");
+    _mesh->plot("Tair");
+    _mesh->plot("Rh");
    
     
 

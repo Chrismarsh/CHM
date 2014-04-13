@@ -17,7 +17,9 @@
 #include "module_factory.hpp"
 #include "station.hpp"
 #include "mesh.hpp"
-#include "interpolation.hpp"
+#include "interp_t_air.hpp"
+#include "interp_rh.hpp"
+#include "timer.hpp"
 /// The main model core
 /**
  * The main model core, handles initialization of the model
