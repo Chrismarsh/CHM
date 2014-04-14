@@ -69,7 +69,14 @@ bool triangle::contains( point xy )
 {
 	return contains(xy.x,xy.y);
 }
-
+double triangle::get_lat()
+{
+    return 50.960873; //marmot creek
+}
+double triangle::get_lon()
+{
+    return -115.187890;
+}
 double triangle::get_x()
 {
     return center.x;
@@ -82,6 +89,14 @@ double triangle::get_z()
 {
     return center.z;
 }     
+boost::posix_time::ptime triangle::get_ptime()
+{
+    return _current_time;
+}
+void triangle::set_current_time(boost::posix_time::ptime time)
+{
+    _current_time = time;
+}
 void triangle::set_vertex_values( point vertex1, point vertex2, point vertex3)
 {
 	m_vertex_list[0].x = vertex1.x;

@@ -4,7 +4,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
-
+#include <ctime>
 
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 #include <boost/crc.hpp>      // for boost::crc_basic, boost::crc_optimal
@@ -119,6 +119,8 @@ public:
                 std::string - Variables. Dates will be in the form 2008-Feb-23 23:59:59
                 */
                 std::string to_string();
+                
+                
 
 
                 /*

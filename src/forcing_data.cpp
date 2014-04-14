@@ -566,6 +566,7 @@ int time_series::timestep::month()
     return d;
 }
 
+
 int time_series::timestep::day()
 {
     int d = -1;

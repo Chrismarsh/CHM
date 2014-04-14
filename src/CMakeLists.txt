@@ -45,7 +45,7 @@ set(JSON_SPIRIT_SRCS
 
 set(MODULE_SRCS
         modules/TestModule.cpp
-        modules/Solar.cpp
+        modules/solar.cpp
 )
 
 set(LIBMAW_SRCS

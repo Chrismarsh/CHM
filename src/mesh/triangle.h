@@ -34,7 +34,7 @@
 #include <boost/cstdint.hpp>  // for boost::uint16_t
 #include <boost/utility.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
-
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 
 #include "point.h"
@@ -86,7 +86,8 @@ private:
 
 	//positive, clockwise, from north
 	double m_azimuth;
-
+        
+        boost::posix_time::ptime _current_time;
 
 
         face_data _data;
@@ -104,7 +105,7 @@ public:
 	void update_subtri();
 	void set_vertex_values( point vertex1, point vertex2, point vertex3);
 	void set_facenormal(arma::vec& normal);
-
+        void set_current_time(boost::posix_time::ptime time);
 	/*Getters*/
 
 	point get_vertex(size_t vertex);
@@ -112,6 +113,11 @@ public:
         double get_x();
         double get_y();
         double get_z();
+        
+        //hardcoded at the moment
+        double get_lat();
+        double get_lon();
+        
 	double azimuth();
 	double slope();
 
@@ -129,7 +135,7 @@ public:
 
         void add_face_data(std::string ID, double data);
         double get_face_data(std::string ID);
-        
+        boost::posix_time::ptime get_ptime();
 	//information for the physical model
 	double radiation_dir;
 	double radiation_diff;

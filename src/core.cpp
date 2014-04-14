@@ -291,6 +291,7 @@ void core::run()
     bool done = false;
     while(!done)
     {
+        
         LOG_DEBUG << "Timestep: " << _stations.at(0)->now().get_posix();
         //iterate over all the mesh elements
         for(size_t i=0;
@@ -300,7 +301,7 @@ void core::run()
         {
             //current mesh element
             auto& m = (*_mesh)(i);
-
+            m.set_current_time(_stations.at(0)->now().get_posix());
             //interpolate the station data to the current element
 
             interp("LLRA_var", m, _stations);
