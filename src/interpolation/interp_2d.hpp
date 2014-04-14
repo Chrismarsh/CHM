@@ -30,7 +30,7 @@ class interp_2d
 public:
     interp_2d();
     ~interp_2d();
-    double operator()(std::string method, mesh_elem& elem, station_list&  stations, std::string variable, boost::shared_ptr<interp_visitor> visitor);
+    double operator()(std::string method, mesh_elem& elem, station_list&  stations, boost::shared_ptr<interp_visitor> visitor);
 };
 
 

@@ -9,7 +9,7 @@ interp_rh::~interp_rh()
 
 }
 
-void interp_rh::operator()(std::string method, mesh_elem& m, station_list& stations, std::string variable)
+void interp_rh::operator()(std::string method, mesh_elem& m, station_list& stations)
 {
     boost::shared_ptr<interp_visitor> visitor;
     if (method == "LLRA_rh_var")
@@ -23,7 +23,7 @@ void interp_rh::operator()(std::string method, mesh_elem& m, station_list& stati
     }
     
     interp_2d interp;
-    double rh = interp("idw",m,stations,variable,visitor);
+    double rh = interp("idw",m,stations,visitor);
     m.add_face_data("Rh",rh); //TODO: fix hardcoded variable string
 
 }
@@ -81,14 +81,14 @@ double LLRA_rh_var::get_lambda_rate(int month)
     return lambda;
 }
 
-double LLRA_rh_var::lower(mesh_elem& m, std::string temperature_id, boost::shared_ptr<station> s)
+double LLRA_rh_var::lower(mesh_elem& m, boost::shared_ptr<station> s)
 {
     //use water for the moment as per Liston, Elder
     double a = 611.21;
     double b = 17.502;
     double c = 240.97;
-    double temp = s->now().get<double>(temperature_id);
-    double rh = s->now().get<double>("Rh");//todo: fix this hardcode for rh
+    double temp = s->now().get<double>(TAIR);
+    double rh = s->now().get<double>(RH);
     
     //because boom otherwise
     if (rh <= 0.0)
@@ -111,7 +111,7 @@ double LLRA_rh_var::lower(mesh_elem& m, std::string temperature_id, boost::share
 
 }
 
-double LLRA_rh_var::raise(double value, mesh_elem& m, std::string temperature_id)
+double LLRA_rh_var::raise(double value, mesh_elem& m)
 {
     
     //use water for the moment as per Liston, Elder
@@ -122,7 +122,7 @@ double LLRA_rh_var::raise(double value, mesh_elem& m, std::string temperature_id
     double dewPointLapseRate = lambda * c / b;
     double Td = value - (-dewPointLapseRate)*(0 - m.get_z());
     double e = a * exp((b * Td) / (c + Td));
-    double temp = m.get_face_data("Tair");
+    double temp = m.get_face_data(TAIR);
     double es = a * exp((b * temp) / (c + temp));
 
     //RH value replaces Tdew value

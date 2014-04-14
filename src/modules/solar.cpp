@@ -1,5 +1,5 @@
 
-#include "Solar.hpp"
+#include "solar.hpp"
 
 Solar::Solar( std::string ID)
 {

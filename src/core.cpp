@@ -211,8 +211,7 @@ void core::read_config_file(std::string file)
                 {
                     LOG_DEBUG << "Unknown forcing type " << name << ", skipping";
                 }
-
-
+                
             }
         } else if (name == "meshes")
         {
@@ -277,6 +276,10 @@ void core::read_config_file(std::string file)
 
 void core::run()
 {
+    
+   
+
+    
     LOG_DEBUG << "Entering main loop";
     
     timer c;
@@ -284,31 +287,46 @@ void core::run()
     
     interp_t_air interp;
     interp_rh irh;
-    //iterate over all the mesh elements
-    for(size_t i=0;
-            //this assumes that all the meshes are the same size
-            i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
-            i++)
+    
+    bool done = false;
+    while(!done)
     {
-        //current mesh element
-        auto& m = (*_mesh)(i);
-        
-        //interpolate the station data to the current element
-        
-        interp("LLRA_var", m, _stations, "Tair");
-        irh("LLRA_rh_var", m, _stations, "Tair"); //is actually for RH, need to fix
-
-        //interpolate the forcing data over the mesh
-        
-        //module calls
-        for(auto& itr : _modules)
+        LOG_DEBUG << "Timestep: " << _stations.at(0)->now().get_posix();
+        //iterate over all the mesh elements
+        for(size_t i=0;
+                //this assumes that all the meshes are the same size
+                i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
+                i++)
         {
-            itr->run(m);
+            //current mesh element
+            auto& m = (*_mesh)(i);
+
+            //interpolate the station data to the current element
+
+            interp("LLRA_var", m, _stations);
+            irh("LLRA_rh_var", m, _stations); 
+
+            //interpolate the forcing data over the mesh
+
+            //module calls
+            for(auto& itr : _modules)
+            {
+                itr->run(m);
+            }
+        }
+        
+         //TODO: Don't assume all stations have the same timeseries start, end, and dt
+        
+        //update all the stations internal iterators to point to the next time step
+        for(auto& itr : _stations)
+        {
+            if (! itr->next())
+                done = true;
         }
     }
     double elapsed = c.toc();
     LOG_DEBUG << "Took " << elapsed <<"s";
-//    _mesh->plot("solar_S_angle");
+    _mesh->plot("solar_S_angle");
     _mesh->plot("Tair");
     _mesh->plot("Rh");
    

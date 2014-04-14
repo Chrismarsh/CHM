@@ -9,7 +9,7 @@
 
 // Modules to build against
 #include "TestModule.hpp"
-#include "Solar.hpp"
+#include "solar.hpp"
 
 class module_factory
 {

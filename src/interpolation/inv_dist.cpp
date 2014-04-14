@@ -10,7 +10,7 @@ inv_dist::~inv_dist()
     
 }
 
-double inv_dist::operator()(station_list&  stations, mesh_elem& elem, std::string variable, boost::shared_ptr<interp_visitor> visitor)
+double inv_dist::operator()(station_list&  stations, mesh_elem& elem,boost::shared_ptr<interp_visitor> visitor)
 {
     
     double numerator = 0.0;
@@ -26,7 +26,7 @@ double inv_dist::operator()(station_list&  stations, mesh_elem& elem, std::strin
     for(auto& itr : stations)
     {
         
-        double z = visitor->lower(elem,variable,itr);
+        double z = visitor->lower(elem,itr);
         
 //        itr->now()->get<double>(variable);
 
@@ -59,7 +59,7 @@ double inv_dist::operator()(station_list&  stations, mesh_elem& elem, std::strin
         
     }
    z0 = (numerator/denominator);
-   z0 = visitor->raise(z0,elem,variable);
+   z0 = visitor->raise(z0,elem);
     
     return z0;
 

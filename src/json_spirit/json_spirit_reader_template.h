@@ -19,6 +19,11 @@
 #include <boost/function.hpp>
 #include <boost/version.hpp>
 
+//needed for recent intel (e.g., 2013) not sure at which point this is not needed
+#if defined(__INTEL_COMPILER)
+    #undef BOOST_INTEL_CXX_VERSION
+#endif
+
 #if BOOST_VERSION >= 103800
     #include <boost/spirit/include/classic_core.hpp>
     #include <boost/spirit/include/classic_confix.hpp>

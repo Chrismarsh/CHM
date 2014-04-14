@@ -19,10 +19,10 @@ public:
        virtual ~interp_visitor(){};
        
        //is run as a modifier to the data pre interpolation
-       virtual double lower(mesh_elem & m, std::string temperature_id, boost::shared_ptr<station>  s)=0;
+       virtual double lower(mesh_elem & m,  boost::shared_ptr<station>  s)=0;
        
        //is run as a modifier to the data post interpolation
-       virtual double raise(double value, mesh_elem & m, std::string temperature_id)=0;
+       virtual double raise(double value, mesh_elem & m)=0;
 
 };
 
@@ -31,7 +31,7 @@ class interp_alg_base
 public:
        interp_alg_base(){};
        virtual ~interp_alg_base(){};
-       virtual double operator()(station_list&  stations, mesh_elem& elem, std::string variable, boost::shared_ptr<interp_visitor> visitor){};
+       virtual double operator()(station_list&  stations, mesh_elem& elem, boost::shared_ptr<interp_visitor> visitor){};
 };
 
 

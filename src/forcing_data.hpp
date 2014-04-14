@@ -253,6 +253,8 @@ public:
                 typedef tbb::concurrent_hash_map<std::string, Variable::const_iterator ,HashCompare> ConstItrMap;
 
                 ConstItrMap m_itrs;//holds the iterators
+                
+                int _month_cache;
         };
 
 

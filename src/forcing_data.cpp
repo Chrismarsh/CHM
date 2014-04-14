@@ -449,10 +449,15 @@ void time_series::const_iterator::increment()
         m_currentStep.m_itrs.find(accesors[i], itr->first);
         (accesors[i]->second)++;
         i++;
+        //invalid cached values
+        m_currentStep._month_cache = -1;
+    
     }
 
     delete[] headers;
     delete[] accesors;
+    
+   
 
 }
 
@@ -470,10 +475,13 @@ void time_series::const_iterator::decrement()
         m_currentStep.m_itrs.find(accesors[i], itr->first);
         (accesors[i]->second)--;
         i++;
+        //invalid cached values
+        m_currentStep._month_cache = -1;
     }
 
     delete[] headers;
     delete[] accesors;
+
 }
 
 time_series::const_iterator::const_iterator()
@@ -501,12 +509,13 @@ time_series::const_iterator& time_series::const_iterator::operator=(const time_s
 
 time_series::timestep::timestep(const timestep& src)
 {
+    _month_cache = -1;
     m_itrs = ConstItrMap(src.m_itrs);
 }
 
 time_series::timestep::timestep()
 {
-
+    _month_cache = -1;
 }
 
 time_series::timestep::~timestep()
@@ -528,7 +537,12 @@ std::string time_series::timestep::to_string()
 
 int time_series::timestep::month()
 {
+    if(_month_cache != -1)
+        return _month_cache; //return our cached value
+    
     int d = -1;
+    
+    
     boost::posix_time::ptime time;
     boost::gregorian::date date;
 
@@ -539,6 +553,8 @@ int time_series::timestep::month()
         {
             time = boost::get<boost::posix_time::ptime>(*(itr->second));
             date = boost::gregorian::from_string(boost::lexical_cast<std::string>(time.date()));
+            
+            _month_cache = date.month();
             return date.month();
         } catch (boost::bad_get e)
         {
