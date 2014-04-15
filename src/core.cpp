@@ -55,8 +55,8 @@ core::core()
    
     LOG_DEBUG << "Matlab engine started";
     
-    _engine->add_dir_to_path("/home/chris/Documents/PhD/code/CHM/src/matlab_support");
-    
+//    _engine->add_dir_to_path("/home/chris/Documents/PhD/code/CHM/src/matlab_support");
+     _engine->add_dir_to_path("/Users/chris/Documents/PhD/code/CHM/src/matlab_support");
 }
 
 
@@ -294,6 +294,7 @@ void core::run()
         
         LOG_DEBUG << "Timestep: " << _stations.at(0)->now().get_posix();
         //iterate over all the mesh elements
+       
         for(size_t i=0;
                 //this assumes that all the meshes are the same size
                 i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size

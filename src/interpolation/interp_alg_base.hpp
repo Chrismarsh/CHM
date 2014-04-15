@@ -31,7 +31,7 @@ class interp_alg_base
 public:
        interp_alg_base(){};
        virtual ~interp_alg_base(){};
-       virtual double operator()(station_list&  stations, mesh_elem& elem, boost::shared_ptr<interp_visitor> visitor){};
+       virtual double operator()(station_list&  stations, mesh_elem& elem, boost::shared_ptr<interp_visitor> visitor){return -9999;};
 };
 
 

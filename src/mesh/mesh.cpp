@@ -77,7 +77,8 @@ void mesh::add_mesh(std::string file, std::string ID)
 //    maw::d_mat cornerpoints = _engine->get_double_matrix("cornerpoints");
 //    _engine->evaluate("clear cornerpoints");
 
-//    _engine->evaluate("mxDomain=mxDomain(:,1:3)"); //because we are reading in the skyview data along with the dem, future calls assume a nx3 matrix.
+//    _engine->evaluate("mxDomain=mxDomain(:,1:3)");
+    //because we are reading in the skyview data along with the dem, future calls assume a nx3 matrix.
     
     LOG_DEBUG << "Creating face normals";
     _mesh->compute_face_normals();

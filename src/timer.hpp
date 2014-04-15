@@ -1,10 +1,14 @@
 #pragma once
 
 #ifdef _WIN32   
-#include <windows.h>
+    #include <windows.h>
+#elif __MACH__
+    #include <sys/time.h>
+    #include <mach/mach.h>
 #else          
-#include <time.h>
+    #include <time.h>
 #endif
+
 
 #include <stack>
 

@@ -9,9 +9,18 @@ void timer::tic()
     startCount.QuadPart = 0;
     QueryPerformanceCounter(&startCount);
     m_timers.push(startCount);
+#elif __MACH__
+  timespec startCount;
+  struct timeval now;
+  int rv = gettimeofday(&now, NULL);
+ 
+  startCount.tv_sec = now.tv_sec;
+  
+  m_timers.push(startCount);
+  
 #else
     timespec startCount;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startCount);
+    clock_gettime(CLOCK_MONOTONIC, &startCount); //CLOCK_PROCESS_CPUTIME_ID
     m_timers.push(startCount);
 #endif
 }
@@ -43,10 +52,28 @@ double timer::toc()
     m_timers.pop();
     m_end = endCount.QuadPart * (1000000.0 / m_frequency.QuadPart);
     return m_end - m_start;
+ #elif __MACH__
+
+
+    struct timeval now;
+    int rv = gettimeofday(&now, NULL);
+    
+    timespec end;
+    end.tv_sec = now.tv_sec;
+//    end.tv_nsec = now.tv_nsec;
+    
+    timespec start = m_timers.top();
+    m_timers.pop();
+
+    timespec temp;
+    temp.tv_sec = end.tv_sec - start.tv_sec;
+//    temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+
+    return temp.tv_sec;
 #else
 
     timespec end;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
+    clock_gettime(CLOCK_MONOTONIC, &end);
     
     
     timespec temp;
