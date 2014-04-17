@@ -56,9 +56,6 @@ void time_series::open(std::string path)
 
     //a string defined as anything with a letter in it or that has a special character in this list
     //~`!@#$%^&*(){[}]|\:;"'<>.?/
-    //regex_tokenizer string("[\\x21\\x22\\x23\\x24\\x25\\x26\\x27\\x28\\x29\\x2A\\x2F\\x3A\\x3B\\x3C\\x3D\\x3E\\x3F\\x40\\x5B\\x5C\\x5D\\x5E\\x5F\\x60\\x7B\\x7C\\x7D\\x88\\x98]|.*[A-Za-z]+.*"); 
-    regex_tokenizer string(".*"); //anything 
-    regex_tokenizer integer("^[-+]?\\d+$");
     regex_tokenizer floating("^[-+]?(?:[0-9]+\\.(?:[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?$");
     regex_tokenizer dateTime("[0-9]{8}T[0-9]{6}"); //iso standard time
 
@@ -91,34 +88,9 @@ void time_series::open(std::string path)
                     itr != values.end();
                     itr++)
             {
-//                std::vector<std::string> strings;
-//                std::vector<std::string> ints;
                 std::vector<std::string> doubles;
                 std::vector<std::string> dates;
 
-                //check to see if it's an integer first
-//                if ((ints = integer.tokenize<std::string>(*itr)).size() == 1)
-//                {
-//                    ts_hashmap::accessor a;
-//                    if (!_variables.find(a, *headerItr))
-//                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
-//                            << errstr_info(std::string("Failed to find ") + *headerItr)
-//                            << boost::errinfo_file_name(path)
-//                            );
-//
-//                    try
-//                    {
-//                        a->second.push_back(boost::lexical_cast<int>(ints[0]));
-//                    } catch (...)
-//                    {
-//                        BOOST_THROW_EXCEPTION(forcing_badcast()
-//                                << errstr_info("Failed to cast " + ints[0] + " to an int.")
-//                                << boost::errinfo_file_name(path)
-//                                );
-//                    }
-//
-//
-//                } else 
                 if ((doubles = floating.tokenize<std::string>(*itr)).size() == 1)
                 {
                     ts_hashmap::accessor a;
@@ -129,6 +101,7 @@ void time_series::open(std::string path)
                             );
                     try
                     {
+                        LOG_DEBUG << "Found " << *headerItr << ": " << doubles[0];
                         a->second.push_back(boost::lexical_cast<double>(doubles[0]));
                     } catch (...)
                     {
@@ -137,38 +110,20 @@ void time_series::open(std::string path)
                                 << boost::errinfo_file_name(path)
                                 );
                     }
-
-
                 } else if ((dates = dateTime.tokenize<std::string>(*itr)).size() == 1)
                 {
-//                    ts_hashmap::accessor a;
-//
-//                    if (dateHeader == "")
-//                        dateHeader = *headerItr;
-//
-//                    if (!_variables.find(a, *headerItr))
-//                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
-//                            << errstr_info(std::string("Failed to find ") + *headerItr)
-//                            << boost::errinfo_file_name(path)
-//                            );
+                    LOG_DEBUG << "Found " << *headerItr << ": " << dates[0];
                     _date_vec.push_back(boost::posix_time::from_iso_string(dates[0]));
-//                    a->second.push_back(boost::posix_time::from_iso_string(dates[0]));
-
-
-
-                }                    //if we get here, it's none of the above, so assume it's a string
-//                else if ((strings = string.tokenize<std::string>(*itr)).size() == 1)
-//                {
-//
-//                    ts_hashmap::accessor a;
-//                    if (!_variables.find(a, *headerItr))
-//                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
-//                            << errstr_info(std::string("Failed to find ") + *headerItr)
-//                            << boost::errinfo_file_name(path)
-//                            );
-//
-//                    a->second.push_back(strings[0]);
-//                }
+                    
+                    //now we know where the date colum is, we remove it from the hashmap
+                    ts_hashmap::accessor a;
+                    if (!_variables.find(a, *headerItr)) //really no way this should fail
+                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
+                            << errstr_info(std::string("Failed to find ") + *headerItr)
+                            << boost::errinfo_file_name(path)
+                            );
+                    _variables.erase(a);
+                }
                 else
                 {
                     //something has gone horribly wrong
@@ -204,6 +159,7 @@ void time_series::open(std::string path)
     //	- Time steps are equal
 
     //get iters for each variables
+    LOG_DEBUG << "Read in " << _variables.size() << " variables";
     std::string* headerItems = new std::string[_variables.size()];
 
     int i = 0;
@@ -211,21 +167,17 @@ void time_series::open(std::string path)
     //unknown order
     for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
+        LOG_DEBUG << itr->first;
         headerItems[i++] = itr->first;
     }
 
     //get and save each accessor
-    bool bfirst = true;
-    ts_hashmap::const_accessor first;
+    size_t d_length = _date_vec.size();
 
 
     for (unsigned int l = 0; l < _variables.size(); l++)
     {
-        if (bfirst)
-        {
-            _variables.find(first, headerItems[0]);
-            bfirst = false;
-        }
+        //compare all columns to date length
 
         ts_hashmap::const_accessor a;
         if (!_variables.find(a, headerItems[l]))
@@ -234,14 +186,19 @@ void time_series::open(std::string path)
                 << boost::errinfo_file_name(path)
                 );
 
-        //check all cols are the same sizes
-        if (first->second.size() != a->second.size())
+        //check all cols are the same size as the first col
+        LOG_DEBUG << "Column " + headerItems[l] + " length=" + boost::lexical_cast<std::string>( a->second.size()), + "expected=" + boost::lexical_cast<std::string>(d_length);
+        if (d_length != a->second.size())
+        {
+            LOG_ERROR << "Col " + headerItems[l] + " is a different size. Expected size="+boost::lexical_cast<std::string>(d_length);
             BOOST_THROW_EXCEPTION(forcing_lookup_error()
-                << errstr_info("Row " + a->first + " is a different size.")
+                << errstr_info("Col " + headerItems[l] + " is a different size. Expected size="+boost::lexical_cast<std::string>(d_length))
                 << boost::errinfo_file_name(path));
+        }
+        
     }
 
-    first.release();
+   
 
     delete[] headerItems;
 
@@ -327,9 +284,12 @@ time_series::const_iterator time_series::begin()
                     << errstr_info("Failed to insert " + itr->first)
                     );
         }
+        
+                
         a->second = itr->second.begin();
 
     }
+    step._currentStep._date_itr = _date_vec.begin();
 
     return step;
 
@@ -354,7 +314,7 @@ time_series::const_iterator time_series::end()
         a->second = itr->second.end();
 
     }
-
+    step._currentStep._date_itr = _date_vec.end();
     return step;
 }
 
@@ -433,6 +393,7 @@ void time_series::const_iterator::increment()
     {
         _currentStep._itrs.find(accesors[i], itr->first);
         (accesors[i]->second)++;
+        _currentStep._date_itr++;
         i++;
         //invalid cached values
         _currentStep._month_cache = -1;
@@ -459,6 +420,7 @@ void time_series::const_iterator::decrement()
     {
         _currentStep._itrs.find(accesors[i], itr->first);
         (accesors[i]->second)--;
+        _currentStep._date_itr--;
         i++;
         //invalid cached values
         _currentStep._month_cache = -1;
