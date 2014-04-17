@@ -37,7 +37,7 @@ void station::open( std::string file )
     }
 }
 
-time_series::timestep station::now()
+timestep station::now()
 {
         return *_itr;
 }

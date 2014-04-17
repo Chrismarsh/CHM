@@ -5,7 +5,8 @@
 
 #include <boost/utility.hpp>
 
-#include "forcing_data.hpp"
+#include "timeseries.hpp"
+
 /*
 Class: Station
 Concept of a met station.
@@ -84,7 +85,7 @@ public:
     Returns:   
     forcing_data::timestep - The current timestep. See <timestep>
      */
-    time_series::timestep now();
+    timestep now();
 
 
     /*

@@ -4,3 +4,4 @@
 
 #define RH "RH"
 #define TAIR "Tair"
+#define DATE "Date"

@@ -40,7 +40,7 @@ void interp_t_air::operator()(std::string method, mesh_elem& m, station_list& st
 double LLRA_const::lower(mesh_elem& m, boost::shared_ptr<station>  s)
 {
     double lapse_rate = 0.0065;
-    double v = s->now().get<double>(TAIR) - lapse_rate * (0.0 - s->get_elevation());
+    double v = s->now().get(TAIR) - lapse_rate * (0.0 - s->get_elevation());
     
    return v;
 
@@ -105,7 +105,7 @@ double LLRA_var::lower(mesh_elem& m, boost::shared_ptr<station>  s)
 {
     _month = s->now().month();
     double lapse_rate = get_lapse_rate(_month);
-    double v = s->now().get<double>(TAIR) - lapse_rate * (0.0 - s->get_elevation());
+    double v = s->now().get(TAIR) - lapse_rate * (0.0 - s->get_elevation());
     
     return v;
 

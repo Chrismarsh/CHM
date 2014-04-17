@@ -79,48 +79,19 @@ if (WIN32)
 endif (WIN32)
 
 if (UNIX)
-    if (APPLE)
-        # MAC
-        set(_TBB_DEFAULT_INSTALL_DIR "/Library/Frameworks/Intel_TBB.framework/Versions")
-        # libs: libtbb.dylib, libtbbmalloc.dylib, *_debug
+
+#       set(_TBB_DEFAULT_INSTALL_DIR "/opt/intel/tbb" "/usr/local/include" "/usr/include")
+        set(_TBB_DEFAULT_INSTALL_DIR "/opt/intel/tbb")
+      
+        set(_TBB_LIB_NAME "tbb")
         set(_TBB_LIB_NAME "tbb")
         set(_TBB_LIB_MALLOC_NAME "${_TBB_LIB_NAME}malloc")
         set(_TBB_LIB_DEBUG_NAME "${_TBB_LIB_NAME}_debug")
         set(_TBB_LIB_MALLOC_DEBUG_NAME "${_TBB_LIB_MALLOC_NAME}_debug")
-        # default flavor on apple: ia32/cc4.0.1_os10.4.9
-        # Jiri: There is no reason to presume there is only one flavor and
-        #       that user's setting of variables should be ignored.
-        if(NOT TBB_COMPILER)
-            set(_TBB_COMPILER "cc4.0.1_os10.4.9")
-        elseif (NOT TBB_COMPILER)
-            set(_TBB_COMPILER ${TBB_COMPILER})
-        endif(NOT TBB_COMPILER)
-        if(NOT TBB_ARCHITECTURE)
-            set(_TBB_ARCHITECTURE "ia32")
-        elseif(NOT TBB_ARCHITECTURE)
-            set(_TBB_ARCHITECTURE ${TBB_ARCHITECTURE})
-        endif(NOT TBB_ARCHITECTURE)
-    else (APPLE)
-        # LINUX
-        set(_TBB_DEFAULT_INSTALL_DIR "/opt/intel/tbb" "/usr/local/include" "/usr/include")
-        set(_TBB_LIB_NAME "tbb")
-        set(_TBB_LIB_MALLOC_NAME "${_TBB_LIB_NAME}malloc")
-        set(_TBB_LIB_DEBUG_NAME "${_TBB_LIB_NAME}_debug")
-        set(_TBB_LIB_MALLOC_DEBUG_NAME "${_TBB_LIB_MALLOC_NAME}_debug")
-        # has em64t/cc3.2.3_libc2.3.2_kernel2.4.21 em64t/cc3.3.3_libc2.3.3_kernel2.6.5 em64t/cc3.4.3_libc2.3.4_kernel2.6.9 em64t/cc4.1.0_libc2.4_kernel2.6.16.21
-        # has ia32/*
-        # has itanium/*
         set(_TBB_COMPILER ${TBB_COMPILER})
         set(_TBB_ARCHITECTURE ${TBB_ARCHITECTURE})
-    endif (APPLE)
-endif (UNIX)
 
-if (CMAKE_SYSTEM MATCHES "SunOS.*")
-# SUN
-# not yet supported
-# has em64t/cc3.4.3_kernel5.10
-# has ia32/*
-endif (CMAKE_SYSTEM MATCHES "SunOS.*")
+endif (UNIX)
 
 
 #-- Clear the public variables
@@ -260,7 +231,7 @@ if (TBB_INCLUDE_DIR)
         # Jiri: Self-built TBB stores the debug libraries in a separate directory.
         set (TBB_DEBUG_LIBRARY_DIRS ${TBB_LIBRARY_DEBUG_DIR} CACHE PATH "TBB debug library directory" FORCE)
         mark_as_advanced(TBB_INCLUDE_DIRS TBB_LIBRARY_DIRS TBB_DEBUG_LIBRARY_DIRS TBB_LIBRARIES TBB_DEBUG_LIBRARIES)
-        message(STATUS "Found Intel TBB")
+        message(STATUS "Found Intel TBB - ${TBB_LIBRARY_DIRS}")
     endif (TBB_LIBRARY)
 endif (TBB_INCLUDE_DIR)
 

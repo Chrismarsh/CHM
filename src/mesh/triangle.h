@@ -33,7 +33,7 @@
 #include <boost/crc.hpp>      // for boost::crc_basic, boost::crc_optimal
 #include <boost/cstdint.hpp>  // for boost::uint16_t
 #include <boost/utility.hpp>
-#include <boost/algorithm/string/case_conv.hpp>
+
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 

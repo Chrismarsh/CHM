@@ -2,7 +2,7 @@
 #http://www.cmake.org/cmake/help/v2.8.10/cmake.html#variable:CMAKE_LANG_COMPILER_ID
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -xhost -axsse4.2 -opt-prefetch -std=c++11")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11") 
 
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -56,7 +56,6 @@ set(CHM_SRCS
 	main.cpp
 	core.cpp
         module_factory.cpp
-        forcing_data.cpp
         regex_tokenizer.cpp
         station.cpp
         timer.cpp
@@ -70,6 +69,11 @@ set(CHM_SRCS
         interpolation/inv_dist.cpp
         interpolation/interp_t_air.cpp
         interpolation/interp_rh.cpp
+
+        timeseries/timestep.cpp
+        timeseries/timeseries.cpp
+
+        utility/crc_hash_compare.cpp
 )
 set (HEADER_FILES
 	json_spirit
@@ -77,6 +81,8 @@ set (HEADER_FILES
         modules
         libmaw
         interpolation
+        timeseries
+        utility
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
 

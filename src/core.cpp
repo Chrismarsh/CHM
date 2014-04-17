@@ -11,7 +11,7 @@ core::core()
     {
         text_sink::locked_backend_ptr pBackend = _log_sink->locked_backend();
 
-        boost::shared_ptr< std::ostream > pStream(&std::clog, logging::empty_deleter());
+        boost::shared_ptr< std::ostream > pStream(&std::clog, boost::empty_deleter());
         pBackend->add_stream(pStream);
 
 
