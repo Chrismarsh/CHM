@@ -113,10 +113,7 @@ public:
         double get_x();
         double get_y();
         double get_z();
-        
-        //hardcoded at the moment
-        double get_lat();
-        double get_lon();
+
         
 	double azimuth();
 	double slope();

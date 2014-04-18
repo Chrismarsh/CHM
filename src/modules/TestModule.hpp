@@ -11,7 +11,7 @@ class TestModule : public module_base
     public:
         TestModule(std::string ID);
         ~TestModule();
-        virtual void run(mesh_elem& elem);
+        virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 
 };
 

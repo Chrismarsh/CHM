@@ -5,6 +5,7 @@ core::core()
 {
     BOOST_LOG_FUNCTION();
 
+    //default logging level
     _log_level = debug;
 
     _log_sink = boost::make_shared< text_sink >();
@@ -54,6 +55,8 @@ core::core()
     _engine->set_working_dir();
    
     LOG_DEBUG << "Matlab engine started";
+    
+    _global = boost::make_shared<global>();
 
 }
 
@@ -64,10 +67,6 @@ core::~core()
     LOG_DEBUG << "Terminating";
 }
 
-bool core::is_debug()
-{
-    return _is_debug;
-}
 
 void core::read_config_file(std::string file)
 {
@@ -152,8 +151,6 @@ void core::read_config_file(std::string file)
                 
                 boost::shared_ptr<module_base> m(_mfactory.get(ID));
                 _modules.push_back(m);
-                
-
             }
 
         } else if (name == "forcing")
@@ -170,12 +167,8 @@ void core::read_config_file(std::string file)
                 if (name == "station")
                 {
                     boost::shared_ptr<station> s = boost::make_shared<station>();
-
-
-
                     for (auto& ktr : value.get_obj())
                     {
-
                         const json_spirit::Pair& pair = ktr;
                         const std::string& name = pair.name_;
 
@@ -233,9 +226,7 @@ void core::read_config_file(std::string file)
                 std::string file = "";
                 
                 LOG_DEBUG << "Found mesh " << ID;
-                
-                
-                    
+
                 //itr over the mesh paramters
                 for (auto& ktr : value.get_obj())
                 {
@@ -280,6 +271,29 @@ void core::read_config_file(std::string file)
             }
             
         }
+        else if (name == "global")
+        {
+            LOG_DEBUG << "Found global section";
+            for (auto& jtr : value.get_obj())
+            {
+                const json_spirit::Pair& pair = jtr;
+                const std::string& name = pair.name_;
+                const json_spirit::Value& value = pair.value_;
+                
+                if (name == "latitude")
+                {
+                    _global->_lat = value.get_real();
+                }
+                else if (name == "longitude")
+                {
+                    _global->_lon = value.get_real();
+                }
+                else if(name == "UTC_offset")
+                {
+                    _global->_utc_offset = value.get_int();
+                }
+            }
+        }
         else
         {
             const json_spirit::Pair& pair = itr;
@@ -302,10 +316,7 @@ void core::read_config_file(std::string file)
 
 void core::run()
 {
-    
-   
 
-    
     LOG_DEBUG << "Entering main loop";
     
     timer c;
@@ -318,9 +329,26 @@ void core::run()
     while(!done)
     {
         
-        LOG_DEBUG << "Timestep: " << _stations.at(0)->now().get_posix();
+        //ensure all the stations are at the same timestep
+        boost::posix_time::ptime t;
+        t = _stations.at(0)->now().get_posix(); //get first stations time
+        for(int i = 1;//on purpose to skip first 1
+              i<_stations.size();
+                i++)
+        {
+            if(t != _stations.at(i)->now().get_posix())
+            {
+                BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
+                        <<errstr_info("Timestep mismatch at station: " + _stations.at(i)->get_ID()));
+            }
+        }
+        _global->_current_date = _stations.at(0)->now().get_posix();
+        _global->update();
+        
+        
+        LOG_DEBUG << "Timestep: " << _global->posix_time();
+        
         //iterate over all the mesh elements
-       
         for(size_t i=0;
                 //this assumes that all the meshes are the same size
                 i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
@@ -329,8 +357,8 @@ void core::run()
             //current mesh element
             auto& m = (*_mesh)(i);
             m.set_current_time(_stations.at(0)->now().get_posix());
+            
             //interpolate the station data to the current element
-
             interp("LLRA_var", m, _stations);
             irh("LLRA_rh_var", m, _stations); 
 
@@ -339,7 +367,7 @@ void core::run()
             //module calls
             for(auto& itr : _modules)
             {
-                itr->run(m);
+                itr->run(m,_global);
             }
         }
         
@@ -348,18 +376,18 @@ void core::run()
         //update all the stations internal iterators to point to the next time step
         for(auto& itr : _stations)
         {
-            if (! itr->next())
+            if (! itr->next()) //
                 done = true;
         }
     }
     double elapsed = c.toc();
     LOG_DEBUG << "Took " << elapsed <<"s";
-//    _mesh->plot("solar_S_angle");
-//    _mesh->plot("Tair");
-//    _mesh->plot("Rh");
+    _mesh->plot("solar_S_angle");
+    _mesh->plot("Tair");
+    _mesh->plot("Rh");
    
     
 
-    //run all selected algorithms
+
 
 }

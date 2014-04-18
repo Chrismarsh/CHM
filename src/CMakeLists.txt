@@ -56,7 +56,7 @@ set(CHM_SRCS
 	main.cpp
 	core.cpp
         module_factory.cpp
-        
+        global.cpp
         station.cpp
         timer.cpp
 

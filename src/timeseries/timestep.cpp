@@ -55,8 +55,6 @@ boost::gregorian::date timestep::get_gregorian()
     date = boost::gregorian::from_string(boost::lexical_cast<std::string>(_date_itr->date()));
     return date;
 
-
-
 }
 
 boost::posix_time::ptime timestep::get_posix()

@@ -2,6 +2,7 @@
 
 #include "../logger.h"
 #include "module_base.hpp"
+//#include "global.hpp"
 
 #include <cstdlib>
 #include <string>
@@ -16,7 +17,7 @@ class Solar : public module_base
     public:
         Solar(std::string ID);
         ~Solar();
-        virtual void run(mesh_elem& elem);
+        virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 
 };
 

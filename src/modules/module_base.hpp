@@ -4,6 +4,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "triangle.h"
+#include "global.hpp"
 
 
 typedef triangle mesh_elem;
@@ -22,7 +23,7 @@ public:
             //nothing
         };
         
-        virtual void run(mesh_elem& elem)=0;
+        virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param)=0;
 };
 
 

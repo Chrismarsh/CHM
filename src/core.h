@@ -23,6 +23,8 @@
 #include "interp_t_air.hpp"
 #include "interp_rh.hpp"
 #include "timer.hpp"
+#include "global.hpp"
+
 /// The main model core
 /**
  * The main model core, handles initialization of the model
@@ -36,63 +38,67 @@ public:
   /**
    * Reads the main JSON configuration file. It assumes the base of the JSON is an object. That is, the file
    * starts with { ... }.
-    Within this file are a collection of meshes that are expected to have the same number of x,y
-    * points. This is done so that, for example, elevation, forest cover, sky-view factor, etc 
-    * may be added individually. Generation of the meshes should be done via the utilities for this.
-    * An example of mesh.config is:
-    * \code	
-    *  {
-    *    "meshes":
-    *    {
-    *            "DEM":
-    *            {
-    *                    "file": "mesh.asc"
-    *            }
-    *            ,
-    *            "Veg":
-    *            {
-    *                    "file": "veg.asc"
-    *            },
-    *            "svf":
-    *            {
-    *                    "file": "svf.asc"
-    *            }
-    *    }	
-    *   }
-    *   \endcode
+   * Within this file are a collection of meshes that are expected to have the same number of x,y
+   * points. This is done so that, for example, elevation, forest cover, sky-view factor, etc 
+   * may be added individually. Generation of the meshes should be done via the utilities for this.
+   * An example of mesh.config is:
+   * \code	
+   *  {
+   *    "meshes":
+   *    {
+   *            "DEM":
+   *            {
+   *                    "file": "mesh.asc"
+   *            }
+   *            ,
+   *            "Veg":
+   *            {
+   *                    "file": "veg.asc"
+   *            },
+   *            "svf":
+   *            {
+   *                    "file": "svf.asc"
+   *            }
+   *    }	
+   *   }
+   *   \endcode
    * @param file The file to open
   **/
     void read_config_file(std::string file);
-
+    
+    /**
+     * Initializes the logger and Matlab engine
+     */
     core();
     ~core();
-
-    bool is_debug();
-
 
     void run();
 
 	     
 
 private:
-    bool _is_debug;
-
+    //current level of the logger. Defaults to debug, but can be changed via configuration settings
     log_level _log_level;
+    //a text file log
     boost::shared_ptr< text_sink > _log_sink;
+    
+    //module factory for creating the specified modules
     module_factory _mfactory;
     
-    
+    //each station where observations are    
     tbb::concurrent_vector< boost::shared_ptr<station> > _stations;
     
+    //main mesh object
     boost::shared_ptr<mesh> _mesh;
     
+    //matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
     
-    
-    
+       
     //holds all the modules that are to be run on each mesh element
     std::vector< module > _modules;
     
+    boost::shared_ptr<global> _global;
     
     
 };

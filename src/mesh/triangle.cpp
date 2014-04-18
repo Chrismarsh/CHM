@@ -69,14 +69,7 @@ bool triangle::contains( point xy )
 {
 	return contains(xy.x,xy.y);
 }
-double triangle::get_lat()
-{
-    return 50.960873; //marmot creek
-}
-double triangle::get_lon()
-{
-    return -115.187890;
-}
+
 double triangle::get_x()
 {
     return center.x;
