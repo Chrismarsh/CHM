@@ -45,6 +45,7 @@
 #include <exception>
 #include <boost/lexical_cast.hpp>
 #include <boost/smart_ptr.hpp>
+#include <boost/filesystem.hpp>
 
 #include "logger.h"
 

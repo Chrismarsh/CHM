@@ -11,7 +11,7 @@ core::core()
     {
         text_sink::locked_backend_ptr pBackend = _log_sink->locked_backend();
 
-        boost::shared_ptr< std::ostream > pStream(&std::clog, boost::empty_deleter());
+        boost::shared_ptr< std::ostream > pStream(&std::clog, logging::empty_deleter());
         pBackend->add_stream(pStream);
 
 
@@ -54,9 +54,7 @@ core::core()
     _engine->set_working_dir();
    
     LOG_DEBUG << "Matlab engine started";
-    
-//    _engine->add_dir_to_path("/home/chris/Documents/PhD/code/CHM/src/matlab_support");
-     _engine->add_dir_to_path("/Users/chris/Documents/PhD/code/CHM/src/matlab_support");
+
 }
 
 
@@ -199,7 +197,7 @@ void core::read_config_file(std::string file)
                             s->open(pair.value_.get_str());
                         } else
                         {
-                            LOG_DEBUG << "Unknown value '" << name << "'";
+                            LOG_INFO << "Unknown value '" << name << "'";
                         }
 
                     }
@@ -209,7 +207,7 @@ void core::read_config_file(std::string file)
 
                 } else
                 {
-                    LOG_DEBUG << "Unknown forcing type " << name << ", skipping";
+                    LOG_INFO << "Unknown forcing type " << name << ", skipping";
                 }
                 
             }
@@ -254,11 +252,39 @@ void core::read_config_file(std::string file)
                 _mesh->add_mesh(file, ID);
 
             }
-        } else
+        }
+        else if (name == "matlab")
+        {
+            LOG_DEBUG << "Found matlab section";
+             //loop over the list of matlab options
+            for (auto& jtr : value.get_obj())
+            {
+                const json_spirit::Pair& pair = jtr;
+                const std::string& name = pair.name_;
+                const json_spirit::Value& value = pair.value_;
+                
+                if (name == "mfile_paths")
+                {
+                    LOG_DEBUG << "Found " << name;
+                    for (auto& ktr : value.get_obj()) //loop over all the paths
+                    {
+                        const json_spirit::Pair& pair = ktr;
+                        const std::string& name = pair.name_;
+                        const json_spirit::Value& value = pair.value_;
+                        
+                        
+                        _engine->add_dir_to_path(value.get_str());
+                        
+                    }
+                }
+            }
+            
+        }
+        else
         {
             const json_spirit::Pair& pair = itr;
             const std::string& name = pair.name_;
-            LOG_DEBUG << "Unknown section '" << name << "', skipping";
+            LOG_INFO << "Unknown section '" << name << "', skipping";
         }
     }
 
@@ -328,9 +354,9 @@ void core::run()
     }
     double elapsed = c.toc();
     LOG_DEBUG << "Took " << elapsed <<"s";
-    _mesh->plot("solar_S_angle");
-    _mesh->plot("Tair");
-    _mesh->plot("Rh");
+//    _mesh->plot("solar_S_angle");
+//    _mesh->plot("Tair");
+//    _mesh->plot("Rh");
    
     
 

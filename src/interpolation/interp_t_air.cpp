@@ -104,6 +104,7 @@ double LLRA_var::get_lapse_rate(int month)
 double LLRA_var::lower(mesh_elem& m, boost::shared_ptr<station>  s)
 {
     _month = s->now().month();
+//    LOG_DEBUG << "Month: " << _month;
     double lapse_rate = get_lapse_rate(_month);
     double v = s->now().get(TAIR) - lapse_rate * (0.0 - s->get_elevation());
     

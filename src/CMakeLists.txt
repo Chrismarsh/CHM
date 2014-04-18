@@ -56,7 +56,7 @@ set(CHM_SRCS
 	main.cpp
 	core.cpp
         module_factory.cpp
-        regex_tokenizer.cpp
+        
         station.cpp
         timer.cpp
 
@@ -74,6 +74,7 @@ set(CHM_SRCS
         timeseries/timeseries.cpp
 
         utility/crc_hash_compare.cpp
+        utility/regex_tokenizer.cpp
 )
 set (HEADER_FILES
 	json_spirit

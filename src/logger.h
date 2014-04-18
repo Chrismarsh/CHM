@@ -8,7 +8,7 @@
 #include <boost/log/attributes.hpp>
 
 
-#include <boost/utility/empty_deleter.hpp>
+#include <boost/log/utility/empty_deleter.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/exception_handler.hpp>
 
@@ -38,6 +38,7 @@ namespace keywords = boost::log::keywords;
  {
      debug,
      warning,
+     info,
      error
  };
 
@@ -49,6 +50,7 @@ inline std::basic_ostream< CharT, TraitsT >& operator<< (std::basic_ostream< Cha
     {
 	"debug",
 	"warning",
+        "info",
 	"error"
     };
     if (static_cast< std::size_t >(lvl) < (sizeof(str) / sizeof(*str)))
@@ -69,3 +71,4 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", log_level)
 #define	LOG_DEBUG       BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), log_level::debug) 
 #define	LOG_WARNING 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), log_level::warning) 
 #define	LOG_ERROR 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), log_level::error) 
+#define	LOG_INFO 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), log_level::info) 

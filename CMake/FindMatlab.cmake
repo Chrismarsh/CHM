@@ -121,7 +121,7 @@ ELSE(WIN32)
 		#try to find matlab on the path and resolve the symbolic link
 		EXECUTE_PROCESS(
 		  COMMAND which matlab
-		  COMMAND xargs readlink  
+		  COMMAND xargs readlink  -f
 		  OUTPUT_VARIABLE sym_link
 		)
 

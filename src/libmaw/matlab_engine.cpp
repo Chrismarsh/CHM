@@ -242,8 +242,16 @@ namespace maw
     {
         if (m_engine)
         {
-            if (engEvalString(m_engine, (std::string("addpath('") + dir + std::string("')")).c_str()) == 1)
-                throw std::runtime_error(get_last_error().c_str());
+            if (boost::filesystem::exists(dir))
+            {
+                if (engEvalString(m_engine, (std::string("addpath('") + dir + std::string("')")).c_str()) == 1)
+                    throw std::runtime_error(get_last_error().c_str());
+                LOG_DEBUG << "Added path to engine: " << dir; 
+            }
+            else
+            {
+                LOG_WARNING << "Path " << dir << " does not exist. Not added.";
+            }
         } else
         {
             throw std::runtime_error("No MATLAB engine open");

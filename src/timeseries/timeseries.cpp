@@ -395,8 +395,6 @@ void time_series::const_iterator::increment()
         (accesors[i]->second)++;
         _currentStep._date_itr++;
         i++;
-        //invalid cached values
-        _currentStep._month_cache = -1;
     
     }
 
@@ -422,8 +420,6 @@ void time_series::const_iterator::decrement()
         (accesors[i]->second)--;
         _currentStep._date_itr--;
         i++;
-        //invalid cached values
-        _currentStep._month_cache = -1;
     }
 
     delete[] headers;
