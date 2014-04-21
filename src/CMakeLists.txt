@@ -2,7 +2,7 @@
 #http://www.cmake.org/cmake/help/v2.8.10/cmake.html#variable:CMAKE_LANG_COMPILER_ID
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -xhost -axsse4.2 -opt-prefetch -std=c++11")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11") 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 ") #-fopenmp
 
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -59,7 +59,7 @@ set(CHM_SRCS
         global.cpp
         station.cpp
         timer.cpp
-
+        
         mesh/mesh.cpp
         mesh/bounding_rect.cpp
         mesh/triangle.cpp
@@ -72,6 +72,7 @@ set(CHM_SRCS
 
         timeseries/timestep.cpp
         timeseries/timeseries.cpp
+        timeseries/daily.cpp
 
         utility/crc_hash_compare.cpp
         utility/regex_tokenizer.cpp

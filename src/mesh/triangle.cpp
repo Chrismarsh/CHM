@@ -16,22 +16,6 @@
 
 #include "triangle.h"
 
-size_t triangle::HashCompare::hash(const std::string& x)
-{
-    boost::crc_32_type crc32;
-    std::string xlower = boost::algorithm::to_lower_copy<std::string>(x);
-    crc32.process_bytes(xlower.c_str(), xlower.length());
-
-    return crc32.checksum();
-}
-
-bool triangle::HashCompare::equal(const std::string& s1, const std::string& s2)
-{
-    std::string ss1 = boost::algorithm::to_lower_copy<std::string>(s1);
-    std::string ss2 = boost::algorithm::to_lower_copy<std::string>(s2);
-
-    return ss1 == ss2;
-}
 
 triangle::triangle( point vertex1, point vertex2, point vertex3, size_t cur_rec_depth/*=1*/)
 {

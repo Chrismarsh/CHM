@@ -33,7 +33,7 @@ namespace attrs = boost::log::attributes;
 namespace keywords = boost::log::keywords;
 
  
- //dat c++11 to enable log_level::XXXXX
+
  enum log_level
  {
      debug,

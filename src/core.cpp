@@ -325,7 +325,15 @@ void core::run()
     interp_t_air interp;
     interp_rh irh;
     
+    //do the interpolation first
     bool done = false;
+    while(!done)
+    {
+        
+    }
+    
+    
+    done = false;
     while(!done)
     {
         
@@ -349,6 +357,7 @@ void core::run()
         LOG_DEBUG << "Timestep: " << _global->posix_time();
         
         //iterate over all the mesh elements
+        #pragma omp parallel for
         for(size_t i=0;
                 //this assumes that all the meshes are the same size
                 i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
@@ -385,7 +394,7 @@ void core::run()
     _mesh->plot("solar_S_angle");
     _mesh->plot("Tair");
     _mesh->plot("Rh");
-   
+//   
     
 
 

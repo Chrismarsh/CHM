@@ -40,6 +40,7 @@
 #include "point.h"
 #include "exception.hpp"
 #include "logger.h"
+#include "crc_hash_compare.hpp"
 
 
 
@@ -48,16 +49,9 @@ class triangle
     
 private:
 
-            // Used to compare the hashes of the main data structure
-        //not case sensitive
-        class HashCompare
-        {
-        public:
-                static size_t hash( const std::string& x);
-                static bool equal(const std::string& s1, const std::string& s2);
-        };
+        
         typedef tbb::concurrent_vector< double > ts;
-        typedef tbb::concurrent_hash_map<std::string, ts ,HashCompare> face_data;
+        typedef tbb::concurrent_hash_map<std::string, ts ,crc_hash_compare> face_data;
         
 	//list of the vertexes
 	point m_vertex_list[3];
