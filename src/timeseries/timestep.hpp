@@ -36,7 +36,6 @@ private:
     const_itr_map _itrs; 
     date_variable::const_iterator _date_itr;
 
-    int _month_cache;
     
 public:
 
@@ -189,7 +188,7 @@ public:
         
         const_itr_map::const_accessor a;
         if (!_itrs.find(a, varName))
-        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
+            BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
 
         double out = a->second[0];
         

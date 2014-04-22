@@ -6,7 +6,7 @@ timestep::timestep(const timestep& src)
 {
    
     _itrs = const_itr_map(src._itrs);
-    _date_itr = src._date_itr;
+    _date_itr = date_variable::const_iterator(src._date_itr);
 }
 
 timestep::timestep()

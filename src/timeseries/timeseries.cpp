@@ -19,7 +19,7 @@ void time_series::open(std::string path)
             << boost::errinfo_errno(errno)
             << boost::errinfo_file_name(path));
 
-
+    LOG_DEBUG << "Parsing file " + path;
     bool done = false;
     token.set_regex("[^,\\r\\n\\s]+"); //anything but whitespace or ,
     //read in the file, skip any blank lines at the top of the file
@@ -115,14 +115,15 @@ void time_series::open(std::string path)
                     LOG_DEBUG << "Found " << *headerItr << ": " << dates[0];
                     _date_vec.push_back(boost::posix_time::from_iso_string(dates[0]));
                     
-                    //now we know where the date colum is, we remove it from the hashmap
+                    //now we know where the date colum is, we remove it from the hashmap if we haven't already
                     ts_hashmap::accessor a;
-                    if (!_variables.find(a, *headerItr)) //really no way this should fail
-                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
-                            << errstr_info(std::string("Failed to find ") + *headerItr)
-                            << boost::errinfo_file_name(path)
-                            );
-                    _variables.erase(a);
+                    if (_variables.find(a, *headerItr))
+                        _variables.erase(a);
+//                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
+//                            << errstr_info(std::string("Failed to find ") + *headerItr)
+//                            << boost::errinfo_file_name(path)
+//                            );
+                    
                 }
                 else
                 {
@@ -278,6 +279,7 @@ time_series::const_iterator time_series::begin()
     for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
         timestep::const_itr_map::accessor a;
+        //create the keyname
         if (!step._currentStep._itrs.insert(a, itr->first))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
@@ -285,10 +287,10 @@ time_series::const_iterator time_series::begin()
                     );
         }
         
-                
+        //insert the iterator
         a->second = itr->second.begin();
-
     }
+
     step._currentStep._date_itr = _date_vec.begin();
 
     return step;
@@ -333,6 +335,10 @@ bool time_series::const_iterator::equal(const_iterator const& other) const
     {
         return false;
     }
+    
+    //compare the ptimes
+    if ( *(_currentStep._date_itr) != *(other._currentStep._date_itr) )
+        return false;
 
     unsigned int i = 0;
 
@@ -392,11 +398,11 @@ void time_series::const_iterator::increment()
     for (timestep::const_itr_map::iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
     {
         _currentStep._itrs.find(accesors[i], itr->first);
-        (accesors[i]->second)++;
-        _currentStep._date_itr++;
+        (accesors[i]->second)++;     
         i++;
-    
     }
+    
+    ++_currentStep._date_itr;
 
     delete[] headers;
     delete[] accesors;
@@ -418,10 +424,10 @@ void time_series::const_iterator::decrement()
     {
         _currentStep._itrs.find(accesors[i], itr->first);
         (accesors[i]->second)--;
-        _currentStep._date_itr--;
+        
         i++;
     }
-
+    --_currentStep._date_itr;
     delete[] headers;
     delete[] accesors;
 

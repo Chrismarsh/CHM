@@ -32,7 +32,7 @@ void station::open( std::string file )
     }
     catch(exception_base& e)
     {
-        e << errstr_info( std::string("Station:") + _ID ); //hope like hell we've got the ID at this point
+        //e << errstr_info( std::string("Station:") + _ID ); //hope like hell we've got the ID at this point
         throw;
     }
 }
@@ -46,9 +46,10 @@ void station::reset_itrs()
 {
     _itr = _obs->begin();
 }
+
 bool station::next()
 {
-        _itr++;
+        ++_itr;
         if(_itr == _obs->end())
                 return false;
         else
