@@ -119,11 +119,7 @@ void time_series::open(std::string path)
                     ts_hashmap::accessor a;
                     if (_variables.find(a, *headerItr))
                         _variables.erase(a);
-//                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
-//                            << errstr_info(std::string("Failed to find ") + *headerItr)
-//                            << boost::errinfo_file_name(path)
-//                            );
-                    
+                  
                 }
                 else
                 {
@@ -336,10 +332,7 @@ bool time_series::const_iterator::equal(const_iterator const& other) const
         return false;
     }
     
-    //compare the ptimes
-    if ( *(_currentStep._date_itr) != *(other._currentStep._date_itr) )
-        return false;
-
+   
     unsigned int i = 0;
 
     std::string *thisHeaders = new std::string[_currentStep._itrs.size()];
@@ -402,7 +395,7 @@ void time_series::const_iterator::increment()
         i++;
     }
     
-    ++_currentStep._date_itr;
+    _currentStep._date_itr++;
 
     delete[] headers;
     delete[] accesors;
@@ -427,7 +420,7 @@ void time_series::const_iterator::decrement()
         
         i++;
     }
-    --_currentStep._date_itr;
+    _currentStep._date_itr--;
     delete[] headers;
     delete[] accesors;
 

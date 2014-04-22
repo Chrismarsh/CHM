@@ -112,13 +112,7 @@ void triangle::add_face_data(std::string ID, double data)
 {
     face_data::accessor a;
 
-    if(!_data.insert(a,ID)) //insert creates a new pair if not found
-    {
-        BOOST_THROW_EXCEPTION(mesh_insertion_error()
-                    << errstr_info(std::string("Failed to add face data: ") + ID)
-                    );
-    }
-
+    _data.insert(a,ID); //insert creates a new pair if not found
     a->second.push_back(data);
     
 //    LOG_DEBUG << a->second[0];
