@@ -329,14 +329,6 @@ void core::run()
     bool done = false;
     while(!done)
     {
-        
-    }
-    
-    
-    done = false;
-    while(!done)
-    {
-        
         //ensure all the stations are at the same timestep
         boost::posix_time::ptime t;
         t = _stations.at(0)->now().get_posix(); //get first stations time
@@ -350,6 +342,49 @@ void core::run()
                         <<errstr_info("Timestep mismatch at station: " + _stations.at(i)->get_ID()));
             }
         }
+        
+        _global->_current_date = _stations.at(0)->now().get_posix();
+        _global->update();
+        
+        
+        LOG_DEBUG << "Interpolating at timestep: " << _global->posix_time();
+        
+        //iterate over all the mesh elements
+        #pragma omp parallel for
+        for(size_t i=0;
+                //this assumes that all the meshes are the same size
+                i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
+                i++)
+        {
+            //current mesh element
+            auto& m = (*_mesh)(i);
+            m.set_current_time(_stations.at(0)->now().get_posix());
+            
+            //interpolate the station data to the current element
+            interp("LLRA_var", m, _stations);
+            irh("LLRA_rh_var", m, _stations); 
+            
+        }
+        
+        //update all the stations internal iterators to point to the next time step
+        for(auto& itr : _stations)
+        {
+            if (! itr->next()) //
+                done = true;
+        }
+        
+    }
+    
+    //reset all the internal iterators
+    for(auto& itr : _stations)
+    {
+        itr->reset_itrs();
+    }
+    
+    done = false;
+    while(!done)
+    {
+                
         _global->_current_date = _stations.at(0)->now().get_posix();
         _global->update();
         
@@ -368,8 +403,8 @@ void core::run()
             m.set_current_time(_stations.at(0)->now().get_posix());
             
             //interpolate the station data to the current element
-            interp("LLRA_var", m, _stations);
-            irh("LLRA_rh_var", m, _stations); 
+//            interp("LLRA_var", m, _stations);
+//            irh("LLRA_rh_var", m, _stations); 
 
             //interpolate the forcing data over the mesh
 

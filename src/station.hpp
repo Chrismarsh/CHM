@@ -202,6 +202,8 @@ public:
 
     std::string get_ID();
     
+    void reset_itrs();
+    
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:

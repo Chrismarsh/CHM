@@ -42,6 +42,10 @@ timestep station::now()
         return *_itr;
 }
 
+void station::reset_itrs()
+{
+    _itr = _obs->begin();
+}
 bool station::next()
 {
         _itr++;
