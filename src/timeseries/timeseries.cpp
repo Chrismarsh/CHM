@@ -2,6 +2,35 @@
 
 #include "timeseries.hpp"
 
+void time_series::push_back(double data, std::string variable)
+{
+    ts_hashmap::accessor a;
+    _variables.insert(a, variable);
+    a->second.push_back(data);
+}
+
+double time_series::get(std::string variable)
+{
+    ts_hashmap::const_accessor a;
+    if(!_variables.find(a, variable))
+    {
+        BOOST_THROW_EXCEPTION(forcing_error()
+                                << errstr_info("Unable to find " + variable));
+    }   
+    return a->second.back();
+}
+
+tbb::concurrent_vector<double> time_series::get_time_series(std::string variable)
+{
+    ts_hashmap::const_accessor a;
+    if(!_variables.find(a, variable))
+    {
+        BOOST_THROW_EXCEPTION(forcing_error()
+                                << errstr_info("Unable to find " + variable));
+    }   
+    return a->second;
+}
+
 void time_series::open(std::string path)
 {
     std::fstream file(path.c_str());
@@ -233,6 +262,7 @@ void time_series::to_file(std::string file)
     //build a list of all the headers
     //unknown order
     int i = 0;
+    out << "Date\t";
     variable::const_iterator *tItr = new variable::const_iterator[_variables.size()];
     for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
@@ -248,6 +278,7 @@ void time_series::to_file(std::string file)
 
     for (int k = 0; k < _rows; k++)
     {
+        out << _date_vec.at(i) << "\t";
         for (int j = 0; j < _cols; j++)
         {
             out << "\t" << *(tItr[j]);

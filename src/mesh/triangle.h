@@ -42,6 +42,7 @@
 #include "logger.h"
 #include "crc_hash_compare.hpp"
 
+#include "timeseries.hpp"
 
 
 class triangle
@@ -50,8 +51,9 @@ class triangle
 private:
 
         
-        typedef tbb::concurrent_vector< double > ts;
-        typedef tbb::concurrent_hash_map<std::string, ts ,crc_hash_compare> face_data;
+//        typedef tbb::concurrent_vector< double > ts;
+//        typedef tbb::concurrent_hash_map<std::string, ts ,crc_hash_compare> face_data;
+    typedef time_series face_data;
         
 	//list of the vertexes
 	point m_vertex_list[3];
@@ -81,8 +83,6 @@ private:
 	//positive, clockwise, from north
 	double m_azimuth;
         
-        boost::posix_time::ptime _current_time;
-
 
         face_data _data;
         
@@ -99,7 +99,7 @@ public:
 	void update_subtri();
 	void set_vertex_values( point vertex1, point vertex2, point vertex3);
 	void set_facenormal(arma::vec& normal);
-        void set_current_time(boost::posix_time::ptime time);
+
 	/*Getters*/
 
 	point get_vertex(size_t vertex);
@@ -126,7 +126,8 @@ public:
 
         void add_face_data(std::string ID, double data);
         double get_face_data(std::string ID);
-        boost::posix_time::ptime get_ptime();
+        tbb::concurrent_vector<double> get_face_time_series(std::string ID);
+
 	//information for the physical model
 	double radiation_dir;
 	double radiation_diff;

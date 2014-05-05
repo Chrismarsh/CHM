@@ -54,6 +54,8 @@ namespace maw
 	typedef boost::shared_ptr<arma::mat>  d_mat;
 	typedef boost::shared_ptr<arma::vec>  d_vec;
 	typedef boost::shared_ptr<double>     d_sca; //not currently used
+        
+      
 
 class matlab_engine
 {

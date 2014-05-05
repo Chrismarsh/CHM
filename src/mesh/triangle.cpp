@@ -33,6 +33,7 @@ triangle::triangle( point vertex1, point vertex2, point vertex3, size_t cur_rec_
 
 }
 
+
 triangle::triangle(size_t cur_rec_depth)
 {
 	m_sub_tri = NULL;
@@ -48,7 +49,10 @@ triangle::triangle(size_t cur_rec_depth)
 	m_azimuth = 0.0;
 }
 
-
+tbb::concurrent_vector<double> triangle::get_face_time_series(std::string ID)
+{
+    return _data.get_time_series(ID);
+}
 bool triangle::contains( point xy )
 {
 	return contains(xy.x,xy.y);
@@ -66,14 +70,8 @@ double triangle::get_z()
 {
     return center.z;
 }     
-boost::posix_time::ptime triangle::get_ptime()
-{
-    return _current_time;
-}
-void triangle::set_current_time(boost::posix_time::ptime time)
-{
-    _current_time = time;
-}
+
+
 void triangle::set_vertex_values( point vertex1, point vertex2, point vertex3)
 {
 	m_vertex_list[0].x = vertex1.x;
@@ -110,26 +108,14 @@ void triangle::set_vertex_values( point vertex1, point vertex2, point vertex3)
 
 void triangle::add_face_data(std::string ID, double data)
 {
-    face_data::accessor a;
+    _data.push_back(data,ID);
 
-    _data.insert(a,ID); //insert creates a new pair if not found
-    a->second.push_back(data);
-    
-//    LOG_DEBUG << a->second[0];
 }
 
 double triangle::get_face_data(std::string ID)
 {
-    face_data::accessor a;
-    if(!_data.find(a,ID)) 
-    {
-        BOOST_THROW_EXCEPTION(mesh_lookup_error()
-                    << errstr_info(std::string("No face data: ") + ID)
-                    );
-    }
-    
-    double data = a->second[0];//*(a->second.end());
-    return  data;
+   
+    return _data.get(ID);
 
 }
 

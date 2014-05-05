@@ -9,7 +9,7 @@ interp_t_air::~interp_t_air()
 
 }
 
-void interp_t_air::operator()(std::string method, mesh_elem& m, station_list& stations)
+void interp_t_air::operator()(std::string method, mesh_elem& m, station_list& stations, boost::shared_ptr<global> global_param)
 {
     boost::shared_ptr<interp_visitor> visitor;
     if (method == "LLRA_const")
@@ -27,7 +27,7 @@ void interp_t_air::operator()(std::string method, mesh_elem& m, station_list& st
     }
     
     interp_2d interp;
-    double tair = interp("idw",m,stations,visitor);
+    double tair = interp("idw",m,stations,visitor,global_param);
     m.add_face_data(TAIR,tair);
 
 }
@@ -37,7 +37,7 @@ void interp_t_air::operator()(std::string method, mesh_elem& m, station_list& st
 //  Algorithms
 ///*******************************************
 
-double LLRA_const::lower(mesh_elem& m, boost::shared_ptr<station>  s)
+double LLRA_const::lower(mesh_elem& m, boost::shared_ptr<station>  s, boost::shared_ptr<global> global_param)
 {
     double lapse_rate = 0.0065;
     double v = s->now().get(TAIR) - lapse_rate * (0.0 - s->get_elevation());
@@ -46,7 +46,7 @@ double LLRA_const::lower(mesh_elem& m, boost::shared_ptr<station>  s)
 
 }
 
-double LLRA_const::raise(double value, mesh_elem& m)
+double LLRA_const::raise(double value, mesh_elem& m, boost::shared_ptr<global> global_param)
 {
     double lapse_rate = 0.0065;
 
@@ -101,20 +101,20 @@ double LLRA_var::get_lapse_rate(int month)
     
     return lapse_rate;
 }
-double LLRA_var::lower(mesh_elem& m, boost::shared_ptr<station>  s)
+double LLRA_var::lower(mesh_elem& m, boost::shared_ptr<station>  s, boost::shared_ptr<global> global_param)
 {
-    _month = s->now().month();
+
 //    LOG_DEBUG << "Month: " << _month;
-    double lapse_rate = get_lapse_rate(_month);
+    double lapse_rate = get_lapse_rate(global_param->month());
     double v = s->now().get(TAIR) - lapse_rate * (0.0 - s->get_elevation());
     
     return v;
 
 }
 
-double LLRA_var::raise(double value, mesh_elem& m)
+double LLRA_var::raise(double value, mesh_elem& m, boost::shared_ptr<global> global_param)
 {
-    double lapse_rate = get_lapse_rate(_month);
+    double lapse_rate = get_lapse_rate(global_param->month());
 
     double v =  value + lapse_rate * (0.0 - m.get_z());
     return v;

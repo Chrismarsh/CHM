@@ -358,11 +358,10 @@ void core::run()
         {
             //current mesh element
             auto& m = (*_mesh)(i);
-            m.set_current_time(_stations.at(0)->now().get_posix());
             
             //interpolate the station data to the current element
-            interp("LLRA_var", m, _stations);
-            irh("LLRA_rh_var", m, _stations); 
+            interp("LLRA_var", m, _stations,_global);
+            irh("LLRA_rh_var", m, _stations,_global); 
             
         }
         
@@ -400,22 +399,13 @@ void core::run()
         {
             //current mesh element
             auto& m = (*_mesh)(i);
-            m.set_current_time(_stations.at(0)->now().get_posix());
-            
-            //interpolate the station data to the current element
-//            interp("LLRA_var", m, _stations);
-//            irh("LLRA_rh_var", m, _stations); 
-
-            //interpolate the forcing data over the mesh
-
+         
             //module calls
             for(auto& itr : _modules)
             {
                 itr->run(m,_global);
             }
         }
-        
-         //TODO: Don't assume all stations have the same timeseries start, end, and dt
         
         //update all the stations internal iterators to point to the next time step
         for(auto& itr : _stations)
@@ -426,9 +416,12 @@ void core::run()
     }
     double elapsed = c.toc();
     LOG_DEBUG << "Took " << elapsed <<"s";
-    _mesh->plot("solar_S_angle");
-    _mesh->plot("Tair");
-    _mesh->plot("Rh");
+    
+    
+   _mesh->plot("solar_S_angle");
+//    _mesh->plot("Tair");
+//    _mesh->plot("Rh");
+    _mesh->plot_time_series(_stations.at(0)->get_x(),_stations.at(0)->get_y(),"Rh");
 //   
     
 

@@ -60,7 +60,9 @@ public:
     class const_iterator;
     time_series();
     ~time_series();
-
+    void push_back(double data, std::string variable);
+    double get(std::string variable);
+    tbb::concurrent_vector<double> get_time_series(std::string variable);
     /*
     Function: begin
              Returns an iterator at the start of the observations

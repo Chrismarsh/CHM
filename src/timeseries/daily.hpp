@@ -5,6 +5,6 @@
 
 namespace daily
 {
-    double mean(time_series ts);
+    double mean(time_series ts, std::string variable );
     
 }

@@ -22,7 +22,7 @@ public:
     ~mesh();
     void add_mesh(std::string file, std::string ID);
     void plot(std::string ID);
-    
+    void plot_time_series(double x, double y, std::string ID);
     size_t size();
     
     typedef triangle mesh_elem;

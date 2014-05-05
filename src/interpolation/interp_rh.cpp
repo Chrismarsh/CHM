@@ -1,4 +1,5 @@
 #include "interp_rh.hpp"
+#include "global.hpp"
 
 interp_rh::interp_rh()
 {
@@ -9,7 +10,7 @@ interp_rh::~interp_rh()
 
 }
 
-void interp_rh::operator()(std::string method, mesh_elem& m, station_list& stations)
+void interp_rh::operator()(std::string method, mesh_elem& m, station_list& stations, boost::shared_ptr<global> global_param)
 {
     boost::shared_ptr<interp_visitor> visitor;
     if (method == "LLRA_rh_var")
@@ -23,7 +24,7 @@ void interp_rh::operator()(std::string method, mesh_elem& m, station_list& stati
     }
     
     interp_2d interp;
-    double rh = interp("idw",m,stations,visitor);
+    double rh = interp("idw",m,stations,visitor,global_param);
     m.add_face_data("Rh",rh); //TODO: fix hardcoded variable string
 
 }
@@ -81,7 +82,7 @@ double LLRA_rh_var::get_lambda_rate(int month)
     return lambda;
 }
 
-double LLRA_rh_var::lower(mesh_elem& m, boost::shared_ptr<station> s)
+double LLRA_rh_var::lower(mesh_elem& m, boost::shared_ptr<station> s, boost::shared_ptr<global> global_param)
 {
     //use water for the moment as per Liston, Elder
     double a = 611.21;
@@ -101,8 +102,7 @@ double LLRA_rh_var::lower(mesh_elem& m, boost::shared_ptr<station> s)
 
     double dewPointTemp = (c * log(e / a)) / (b - log(e / a));
 
-    _month = s->now().month();
-    double lambda = get_lambda_rate(_month);
+    double lambda = get_lambda_rate(global_param->month());
 
     double dewPointLapseRate = lambda * c / b;
 
@@ -111,14 +111,14 @@ double LLRA_rh_var::lower(mesh_elem& m, boost::shared_ptr<station> s)
 
 }
 
-double LLRA_rh_var::raise(double value, mesh_elem& m)
+double LLRA_rh_var::raise(double value, mesh_elem& m, boost::shared_ptr<global> global_param)
 {
     
     //use water for the moment as per Liston, Elder
     double a = 611.21;
     double b = 17.502;
     double c = 240.97;
-    double lambda = get_lambda_rate(_month);
+    double lambda = get_lambda_rate(global_param->month());
     double dewPointLapseRate = lambda * c / b;
     double Td = value - (-dewPointLapseRate)*(0 - m.get_z());
     double e = a * exp((b * Td) / (c + Td));

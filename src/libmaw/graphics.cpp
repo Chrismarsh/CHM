@@ -121,6 +121,30 @@ void graphics::hold_off()
 	_engine->evaluate("hold off");
 }
 
+ double graphics::plot_line(std::string y, std::string options)
+ {
+     double ret = -1;
+    if (_engine)
+    {
+            std::string command = std::string("plot_handle=plot(")+ y + std::string(",'-'");
+
+            if (options == "")
+            {
+                    command += std::string(")");
+            }
+            else
+            {
+                    command += std::string(",") + options + std::string(")");
+            }
+
+
+            _engine->evaluate(command);
+            ret = _engine->get_scaler("plot_handle");
+            _engine->evaluate("clear plot_handle");
+
+    }
+    return ret;
+ }
 double graphics::plot_line( std::string x, std::string y, std::string options/*=""*/ )
 {
 	double ret = -1;

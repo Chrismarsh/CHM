@@ -24,6 +24,27 @@ size_t mesh::size()
     return _mesh->size();
 }
 
+void mesh::plot_time_series(double x, double y, std::string ID)
+{
+    mesh_elem* m  = _mesh->find_containing_triangle(x,y);
+    
+    if(!m)
+        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
+    
+    maw::d_vec v(new arma::vec(m->get_face_time_series(ID).size()));
+    
+//    v->resize(m->get_face_time_series(ID).size());
+    
+    for(size_t i=0; i < v->size(); i++ )
+    {
+        (*v)(i) = m->get_face_time_series(ID).at(i);
+    }
+    
+    _engine->put_double_matrix(ID,v);
+   double handle = _gfx->plot_line(ID);
+    _gfx->spin_until_close(handle);
+}
+
 void mesh::plot(std::string ID)
 {
     

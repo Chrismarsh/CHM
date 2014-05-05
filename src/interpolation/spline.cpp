@@ -1,6 +1,6 @@
 #include "spline.hpp"
 
-double spline::operator()(station_list const&  stations, mesh_elem& elem, std::string variable, boost::shared_ptr<interp_visitor> visitor)
+double spline::operator()(station_list const&  stations, mesh_elem& elem, std::string variable, boost::shared_ptr<interp_visitor> visitor, boost::shared_ptr<global> global_param)
 {
 
 //    unsigned int size = 0; //number of points
