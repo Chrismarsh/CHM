@@ -2,6 +2,6 @@
 
 //defines a variable map
 
-#define RH "RH"
-#define TAIR "Tair"
-#define DATE "Date"
+#define RH "rh"
+#define TAIR "t"
+#define DATE "datetime"

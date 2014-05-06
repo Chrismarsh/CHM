@@ -137,7 +137,7 @@ ELSE(WIN32)
 		else()
 			EXECUTE_PROCESS(
 				COMMAND which matlab
-				COMMAND xargs readlink -f 
+				COMMAND xargs readlink  
 				COMMAND xargs dirname
 				COMMAND xargs dirname
 				COMMAND xargs echo -n

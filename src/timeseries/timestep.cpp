@@ -39,13 +39,13 @@ int timestep::month()
 
 int timestep::day()
 {
-    _date_itr->date().day();
+    return _date_itr->date().day();
 
 }
 
 int timestep::year()
 {
-    _date_itr->date().year();
+    return _date_itr->date().year();
 }
 
 boost::gregorian::date timestep::get_gregorian()
