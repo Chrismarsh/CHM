@@ -58,6 +58,8 @@ core::core()
     
     _global = boost::make_shared<global>();
 
+    //don't just abort and die
+    gsl_set_error_handler_off();
 }
 
 
@@ -419,9 +421,9 @@ void core::run()
     
     
 //   _mesh->plot("solar_S_angle");
-//    _mesh->plot("Tair");
+    _mesh->plot(TAIR);
 //    _mesh->plot("Rh");
-    _mesh->plot_time_series(_stations.at(0)->get_x(),_stations.at(0)->get_y(),"T");
+//    _mesh->plot_time_series(_stations.at(0)->get_x(),_stations.at(0)->get_y(),"T");
 //   
     
 

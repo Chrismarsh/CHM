@@ -9,10 +9,10 @@ double interp_2d::operator()(std::string method, mesh_elem& elem, station_list& 
     {
         interp =  boost::make_shared<inv_dist>();
     }
-//    else if (method == "spline")
-//    {
-//        interp =  boost::make_shared<spline>();        
-//    }
+    else if (method == "spline")
+    {
+        interp =  boost::make_shared<spline>();        
+    }
     else 
     {
         BOOST_THROW_EXCEPTION(interp_unknown_type() << errstr_info("Unknown type '" + method + "'"));

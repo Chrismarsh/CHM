@@ -29,9 +29,6 @@ namespace daily
         }
         
         return mean/counter;
-        
-        
-        
     }
     
     

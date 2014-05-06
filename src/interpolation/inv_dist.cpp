@@ -17,7 +17,6 @@ double inv_dist::operator()(station_list&  stations, mesh_elem& elem,boost::shar
     double denominator = 0.0;
 
     double z0 = 0;
-
     if (stations.size() == 1)
     {
         BOOST_THROW_EXCEPTION( interpolation_error()
@@ -25,10 +24,7 @@ double inv_dist::operator()(station_list&  stations, mesh_elem& elem,boost::shar
     }
     for(auto& itr : stations)
     {
-        
         double z = visitor->lower(elem,itr,global_param);
-        
-//        itr->now()->get<double>(variable);
 
         double sx = itr->get_x();
         double sy = itr->get_y();
@@ -47,19 +43,16 @@ double inv_dist::operator()(station_list&  stations, mesh_elem& elem,boost::shar
         {
                 numerator = z;
                 denominator = 1.0;
-                //break;
         }
         else
         {
                 numerator += z/ di;
                 denominator += 1 / di; 
-
         }
-        
-        
     }
+
    z0 = (numerator/denominator);
-   z0 = visitor->raise(z0,elem,global_param);
+  z0 = visitor->raise(z0,elem,global_param);
     
     return z0;
 
