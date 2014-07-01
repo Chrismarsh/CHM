@@ -420,8 +420,8 @@ void core::run()
     LOG_DEBUG << "Took " << elapsed <<"s";
     
     
-//   _mesh->plot("solar_S_angle");
-    _mesh->plot(TAIR);
+   _mesh->plot("solar_S_angle");
+//    _mesh->plot(TAIR);
 //    _mesh->plot("Rh");
 //    _mesh->plot_time_series(_stations.at(0)->get_x(),_stations.at(0)->get_y(),"T");
 //   
