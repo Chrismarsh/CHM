@@ -19,5 +19,6 @@ class Solar : public module_base
         ~Solar();
         virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 
+
 };
 

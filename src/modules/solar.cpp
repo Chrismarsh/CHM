@@ -3,7 +3,9 @@
 
 Solar::Solar( std::string ID)
 {
-    LOG_DEBUG << "Successfully instatiated module " << ID;
+    _provides->push_back("solar_S_angle");
+    this->ID = ID;
+    LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 void Solar::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
@@ -37,4 +39,6 @@ Solar::~Solar()
     
     
 }
+
+
 

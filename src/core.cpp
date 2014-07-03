@@ -141,6 +141,7 @@ void core::read_config_file(std::string file)
             const json_spirit::Value& value = pair.value_;
             found_modules = true; //found the module section
 
+            int modnum = 0;
             //loop over the list of requested modules
             // these are in the format "type":"ID"
             for (auto& jtr : value.get_obj())
@@ -152,6 +153,10 @@ void core::read_config_file(std::string file)
                 LOG_DEBUG << "Module type=" << name << " ID=" << ID;
                 
                 boost::shared_ptr<module_base> m(_mfactory.get(ID));
+                
+                //internal tracking of module initialization order
+                modnum++;
+                m->IDnum = modnum;
                 _modules.push_back(m);
             }
 
@@ -313,7 +318,52 @@ void core::read_config_file(std::string file)
 
 
     LOG_DEBUG << "Finished initialization";
+    
+    LOG_DEBUG << "Determining module dependencies";
+    _determine_module_dep();
 
+}
+
+void core::_determine_module_dep()
+{
+    int size = _modules.size();
+    
+    Graph g(size);
+    std::vector<Edge> edges;
+    
+    //loop through each module
+    for(auto& module : _modules)
+    {
+        //look at all other modules
+        for(auto& itr : _modules)
+        {
+            //don't check against our module
+            if(module->ID != itr->ID)
+            {
+                //loop through each required variable of our current module
+                for(auto& depend_var : *(module->depends()) ) 
+                {
+                    auto i = std::find(itr->provides()->begin(), itr->provides()->end(), depend_var);
+                    if(i != itr->provides()->end()) //modules itr provides the variable we are looking for
+                    {
+                        boost::add_edge(module->IDnum,itr->IDnum,g);
+                    }
+                }
+            }
+        }
+    }
+    
+    typedef std::list<Vertex> MakeOrder;
+    MakeOrder make_order;
+    
+    boost::topological_sort(g, std::front_inserter(make_order));
+    std::cout << "make ordering: ";
+    for (auto& i : make_order) 
+    {
+//        std::cout << _modules.at(*i)->ID << " ";
+        LOG_DEBUG << _modules.at(i)->ID << " ";
+    }
+    
 }
 
 void core::run()

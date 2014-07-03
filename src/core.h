@@ -5,6 +5,12 @@
 #include <fstream>
 #include <vector>
 #include <errno.h>
+#include <utility> // std::pair
+
+//graph
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/topological_sort.hpp>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
@@ -24,6 +30,14 @@
 #include "interp_rh.hpp"
 #include "timer.hpp"
 #include "global.hpp"
+
+
+typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, 
+      boost::property<boost::vertex_color_t, boost::default_color_type>
+    > Graph;
+
+typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
+typedef std::pair<int, int> Edge;
 
 /// The main model core
 /**
@@ -100,7 +114,11 @@ private:
     
     boost::shared_ptr<global> _global;
     
+    //calculates the order modules are to be run in
+    void _determine_module_dep();
+    
     
 };
+
 
 

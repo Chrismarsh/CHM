@@ -88,8 +88,8 @@ double LLRA_rh_var::lower(mesh_elem& m, boost::shared_ptr<station> s, boost::sha
     double a = 611.21;
     double b = 17.502;
     double c = 240.97;
-    double temp = s->now().get(TAIR);
-    double rh = s->now().get(RH);
+    double temp = s->now().get(variables::Tair);
+    double rh = s->now().get(variables::RH);
     
     //because boom otherwise
     if (rh <= 0.0)
@@ -122,7 +122,7 @@ double LLRA_rh_var::raise(double value, mesh_elem& m, boost::shared_ptr<global> 
     double dewPointLapseRate = lambda * c / b;
     double Td = value - (-dewPointLapseRate)*(0 - m.get_z());
     double e = a * exp((b * Td) / (c + Td));
-    double temp = m.get_face_data(TAIR);
+    double temp = m.get_face_data(variables::Tair);
     double es = a * exp((b * temp) / (c + temp));
 
     //RH value replaces Tdew value

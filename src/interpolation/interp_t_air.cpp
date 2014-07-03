@@ -28,7 +28,7 @@ void interp_t_air::operator()(std::string method, mesh_elem& m, station_list& st
     
     interp_2d interp;
     double tair = interp("spline",m,stations,visitor,global_param);
-    m.add_face_data(TAIR,tair);
+    m.add_face_data(variables::Tair,tair);
 
 }
 
@@ -41,7 +41,7 @@ double LLRA_const::lower(mesh_elem& m, boost::shared_ptr<station>  s, boost::sha
 {
 
     double lapse_rate = 0.0065;
-    double v = s->now().get(TAIR) - lapse_rate * (0.0 - s->get_elevation());
+    double v = s->now().get(variables::Tair) - lapse_rate * (0.0 - s->get_elevation());
    
    return v;
     
@@ -107,7 +107,7 @@ double LLRA_var::lower(mesh_elem& m, boost::shared_ptr<station>  s, boost::share
 
 //    LOG_DEBUG << "Month: " << _month;
     double lapse_rate = get_lapse_rate(global_param->month());
-    double v = s->now().get(TAIR) - lapse_rate * (0.0 - s->get_elevation());
+    double v = s->now().get(variables::Tair) - lapse_rate * (0.0 - s->get_elevation());
     
     return v;
 
