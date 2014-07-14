@@ -1,6 +1,8 @@
 #pragma once
 //#include "core.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
+
+#include "variable_map.hpp"
 /**
  * Basin wide paramters such as transmissivity, solar elevation, solar aspec, etc.
  * 
@@ -31,6 +33,8 @@ private:
     
     //updates the internal variables 
     void update();
+    
+    var _variables;
 public:
     
     int year();
@@ -43,5 +47,7 @@ public:
     
     double solar_el();
     double solar_az();
+    
+    std::string get_variable(std::string variable);
     
 };

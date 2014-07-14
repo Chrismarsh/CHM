@@ -10,6 +10,7 @@ public:
     interp_t_air();
     ~interp_t_air();
     void operator()(std::string method, mesh_elem& m, station_list& stations, boost::shared_ptr<global> global_param);
+
 };
 
 class LLRA_const : public interp_visitor

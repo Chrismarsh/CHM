@@ -57,12 +57,15 @@ private:
     std::string _file;
 
 public:
-    class const_iterator;
+    class iterator;
+    
     time_series();
     ~time_series();
     void push_back(double data, std::string variable);
     double get(std::string variable);
     tbb::concurrent_vector<double> get_time_series(std::string variable);
+
+    
     /*
     Function: begin
              Returns an iterator at the start of the observations
@@ -74,12 +77,13 @@ public:
             Never
 
     Returns:   
-            forcing_data::const_iterator - Iterator positioned at the begining of the observation
+            iterator - Iterator positioned at the begining of the observation
      */
-    const_iterator begin();
+    iterator begin();
 
 
-    /*
+   
+        /*
     Function: end
              Returns an iterator of one past the end of the observations
 
@@ -90,9 +94,9 @@ public:
             Never
 
     Returns:   
-            forcing_data::const_iterator - Iterator positioned one past the end of the observations
+            iterator - Iterator positioned one past the end of the observations
      */
-    const_iterator end();
+    iterator end();
 
     /*
     Function: open
@@ -184,56 +188,18 @@ public:
     Used to iterate over a forcing_data instance.
     Thread safe.
     Dereference returns a timestep object.
-    Example:
-    >forcing_data obs;
-    >obs.open("Observations.txt");
-    >
-    >forcing_data::const_iterator itr;
-    >
-    >for(itr=obs.begin();itr != obs.end(); itr++)
-    >{	
-    >std::cout << std::endl << (*itr).to_string() << std::endl;		
-    >}
-    See also:
-            <timestep>
      */
-    class const_iterator : public boost::iterator_facade<
-                            const_iterator,
-                            variable,
-                            boost::random_access_traversal_tag,
-                            timestep> 
-    {
-    public:
-        const_iterator();
-        const_iterator(const const_iterator& src);
-        ~const_iterator();
-        const_iterator& operator=(const const_iterator& rhs);
-    private:
-        //the following satisfies the reqs for a boost::facade bidirectional iterator
-        friend class boost::iterator_core_access;
-        friend class time_series;
-
-        const timestep& dereference() const;
-        bool equal(const_iterator const& other) const;
-        void increment();
-        void decrement();
-
-        //iterators for the current step
-        timestep _currentStep;
-
-    };
-
     class iterator : public boost::iterator_facade<
                             iterator,
                             variable,
-                            boost::random_access_traversal_tag,
+                            boost::bidirectional_traversal_tag,
                             timestep> 
     {
     public:
         iterator();
-        iterator(const const_iterator& src);
+        iterator(const iterator& src);
         ~iterator();
-        iterator& operator=(const const_iterator& rhs);
+        iterator& operator=(const iterator& rhs);
     private:
         //the following satisfies the reqs for a boost::facade bidirectional iterator
         friend class boost::iterator_core_access;
@@ -248,7 +214,5 @@ public:
         timestep _currentStep;
 
     };
-
-
 
 };

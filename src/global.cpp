@@ -140,3 +140,10 @@ void global::solar_el_az()
     _solar_az = Az;
     _solar_el = El;
 }
+
+
+std::string global::get_variable(std::string variable)
+{
+    return _variables(variable);
+    
+}

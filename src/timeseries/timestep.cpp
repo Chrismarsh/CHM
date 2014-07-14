@@ -5,8 +5,8 @@
 timestep::timestep(const timestep& src)
 {
    
-    _itrs = const_itr_map(src._itrs);
-    _date_itr = date_variable::const_iterator(src._date_itr);
+    _itrs = itr_map(src._itrs);
+    _date_itr = date_variable::iterator(src._date_itr);
 }
 
 timestep::timestep()
@@ -23,7 +23,7 @@ std::string timestep::to_string()
 {
     std::string s;
 
-    for (timestep::const_itr_map::const_iterator itr = _itrs.begin(); itr != _itrs.end(); itr++)
+    for (timestep::itr_map::const_iterator itr = _itrs.begin(); itr != _itrs.end(); itr++)
     {
         s += boost::lexical_cast<std::string>(*(itr->second)) + std::string("\t");
     }

@@ -59,6 +59,7 @@ set(CHM_SRCS
         global.cpp
         station.cpp
         timer.cpp
+        variable_map.cpp
         
         mesh/mesh.cpp
         mesh/bounding_rect.cpp

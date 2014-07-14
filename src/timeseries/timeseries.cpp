@@ -297,15 +297,17 @@ bool time_series::is_open()
 
 }
 
-time_series::const_iterator time_series::begin()
+
+//iterator 
+time_series::iterator time_series::begin()
 {
-    const_iterator step;
+    iterator step;
     //build a list of all the headers
     //unknown order
 
     for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
-        timestep::const_itr_map::accessor a;
+        timestep::itr_map::accessor a;
         //create the keyname
         if (!step._currentStep._itrs.insert(a, itr->first))
         {
@@ -324,15 +326,16 @@ time_series::const_iterator time_series::begin()
 
 }
 
-time_series::const_iterator time_series::end()
+
+time_series::iterator time_series::end()
 {
-    const_iterator step;
+    iterator step;
     //build a list of all the headers
     //unknown order
 
     for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
-        timestep::const_itr_map::accessor a;
+        timestep::itr_map::accessor a;
 
         if (!step._currentStep._itrs.insert(a, itr->first))
         {
@@ -348,12 +351,12 @@ time_series::const_iterator time_series::end()
 }
 
 
-const timestep& time_series::const_iterator::dereference() const
+const timestep& time_series::iterator::dereference() const
 {
     return _currentStep;
 }
 
-bool time_series::const_iterator::equal(const_iterator const& other) const
+bool time_series::iterator::equal(iterator const& other) const
 {
     bool isEqual = false;
 
@@ -369,11 +372,11 @@ bool time_series::const_iterator::equal(const_iterator const& other) const
     std::string *thisHeaders = new std::string[_currentStep._itrs.size()];
     std::string *otherHeaders = new std::string[_currentStep._itrs.size()];
 
-    variable::const_iterator *thisIters = new variable::const_iterator[_currentStep._itrs.size()];
-    variable::const_iterator *otherIters = new variable::const_iterator[_currentStep._itrs.size()];
+    variable::iterator *thisIters = new variable::iterator[_currentStep._itrs.size()];
+    variable::iterator *otherIters = new variable::iterator[_currentStep._itrs.size()];
 
     //this' headers and iters
-    for (timestep::const_itr_map::const_iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
+    for (timestep::itr_map::const_iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
     {
         thisHeaders[i] = itr->first;
         thisIters[i] = itr->second; //iterator
@@ -382,7 +385,7 @@ bool time_series::const_iterator::equal(const_iterator const& other) const
 
     i = 0;
     //other's headers and iters
-    for (timestep::const_itr_map::const_iterator itr = other._currentStep._itrs.begin(); itr != other._currentStep._itrs.end(); itr++)
+    for (timestep::itr_map::const_iterator itr = other._currentStep._itrs.begin(); itr != other._currentStep._itrs.end(); itr++)
     {
         otherHeaders[i] = itr->first; //key
         otherIters[i] = itr->second; //iterator
@@ -410,16 +413,16 @@ bool time_series::const_iterator::equal(const_iterator const& other) const
 
 }
 
-void time_series::const_iterator::increment()
+void time_series::iterator::increment()
 {
     //walks the map locking each node so that the increment can happen
     //walk order is not guaranteed
     unsigned int size = _currentStep._itrs.size();
     std::string *headers = new std::string[size];
-    timestep::const_itr_map::accessor *accesors = new timestep::const_itr_map::accessor[size];
+    timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
     int i = 0;
 
-    for (timestep::const_itr_map::iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
+    for (timestep::itr_map::iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
     {
         _currentStep._itrs.find(accesors[i], itr->first);
         (accesors[i]->second)++;     
@@ -435,16 +438,16 @@ void time_series::const_iterator::increment()
 
 }
 
-void time_series::const_iterator::decrement()
+void time_series::iterator::decrement()
 {
     //walks the map locking each node so that the increment can happen
     //walk order is not guaranteed
     unsigned int size = _currentStep._itrs.size();
     std::string *headers = new std::string[size];
-    timestep::const_itr_map::accessor *accesors = new timestep::const_itr_map::accessor[size];
+    timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
     int i = 0;
 
-    for (timestep::const_itr_map::iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
+    for (timestep::itr_map::iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
     {
         _currentStep._itrs.find(accesors[i], itr->first);
         (accesors[i]->second)--;
@@ -457,22 +460,22 @@ void time_series::const_iterator::decrement()
 
 }
 
-time_series::const_iterator::const_iterator()
+time_series::iterator::iterator()
 {
 
 }
 
-time_series::const_iterator::const_iterator(const const_iterator& src)
+time_series::iterator::iterator(const iterator& src)
 {
     _currentStep = timestep(src._currentStep);
 }
 
-time_series::const_iterator::~const_iterator()
+time_series::iterator::~iterator()
 {
 
 }
 
-time_series::const_iterator& time_series::const_iterator::operator=(const time_series::const_iterator& rhs)
+time_series::iterator& time_series::iterator::operator=(const time_series::iterator& rhs)
 {
     if (this == &rhs)
         return (*this);

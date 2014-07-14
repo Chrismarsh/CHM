@@ -29,12 +29,12 @@ private:
     typedef tbb::concurrent_vector< double > variable; 
     typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_variable; 
 
-    typedef tbb::concurrent_hash_map<std::string, variable::const_iterator, crc_hash_compare> const_itr_map;
+    typedef tbb::concurrent_hash_map<std::string, variable::iterator, crc_hash_compare> itr_map;
 
     //holds the iterators for the current timestep. 
     //these are iterators into each vector in the variable hashmap
-    const_itr_map _itrs; 
-    date_variable::const_iterator _date_itr;
+    itr_map _itrs; 
+    date_variable::iterator _date_itr;
 
     
 public:
@@ -186,7 +186,7 @@ public:
     double get(std::string varName) 
     {
         
-        const_itr_map::const_accessor a;
+        itr_map::const_accessor a;
         if (!_itrs.find(a, varName))
             BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
 

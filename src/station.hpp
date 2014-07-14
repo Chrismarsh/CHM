@@ -209,7 +209,7 @@ friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 private:
         std::string _ID;
         time_series* _obs;
-        time_series::const_iterator _itr;
+        time_series::iterator _itr;
         unsigned int _x;
         unsigned int _y;
         float _z;

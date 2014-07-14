@@ -319,6 +319,9 @@ void core::read_config_file(std::string file)
 
     LOG_DEBUG << "Finished initialization";
     
+    LOG_DEBUG << "Init variables mapping";
+    _global->_variables.init_from_file("Un-init path");
+    
     LOG_DEBUG << "Determining module dependencies";
     _determine_module_dep();
 
@@ -360,9 +363,30 @@ void core::_determine_module_dep()
     std::cout << "make ordering: ";
     for (auto& i : make_order) 
     {
-//        std::cout << _modules.at(*i)->ID << " ";
         LOG_DEBUG << _modules.at(i)->ID << " ";
     }
+    
+    // Parallel compilation ordering
+    std::vector<int> time(size, 0);
+    for (auto i = make_order.begin(); i != make_order.end(); ++i) 
+    {    
+      // Walk through the in_edges an calculate the maximum time.
+      if (boost::in_degree (*i, g) > 0) 
+      {
+        Graph::in_edge_iterator j, j_end;
+        int maxdist=0;
+        // Through the order from topological sort, we are sure that every 
+        // time we are using here is already initialized.
+        for (boost::tie(j, j_end) = boost::in_edges(*i, g); j != j_end; ++j)
+          maxdist=(std::max)(time[boost::source(*j, g)], maxdist);
+        time[*i]=maxdist+1;
+      }
+    }
+    boost::graph_traits<Graph>::vertex_iterator i, iend;
+      for (boost::tie(i,iend) = boost::vertices(g); i != iend; ++i)
+      {
+        LOG_DEBUG << "time_slot[" << _modules.at(*i)->ID << "] = " << time[*i] << std::endl;
+      }
     
 }
 
