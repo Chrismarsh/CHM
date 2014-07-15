@@ -340,16 +340,20 @@ void core::_determine_module_dep()
         //look at all other modules
         for(auto& itr : _modules)
         {
+            _module_provided_variable_list.insert(itr->provides()->begin(), itr->provides()->end());
+            
             //don't check against our module
             if(module->ID != itr->ID)
             {
                 //loop through each required variable of our current module
                 for(auto& depend_var : *(module->depends()) ) 
                 {
+                    
                     auto i = std::find(itr->provides()->begin(), itr->provides()->end(), depend_var);
                     if(i != itr->provides()->end()) //modules itr provides the variable we are looking for
                     {
                         boost::add_edge(module->IDnum,itr->IDnum,g);
+                        
                     }
                 }
             }
@@ -388,12 +392,38 @@ void core::_determine_module_dep()
         LOG_DEBUG << "time_slot[" << _modules.at(*i)->ID << "] = " << time[*i] << std::endl;
       }
     
+    for(int i = 0; i<_stations.size();  i++)
+    {    
+        auto vars = _stations.at(i)->list_variables();
+        _module_provided_variable_list.insert(vars.begin(),vars.end());
+    }
+
+    LOG_DEBUG << "List of all provided variables: ";
+    for(auto itr:_module_provided_variable_list)
+    {
+        LOG_DEBUG << itr << " ";
+    }
+    
+    LOG_DEBUG << "Initializing and allocating memory for timeseries";
+    #pragma omp parallel for
+    for(size_t i=0;
+        //this assumes that all the meshes are the same size
+        i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
+        i++)
+    {
+        //current mesh element
+        auto& m = (*_mesh)(i);
+        m.init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
+                            _stations.at(0)->get_date_timeseries, /*take the first station, later checks ensure all the stations' timeseries match*/
+                            _stations.at(0)->get_timeseries_size()); /*length of all the vectors to initialize*/
+    }
+            
 }
 
 void core::run()
 {
-
     LOG_DEBUG << "Entering main loop";
+    
     
     timer c;
     c.tic();
@@ -408,7 +438,7 @@ void core::run()
         //ensure all the stations are at the same timestep
         boost::posix_time::ptime t;
         t = _stations.at(0)->now().get_posix(); //get first stations time
-        for(int i = 1;//on purpose to skip first 1
+        for(int i = 1;//on purpose to skip first station
               i<_stations.size();
                 i++)
         {
@@ -419,10 +449,13 @@ void core::run()
             }
         }
         
+        //start date
         _global->_current_date = _stations.at(0)->now().get_posix();
+        
+        //calculate global, e.g. solar position
         _global->update();
         
-        
+
         LOG_DEBUG << "Interpolating at timestep: " << _global->posix_time();
         
         //iterate over all the mesh elements
@@ -438,6 +471,9 @@ void core::run()
             //interpolate the station data to the current element
             interp("LLRA_var", m, _stations,_global);
             irh("LLRA_rh_var", m, _stations,_global); 
+            
+            //this triangle needs to be advanced to the next timestep
+            m.next();
             
         }
         
@@ -455,6 +491,19 @@ void core::run()
     {
         itr->reset_itrs();
     }
+    
+    //reset the iterators for all mesh timeseries
+    #pragma omp parallel for
+    for(size_t i=0;
+            //this assumes that all the meshes are the same size
+            i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
+            i++)
+    {
+        //current mesh element
+        auto& m = (*_mesh)(i);
+        m.reset_to_begining();
+    }
+            
     
     done = false;
     while(!done)

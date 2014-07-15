@@ -204,6 +204,13 @@ public:
     
     void reset_itrs();
     
+    std::vector<std::string> list_variables();
+    
+    time_series::date_vec get_date_timeseries();
+    
+    //returns the length of the vectors
+    int get_timeseries_size();
+    
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:
@@ -213,6 +220,7 @@ private:
         unsigned int _x;
         unsigned int _y;
         float _z;
+   
 };
 
 

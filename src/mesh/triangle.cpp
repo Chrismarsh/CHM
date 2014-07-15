@@ -19,17 +19,18 @@
 
 triangle::triangle( point vertex1, point vertex2, point vertex3, size_t cur_rec_depth/*=1*/)
 {
-	m_cur_rec_depth = cur_rec_depth;
- 	m_sub_tri = NULL;
-	set_vertex_values(vertex1,vertex2, vertex3);
+    m_cur_rec_depth = cur_rec_depth;
+    m_sub_tri = NULL;
+    set_vertex_values(vertex1,vertex2, vertex3);
 
-	radiation_dir = 0.0;
-	radiation_diff = 0.0;
-	shadow = 0.0;
-	z_prime = 0.0;
+    radiation_dir = 0.0;
+    radiation_diff = 0.0;
+    shadow = 0.0;
+    z_prime = 0.0;
 
-	m_slope = 0.0;
-	m_azimuth = 0.0;
+    m_slope = 0.0;
+    m_azimuth = 0.0;
+
 
 }
 
@@ -47,15 +48,25 @@ triangle::triangle(size_t cur_rec_depth)
 
 	m_slope = 0.0;
 	m_azimuth = 0.0;
+
 }
 
-tbb::concurrent_vector<double> triangle::get_face_time_series(std::string ID)
+void triangle::init_time_series(std::set<std::string> variables, int size)
+{
+    _data.init(variables,size);
+    _itr = _data.begin();
+//    LOG_DEBUG << _itr->get("t");
+            
+}
+
+
+time_series::variable_vec triangle::get_face_time_series(std::string ID)
 {
     return _data.get_time_series(ID);
 }
 bool triangle::contains( point xy )
 {
-	return contains(xy.x,xy.y);
+    return contains(xy.x,xy.y);
 }
 
 double triangle::get_x()
@@ -71,6 +82,15 @@ double triangle::get_z()
     return center.z;
 }     
 
+void triangle::next()
+{
+    ++_itr;
+}
+
+void triangle::reset_to_begining()
+{
+    _itr = _data.begin();
+}
 
 void triangle::set_vertex_values( point vertex1, point vertex2, point vertex3)
 {
@@ -108,14 +128,15 @@ void triangle::set_vertex_values( point vertex1, point vertex2, point vertex3)
 
 void triangle::add_face_data(std::string ID, double data)
 {
-    _data.push_back(data,ID);
+    _itr->set(ID, data);
+//    _data.push_back(data,ID);
 
 }
 
 double triangle::get_face_data(std::string ID)
 {
-   
-    return _data.get(ID);
+    return _itr->get(ID);
+//    return _data.get(ID);
 
 }
 

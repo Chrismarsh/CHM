@@ -8,19 +8,41 @@ void time_series::push_back(double data, std::string variable)
     _variables.insert(a, variable);
     a->second.push_back(data);
 }
-
-double time_series::get(std::string variable)
+void time_series::init(std::set<std::string> variables, date_vec datetime,  int size)
 {
-    ts_hashmap::const_accessor a;
-    if(!_variables.find(a, variable))
-    {
-        BOOST_THROW_EXCEPTION(forcing_error()
-                                << errstr_info("Unable to find " + variable));
-    }   
-    return a->second.back();
+   for (auto& v: variables)
+   {
+       ts_hashmap::accessor a;
+       _variables.insert(a,v);
+   }
+
+   //preallocate all the memory required
+   for (auto& itr : _variables)
+   {
+/    itr.second.resize(size);
+//       for(int i = 0; i < size; i++)
+//            itr.second.push_back(3.14159);
+   }
+
+   //setup date vector
+   _date_vec = datetime;
 }
 
-tbb::concurrent_vector<double> time_series::get_time_series(std::string variable)
+ date_dec time_series::get_date_timeseries()
+ {
+     return _date_vec;
+ }
+std::vector<std::string> time_series::list_variables()
+{
+    std::vector<std::string> vars;
+    for(auto& itr : _variables)
+    {
+        vars.push_back(itr.first);
+    }
+    
+    return vars;
+}
+time_series::variable_vec time_series::get_time_series(std::string variable)
 {
     ts_hashmap::const_accessor a;
     if(!_variables.find(a, variable))
@@ -178,6 +200,7 @@ void time_series::open(std::string path)
 
     _isOpen = true;
     _file = path;
+    _timeseries_size = lines;
 
     //check to make sure what we have read in makes sense
     //Check for:
@@ -230,6 +253,11 @@ void time_series::open(std::string path)
 
 }
 
+int time_series::get_timeseries_size()
+{
+    return _timeseries_size;
+}
+
 std::string time_series::get_opened_file()
 {
     return _file;
@@ -240,7 +268,9 @@ time_series::time_series()
     _cols = 0;
     _rows = 0;
     _isOpen = false;
+    _timeseries_size=0;
 }
+
 
 time_series::~time_series()
 {
@@ -263,7 +293,7 @@ void time_series::to_file(std::string file)
     //unknown order
     int i = 0;
     out << "Date\t";
-    variable::const_iterator *tItr = new variable::const_iterator[_variables.size()];
+    variable_vec::const_iterator *tItr = new variable_vec::const_iterator[_variables.size()];
     for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
         headerItems[i] = itr->first;
@@ -297,31 +327,44 @@ bool time_series::is_open()
 
 }
 
-
-//iterator 
+//iterator implementation
+//------------------------
 time_series::iterator time_series::begin()
 {
     iterator step;
-    //build a list of all the headers
-    //unknown order
 
-    for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
+    //iterate over the map of vectors and build a list of all the variable names
+    //unknown order
+    for (auto& itr : _variables)
     {
+        //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
-        //create the keyname
-        if (!step._currentStep._itrs.insert(a, itr->first))
+        //create the keyname for this variable and store the iterator
+        if (!step._currentStep._itrs.insert(a, itr.first))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
-                    << errstr_info("Failed to insert " + itr->first)
+                    << errstr_info("Failed to insert " + itr.first)
                     );
         }
         
         //insert the iterator
-        a->second = itr->second.begin();
+        a->second = itr.second.begin();
     }
 
+    //set the date vector to be the begining of the internal data vector
     step._currentStep._date_itr = _date_vec.begin();
 
+//    for (auto& itr : _variables)
+//   {
+//       LOG_DEBUG << itr.first << ":";
+//       for(auto& jtr : itr.second)
+//       {
+//           LOG_DEBUG << boost::lexical_cast<std::string>(jtr);
+//       }
+//       
+//   }
+   
+//    LOG_DEBUG << step->get("t");
     return step;
 
 }
@@ -330,20 +373,19 @@ time_series::iterator time_series::begin()
 time_series::iterator time_series::end()
 {
     iterator step;
-    //build a list of all the headers
-    //unknown order
-
-    for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
+    //loop over the variable map and save the iterator to the end
+    //unknown order that'll get the variables in.
+    for (auto& itr : _variables)
     {
         timestep::itr_map::accessor a;
 
-        if (!step._currentStep._itrs.insert(a, itr->first))
+        if (!step._currentStep._itrs.insert(a, itr.first))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
-                    << errstr_info("Failed to insert " + itr->first)
+                    << errstr_info("Failed to insert " + itr.first)
                     );
         }
-        a->second = itr->second.end();
+        a->second = itr.second.end();
 
     }
     step._currentStep._date_itr = _date_vec.end();
@@ -360,54 +402,22 @@ bool time_series::iterator::equal(iterator const& other) const
 {
     bool isEqual = false;
 
-    //different sizes
+    //different sizes? try to bail early
     if (_currentStep._itrs.size() != other._currentStep._itrs.size())
     {
         return false;
     }
     
-   
-    unsigned int i = 0;
-
-    std::string *thisHeaders = new std::string[_currentStep._itrs.size()];
-    std::string *otherHeaders = new std::string[_currentStep._itrs.size()];
-
-    variable::iterator *thisIters = new variable::iterator[_currentStep._itrs.size()];
-    variable::iterator *otherIters = new variable::iterator[_currentStep._itrs.size()];
-
-    //this' headers and iters
-    for (timestep::itr_map::const_iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
+    //no point checking headers as the order built is undefined
+    //check each iterator
+    for (auto& itr : _currentStep._itrs)
     {
-        thisHeaders[i] = itr->first;
-        thisIters[i] = itr->second; //iterator
-        i++;
-    }
-
-    i = 0;
-    //other's headers and iters
-    for (timestep::itr_map::const_iterator itr = other._currentStep._itrs.begin(); itr != other._currentStep._itrs.end(); itr++)
-    {
-        otherHeaders[i] = itr->first; //key
-        otherIters[i] = itr->second; //iterator
-        i++;
-    }
-
-    for (i = 0; i < _currentStep._itrs.size(); i++)
-    {
-        for (unsigned int j = 0; j < _currentStep._itrs.size(); j++)
+        for (auto& jtr : other._currentStep._itrs)
         {
-            if (thisHeaders[i] == otherHeaders[j])
-            {
-                if (thisIters[i] == otherIters[j])
-                    isEqual = true;
-            }
+            if (itr.second == jtr.second)
+                isEqual = true;
         }
     }
-
-    delete[] thisHeaders;
-    delete[] otherHeaders;
-    delete[] thisIters;
-    delete[] otherIters;
 
     return isEqual;
 
@@ -422,9 +432,9 @@ void time_series::iterator::increment()
     timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
     int i = 0;
 
-    for (timestep::itr_map::iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
+    for (auto& itr : _currentStep._itrs)
     {
-        _currentStep._itrs.find(accesors[i], itr->first);
+        _currentStep._itrs.find(accesors[i], itr.first);
         (accesors[i]->second)++;     
         i++;
     }
@@ -433,9 +443,6 @@ void time_series::iterator::increment()
 
     delete[] headers;
     delete[] accesors;
-    
-   
-
 }
 
 void time_series::iterator::decrement()
@@ -447,9 +454,9 @@ void time_series::iterator::decrement()
     timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
     int i = 0;
 
-    for (timestep::itr_map::iterator itr = _currentStep._itrs.begin(); itr != _currentStep._itrs.end(); itr++)
+    for (auto& itr : _currentStep._itrs)
     {
-        _currentStep._itrs.find(accesors[i], itr->first);
+        _currentStep._itrs.find(accesors[i], itr.first);
         (accesors[i]->second)--;
         
         i++;
@@ -482,4 +489,3 @@ time_series::iterator& time_series::iterator::operator=(const time_series::itera
     _currentStep = timestep(rhs._currentStep);
     return *this;
 }
-

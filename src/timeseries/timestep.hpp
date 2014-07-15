@@ -5,19 +5,16 @@
 
 #include <tbb/concurrent_hash_map.h>
 #include <tbb/concurrent_vector.h>
-
+#include <vector>
 #include "exception.hpp"
 #include "variable_map.hpp"
 #include "crc_hash_compare.hpp"
+#include "logger.h"
+
 /*
         Class: timestep
-        A given time step. Returned from dereferencing a forcing_data::const_iterator. Not to be directly instantiated. 
-        Cannot directly modify the observation data
+        A given time step. 
 
-        Example:
-        >forcing_data::const_iterator itr;
-        >[...]
-        >(*itr).get<std::string>("Date")
  */
 class timestep 
 {
@@ -26,10 +23,10 @@ private:
     
     //two different. boost::variant solves this, but is very slow 
     // needs to be either a boost::posix_time or double, and is almost always a double
-    typedef tbb::concurrent_vector< double > variable; 
+    typedef tbb::concurrent_vector< double > variable_vec; 
     typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_variable; 
 
-    typedef tbb::concurrent_hash_map<std::string, variable::iterator, crc_hash_compare> itr_map;
+    typedef tbb::concurrent_hash_map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
 
     //holds the iterators for the current timestep. 
     //these are iterators into each vector in the variable hashmap
@@ -183,18 +180,9 @@ public:
     Returns:   
     boost::T - Value of the variable at the current timestep
      */
-    double get(std::string varName) 
-    {
-        
-        itr_map::const_accessor a;
-        if (!_itrs.find(a, varName))
-            BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
-
-        double out = a->second[0];
-        
-        
-        return out;
-    }
+    double get(std::string varName) ;
+    
+    void set(std::string varName, double value);
 
 
 };

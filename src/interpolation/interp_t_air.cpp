@@ -109,6 +109,7 @@ double LLRA_var::lower(mesh_elem& m, boost::shared_ptr<station>  s, boost::share
     double lapse_rate = get_lapse_rate(global_param->month());
     double v = s->now().get(global_param->get_variable("Tair")) - lapse_rate * (0.0 - s->get_elevation());
     
+
     return v;
 
 }
@@ -118,6 +119,7 @@ double LLRA_var::raise(double value, mesh_elem& m, boost::shared_ptr<global> glo
     double lapse_rate = get_lapse_rate(global_param->month());
 
     double v =  value + lapse_rate * (0.0 - m.get_z());
+
     return v;
 
 }

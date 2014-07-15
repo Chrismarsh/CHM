@@ -6,6 +6,7 @@
 #include <vector>
 #include <errno.h>
 #include <utility> // std::pair
+#include <set>
 
 //graph
 #include <boost/graph/graph_traits.hpp>
@@ -118,7 +119,9 @@ private:
     //calculates the order modules are to be run in
     void _determine_module_dep();
     
-    
+        
+    //holds a unique list of all variables provided by all the modules;
+    std::set<std::string> _module_provided_variable_list;
     
 };
 

@@ -22,49 +22,42 @@
 #include "logger.h"
 #include "timestep.hpp"
 #include "crc_hash_compare.hpp"
+
+
+    
 /*
 Class: forcing_data
         Holds the meterological data.
-        forcing_data classes must currently not be copied or assigned from other instances.
+        must currently not be copied or assigned from other instances.
  */
 class time_series : boost::noncopyable 
 {
-private:
-
-
-    //typedefs must go here after hashcompare decl
-
-        //two different. boost::variant solves this, but is very slow 
-    // needs to be either a boost::posix_time or double, and is almost always a double
-    typedef tbb::concurrent_vector< double > variable; 
-    typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_variable; 
-
-    typedef tbb::concurrent_hash_map<std::string, variable, crc_hash_compare> ts_hashmap;
-
-
-    // This is a hashmap interface, vector back end
-    // "var1"        |     "var2"     |     "var3"   |      
-    // ------------------------------------------------      
-    //      [...]    |      [...]     |      [...]   |
-    //    vector 1   |     vector 2   |     vector 3 |
-    //      [...]    |      [...]     |      [...]   |
-    ts_hashmap _variables;
-    date_variable _date_vec;
-    
-    int _cols;
-    int _rows;
-    bool _isOpen;
-    std::string _file;
 
 public:
-    class iterator;
     
-    time_series();
-    ~time_series();
-    void push_back(double data, std::string variable);
-    double get(std::string variable);
-    tbb::concurrent_vector<double> get_time_series(std::string variable);
+    //mesh elements need to see these
+    //two different types: boost::variant solves this, but is very slow 
+    // needs to be either a boost::posix_time or double, and is almost always a double
+    typedef tbb::concurrent_vector< double > variable_vec;
+    typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_vec; 
+    
 
+    time_series();
+ 
+    ~time_series();
+    
+
+    
+    variable_vec get_time_series(std::string variable);
+    date_dec get_date_timeseries();
+        typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_vec; 
+    //list of all the variables this timeseries knows about
+    std::vector<std::string> list_variables();
+
+    
+    int get_timeseries_size();
+    
+    void init(std::set<std::string> variables, date_vec datetime, int size);
     
     /*
     Function: begin
@@ -182,37 +175,72 @@ public:
     bool is_open();
 
     std::string get_opened_file();
+    
+    
+private:
+    
 
-    /*
-    Class: const_iterator
-    Used to iterate over a forcing_data instance.
-    Thread safe.
-    Dereference returns a timestep object.
-     */
-    class iterator : public boost::iterator_facade<
-                            iterator,
-                            variable,
-                            boost::bidirectional_traversal_tag,
-                            timestep> 
-    {
-    public:
-        iterator();
-        iterator(const iterator& src);
-        ~iterator();
-        iterator& operator=(const iterator& rhs);
-    private:
-        //the following satisfies the reqs for a boost::facade bidirectional iterator
-        friend class boost::iterator_core_access;
-        friend class time_series;
+ 
+//        typedef std::vector< double > variable_vec; 
 
-        const timestep& dereference() const;
-        bool equal(iterator const& other) const;
-        void increment();
-        void decrement();
 
-        //iterators for the current step
-        timestep _currentStep;
+    typedef tbb::concurrent_hash_map<std::string, variable_vec, crc_hash_compare> ts_hashmap;
 
-    };
+
+    // This is a hashmap interface, vector back end
+    // "var1"        |     "var2"     |     "var3"   |      
+    // ------------------------------------------------      
+    //      [...]    |      [...]     |      [...]   |
+    //    vector 1   |     vector 2   |     vector 3 |
+    //      [...]    |      [...]     |      [...]   |
+    ts_hashmap _variables;
+    date_vec _date_vec;
+    
+    int _cols;
+    int _rows;
+    bool _isOpen;
+    std::string _file;
+    int _timeseries_size;
+
+    
+    //pushes variables back, only useful for reading from a file
+    void push_back(double data, std::string variable);
+
+    
 
 };
+
+
+/* Class: iterator
+ Used to iterate over the timeseries instance.
+ Thread safe.
+ Dereference returns a timestep object.
+  */
+ class time_series::iterator : public boost::iterator_facade<
+                         time_series::iterator,
+                         time_series::variable_vec,
+                         boost::bidirectional_traversal_tag,
+                         timestep> 
+ {
+ public:
+    iterator();
+    iterator(const iterator& src);
+    ~iterator();
+    iterator& operator=(const iterator& rhs);
+ private:
+     //the following satisfies the reqs for a boost::facade bidirectional iterator
+     friend class boost::iterator_core_access;
+     friend class time_series;
+
+     const timestep& dereference() const;
+     bool equal(iterator const& other) const;
+     void increment();
+     void decrement();
+
+     //iterators for the current step
+     timestep _currentStep;
+
+ };
+
+
+    

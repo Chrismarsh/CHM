@@ -18,6 +18,7 @@ station::station( std::string ID, std::string file, unsigned int x, unsigned int
         _y = y;
         _z = elevation;
         _obs = NULL; //initialized in openfile
+
         open(file);
 }
 
@@ -29,6 +30,7 @@ void station::open( std::string file )
         _obs->open(file);
 
         _itr = _obs->begin();
+
     }
     catch(exception_base& e)
     {
@@ -36,6 +38,22 @@ void station::open( std::string file )
         throw;
     }
 }
+
+time_series::date_vec station::get_date_timeseries()
+{
+    return _obs->get_date_timeseries();
+}
+
+int station::get_timeseries_size()
+{
+    return _obs->get_timeseries_size();
+}
+ 
+std::vector<std::string> station::list_variables()
+{
+    return _obs->list_variables();
+}
+
 
 timestep station::now()
 {

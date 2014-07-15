@@ -29,6 +29,7 @@ namespace daily
 //        }
 //        
 //        return mean/counter;
+        return 0;
     }
     
     

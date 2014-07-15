@@ -1,6 +1,7 @@
 #pragma once
 //#include "core.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <string>
 
 #include "variable_map.hpp"
 /**
@@ -11,7 +12,7 @@ class global
 {
      //want to let core modify date time, etc without showing a public interface. 
     //This is because global gets passed to all modules and a rogue module could do something dumb
-    //const doesn't save us
+    //const doesn't save us as we actually do want to modify things
     friend class core;
     
 private:
@@ -35,6 +36,7 @@ private:
     void update();
     
     var _variables;
+
 public:
     
     int year();
@@ -47,6 +49,7 @@ public:
     
     double solar_el();
     double solar_az();
+    
     
     std::string get_variable(std::string variable);
     

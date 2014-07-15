@@ -126,7 +126,7 @@ ELSE(WIN32)
 		)
 
 		#not a symbolic link, so do not need to resolve the symlink
-		if(${sym_link} STREQUAL "")
+		IF("${sym_link}" STREQUAL "")
 			EXECUTE_PROCESS(
 				COMMAND which matlab
 				COMMAND xargs dirname
@@ -134,7 +134,7 @@ ELSE(WIN32)
 				COMMAND xargs echo -n
 				OUTPUT_VARIABLE MATLAB_ROOT
 				)
-		else()
+		ELSE()
 			EXECUTE_PROCESS(
 				COMMAND which matlab
 				COMMAND xargs readlink  
@@ -143,7 +143,7 @@ ELSE(WIN32)
 				COMMAND xargs echo -n
 				OUTPUT_VARIABLE MATLAB_ROOT
 				)
-		endif()
+		ENDIF()
 
 	ENDIF((NOT DEFINED MATLAB_ROOT) 
 	OR ("${MATLAB_ROOT}" STREQUAL ""))

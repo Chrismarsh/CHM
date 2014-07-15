@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <iostream>
+#include <set>
 #include <string>
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -41,111 +42,113 @@
 #include "exception.hpp"
 #include "logger.h"
 #include "crc_hash_compare.hpp"
+#include "global.hpp"
 
 #include "timeseries.hpp"
 
-
-class triangle
+class triangle 
 {
-    
 private:
 
-        
-//        typedef tbb::concurrent_vector< double > ts;
-//        typedef tbb::concurrent_hash_map<std::string, ts ,crc_hash_compare> face_data;
     typedef time_series face_data;
-        
-	//list of the vertexes
-	point m_vertex_list[3];
 
-	//center of the triangle
-	point m_center;
+    //list of the vertexes
+    point m_vertex_list[3];
 
-	//always 4 subtriangles at the moment
-	triangle** m_sub_tri;
+    //center of the triangle
+    point m_center;
 
-	//set the number of sub triangles
-	size_t m_cur_rec_depth;
+    //always 4 subtriangles at the moment
+    triangle** m_sub_tri;
 
-	//surface normal vector
-	arma::vec m_surface_normal;
+    //set the number of sub triangles
+    size_t m_cur_rec_depth;
 
-	//helper functions:
+    //surface normal vector
+    arma::vec m_surface_normal;
 
-	//get the mid point of a line segment
-	point* midpoint(point& p1, point& p2);
-	point  calc_center(triangle* t);
+    //helper functions:
+
+    //get the mid point of a line segment
+    point* midpoint(point& p1, point& p2);
+    point calc_center(triangle* t);
 
 
-	//in radians.
-	double m_slope;
+    //in radians.
+    double m_slope;
 
-	//positive, clockwise, from north
-	double m_azimuth;
-        
+    //positive, clockwise, from north
+    double m_azimuth;
 
-        face_data _data;
-        
+
+    face_data _data;
+    face_data::iterator _itr;
+
 public:
-	//use xyz triples in the vector
-	//store the index like matlab
-	triangle(point vertex1, point vertex2, point vertex3, size_t cur_rec_depth=1);
-	triangle(size_t cur_rec_depth);
+    //use xyz triples in the vector
+    //store the index like matlab
+    triangle(point vertex1, point vertex2, point vertex3, size_t cur_rec_depth = 1);
+    triangle(size_t cur_rec_depth);
 
 
-	/*Setters*/
+    /*Setters*/
 
-	//recomputes the subtriangles
-	void update_subtri();
-	void set_vertex_values( point vertex1, point vertex2, point vertex3);
-	void set_facenormal(arma::vec& normal);
+    //recomputes the subtriangles
+    void update_subtri();
+    void set_vertex_values(point vertex1, point vertex2, point vertex3);
+    void set_facenormal(arma::vec& normal);
 
-	/*Getters*/
+    /*Getters*/
 
-	point get_vertex(size_t vertex);
-	point get_center();
-        double get_x();
-        double get_y();
-        double get_z();
+    point get_vertex(size_t vertex);
+    point get_center();
+    double get_x();
+    double get_y();
+    double get_z();
 
-        
-	double azimuth();
-	double slope();
+    //next timestep
+    void next_();
+    void reset_to_begining();
 
-	void compute_azimuth();
-	void compute_slope();
+    double azimuth();
+    double slope();
 
-	//get the t-th subtriangle
-	triangle& sub_tri(size_t t);
+    void compute_azimuth();
+    void compute_slope();
+
+    //get the t-th subtriangle
+    triangle& sub_tri(size_t t);
 
 
-	bool contains(double x, double y);
-	bool contains(point xy);
-	int intersects(triangle* t);
-	arma::vec get_facenormal();
+    bool contains(double x, double y);
+    bool contains(point xy);
+    int intersects(triangle* t);
+    arma::vec get_facenormal();
 
-        void add_face_data(std::string ID, double data);
-        double get_face_data(std::string ID);
-        tbb::concurrent_vector<double> get_face_time_series(std::string ID);
+    void add_face_data(std::string ID, double data);
+    double get_face_data(std::string ID);
+    time_series::variable_vec get_face_time_series(std::string ID);
+    
+    void init_time_series(std::set<std::string> variables, int size);
 
-	//information for the physical model
-	double radiation_dir;
-	double radiation_diff;
-	double shadow;
-	double z_prime;
-	double area;
-	double cosi;
+    //information for the physical model
+    double radiation_dir;
+    double radiation_diff;
+    double shadow;
+    double z_prime;
+    double area;
+    double cosi;
 
-	point center;
-	point rot_center;
-	//this is the index used by matlab's triangulation
-	//it is [1 .. N] where N is number of triangles
-	//it starts at 1 because Matlab's indexing starts at 1
-	size_t global_id[3];
+    point center;
+    point rot_center;
+    //this is the index used by matlab's triangulation
+    //it is [1 .. N] where N is number of triangles
+    //it starts at 1 because Matlab's indexing starts at 1
+    size_t global_id[3];
 
-	//we are some i-th triangle.
-	int    triangle_id;
-		
+    //we are some i-th triangle.
+    int triangle_id;
+
 
 
 };
