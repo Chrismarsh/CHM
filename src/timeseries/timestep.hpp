@@ -6,36 +6,26 @@
 #include <tbb/concurrent_hash_map.h>
 #include <tbb/concurrent_vector.h>
 #include <vector>
+#include <cstddef>
+
 #include "exception.hpp"
 #include "variable_map.hpp"
 #include "crc_hash_compare.hpp"
 #include "logger.h"
-
 /*
         Class: timestep
         A given time step. 
 
  */
+
 class timestep 
 {
-private:
-    friend class time_series;
-    
+ 
+public:
     //two different. boost::variant solves this, but is very slow 
     // needs to be either a boost::posix_time or double, and is almost always a double
     typedef tbb::concurrent_vector< double > variable_vec; 
     typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_variable; 
-
-    typedef tbb::concurrent_hash_map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
-
-    //holds the iterators for the current timestep. 
-    //these are iterators into each vector in the variable hashmap
-    itr_map _itrs; 
-    date_variable::iterator _date_itr;
-
-    
-public:
-
     /*
     Function: timestep
     Default empty constructor
@@ -182,7 +172,19 @@ public:
      */
     double get(std::string varName) ;
     
+    //returns a copy of the current iterator for this variable. Useful for std algorithms, eg std::max
+    variable_vec::iterator get_itr(std::string varName);
+    
     void set(std::string varName, double value);
 
+    
+private:
+    friend class time_series;
 
+    typedef tbb::concurrent_hash_map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
+
+    //holds the iterators for the current timestep. 
+    //these are iterators into each vector in the variable hashmap
+    itr_map _itrs; 
+    date_variable::iterator _date_itr;
 };

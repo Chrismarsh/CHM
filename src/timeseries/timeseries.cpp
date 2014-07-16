@@ -96,7 +96,7 @@ boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boo
     itr_find = std::find(_date_vec.begin()+dist_start,_date_vec.end(),end_time);
     //get offset from iterator
     int dist_end = std::distance(_date_vec.begin(), itr_find);
-        
+    ++dist_end; //get 1 past where we are going
     iterator end_step;
 
     //iterate over the map of vectors and build a list of all the variable names
@@ -601,4 +601,9 @@ time_series::iterator& time_series::iterator::operator=(const time_series::itera
         return (*this);
     _currentStep = timestep(rhs._currentStep);
     return *this;
+}
+
+std::ptrdiff_t time_series::iterator::distance_to(time_series::iterator const& other) const
+{
+    return std::distance(this->_currentStep._date_itr,other._currentStep._date_itr);
 }

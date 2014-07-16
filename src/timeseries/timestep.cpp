@@ -85,3 +85,14 @@ void timestep::set(std::string varName, double value)
     a->second[0] = value;
 
 }
+
+timestep::variable_vec::iterator timestep::get_itr(std::string varName)
+{
+    itr_map::const_accessor a;
+    if (!_itrs.find(a, varName))
+        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
+
+
+    return a->second;
+
+}

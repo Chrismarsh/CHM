@@ -13,6 +13,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/utility.hpp>
+#include <boost/tuple/tuple.hpp>
 
 
 #include <tbb/concurrent_hash_map.h>
@@ -40,7 +41,7 @@ public:
     //two different types: boost::variant solves this, but is very slow 
     // needs to be either a boost::posix_time or double, and is almost always a double
     typedef tbb::concurrent_vector< double > variable_vec;
-    typedef tbb::concurrent_vector<   > date_vec; 
+    typedef tbb::concurrent_vector< boost::posix_time::ptime  > date_vec; 
     
     class iterator;
     
@@ -161,7 +162,8 @@ public:
      */
     void to_file(std::string file);
 
-    iterator find(boost::posix_time::ptime time, std::string variable);
+    boost::tuple<time_series::iterator,time_series::iterator> range(boost::posix_time::ptime start_time,boost::posix_time::ptime end_time);
+    iterator find(boost::posix_time::ptime time);
 
     /*
     Function: is_open
@@ -181,12 +183,6 @@ public:
     
     
 private:
-    
-
- 
-//        typedef std::vector< double > variable_vec; 
-
-
     typedef tbb::concurrent_hash_map<std::string, variable_vec, crc_hash_compare> ts_hashmap;
 
 
@@ -239,6 +235,7 @@ private:
      bool equal(iterator const& other) const;
      void increment();
      void decrement();
+     std::ptrdiff_t distance_to(iterator const& other) const;
 
      //iterators for the current step
      timestep _currentStep;
