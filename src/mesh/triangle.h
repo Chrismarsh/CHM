@@ -107,7 +107,7 @@ public:
     double get_z();
 
     //next timestep
-    void next_();
+    void next();
     void reset_to_begining();
 
     double azimuth();
@@ -129,7 +129,7 @@ public:
     double get_face_data(std::string ID);
     time_series::variable_vec get_face_time_series(std::string ID);
     
-    void init_time_series(std::set<std::string> variables, int size);
+    void init_time_series(std::set<std::string> variables, time_series::date_vec datetime, int size);
 
     //information for the physical model
     double radiation_dir;

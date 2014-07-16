@@ -41,6 +41,8 @@ public:
     typedef tbb::concurrent_vector< double > variable_vec;
     typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_vec; 
     
+    class iterator;
+    
 
     time_series();
  
@@ -49,8 +51,8 @@ public:
 
     
     variable_vec get_time_series(std::string variable);
-    date_dec get_date_timeseries();
-        typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_vec; 
+    date_vec get_date_timeseries();
+
     //list of all the variables this timeseries knows about
     std::vector<std::string> list_variables();
 

@@ -414,7 +414,7 @@ void core::_determine_module_dep()
         //current mesh element
         auto& m = (*_mesh)(i);
         m.init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
-                            _stations.at(0)->get_date_timeseries, /*take the first station, later checks ensure all the stations' timeseries match*/
+                            _stations.at(0)->get_date_timeseries(), /*take the first station, later checks ensure all the stations' timeseries match*/
                             _stations.at(0)->get_timeseries_size()); /*length of all the vectors to initialize*/
     }
             

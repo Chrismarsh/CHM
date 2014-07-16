@@ -51,9 +51,9 @@ triangle::triangle(size_t cur_rec_depth)
 
 }
 
-void triangle::init_time_series(std::set<std::string> variables, int size)
+void triangle::init_time_series(std::set<std::string> variables, time_series::date_vec  datetime, int size)
 {
-    _data.init(variables,size);
+    _data.init(variables,datetime, size);
     _itr = _data.begin();
 //    LOG_DEBUG << _itr->get("t");
             

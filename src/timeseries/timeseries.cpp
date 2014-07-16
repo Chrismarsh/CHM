@@ -19,7 +19,7 @@ void time_series::init(std::set<std::string> variables, date_vec datetime,  int 
    //preallocate all the memory required
    for (auto& itr : _variables)
    {
-/    itr.second.resize(size);
+    itr.second.resize(size);
 //       for(int i = 0; i < size; i++)
 //            itr.second.push_back(3.14159);
    }
@@ -28,7 +28,7 @@ void time_series::init(std::set<std::string> variables, date_vec datetime,  int 
    _date_vec = datetime;
 }
 
- date_dec time_series::get_date_timeseries()
+ time_series::date_vec time_series::get_date_timeseries()
  {
      return _date_vec;
  }
@@ -419,6 +419,9 @@ bool time_series::iterator::equal(iterator const& other) const
         }
     }
 
+    if (isEqual && !(_currentStep._date_itr == other._currentStep._date_itr))
+        isEqual = false; //negate if the date vectors don't match
+    
     return isEqual;
 
 }
