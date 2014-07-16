@@ -53,6 +53,45 @@ time_series::variable_vec time_series::get_time_series(std::string variable)
     return a->second;
 }
 
+time_series::iterator time_series::find(boost::posix_time::ptime time, std::string variable)
+{
+    //look for our requested timestep
+    auto itr = std::find(_date_vec.begin(),_date_vec.end(),time);
+    if ( itr == _date_vec.end())
+    {
+        BOOST_THROW_EXCEPTION(forcing_timestep_notfound()
+                                << errstr_info("Timestep not found"));
+    }
+    
+    //get offset from iterator
+    int dist = std::distance(_date_vec.begin(), itr);
+    
+    iterator step;
+
+    //iterate over the map of vectors and build a list of all the variable names
+    //unknown order
+    for (auto& itr : _variables)
+    {
+        //itr_map is holding the iterators into each vector
+        timestep::itr_map::accessor a;
+        //create the keyname for this variable and store the iterator
+        if (!step._currentStep._itrs.insert(a, itr.first))
+        {
+            BOOST_THROW_EXCEPTION(forcing_insertion_error()
+                    << errstr_info("Failed to insert " + itr.first)
+                    );
+        }
+        
+        //insert the iterator
+        a->second = itr.second.begin()+dist;
+    }
+
+    //set the date vector to be the begining of the internal data vector
+    step._currentStep._date_itr = _date_vec.begin()+dist;
+    
+    return step;
+}
+
 void time_series::open(std::string path)
 {
     std::fstream file(path.c_str());

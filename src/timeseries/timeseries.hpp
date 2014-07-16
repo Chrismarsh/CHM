@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <ctime>
+#include <algorithm>
 
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 
@@ -39,7 +40,7 @@ public:
     //two different types: boost::variant solves this, but is very slow 
     // needs to be either a boost::posix_time or double, and is almost always a double
     typedef tbb::concurrent_vector< double > variable_vec;
-    typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_vec; 
+    typedef tbb::concurrent_vector<   > date_vec; 
     
     class iterator;
     
@@ -160,7 +161,7 @@ public:
      */
     void to_file(std::string file);
 
-
+    iterator find(boost::posix_time::ptime time, std::string variable);
 
     /*
     Function: is_open
