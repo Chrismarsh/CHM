@@ -399,10 +399,12 @@ void core::_determine_module_dep()
     }
 
     LOG_DEBUG << "List of all provided variables: ";
+    std::string s="";
     for(auto itr:_module_provided_variable_list)
     {
-        LOG_DEBUG << itr << " ";
+      s+= itr + " ";   
     }
+    LOG_DEBUG << s;
     
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
     #pragma omp parallel for
