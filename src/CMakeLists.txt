@@ -2,7 +2,7 @@
 #http://www.cmake.org/cmake/help/v2.8.10/cmake.html#variable:CMAKE_LANG_COMPILER_ID
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -xhost -axsse4.2 -opt-prefetch -std=c++11")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Werror") #-fopenmp
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 -Werror") #-fopenmp
 
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -10,6 +10,15 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -stdlib=libc++")
 endif()
 
+
+
+find_package(OpenMP)
+
+if(OPENMP_FOUND)
+    if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    endif()
+endif()
 
 #sym link /opt/matlab-7sp1 to the real matlab root will make this work properly
 find_package(Matlab REQUIRED)
