@@ -88,8 +88,8 @@ double LLRA_rh_var::lower(mesh_elem& m, boost::shared_ptr<station> s, boost::sha
     double a = 611.21;
     double b = 17.502;
     double c = 240.97;
-    double temp = s->now().get(global_param->get_variable("Tair"));
-    double rh = s->now().get(global_param->get_variable("RH"));
+    double temp = s->get(global_param->get_variable("Tair"));
+    double rh = s->get(global_param->get_variable("RH"));
     
     //because boom otherwise
     if (rh <= 0.0)

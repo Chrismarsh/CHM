@@ -30,7 +30,6 @@ void station::open( std::string file )
         _obs->open(file);
 
         _itr = _obs->begin();
-
     }
     catch(exception_base& e)
     {
@@ -55,11 +54,14 @@ std::vector<std::string> station::list_variables()
 }
 
 
-timestep station::now()
+ timestep station::now() 
 {
-        return *_itr;
+    return *_itr;
 }
-
+double station::get(std::string variable)
+{
+    return _itr->get(variable);
+}
 void station::reset_itrs()
 {
     _itr = _obs->begin();

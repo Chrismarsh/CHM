@@ -85,7 +85,7 @@ public:
     Returns:   
     forcing_data::timestep - The current timestep. See <timestep>
      */
-    timestep now();
+     timestep now() ;
 
 
     /*
@@ -210,6 +210,8 @@ public:
     
     //returns the length of the vectors
     int get_timeseries_size();
+    
+    double get(std::string variable);
     
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
