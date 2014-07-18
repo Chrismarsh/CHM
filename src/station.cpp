@@ -1,6 +1,9 @@
 #include "station.hpp"
 
-
+station::~station()
+{
+    delete _obs;
+}
 
 station::station()
 {

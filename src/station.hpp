@@ -56,6 +56,8 @@ public:
      */
     station(std::string ID, std::string file, unsigned int x, unsigned int y, float elevation);
 
+    ~station();
+    
     /*
     Function: open
     Opens a given met file
