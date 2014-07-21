@@ -45,6 +45,12 @@ find_package(TBB REQUIRED)
 
 find_package(GSL REQUIRED)
 
+find_package(CGAL REQUIRED)
+if(CGAL_FOUND)
+    message(STATUS "Found CGAL")
+endif()
+include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
+
 
 set(JSON_SPIRIT_SRCS
 	json_spirit/json_spirit_reader.cpp 
@@ -114,6 +120,8 @@ set( LIB_FILES
         ${ARMADILLO_LIBRARIES} 
 	${MATLAB_ENG_LIBRARY} 
 	${MATLAB_MX_LIBRARY}  
+        ${CGAL_LIBRARIES}
+        ${CGAL_3RD_PARTY_LIBRARIES}
 )
 
 include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
