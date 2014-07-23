@@ -4,7 +4,7 @@
 #include <string>
 
 #include "station.hpp"
-#include "triangle.h"
+#include "triangulation.h"
 #include "logger.h"
 #include "exception.hpp"
 #include "global.hpp"
@@ -20,10 +20,10 @@ public:
     virtual ~interp_visitor(){};
 
     //is run as a modifier to the data pre interpolation
-    virtual double lower(mesh_elem & m,  boost::shared_ptr<station>  s, boost::shared_ptr<global> global_param)=0;
+    virtual double lower(mesh_elem&  m,  boost::shared_ptr<station>  s, boost::shared_ptr<global> global_param)=0;
 
     //is run as a modifier to the data post interpolation
-    virtual double raise(double value, mesh_elem & m, boost::shared_ptr<global> global_param)=0;
+    virtual double raise(double value, mesh_elem&  m, boost::shared_ptr<global> global_param)=0;
 };
 
 class interp_alg_base

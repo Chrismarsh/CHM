@@ -21,12 +21,14 @@
 #include "logger.h"
 #include "exception.hpp"
 
+#include "triangulation.h"
+
 
 #include "json_spirit.h"
 
 #include "module_factory.hpp"
 #include "station.hpp"
-#include "mesh.hpp"
+
 #include "interp_t_air.hpp"
 #include "interp_rh.hpp"
 #include "timer.hpp"
@@ -105,7 +107,7 @@ private:
     tbb::concurrent_vector< boost::shared_ptr<station> > _stations;
     
     //main mesh object
-    boost::shared_ptr<mesh> _mesh;
+    boost::shared_ptr< triangulation > _mesh;
     
     //matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;

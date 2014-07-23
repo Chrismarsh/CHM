@@ -16,241 +16,167 @@
 
 #include "triangulation.h"
 
-void triangulation::create_delaunay(arma::vec* x, arma::vec* y, arma::vec* z)
+triangulation::triangulation(boost::shared_ptr<maw::matlab_engine> engine)
 {
-    if (m_engine)
-    {
-
-        int num_nodes = x->n_rows;
-
-        mxArray* xy = mxCreateDoubleMatrix(num_nodes, 3, mxREAL);
-        double* ptr = mxGetPr(xy);
-
-        //create temp arrays to send to matlab
-        for (int row = 0; row < num_nodes; row++)
-        {
-            //matlab is col major storage	
-            ptr[row + 0 * num_nodes] = (*x)(row);
-            ptr[row + 1 * num_nodes] = (*y)(row);
-        }
-        m_engine->put("xy", xy);
-        m_engine->evaluate("tri=DelaunayTri(xy(:,1),xy(:,2))");
-        //clean up our temp array
-        mxDestroyArray(xy);
-        xy = NULL;
-        ptr = NULL;
-
-        //change this later to the struct lookup
-        m_engine->evaluate("t=tri.Triangulation");
-        //get our triangulation structure from matlab
-
-        maw::d_mat tri = m_engine->get_double_matrix("t");
-        //	mxArray* tri = m_engine->get("t");
-
-        //will be n * 3
-        // 		const mwSize* size = mxGetDimensions(tri);
-        //  		m_size = size[0]; //first element is the # of rows
-        m_size = tri->n_rows;
-        m_data_size = num_nodes;
-
-        //double* t = mxGetPr(tri);
-
-        for (size_t i = 0; i < m_size; i++)
-        {
-            //col major lookup!!!
-            //get the row index data from the matlab triangulation structure
-            //note: all these indexes will be off by 1 because matlab indexing starts at 1 and not 0
-            int v1 = int((*tri)(i + 0 * m_size));
-            v1 -= 1;
-            int v2 = int((*tri)(i + 1 * m_size));
-            v2 -= 1;
-            int v3 = int((*tri)(i + 2 * m_size));
-            v3 -= 1;
-
-            point vertex1, vertex2, vertex3;
-            vertex1.x = (*x)(v1);
-            vertex1.y = (*y)(v1);
-            vertex1.z = (*z)(v1);
-
-            vertex2.x = (*x)(v2);
-            vertex2.y = (*y)(v2);
-            vertex2.z = (*z)(v2);
-
-            vertex3.x = (*x)(v3);
-            vertex3.y = (*y)(v3);
-            vertex3.z = (*z)(v3);
-
-            m_triangles.push_back(new triangle(vertex1, vertex2, vertex3, 0));
-            m_triangles[i]->global_id[0] = v1 + 1; //+1 for matlab
-            m_triangles[i]->global_id[1] = v2 + 1;
-            m_triangles[i]->global_id[2] = v3 + 1;
-
-            m_triangles[i]->triangle_id = i;
-        }
-
-        //clean up in matlab
-        m_engine->evaluate("clear t xy tri;");
-    }
-    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(m_size) +" triangles";
-}
-
-size_t triangulation::size()
-{
-    return m_size;
-}
-
-triangulation::triangulation(maw::matlab_engine* engine)
-{
-    m_engine = engine;
-    m_size = 0;
-
+    _engine = engine;    
+    _gfx = boost::make_shared<maw::graphics>(_engine.get());
 }
 
 triangulation::~triangulation()
 {
-    for (auto it = m_triangles.begin(); it != m_triangles.end(); it++)
+    _engine = NULL;
+    _gfx = NULL;
+}
+
+
+void triangulation::init(vector x, vector y, vector z)
+{
+    if (!_engine)
     {
-        delete *it;
+        BOOST_THROW_EXCEPTION(mesh_error()
+                << errstr_info("No matlab engine") );
     }
-
-}
-
-triangle& triangulation::operator()(size_t t)
-{
-    return *(m_triangles[t]);
-}
-
-void triangulation::set_vertex_data(arma::mat& data)
-{
-    if (data.n_cols != 3)
-        throw std::runtime_error("Wrong number of columns");
-
-    //loop over all triangles
-
-    for (auto it = m_triangles.begin(); it != m_triangles.end(); ++it)
-    {
-        size_t v1 = (*it)->global_id[0];
-        size_t v2 = (*it)->global_id[1];
-        size_t v3 = (*it)->global_id[2];
-
-        point vertex1, vertex2, vertex3;
-        vertex1.x = data(v1 - 1, 0);
-        vertex1.y = data(v1 - 1, 1);
-        vertex1.z = data(v1 - 1, 2);
-
-        vertex2.x = data(v2 - 1, 0);
-        vertex2.y = data(v2 - 1, 1);
-        vertex2.z = data(v2 - 1, 2);
-
-        vertex3.x = data(v3 - 1, 0);
-        vertex3.y = data(v3 - 1, 1);
-        vertex3.z = data(v3 - 1, 2);
-
-        (*it)->set_vertex_values(vertex1, vertex2, vertex3);
-
-    }
-
-}
-
-void triangulation::compute_face_normals()
-{
-    LOG_DEBUG << "Sending elevation data to matlab";
-    m_engine->put_double_matrix("mxDomain",this->mf_elevation_data());
-    LOG_DEBUG << "Sending triangulation data to matlab";
-    m_engine->put_double_matrix("tri",this->mf_tri_matrix());
-
     
-    m_engine->evaluate("[NormalVx NormalVy NormalVz PosVx PosVy PosVz]=computeNormalVectorTriangulation(mxDomain,tri,'center-cells');");
-    m_engine->evaluate("normals=[NormalVx NormalVy NormalVz];");
-    m_engine->evaluate("center=[PosVx PosVy PosVz]");
-    m_engine->evaluate("clear PosVx PosVy PosVz NormalVx NormalVy NormalVz");
-
-    maw::d_mat normals = m_engine->get_double_matrix("normals");
-    maw::d_mat centers = m_engine->get_double_matrix("center");
-
-    size_t counter = 0;
-    for (auto it = m_triangles.begin(); it != m_triangles.end(); it++)
+//    _mesh = boost::make_shared<Delaunay>();
+    for (size_t i = 0; i<x->size();i++)
     {
-        arma::vec n(3);
-        n(0) = normals->row(counter)(0);
-        n(1) = normals->row(counter)(1);
-        n(2) = normals->row(counter)(2);
-
-        arma::vec c(3);
-        c(0) = centers->row(counter)(0);
-        c(1) = centers->row(counter)(1);
-        c(2) = centers->row(counter)(2);
-
-        (*it)->set_facenormal(n);
-        point p(c(0), c(1), c(2));
-        (*it)->center = p;
-        ++counter;
-    }
-    m_engine->evaluate("clear normals center mxDomain tri");
-    LOG_DEBUG << "Done calculating face normals";
-}
-
-triangle* triangulation::find_containing_triangle(double x, double y)
-{
-    for (std::vector<triangle*>::iterator it = m_triangles.begin(); it != m_triangles.end(); it++)
-    {
-        if ((*it)->contains(x, y))
-            return *it;
-    }
-
-    return NULL;
-}
-
-maw::d_mat triangulation::mf_tri_matrix()
-{
-    maw::d_mat tri(new arma::mat(m_size, 3));
-    size_t i = 0;
-    for (auto it = m_triangles.begin(); it != m_triangles.end(); it++)
-    {
-        (*tri)(i, 0) = (*it)->global_id[0];
-        (*tri)(i, 1) = (*it)->global_id[1];
-        (*tri)(i, 2) = (*it)->global_id[2];
-        i++;
-    }
-
-    return tri;
-}
-
-maw::d_mat triangulation::mf_elevation_data()
-{
-    maw::d_mat data(new arma::mat(m_data_size, 3)); //special case as we actually have *less*
-
-    for (auto& it : m_triangles)
-    {
-
-        (*data)(it->global_id[0] - 1, 0) = it->get_vertex(0).x;
-        (*data)(it->global_id[0] - 1, 1) = it->get_vertex(0).y;
-        (*data)(it->global_id[0] - 1, 2) = it->get_vertex(0).z;
-
-        (*data)(it->global_id[1] - 1, 0) = it->get_vertex(1).x;
-        (*data)(it->global_id[1] - 1, 1) = it->get_vertex(1).y;
-        (*data)(it->global_id[1] - 1, 2) = it->get_vertex(1).z;
-
-        (*data)(it->global_id[2] - 1, 0) = it->get_vertex(2).x;
-        (*data)(it->global_id[2] - 1, 1) = it->get_vertex(2).y;
-        (*data)(it->global_id[2] - 1, 2) = it->get_vertex(2).z;
-    }
-
-    return data;
-}
-
-maw::d_vec triangulation::mf_face_data(std::string ID)
-{
-    maw::d_vec data(new arma::vec(m_size));
-
-    int i = 0;
-    for (auto& it : m_triangles)
-    {
-        double d = it->get_face_data(ID);
-        (*data)(i) = d;
+        Point p( x->at(i),y->at(i),z->at(i));
+        Delaunay::Vertex_handle Vh = this->insert(p);
+        Vh->set_id(i);
         ++i;
-
     }
-
-    return data;
+    
+//    _mesh
+//    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(m_size) +" triangles";
 }
+
+size_t triangulation::size()
+{
+    return this->number_of_faces();
+}
+
+
+
+//mesh_elem triangulation::operator()(size_t t)
+//{
+//    Delaunay::Finite_faces_iterator fit = _mesh->finite_faces_begin();
+//    for(size_t i=0;i<t;i++)
+//        fit++;
+//    
+//    Delaunay::Face_handle face = fit;
+//    return *face;
+//}
+
+void triangulation::set_vertex_data(vector data)
+{
+
+
+}
+
+//triangle* triangulation::find_containing_triangle(double x, double y)
+//{
+////    for (std::vector<triangle*>::iterator it = m_triangles.begin(); it != m_triangles.end(); it++)
+////    {
+////        if ((*it)->contains(x, y))
+////            return *it;
+////    }
+//
+//    return NULL;
+//}
+
+
+
+//maw::d_vec triangulation::mf_face_data(std::string ID)
+//{
+//    maw::d_vec data(new arma::vec(m_size));
+//
+//    int i = 0;
+//    for (auto& it : m_triangles)
+//    {
+//        double d = it->get_face_data(ID);
+//        (*data)(i) = d;
+//        ++i;
+//
+//    }
+//
+//    return data;
+//}
+
+//void triangulation::plot_time_series(double x, double y, std::string ID)
+//{
+//    mesh_elem* m  = _mesh->find_containing_triangle(x,y);
+//    
+//    if(!m)
+//        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
+//    
+//    maw::d_vec v(new arma::vec(m->get_face_time_series(ID).size()));
+//    
+////    v->resize(m->get_face_time_series(ID).size());
+//    
+//    for(size_t i=0; i < v->size(); i++ )
+//    {
+//        (*v)(i) = m->get_face_time_series(ID).at(i);
+//    }
+//    
+//    _engine->put_double_matrix(ID,v);
+//   double handle = _gfx->plot_line(ID);
+//    _gfx->spin_until_close(handle);
+//}
+
+void triangulation::from_file(std::string file)
+{
+    
+}
+void triangulation::plot(std::string ID)
+{
+    LOG_DEBUG << "Sending triangulation to matlab...";
+        
+    maw::d_mat tri(new arma::mat(_size, 3));
+    maw::d_mat xyz(new arma::mat(_size, 3)); 
+    maw::d_mat face(new arma::mat(_size,1));
+    
+    size_t i = 0;
+    
+    for(Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
+      fit != this->finite_faces_end(); ++fit)
+    {
+        Delaunay::Face_handle face = fit;
+ 
+        (*tri)(i, 0) = face->vertex(0)->get_id()+1;
+        (*tri)(i, 1) = face->vertex(1)->get_id()+1;
+        (*tri)(i, 2) = face->vertex(2)->get_id()+1;
+        
+        Delaunay::Triangle t = this->triangle(face);
+        
+        (*xyz)((*tri)(i, 0), 0) = t[0].x();
+        (*xyz)((*tri)(i, 0), 1) = t[0].y();
+        (*xyz)((*tri)(i, 0), 2) = t[0].z();
+
+        (*xyz)((*tri)(i, 1), 0) = t[1].x();
+        (*xyz)((*tri)(i, 1), 1) = t[1].y();
+        (*xyz)((*tri)(i, 1), 2) = t[1].z();
+
+        (*xyz)((*tri)(i, 2), 0) = t[2].x();
+        (*xyz)((*tri)(i, 2), 1) = t[2].y();
+        (*xyz)((*tri)(i, 2), 2) = t[2].z();
+        
+//        double d = it->get_face_data(ID);
+//        (*data)(i) = d;
+//        ++i;
+    }
+    
+
+    LOG_DEBUG << "Sending data to matlab...";
+    _engine->put_double_matrix("tri",tri);
+    _engine->put_double_matrix("elevation_data",xyz);
+    _engine->put_double_matrix("face_data",face);
+    
+    double handle = _gfx->plot_patch("[elevation_data(:,1) elevation_data(:,2) elevation_data(:,3)]","tri","face_data(:)");
+    _gfx->add_title(ID);
+
+    _gfx->spin_until_close(handle);
+//    _engine->evaluate("save lol.mat");
+    _engine->evaluate("clear tri elevation_data face_data");
+}
+
+

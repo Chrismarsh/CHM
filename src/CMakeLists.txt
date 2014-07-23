@@ -59,7 +59,6 @@ set(JSON_SPIRIT_SRCS
  )
 
 set(MODULE_SRCS
-        modules/TestModule.cpp
         modules/solar.cpp
 )
 
@@ -76,9 +75,9 @@ set(CHM_SRCS
         timer.cpp
         variable_map.cpp
         
-        mesh/mesh.cpp
-        mesh/bounding_rect.cpp
-        mesh/triangle.cpp
+#        mesh/mesh.cpp
+#        mesh/bounding_rect.cpp
+#        mesh/triangle.cpp
         mesh/triangulation.cpp
 
         interpolation/interp_2d.cpp
@@ -111,6 +110,8 @@ set (EXT_HEADER_FILES
         ${GSL_INCLUDE_DIRS}
         ${AMRADILLO_INCLUDE_DIR}
         ${MATLAB_INCLUDE_DIR}
+        ${CGAL_INCLUDE_DIRS}
+${CGAL_3RD_PARTY_INCLUDE_DIRS}
     )
 set( LIB_FILES
 	${Boost_LIBRARIES}

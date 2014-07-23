@@ -50,25 +50,22 @@ core::core()
 
     _engine = boost::make_shared<maw::matlab_engine>();
 
-    
+
     _engine->start();
     _engine->set_working_dir();
-   
+
     LOG_DEBUG << "Matlab engine started";
-    
+
     _global = boost::make_shared<global>();
 
     //don't just abort and die
     gsl_set_error_handler_off();
 }
 
-
-
 core::~core()
 {
     LOG_DEBUG << "Terminating";
 }
-
 
 void core::read_config_file(std::string file)
 {
@@ -151,9 +148,9 @@ void core::read_config_file(std::string file)
                 const std::string& ID = pair.value_.get_str();
 
                 LOG_DEBUG << "Module type=" << name << " ID=" << ID;
-                
+
                 boost::shared_ptr<module_base> m(_mfactory.get(ID));
-                
+
                 //internal tracking of module initialization order
                 modnum++;
                 m->IDnum = modnum;
@@ -209,12 +206,12 @@ void core::read_config_file(std::string file)
                 {
                     LOG_INFO << "Unknown forcing type " << name << ", skipping";
                 }
-                
+
             }
         } else if (name == "meshes")
         {
             LOG_DEBUG << "Found meshes section";
-            _mesh = boost::make_shared<mesh>(_engine);
+            _mesh = boost::make_shared<triangulation>(_engine);
             for (auto& jtr : value.get_obj())
             {
                 const json_spirit::Pair& pair = jtr;
@@ -231,7 +228,7 @@ void core::read_config_file(std::string file)
 
                 std::string ID = pair.name_;
                 std::string file = "";
-                
+
                 LOG_DEBUG << "Found mesh " << ID;
 
                 //itr over the mesh paramters
@@ -245,22 +242,21 @@ void core::read_config_file(std::string file)
                     {
                         file = pair.value_.get_str();
                     }
-                    
+
                 }
-                _mesh->add_mesh(file, ID);
+                _mesh->from_file(file);
 
             }
-        }
-        else if (name == "matlab")
+        } else if (name == "matlab")
         {
             LOG_DEBUG << "Found matlab section";
-             //loop over the list of matlab options
+            //loop over the list of matlab options
             for (auto& jtr : value.get_obj())
             {
                 const json_spirit::Pair& pair = jtr;
                 const std::string& name = pair.name_;
                 const json_spirit::Value& value = pair.value_;
-                
+
                 if (name == "mfile_paths")
                 {
                     LOG_DEBUG << "Found " << name;
@@ -269,16 +265,15 @@ void core::read_config_file(std::string file)
                         const json_spirit::Pair& pair = ktr;
                         const std::string& name = pair.name_;
                         const json_spirit::Value& value = pair.value_;
-                        
-                        
+
+
                         _engine->add_dir_to_path(value.get_str());
-                        
+
                     }
                 }
             }
-            
-        }
-        else if (name == "global")
+
+        } else if (name == "global")
         {
             LOG_DEBUG << "Found global section";
             for (auto& jtr : value.get_obj())
@@ -286,22 +281,19 @@ void core::read_config_file(std::string file)
                 const json_spirit::Pair& pair = jtr;
                 const std::string& name = pair.name_;
                 const json_spirit::Value& value = pair.value_;
-                
+
                 if (name == "latitude")
                 {
                     _global->_lat = value.get_real();
-                }
-                else if (name == "longitude")
+                } else if (name == "longitude")
                 {
                     _global->_lon = value.get_real();
-                }
-                else if(name == "UTC_offset")
+                } else if (name == "UTC_offset")
                 {
                     _global->_utc_offset = value.get_int();
                 }
             }
-        }
-        else
+        } else
         {
             const json_spirit::Pair& pair = itr;
             const std::string& name = pair.name_;
@@ -318,10 +310,10 @@ void core::read_config_file(std::string file)
 
 
     LOG_DEBUG << "Finished initialization";
-    
+
     LOG_DEBUG << "Init variables mapping";
     _global->_variables.init_from_file("Un-init path");
-    
+
     LOG_DEBUG << "Determining module dependencies";
     _determine_module_dep();
 
@@ -330,227 +322,212 @@ void core::read_config_file(std::string file)
 void core::_determine_module_dep()
 {
     int size = _modules.size();
-    
+
     Graph g(size);
     std::vector<Edge> edges;
-    
+
     //loop through each module
-    for(auto& module : _modules)
+    for (auto& module : _modules)
     {
         //look at all other modules
-        for(auto& itr : _modules)
+        for (auto& itr : _modules)
         {
             _module_provided_variable_list.insert(itr->provides()->begin(), itr->provides()->end());
-            
+
             //don't check against our module
-            if(module->ID != itr->ID)
+            if (module->ID != itr->ID)
             {
                 //loop through each required variable of our current module
-                for(auto& depend_var : *(module->depends()) ) 
+                for (auto& depend_var : *(module->depends()))
                 {
-                    
+
                     auto i = std::find(itr->provides()->begin(), itr->provides()->end(), depend_var);
-                    if(i != itr->provides()->end()) //modules itr provides the variable we are looking for
+                    if (i != itr->provides()->end()) //modules itr provides the variable we are looking for
                     {
-                        boost::add_edge(module->IDnum,itr->IDnum,g);
-                        
+                        boost::add_edge(module->IDnum, itr->IDnum, g);
+
                     }
                 }
             }
         }
     }
-    
+
     typedef std::list<Vertex> MakeOrder;
     MakeOrder make_order;
-    
+
     boost::topological_sort(g, std::front_inserter(make_order));
     std::cout << "make ordering: ";
-    for (auto& i : make_order) 
+    for (auto& i : make_order)
     {
         LOG_DEBUG << _modules.at(i)->ID << " ";
     }
-    
+
     // Parallel compilation ordering
     std::vector<int> time(size, 0);
-    for (auto i = make_order.begin(); i != make_order.end(); ++i) 
-    {    
-      // Walk through the in_edges an calculate the maximum time.
-      if (boost::in_degree (*i, g) > 0) 
-      {
-        Graph::in_edge_iterator j, j_end;
-        int maxdist=0;
-        // Through the order from topological sort, we are sure that every 
-        // time we are using here is already initialized.
-        for (boost::tie(j, j_end) = boost::in_edges(*i, g); j != j_end; ++j)
-          maxdist=(std::max)(time[boost::source(*j, g)], maxdist);
-        time[*i]=maxdist+1;
-      }
+    for (auto i = make_order.begin(); i != make_order.end(); ++i)
+    {
+        // Walk through the in_edges an calculate the maximum time.
+        if (boost::in_degree(*i, g) > 0)
+        {
+            Graph::in_edge_iterator j, j_end;
+            int maxdist = 0;
+            // Through the order from topological sort, we are sure that every 
+            // time we are using here is already initialized.
+            for (boost::tie(j, j_end) = boost::in_edges(*i, g); j != j_end; ++j)
+                maxdist = (std::max)(time[boost::source(*j, g)], maxdist);
+            time[*i] = maxdist + 1;
+        }
     }
     boost::graph_traits<Graph>::vertex_iterator i, iend;
-      for (boost::tie(i,iend) = boost::vertices(g); i != iend; ++i)
-      {
+    for (boost::tie(i, iend) = boost::vertices(g); i != iend; ++i)
+    {
         LOG_DEBUG << "time_slot[" << _modules.at(*i)->ID << "] = " << time[*i] << std::endl;
-      }
-    
-    for(int i = 0; i<_stations.size();  i++)
-    {    
+    }
+
+    for (int i = 0; i < _stations.size(); i++)
+    {
         auto vars = _stations.at(i)->list_variables();
-        _module_provided_variable_list.insert(vars.begin(),vars.end());
+        _module_provided_variable_list.insert(vars.begin(), vars.end());
     }
 
     LOG_DEBUG << "List of all provided variables: ";
-    std::string s="";
-    for(auto itr:_module_provided_variable_list)
+    std::string s = "";
+    for (auto itr : _module_provided_variable_list)
     {
-      s+= itr + " ";   
+        s += itr + " ";
     }
     LOG_DEBUG << s;
-    
+
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
-    #pragma omp parallel for
-    for(size_t i=0;
-        //this assumes that all the meshes are the same size
-        i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
-        i++)
+    //    #pragma omp parallel for
+
+    for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
         //current mesh element
-        auto& m = (*_mesh)(i);
-        m.init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
-                            _stations.at(0)->get_date_timeseries(), /*take the first station, later checks ensure all the stations' timeseries match*/
-                            _stations.at(0)->get_timeseries_size()); /*length of all the vectors to initialize*/
+        //        triangulation::Face_handle face = fit;
+
+        fit->init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
+                _stations.at(0)->get_date_timeseries(), /*take the first station, later checks ensure all the stations' timeseries match*/
+                _stations.at(0)->get_timeseries_size()); /*length of all the vectors to initialize*/
     }
-            
+
 }
 
 void core::run()
 {
     LOG_DEBUG << "Entering main loop";
-    
-    
+
+
     timer c;
     c.tic();
-    
+
     interp_t_air interp;
     interp_rh irh;
-    
+
     //do the interpolation first
     bool done = false;
-    while(!done)
+    while (!done)
     {
         //ensure all the stations are at the same timestep
         boost::posix_time::ptime t;
         t = _stations.at(0)->now().get_posix(); //get first stations time
-        for(int i = 1;//on purpose to skip first station
-              i<_stations.size();
+        for (int i = 1; //on purpose to skip first station
+                i < _stations.size();
                 i++)
         {
-            if(t != _stations.at(i)->now().get_posix())
+            if (t != _stations.at(i)->now().get_posix())
             {
                 BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                        <<errstr_info("Timestep mismatch at station: " + _stations.at(i)->get_ID()));
+                        << errstr_info("Timestep mismatch at station: " + _stations.at(i)->get_ID()));
             }
         }
-        
+
         //start date
         _global->_current_date = _stations.at(0)->now().get_posix();
-        
+
         //calculate global, e.g. solar position
         _global->update();
-        
+
 
         LOG_DEBUG << "Interpolating at timestep: " << _global->posix_time();
-        
+
         //iterate over all the mesh elements
-        #pragma omp parallel for
-        for(size_t i=0;
-                //this assumes that all the meshes are the same size
-                i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
-                i++)
+        //        #pragma omp parallel for
+        for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
         {
-            //current mesh element
-            auto& m = (*_mesh)(i);
-            
             //interpolate the station data to the current element
-            interp("LLRA_var", m, _stations,_global);
-            irh("LLRA_rh_var", m, _stations,_global); 
-            
+            triangulation::Face_handle face = fit;
+            interp("LLRA_var", face, _stations, _global);
+            irh("LLRA_rh_var", face, _stations, _global);
+
             //this triangle needs to be advanced to the next timestep
-            m.next();
-            
+            fit->next();
+
         }
-        
+
         //update all the stations internal iterators to point to the next time step
-        for(auto& itr : _stations)
+        for (auto& itr : _stations)
         {
-            if (! itr->next()) //
+            if (!itr->next()) //
                 done = true;
         }
-        
+
     }
-    
+
     //reset all the internal iterators
-    for(auto& itr : _stations)
+    for (auto& itr : _stations)
     {
         itr->reset_itrs();
     }
-    
+
     //reset the iterators for all mesh timeseries
-    #pragma omp parallel for
-    for(size_t i=0;
-            //this assumes that all the meshes are the same size
-            i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
-            i++)
+    //    #pragma omp parallel for
+    for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
         //current mesh element
-        auto& m = (*_mesh)(i);
-        m.reset_to_begining();
+        fit->reset_to_begining();
     }
-            
-    
+
+
     done = false;
-    while(!done)
+    while (!done)
     {
-                
+
         _global->_current_date = _stations.at(0)->now().get_posix();
         _global->update();
-        
-        
+
+
         LOG_DEBUG << "Timestep: " << _global->posix_time();
-        
+
         //iterate over all the mesh elements
-        #pragma omp parallel for
-        for(size_t i=0;
-                //this assumes that all the meshes are the same size
-                i<_mesh->size(); // TODO: Add a check to ensure all meshes are the same size
-                i++)
+        //        #pragma omp parallel for
+        for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
         {
-            //current mesh element
-            auto& m = (*_mesh)(i);
-         
             //module calls
-            for(auto& itr : _modules)
+            for (auto& itr : _modules)
             {
-                itr->run(m,_global);
+                triangulation::Face_handle face = fit;
+                itr->run(face, _global);
             }
         }
-        
+
         //update all the stations internal iterators to point to the next time step
-        for(auto& itr : _stations)
+        for (auto& itr : _stations)
         {
-            if (! itr->next()) //
+            if (!itr->next()) //
                 done = true;
         }
     }
     double elapsed = c.toc();
-    LOG_DEBUG << "Took " << elapsed <<"s";
-    
-    
-//   _mesh->plot("solar_S_angle");
-//    _mesh->plot(TAIR);
-//    _mesh->plot("Rh");
-//    _mesh->plot_time_series(_stations.at(0)->get_x(),_stations.at(0)->get_y(),"T");
-//   
-    
+    LOG_DEBUG << "Took " << elapsed << "s";
+
+
+    //   _mesh->plot("solar_S_angle");
+    //    _mesh->plot(TAIR);
+    //    _mesh->plot("Rh");
+    //    _mesh->plot_time_series(_stations.at(0)->get_x(),_stations.at(0)->get_y(),"T");
+    //   
+
 
 
 

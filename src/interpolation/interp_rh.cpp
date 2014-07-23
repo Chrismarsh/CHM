@@ -25,7 +25,7 @@ void interp_rh::operator()(std::string method, mesh_elem& m, station_list& stati
     
     interp_2d interp;
     double rh = interp("idw",m,stations,visitor,global_param);
-    m.add_face_data(global_param->get_variable("RH"),rh); 
+    m->set_face_data(global_param->get_variable("RH"),rh); 
 
 }
 
@@ -106,7 +106,7 @@ double LLRA_rh_var::lower(mesh_elem& m, boost::shared_ptr<station> s, boost::sha
 
     double dewPointLapseRate = lambda * c / b;
 
-    double newTd = dewPointTemp - dewPointLapseRate * (0.0 - m.get_z());
+    double newTd = dewPointTemp - dewPointLapseRate * (0.0 - m->get_z());
     return newTd;
 
 }
@@ -120,9 +120,9 @@ double LLRA_rh_var::raise(double value, mesh_elem& m, boost::shared_ptr<global> 
     double c = 240.97;
     double lambda = get_lambda_rate(global_param->month());
     double dewPointLapseRate = lambda * c / b;
-    double Td = value - (-dewPointLapseRate)*(0 - m.get_z());
+    double Td = value - (-dewPointLapseRate)*(0 - m->get_z());
     double e = a * exp((b * Td) / (c + Td));
-    double temp = m.get_face_data(global_param->get_variable("Tair"));
+    double temp = m->face_data(global_param->get_variable("Tair"));
     double es = a * exp((b * temp) / (c + temp));
 
     //RH value replaces Tdew value

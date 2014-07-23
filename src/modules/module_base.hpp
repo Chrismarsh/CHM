@@ -3,11 +3,8 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
-#include "triangle.h"
+#include "triangulation.h"
 #include "global.hpp"
-
-
-typedef triangle mesh_elem;
 
 /*
  * The base class for individual modules

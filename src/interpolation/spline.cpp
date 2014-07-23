@@ -72,8 +72,8 @@ double spline::operator()(station_list&  stations, mesh_elem& elem,boost::shared
     gsl_linalg_LU_solve (&m.matrix, p, &b.vector, x);
 
     //location of the unknown
-    unsigned int ux = elem.get_x();
-    unsigned int uy = elem.get_y();
+    unsigned int ux = elem->get_x();
+    unsigned int uy = elem->get_y();
 
     double z0 = x->data[0];//little a
 
@@ -82,8 +82,8 @@ double spline::operator()(station_list&  stations, mesh_elem& elem,boost::shared
     {
         double sx = stations.at(i)->get_x();
         double sy = stations.at(i)->get_y();
-        double ex = elem.get_x();
-        double ey = elem.get_y();
+        double ex = elem->get_x();
+        double ey = elem->get_y();
         double xdiff = (sx  - ex);
         double ydiff = (sy  - ey);
         double d = pow(sqrt(

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../logger.h"
+#include "triangulation.h"
 #include "module_base.hpp"
-
 
 #include <cstdlib>
 #include <string>

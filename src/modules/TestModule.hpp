@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../logger.h"
-#include "module_base.hpp"
+#include "triangulation.h"
 
 #include <cstdlib>
 #include <string>

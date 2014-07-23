@@ -29,8 +29,8 @@ double inv_dist::operator()(station_list&  stations, mesh_elem& elem,boost::shar
         double sx = itr->get_x();
         double sy = itr->get_y();
         
-        double ex = elem.get_x();
-        double ey = elem.get_y();
+        double ex = elem->get_x();
+        double ey = elem->get_y();
         
         double xdiff = (sx  - ex);
         double ydiff = (sy  - ey);

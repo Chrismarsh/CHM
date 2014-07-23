@@ -16,7 +16,7 @@
 
 
 #include "station.hpp"
-#include "triangle.h"
+#include "triangulation.h"
 
 #include "interp_alg_base.hpp"
 #include "inv_dist.hpp"
