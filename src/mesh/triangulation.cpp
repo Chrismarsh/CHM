@@ -68,7 +68,7 @@ size_t triangulation::size()
 
 void triangulation::set_vertex_data(vector data)
 {
-
+    
 
 }
 
@@ -134,6 +134,7 @@ void triangulation::from_file(std::string file)
         ++i;
     }
     _size = this->number_of_faces();
+    _data_size = i; 
 
 }
 
@@ -141,9 +142,11 @@ void triangulation::plot(std::string ID)
 {
     LOG_DEBUG << "Sending triangulation to matlab...";
 
+   
+        
     maw::d_mat tri(new arma::mat(_size, 3));
-    maw::d_mat xyz(new arma::mat(_size, 3));
-    maw::d_mat face(new arma::mat(_size, 1));
+    maw::d_mat xyz(new arma::mat(_data_size, 3));
+    maw::d_mat cdata(new arma::mat(_size, 1));
 
     size_t i = 0;
 
@@ -152,34 +155,40 @@ void triangulation::plot(std::string ID)
     {
         Delaunay::Face_handle face = fit;
 
-        (*tri)(i, 0) = face->vertex(0)->get_id() + 1;
+        (*tri)(i, 0) = face->vertex(0)->get_id() + 1; //+1 because matlab indexing starts at 1
         (*tri)(i, 1) = face->vertex(1)->get_id() + 1;
         (*tri)(i, 2) = face->vertex(2)->get_id() + 1;
 
         Delaunay::Triangle t = this->triangle(face);
 
-        (*xyz)((*tri)(i, 0), 0) = t[0].x();
-        (*xyz)((*tri)(i, 0), 1) = t[0].y();
-        (*xyz)((*tri)(i, 0), 2) = t[0].z();
+        std::cout  << "xyz1:" << (*tri)(i, 0)-1 <<std::endl;
+        (*xyz)((*tri)(i, 0) -1, 0) = t[0].x();
+        (*xyz)((*tri)(i, 0)-1, 1) = t[0].y();
+        (*xyz)((*tri)(i, 0)-1, 2) = t[0].z();
+        
+        
+        std::cout  << "xyz2:"<<(*tri)(i, 1)-1 <<std::endl;
+        (*xyz)((*tri)(i, 1)-1, 0) = t[1].x();
+        (*xyz)((*tri)(i, 1)-1, 1) = t[1].y();
+        (*xyz)((*tri)(i, 1)-1, 2) = t[1].z();
+        
+        std::cout  << "xyz3:"<<(*tri)(i, 2)-1 <<std::endl;
+        (*xyz)((*tri)(i, 2)-1, 0) = t[2].x();
+        (*xyz)((*tri)(i, 2)-1, 1) = t[2].y();
+        (*xyz)((*tri)(i, 2)-1, 2) = t[2].z();
+        
 
-        (*xyz)((*tri)(i, 1), 0) = t[1].x();
-        (*xyz)((*tri)(i, 1), 1) = t[1].y();
-        (*xyz)((*tri)(i, 1), 2) = t[1].z();
-
-        (*xyz)((*tri)(i, 2), 0) = t[2].x();
-        (*xyz)((*tri)(i, 2), 1) = t[2].y();
-        (*xyz)((*tri)(i, 2), 2) = t[2].z();
-
-        //        double d = it->get_face_data(ID);
-        //        (*data)(i) = d;
-        //        ++i;
+        double d = fit->face_data(ID);
+        (*cdata)(i) = d;
+        std::cout << i <<std::endl;
+        ++i;
     }
 
 
     LOG_DEBUG << "Sending data to matlab...";
     _engine->put_double_matrix("tri", tri);
     _engine->put_double_matrix("elevation_data", xyz);
-    _engine->put_double_matrix("face_data", face);
+    _engine->put_double_matrix("face_data", cdata);
 
     double handle = _gfx->plot_patch("[elevation_data(:,1) elevation_data(:,2) elevation_data(:,3)]", "tri", "face_data(:)");
     _gfx->add_title(ID);

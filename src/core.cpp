@@ -355,7 +355,7 @@ void core::_determine_module_dep()
     MakeOrder make_order;
 
     boost::topological_sort(g, std::front_inserter(make_order));
-    std::cout << "make ordering: ";
+//    std::cout << "make ordering: ";
     for (auto& i : make_order)
     {
         LOG_DEBUG << _modules.at(i)->ID << " ";
@@ -404,10 +404,13 @@ void core::_determine_module_dep()
     {
         //current mesh element
         //        triangulation::Face_handle face = fit;
-
-        fit->init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
-                _stations.at(0)->get_date_timeseries(), /*take the first station, later checks ensure all the stations' timeseries match*/
-                _stations.at(0)->get_timeseries_size()); /*length of all the vectors to initialize*/
+//        LOG_DEBUG << *_mesh ;
+        auto date = _stations.at(0)->get_date_timeseries();
+        auto size = _stations.at(0)->get_timeseries_size();
+        Delaunay::Face_handle face = fit;
+        face->init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
+                date, /*take the first station, later checks ensure all the stations' timeseries match*/
+                size); /*length of all the vectors to initialize*/
     }
 
 }
@@ -521,7 +524,7 @@ void core::run()
     LOG_DEBUG << "Took " << elapsed << "s";
 
 
-//       _mesh->plot("solar_S_angle");
+       _mesh->plot("solar_S_angle");
     //    _mesh->plot(TAIR);
     //    _mesh->plot("Rh");
     //    _mesh->plot_time_series(_stations.at(0)->get_x(),_stations.at(0)->get_y(),"T");
