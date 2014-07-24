@@ -262,7 +262,7 @@ void time_series::open(std::string path)
                             );
                     try
                     {
-                        LOG_DEBUG << "Found " << *headerItr << ": " << doubles[0];
+                        LOG_VERBOSE << "Found " << *headerItr << ": " << doubles[0];
                         a->second.push_back(boost::lexical_cast<double>(doubles[0]));
                     } catch (...)
                     {
@@ -273,7 +273,7 @@ void time_series::open(std::string path)
                     }
                 } else if ((dates = dateTime.tokenize<std::string>(*itr)).size() == 1)
                 {
-                    LOG_DEBUG << "Found " << *headerItr << ": " << dates[0];
+                    LOG_VERBOSE << "Found " << *headerItr << ": " << dates[0];
                     _date_vec.push_back(boost::posix_time::from_iso_string(dates[0]));
                     
                     //now we know where the date colum is, we remove it from the hashmap if we haven't already
@@ -318,7 +318,7 @@ void time_series::open(std::string path)
     //	- Time steps are equal
 
     //get iters for each variables
-    LOG_DEBUG << "Read in " << _variables.size() << " variables";
+    LOG_VERBOSE << "Read in " << _variables.size() << " variables";
     std::string* headerItems = new std::string[_variables.size()];
 
     int i = 0;
@@ -326,7 +326,7 @@ void time_series::open(std::string path)
     //unknown order
     for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
-        LOG_DEBUG << itr->first;
+        LOG_VERBOSE << itr->first;
         headerItems[i++] = itr->first;
     }
 
@@ -346,7 +346,7 @@ void time_series::open(std::string path)
                 );
 
         //check all cols are the same size as the first col
-        LOG_DEBUG << "Column " + headerItems[l] + " length=" + boost::lexical_cast<std::string>( a->second.size()), + "expected=" + boost::lexical_cast<std::string>(d_length);
+        LOG_VERBOSE << "Column " + headerItems[l] + " length=" + boost::lexical_cast<std::string>( a->second.size()), + "expected=" + boost::lexical_cast<std::string>(d_length);
         if (d_length != a->second.size())
         {
             LOG_ERROR << "Col " + headerItems[l] + " is a different size. Expected size="+boost::lexical_cast<std::string>(d_length);

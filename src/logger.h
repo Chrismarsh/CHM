@@ -36,6 +36,7 @@ namespace keywords = boost::log::keywords;
 
  enum log_level
  {
+     verbose,
      debug,
      warning,
      info,
@@ -48,6 +49,7 @@ inline std::basic_ostream< CharT, TraitsT >& operator<< (std::basic_ostream< Cha
 {
     static const char* const str[] =
     {
+        "verbose",
 	"debug",
 	"warning",
         "info",
@@ -68,6 +70,7 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", log_level)
 //BOOST_LOG_ATTRIBUTE_KEYWORD(scope, "Scope", attrs::named_scope::value_type)
 
 
+#define	LOG_VERBOSE       BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), verbose) 
 #define	LOG_DEBUG       BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), debug) 
 #define	LOG_WARNING 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), warning) 
 #define	LOG_ERROR 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), error) 

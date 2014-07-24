@@ -17,6 +17,7 @@
 #pragma once
 
 #include <iostream>
+#include <fstream>
 
 #include <armadillo>
 
@@ -77,8 +78,6 @@ public:
     //    void plot_time_series(double x, double y, std::string ID);
 
 private:
-    //the triangles
-//    boost::shared_ptr<Delaunay> _mesh;
 
     size_t _size; //number of triangulations
 

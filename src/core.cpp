@@ -115,6 +115,8 @@ void core::read_config_file(std::string file)
                         _log_level = warning;
                     else if (s == "error")
                         _log_level = error;
+                    else if (s == "verbose")
+                        _log_level = verbose;
                     else
                     {
                         _log_level = debug; //default to debug 
@@ -125,9 +127,6 @@ void core::read_config_file(std::string file)
                     _log_sink->set_filter(
                             severity >= _log_level
                             );
-
-
-
                 }
 
             }
