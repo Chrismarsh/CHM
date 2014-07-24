@@ -22,7 +22,6 @@ public:
 private:
     size_t _id;
 public:
-    Point point();
     ex_vertex();
 
     ex_vertex(const Point & p);
@@ -65,8 +64,3 @@ size_t ex_vertex<Gt, Vb>::get_id()
     return _id;
 }
 
-template < class Gt, class Vb>
-ex_vertex<Gt, Vb>::Point ex_vertex<Gt, Vb>::point()
-{
-    return Vb::point();
-}

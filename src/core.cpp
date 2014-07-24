@@ -110,14 +110,14 @@ void core::read_config_file(std::string file)
                     std::string s = pair.value_.get_str();
 
                     if (s == "debug")
-                        _log_level = log_level::debug;
+                        _log_level = debug;
                     else if (s == "warning")
-                        _log_level = log_level::warning;
+                        _log_level = warning;
                     else if (s == "error")
-                        _log_level = log_level::error;
+                        _log_level = error;
                     else
                     {
-                        _log_level = log_level::debug; //default to debug 
+                        _log_level = debug; //default to debug 
                     }
 
                     LOG_DEBUG << "Setting log severity to " << _log_level;
