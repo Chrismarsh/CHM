@@ -82,6 +82,13 @@ public:
    * @param file The file to open
   **/
     void read_config_file(std::string file);
+    void config_debug(const json_spirit::Value& value);
+    void config_modules(const json_spirit::Value& value);
+    void config_forcing(const json_spirit::Value& value);
+    void config_meshes(const json_spirit::Value& value);
+    void config_matlab(const json_spirit::Value& value);
+    void config_output(const json_spirit::Value& value);
+    void config_global(const json_spirit::Value& value);
     
     /**
      * Initializes the logger and Matlab engine
@@ -125,6 +132,34 @@ private:
     //holds a unique list of all variables provided by all the modules;
     std::set<std::string> _module_provided_variable_list;
     
+    
+    class output_info
+    {
+    public:
+        output_info()
+        {
+            plot = false;
+            out_file = "";
+            northing = 0;
+            easting = 0;
+            face = NULL;
+        }
+        enum output_type
+        {
+            timeseries,
+            mesh
+        };
+        output_type type;
+        bool plot;
+        std::string out_file;
+        double northing;
+        double easting;
+        std::vector<std::string> variables;
+        mesh_elem face;
+    };
+    
+    
+    std::vector<output_info> _outputs;
 };
 
 

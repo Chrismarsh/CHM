@@ -50,7 +50,7 @@ public:
     double get_x();
     double get_y();
     double get_z();
-
+    void to_file(std::string fname);
 private:
 
     double _slope;
@@ -212,6 +212,12 @@ template < class Gt, class Fb>
 void face<Gt, Fb>::reset_to_begining()
 {
     _itr = _data->begin();
+}
+
+template < class Gt, class Fb>
+void face<Gt, Fb>:: to_file(std::string fname)
+{
+    _data->to_file(fname);
 }
 
 template < class Gt, class Fb>

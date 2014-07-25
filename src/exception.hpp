@@ -31,6 +31,7 @@ struct forcing_badcast : virtual forcing_error{};
 struct forcing_no_regexmatch : virtual forcing_error{};
 struct forcing_timestep_mismatch : virtual forcing_error{};
 struct forcing_timestep_notfound : virtual forcing_error{};
+struct forcing_no_stations : virtual forcing_error{};
 
 //interpolation errors
 struct interp_error : virtual exception_base{};

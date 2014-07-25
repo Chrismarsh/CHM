@@ -397,6 +397,7 @@ void time_series::to_file(std::string file)
             << boost::errinfo_errno(errno)
             << boost::errinfo_file_name(file));
 
+    
     std::string* headerItems = new std::string[_variables.size()];
 
     //build a list of all the headers
@@ -411,15 +412,16 @@ void time_series::to_file(std::string file)
 
         //save vector iterators
         tItr[i] = itr->second.begin();
+        _rows = itr->second.size();
         i++;
     }
     out << std::endl;
 
-
+    
     for (int k = 0; k < _rows; k++)
     {
-        out << _date_vec.at(i) << "\t";
-        for (int j = 0; j < _cols; j++)
+        out << _date_vec.at(k) << "\t";
+        for (int j = 0; j < _variables.size(); j++)
         {
             out << "\t" << *(tItr[j]);
             tItr[j]++;

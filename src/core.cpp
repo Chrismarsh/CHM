@@ -67,6 +67,272 @@ core::~core()
     LOG_DEBUG << "Terminating";
 }
 
+void core::config_debug(const json_spirit::Value& value)
+{
+    for (auto& jtr : value.get_obj())
+    {
+        const json_spirit::Pair& pair = jtr;
+
+        if (pair.name_ == "debug_level")
+        {
+            std::string s = pair.value_.get_str();
+
+            if (s == "debug")
+                _log_level = debug;
+            else if (s == "warning")
+                _log_level = warning;
+            else if (s == "error")
+                _log_level = error;
+            else if (s == "verbose")
+                _log_level = verbose;
+            else
+            {
+                _log_level = debug; //default to debug 
+            }
+
+            LOG_DEBUG << "Setting log severity to " << _log_level;
+
+            _log_sink->set_filter(
+                    severity >= _log_level
+                    );
+        }
+
+    }
+}
+
+void core::config_modules(const json_spirit::Value& value)
+{
+    int modnum = 0;
+    //loop over the list of requested modules
+    // these are in the format "type":"ID"
+    for (auto& jtr : value.get_obj())
+    {
+        const json_spirit::Pair& pair = jtr;
+        const std::string& name = pair.name_;
+        const std::string& ID = pair.value_.get_str();
+
+        LOG_DEBUG << "Module type=" << name << " ID=" << ID;
+
+        boost::shared_ptr<module_base> m(_mfactory.get(ID));
+
+        //internal tracking of module initialization order
+        modnum++;
+        m->IDnum = modnum;
+        _modules.push_back(m);
+    }
+}
+
+void core::config_forcing(const json_spirit::Value& value)
+{
+    LOG_DEBUG << "Found forcing section";
+    //loop over the list of forcing data
+    for (auto& jtr : value.get_obj())
+    {
+        const json_spirit::Pair& pair = jtr;
+        const std::string& name = pair.name_;
+        const json_spirit::Value& value = pair.value_;
+
+
+        if (name == "station")
+        {
+            boost::shared_ptr<station> s = boost::make_shared<station>();
+            for (auto& ktr : value.get_obj())
+            {
+                const json_spirit::Pair& pair = ktr;
+                const std::string& name = pair.name_;
+
+
+                if (name == "ID")
+                {
+                    s->set_ID(pair.value_.get_str());
+                } else if (name == "easting")
+                {
+                    s->set_x(pair.value_.get_real());
+                } else if (name == "northing")
+                {
+                    s->set_y(pair.value_.get_real());
+                } else if (name == "elevation")
+                {
+                    s->set_z(pair.value_.get_real());
+                } else if (name == "file")
+                {
+                    s->open(pair.value_.get_str());
+                } else
+                {
+                    LOG_INFO << "Unknown value '" << name << "'";
+                }
+
+            }
+
+            LOG_DEBUG << "New station created " << *s;
+            _stations.push_back(s);
+
+        } else
+        {
+            LOG_INFO << "Unknown forcing type " << name << ", skipping";
+        }
+
+    }
+}
+
+void core::config_meshes(const json_spirit::Value& value)
+{
+    LOG_DEBUG << "Found meshes section";
+    _mesh = boost::make_shared<triangulation>(_engine);
+    for (auto& jtr : value.get_obj())
+    {
+        const json_spirit::Pair& pair = jtr;
+        const std::string& name = pair.name_;
+        const json_spirit::Value& value = pair.value_;
+
+        if (pair.name_ == "")
+        {
+            BOOST_THROW_EXCEPTION(missing_value_error()
+                    << errstr_info("Empty mesh name"));
+
+            return;
+        }
+
+        std::string ID = pair.name_;
+        std::string file = "";
+
+        LOG_DEBUG << "Found mesh " << ID;
+
+        //itr over the mesh paramters
+        for (auto& ktr : value.get_obj())
+        {
+            const json_spirit::Pair& pair = ktr;
+            const std::string& name = pair.name_;
+            const json_spirit::Value& value = pair.value_;
+
+            if (pair.name_ == "file")
+            {
+                file = pair.value_.get_str();
+            }
+
+        }
+        _mesh->from_file(file);
+        if (_mesh->size() == 0)
+            BOOST_THROW_EXCEPTION( mesh_error() << errstr_info("Mesh size = 0!"));
+
+    }
+}
+
+void core::config_matlab(const json_spirit::Value& value)
+{
+    LOG_DEBUG << "Found matlab section";
+    //loop over the list of matlab options
+    for (auto& jtr : value.get_obj())
+    {
+        const json_spirit::Pair& pair = jtr;
+        const std::string& name = pair.name_;
+        const json_spirit::Value& value = pair.value_;
+
+        if (name == "mfile_paths")
+        {
+            LOG_DEBUG << "Found " << name;
+            for (auto& ktr : value.get_obj()) //loop over all the paths
+            {
+                const json_spirit::Pair& pair = ktr;
+                const std::string& name = pair.name_;
+                const json_spirit::Value& value = pair.value_;
+
+
+                _engine->add_dir_to_path(value.get_str());
+
+            }
+        }
+    }
+}
+
+void core::config_output(const json_spirit::Value& value)
+{
+    LOG_DEBUG << "Found output section";
+    //loop over the list of matlab options
+    for (auto& jtr : value.get_obj())
+    {
+        const json_spirit::Pair& pair = jtr;
+        const std::string& name = pair.name_;
+        const json_spirit::Value& value = pair.value_;
+
+        if (name == "timeseries" || name == "mesh")
+        {
+            output_info out;
+            if (name == "timeseries")
+                out.type = output_info::timeseries;
+            else if (name == "mesh")
+                out.type = output_info::mesh;
+
+            LOG_DEBUG << "Found " << name;
+            for (auto& ktr : value.get_obj()) //loop over all the paths
+            {
+                const json_spirit::Pair& pair = ktr;
+                const std::string& name = pair.name_;
+                const json_spirit::Value& value = pair.value_;
+
+                if (name == "northing")
+                    out.northing = value.get_real();
+                else if (name == "easting")
+                    out.easting = value.get_real();
+                else if (name == "variables")
+                {
+                    for (auto& itr_vars : value.get_array())
+                    {
+                        const json_spirit::Value& v = itr_vars;
+                        LOG_VERBOSE << "Output variable: " << v.get_str();
+                        out.variables.push_back(v.get_str());
+                    }
+                } else if (name == "file")
+                    out.out_file = value.get_str();
+                else if (name == "plot")
+                    out.plot = value.get_bool();
+            }
+
+            if (name == "timeseries")
+            {
+                out.face = _mesh->locate_face(out.easting, out.northing);
+                if (out.face == NULL)
+                {
+                    LOG_WARNING << "Requested an output point that is not in the triangulation domain, skipping";
+                }
+                else
+                {
+                    _outputs.push_back(out);
+                }
+            } else
+            {
+                _outputs.push_back(out);
+            }
+
+        } else
+        {
+            LOG_WARNING << "Unknown output type: " << name;
+        }
+    }
+}
+
+void core::config_global(const json_spirit::Value& value)
+{
+    LOG_DEBUG << "Found global section";
+    for (auto& jtr : value.get_obj())
+    {
+        const json_spirit::Pair& pair = jtr;
+        const std::string& name = pair.name_;
+        const json_spirit::Value& value = pair.value_;
+
+        if (name == "latitude")
+        {
+            _global->_lat = value.get_real();
+        } else if (name == "longitude")
+        {
+            _global->_lon = value.get_real();
+        } else if (name == "UTC_offset")
+        {
+            _global->_utc_offset = value.get_int();
+        }
+    }
+}
+
 void core::read_config_file(std::string file)
 {
     BOOST_LOG_FUNCTION();
@@ -88,7 +354,7 @@ void core::read_config_file(std::string file)
 
     //get the top-level 
     const json_spirit::Object& top_level = value.get_obj();
-    bool found_modules = false;
+
 
     //loop over the top-level options
     for (auto& itr : top_level)
@@ -97,201 +363,29 @@ void core::read_config_file(std::string file)
         const std::string& name = pair.name_;
         const json_spirit::Value& value = pair.value_;
 
-
         //check for debug specification
         if (name == "debug")
         {
-            for (auto& jtr : value.get_obj())
-            {
-                const json_spirit::Pair& pair = jtr;
-
-                if (pair.name_ == "debug_level")
-                {
-                    std::string s = pair.value_.get_str();
-
-                    if (s == "debug")
-                        _log_level = debug;
-                    else if (s == "warning")
-                        _log_level = warning;
-                    else if (s == "error")
-                        _log_level = error;
-                    else if (s == "verbose")
-                        _log_level = verbose;
-                    else
-                    {
-                        _log_level = debug; //default to debug 
-                    }
-
-                    LOG_DEBUG << "Setting log severity to " << _log_level;
-
-                    _log_sink->set_filter(
-                            severity >= _log_level
-                            );
-                }
-
-            }
+            config_debug(value);
         } else if (name == "modules")
         {
-            const json_spirit::Pair& pair = itr;
-            const std::string& name = pair.name_;
-            const json_spirit::Value& value = pair.value_;
-            found_modules = true; //found the module section
-
-            int modnum = 0;
-            //loop over the list of requested modules
-            // these are in the format "type":"ID"
-            for (auto& jtr : value.get_obj())
-            {
-                const json_spirit::Pair& pair = jtr;
-                const std::string& name = pair.name_;
-                const std::string& ID = pair.value_.get_str();
-
-                LOG_DEBUG << "Module type=" << name << " ID=" << ID;
-
-                boost::shared_ptr<module_base> m(_mfactory.get(ID));
-
-                //internal tracking of module initialization order
-                modnum++;
-                m->IDnum = modnum;
-                _modules.push_back(m);
-            }
+            config_modules(value);
 
         } else if (name == "forcing")
         {
-            LOG_DEBUG << "Found forcing section";
-            //loop over the list of forcing data
-            for (auto& jtr : value.get_obj())
-            {
-                const json_spirit::Pair& pair = jtr;
-                const std::string& name = pair.name_;
-                const json_spirit::Value& value = pair.value_;
-
-
-                if (name == "station")
-                {
-                    boost::shared_ptr<station> s = boost::make_shared<station>();
-                    for (auto& ktr : value.get_obj())
-                    {
-                        const json_spirit::Pair& pair = ktr;
-                        const std::string& name = pair.name_;
-
-
-                        if (name == "ID")
-                        {
-                            s->set_ID(pair.value_.get_str());
-                        } else if (name == "easting")
-                        {
-                            s->set_x(pair.value_.get_real());
-                        } else if (name == "northing")
-                        {
-                            s->set_y(pair.value_.get_real());
-                        } else if (name == "elevation")
-                        {
-                            s->set_z(pair.value_.get_real());
-                        } else if (name == "file")
-                        {
-                            s->open(pair.value_.get_str());
-                        } else
-                        {
-                            LOG_INFO << "Unknown value '" << name << "'";
-                        }
-
-                    }
-
-                    LOG_DEBUG << "New station created " << *s;
-                    _stations.push_back(s);
-
-                } else
-                {
-                    LOG_INFO << "Unknown forcing type " << name << ", skipping";
-                }
-
-            }
+            config_forcing(value);
         } else if (name == "meshes")
         {
-            LOG_DEBUG << "Found meshes section";
-            _mesh = boost::make_shared<triangulation>(_engine);
-            for (auto& jtr : value.get_obj())
-            {
-                const json_spirit::Pair& pair = jtr;
-                const std::string& name = pair.name_;
-                const json_spirit::Value& value = pair.value_;
-
-                if (pair.name_ == "")
-                {
-                    BOOST_THROW_EXCEPTION(missing_value_error()
-                            << errstr_info("Empty mesh name"));
-
-                    return;
-                }
-
-                std::string ID = pair.name_;
-                std::string file = "";
-
-                LOG_DEBUG << "Found mesh " << ID;
-
-                //itr over the mesh paramters
-                for (auto& ktr : value.get_obj())
-                {
-                    const json_spirit::Pair& pair = ktr;
-                    const std::string& name = pair.name_;
-                    const json_spirit::Value& value = pair.value_;
-
-                    if (pair.name_ == "file")
-                    {
-                        file = pair.value_.get_str();
-                    }
-
-                }
-                _mesh->from_file(file);
-
-            }
+            config_meshes(value);
         } else if (name == "matlab")
         {
-            LOG_DEBUG << "Found matlab section";
-            //loop over the list of matlab options
-            for (auto& jtr : value.get_obj())
-            {
-                const json_spirit::Pair& pair = jtr;
-                const std::string& name = pair.name_;
-                const json_spirit::Value& value = pair.value_;
-
-                if (name == "mfile_paths")
-                {
-                    LOG_DEBUG << "Found " << name;
-                    for (auto& ktr : value.get_obj()) //loop over all the paths
-                    {
-                        const json_spirit::Pair& pair = ktr;
-                        const std::string& name = pair.name_;
-                        const json_spirit::Value& value = pair.value_;
-
-
-                        _engine->add_dir_to_path(value.get_str());
-
-                    }
-                }
-            }
-
+            config_matlab(value);
+        } else if (name == "output")
+        {
+            config_output(value);
         } else if (name == "global")
         {
-            LOG_DEBUG << "Found global section";
-            for (auto& jtr : value.get_obj())
-            {
-                const json_spirit::Pair& pair = jtr;
-                const std::string& name = pair.name_;
-                const json_spirit::Value& value = pair.value_;
-
-                if (name == "latitude")
-                {
-                    _global->_lat = value.get_real();
-                } else if (name == "longitude")
-                {
-                    _global->_lon = value.get_real();
-                } else if (name == "UTC_offset")
-                {
-                    _global->_utc_offset = value.get_int();
-                }
-            }
+            config_global(value);
         } else
         {
             const json_spirit::Pair& pair = itr;
@@ -300,12 +394,12 @@ void core::read_config_file(std::string file)
         }
     }
 
-    if (found_modules == false)
-    {
-        BOOST_THROW_EXCEPTION(no_modules_defined()
-                << errstr_info(std::string("No module section found in ") + file)
-                );
-    }
+    //    if (found_modules == false)
+    //    {
+    //        BOOST_THROW_EXCEPTION(no_modules_defined()
+    //                << errstr_info(std::string("No module section found in ") + file)
+    //                );
+    //    }
 
 
     LOG_DEBUG << "Finished initialization";
@@ -355,7 +449,7 @@ void core::_determine_module_dep()
     MakeOrder make_order;
 
     boost::topological_sort(g, std::front_inserter(make_order));
-//    std::cout << "make ordering: ";
+    //    std::cout << "make ordering: ";
     for (auto& i : make_order)
     {
         LOG_DEBUG << _modules.at(i)->ID << " ";
@@ -398,13 +492,14 @@ void core::_determine_module_dep()
     LOG_DEBUG << s;
 
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
-       #pragma omp parallel for
 
+    if (_stations.size() == 0)
+        BOOST_THROW_EXCEPTION(forcing_no_stations() << errstr_info("no stations"));
+
+#pragma omp parallel for
     for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
-        //current mesh element
-        //        triangulation::Face_handle face = fit;
-//        LOG_DEBUG << *_mesh ;
+
         auto date = _stations.at(0)->get_date_timeseries();
         auto size = _stations.at(0)->get_timeseries_size();
         Delaunay::Face_handle face = fit;
@@ -454,7 +549,7 @@ void core::run()
         LOG_DEBUG << "Interpolating at timestep: " << _global->posix_time();
 
         //iterate over all the mesh elements
-                #pragma omp parallel for
+#pragma omp parallel for
         for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
         {
             //interpolate the station data to the current element
@@ -483,7 +578,7 @@ void core::run()
     }
 
     //reset the iterators for all mesh timeseries
-        #pragma omp parallel for
+#pragma omp parallel for
     for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
         //current mesh element
@@ -502,7 +597,7 @@ void core::run()
         LOG_DEBUG << "Timestep: " << _global->posix_time();
 
         //iterate over all the mesh elements
-                #pragma omp parallel for
+#pragma omp parallel for
         for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
         {
             //module calls
@@ -524,13 +619,25 @@ void core::run()
     LOG_DEBUG << "Took " << elapsed << "s";
 
 
-       _mesh->plot("solar_S_angle");
-    //    _mesh->plot(TAIR);
-    //    _mesh->plot("Rh");
-    //    _mesh->plot_time_series(_stations.at(0)->get_x(),_stations.at(0)->get_y(),"T");
-    //   
-
-
-
-
+    for (auto& itr : _outputs)
+    {
+        if (itr.plot)
+        {
+            //loop through all the request variables
+            for (auto& jtr : itr.variables)
+            {
+                if (itr.type == output_info::mesh)
+                {
+                    _mesh->plot(jtr);
+                } else if (itr.type == output_info::timeseries)
+                {
+                    _mesh->plot_time_series(itr.easting, itr.northing, jtr);
+                }
+            }
+        }
+        if (itr.out_file != "")
+        {
+            _mesh->to_file(itr.face, itr.out_file);
+        }
+    }
 }

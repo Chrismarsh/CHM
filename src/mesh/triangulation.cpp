@@ -56,33 +56,20 @@ size_t triangulation::size()
 
 
 
-//mesh_elem triangulation::operator()(size_t t)
-//{
-//    Delaunay::Finite_faces_iterator fit = _mesh->finite_faces_begin();
-//    for(size_t i=0;i<t;i++)
-//        fit++;
-//    
-//    Delaunay::Face_handle face = fit;
-//    return *face;
-//}
-
-void triangulation::set_vertex_data(vector data)
+mesh_elem triangulation::locate_face(double x, double y)
 {
+    Point_3 p(x,y,0);
     
+    Delaunay::Locate_type lt0;
+    int li;
 
+    mesh_elem m = this->locate(p,lt0,li);
+    
+    if (lt0 == Delaunay::OUTSIDE_CONVEX_HULL)
+        return NULL;
+    else
+        return m;
 }
-
-//triangle* triangulation::find_containing_triangle(double x, double y)
-//{
-////    for (std::vector<triangle*>::iterator it = m_triangles.begin(); it != m_triangles.end(); it++)
-////    {
-////        if ((*it)->contains(x, y))
-////            return *it;
-////    }
-//
-//    return NULL;
-//}
-
 
 
 //maw::d_vec triangulation::mf_face_data(std::string ID)
@@ -101,26 +88,27 @@ void triangulation::set_vertex_data(vector data)
 //    return data;
 //}
 
-//void triangulation::plot_time_series(double x, double y, std::string ID)
-//{
-//    mesh_elem* m  = _mesh->find_containing_triangle(x,y);
-//    
-//    if(!m)
-//        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
-//    
-//    maw::d_vec v(new arma::vec(m->get_face_time_series(ID).size()));
-//    
-////    v->resize(m->get_face_time_series(ID).size());
-//    
-//    for(size_t i=0; i < v->size(); i++ )
-//    {
-//        (*v)(i) = m->get_face_time_series(ID).at(i);
-//    }
-//    
-//    _engine->put_double_matrix(ID,v);
-//   double handle = _gfx->plot_line(ID);
-//    _gfx->spin_until_close(handle);
-//}
+void triangulation::plot_time_series(double x, double y, std::string ID)
+{
+    mesh_elem m  = this->locate_face(x,y);
+    
+    if(m == NULL)
+        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
+    
+    maw::d_vec v(new arma::vec(m->face_time_series(ID).size()));
+    
+    time_series::variable_vec ts = m->face_time_series(ID);
+            
+    for(size_t i=0; i < v->size(); i++ )
+    {
+        (*v)(i) = ts.at(i);
+    }
+    
+    _engine->put_double_matrix(ID,v);
+   double handle = _gfx->plot_line(ID);
+    _gfx->add_title(ID);
+    _gfx->spin_until_close(handle);
+}
 
 void triangulation::from_file(std::string file)
 {
@@ -136,6 +124,19 @@ void triangulation::from_file(std::string file)
     _size = this->number_of_faces();
     _data_size = i; 
 
+}
+
+void triangulation::to_file(double x, double y, std::string fname)
+{
+    mesh_elem m  = this->locate_face(x,y);
+    to_file(m,fname);
+}
+void triangulation::to_file(mesh_elem m, std::string fname)
+{
+    if(m == NULL)
+        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
+    
+    m->to_file(fname);
 }
 
 void triangulation::plot(std::string ID)

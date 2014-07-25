@@ -21,14 +21,14 @@ timestep::~timestep()
 
 std::string timestep::to_string()
 {
-    std::string s;
-
+    std::stringstream s;
+    s << get_posix() << "\t";
     for (timestep::itr_map::const_iterator itr = _itrs.begin(); itr != _itrs.end(); itr++)
     {
-        s += boost::lexical_cast<std::string>(*(itr->second)) + std::string("\t");
+        s << boost::lexical_cast<std::string>(*(itr->second)) << std::string("\t");
     }
 
-    return s;
+    return s.str();
 }
 
 int timestep::month()

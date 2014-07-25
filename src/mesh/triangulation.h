@@ -41,9 +41,11 @@
 
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef K::Point_3 Point;
+typedef K::Point_3 Point_3;
+
 
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points
+
 typedef ex_vertex<Gt> Vb; //custom vertex class
 typedef face<Gt> Fb; //custom face class
 typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds; //our data structure that is using the custom classes
@@ -67,22 +69,14 @@ public:
     //return the size of the triangluation
     size_t size();
 
-    //set the vertex data. It is assumed that t-th triangle's global-id is an index into data
-    void set_vertex_data(vector data);
-
-    //returns the t-th triangle
-//    mesh_elem operator()(size_t t);
-
-    mesh_elem find_containing(double x, double y);
+    mesh_elem locate_face(double x, double y);
 
     void plot(std::string ID);
+    void plot_time_series(double x, double y, std::string ID);
     
-//    boost::shared_ptr<Delaunay> cgal_tds();
-    //    void plot_time_series(double x, double y, std::string ID);
-
+    void to_file(double x, double y, std::string fname);
+    void to_file(mesh_elem m, std::string fname);
 private:
-
-
     size_t _size; //number of faces
     size_t _data_size; //number of rows in the original data matrix. useful for exporting to matlab,e tc
  
