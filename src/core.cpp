@@ -398,7 +398,7 @@ void core::_determine_module_dep()
     LOG_DEBUG << s;
 
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
-    //    #pragma omp parallel for
+       #pragma omp parallel for
 
     for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
@@ -454,7 +454,7 @@ void core::run()
         LOG_DEBUG << "Interpolating at timestep: " << _global->posix_time();
 
         //iterate over all the mesh elements
-        //        #pragma omp parallel for
+                #pragma omp parallel for
         for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
         {
             //interpolate the station data to the current element
@@ -483,7 +483,7 @@ void core::run()
     }
 
     //reset the iterators for all mesh timeseries
-    //    #pragma omp parallel for
+        #pragma omp parallel for
     for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
         //current mesh element
@@ -502,7 +502,7 @@ void core::run()
         LOG_DEBUG << "Timestep: " << _global->posix_time();
 
         //iterate over all the mesh elements
-        //        #pragma omp parallel for
+                #pragma omp parallel for
         for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
         {
             //module calls
