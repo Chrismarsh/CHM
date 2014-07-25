@@ -119,6 +119,7 @@ double face<Gt, Fb>::azimuth()
 {
     if (_azimuth == -1)
     {
+        this->normal();
         //convert normal to spherical
 	double r = sqrt(_normal[0]*_normal[0] + _normal[1]*_normal[1] + _normal[2]*_normal[2]);
 	double theta = acos(_normal[2]/r); 
@@ -139,6 +140,7 @@ double face<Gt, Fb>::slope()
 {
     if (_slope == -1)
     {
+        this->normal();
         //z surface normal
 	arma::vec n(3);
 	n(0) = 0.0; //x
@@ -159,6 +161,7 @@ double face<Gt, Fb>::slope()
 template < class Gt, class Fb>
 Vector_3 face<Gt, Fb>::normal()
 {
+    _normal = CGAL::unit_normal(this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point());
     return _normal;
 }
 
@@ -214,8 +217,7 @@ void face<Gt, Fb>::reset_to_begining()
 template < class Gt, class Fb>
 double face<Gt, Fb>::get_x()
 {
-    return 0;
-//    return CGAL::circumcenter( this->vertex(0).point(),this->vertex(1).point(),this->vertex(2).point()).x();
+   return CGAL::circumcenter( this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point()).x();
 }
 
 template < class Gt, class Fb>
@@ -227,7 +229,6 @@ double face<Gt, Fb>::get_y()
 template < class Gt, class Fb>
 double face<Gt, Fb>::get_z()
 {
-    return 0;
-//    return CGAL::circumcenter( this->vertex(0).point(),this->vertex(1).point(),this->vertex(2).point()).y();
+   return CGAL::circumcenter( this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point()).z();
 }
 

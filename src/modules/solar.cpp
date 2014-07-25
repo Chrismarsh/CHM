@@ -19,16 +19,16 @@ void Solar::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     //xyz cartesian
     arma::vec S;
     S << cos(E) * sin(A) << arma::endr
-        << cos(E) * cos(A) << arma::endr
-        << sin(E) << arma::endr;
+      << cos(E) * cos(A) << arma::endr
+      << sin(E) << arma::endr;
 
     
     Vector_3 n = elem->normal();
         arma::vec N;
     
     N << n[0] << arma::endr
-            << n[1] << arma::endr
-            << n[2] << arma::endr;
+      << n[1] << arma::endr
+      << n[2] << arma::endr;
     
     double angle = acos(arma::dot(S,N));
     angle = cos(angle);
