@@ -86,6 +86,7 @@ private:
 
 };
 
+typedef boost::shared_ptr<triangulation> mesh;
 
 
 
