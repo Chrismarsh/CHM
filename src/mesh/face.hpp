@@ -119,7 +119,16 @@ double face<Gt, Fb>::azimuth()
 {
     if (_azimuth == -1)
     {
-        _azimuth = 3.14;
+        //convert normal to spherical
+	double r = sqrt(_normal[0]*_normal[0] + _normal[1]*_normal[1] + _normal[2]*_normal[2]);
+	double theta = acos(_normal[2]/r); 
+
+	//y=north
+	double phi = atan2(_normal[1],_normal[0]); // + M_PI /*-3.14159/2*/; //south == 0
+	_azimuth = phi - M_PI/2.0; //set north = 0
+
+	if(_azimuth < 0.0)
+		_azimuth += 2.0*M_PI;
     }
 
     return _azimuth;
@@ -130,7 +139,18 @@ double face<Gt, Fb>::slope()
 {
     if (_slope == -1)
     {
-        _slope = 0;
+        //z surface normal
+	arma::vec n(3);
+	n(0) = 0.0; //x
+	n(1) = 0.0; //y
+	n(2) = 1.0;
+        
+        arma::vec normal(3);
+        normal(0) = _normal[0];
+        normal(1) = _normal[1];
+        normal(2) = _normal[2];
+
+	_slope = acos( arma::norm_dot(normal,n));
     }
 
     return _slope;
@@ -210,3 +230,4 @@ double face<Gt, Fb>::get_z()
     return 0;
 //    return CGAL::circumcenter( this->vertex(0).point(),this->vertex(1).point(),this->vertex(2).point()).y();
 }
+
