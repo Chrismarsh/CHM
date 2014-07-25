@@ -161,18 +161,18 @@ void triangulation::plot(std::string ID)
 
         Delaunay::Triangle t = this->triangle(face);
 
-        std::cout  << "xyz1:" << (*tri)(i, 0)-1 <<std::endl;
+//        std::cout  << "xyz1:" << (*tri)(i, 0)-1 <<std::endl;
         (*xyz)((*tri)(i, 0) -1, 0) = t[0].x();
         (*xyz)((*tri)(i, 0)-1, 1) = t[0].y();
         (*xyz)((*tri)(i, 0)-1, 2) = t[0].z();
         
         
-        std::cout  << "xyz2:"<<(*tri)(i, 1)-1 <<std::endl;
+//        std::cout  << "xyz2:"<<(*tri)(i, 1)-1 <<std::endl;
         (*xyz)((*tri)(i, 1)-1, 0) = t[1].x();
         (*xyz)((*tri)(i, 1)-1, 1) = t[1].y();
         (*xyz)((*tri)(i, 1)-1, 2) = t[1].z();
         
-        std::cout  << "xyz3:"<<(*tri)(i, 2)-1 <<std::endl;
+//        std::cout  << "xyz3:"<<(*tri)(i, 2)-1 <<std::endl;
         (*xyz)((*tri)(i, 2)-1, 0) = t[2].x();
         (*xyz)((*tri)(i, 2)-1, 1) = t[2].y();
         (*xyz)((*tri)(i, 2)-1, 2) = t[2].z();
@@ -180,7 +180,7 @@ void triangulation::plot(std::string ID)
 
         double d = fit->face_data(ID);
         (*cdata)(i) = d;
-        std::cout << i <<std::endl;
+//        std::cout << i <<std::endl;
         ++i;
     }
 
