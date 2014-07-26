@@ -2,7 +2,16 @@
 #http://www.cmake.org/cmake/help/v2.8.10/cmake.html#variable:CMAKE_LANG_COMPILER_ID
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -xhost -axsse4.2 -opt-prefetch -std=c++11")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 ") 
+find_package(CGAL REQUIRED)
+if(CGAL_FOUND)
+    message(STATUS "Found CGAL")
+endif()
+message(STATUS "${CGAL_USE_FILE}")
+include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
+
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 ") 
 
 
 #C#####
@@ -27,7 +36,7 @@ find_package(OpenMP)
 
 if(OPENMP_FOUND)
     if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp 
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+#        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
     endif()
 endif()
 
@@ -56,11 +65,6 @@ find_package(TBB REQUIRED)
 
 find_package(GSL REQUIRED)
 
-find_package(CGAL REQUIRED)
-if(CGAL_FOUND)
-    message(STATUS "Found CGAL")
-endif()
-include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
 
 message(STATUS "CHM CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
