@@ -8,7 +8,7 @@
 #include <boost/log/attributes.hpp>
 
 
-#include <boost/utility/empty_deleter.hpp>
+#include <boost/log/utility/empty_deleter.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/exception_handler.hpp>
 
