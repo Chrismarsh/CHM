@@ -117,8 +117,6 @@ void triangulation::from_file(std::string file)
     size_t i = 0;
     while (in >> pt)
     {
-//        LOG_DEBUG << pt;
-        double p = pt[0];
         Vertex_handle Vh = this->insert(pt);
         Vh->set_id(i);
         ++i;
