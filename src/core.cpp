@@ -182,8 +182,8 @@ void core::config_meshes(const json_spirit::Value& value)
     for (auto& jtr : value.get_obj())
     {
         const json_spirit::Pair& pair = jtr;
-        const std::string& name = pair.name_;
-        const json_spirit::Value& value = pair.value_;
+//        const std::string& name = pair.name_;
+//        const json_spirit::Value& value = pair.value_;
 
         if (pair.name_ == "")
         {
@@ -202,8 +202,8 @@ void core::config_meshes(const json_spirit::Value& value)
         for (auto& ktr : value.get_obj())
         {
             const json_spirit::Pair& pair = ktr;
-            const std::string& name = pair.name_;
-            const json_spirit::Value& value = pair.value_;
+//            const std::string& name = pair.name_;
+//            const json_spirit::Value& value = pair.value_;
 
             if (pair.name_ == "file")
             {
@@ -234,7 +234,7 @@ void core::config_matlab(const json_spirit::Value& value)
             for (auto& ktr : value.get_obj()) //loop over all the paths
             {
                 const json_spirit::Pair& pair = ktr;
-                const std::string& name = pair.name_;
+//                const std::string& name = pair.name_;
                 const json_spirit::Value& value = pair.value_;
 
 
@@ -477,7 +477,7 @@ void core::_determine_module_dep()
         LOG_DEBUG << "time_slot[" << _modules.at(*i)->ID << "] = " << time[*i] << std::endl;
     }
 
-    for (int i = 0; i < _stations.size(); i++)
+    for (size_t i = 0; i < _stations.size(); i++)
     {
         auto vars = _stations.at(i)->list_variables();
         _module_provided_variable_list.insert(vars.begin(), vars.end());
@@ -528,7 +528,7 @@ void core::run()
         //ensure all the stations are at the same timestep
         boost::posix_time::ptime t;
         t = _stations.at(0)->now().get_posix(); //get first stations time
-        for (int i = 1; //on purpose to skip first station
+        for (size_t i = 1; //on purpose to skip first station
                 i < _stations.size();
                 i++)
         {

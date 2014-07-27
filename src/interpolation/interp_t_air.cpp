@@ -58,7 +58,7 @@ double LLRA_const::raise(double value, mesh_elem& m, boost::shared_ptr<global> g
 
 double LLRA_var::get_lapse_rate(int month)
 {
-    double lapse_rate;
+    double lapse_rate = -9999;
     switch(month)
     {
     case 1:

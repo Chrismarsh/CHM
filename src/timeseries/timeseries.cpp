@@ -168,8 +168,6 @@ void time_series::open(std::string path)
     std::fstream file(path.c_str());
     std::string line = "";
 
-    int cols = 0;
-
     //tokenizer
     regex_tokenizer token;
     //contains the column headers
@@ -233,8 +231,8 @@ void time_series::open(std::string path)
     while (getline(file, line))
     {
         lines++;
-        //how many cols, make sure that equals the number of headers read in.
-        unsigned int cols_so_far = 0;
+        
+
         values = token.tokenize<std::string>(line);
 
         //make sure it isn't a blank line
@@ -243,7 +241,8 @@ void time_series::open(std::string path)
             //get the col name
             std::vector<std::string>::const_iterator headerItr = header.begin();
 
-            int cols_so_far = 0;
+            //how many cols, make sure that equals the number of headers read in.
+            size_t cols_so_far = 0;
             //for each column
             for (std::vector<std::string>::const_iterator itr = values.begin();
                     itr != values.end();
@@ -418,10 +417,10 @@ void time_series::to_file(std::string file)
     out << std::endl;
 
     
-    for (int k = 0; k < _rows; k++)
+    for (size_t k = 0; k < _rows; k++)
     {
         out << _date_vec.at(k) << "\t";
-        for (int j = 0; j < _variables.size(); j++)
+        for (size_t j = 0; j < _variables.size(); j++)
         {
             out << "\t" << *(tItr[j]);
             tItr[j]++;

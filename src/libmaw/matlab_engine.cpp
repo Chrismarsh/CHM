@@ -28,6 +28,7 @@
 
 
 #include "matlab_engine.h"
+#include "exception.hpp"
 
 namespace maw
 {
@@ -125,8 +126,10 @@ namespace maw
     void matlab_engine::set_working_dir()
     {
         char path[FILENAME_MAX];
-        GetCurrentDir(path, FILENAME_MAX);
-
+        char* ret = GetCurrentDir(path, FILENAME_MAX);
+        if (!ret)
+            BOOST_THROW_EXCEPTION(matlab_null_return() << errstr_info("Unable to set path"));
+        
         set_working_dir(std::string(path));
 
     }
@@ -136,6 +139,8 @@ namespace maw
         if (m_engine)
         {
             int retval = engEvalString(m_engine, "myErr=lasterror");
+            if (retval == 1)
+                BOOST_THROW_EXCEPTION(matlab_engine_failure() << errstr_info("Catastrophic matlab engine failure"));
             // get the struct
             mxArray *err = engGetVariable(m_engine, "myErr");
             char str[512];
@@ -146,7 +151,9 @@ namespace maw
                 if ((errStr != NULL) && mxIsChar(errStr))
                 {
                     // get the string
-                    retval = mxGetString(errStr, str, sizeof (str) / sizeof (str[0]));
+                   retval = mxGetString(errStr, str, sizeof (str) / sizeof (str[0]));
+                   if (retval == 1)
+                        BOOST_THROW_EXCEPTION(matlab_engine_failure() << errstr_info("Catastrophic matlab engine failure"));
                 }
             }
             mxDestroyArray(err);
@@ -203,7 +210,6 @@ namespace maw
         }
 
         size_t M = mxGetM(mx);
-        size_t N = mxGetN(mx);
 
         d_vec out_vec(new arma::vec(M));
 

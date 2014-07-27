@@ -37,7 +37,7 @@ void interp_rh::operator()(std::string method, mesh_elem& m, station_list& stati
 
 double LLRA_rh_var::get_lambda_rate(int month)
 {
-    double lambda;
+    double lambda = -9999;
     switch (month)
     {
         case 1:

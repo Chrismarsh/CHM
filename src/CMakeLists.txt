@@ -11,7 +11,7 @@ include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
 
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 ") 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 -Wall ") 
 
 
 #C#####

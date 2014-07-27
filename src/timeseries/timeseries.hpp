@@ -195,11 +195,11 @@ private:
     ts_hashmap _variables;
     date_vec _date_vec;
     
-    int _cols;
-    int _rows;
+    size_t _cols;
+    size_t _rows;
     bool _isOpen;
     std::string _file;
-    int _timeseries_size;
+    size_t _timeseries_size;
 
     
     //pushes variables back, only useful for reading from a file

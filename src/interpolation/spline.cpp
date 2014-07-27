@@ -71,10 +71,6 @@ double spline::operator()(station_list&  stations, mesh_elem& elem,boost::shared
     gsl_linalg_LU_decomp (&m.matrix, p, &s);
     gsl_linalg_LU_solve (&m.matrix, p, &b.vector, x);
 
-    //location of the unknown
-    unsigned int ux = elem->get_x();
-    unsigned int uy = elem->get_y();
-
     double z0 = x->data[0];//little a
 
     //-1 to skip the x[0] we already pulled off above
