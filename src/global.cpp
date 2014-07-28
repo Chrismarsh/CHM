@@ -49,13 +49,13 @@ void global::solar_el_az()
     boost::posix_time::time_duration UTC_offset = boost::posix_time::hours(_utc_offset);
                 
     std::tm tm = boost::posix_time::to_tm(_current_date+UTC_offset);
-    double year =  tm.tm_year;
-    double month =  tm.tm_mon;
-    double day =   tm.tm_mday;
-    double hour = tm.tm_hour;
-    double min = tm.tm_min;
-    double sec = tm.tm_sec;
-    double Alt = 0; //TODO fix this?
+    double year =  tm.tm_year + 1900; //convert from epoch
+    double month =  tm.tm_mon + 1;//conert jan == 0
+    double day =   tm.tm_mday; //starts at 1, ok
+    double hour = tm.tm_hour; // 0 = midnight, ok
+    double min = tm.tm_min; // 0, ok
+    double sec = tm.tm_sec; // [0,60] in c++11, ok http://en.cppreference.com/w/cpp/chrono/c/tm
+    double Alt = 0; //TODO: fix this?
     
     if (month <= 2.0)
     {

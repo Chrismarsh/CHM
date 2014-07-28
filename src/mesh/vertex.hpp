@@ -4,11 +4,18 @@
 #include <CGAL/Triangulation_2.h>
 
 #include <boost/tuple/tuple.hpp>
+
+struct vertex_info
+{
+    virtual ~vertex_info(){};
+};
+
 template < class Gt, class Vb = CGAL::Triangulation_vertex_base_2<Gt> >
 class ex_vertex : public Vb
 {
     typedef Vb Base;
 public:
+    vertex_info* info;
     typedef typename Vb::Vertex_handle Vertex_handle;
     typedef typename Vb::Face_handle Face_handle;
     typedef typename Vb::Point Point;
@@ -38,18 +45,22 @@ public:
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex() : Base()
 {
+    info = NULL;
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(const Point & p) : Base(p)
 {
+    info = NULL;
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(const Point & p, Face_handle f) : Base(f, p)
 {
+    info = NULL;
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(Face_handle f) : Base(f)
 {
+    info = NULL;
 }
 
 template < class Gt, class Vb>

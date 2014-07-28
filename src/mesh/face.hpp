@@ -11,6 +11,14 @@
 #include <boost/shared_ptr.hpp>
 
 #include "timeseries.hpp"
+
+struct face_info
+{
+    virtual ~face_info(){};
+};
+
+
+
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
     typedef K::Point_3 Point_3;
     typedef K::Vector_3 Vector_3;
@@ -20,7 +28,7 @@ class face
 : public Fb
 {
 public:
-
+    face_info* info;
     typedef typename Fb::Vertex_handle Vertex_handle;
     typedef typename Fb::Face_handle Face_handle;
 

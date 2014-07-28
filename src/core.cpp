@@ -105,19 +105,18 @@ void core::config_modules(const json_spirit::Value& value)
     int modnum = 0;
     //loop over the list of requested modules
     // these are in the format "type":"ID"
-    for (auto& jtr : value.get_obj())
+    for (auto& itr : value.get_array())
     {
-        const json_spirit::Pair& pair = jtr;
-        const std::string& name = pair.name_;
-        const std::string& ID = pair.value_.get_str();
 
-        LOG_DEBUG << "Module type=" << name << " ID=" << ID;
-
-        boost::shared_ptr<module_base> m(_mfactory.get(ID));
+        const json_spirit::Value& v = itr;
+        LOG_DEBUG << "Module type=" << v.get_str();
+       
+        boost::shared_ptr<module_base> m(_mfactory.get(v.get_str()));
 
         //internal tracking of module initialization order
-        modnum++;
+        
         m->IDnum = modnum;
+        modnum++;
         _modules.push_back(m);
     }
 }
@@ -199,7 +198,7 @@ void core::config_meshes(const json_spirit::Value& value)
         LOG_DEBUG << "Found mesh " << ID;
 
         //itr over the mesh paramters
-        for (auto& ktr : value.get_obj())
+        for (auto& ktr : pair.value_.get_obj())
         {
             const json_spirit::Pair& pair = ktr;
 //            const std::string& name = pair.name_;
@@ -604,10 +603,20 @@ void core::run()
             for (auto& itr : _modules)
             {
                 triangulation::Face_handle face = fit;
-                itr->run(face, _global);
+                if(itr->parallel_type() == module_base::parallel::data)
+                    itr->run(face, _global);
+
             }
         }
 
+        //module calls for domain parallel
+        for (auto& itr : _modules)
+        {
+            if(itr->parallel_type() == module_base::parallel::domain)
+                itr->run(_mesh, _global);
+
+        }
+        
         //update all the stations internal iterators to point to the next time step
         for (auto& itr : _stations)
         {

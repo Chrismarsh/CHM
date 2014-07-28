@@ -11,7 +11,7 @@ include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
 
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 -Wall ") 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall ") 
 
 
 #C#####
@@ -77,6 +77,7 @@ set(JSON_SPIRIT_SRCS
 
 set(MODULE_SRCS
         modules/solar.cpp
+        modules/terrain_shadows.cpp
 )
 
 set(LIBMAW_SRCS
@@ -92,9 +93,6 @@ set(CHM_SRCS
         timer.cpp
         variable_map.cpp
         
-#        mesh/mesh.cpp
-#        mesh/bounding_rect.cpp
-#        mesh/triangle.cpp
         mesh/triangulation.cpp
 
         interpolation/interp_2d.cpp

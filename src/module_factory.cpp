@@ -8,8 +8,10 @@ module_base* module_factory::get(std::string ID)
         LOG_DEBUG << "Module ID=" << ID;
         
         module_base* mod = NULL;
-        if (ID == "Solar")
+        if (ID == "solar")
             mod = new Solar(ID);
+        else if (ID == "shadows")
+            mod = new terrain_shadow(ID);
         else
             mod =  NULL;
         

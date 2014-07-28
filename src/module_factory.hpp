@@ -9,7 +9,7 @@
 
 // Modules to build against
 #include "solar.hpp"
-
+#include "terrain_shadows.hpp"
 class module_factory
 {
 public:
