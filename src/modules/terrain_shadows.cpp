@@ -72,6 +72,10 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
         coord = K*coord;
         p[2] = triangulation::Point(coord(0), coord(1), coord(2));
 
+        //the idea here is as follows: we are iterating over each face, however a vertex may belong to
+        // >1 face, so if we blindly modify a vertex, we may doubly or triply rotate a vertex. What this logic does
+        // is only rotate vertexes we haven't visited, done by checking the bool vitied flag. Then, if we have not visited a vertex
+        // we push back the vertex index as well as the original x.y.z point (as we need to undo the rotation at the end)
         for (int i = 0; i < 3; i++)
         {
             if(!face->vertex(i)->info)
@@ -89,19 +93,26 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
         face->info = tv;
     }
 
+    //performs the actual shadow check
     for (triangulation::Finite_faces_iterator fit = domain->finite_faces_begin();
             fit != domain->finite_faces_end(); ++fit)
     {
         triangulation::Face_handle face = fit;
-        double zprime_avg = face->vertex(0)->point().z() + face->vertex(0)->point().z() + face->vertex(0)->point().z();
-        zprime_avg /= 3;
+
+        double zprime_avg = CGAL::circumcenter( face->vertex(0)->point(),face->vertex(1)->point(),face->vertex(2)->point()).z();
+
         face->set_face_data("z_prime", zprime_avg);
     }
+    
+    // here we need to 'undo' the rotation we applied. It is a trade off of memor v. CPU. Frequently memory is the limitation
+    // so we will do more work inorder to reuse our triangulation 
     for (triangulation::Finite_faces_iterator fit = domain->finite_faces_begin();
             fit != domain->finite_faces_end(); ++fit)
     {
         triangulation::Face_handle face = fit;
         tmp_vertex* tv = dynamic_cast<tmp_vertex*> (face->info);
+        
+        //iteration is over all the vertexes that need to be undone.
         for(auto itr : tv->v)
         {
             size_t i = itr.first;
