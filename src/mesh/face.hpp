@@ -65,6 +65,7 @@ public:
     double get_y();
     double get_z();
     void to_file(std::string fname);
+
 private:
 
     double _slope;

@@ -134,42 +134,34 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
 
         triangulation::Face_handle face_j = faces.at(j);
 
+        K::Triangle_2 tj(K::Point_2(face_j->vertex(0)->point().x(), face_j->vertex(0)->point().y()),
+                K::Point_2(face_j->vertex(1)->point().x(), face_j->vertex(1)->point().y()),
+                K::Point_2(face_j->vertex(2)->point().x(), face_j->vertex(2)->point().y()));
+        
+        CGAL::Bbox_2 bj(tj.bbox());
         //compare to other triangles
         for (size_t k = j + 1; k < faces.size(); k++)
         {
             triangulation::Face_handle face_k = faces.at(k);
+            module_shadow_face_info* face_k_info = reinterpret_cast<module_shadow_face_info*> (face_k->info);
 
-            if (face_j->get_z() > face_k->get_z())
+            if (face_k_info->shadow == 0 && face_j->get_z() > face_k->get_z()) //tj is above tk, and tk is shadded by tj?
             {
-                //tj is above tk, and tk is shadded by tj?
-                K::Triangle_2 tk( K::Point_2(face_k->vertex(0)->point().x(),face_k->vertex(0)->point().y()),
-                                     K::Point_2(face_k->vertex(1)->point().x(),face_k->vertex(1)->point().y()),
-                                        K::Point_2(face_k->vertex(2)->point().x(),face_k->vertex(2)->point().y()) );
-                        
-                        
-                K::Triangle_2 tj( K::Point_2(face_j->vertex(0)->point().x(),face_j->vertex(0)->point().y()),
-                                     K::Point_2(face_j->vertex(1)->point().x(),face_j->vertex(1)->point().y()),
-                                        K::Point_2(face_j->vertex(2)->point().x(),face_j->vertex(2)->point().y()));
-                
-//                 bool collision= CGAL::do_intersect(tk,tj);
-                
+                K::Triangle_2 tk(K::Point_2(face_k->vertex(0)->point().x(), face_k->vertex(0)->point().y()),
+                        K::Point_2(face_k->vertex(1)->point().x(), face_k->vertex(1)->point().y()),
+                        K::Point_2(face_k->vertex(2)->point().x(), face_k->vertex(2)->point().y()));
+
                 CGAL::Bbox_2 bk(tk.bbox());
-                CGAL::Bbox_2 bj(tj.bbox());
-                
-                if (CGAL::do_overlap(bk,bj))
+
+                if (CGAL::do_overlap(bk, bj))
                 {
                     bool collision = face_k->intersects(face_j);
                     if (collision)
                     {
-                        module_shadow_face_info* face_k_info = reinterpret_cast<module_shadow_face_info*> (face_k->info);
                         face_k_info->shadow = 1;
-
                     }
                 }
-
-                
             }
-
         }
     }
 

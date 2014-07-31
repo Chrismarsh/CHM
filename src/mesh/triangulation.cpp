@@ -112,8 +112,9 @@ void triangulation::from_file(std::string file)
      LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size()) +" triangles";
 
     _bbox = CGAL::bounding_box(pts.begin(),pts.end());
-
-    std::cout << _bbox << std::endl;
+//    std::cout << "0:"<< _bbox[0] << "1:"<< _bbox[1]<<"2:"<< _bbox[2]<<"3:"<< _bbox[3]<<std::endl;
+    std::cout << _bbox[0] - _bbox[1] << std::endl;
+    std::cout << _bbox[2] - _bbox[3] << std::endl;
 }
 
 void triangulation::to_file(double x, double y, std::string fname)
