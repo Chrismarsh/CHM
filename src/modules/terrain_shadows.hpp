@@ -13,9 +13,14 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-struct tmp_vertex :  face_info
+struct module_shadow_face_info :  face_info
 {
+    module_shadow_face_info()
+    {
+        shadow = 0;
+    }
     std::vector< std::pair<size_t,Point_3> > v;
+    int shadow;
 };
 
 struct vertex_flag : vertex_info
@@ -25,6 +30,8 @@ struct vertex_flag : vertex_info
         visited = false;
     }
     bool visited;
+    Point_3 prj_vertex;
+    Point_3 org_vertex;
 };
 class terrain_shadow : public module_base
 {

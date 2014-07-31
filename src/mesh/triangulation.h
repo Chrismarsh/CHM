@@ -22,6 +22,7 @@
 #include <iostream>
 #include <fstream>
 
+
 #include <armadillo>
 
 #include <boost/lexical_cast.hpp>
@@ -31,7 +32,7 @@
 #include <CGAL/Projection_traits_xy_3.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_data_structure_2.h>
-
+#include <CGAL/bounding_box.h>
 #include <tbb/concurrent_vector.h>
 
 #include "libmaw.h"
@@ -79,7 +80,7 @@ public:
 private:
     size_t _size; //number of faces
     size_t _data_size; //number of rows in the original data matrix. useful for exporting to matlab,e tc
- 
+    K::Iso_rectangle_2 _bbox;
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
     boost::shared_ptr<maw::graphics> _gfx;

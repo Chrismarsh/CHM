@@ -45,8 +45,7 @@ void triangulation::init(vector x, vector y, vector z)
         ++i;
     }
 
-    //    _mesh
-    //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(m_size) +" triangles";
+    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size()) +" triangles";
 }
 
 size_t triangulation::size()
@@ -65,28 +64,13 @@ mesh_elem triangulation::locate_face(double x, double y)
 
     mesh_elem m = this->locate(p,lt0,li);
     
-    if (lt0 == Delaunay::OUTSIDE_CONVEX_HULL)
+    
+    if (lt0 != Delaunay::FACE)
         return NULL;
     else
         return m;
 }
 
-
-//maw::d_vec triangulation::mf_face_data(std::string ID)
-//{
-//    maw::d_vec data(new arma::vec(m_size));
-//
-//    int i = 0;
-//    for (auto& it : m_triangles)
-//    {
-//        double d = it->get_face_data(ID);
-//        (*data)(i) = d;
-//        ++i;
-//
-//    }
-//
-//    return data;
-//}
 
 void triangulation::plot_time_series(double x, double y, std::string ID)
 {
@@ -115,15 +99,21 @@ void triangulation::from_file(std::string file)
     std::ifstream in(file);
     Point pt;
     size_t i = 0;
+    std::vector< K::Point_2 > pts;
     while (in >> pt)
     {
         Vertex_handle Vh = this->insert(pt);
         Vh->set_id(i);
         ++i;
+        pts.push_back(K::Point_2(pt.x(),pt.y()));
     }
     _size = this->number_of_faces();
     _data_size = i; 
+     LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size()) +" triangles";
 
+    _bbox = CGAL::bounding_box(pts.begin(),pts.end());
+
+    std::cout << _bbox << std::endl;
 }
 
 void triangulation::to_file(double x, double y, std::string fname)

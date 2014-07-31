@@ -73,7 +73,7 @@ double graphics::plot_patch( std::string vertices, std::string faces, std::strin
 
 	mxArray* handle =  _engine->get(plot_handle);
 
-        
+        _engine->evaluate("save lol.mat");
                 
 	if(handle)
 		return (mxGetScalar(handle));
