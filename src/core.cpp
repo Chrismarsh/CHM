@@ -416,27 +416,44 @@ void core::_determine_module_dep()
     int size = _modules.size();
 
     Graph g(size);
-    std::vector<Edge> edges;
+//    std::vector<Edge> edges;
 
     //loop through each module
     for (auto& module : _modules)
     {
+        //Generate a debugging list of all variables, culling duplicates
+        _module_provided_variable_list.insert(module->provides()->begin(), module->provides()->end());
         //look at all other modules
+        if(module->depends()->size() == 0)
+        {
+            LOG_DEBUG << "Checking [" << module->ID << "], No dependenices";
+        }
+        else
+        {
+            LOG_DEBUG << "Checking [" << module->ID << "] against...";
+        }
+        
         for (auto& itr : _modules)
         {
-            _module_provided_variable_list.insert(itr->provides()->begin(), itr->provides()->end());
-
+//            LOG_DEBUG << module->ID<<"=" << itr->ID <<  (module->ID.compare(itr->ID) == 0 ? " - equal, skipping" : "") ;
             //don't check against our module
-            if (module->ID != itr->ID)
+            if (module->ID.compare(itr->ID) != 0)
             {
+                
+//                LOG_DEBUG << itr->ID;
+//                LOG_DEBUG << module->ID<<"=" << itr->ID << "?" << module->ID.compare(itr->ID);
                 //loop through each required variable of our current module
                 for (auto& depend_var : *(module->depends()))
                 {
-
+                    LOG_DEBUG << "Module="<<itr->ID << " looking for var=" << depend_var;
+                    
                     auto i = std::find(itr->provides()->begin(), itr->provides()->end(), depend_var);
-                    if (i != itr->provides()->end()) //modules itr provides the variable we are looking for
+                    if (i != itr->provides()->end()) //itr provides the variable we are looking for
                     {
-                        boost::add_edge(module->IDnum, itr->IDnum, g);
+                        LOG_DEBUG << "Adding edge between " << module->ID <<"[" << module->IDnum<<"] -> " << itr->ID <<"[" << itr->IDnum<<"] for var=" << *i  << std::endl;
+                       
+                        //add the dependency from module -> itr, such that itr will come before module
+                        boost::add_edge(module->IDnum, itr->IDnum,g);
 
                     }
                 }
@@ -444,15 +461,16 @@ void core::_determine_module_dep()
         }
     }
 
-    typedef std::list<Vertex> MakeOrder;
-    MakeOrder make_order;
+    std::list<Vertex> make_order;
 
     boost::topological_sort(g, std::front_inserter(make_order));
-    //    std::cout << "make ordering: ";
-    for (auto& i : make_order)
+    std::stringstream ss;
+    for (auto i = make_order.rbegin(); i != make_order.rend(); ++i)
     {
-        LOG_DEBUG << _modules.at(i)->ID << " ";
+        ss << _modules.at(*i)->ID << "->";
     }
+    std::string s = ss.str();
+    LOG_DEBUG << "Build order: " << s.substr(0,s.length()-2);
 
     // Parallel compilation ordering
     std::vector<int> time(size, 0);
@@ -483,12 +501,12 @@ void core::_determine_module_dep()
     }
 
     LOG_DEBUG << "List of all provided variables: ";
-    std::string s = "";
+    std::string modlist = "";
     for (auto itr : _module_provided_variable_list)
     {
         s += itr + " ";
     }
-    LOG_DEBUG << s;
+    LOG_DEBUG << modlist;
 
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
