@@ -122,7 +122,8 @@ private:
     
        
     //holds all the modules that are to be run on each mesh element
-    std::vector< module > _modules;
+    //pair as we also need to store the make order
+    std::vector< std::pair<module,size_t> > _modules;
     
     boost::shared_ptr<global> _global;
     

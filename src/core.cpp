@@ -110,14 +110,14 @@ void core::config_modules(const json_spirit::Value& value)
 
         const json_spirit::Value& v = itr;
         LOG_DEBUG << "Module type=" << v.get_str();
-       
+
         boost::shared_ptr<module_base> m(_mfactory.get(v.get_str()));
 
         //internal tracking of module initialization order
-        
+
         m->IDnum = modnum;
         modnum++;
-        _modules.push_back(m);
+        _modules.push_back(std::make_pair(m, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
     }
 }
 
@@ -181,8 +181,8 @@ void core::config_meshes(const json_spirit::Value& value)
     for (auto& jtr : value.get_obj())
     {
         const json_spirit::Pair& pair = jtr;
-//        const std::string& name = pair.name_;
-//        const json_spirit::Value& value = pair.value_;
+        //        const std::string& name = pair.name_;
+        //        const json_spirit::Value& value = pair.value_;
 
         if (pair.name_ == "")
         {
@@ -201,8 +201,8 @@ void core::config_meshes(const json_spirit::Value& value)
         for (auto& ktr : pair.value_.get_obj())
         {
             const json_spirit::Pair& pair = ktr;
-//            const std::string& name = pair.name_;
-//            const json_spirit::Value& value = pair.value_;
+            //            const std::string& name = pair.name_;
+            //            const json_spirit::Value& value = pair.value_;
 
             if (pair.name_ == "file")
             {
@@ -212,7 +212,7 @@ void core::config_meshes(const json_spirit::Value& value)
         }
         _mesh->from_file(file);
         if (_mesh->size() == 0)
-            BOOST_THROW_EXCEPTION( mesh_error() << errstr_info("Mesh size = 0!"));
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 
     }
 }
@@ -233,7 +233,7 @@ void core::config_matlab(const json_spirit::Value& value)
             for (auto& ktr : value.get_obj()) //loop over all the paths
             {
                 const json_spirit::Pair& pair = ktr;
-//                const std::string& name = pair.name_;
+                //                const std::string& name = pair.name_;
                 const json_spirit::Value& value = pair.value_;
 
 
@@ -293,8 +293,7 @@ void core::config_output(const json_spirit::Value& value)
                 if (out.face == NULL)
                 {
                     LOG_WARNING << "Requested an output point that is not in the triangulation domain, skipping";
-                }
-                else
+                } else
                 {
                     _outputs.push_back(out);
                 }
@@ -416,45 +415,39 @@ void core::_determine_module_dep()
     int size = _modules.size();
 
     Graph g(size);
-//    std::vector<Edge> edges;
+    //    std::vector<Edge> edges;
 
     //loop through each module
     for (auto& module : _modules)
     {
         //Generate a debugging list of all variables, culling duplicates
-        _module_provided_variable_list.insert(module->provides()->begin(), module->provides()->end());
+        _module_provided_variable_list.insert(module.first->provides()->begin(), module.first->provides()->end());
         //look at all other modules
-        if(module->depends()->size() == 0)
+        if (module.first->depends()->size() == 0)
         {
-            LOG_DEBUG << "Checking [" << module->ID << "], No dependenices";
-        }
-        else
+            LOG_DEBUG << "Checking [" << module.first->ID << "], No dependenices";
+        } else
         {
-            LOG_DEBUG << "Checking [" << module->ID << "] against...";
+            LOG_DEBUG << "Checking [" << module.first->ID << "] against...";
         }
-        
+
         for (auto& itr : _modules)
         {
-//            LOG_DEBUG << module->ID<<"=" << itr->ID <<  (module->ID.compare(itr->ID) == 0 ? " - equal, skipping" : "") ;
             //don't check against our module
-            if (module->ID.compare(itr->ID) != 0)
+            if (module.first->ID.compare(itr.first->ID) != 0)
             {
-                
-//                LOG_DEBUG << itr->ID;
-//                LOG_DEBUG << module->ID<<"=" << itr->ID << "?" << module->ID.compare(itr->ID);
                 //loop through each required variable of our current module
-                for (auto& depend_var : *(module->depends()))
+                for (auto& depend_var : *(module.first->depends()))
                 {
-                    LOG_DEBUG << "Module="<<itr->ID << " looking for var=" << depend_var;
-                    
-                    auto i = std::find(itr->provides()->begin(), itr->provides()->end(), depend_var);
-                    if (i != itr->provides()->end()) //itr provides the variable we are looking for
-                    {
-                        LOG_DEBUG << "Adding edge between " << module->ID <<"[" << module->IDnum<<"] -> " << itr->ID <<"[" << itr->IDnum<<"] for var=" << *i  << std::endl;
-                       
-                        //add the dependency from module -> itr, such that itr will come before module
-                        boost::add_edge(module->IDnum, itr->IDnum,g);
+                    LOG_DEBUG << "Module=" << itr.first->ID << " looking for var=" << depend_var;
 
+                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var);
+                    if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
+                    {
+                        LOG_DEBUG << "Adding edge between " << module.first->ID << "[" << module.first->IDnum << "] -> " << itr.first->ID << "[" << itr.first->IDnum << "] for var=" << *i << std::endl;
+
+                        //add the dependency from module -> itr, such that itr will come before module
+                        boost::add_edge(module.first->IDnum, itr.first->IDnum, g);
                     }
                 }
             }
@@ -464,13 +457,28 @@ void core::_determine_module_dep()
     std::list<Vertex> make_order;
 
     boost::topological_sort(g, std::front_inserter(make_order));
-    std::stringstream ss;
+
     for (auto i = make_order.rbegin(); i != make_order.rend(); ++i)
     {
-        ss << _modules.at(*i)->ID << "->";
+        _modules.at(*i).second = *i;
+    }
+
+    //sort descending
+    std::sort(_modules.begin(), _modules.end(),
+            [](std::pair<module, size_t>& a, std::pair<module, size_t>& b)->bool
+            {
+                return a.second < a.second;
+            });
+
+
+    std::stringstream ss;
+    for (auto itr : _modules)
+    {
+        ss << itr.first->ID << "->";
+
     }
     std::string s = ss.str();
-    LOG_DEBUG << "Build order: " << s.substr(0,s.length()-2);
+    LOG_DEBUG << "Build order: " << s.substr(0, s.length() - 2);
 
     // Parallel compilation ordering
     std::vector<int> time(size, 0);
@@ -491,7 +499,7 @@ void core::_determine_module_dep()
     boost::graph_traits<Graph>::vertex_iterator i, iend;
     for (boost::tie(i, iend) = boost::vertices(g); i != iend; ++i)
     {
-        LOG_DEBUG << "time_slot[" << _modules.at(*i)->ID << "] = " << time[*i] << std::endl;
+        LOG_DEBUG << "time_slot[" << time[*i] << "] = " << _modules.at(*i).first->ID << std::endl;
     }
 
     for (size_t i = 0; i < _stations.size(); i++)
@@ -513,7 +521,7 @@ void core::_determine_module_dep()
     if (_stations.size() == 0)
         BOOST_THROW_EXCEPTION(forcing_no_stations() << errstr_info("no stations"));
 
-//#pragma omp parallel for
+    //#pragma omp parallel for
     for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
 
@@ -594,7 +602,7 @@ void core::run()
     }
 
     //reset the iterators for all mesh timeseries
-//#pragma omp parallel for
+    //#pragma omp parallel for
     for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
         //current mesh element
@@ -613,15 +621,15 @@ void core::run()
         LOG_DEBUG << "Timestep: " << _global->posix_time();
 
         //iterate over all the mesh elements
-//#pragma omp parallel for
+        //#pragma omp parallel for
         for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
         {
             //module calls
             for (auto& itr : _modules)
             {
                 triangulation::Face_handle face = fit;
-                if(itr->parallel_type() == module_base::parallel::data)
-                    itr->run(face, _global);
+                if (itr.first->parallel_type() == module_base::parallel::data)
+                    itr.first->run(face, _global);
 
             }
         }
@@ -629,11 +637,11 @@ void core::run()
         //module calls for domain parallel
         for (auto& itr : _modules)
         {
-            if(itr->parallel_type() == module_base::parallel::domain)
-                itr->run(_mesh, _global);
+            if (itr.first->parallel_type() == module_base::parallel::domain)
+                itr.first->run(_mesh, _global);
 
         }
-        
+
         //update all the stations internal iterators to point to the next time step
         for (auto& itr : _stations)
         {
