@@ -11,7 +11,84 @@ set(CMAKE_BUILD_TYPE Debug)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
+# Options. Turn on with 'cmake -Dmyvarname=ON'.
+option(test "Build all tests." ON) # Makes boolean 'test' available.
 
+
+find_package(CGAL REQUIRED)
+if(CGAL_FOUND)
+    message(STATUS "Found CGAL")
+endif()
+message(STATUS "${CGAL_USE_FILE}")
+include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
+
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall -m64 ") 
+
+
+#C#####
+#GAL requires strict rounding
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -fp-model strict") #-frounding-math needed for cgal
+endif()
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -frounding-math")
+endif()
+########
+
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -Wno-c++11-extensions")
+  set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -stdlib=libc++")
+endif()
+
+
+
+find_package(OpenMP)
+
+if(OPENMP_FOUND)
+    if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp 
+#        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    endif()
+endif()
+
+#for matlab to run you need csh installed
+find_package(Matlab REQUIRED)
+
+find_package(Armadillo 3.0 REQUIRED)
+
+find_package(Boost
+             1.54.0
+             COMPONENTS
+             system
+             filesystem
+             date_time
+             log
+             thread
+             regex
+             REQUIRED)
+
+#need this for calling the logger from multiple modules
+ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
+
+find_package (Threads REQUIRED)
+
+find_package(TBB REQUIRED)
+
+find_package(GSL REQUIRED)
+
+
+
+message(STATUS "CHM CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+
+
+if (test)
+    message(STATUS "Tests enabled. Run with make test")
+    enable_testing()
+    ADD_SUBDIRECTORY (tests)
+
+endif()
 
 add_subdirectory(src)
 

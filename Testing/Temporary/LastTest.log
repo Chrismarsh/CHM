@@ -1,0 +1,19 @@
+Start testing: Aug 08 13:18 CST
+----------------------------------------------------------
+Unable to find executable: /Users/chris/Documents/PhD/code/CHM/bin/runUnitTests
+1/1 Testing: test
+1/1 Test: test
+Command: ""
+Directory: /Users/chris/Documents/PhD/code/CHM/tests
+"test" start time: 
+Output:
+----------------------------------------------------------
+<end of output>
+Test time =   0.00 sec
+----------------------------------------------------------
+Test Passed.
+"test" end time: Aug 08 13:18 CST
+"test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Aug 08 13:18 CST

@@ -1,0 +1,29 @@
+Start testing: Aug 08 13:23 CST
+----------------------------------------------------------
+1/1 Testing: test
+1/1 Test: test
+Command: "/Users/chris/Documents/PhD/code/CHM/bin/runUnitTests"
+Directory: /Users/chris/Documents/PhD/code/CHM/tests
+"test" start time: Aug 08 13:23 CST
+Output:
+----------------------------------------------------------
+Running main() from gtest_main.cc
+[==========] Running 1 test from 1 test case.
+[----------] Global test environment set-up.
+[----------] 1 test from station
+[ RUN      ] station.DefaultCtor
+[       OK ] station.DefaultCtor (1 ms)
+[----------] 1 test from station (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test case ran. (1 ms total)
+[  PASSED  ] 1 test.
+<end of output>
+Test time =   0.05 sec
+----------------------------------------------------------
+Test Passed.
+"test" end time: Aug 08 13:23 CST
+"test" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Aug 08 13:23 CST

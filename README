@@ -13,3 +13,14 @@ Armadillo
 boost
 GNU GSL
 Intel TBB
+CGAL
+
+To build:
+cmake .
+make
+
+To test:
+cmake .
+make check
+make test
+

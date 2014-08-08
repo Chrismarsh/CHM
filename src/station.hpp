@@ -134,6 +134,9 @@ public:
     unsigned int - Y corrdinate of the station
      */
     unsigned int get_y();
+    
+ 
+
 
 
     /*
@@ -180,7 +183,7 @@ public:
     Returns:   
             float - Station elevation
      */
-    float get_elevation();
+    float get_z();
 
 
     /*

@@ -1,0 +1,105 @@
+
+# GTest
+add_subdirectory (gtest)
+include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+
+
+
+set(JSON_SPIRIT_SRCS
+	../src/json_spirit/json_spirit_reader.cpp 
+	../src/json_spirit/json_spirit_value.cpp 
+	../src/json_spirit/json_spirit_writer.cpp 
+ )
+
+set(MODULE_SRCS
+        ../src/modules/solar.cpp
+        ../src/modules/terrain_shadows.cpp
+)
+
+set(LIBMAW_SRCS
+    ../src/libmaw/graphics.cpp
+    ../src/libmaw/matlab_engine.cpp
+)
+set(CHM_TEST_SRCS 
+    test_station.cpp
+    ../src/core.cpp
+    ../src/module_factory.cpp
+    ../src/global.cpp
+    ../src/station.cpp
+    ../src/timer.cpp
+    ../src/variable_map.cpp
+    
+    ../src/mesh/triangulation.cpp
+
+    ../src/interpolation/interp_2d.cpp
+    ../src/interpolation/inv_dist.cpp
+    ../src/interpolation/interp_t_air.cpp
+    ../src/interpolation/interp_rh.cpp
+    ../src/interpolation/spline.cpp
+
+    ../src/timeseries/timestep.cpp
+    ../src/timeseries/timeseries.cpp
+    ../src/timeseries/daily.cpp
+
+    ../src/utility/crc_hash_compare.cpp
+    ../src/utility/regex_tokenizer.cpp
+)
+set (HEADER_FILES
+	../src/json_spirit
+    ../src/mesh
+    ../src/modules
+    ../src/libmaw
+    ../src/interpolation
+    ../src/timeseries
+    ../src/utility
+    ../src
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+set (EXT_HEADER_FILES
+	${BOOST_INCLUDE_PATH}
+        ${TBB_INCLUDE_DIRS}
+        ${GSL_INCLUDE_DIRS}
+        ${AMRADILLO_INCLUDE_DIR}
+        ${MATLAB_INCLUDE_DIR}
+        ${CGAL_INCLUDE_DIRS}
+${CGAL_3RD_PARTY_INCLUDE_DIRS}
+    )
+set( LIB_FILES
+	${Boost_LIBRARIES}
+        ${TBB_LIBRARIES}
+        ${GSL_LIBRARIES}
+	${CMAKE_THREAD_LIBS_INIT}
+        ${ARMADILLO_LIBRARIES} 
+	${MATLAB_ENG_LIBRARY} 
+	${MATLAB_MX_LIBRARY}  
+        ${CGAL_LIBRARIES}
+        ${CGAL_3RD_PARTY_LIBRARIES}
+)
+
+set( GTEST_LINK
+    gtest
+    gtest_main
+)
+
+include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
+
+add_executable(
+    runUnitTests
+	${CHM_TEST_SRCS} 
+    ${MODULE_SRCS}
+	${JSON_SPIRIT_SRCS}
+    ${LIBMAW_SRCS}
+)
+
+target_link_libraries(
+    runUnitTests
+	${LIB_FILES}
+    ${GTEST_LINK}
+)
+
+# You can also omit NAME and COMMAND. The second argument could be some other
+  # test executable.
+  add_test(NAME test COMMAND runUnitTests)
+  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
+                  DEPENDS runUnitTests)

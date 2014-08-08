@@ -99,7 +99,7 @@ void station::set_y( unsigned int y )
         _y = y;
 }
 
-float station::get_elevation()
+float station::get_z()
 {
         return _z;
 }
