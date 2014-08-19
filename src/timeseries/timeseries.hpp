@@ -59,7 +59,7 @@ public:
     std::vector<std::string> list_variables();
 
     
-    int get_timeseries_size();
+    int get_timeseries_length();
     
     void init(std::set<std::string> variables, date_vec datetime, int size);
     
@@ -99,9 +99,9 @@ public:
     Function: open
              Opens an observation file. An observation file is organized in a tab, ",", or space delimited  columns, with
             each column representing an independent observation, and each row is a timesteps measurement. For example:
-            >Date					Rh	Tair	Precip	Notes
-            >20080220T000000		50	-12		2		Station_1
-            >20080221T000015		40	-10		0		Station_1
+            >Date			Rh	Tair	Precip	
+            >20080220T000000		50	-12		2		
+            >20080221T000015		40	-10		0		
             >		[...]
             Some restrictions:
                     - No more than 2147483647 steps. At 1s intervals, this equates to roughly 68 years.
@@ -199,7 +199,7 @@ private:
     size_t _rows;
     bool _isOpen;
     std::string _file;
-    size_t _timeseries_size;
+    size_t _timeseries_length;
 
     
     //pushes variables back, only useful for reading from a file

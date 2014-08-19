@@ -24,7 +24,7 @@ include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
 
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall -m64 ") 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall") 
 
 
 #C#####
@@ -84,10 +84,9 @@ message(STATUS "CHM CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 
 if (test)
-    message(STATUS "Tests enabled. Run with make test")
+    message(STATUS "Tests enabled. Run with make check")
     enable_testing()
     ADD_SUBDIRECTORY (tests)
-
 endif()
 
 add_subdirectory(src)

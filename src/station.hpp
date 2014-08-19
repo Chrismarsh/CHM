@@ -214,7 +214,7 @@ public:
     time_series::date_vec get_date_timeseries();
     
     //returns the length of the vectors
-    int get_timeseries_size();
+    int get_timeseries_length();
     
     double get(std::string variable);
     

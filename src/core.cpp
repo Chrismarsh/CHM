@@ -526,7 +526,7 @@ void core::_determine_module_dep()
     {
 
         auto date = _stations.at(0)->get_date_timeseries();
-        auto size = _stations.at(0)->get_timeseries_size();
+        auto size = _stations.at(0)->get_timeseries_length();
         Delaunay::Face_handle face = fit;
         face->init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
                 date, /*take the first station, later checks ensure all the stations' timeseries match*/

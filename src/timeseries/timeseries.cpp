@@ -215,7 +215,7 @@ void time_series::open(std::string path)
 
     //a string defined as anything with a letter in it or that has a special character in this list
     //~`!@#$%^&*(){[}]|\:;"'<>.?/
-    regex_tokenizer floating("^[-+]?(?:[0-9]+\\.(?:[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?$");
+    regex_tokenizer floating("^[-+]?(?:[0-9]+\\.?(?:[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?$");
     regex_tokenizer dateTime("[0-9]{8}T[0-9]{6}"); //iso standard time
 
     std::vector<std::string> values; //values on a line
@@ -272,8 +272,9 @@ void time_series::open(std::string path)
                     }
                 } else if ((dates = dateTime.tokenize<std::string>(*itr)).size() == 1)
                 {
+
                     LOG_VERBOSE << "Found " << *headerItr << ": " << dates[0];
-                    _date_vec.push_back(boost::posix_time::from_iso_string(dates[0]));
+                    _date_vec.push_back(boost::posix_time::from_iso_string(dates[0])); //from_iso_string
                     
                     //now we know where the date colum is, we remove it from the hashmap if we haven't already
                     ts_hashmap::accessor a;
@@ -309,7 +310,7 @@ void time_series::open(std::string path)
 
     _isOpen = true;
     _file = path;
-    _timeseries_size = lines;
+    _timeseries_length = lines;
 
     //check to make sure what we have read in makes sense
     //Check for:
@@ -362,9 +363,9 @@ void time_series::open(std::string path)
 
 }
 
-int time_series::get_timeseries_size()
+int time_series::get_timeseries_length()
 {
-    return _timeseries_size;
+    return _timeseries_length;
 }
 
 std::string time_series::get_opened_file()
@@ -377,7 +378,7 @@ time_series::time_series()
     _cols = 0;
     _rows = 0;
     _isOpen = false;
-    _timeseries_size=0;
+    _timeseries_length=0;
 }
 
 
@@ -390,7 +391,7 @@ void time_series::to_file(std::string file)
 {
     std::ofstream out;
     out.open(file.c_str());
-
+//    out << std::fixed << std::setprecision(8);
     if (!out.is_open())
         BOOST_THROW_EXCEPTION(file_read_error()
             << boost::errinfo_errno(errno)
@@ -419,7 +420,8 @@ void time_series::to_file(std::string file)
     
     for (size_t k = 0; k < _rows; k++)
     {
-        out << _date_vec.at(k) << "\t";
+        out << boost::posix_time::to_iso_string(_date_vec.at(k)) << "\t";
+//        out << _date_vec.at(k) << "\t";
         for (size_t j = 0; j < _variables.size(); j++)
         {
             out << "\t" << *(tItr[j]);

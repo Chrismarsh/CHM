@@ -4,6 +4,8 @@
 /bin/
 /CHM.log
 Makefile
+/tests/gtest/CMakeFiles/
+/tests/CMakeFiles
 *.fuse_*
 CMakeCache.txt
 cmake_install.cmake

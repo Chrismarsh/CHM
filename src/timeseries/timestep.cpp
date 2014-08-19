@@ -48,6 +48,20 @@ int timestep::year()
     return _date_itr->date().year();
 }
 
+int timestep::hour()
+{
+    return boost::posix_time::to_tm(*_date_itr).tm_hour;
+}
+int timestep::min()
+{
+    return boost::posix_time::to_tm(*_date_itr).tm_min;
+}
+int timestep::sec()
+{
+    return boost::posix_time::to_tm(*_date_itr).tm_sec;
+}
+
+
 boost::gregorian::date timestep::get_gregorian()
 {
     boost::gregorian::date date;

@@ -5,6 +5,7 @@ include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 
 
+
 set(JSON_SPIRIT_SRCS
 	../src/json_spirit/json_spirit_reader.cpp 
 	../src/json_spirit/json_spirit_value.cpp 
@@ -22,6 +23,8 @@ set(LIBMAW_SRCS
 )
 set(CHM_TEST_SRCS 
     test_station.cpp
+    test_timeseries.cpp
+
     ../src/core.cpp
     ../src/module_factory.cpp
     ../src/global.cpp
@@ -100,6 +103,14 @@ target_link_libraries(
 
 # You can also omit NAME and COMMAND. The second argument could be some other
   # test executable.
-  add_test(NAME test COMMAND runUnitTests)
-  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
-                  DEPENDS runUnitTests)
+  add_test(runUnitTests runUnitTests)
+
+#  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
+#                  DEPENDS ${EXECUTABLE_OUTPUT_PATH}/runUnitTests)
+ add_custom_target(check COMMAND ${EXECUTABLE_OUTPUT_PATH}/runUnitTests DEPENDS runUnitTests WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
+ message(STATUS "Copying files to test dir ${EXECUTABLE_OUTPUT_PATH} from ${CMAKE_SOURCE_DIR}/tests/files/")
+
+add_custom_command(TARGET runUnitTests PRE_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_directory
+                       ${CMAKE_SOURCE_DIR}/tests/files $<TARGET_FILE_DIR:runUnitTests>)
+

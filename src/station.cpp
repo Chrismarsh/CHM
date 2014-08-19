@@ -46,9 +46,9 @@ time_series::date_vec station::get_date_timeseries()
     return _obs->get_date_timeseries();
 }
 
-int station::get_timeseries_size()
+int station::get_timeseries_length()
 {
-    return _obs->get_timeseries_size();
+    return _obs->get_timeseries_length();
 }
  
 std::vector<std::string> station::list_variables()

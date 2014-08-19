@@ -73,7 +73,9 @@ public:
     std::string to_string();
 
 
-
+    int hour();
+    int min();
+    int sec();
 
     /*
     Function: month

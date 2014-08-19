@@ -4,5 +4,5 @@
 # 
 # This file includes the relevant testing commands required for 
 # testing this directory and lists subdirectories to be tested as well.
-add_test(test "/Users/chris/Documents/PhD/code/CHM/bin/runUnitTests")
+add_test(runUnitTests "runUnitTests")
 subdirs(gtest)
