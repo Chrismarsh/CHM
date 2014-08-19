@@ -4,7 +4,11 @@
 Solar::Solar( std::string ID)
 {
     _provides->push_back("solar_S_angle");
+    _provides->push_back("solar_short");
+    
     _depends->push_back("z_prime");
+    
+    
     this->ID = ID;
     _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -40,6 +44,10 @@ void Solar::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     
     
     elem->set_face_data("solar_S_angle",angle);
+    
+    double shadow = elem->face_data("shadowed");
+    
+    elem->set_face_data("solar_short", shadow == 1 ? 0 : angle ); //shadow == 1
     
     
 }

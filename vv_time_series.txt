@@ -1,2 +1,2 @@
-Date		Qsi	u	z_prime	t	p	solar_S_angle	shadowed	rh	T_g
-2010-Oct-01 13:00:00		0	0	-4.63281e+06	15.1369	0	0.595328	0	37.2862	0
+Date		Qsi	u	z_prime	t	p	solar_S_angle	shadowed	rh	solar_short	T_g
+20101001T170000		0	0	-2.47356e+06	15.1369	0	0.012937	1	37.2862	0.012937	0
