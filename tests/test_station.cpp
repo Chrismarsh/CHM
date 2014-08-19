@@ -48,7 +48,7 @@ TEST_F(StationTest, ItrNext)
 //ensure we read in the right thing
 TEST_F(StationTest, FileContents)
 {
-    ASSERT_DOUBLE_EQ(8.1, s1.get("t"));
+    ASSERT_DOUBLE_EQ(-8.1, s1.get("t"));
     ASSERT_DOUBLE_EQ(40.282, s1.get("rh"));
     ASSERT_DOUBLE_EQ(0.647, s1.get("u"));
     ASSERT_DOUBLE_EQ(0.1031, s1.get("p"));

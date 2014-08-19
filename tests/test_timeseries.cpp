@@ -48,7 +48,7 @@ TEST_F(TimeseriesTest, NoExistFileOpens)
 TEST_F(TimeseriesTest, FileContents)
 {
     auto itr = s1.begin();
-    ASSERT_DOUBLE_EQ(8.1, itr->get("t"));
+    ASSERT_DOUBLE_EQ(-8.1, itr->get("t"));
     ASSERT_DOUBLE_EQ(40.282, itr->get("rh"));
     ASSERT_DOUBLE_EQ(0.647, itr->get("u"));
     ASSERT_DOUBLE_EQ(0.1031, itr->get("p"));
@@ -134,7 +134,7 @@ TEST_F(TimeseriesTest, GetItr)
 {
     auto itr = s1.begin()->get_itr("t");
     
-    ASSERT_DOUBLE_EQ(*itr,8.100);
+    ASSERT_DOUBLE_EQ(*itr,-8.100);
     itr++;
     ASSERT_DOUBLE_EQ(*itr,14.268);
     
@@ -178,7 +178,7 @@ TEST_F(TimeseriesTest, ToFile)
     ASSERT_NO_THROW(input.open("test_s1_output.txt"));
     
     auto itr = s1.begin();
-    ASSERT_DOUBLE_EQ(8.1, itr->get("t"));
+    ASSERT_DOUBLE_EQ(-8.1, itr->get("t"));
     ASSERT_DOUBLE_EQ(40.282, itr->get("rh"));
     ASSERT_DOUBLE_EQ(0.647, itr->get("u"));
     ASSERT_DOUBLE_EQ(0.1031, itr->get("p"));
