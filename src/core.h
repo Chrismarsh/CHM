@@ -50,6 +50,7 @@ typedef std::pair<int, int> Edge;
 
 class core
 {
+    friend class CoreTest;
 public:
     
     
@@ -98,9 +99,6 @@ public:
     ~core();
 
     void run();
-
-
-	     
 
 private:
     //current level of the logger. Defaults to debug, but can be changed via configuration settings
