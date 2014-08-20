@@ -16,10 +16,19 @@
 
 #include "triangulation.h"
 
+triangulation::triangulation()
+{
+    LOG_WARNING << "No Matlab engine, plotting and all Matlab functionality will be disabled";
+    _engine = NULL;
+    _gfx = NULL;
+    _size = 0;
+}
+
 triangulation::triangulation(boost::shared_ptr<maw::matlab_engine> engine)
 {
     _engine = engine;
     _gfx = boost::make_shared<maw::graphics>(_engine.get());
+    _size = 0;
 }
 
 triangulation::~triangulation()
@@ -30,12 +39,6 @@ triangulation::~triangulation()
 
 void triangulation::init(vector x, vector y, vector z)
 {
-    if (!_engine)
-    {
-        BOOST_THROW_EXCEPTION(mesh_error()
-                << errstr_info("No matlab engine"));
-    }
-
     //    _mesh = boost::make_shared<Delaunay>();
     for (size_t i = 0; i < x->size(); i++)
     {
@@ -74,6 +77,11 @@ mesh_elem triangulation::locate_face(double x, double y)
 
 void triangulation::plot_time_series(double x, double y, std::string ID)
 {
+    if(!_engine)
+    {
+        LOG_WARNING << "No Matlab engine, plotting is disabled";
+        return;
+    }
     mesh_elem m  = this->locate_face(x,y);
     
     if(m == NULL)
@@ -110,7 +118,7 @@ void triangulation::from_file(std::string file)
     _size = this->number_of_faces();
     _data_size = i; 
      LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size()) +" triangles";
-
+     
     _bbox = CGAL::bounding_box(pts.begin(),pts.end());
 //    std::cout << "0:"<< _bbox[0] << "1:"<< _bbox[1]<<"2:"<< _bbox[2]<<"3:"<< _bbox[3]<<std::endl;
 //    std::cout << _bbox[0] - _bbox[1] << std::endl;
@@ -132,6 +140,11 @@ void triangulation::to_file(mesh_elem m, std::string fname)
 
 void triangulation::plot(std::string ID)
 {
+    if(!_engine)
+    {
+        LOG_WARNING << "No Matlab engine, plotting is disabled";
+        return;
+    }
     LOG_DEBUG << "Sending triangulation to matlab...";
 
    

@@ -60,7 +60,7 @@ class triangulation
 : public Delaunay
 {
 public:
-    
+    triangulation();
     triangulation(boost::shared_ptr<maw::matlab_engine> engine);
     ~triangulation();
 
