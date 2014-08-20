@@ -105,6 +105,15 @@ void triangulation::plot_time_series(double x, double y, std::string ID)
 void triangulation::from_file(std::string file)
 {
     std::ifstream in(file);
+    if (in.fail())
+    {
+        BOOST_THROW_EXCEPTION(file_read_error()
+                << boost::errinfo_errno(errno)
+                << boost::errinfo_file_name(file)
+                );
+
+    }
+        
     Point pt;
     size_t i = 0;
     std::vector< K::Point_2 > pts;
