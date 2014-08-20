@@ -3,9 +3,12 @@
 add_subdirectory (gtest)
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
-
-
-
+set(TEST_SRCS
+    test_station.cpp
+    test_timeseries.cpp
+    test_core.cpp
+    test_mesh.cpp
+)
 set(JSON_SPIRIT_SRCS
 	../src/json_spirit/json_spirit_reader.cpp 
 	../src/json_spirit/json_spirit_value.cpp 
@@ -21,9 +24,7 @@ set(LIBMAW_SRCS
     ../src/libmaw/graphics.cpp
     ../src/libmaw/matlab_engine.cpp
 )
-set(CHM_TEST_SRCS 
-    test_station.cpp
-    test_timeseries.cpp
+set(CHM_SRCS 
 
     ../src/core.cpp
     ../src/module_factory.cpp
@@ -89,9 +90,10 @@ include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
 
 add_executable(
     runUnitTests
-	${CHM_TEST_SRCS} 
+    ${CHM_SRCS}
+    ${TEST_SRCS} 
     ${MODULE_SRCS}
-	${JSON_SPIRIT_SRCS}
+    ${JSON_SPIRIT_SRCS}
     ${LIBMAW_SRCS}
 )
 
