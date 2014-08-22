@@ -35,7 +35,25 @@
 #include <CGAL/bounding_box.h>
 #include <tbb/concurrent_vector.h>
 
+//http://www.paraview.org/Bug/print_bug_page.php?bug_id=14164
+//http://review.source.kitware.com/#/c/11956/
+//until 6.0.1 comes out
+#define VTK_HAS_STD_ISNAN
+#define VTK_HAS_STD_ISINF
+
+#include <vtkVersion.h>
+#include <vtkSmartPointer.h>
+#include <vtkTriangle.h>
+#include <vtkCellArray.h>
+#include <vtkXMLUnstructuredGridWriter.h>
+#include <vtkUnstructuredGrid.h>
+#include <vtkPointData.h>
+
+
+#ifdef NOMATLAB
 #include "libmaw.h"
+#endif
+
 #include "vertex.hpp"
 #include "face.hpp"
 
@@ -61,7 +79,9 @@ class triangulation
 {
 public:
     triangulation();
+    #ifdef MATLAB
     triangulation(boost::shared_ptr<maw::matlab_engine> engine);
+#endif
     ~triangulation();
 
     void from_file(std::string file);
@@ -72,18 +92,24 @@ public:
 
     mesh_elem locate_face(double x, double y);
 
+    #ifdef NOMATLAB
     void plot(std::string ID);
     void plot_time_series(double x, double y, std::string ID);
+#endif
     
     void to_file(double x, double y, std::string fname);
     void to_file(mesh_elem m, std::string fname);
+    void to_vtu(std::string fname);
 private:
     size_t _size; //number of faces
     size_t _data_size; //number of rows in the original data matrix. useful for exporting to matlab,e tc
     K::Iso_rectangle_2 _bbox;
+    
+    #ifdef NOMATLAB
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
     boost::shared_ptr<maw::graphics> _gfx;
+#endif
 
 };
 

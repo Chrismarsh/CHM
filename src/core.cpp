@@ -48,6 +48,7 @@ core::core()
 
     LOG_DEBUG << "Logger initialized. Writing to cout and CHM.log";
 
+    #ifdef NOMATLAB
     _engine = boost::make_shared<maw::matlab_engine>();
 
 
@@ -55,6 +56,7 @@ core::core()
     _engine->set_working_dir();
 
     LOG_DEBUG << "Matlab engine started";
+#endif
 
     _global = boost::make_shared<global>();
 
@@ -177,7 +179,11 @@ void core::config_forcing(const json_spirit::Value& value)
 void core::config_meshes(const json_spirit::Value& value)
 {
     LOG_DEBUG << "Found meshes section";
+#ifdef MATLAB
     _mesh = boost::make_shared<triangulation>(_engine);
+#else
+    _mesh = boost::make_shared<triangulation>();
+#endif
     for (auto& jtr : value.get_obj())
     {
         const json_spirit::Pair& pair = jtr;
@@ -217,9 +223,11 @@ void core::config_meshes(const json_spirit::Value& value)
     }
 }
 
+
 void core::config_matlab(const json_spirit::Value& value)
 {
     LOG_DEBUG << "Found matlab section";
+    #ifdef MATLAB
     //loop over the list of matlab options
     for (auto& jtr : value.get_obj())
     {
@@ -242,7 +250,9 @@ void core::config_matlab(const json_spirit::Value& value)
             }
         }
     }
+#endif
 }
+
 
 void core::config_output(const json_spirit::Value& value)
 {
@@ -377,7 +387,9 @@ void core::read_config_file(std::string file)
             config_meshes(value);
         } else if (name == "matlab")
         {
+            #ifdef NOMATLAB
             config_matlab(value);
+#endif
         } else if (name == "output")
         {
             config_output(value);
@@ -465,7 +477,7 @@ void core::_determine_module_dep()
 
     //sort descending
     std::sort(_modules.begin(), _modules.end(),
-            [](std::pair<module, size_t>& a, std::pair<module, size_t>& b)->bool
+            [](const std::pair<module, size_t>& a, const std::pair<module, size_t>& b)->bool
             {
                 return a.second < a.second;
             });
@@ -652,7 +664,7 @@ void core::run()
     double elapsed = c.toc();
     LOG_DEBUG << "Took " << elapsed << "s";
 
-
+#ifdef NOMATLAB
     for (auto& itr : _outputs)
     {
         if (itr.plot)
@@ -674,4 +686,5 @@ void core::run()
             _mesh->to_file(itr.face, itr.out_file);
         }
     }
+#endif
 }

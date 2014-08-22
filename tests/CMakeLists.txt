@@ -20,10 +20,13 @@ set(MODULE_SRCS
         ../src/modules/terrain_shadows.cpp
 )
 
+if(MATLAB)
 set(LIBMAW_SRCS
     ../src/libmaw/graphics.cpp
     ../src/libmaw/matlab_engine.cpp
 )
+endif()
+
 set(CHM_SRCS 
 
     ../src/core.cpp
@@ -99,8 +102,9 @@ add_executable(
 
 target_link_libraries(
     runUnitTests
-	${LIB_FILES}
+    ${LIB_FILES}
     ${GTEST_LINK}
+    ${VTK_LIBRARIES}
 )
 
 # You can also omit NAME and COMMAND. The second argument could be some other

@@ -1,3 +1,5 @@
+//#define MATLAB
+
 #include <iostream>
 #include "core.h"
 

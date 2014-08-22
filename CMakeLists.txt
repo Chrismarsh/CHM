@@ -22,7 +22,8 @@ endif()
 message(STATUS "${CGAL_USE_FILE}")
 include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
-
+find_package(VTK REQUIRED)
+include(${VTK_USE_FILE})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall") 
 
@@ -53,8 +54,11 @@ if(OPENMP_FOUND)
     endif()
 endif()
 
+set(MATLAB false)
+if(MATLAB)
 #for matlab to run you need csh installed
 find_package(Matlab REQUIRED)
+endif()
 
 find_package(Armadillo 3.0 REQUIRED)
 

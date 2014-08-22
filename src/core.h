@@ -115,9 +115,10 @@ private:
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
     
+#ifdef MATLAB
     //matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
-    
+#endif
        
     //holds all the modules that are to be run on each mesh element
     //pair as we also need to store the make order

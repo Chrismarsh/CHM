@@ -14,10 +14,7 @@ set(MODULE_SRCS
         modules/terrain_shadows.cpp
 )
 
-set(LIBMAW_SRCS
-    libmaw/graphics.cpp
-    libmaw/matlab_engine.cpp
-)
+
 set(CHM_SRCS 
 	main.cpp
 	core.cpp
@@ -58,7 +55,7 @@ set (EXT_HEADER_FILES
         ${TBB_INCLUDE_DIRS}
         ${GSL_INCLUDE_DIRS}
         ${AMRADILLO_INCLUDE_DIR}
-        ${MATLAB_INCLUDE_DIR}
+
         ${CGAL_INCLUDE_DIRS}
 ${CGAL_3RD_PARTY_INCLUDE_DIRS}
     )
@@ -68,11 +65,27 @@ set( LIB_FILES
         ${GSL_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
         ${ARMADILLO_LIBRARIES} 
-	${MATLAB_ENG_LIBRARY} 
-	${MATLAB_MX_LIBRARY}  
+
         ${CGAL_LIBRARIES}
         ${CGAL_3RD_PARTY_LIBRARIES}
+        ${VTK_LIBRARIES}
 )
+
+if(MATLAB)
+    set(LIBMAW_SRCS
+        libmaw/graphics.cpp
+        libmaw/matlab_engine.cpp
+    )
+
+    set( LIB_FILES 
+            ${LIB_FILES}
+            ${MATLAB_ENG_LIBRARY} 
+            ${MATLAB_MX_LIBRARY}  )
+
+    set(EXT_HEADER_FILES ${EXT_HEADER_FILES}
+            ${MATLAB_INCLUDE_DIR})
+
+endif()
 
 include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
 
