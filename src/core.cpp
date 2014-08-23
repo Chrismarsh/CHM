@@ -621,7 +621,7 @@ void core::run()
         fit->reset_to_begining();
     }
 
-
+    size_t num_ts=0;
     done = false;
     while (!done)
     {
@@ -654,19 +654,36 @@ void core::run()
 
         }
 
+        //save timestep to file
+        std::stringstream ss;
+        ss << "marmot" << num_ts<<".vtu";
+        _mesh->to_vtu(ss.str());
+        num_ts++;
+        
+        //update all the internal iterators
+        for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
+        {
+            //next timestep
+            fit->next();
+        }
+        
         //update all the stations internal iterators to point to the next time step
         for (auto& itr : _stations)
         {
             if (!itr->next()) //
                 done = true;
         }
+                
+
     }
     double elapsed = c.toc();
     LOG_DEBUG << "Took " << elapsed << "s";
 
-#ifdef NOMATLAB
+   
+
     for (auto& itr : _outputs)
     {
+        #ifdef NOMATLAB
         if (itr.plot)
         {
             //loop through all the request variables
@@ -681,10 +698,11 @@ void core::run()
                 }
             }
         }
+        #endif
         if (itr.out_file != "")
         {
             _mesh->to_file(itr.face, itr.out_file);
         }
     }
-#endif
+
 }

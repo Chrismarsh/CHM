@@ -47,7 +47,8 @@
 #include <vtkCellArray.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkUnstructuredGrid.h>
-#include <vtkPointData.h>
+#include <vtkCellData.h> //pointdata
+#include <vtkFloatArray.h>
 
 
 #ifdef NOMATLAB
@@ -73,13 +74,12 @@ typedef CGAL::Delaunay_triangulation_2<Gt, Tds> Delaunay; //specify a delauany t
 typedef Delaunay::Face_handle mesh_elem;
 typedef boost::shared_ptr<tbb::concurrent_vector<double> > vector;
 
-
 class triangulation
 : public Delaunay
 {
 public:
     triangulation();
-    #ifdef MATLAB
+#ifdef MATLAB
     triangulation(boost::shared_ptr<maw::matlab_engine> engine);
 #endif
     ~triangulation();
@@ -92,20 +92,20 @@ public:
 
     mesh_elem locate_face(double x, double y);
 
-    #ifdef NOMATLAB
+#ifdef NOMATLAB
     void plot(std::string ID);
     void plot_time_series(double x, double y, std::string ID);
 #endif
-    
+
     void to_file(double x, double y, std::string fname);
     void to_file(mesh_elem m, std::string fname);
     void to_vtu(std::string fname);
 private:
-    size_t _size; //number of faces
-    size_t _data_size; //number of rows in the original data matrix. useful for exporting to matlab,e tc
+    size_t _num_faces; //number of faces
+    size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab,e tc
     K::Iso_rectangle_2 _bbox;
-    
-    #ifdef NOMATLAB
+
+#ifdef NOMATLAB
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
     boost::shared_ptr<maw::graphics> _gfx;

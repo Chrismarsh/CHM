@@ -47,7 +47,7 @@ void global::solar_el_az()
 {
     //UTC offset. Don't know how to use datetime's UTC converter yet....
     boost::posix_time::time_duration UTC_offset = boost::posix_time::hours(_utc_offset);
-    std::cout << _current_date+UTC_offset << std::endl;
+//    std::cout << _current_date+UTC_offset << std::endl;
     std::tm tm = boost::posix_time::to_tm(_current_date+UTC_offset);
     double year =  tm.tm_year + 1900; //convert from epoch
     double month =  tm.tm_mon + 1;//conert jan == 0

@@ -59,6 +59,7 @@ public:
     double face_data(std::string var_ID);
     void init_time_series(std::set<std::string> variables, time_series::date_vec datetime, int size);
     time_series::variable_vec face_time_series(std::string ID);
+    std::vector<std::string> variables_IDs();
     void next();
     void reset_to_begining();
     double get_x();
@@ -230,7 +231,11 @@ bool face<Gt, Fb>::contains(double x, double y)
             && lambda3 > 0.0 && lambda3 < 1.0;
 
 }
-
+template < class Gt, class Fb>
+std::vector<std::string> face<Gt, Fb>::variables_IDs()
+{
+    return _data->list_variables();
+}
 template < class Gt, class Fb>
 void face<Gt, Fb>::set_face_data(std::string var_ID, double data)
 {

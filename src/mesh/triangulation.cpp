@@ -19,14 +19,15 @@
 triangulation::triangulation()
 {
     LOG_WARNING << "No Matlab engine, plotting and all Matlab functionality will be disabled";
-    #ifdef MATLAB
+#ifdef MATLAB
     _engine = NULL;
     _gfx = NULL;
 #endif
-    _size = 0;
+    _num_faces = 0;
 }
 
 #ifdef MATLAB
+
 triangulation::triangulation(boost::shared_ptr<maw::matlab_engine> engine)
 {
     _engine = engine;
@@ -34,6 +35,7 @@ triangulation::triangulation(boost::shared_ptr<maw::matlab_engine> engine)
     _size = 0;
 }
 #endif
+
 triangulation::~triangulation()
 {
 #ifdef MATLAB
@@ -58,7 +60,7 @@ void triangulation::init(vector x, vector y, vector z)
 
 size_t triangulation::size()
 {
-    return _size;
+    return _num_faces;
 }
 
 mesh_elem triangulation::locate_face(double x, double y)
@@ -78,6 +80,7 @@ mesh_elem triangulation::locate_face(double x, double y)
 }
 
 #ifdef NOMATLAB
+
 void triangulation::plot_time_series(double x, double y, std::string ID)
 {
     if (!_engine)
@@ -105,6 +108,7 @@ void triangulation::plot_time_series(double x, double y, std::string ID)
     _gfx->spin_until_close(handle);
 }
 #endif
+
 void triangulation::from_file(std::string file)
 {
     std::ifstream in(file);
@@ -127,8 +131,8 @@ void triangulation::from_file(std::string file)
         ++i;
         pts.push_back(K::Point_2(pt.x(), pt.y()));
     }
-    _size = this->number_of_faces();
-    _data_size = i;
+    _num_faces = this->number_of_faces();
+    _num_vertex = i;
     LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size()) + " triangles";
 
     _bbox = CGAL::bounding_box(pts.begin(), pts.end());
@@ -222,47 +226,77 @@ void triangulation::to_vtu(std::string file_name)
 {
     size_t i = 0;
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    points->SetNumberOfPoints(this->_num_vertex);
 
     vtkSmartPointer<vtkCellArray> triangles =
             vtkSmartPointer<vtkCellArray>::New();
+    
+    std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 
-
+    //assume that all the faces have the same number of variables and the same types of variables
+    //by this point this should be a fair assumption
+    
+    Delaunay::Finite_faces_iterator f = this->finite_faces_begin();
+    auto variables = f->variables_IDs();
+    for(auto& v: variables)
+    {
+        data[v] = vtkSmartPointer<vtkFloatArray>::New();
+        data[v]->SetName(v.c_str());
+    }
+    
+    //handle elevation/aspect/slope
+    data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
+    data["Elevation"]->SetName("Elevation");
+    
+    data["Slope"] = vtkSmartPointer<vtkFloatArray>::New();
+    data["Slope"]->SetName("Slope");
+    
+    data["Aspect"] = vtkSmartPointer<vtkFloatArray>::New();
+    data["Aspect"]->SetName("Aspect");
+    
     for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
             fit != this->finite_faces_end(); ++fit)
     {
         Delaunay::Face_handle face = fit;
         Delaunay::Triangle t = this->triangle(face);
 
-        //        std::cout  << "xyz1:" << (*tri)(i, 0)-1 <<std::endl;
-        points->InsertNextPoint(t[0].x(), t[0].y(), t[0].z());
-        points->InsertNextPoint(t[1].x(), t[1].y(), t[1].z());
-        points->InsertNextPoint(t[2].x(), t[2].y(), t[2].z());
-    }
+        vtkSmartPointer<vtkTriangle> tri =
+            vtkSmartPointer<vtkTriangle>::New();
+        
+        tri->GetPointIds()->SetId(0, face->vertex(0)->get_id());
+        tri->GetPointIds()->SetId(1, face->vertex(1)->get_id());
+        tri->GetPointIds()->SetId(2, face->vertex(2)->get_id());
 
-    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
-            fit != this->finite_faces_end(); ++fit)
-    {
-        Delaunay::Face_handle face = fit;
 
-        vtkSmartPointer<vtkTriangle> tri = vtkSmartPointer<vtkTriangle>::New();
-
-        tri->GetPointIds()->SetId(face->vertex(0)->get_id(), 
-                                    face->vertex(1)->get_id());
+        points->SetPoint(face->vertex(0)->get_id(), t[0].x(), t[0].y(), t[0].z());
+        points->SetPoint(face->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
+        points->SetPoint(face->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());
 
         triangles->InsertNextCell(tri);
 
-
-        //        double d = fit->face_data(ID);
-        //        (*cdata)(i) = d;
-        //        //        std::cout << i <<std::endl; 
-        //        ++i;
+        
+        double elev = (t[0].z() + t[1].z() + t[2].z())/3;
+        
+        for(auto& v: variables)
+        {
+            double d = fit->face_data(v);
+            data[v]->InsertNextTuple1(d);
+        }
+        data["Elevation"]->InsertNextTuple1(face->get_z());
+        data["Slope"]->InsertNextTuple1(face->slope());
+        data["Aspect"]->InsertNextTuple1(face->azimuth());
     }
 
     vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
     unstructuredGrid->SetPoints(points);
     unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
     
+    for(auto& m : data)
+    {
+        unstructuredGrid->GetCellData()->AddArray(m.second);
+    }
     
+
     vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
     writer->SetFileName(file_name.c_str());
 #if VTK_MAJOR_VERSION <= 5
