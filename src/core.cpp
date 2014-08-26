@@ -48,7 +48,7 @@ core::core()
 
     LOG_DEBUG << "Logger initialized. Writing to cout and CHM.log";
 
-    #ifdef NOMATLAB
+#ifdef NOMATLAB
     _engine = boost::make_shared<maw::matlab_engine>();
 
 
@@ -223,11 +223,10 @@ void core::config_meshes(const json_spirit::Value& value)
     }
 }
 
-
 void core::config_matlab(const json_spirit::Value& value)
 {
     LOG_DEBUG << "Found matlab section";
-    #ifdef MATLAB
+#ifdef MATLAB
     //loop over the list of matlab options
     for (auto& jtr : value.get_obj())
     {
@@ -252,7 +251,6 @@ void core::config_matlab(const json_spirit::Value& value)
     }
 #endif
 }
-
 
 void core::config_output(const json_spirit::Value& value)
 {
@@ -387,7 +385,7 @@ void core::read_config_file(std::string file)
             config_meshes(value);
         } else if (name == "matlab")
         {
-            #ifdef NOMATLAB
+#ifdef NOMATLAB
             config_matlab(value);
 #endif
         } else if (name == "output")
@@ -479,7 +477,7 @@ void core::_determine_module_dep()
     std::sort(_modules.begin(), _modules.end(),
             [](const std::pair<module, size_t>& a, const std::pair<module, size_t>& b)->bool
             {
-                return a.second < a.second;
+                return a.second > b.second;
             });
 
 
@@ -524,9 +522,45 @@ void core::_determine_module_dep()
     std::string modlist = "";
     for (auto itr : _module_provided_variable_list)
     {
-        s += itr + " ";
+        modlist += itr + " ";
     }
     LOG_DEBUG << modlist;
+
+    //organize modules into sorted parallel data/domain chunks
+    size_t chunks = 1; //will be 1 behind actual number as we are using this for an index
+    size_t chunk_itr = 0;
+    for (auto& itr : _modules)
+    {
+        //first case, empty list
+        if (_chunked_modules.size() == 0)
+        {
+            _chunked_modules.resize(chunks);
+            _chunked_modules.at(0).push_back(itr.first);
+        } else
+        {
+            if (_chunked_modules.at(chunk_itr).at(0)->parallel_type() == itr.first->parallel_type())
+            {
+                _chunked_modules.at(chunk_itr).push_back(itr.first);
+            } else
+            {
+                chunk_itr++;
+                chunks++;
+                _chunked_modules.resize(chunks);
+                _chunked_modules.at(chunk_itr).push_back(itr.first);
+            }
+        }
+    }
+
+    chunks = 0;
+    for (auto& itr : _chunked_modules)
+    {
+        LOG_DEBUG << "Chunk " << (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain") << " " << chunks << ": ";
+        for (auto& jtr : itr)
+        {
+            LOG_DEBUG << jtr->ID;
+        }
+        chunks++;
+    }
 
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
@@ -586,15 +620,17 @@ void core::run()
         LOG_DEBUG << "Interpolating at timestep: " << _global->posix_time();
 
         //iterate over all the mesh elements
-        for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
+#pragma omp parallel for
+        for (size_t i = 0; i < _mesh->size(); i++)
         {
             //interpolate the station data to the current element
-            triangulation::Face_handle face = fit;
+            //            triangulation::Face_handle face = fit;            
+            auto face = _mesh->face(i);
             interp("LLRA_var", face, _stations, _global);
             irh("LLRA_rh_var", face, _stations, _global);
 
             //this triangle needs to be advanced to the next timestep
-            fit->next();
+            face->next();
 
         }
 
@@ -614,76 +650,98 @@ void core::run()
     }
 
     //reset the iterators for all mesh timeseries
-    //#pragma omp parallel for
-    for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
+#pragma omp parallel for
+    for (size_t i = 0; i < _mesh->size(); i++)
     {
+        auto face = _mesh->face(i);
         //current mesh element
-        fit->reset_to_begining();
+        face->reset_to_begining();
     }
 
-    size_t num_ts=0;
+    size_t num_ts = 0;
     done = false;
     while (!done)
     {
-
         _global->_current_date = _stations.at(0)->now().get_posix();
         _global->update();
 
-
         LOG_DEBUG << "Timestep: " << _global->posix_time();
 
-        //iterate over all the mesh elements
-        //#pragma omp parallel for
-        for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
+        size_t chunks = 0;
+        for (auto& itr : _chunked_modules)
         {
-            //module calls
-            for (auto& itr : _modules)
+            LOG_DEBUG << "Working on chunk[" << chunks << "]:parallel=" << (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
+            auto start = std::chrono::high_resolution_clock::now();
+            if (itr.at(0)->parallel_type() == module_base::parallel::data)
             {
-                triangulation::Face_handle face = fit;
-                if (itr.first->parallel_type() == module_base::parallel::data)
-                    itr.first->run(face, _global);
+#pragma omp parallel for
+                for (size_t i = 0; i < _mesh->size(); i++)
+                {
+                    //module calls
+                    for (auto& jtr : itr)
+                    {
+                        auto face = _mesh->face(i);
+                        jtr->run(face, _global);
+                    }
+                }
 
+            } else
+            {
+                //module calls for domain parallel
+                for (auto& jtr : itr)
+                {
+                    jtr->run(_mesh, _global);
+                }
             }
-        }
-
-        //module calls for domain parallel
-        for (auto& itr : _modules)
-        {
-            if (itr.first->parallel_type() == module_base::parallel::domain)
-                itr.first->run(_mesh, _global);
+            auto end = std::chrono::high_resolution_clock::now();
+            auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+            LOG_DEBUG << "Took " << dur.count() << "s";
+            chunks++;
 
         }
+
 
         //save timestep to file
         std::stringstream ss;
-        ss << "marmot" << num_ts<<".vtu";
+        ss << "marmot" << num_ts << ".vtu";
         _mesh->to_vtu(ss.str());
         num_ts++;
-        
-        //update all the internal iterators
-        for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
+
+        auto start = std::chrono::high_resolution_clock::now();
+#pragma omp parallel for
+        for (size_t i = 0; i < _mesh->size(); i++)
         {
-            //next timestep
-            fit->next();
+            auto face = _mesh->face(i);
+            face->next();
         }
-        
+
+//        //update all the internal iterators
+//        for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
+//        {
+//            //next timestep
+//            fit->next();
+//        }
+
         //update all the stations internal iterators to point to the next time step
         for (auto& itr : _stations)
         {
             if (!itr->next()) //
                 done = true;
         }
-                
+        auto end = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+            
+        LOG_DEBUG << "Updating iterators took " << dur.count() <<"s";
 
     }
     double elapsed = c.toc();
     LOG_DEBUG << "Took " << elapsed << "s";
 
-   
+
 
     for (auto& itr : _outputs)
     {
-        #ifdef NOMATLAB
+#ifdef NOMATLAB
         if (itr.plot)
         {
             //loop through all the request variables
@@ -698,7 +756,7 @@ void core::run()
                 }
             }
         }
-        #endif
+#endif
         if (itr.out_file != "")
         {
             _mesh->to_file(itr.face, itr.out_file);

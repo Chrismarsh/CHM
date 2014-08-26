@@ -22,7 +22,7 @@
 #include <iostream>
 #include <fstream>
 
-
+#define ARMA_DONT_USE_CXX11 //intel on linux breaks otherwise
 #include <armadillo>
 
 #include <boost/lexical_cast.hpp>
@@ -38,8 +38,8 @@
 //http://www.paraview.org/Bug/print_bug_page.php?bug_id=14164
 //http://review.source.kitware.com/#/c/11956/
 //until 6.0.1 comes out
-#define VTK_HAS_STD_ISNAN
-#define VTK_HAS_STD_ISINF
+//#define VTK_HAS_STD_ISNAN
+//#define VTK_HAS_STD_ISINF
 
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
@@ -57,7 +57,7 @@
 
 #include "vertex.hpp"
 #include "face.hpp"
-
+//#include "AABB.h"
 
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
@@ -87,11 +87,11 @@ public:
     void from_file(std::string file);
     void init(vector x, vector y, vector z);
 
-    //return the size of the triangluation
+    //return the number of faces in the triangluation
     size_t size();
 
     mesh_elem locate_face(double x, double y);
-
+    Delaunay::Face_handle face(size_t i);
 #ifdef NOMATLAB
     void plot(std::string ID);
     void plot_time_series(double x, double y, std::string ID);
@@ -104,7 +104,9 @@ private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab,e tc
     K::Iso_rectangle_2 _bbox;
-
+    
+    tbb::concurrent_vector< Delaunay::Face_handle > _faces;
+    
 #ifdef NOMATLAB
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
@@ -117,3 +119,33 @@ typedef boost::shared_ptr<triangulation> mesh;
 
 
 
+class rect
+{
+public:
+	rect( arma::mat* coord )
+	{
+		this->coord = coord;
+	}
+	~rect()
+	{
+		delete coord;
+	}
+	arma::mat* coord;
+	std::vector<mesh_elem> triangles;
+	std::vector<int> m_globalID;
+};
+class bounding_rect
+{
+public:
+	bounding_rect();
+	~bounding_rect();
+	void make(mesh domain,  int n_rows, int n_cols);
+	rect* get_rect( int i, int j );
+	int n_rows;
+	int n_cols;
+	bool pt_in_rect(double x, double y, rect* r);
+
+private:
+	std::vector<std::vector<rect*> > m_grid;
+
+};

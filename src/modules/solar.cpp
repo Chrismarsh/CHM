@@ -39,15 +39,17 @@ void Solar::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     double angle = acos(arma::dot(S,N));
     angle = cos(angle);
 
-    if(angle < 0.0)
+    if(angle < 0.0 || E < 0.0523598776) //3deg -> rad
         angle = 0.0;
     
     
     elem->set_face_data("solar_S_angle",angle);
     
     double shadow = elem->face_data("shadowed");
+    if(shadow == 1)
+        angle = 0;
     
-    elem->set_face_data("solar_short", shadow == 1 ? 0 : angle ); //shadow == 1
+    elem->set_face_data("solar_short", angle ); //shadow == 1
     
     
 }

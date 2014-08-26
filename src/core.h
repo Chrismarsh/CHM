@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <utility> // std::pair
 #include <set>
+#include <chrono>
 
 //graph
 #include <boost/graph/graph_traits.hpp>
@@ -123,6 +124,7 @@ private:
     //holds all the modules that are to be run on each mesh element
     //pair as we also need to store the make order
     std::vector< std::pair<module,size_t> > _modules;
+    std::vector< std::vector < module> > _chunked_modules;
     
     boost::shared_ptr<global> _global;
     

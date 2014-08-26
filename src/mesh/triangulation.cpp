@@ -54,7 +54,14 @@ void triangulation::init(vector x, vector y, vector z)
         Vh->set_id(i);
         ++i;
     }
-
+    
+    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
+            fit != this->finite_faces_end(); ++fit)
+    {
+        Delaunay::Face_handle face = fit;
+        _faces.push_back(face);
+    }
+    
     LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size()) + " triangles";
 }
 
@@ -139,6 +146,17 @@ void triangulation::from_file(std::string file)
     //    std::cout << "0:"<< _bbox[0] << "1:"<< _bbox[1]<<"2:"<< _bbox[2]<<"3:"<< _bbox[3]<<std::endl;
     //    std::cout << _bbox[0] - _bbox[1] << std::endl;
     //    std::cout << _bbox[2] - _bbox[3] << std::endl;
+    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
+            fit != this->finite_faces_end(); ++fit)
+    {
+        Delaunay::Face_handle face = fit;
+        _faces.push_back(face);
+    }
+}
+
+Delaunay::Face_handle triangulation::face(size_t i)
+{
+    return _faces.at(i);
 }
 
 void triangulation::to_file(double x, double y, std::string fname)
@@ -305,5 +323,133 @@ void triangulation::to_vtu(std::string file_name)
     writer->SetInputData(unstructuredGrid);
 #endif
     writer->Write();
+
+}
+
+
+
+
+void bounding_rect::make( mesh domain, int n_rows, int n_cols)
+{
+    int n_segments = n_cols;
+    int n_v_segments = n_rows;
+
+    arma::vec midpoint_bottom_x(n_segments);
+    arma::vec midpoint_top_x(n_segments);
+
+    arma::vec midpoint_bottom_y(n_segments);
+    arma::vec midpoint_top_y(n_segments);
+
+
+    this->n_rows = n_rows;
+    this->n_cols = n_cols;
+
+    std::vector<K::Point_2> bboxpt;
+    for(auto v = domain->finite_vertices_begin(); v!=domain->finite_vertices_end();v++ )
+    {
+        bboxpt.push_back(K::Point_2(v->point().x(),v->point().y()));
+    }
+        
+    K::Iso_rectangle_2 rot_bbox = CGAL::bounding_box(bboxpt.begin(), bboxpt.end());
+
+    //need to construct new axis aligned BBR
+//    arma::u32 index;
+
+    //left most pt
+    double x_left = rot_bbox.vertex(0).x();
+    double y_left = rot_bbox.vertex(0).y();
+
+    //right most pt
+    double x_right = rot_bbox.vertex(2).x();
+    double y_right = rot_bbox.vertex(2).y();
+
+    //bottom most pt
+    double y_bottom = rot_bbox.vertex(1).y();
+    double x_bottom = rot_bbox.vertex(1).x();
+
+    //top most pt
+    double y_top =rot_bbox.vertex(3).y();
+    double x_top = rot_bbox.vertex(3).x();
+
+
+    //horizontal step size
+    double h_dx = (x_right - x_left) / n_segments;
+    double v_dy = (y_top - y_bottom) / n_v_segments;
+
+
+    //resize the row dimension
+    m_grid.resize(n_v_segments);
+
+    //start top left
+    //loop over rows
+    for (int i = 0; i < n_v_segments; i++)
+    {
+        //set the y coordinate to the current row top left coordinate
+        double h_y = y_top - v_dy*i;
+        double h_x = x_left;
+
+        //set number of cols
+        m_grid[i].resize(n_segments);
+
+
+        //loop over columns
+        for (int j = 0; j < n_segments; j++)
+        {
+
+            arma::mat* t = new arma::mat(5, 2);
+
+
+            *t << h_x << h_y - v_dy << arma::endr // bottom left
+                    << h_x + h_dx << h_y - v_dy << arma::endr //bottom right
+                    << h_x + h_dx << h_y << arma::endr // top right
+                    << h_x << h_y << arma::endr //top left
+                    << h_x << h_y - v_dy << arma::endr; // bottom left
+
+
+            m_grid[i][j] = new rect(t);
+            h_x = h_x + h_dx;
+        }
+    }
+
+    
+}
+
+rect* bounding_rect::get_rect(int i, int j)
+{
+    return m_grid[i][j];
+}
+
+bounding_rect::bounding_rect()
+{
+
+}
+
+bool bounding_rect::pt_in_rect(double x, double y, rect* r)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        double x0 = r->coord->operator()(i, 0);
+        double y0 = r->coord->operator()(i, 1);
+        double x1 = r->coord->operator()(i + 1, 0);
+        double y1 = r->coord->operator()(i + 1, 1);
+
+        double pt = ((y - y0)*(x1 - x0) - (x - x0)*(y1 - y0));
+        if (pt < 0)
+            return false;
+        else if (pt == 0)
+            return false;
+    }
+    return true;
+}
+
+bounding_rect::~bounding_rect()
+{
+    for (auto it = m_grid.begin(); it != m_grid.end(); it++)
+    {
+        for (auto jt = it->begin(); jt != it->end(); jt++)
+        {
+            delete *jt;
+        }
+    }
 
 }

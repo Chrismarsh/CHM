@@ -25,6 +25,7 @@ set(CHM_SRCS
         variable_map.cpp
         
         mesh/triangulation.cpp
+#        mesh/AABB.cpp
 
         interpolation/interp_2d.cpp
         interpolation/inv_dist.cpp

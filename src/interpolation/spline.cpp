@@ -100,8 +100,8 @@ double spline::operator()(station_list&  stations, mesh_elem& elem,boost::shared
 
     gsl_permutation_free (p);
     gsl_vector_free (x);
-    delete B;
-    delete A;
+    delete[] B;
+    delete[] A;
 
     z0 = visitor->raise(z0,elem,global_param);
     return z0;

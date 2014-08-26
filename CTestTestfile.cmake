@@ -1,8 +1,8 @@
 # CMake generated Testfile for 
-# Source directory: /home/chris/Documents/PhD/code/CHM
-# Build directory: /home/chris/Documents/PhD/code/CHM
+# Source directory: /Users/chris/Documents/PhD/code/CHM
+# Build directory: /Users/chris/Documents/PhD/code/CHM
 # 
 # This file includes the relevant testing commands required for 
 # testing this directory and lists subdirectories to be tested as well.
-SUBDIRS(tests)
-SUBDIRS(src)
+subdirs(tests)
+subdirs(src)

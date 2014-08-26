@@ -18,3 +18,5 @@ compile_commands.json
 /tests/gtest/libgtest.a
 /tests/gtest/libgtest_main.a
 *.vtu
+/cppcheck/
+err.xml
