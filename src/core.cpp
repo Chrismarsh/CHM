@@ -671,7 +671,7 @@ void core::run()
         for (auto& itr : _chunked_modules)
         {
             LOG_DEBUG << "Working on chunk[" << chunks << "]:parallel=" << (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
-            auto start = std::chrono::high_resolution_clock::now();
+            c.tic();
             if (itr.at(0)->parallel_type() == module_base::parallel::data)
             {
 #pragma omp parallel for
@@ -693,9 +693,7 @@ void core::run()
                     jtr->run(_mesh, _global);
                 }
             }
-            auto end = std::chrono::high_resolution_clock::now();
-            auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-            LOG_DEBUG << "Took " << dur.count() << "s";
+            LOG_DEBUG << "Took " << c.toc<timer::ms>() << "ms";
             chunks++;
 
         }
@@ -707,7 +705,7 @@ void core::run()
         _mesh->to_vtu(ss.str());
         num_ts++;
 
-        auto start = std::chrono::high_resolution_clock::now();
+        c.tic();
 #pragma omp parallel for
         for (size_t i = 0; i < _mesh->size(); i++)
         {
@@ -728,13 +726,12 @@ void core::run()
             if (!itr->next()) //
                 done = true;
         }
-        auto end = std::chrono::high_resolution_clock::now();
-        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+       
             
-        LOG_DEBUG << "Updating iterators took " << dur.count() <<"s";
+        LOG_DEBUG << "Updating iterators took " << c.toc<timer::ms>() <<"ms";
 
     }
-    double elapsed = c.toc();
+    double elapsed = c.toc<timer::s>();
     LOG_DEBUG << "Took " << elapsed << "s";
 
 

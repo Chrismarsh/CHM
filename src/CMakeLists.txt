@@ -21,11 +21,9 @@ set(CHM_SRCS
         module_factory.cpp
         global.cpp
         station.cpp
-        timer.cpp
         variable_map.cpp
         
         mesh/triangulation.cpp
-#        mesh/AABB.cpp
 
         interpolation/interp_2d.cpp
         interpolation/inv_dist.cpp
@@ -39,6 +37,7 @@ set(CHM_SRCS
 
         utility/crc_hash_compare.cpp
         utility/regex_tokenizer.cpp
+
 )
 set (HEADER_FILES
 	json_spirit

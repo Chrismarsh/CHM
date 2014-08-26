@@ -33,7 +33,7 @@ set(CHM_SRCS
     ../src/module_factory.cpp
     ../src/global.cpp
     ../src/station.cpp
-    ../src/timer.cpp
+
     ../src/variable_map.cpp
     
     ../src/mesh/triangulation.cpp

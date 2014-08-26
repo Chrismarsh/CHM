@@ -137,7 +137,7 @@ double face<Gt, Fb>::azimuth()
         this->normal();
         //convert normal to spherical
         double r = sqrt(_normal[0] * _normal[0] + _normal[1] * _normal[1] + _normal[2] * _normal[2]);
-        double theta = acos(_normal[2] / r);
+//        double theta = acos(_normal[2] / r);
 
         //y=north
         double phi = atan2(_normal[1], _normal[0]); // + M_PI /*-3.14159/2*/; //south == 0
