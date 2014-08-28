@@ -693,7 +693,7 @@ void core::run()
                     jtr->run(_mesh, _global);
                 }
             }
-            LOG_DEBUG << "Took " << c.toc<timer::ms>() << "ms";
+            LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
             chunks++;
 
         }
@@ -706,19 +706,12 @@ void core::run()
         num_ts++;
 
         c.tic();
-#pragma omp parallel for
+#pragma omp parallel for //update all the internal iterators
         for (size_t i = 0; i < _mesh->size(); i++)
         {
             auto face = _mesh->face(i);
             face->next();
         }
-
-//        //update all the internal iterators
-//        for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
-//        {
-//            //next timestep
-//            fit->next();
-//        }
 
         //update all the stations internal iterators to point to the next time step
         for (auto& itr : _stations)
@@ -728,10 +721,10 @@ void core::run()
         }
        
             
-        LOG_DEBUG << "Updating iterators took " << c.toc<timer::ms>() <<"ms";
+        LOG_DEBUG << "Updating iterators took " << c.toc<ms>() <<"ms";
 
     }
-    double elapsed = c.toc<timer::s>();
+    double elapsed = c.toc<s>();
     LOG_DEBUG << "Took " << elapsed << "s";
 
 

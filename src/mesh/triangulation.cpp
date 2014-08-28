@@ -242,7 +242,7 @@ void triangulation::plot(std::string ID)
 
 void triangulation::to_vtu(std::string file_name)
 {
-    size_t i = 0;
+//    size_t i = 0;
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     points->SetNumberOfPoints(this->_num_vertex);
 
@@ -293,7 +293,7 @@ void triangulation::to_vtu(std::string file_name)
         triangles->InsertNextCell(tri);
 
         
-        double elev = (t[0].z() + t[1].z() + t[2].z())/3;
+//        double elev = (t[0].z() + t[1].z() + t[2].z())/3;
         
         for(auto& v: variables)
         {
@@ -326,13 +326,19 @@ void triangulation::to_vtu(std::string file_name)
 
 }
 
+ boost::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
+ {
+    boost::shared_ptr<segmented_AABB> AABB = boost::make_shared<segmented_AABB>();
+    AABB->make(this,rows,cols);
+    return AABB;
+     
+ }
 
 
-
-void bounding_rect::make( mesh domain, int n_rows, int n_cols)
+void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
 {
-    int n_segments = n_cols;
-    int n_v_segments = n_rows;
+    int n_segments = cols;
+    int n_v_segments = rows;
 
     arma::vec midpoint_bottom_x(n_segments);
     arma::vec midpoint_top_x(n_segments);
@@ -341,10 +347,11 @@ void bounding_rect::make( mesh domain, int n_rows, int n_cols)
     arma::vec midpoint_top_y(n_segments);
 
 
-    this->n_rows = n_rows;
-    this->n_cols = n_cols;
+    this->n_rows = rows;
+    this->n_cols = cols;
 
     std::vector<K::Point_2> bboxpt;
+    bboxpt.reserve( domain->number_of_vertices());
     for(auto v = domain->finite_vertices_begin(); v!=domain->finite_vertices_end();v++ )
     {
         bboxpt.push_back(K::Point_2(v->point().x(),v->point().y()));
@@ -357,19 +364,19 @@ void bounding_rect::make( mesh domain, int n_rows, int n_cols)
 
     //left most pt
     double x_left = rot_bbox.vertex(0).x();
-    double y_left = rot_bbox.vertex(0).y();
+//    double y_left = rot_bbox.vertex(0).y();
 
     //right most pt
     double x_right = rot_bbox.vertex(2).x();
-    double y_right = rot_bbox.vertex(2).y();
+//    double y_right = rot_bbox.vertex(2).y();
 
     //bottom most pt
     double y_bottom = rot_bbox.vertex(1).y();
-    double x_bottom = rot_bbox.vertex(1).x();
+//    double x_bottom = rot_bbox.vertex(1).x();
 
     //top most pt
     double y_top =rot_bbox.vertex(3).y();
-    double x_top = rot_bbox.vertex(3).x();
+//    double x_top = rot_bbox.vertex(3).x();
 
 
     //horizontal step size
@@ -407,6 +414,7 @@ void bounding_rect::make( mesh domain, int n_rows, int n_cols)
 
 
             m_grid[i][j] = new rect(t);
+//            m_grid[i][j]->triangles.reserve( ceil(domain->number_of_vertices()/(rows*cols)) ); //estimate an approx number of triangles/rect. Try to cut down on repeat memory alloc.
             h_x = h_x + h_dx;
         }
     }
@@ -414,17 +422,22 @@ void bounding_rect::make( mesh domain, int n_rows, int n_cols)
     
 }
 
-rect* bounding_rect::get_rect(int i, int j)
+rect* segmented_AABB::get_rect(size_t i, size_t j)
 {
     return m_grid[i][j];
 }
 
-bounding_rect::bounding_rect()
+segmented_AABB::segmented_AABB()
 {
 
 }
 
-bool bounding_rect::pt_in_rect(double x, double y, rect* r)
+bool segmented_AABB::pt_in_rect(Delaunay::Vertex_handle v, rect* r)
+{
+    return pt_in_rect(v->point().x(), v->point().y(), r);
+}
+
+bool segmented_AABB::pt_in_rect(double x, double y, rect* r)
 {
     for (int i = 0; i < 4; i++)
     {
@@ -442,7 +455,7 @@ bool bounding_rect::pt_in_rect(double x, double y, rect* r)
     return true;
 }
 
-bounding_rect::~bounding_rect()
+segmented_AABB::~segmented_AABB()
 {
     for (auto it = m_grid.begin(); it != m_grid.end(); it++)
     {

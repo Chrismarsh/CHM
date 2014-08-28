@@ -12,7 +12,7 @@
 #include <armadillo>
 #define _USE_MATH_DEFINES
 #include <math.h>
-
+#include "tbb/parallel_sort.h"
 struct module_shadow_face_info :  face_info
 {
     module_shadow_face_info()

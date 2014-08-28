@@ -50,6 +50,7 @@ set(CHM_SRCS
 
     ../src/utility/crc_hash_compare.cpp
     ../src/utility/regex_tokenizer.cpp
+    ../src/utility/timer.cpp
 )
 set (HEADER_FILES
 	../src/json_spirit

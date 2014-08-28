@@ -5,13 +5,13 @@
 #include <stack>
 
 //Title: clock
-
-class timer
-{
-public:
     typedef std::chrono::milliseconds ms;
     typedef std::chrono::nanoseconds ns;
     typedef std::chrono::seconds s;
+class timer
+{
+public:
+
 
     /*
     Function: clock
@@ -26,10 +26,7 @@ public:
     Returns:   
 		
      */
-    timer()
-    {
-        _resolution = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::duration(1)).count();
-    }
+    timer();
 
     /*
     Function: Tic
@@ -44,10 +41,7 @@ public:
     Returns:   
 				
      */
-    void tic()
-    {
-        _timers.push(std::chrono::high_resolution_clock::now());
-    }
+    void tic();
 
     /*
     Function: Toc
@@ -62,17 +56,21 @@ public:
     Returns:   
             double - Time elapsed, micro-seconds. -1.0 if Tic() hasn't been called yet.
      */
-    template<class K>
-    double toc()
-    {
-        auto end = std::chrono::high_resolution_clock::now();
-        auto start = _timers.top();_timers.pop();
-        auto dur = std::chrono::duration_cast<K>(end - start);
-        return dur.count();
-    }
+template <typename T>
+    double toc();
 
 private:
     std::stack<std::chrono::high_resolution_clock::time_point> _timers;
     double _resolution; //in ns
 };
 
+
+template <typename T>
+double timer::toc()
+{
+    auto end = std::chrono::high_resolution_clock::now();
+    auto start = _timers.top();
+    _timers.pop();
+    auto dur = std::chrono::duration_cast< T>(end - start);
+    return dur.count();
+}

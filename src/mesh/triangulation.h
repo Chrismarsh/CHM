@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 #define ARMA_DONT_USE_CXX11 //intel on linux breaks otherwise
 #include <armadillo>
@@ -74,6 +75,9 @@ typedef CGAL::Delaunay_triangulation_2<Gt, Tds> Delaunay; //specify a delauany t
 typedef Delaunay::Face_handle mesh_elem;
 typedef boost::shared_ptr<tbb::concurrent_vector<double> > vector;
 
+//fwd decl
+class segmented_AABB;
+
 class triangulation
 : public Delaunay
 {
@@ -84,6 +88,8 @@ public:
 #endif
     ~triangulation();
 
+    boost::shared_ptr<segmented_AABB> AABB(size_t rows, size_t cols);
+    
     void from_file(std::string file);
     void init(vector x, vector y, vector z);
 
@@ -118,7 +124,6 @@ private:
 typedef boost::shared_ptr<triangulation> mesh;
 
 
-
 class rect
 {
 public:
@@ -132,20 +137,41 @@ public:
 	}
 	arma::mat* coord;
 	std::vector<mesh_elem> triangles;
-	std::vector<int> m_globalID;
 };
-class bounding_rect
+
+// 
+// 
+// 	     -----------------------
+// 
+// 	         4       top      3
+// 	         +--------+--------+
+// 	         |        |        |
+// 	         |        |        |
+// 	   left  +--------+--------+    right
+// 	         |        |        |
+// 	         |        |        |
+// 	         +-----------------+
+// 	         1     bottom      2
+// 	 +y
+// 	 ^
+// 	 |
+// 	 +-> +x
+
+
+class segmented_AABB
 {
 public:
-	bounding_rect();
-	~bounding_rect();
-	void make(mesh domain,  int n_rows, int n_cols);
-	rect* get_rect( int i, int j );
+	segmented_AABB();
+	~segmented_AABB();
+	void make( triangulation* domain,  size_t rows, size_t cols);
+	rect* get_rect( size_t i, size_t j );
 	int n_rows;
 	int n_cols;
+        bool pt_in_rect(Delaunay::Vertex_handle v, rect* r);
 	bool pt_in_rect(double x, double y, rect* r);
 
 private:
 	std::vector<std::vector<rect*> > m_grid;
 
 };
+
