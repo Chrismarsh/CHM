@@ -11,7 +11,7 @@ void var::init_from_file(std::string path)
     
     //tmp to load it up until file read code is implimented
     var_hashmap::accessor a;
-    _varmap.insert(a,"RH"); a->second = "RH";
+    _varmap.insert(a,"RH"); a->second = "rh";
     _varmap.insert(a,"Tair"); a->second = "t";
     _varmap.insert(a,"timestep"); a->second = "datetime";
 }
