@@ -76,7 +76,7 @@ boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boo
         //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
         //create the keyname for this variable and store the iterator
-        if (!start_step._currentStep._itrs.insert(a, itr.first))
+        if (!start_step._currentStep->_itrs.insert(a, itr.first))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
                     << errstr_info("Failed to insert " + itr.first)
@@ -88,7 +88,7 @@ boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boo
     }
 
     //set the date vector to be the begining of the internal data vector
-    start_step._currentStep._date_itr = _date_vec.begin()+dist_start;
+    start_step._currentStep->_date_itr = _date_vec.begin()+dist_start;
     
     
     
@@ -106,7 +106,7 @@ boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boo
         //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
         //create the keyname for this variable and store the iterator
-        if (!end_step._currentStep._itrs.insert(a, itr.first))
+        if (!end_step._currentStep->_itrs.insert(a, itr.first))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
                     << errstr_info("Failed to insert " + itr.first)
@@ -118,7 +118,7 @@ boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boo
     }
 
     //set the date vector to be the begining of the internal data vector
-    end_step._currentStep._date_itr = _date_vec.begin()+dist_end;
+    end_step._currentStep->_date_itr = _date_vec.begin()+dist_end;
     
     return boost::tuple<time_series::iterator,time_series::iterator>(start_step,end_step);
     
@@ -146,7 +146,7 @@ time_series::iterator time_series::find(boost::posix_time::ptime time)
         //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
         //create the keyname for this variable and store the iterator
-        if (!step._currentStep._itrs.insert(a, itr.first))
+        if (!step._currentStep->_itrs.insert(a, itr.first))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
                     << errstr_info("Failed to insert " + itr.first)
@@ -158,7 +158,7 @@ time_series::iterator time_series::find(boost::posix_time::ptime time)
     }
 
     //set the date vector to be the begining of the internal data vector
-    step._currentStep._date_itr = _date_vec.begin()+dist;
+    step._currentStep->_date_itr = _date_vec.begin()+dist;
     
     return step;
 }
@@ -453,7 +453,7 @@ time_series::iterator time_series::begin()
         //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
         //create the keyname for this variable and store the iterator
-        if (!step._currentStep._itrs.insert(a, itr.first))
+        if (!step._currentStep->_itrs.insert(a, itr.first))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
                     << errstr_info("Failed to insert " + itr.first)
@@ -465,7 +465,7 @@ time_series::iterator time_series::begin()
     }
 
     //set the date vector to be the begining of the internal data vector
-    step._currentStep._date_itr = _date_vec.begin();
+    step._currentStep->_date_itr = _date_vec.begin();
 
 //    for (auto& itr : _variables)
 //   {
@@ -492,7 +492,7 @@ time_series::iterator time_series::end()
     {
         timestep::itr_map::accessor a;
 
-        if (!step._currentStep._itrs.insert(a, itr.first))
+        if (!step._currentStep->_itrs.insert(a, itr.first))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
                     << errstr_info("Failed to insert " + itr.first)
@@ -501,14 +501,14 @@ time_series::iterator time_series::end()
         a->second = itr.second.end();
 
     }
-    step._currentStep._date_itr = _date_vec.end();
+    step._currentStep->_date_itr = _date_vec.end();
     return step;
 }
 
 
-const timestep& time_series::iterator::dereference() const
+timestep& time_series::iterator::dereference() const
 {
-    return _currentStep;
+    return *_currentStep;
 }
 
 bool time_series::iterator::equal(iterator const& other) const
@@ -516,23 +516,23 @@ bool time_series::iterator::equal(iterator const& other) const
     bool isEqual = false;
 
     //different sizes? try to bail early
-    if (_currentStep._itrs.size() != other._currentStep._itrs.size())
+    if (_currentStep->_itrs.size() != other._currentStep->_itrs.size())
     {
         return false;
     }
     
     //no point checking headers as the order built is undefined
     //check each iterator
-    for (auto& itr : _currentStep._itrs)
+    for (auto& itr : _currentStep->_itrs)
     {
-        for (auto& jtr : other._currentStep._itrs)
+        for (auto& jtr : other._currentStep->_itrs)
         {
             if (itr.second == jtr.second)
                 isEqual = true;
         }
     }
 
-    if (isEqual && !(_currentStep._date_itr == other._currentStep._date_itr))
+    if (isEqual && !(_currentStep->_date_itr == other._currentStep->_date_itr))
         isEqual = false; //negate if the date vectors don't match
     
     return isEqual;
@@ -543,19 +543,19 @@ void time_series::iterator::increment()
 {
     //walks the map locking each node so that the increment can happen
     //walk order is not guaranteed
-    unsigned int size = _currentStep._itrs.size();
+    unsigned int size = _currentStep->_itrs.size();
     std::string *headers = new std::string[size];
     timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
     int i = 0;
 
-    for (auto& itr : _currentStep._itrs)
+    for (auto& itr : _currentStep->_itrs)
     {
-        _currentStep._itrs.find(accesors[i], itr.first);
+        _currentStep->_itrs.find(accesors[i], itr.first);
         (accesors[i]->second)++;     
         i++;
     }
     
-    _currentStep._date_itr++;
+    _currentStep->_date_itr++;
 
     delete[] headers;
     delete[] accesors;
@@ -565,19 +565,19 @@ void time_series::iterator::decrement()
 {
     //walks the map locking each node so that the increment can happen
     //walk order is not guaranteed
-    unsigned int size = _currentStep._itrs.size();
+    unsigned int size = _currentStep->_itrs.size();
     std::string *headers = new std::string[size];
     timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
     int i = 0;
 
-    for (auto& itr : _currentStep._itrs)
+    for (auto& itr : _currentStep->_itrs)
     {
-        _currentStep._itrs.find(accesors[i], itr.first);
+        _currentStep->_itrs.find(accesors[i], itr.first);
         (accesors[i]->second)--;
         
         i++;
     }
-    _currentStep._date_itr--;
+    _currentStep->_date_itr--;
     delete[] headers;
     delete[] accesors;
 
@@ -585,28 +585,28 @@ void time_series::iterator::decrement()
 
 time_series::iterator::iterator()
 {
-
+    _currentStep = new timestep();
 }
 
 time_series::iterator::iterator(const iterator& src)
 {
-    _currentStep = timestep(src._currentStep);
+    _currentStep = new timestep(src._currentStep);
 }
 
 time_series::iterator::~iterator()
 {
-
+    delete _currentStep;
 }
 
 time_series::iterator& time_series::iterator::operator=(const time_series::iterator& rhs)
 {
     if (this == &rhs)
         return (*this);
-    _currentStep = timestep(rhs._currentStep);
+    _currentStep = new timestep(rhs._currentStep);
     return *this;
 }
 
 std::ptrdiff_t time_series::iterator::distance_to(time_series::iterator const& other) const
 {
-    return std::distance(this->_currentStep._date_itr,other._currentStep._date_itr);
+    return std::distance(this->_currentStep->_date_itr,other._currentStep->_date_itr);
 }

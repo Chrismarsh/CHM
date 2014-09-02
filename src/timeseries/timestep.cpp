@@ -2,11 +2,11 @@
 #include "timestep.hpp"
 
 
-timestep::timestep(const timestep& src)
+timestep::timestep(const timestep* src)
 {
    
-    _itrs = itr_map(src._itrs);
-    _date_itr = date_variable::iterator(src._date_itr);
+    _itrs = itr_map(src->_itrs);
+    _date_itr = date_variable::iterator(src->_date_itr);
 }
 
 timestep::timestep()

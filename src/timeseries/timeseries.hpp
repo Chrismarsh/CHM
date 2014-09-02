@@ -217,9 +217,8 @@ private:
   */
  class time_series::iterator : public boost::iterator_facade<
                          time_series::iterator,
-                         time_series::variable_vec,
-                         boost::bidirectional_traversal_tag,
-                         timestep> 
+                         timestep,
+                         boost::bidirectional_traversal_tag> 
  {
  public:
     iterator();
@@ -231,14 +230,14 @@ private:
      friend class boost::iterator_core_access;
      friend class time_series;
 
-     const timestep& dereference() const;
+     timestep& dereference() const;
      bool equal(iterator const& other) const;
      void increment();
      void decrement();
      std::ptrdiff_t distance_to(iterator const& other) const;
 
      //iterators for the current step
-     timestep _currentStep;
+     timestep* _currentStep;
 
  };
 

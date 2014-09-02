@@ -71,7 +71,12 @@ private:
 
     double _slope;
     double _azimuth;
-    Vector_3 _normal;
+    double _x;
+    double _y;
+    double _z;
+    boost::shared_ptr<Point_3> _center;
+    boost::shared_ptr<Vector_3> _normal;
+
 
     boost::shared_ptr<time_series> _data;
     time_series::iterator _itr;
@@ -85,6 +90,13 @@ face<Gt, Fb>::face()
     _slope = -1;
     _azimuth = -1;
     _data = boost::make_shared<time_series>();
+
+    _center = NULL;
+    _normal = NULL;
+
+
+
+
 }
 
 template < class Gt, class Fb>
@@ -96,6 +108,9 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _slope = -1;
     _azimuth = -1;
     _data = boost::make_shared<time_series>();
+
+    _center = NULL;
+    _normal = NULL;
 }
 
 template < class Gt, class Fb >
@@ -110,6 +125,9 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _slope = -1;
     _azimuth = -1;
     _data = boost::make_shared<time_series>();
+
+    _center = NULL;
+    _normal = NULL;
 }
 
 template < class Gt, class Fb >
@@ -127,6 +145,9 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _slope = -1;
     _azimuth = -1;
     _data = boost::make_shared<time_series>();
+
+    _center = NULL;
+    _normal = NULL;
 }
 
 template < class Gt, class Fb>
@@ -134,13 +155,14 @@ double face<Gt, Fb>::azimuth()
 {
     if (_azimuth == -1)
     {
-        this->normal();
+        if(!_normal)
+            this->normal();
         //convert normal to spherical
 //        double r = sqrt(_normal[0] * _normal[0] + _normal[1] * _normal[1] + _normal[2] * _normal[2]);
 //        double theta = acos(_normal[2] / r);
 
         //y=north
-        double phi = atan2(_normal[1], _normal[0]); // + M_PI /*-3.14159/2*/; //south == 0
+        double phi = atan2((*_normal)[1], (*_normal)[0]); // + M_PI /*-3.14159/2*/; //south == 0
         _azimuth = phi - M_PI / 2.0; //set north = 0
 
         if (_azimuth < 0.0)
@@ -155,7 +177,9 @@ double face<Gt, Fb>::slope()
 {
     if (_slope == -1)
     {
-        this->normal();
+        if(!_normal)
+            this->normal();
+
         //z surface normal
         arma::vec n(3);
         n(0) = 0.0; //x
@@ -163,9 +187,9 @@ double face<Gt, Fb>::slope()
         n(2) = 1.0;
 
         arma::vec normal(3);
-        normal(0) = _normal[0];
-        normal(1) = _normal[1];
-        normal(2) = _normal[2];
+        normal(0) = (*_normal)[0];
+        normal(1) = (*_normal)[1];
+        normal(2) = (*_normal)[2];
 
         _slope = acos(arma::norm_dot(normal, n));
     }
@@ -193,16 +217,25 @@ bool face<Gt, Fb>::intersects(face<Gt, Fb>::Face_handle fh)
 template < class Gt, class Fb>
 Vector_3 face<Gt, Fb>::normal()
 {
-    _normal = CGAL::unit_normal(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point());
-    return _normal;
+    if(!_normal)
+        _normal = boost::make_shared<Vector_3>(CGAL::unit_normal(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
+    return *_normal;
 }
 
 template < class Gt, class Fb>
 Point_3 face<Gt, Fb>::center()
 {
-    return CGAL::centroid(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point());
-}
+    if (!_center)
+    {
+        _center = boost::make_shared<Point_3>(CGAL::centroid(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
+        _x=_center->x();
+        _y=_center->y();
+        _z=_center->z();
+    }
+    //return CGAL::centroid(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point());
+    return *_center;
 
+}
 template < class Gt, class Fb>
 bool face<Gt, Fb>::contains(Point_3 p)
 {
@@ -282,18 +315,28 @@ void face<Gt, Fb>::to_file(std::string fname)
 template < class Gt, class Fb>
 double face<Gt, Fb>::get_x()
 {
-    return this->center().x();
+    if(!_center)
+        this->center();
+
+    return _x;
 }
 
 template < class Gt, class Fb>
 double face<Gt, Fb>::get_y()
 {
-    return this->center().y();
+    if(!_center)
+        this->center();
+
+
+    return _y;
 }
 
 template < class Gt, class Fb>
 double face<Gt, Fb>::get_z()
 {
-    return this->center().z();
+    if(!_center)
+        this->center();
+
+    return _z;
 }
 

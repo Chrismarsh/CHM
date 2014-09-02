@@ -21,6 +21,7 @@ struct module_shadow_face_info :  face_info
     }
     std::vector< std::pair<size_t,Point_3> > v;
     int shadow;
+    double z_prime;
 };
 
 struct vertex_flag : vertex_info

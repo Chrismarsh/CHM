@@ -54,7 +54,7 @@ public:
     Returns:   
     - 
      */
-    timestep(const timestep& src);
+    timestep(const timestep* src);
 
     ~timestep();
 
