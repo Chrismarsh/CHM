@@ -36,7 +36,7 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
     if (global_param->solar_el() < 5)
     {
 #pragma omp parallel for
-        for (size_t i = 0; i < domain->size(); i++)
+        for (size_t i = 0; i < domain->size_faces(); i++)
         {
             auto face = domain->face(i);
             face->set_face_data("z_prime", 0); //unshadowed
@@ -59,74 +59,39 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
     //    tbb::concurrent_vector<triangulation::Face_handle> rot_faces;
     //    rot_faces.grow_by(domain->size());
 
-//#pragma omp parallel for
-    for (size_t i = 0; i < domain->size(); i++)
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_vertex(); i++)
     {
-        auto face = domain->face(i);
-        //for each vertex
-        for (int j = 0; j < 3; j++)
-        {
-            if (!face->vertex(j)->info)
-                face->vertex(j)->info = new vertex_flag();
-            vertex_flag* vf = reinterpret_cast<vertex_flag*> (face->vertex(j)->info);
-            if (!vf->visited)
-            {
-                arma::vec coord(3);
-                triangulation::Point p;
+        auto vert = domain->vertex(i);
+        if (!vert->info)
+            vert->info = new vertex_data();
+        vertex_data * vf = reinterpret_cast<vertex_data *> (vert->info);
 
-                coord(0) = face->vertex(j)->point().x();
-                coord(1) = face->vertex(j)->point().y();
-                coord(2) = face->vertex(j)->point().z();
+        arma::vec coord(3);
+        triangulation::Point p;
 
-                coord = K*coord;
-                p = triangulation::Point(coord(0), coord(1), coord(2));
-                vf->prj_vertex = p;
-                vf->org_vertex = face->vertex(j)->point();
-                face->vertex(j)->set_point(vf->prj_vertex);
+        coord(0) = vert->point().x();
+        coord(1) = vert->point().y();
+        coord(2) = vert->point().z();
 
-                vf->visited = true;
-            }
-        }
-        //init memory but do nothing with it here
-        module_shadow_face_info* tv = new module_shadow_face_info;
-        face->info = tv;
+        coord = K*coord;
+        p = triangulation::Point(coord(0), coord(1), coord(2));
+        vf->prj_vertex = p;
+        vf->org_vertex = vert->point();
 
-        //save the iterator for the next step (sort))
-        //        rot_faces.at(i) = face;
+        vert->set_point(vf->prj_vertex);
     }
 
     //modify the underlying triangulation to reflect the rotated vertices
-
-    //    #pragma omp parallel for
-    //    for(size_t i = 0; i<domain->size();i++)
-    //    {
-    //        auto face = domain->face(i);
-    //        //we are iterating over each face, however a vertex may belong to
-    //        // >1 face, so if we blindly modify a vertex, we may doubly or triply rotate a vertex.
-    //        for (int j = 0; j < 3; j++)
-    //        {
-    //            if (!face->vertex(j)->info)
-    //                BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Null vertex info"));
-    //
-    //            vertex_flag* vf = reinterpret_cast<vertex_flag*> (face->vertex(j)->info);
-    //            
-    //        }
-    //
-    // 
-    //
-    //        //save the iterator for the next step (sort))
-    //        rot_faces.at(i) = face;
-    //    }
-
 
 
     auto BBR = domain->AABB(5,5);
     
 
 //    #pragma omp parallel for
-    for (size_t i = 0; i < domain->size(); i++)
+    for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        mesh_elem t = domain->face(i);
+        auto face = domain->face(i);
 
 
         for (size_t j = 0; j < BBR->n_rows; j++)
@@ -134,19 +99,21 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
             for (size_t k = 0; k < BBR->n_cols; k++)
             {
 
-                if (BBR->pt_in_rect(t->vertex(0), BBR->get_rect(j, k)) || //pt1
-                        BBR->pt_in_rect(t->vertex(1), BBR->get_rect(j, k)) || //pt2
-                        BBR->pt_in_rect(t->vertex(2), BBR->get_rect(j, k))) //pt3
+                if (BBR->pt_in_rect(face->vertex(0), BBR->get_rect(j, k)) || //pt1
+                        BBR->pt_in_rect(face->vertex(1), BBR->get_rect(j, k)) || //pt2
+                        BBR->pt_in_rect(face->vertex(2), BBR->get_rect(j, k))) //pt3
                 {
-                    //t.shadow = j*k;
 //#pragma omp critical
 //                    {
-                        BBR->get_rect(j, k)->triangles.push_back(t);
+                        BBR->get_rect(j, k)->triangles.push_back(face);
 //                    }
                 }
             }
 
         }
+        //init memory but do nothing with it here
+        module_shadow_face_info* tv = new module_shadow_face_info;
+        face->info = tv;
     }
 
     LOG_DEBUG << "AABB is " <<BBR->n_rows << "x" << BBR->n_rows;
@@ -211,31 +178,28 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
                     }
                 }
 
+                face_j->set_face_data("z_prime", face_j->center().z());
+
+                module_shadow_face_info* face_info = reinterpret_cast<module_shadow_face_info*> (face_j->info);
+                face_j->set_face_data("shadowed", face_info->shadow);
+
+
+
             }
         }
     }
 
     // here we need to 'undo' the rotation we applied.
-//#pragma omp parallel for
-    for (size_t i = 0; i < domain->size(); i++)
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_vertex(); i++)
     {
-        auto face = domain->face(i);
+        auto vert = domain->vertex(i);
+        if (!vert->info)
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Null vertex info"));
 
-        face->set_face_data("z_prime", face->center().z());
+        vertex_data * vf = reinterpret_cast<vertex_data *> (vert->info);
+        vert->set_point(vf->org_vertex);
 
-        module_shadow_face_info* face_info = reinterpret_cast<module_shadow_face_info*> (face->info);
-        face->set_face_data("shadowed", face_info->shadow);
-
-
-        for (int i = 0; i < 3; i++)
-        {
-            if (!face->vertex(i)->info)
-                BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Null vertex info"));
-
-            vertex_flag* vf = reinterpret_cast<vertex_flag*> (face->vertex(i)->info);
-            face->vertex(i)->set_point(vf->org_vertex);
-            vf->visited = false; // for the next timestep!
-        }
 
     }
 }

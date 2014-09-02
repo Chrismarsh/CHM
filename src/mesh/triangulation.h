@@ -94,10 +94,11 @@ public:
     void init(vector x, vector y, vector z);
 
     //return the number of faces in the triangluation
-    size_t size();
-
+    size_t size_faces();
+    size_t size_vertex();
     mesh_elem locate_face(double x, double y);
     Delaunay::Face_handle face(size_t i);
+    Delaunay::Vertex_handle vertex(size_t i);
 #ifdef NOMATLAB
     void plot(std::string ID);
     void plot_time_series(double x, double y, std::string ID);
@@ -108,10 +109,11 @@ public:
     void to_vtu(std::string fname);
 private:
     size_t _num_faces; //number of faces
-    size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab,e tc
+    size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
     
     tbb::concurrent_vector< Delaunay::Face_handle > _faces;
+    tbb::concurrent_vector< Delaunay::Vertex_handle > _vertexes;
     
 #ifdef NOMATLAB
     //ptr to the matlab engine

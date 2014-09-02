@@ -62,12 +62,17 @@ void triangulation::init(vector x, vector y, vector z)
         _faces.push_back(face);
     }
     
-    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size()) + " triangles";
+    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 }
 
-size_t triangulation::size()
+size_t triangulation::size_faces()
 {
     return _num_faces;
+}
+
+size_t triangulation::size_vertex()
+{
+    return _num_vertex;
 }
 
 mesh_elem triangulation::locate_face(double x, double y)
@@ -137,10 +142,11 @@ void triangulation::from_file(std::string file)
         Vh->set_id(i);
         ++i;
         pts.push_back(K::Point_2(pt.x(), pt.y()));
+        _vertexes.push_back(Vh);
     }
     _num_faces = this->number_of_faces();
     _num_vertex = i;
-    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size()) + " triangles";
+    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 
     _bbox = CGAL::bounding_box(pts.begin(), pts.end());
     //    std::cout << "0:"<< _bbox[0] << "1:"<< _bbox[1]<<"2:"<< _bbox[2]<<"3:"<< _bbox[3]<<std::endl;
@@ -152,6 +158,11 @@ void triangulation::from_file(std::string file)
         Delaunay::Face_handle face = fit;
         _faces.push_back(face);
     }
+}
+
+Delaunay::Vertex_handle triangulation::vertex(size_t i)
+{
+    return _vertexes.at(i);
 }
 
 Delaunay::Face_handle triangulation::face(size_t i)

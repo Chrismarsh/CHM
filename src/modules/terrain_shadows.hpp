@@ -18,15 +18,16 @@ struct module_shadow_face_info :  face_info
     module_shadow_face_info()
     {
         shadow = 0;
+        z_prime = 0;
     }
     std::vector< std::pair<size_t,Point_3> > v;
     int shadow;
     double z_prime;
 };
 
-struct vertex_flag : vertex_info
+struct vertex_data : vertex_info
 {
-    vertex_flag()
+    vertex_data()
     {
         visited = false;
     }

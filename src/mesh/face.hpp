@@ -109,8 +109,6 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _azimuth = -1;
     _data = boost::make_shared<time_series>();
 
-    _center = NULL;
-    _normal = NULL;
 }
 
 template < class Gt, class Fb >
@@ -126,8 +124,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _azimuth = -1;
     _data = boost::make_shared<time_series>();
 
-    _center = NULL;
-    _normal = NULL;
+
 }
 
 template < class Gt, class Fb >
@@ -146,8 +143,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _azimuth = -1;
     _data = boost::make_shared<time_series>();
 
-    _center = NULL;
-    _normal = NULL;
+
 }
 
 template < class Gt, class Fb>

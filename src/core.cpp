@@ -217,7 +217,7 @@ void core::config_meshes(const json_spirit::Value& value)
 
         }
         _mesh->from_file(file);
-        if (_mesh->size() == 0)
+        if (_mesh->size_faces() == 0)
             BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 
     }
@@ -621,7 +621,7 @@ void core::run()
 
         //iterate over all the mesh elements
 #pragma omp parallel for
-        for (size_t i = 0; i < _mesh->size(); i++)
+        for (size_t i = 0; i < _mesh->size_faces(); i++)
         {
             //interpolate the station data to the current element
             //            triangulation::Face_handle face = fit;            
@@ -651,7 +651,7 @@ void core::run()
 
     //reset the iterators for all mesh timeseries
 #pragma omp parallel for
-    for (size_t i = 0; i < _mesh->size(); i++)
+    for (size_t i = 0; i < _mesh->size_faces(); i++)
     {
         auto face = _mesh->face(i);
         //current mesh element
@@ -675,7 +675,7 @@ void core::run()
             if (itr.at(0)->parallel_type() == module_base::parallel::data)
             {
 #pragma omp parallel for
-                for (size_t i = 0; i < _mesh->size(); i++)
+                for (size_t i = 0; i < _mesh->size_faces(); i++)
                 {
                     //module calls
                     for (auto& jtr : itr)
@@ -707,7 +707,7 @@ void core::run()
 
         c.tic();
 #pragma omp parallel for //update all the internal iterators
-        for (size_t i = 0; i < _mesh->size(); i++)
+        for (size_t i = 0; i < _mesh->size_faces(); i++)
         {
             auto face = _mesh->face(i);
             face->next();
