@@ -138,7 +138,7 @@ public:
 		delete coord;
 	}
 	arma::mat* coord;
-	std::vector<mesh_elem> triangles;
+	tbb::concurrent_vector<mesh_elem> triangles;
 };
 
 // 
@@ -173,7 +173,7 @@ public:
 	bool pt_in_rect(double x, double y, rect* r);
 
 private:
-	std::vector<std::vector<rect*> > m_grid;
+	tbb::concurrent_vector<tbb::concurrent_vector<rect*> > m_grid;
 
 };
 

@@ -88,7 +88,7 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
     auto BBR = domain->AABB(5,5);
     
 
-//    #pragma omp parallel for
+    #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
@@ -126,7 +126,7 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
     }
 
     
-//#pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < BBR->n_rows; i++)
     {
         for (int ii = 0; ii < BBR->n_cols; ii++)
@@ -140,7 +140,7 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
 
             size_t num_tri = BBR->get_rect(i, ii)->triangles.size();
 
-            
+//	#pragma omp parallel for            
             for (size_t j = 0; j < num_tri; j++)
             {
                 //        loadbar(j, rot_faces.size());
@@ -157,24 +157,26 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
                 {
                     triangulation::Face_handle face_k = BBR->get_rect(i, ii)->triangles.at(k);
                     module_shadow_face_info* face_k_info = reinterpret_cast<module_shadow_face_info*> (face_k->info);
-                    //face_k_info->shadow == 0 &&
-                    if (face_j->get_z() > face_k->get_z()) //tj is above tk, and tk is shadded by tj?
+
+                    if (face_k_info->shadow == 0)
                     {
-                        K::Triangle_2 tk(K::Point_2(face_k->vertex(0)->point().x(), face_k->vertex(0)->point().y()),
-                                K::Point_2(face_k->vertex(1)->point().x(), face_k->vertex(1)->point().y()),
-                                K::Point_2(face_k->vertex(2)->point().x(), face_k->vertex(2)->point().y()));
+                        //not needed as our sort will ensure face_j > face_k
+                      //  if(face_j->get_z() > face_k->get_z())  //tj is above tk, and tk is shadded by tj?)
+                       // {
+                            K::Triangle_2 tk(K::Point_2(face_k->vertex(0)->point().x(), face_k->vertex(0)->point().y()),
+                                    K::Point_2(face_k->vertex(1)->point().x(), face_k->vertex(1)->point().y()),
+                                    K::Point_2(face_k->vertex(2)->point().x(), face_k->vertex(2)->point().y()));
 
-                        CGAL::Bbox_2 bk(tk.bbox());
+                            CGAL::Bbox_2 bk(tk.bbox());
 
-                        if (CGAL::do_overlap(bk, bj))
-                        {
-                            bool collision = face_k->intersects(face_j);
-                            if (collision)
-                            {
+                            if (CGAL::do_overlap(bk, bj)) {
+                                bool collision = face_k->intersects(face_j);
+                                if (collision) {
 
-                                face_k_info->shadow = 1;
+                                    face_k_info->shadow = 1;
+                                }
                             }
-                        }
+                        //}
                     }
                 }
 
@@ -182,7 +184,6 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
 
                 module_shadow_face_info* face_info = reinterpret_cast<module_shadow_face_info*> (face_j->info);
                 face_j->set_face_data("shadowed", face_info->shadow);
-
 
 
             }

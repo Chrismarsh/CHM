@@ -252,6 +252,10 @@ bool face<Gt, Fb>::contains(double x, double y)
     double y3 = this->vertex(0)->point().y();
 
     double lambda1 = ((y2 - y3)*(x - x3)+(x3 - x2)*(y - y3)) / ((y2 - y3)*(x1 - x3)+(x3 - x2)*(y1 - y3));
+
+    if( !(lambda1 > 0.0 && lambda1 < 1.0) )
+        return false; //bail early if possible
+
     double lambda2 = ((y3 - y1)*(x - x3)+(x1 - x3)*(y - y3)) / ((y3 - y1)*(x2 - x3)+(x1 - x3)*(y2 - y3));
     double lambda3 = 1.0 - lambda1 - lambda2;
 
