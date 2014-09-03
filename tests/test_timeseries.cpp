@@ -2,7 +2,7 @@
 
 #include "../src/timeseries/timeseries.hpp"
 #include "gtest/gtest.h"
-#include "src/timeseries/timeseries.hpp"
+
 
 class TimeseriesTest : public testing::Test
 {
