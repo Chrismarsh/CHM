@@ -62,6 +62,8 @@
 #include "gtest/internal/gtest-filepath.h"
 #include "gtest/internal/gtest-type-util.h"
 
+#include <boost/exception/all.hpp>
+
 // Due to C++ preprocessor weirdness, we need double indirection to
 // concatenate two tokens when one of them is __LINE__.  Writing
 //
@@ -1075,7 +1077,8 @@ class NativeArray {
     try { \
       GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_(statement); \
     } \
-    catch (...) { \
+    catch (boost::exception &e) { \
+      std::cout << boost::diagnostic_information(e) << std::endl;  \
       goto GTEST_CONCAT_TOKEN_(gtest_label_testnothrow_, __LINE__); \
     } \
   } else \
