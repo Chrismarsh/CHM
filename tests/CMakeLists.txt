@@ -8,6 +8,7 @@ set(TEST_SRCS
     test_timeseries.cpp
     test_core.cpp
     test_mesh.cpp
+    test_regexptokenizer.cpp
 )
 set(JSON_SPIRIT_SRCS
 	../src/json_spirit/json_spirit_reader.cpp 
