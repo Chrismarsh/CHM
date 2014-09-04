@@ -110,8 +110,7 @@ private:
     //module factory for creating the specified modules
     module_factory _mfactory;
     
-    //each station where observations are    
-    tbb::concurrent_vector< boost::shared_ptr<station> > _stations;
+
     
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;

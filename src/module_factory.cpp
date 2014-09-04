@@ -12,8 +12,10 @@ module_base* module_factory::get(std::string ID)
             mod = new Solar(ID);
         else if (ID == "shadows")
             mod = new terrain_shadow(ID);
-        else
-            mod =  NULL;
+        else if (ID == "airtemp")
+            mod = new air_temp(ID);
+
+
         
         if(mod == NULL)
         {

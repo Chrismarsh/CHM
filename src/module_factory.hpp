@@ -10,6 +10,8 @@
 // Modules to build against
 #include "solar.hpp"
 #include "terrain_shadows.hpp"
+#include "air_temp.hpp"
+
 class module_factory
 {
 public:

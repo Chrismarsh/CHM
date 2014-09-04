@@ -4,6 +4,7 @@
 #include <string>
 
 #include "variable_map.hpp"
+#include "station.hpp"
 /**
  * Basin wide paramters such as transmissivity, solar elevation, solar aspec, etc.
  * 
@@ -52,5 +53,8 @@ public:
     
     
     std::string get_variable(std::string variable);
+
+    //each station where observations are
+    tbb::concurrent_vector< boost::shared_ptr<station> > stations;
     
 };

@@ -166,7 +166,7 @@ void core::config_forcing(const json_spirit::Value& value)
             }
 
             LOG_DEBUG << "New station created " << *s;
-            _stations.push_back(s);
+            _global->stations.push_back(s);
 
         } else
         {
@@ -512,9 +512,9 @@ void core::_determine_module_dep()
         LOG_DEBUG << "time_slot[" << time[*i] << "] = " << _modules.at(*i).first->ID << std::endl;
     }
 
-    for (size_t i = 0; i < _stations.size(); i++)
+    for (size_t i = 0; i < _global->stations.size(); i++)
     {
-        auto vars = _stations.at(i)->list_variables();
+        auto vars = _global->stations.at(i)->list_variables();
         _module_provided_variable_list.insert(vars.begin(), vars.end());
     }
 
@@ -564,15 +564,15 @@ void core::_determine_module_dep()
 
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
-    if (_stations.size() == 0)
-        BOOST_THROW_EXCEPTION(forcing_no_stations() << errstr_info("no stations"));
+    if (_global->stations.size() == 0)
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
     //#pragma omp parallel for
     for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
 
-        auto date = _stations.at(0)->get_date_timeseries();
-        auto size = _stations.at(0)->get_timeseries_length();
+        auto date = _global->stations.at(0)->get_date_timeseries();
+        auto size = _global->stations.at(0)->get_timeseries_length();
         Delaunay::Face_handle face = fit;
         face->init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
                 date, /*take the first station, later checks ensure all the stations' timeseries match*/
@@ -589,80 +589,80 @@ void core::run()
     timer c;
     c.tic();
 
-    interp_t_air interp;
-    interp_rh irh;
+//    interp_t_air interp;
+//    interp_rh irh;
 
     //do the interpolation first
+//    bool done = false;
+//    while (!done)
+//    {
+//        //ensure all the stations are at the same timestep
+//        boost::posix_time::ptime t;
+//        t = _global->stations.at(0)->now().get_posix(); //get first stations time
+//        for (size_t i = 1; //on purpose to skip first station
+//                i < _global->stations.size();
+//                i++)
+//        {
+//            if (t != _global->stations.at(i)->now().get_posix())
+//            {
+//                BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
+//                        << errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->get_ID()));
+//            }
+//        }
+//
+//        //start date
+//        _global->_current_date = _global->stations.at(0)->now().get_posix();
+//
+//        //calculate global, e.g. solar position
+//        _global->update();
+//
+//
+//        LOG_DEBUG << "Interpolating at timestep: " << _global->posix_time();
+//
+//        //iterate over all the mesh elements
+//#pragma omp parallel for
+//        for (size_t i = 0; i < _mesh->size_faces(); i++)
+//        {
+//            //interpolate the station data to the current element
+//            //            triangulation::Face_handle face = fit;
+//            auto face = _mesh->face(i);
+//            interp("LLRA_var", face, _global->stations, _global);
+//            irh("LLRA_rh_var", face, _global->stations, _global);
+//
+//            //this triangle needs to be advanced to the next timestep
+//            face->next();
+//
+//        }
+//
+//        //update all the stations internal iterators to point to the next time step
+//        for (auto& itr : _global->stations)
+//        {
+//            if (!itr->next()) //
+//                done = true;
+//        }
+//
+//    }
+//
+//    //reset all the internal iterators
+//    for (auto& itr : _global->stations)
+//    {
+//        itr->reset_itrs();
+//    }
+//
+//    //reset the iterators for all mesh timeseries
+//#pragma omp parallel for
+//    for (size_t i = 0; i < _mesh->size_faces(); i++)
+//    {
+//        auto face = _mesh->face(i);
+//        //current mesh element
+//        face->reset_to_begining();
+//    }
+
+    size_t num_ts = 0;
     bool done = false;
     while (!done)
     {
-        //ensure all the stations are at the same timestep
-        boost::posix_time::ptime t;
-        t = _stations.at(0)->now().get_posix(); //get first stations time
-        for (size_t i = 1; //on purpose to skip first station
-                i < _stations.size();
-                i++)
-        {
-            if (t != _stations.at(i)->now().get_posix())
-            {
-                BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                        << errstr_info("Timestep mismatch at station: " + _stations.at(i)->get_ID()));
-            }
-        }
-
-        //start date
-        _global->_current_date = _stations.at(0)->now().get_posix();
-
-        //calculate global, e.g. solar position
-        _global->update();
-
-
-        LOG_DEBUG << "Interpolating at timestep: " << _global->posix_time();
-
-        //iterate over all the mesh elements
-#pragma omp parallel for
-        for (size_t i = 0; i < _mesh->size_faces(); i++)
-        {
-            //interpolate the station data to the current element
-            //            triangulation::Face_handle face = fit;            
-            auto face = _mesh->face(i);
-            interp("LLRA_var", face, _stations, _global);
-            irh("LLRA_rh_var", face, _stations, _global);
-
-            //this triangle needs to be advanced to the next timestep
-            face->next();
-
-        }
-
-        //update all the stations internal iterators to point to the next time step
-        for (auto& itr : _stations)
-        {
-            if (!itr->next()) //
-                done = true;
-        }
-
-    }
-
-    //reset all the internal iterators
-    for (auto& itr : _stations)
-    {
-        itr->reset_itrs();
-    }
-
-    //reset the iterators for all mesh timeseries
-#pragma omp parallel for
-    for (size_t i = 0; i < _mesh->size_faces(); i++)
-    {
-        auto face = _mesh->face(i);
-        //current mesh element
-        face->reset_to_begining();
-    }
-
-    size_t num_ts = 0;
-    done = false;
-    while (!done)
-    {
-        _global->_current_date = _stations.at(0)->now().get_posix();
+        _global->_current_date = _global->stations.at(0)->now().get_posix();
         _global->update();
 
         LOG_DEBUG << "Timestep: " << _global->posix_time();
@@ -714,7 +714,7 @@ void core::run()
         }
 
         //update all the stations internal iterators to point to the next time step
-        for (auto& itr : _stations)
+        for (auto& itr : _global->stations)
         {
             if (!itr->next()) //
                 done = true;
