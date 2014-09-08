@@ -611,11 +611,28 @@ void core::run()
     c.tic();
 
 
+
+
     size_t num_ts = 0;
     bool done = false;
     while (!done)
     {
+        //ensure all the stations are at the same timestep
+        boost::posix_time::ptime t;
+        t = _global->stations.at(0)->now().get_posix(); //get first stations time
+        for (size_t i = 1; //on purpose to skip first station
+             i < _global->stations.size();
+             i++)
+        {
+            if (t != _global->stations.at(i)->now().get_posix())
+            {
+                BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
+                        << errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->get_ID()));
+            }
+        }
+
         _global->_current_date = _global->stations.at(0)->now().get_posix();
+
         _global->update();
 
         LOG_DEBUG << "Timestep: " << _global->posix_time();
