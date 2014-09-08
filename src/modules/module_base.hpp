@@ -3,7 +3,7 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
-#include "triangulation.h"
+#include "triangulation.hpp"
 #include "global.hpp"
 
 /*

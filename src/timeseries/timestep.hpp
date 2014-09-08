@@ -11,7 +11,7 @@
 #include "exception.hpp"
 #include "variable_map.hpp"
 #include "crc_hash_compare.hpp"
-#include "logger.h"
+#include "logger.hpp"
 /*
         Class: timestep
         A given time step. 

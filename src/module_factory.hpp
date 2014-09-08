@@ -1,7 +1,7 @@
 #pragma once
 
 #include "module_base.hpp"
-#include "logger.h"
+#include "logger.hpp"
 #include "exception.hpp"
 
 #include <string>
@@ -12,7 +12,7 @@
 #include "terrain_shadows.hpp"
 #include "tair_llra_const.hpp"
 #include "rh_llra_var.hpp"
-#include "tair_llra_lookup.hpp
+#include "tair_llra_lookup.hpp"
 
 class module_factory
 {

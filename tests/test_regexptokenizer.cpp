@@ -1,6 +1,6 @@
 
 #include "../src/utility/regex_tokenizer.hpp"
-#include "../src/logger.h"
+#include "logger.hpp"
 #include "gtest/gtest.h"
 
 class RegexpTokenizerTest : public testing::Test

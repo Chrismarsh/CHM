@@ -1,5 +1,5 @@
 #include "variable_map.hpp"
-#include "logger.h"
+#include "logger.hpp"
 #include "exception.hpp"
 var::var()
 {

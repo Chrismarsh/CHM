@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../logger.h"
-#include "triangulation.h"
+#include "../logger.hpp"
+#include "triangulation.hpp"
 #include "module_base.hpp"
 
 #include "TPSpline.hpp"

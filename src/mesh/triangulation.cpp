@@ -14,7 +14,7 @@
 // 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#include "triangulation.h"
+#include "triangulation.hpp"
 
 triangulation::triangulation()
 {

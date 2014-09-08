@@ -21,7 +21,7 @@
 
 #include "regex_tokenizer.hpp"
 #include "exception.hpp"
-#include "logger.h"
+#include "logger.hpp"
 #include "timestep.hpp"
 #include "crc_hash_compare.hpp"
 

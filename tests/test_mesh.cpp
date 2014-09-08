@@ -1,6 +1,6 @@
 
 
-#include "../src/mesh/triangulation.h"
+#include "triangulation.hpp"
 #include "gtest/gtest.h"
 
 class MeshTest : public testing::Test

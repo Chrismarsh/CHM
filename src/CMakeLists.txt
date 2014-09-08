@@ -13,6 +13,7 @@ set(MODULE_SRCS
         modules/solar.cpp
         modules/terrain_shadows.cpp
         modules/tair_llra_const.cpp
+        modules/tair_llra_lookup.cpp
         modules/rh_llra_var.cpp
 )
 

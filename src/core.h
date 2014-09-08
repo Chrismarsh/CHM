@@ -20,10 +20,10 @@
 
 
 
-#include "logger.h"
+#include "logger.hpp"
 #include "exception.hpp"
 
-#include "triangulation.h"
+#include "triangulation.hpp"
 
 
 #include "json_spirit.h"
