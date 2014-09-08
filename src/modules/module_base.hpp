@@ -6,84 +6,118 @@
 #include "triangulation.hpp"
 #include "global.hpp"
 
-/*
- * The base class for individual modules
- */
+/**
+* \class module_base
+* \brief Base class for individual modules
+*
+* A module must inherent from this class. This provides the interface for all module.
+*/
 class module_base
 {
 public:
+
+    /**
+    * \enum parallel
+    * A module must declare itself as either parallel data,
+    * where the module only operates upon a single mesh element, or parallel domain, where
+    * the module operates upon the domain in its entirety. The default is data parallel
+    */
     enum class parallel
     {
-        data,
-        domain
+        /**
+        * Sets that this module is element parallel.
+        * That is, this module can compute the solution at this element without needing to communicate with surrounding elements. There is no guarantee on element ordering
+        */
+                data,
+        /**
+        * Sets that this module is domain parallel.
+        * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the order of traversal of elements.
+        */
+                domain
     };
-        //Identification string for this module
-        std::string ID;
-        int IDnum;
-        
-        /*
-         * Empty constructor
-         */
-        module_base()
-        {
-            _provides = boost::make_shared<std::vector<std::string> >();
-            _depends = boost::make_shared<std::vector<std::string> >();
-            IDnum = 0;
-            ID = "uninitialized";
-            _parallel_type = parallel::data; //default to data parallel, most common (?)
-            //nothing
-        };
-        virtual ~module_base()
-        {
-            //nothing
-        };
-        
-        /*
-         * Needs to be implimented by each module. This will be called and executed for each timestep
-         * @param elem The terrain element (triangle) to be worked upon for an element parallel domain
-         * @param global_parama A pointer to the shared global paramter space with domain-wide paramters
-         */
-        virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param){};
-        
-        /*
-         * Needs to be implimented by each module. This will be called and executed for each timestep. Unique to domain parallel modules;
-         * @param elem The terrain element (triangle) to be worked upon for an element parallel domain
-         * @param global_parama A pointer to the shared global paramter space with domain-wide paramters
-         */
-        virtual void run(mesh domain, boost::shared_ptr<global> global_param){};
-        
-        /*
-         * Sets that this module is element parallel. That is, this module can compute the solution at this element without needing to communicate with surrounding elements.
-         * Elem_parallel modules will be run over the domain in an unspecified order. There is no guarantee on element ordering
-         */
-      
-        /*
-         * Sets that this module is domain parallel. That is, this module requires surrounding elements to compute it's answer and that it is dependent upon the order of traversal of elements.
-         */
+    /**
+    * ID of the module
+    */
+    std::string ID;
 
-        /*
-         * Returns if module is domain parallel
-         * @return true if module is domain parallel 
-         */
-        parallel parallel_type()
-        {
-            return _parallel_type;
-        }
+    /**
+    * Upon instantiation the module is assigned a value based upon its initialization order. Primairly used to dependency resolution. No real usage otherwise.
+    */
+    int IDnum;
 
-        
-        boost::shared_ptr<std::vector<std::string> > provides()
-        {
-            return _provides;
-        }
-        boost::shared_ptr<std::vector<std::string> > depends()
-        {
-            return _depends;
-        }
+    /**
+    * Default constructor
+    */
+    module_base()
+    {
+        _provides = boost::make_shared<std::vector<std::string> >();
+        _depends = boost::make_shared<std::vector<std::string> >();
+        IDnum = 0;
+        ID = "uninitialized ID";
+        _parallel_type = parallel::data; //default to data parallel, most common (?)
+        //nothing
+    };
+
+    /**
+    * Default destructor
+    */
+    virtual ~module_base()
+    {
+        //nothing
+    };
+
+    /**
+    * Needs to be implemented by each  data parallel module. This will be called and executed for each timestep
+    * \param elem The terrain element (triangle) to be worked upon for an element parallel domain
+    * \param global_param A pointer to the shared global paramter space with domain-wide paramters
+    */
+    virtual void run(mesh_elem &elem, boost::shared_ptr<global> global_param)
+    {
+    };
+
+    /*
+     * Needs to be implemented by each  domain parallel module. This will be called and executed for each timestep. Unique to domain parallel modules.
+     * \param domain The terrain element (triangle) to be worked upon for an element parallel domain
+     * \param global_parama A pointer to the shared global paramter space with domain-wide paramters
+     */
+    virtual void run(mesh domain, boost::shared_ptr<global> global_param)
+    {
+    };
+
+
+    /*
+     * Returns the module's parallel type
+     * \return the parallel type
+     */
+    parallel parallel_type()
+    {
+        return _parallel_type;
+    }
+
+    /**
+    * List of the variables that this module provides.
+    */
+    boost::shared_ptr<std::vector<std::string> > provides()
+    {
+        return _provides;
+    }
+
+    /**
+    * List of the variables that this module depends upon
+    */
+    boost::shared_ptr<std::vector<std::string> > depends()
+    {
+        return _depends;
+    }
+
 protected:
-        parallel _parallel_type;
-        boost::shared_ptr<std::vector<std::string> > _provides;
-        boost::shared_ptr<std::vector<std::string> > _depends;
-        
+    parallel _parallel_type;
+    boost::shared_ptr<std::vector<std::string> > _provides;
+    boost::shared_ptr<std::vector<std::string> > _depends;
+
 };
 
-typedef boost::shared_ptr< module_base > module;
+/**
+* Convenience typedef for modules.
+*/
+typedef boost::shared_ptr<module_base> module;
