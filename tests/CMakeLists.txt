@@ -39,11 +39,8 @@ set(CHM_SRCS
     
     ../src/mesh/triangulation.cpp
 
-    ../src/interpolation/interp_2d.cpp
     ../src/interpolation/inv_dist.cpp
-    ../src/interpolation/interp_t_air.cpp
-    ../src/interpolation/interp_rh.cpp
-    ../src/interpolation/spline.cpp
+    ../src/interpolation/TPSpline.cpp
 
     ../src/timeseries/timestep.cpp
     ../src/timeseries/timeseries.cpp

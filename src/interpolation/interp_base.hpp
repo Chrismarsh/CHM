@@ -10,7 +10,7 @@ class interp_base
 public:
     //sample_points is a vector of xyz points
     //query_xy are the x,y coords of the point to interp to
-    virtual double operator()(std::vector< boost::tuple<double,double,double> > sample_points, boost::tuple<double,double,double> query_points )
+    virtual double operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_points )
     {
         return 0.0;
     };

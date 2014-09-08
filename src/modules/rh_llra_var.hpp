@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include "../logger.h"
 #include "triangulation.h"
 #include "module_base.hpp"
@@ -13,13 +14,12 @@
 
 #include <math.h>
 
-class air_temp : public module_base
+class rh_llra_var : public module_base
 {
 public:
-    air_temp(std::string ID);
-    ~air_temp();
+    rh_llra_var(std::string ID);
+    ~rh_llra_var();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
-
 
 
 };

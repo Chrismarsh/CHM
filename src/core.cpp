@@ -422,10 +422,11 @@ void core::read_config_file(std::string file)
 
 void core::_determine_module_dep()
 {
-    int size = _modules.size();
 
+    size_t size = _modules.size();
+
+    //init a graph of the required size
     Graph g(size);
-    //    std::vector<Edge> edges;
 
     //loop through each module
     for (auto& module : _modules)
@@ -449,68 +450,87 @@ void core::_determine_module_dep()
                 //loop through each required variable of our current module
                 for (auto& depend_var : *(module.first->depends()))
                 {
-                    LOG_DEBUG << "Module=" << itr.first->ID << " looking for var=" << depend_var;
+                    LOG_DEBUG << "\t\tModule=" << itr.first->ID << " looking for var=" << depend_var;
 
                     auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var);
                     if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
                     {
-                        LOG_DEBUG << "Adding edge between " << module.first->ID << "[" << module.first->IDnum << "] -> " << itr.first->ID << "[" << itr.first->IDnum << "] for var=" << *i << std::endl;
+                        LOG_DEBUG << "\t\tAdding edge between " << module.first->ID << "[" << module.first->IDnum << "] -> " << itr.first->ID << "[" << itr.first->IDnum << "] for var=" << *i << std::endl;
 
                         //add the dependency from module -> itr, such that itr will come before module
-                        boost::add_edge(module.first->IDnum, itr.first->IDnum, g);
+                        boost::add_edge(itr.first->IDnum, module.first->IDnum, g);
                     }
                 }
             }
         }
     }
 
-    std::list<Vertex> make_order;
-
-    boost::topological_sort(g, std::front_inserter(make_order));
-
-    for (auto i = make_order.rbegin(); i != make_order.rend(); ++i)
-    {
-        _modules.at(*i).second = *i;
-    }
-
-    //sort descending
-    std::sort(_modules.begin(), _modules.end(),
-            [](const std::pair<module, size_t>& a, const std::pair<module, size_t>& b)->bool
-            {
-                return a.second > b.second;
-            });
-
+    std::deque<int> topo_order;
+    boost::topological_sort(g, std::front_inserter(topo_order));
 
     std::stringstream ss;
-    for (auto itr : _modules)
+
+    size_t order = 0;
+    for(std::deque<int>::const_iterator i = topo_order.begin();  i != topo_order.end();  ++i)
+    {
+        ss << _modules.at(*i).first->ID << "->";
+        _modules.at(*i).second = order;
+        order++;
+    }
+
+    std::string     s = ss.str();
+    LOG_DEBUG << "Build order: " << s.substr(0, s.length() - 2);
+
+    ss.str("");
+    ss.clear();
+    for (auto& itr : _modules)
     {
         ss << itr.first->ID << "->";
 
     }
-    std::string s = ss.str();
-    LOG_DEBUG << "Build order: " << s.substr(0, s.length() - 2);
+    s = ss.str();
+    LOG_DEBUG << "Current _modules order: " << s.substr(0, s.length() - 2);
+
+
+    //sort ascending based on make order number
+    std::sort(_modules.begin(), _modules.end(),
+            [](const std::pair<module, size_t>& a, const std::pair<module, size_t>& b)->bool
+            {
+                return a.second < b.second;
+            });
+
+
+
+    ss.str("");
+    ss.clear();
+    for (auto& itr : _modules)
+    {
+        ss << itr.first->ID << "->";
+    }
+    s = ss.str();
+    LOG_DEBUG << "_modules order after sort: " << s.substr(0, s.length() - 2);
 
     // Parallel compilation ordering
-    std::vector<int> time(size, 0);
-    for (auto i = make_order.begin(); i != make_order.end(); ++i)
-    {
-        // Walk through the in_edges an calculate the maximum time.
-        if (boost::in_degree(*i, g) > 0)
-        {
-            Graph::in_edge_iterator j, j_end;
-            int maxdist = 0;
-            // Through the order from topological sort, we are sure that every 
-            // time we are using here is already initialized.
-            for (boost::tie(j, j_end) = boost::in_edges(*i, g); j != j_end; ++j)
-                maxdist = (std::max)(time[boost::source(*j, g)], maxdist);
-            time[*i] = maxdist + 1;
-        }
-    }
-    boost::graph_traits<Graph>::vertex_iterator i, iend;
-    for (boost::tie(i, iend) = boost::vertices(g); i != iend; ++i)
-    {
-        LOG_DEBUG << "time_slot[" << time[*i] << "] = " << _modules.at(*i).first->ID << std::endl;
-    }
+//    std::vector<int> time(size, 0);
+//    for (auto i = make_order.begin(); i != make_order.end(); ++i)
+//    {
+//        // Walk through the in_edges an calculate the maximum time.
+//        if (boost::in_degree(*i, g) > 0)
+//        {
+//            Graph::in_edge_iterator j, j_end;
+//            int maxdist = 0;
+//            // Through the order from topological sort, we are sure that every
+//            // time we are using here is already initialized.
+//            for (boost::tie(j, j_end) = boost::in_edges(*i, g); j != j_end; ++j)
+//                maxdist = (std::max)(time[boost::source(*j, g)], maxdist);
+//            time[*i] = maxdist + 1;
+//        }
+//    }
+//    boost::graph_traits<Graph>::vertex_iterator i, iend;
+//    for (boost::tie(i, iend) = boost::vertices(g); i != iend; ++i)
+//    {
+//        LOG_DEBUG << "time_slot[" << time[*i] << "] = " << _modules.at(*i).first->ID << std::endl;
+//    }
 
     for (size_t i = 0; i < _global->stations.size(); i++)
     {
@@ -531,6 +551,7 @@ void core::_determine_module_dep()
     size_t chunk_itr = 0;
     for (auto& itr : _modules)
     {
+        LOG_DEBUG << "Chunking module: " << itr.first->ID;
         //first case, empty list
         if (_chunked_modules.size() == 0)
         {

@@ -11,6 +11,6 @@ class thin_plate_spline : public interp_base
 public:
     thin_plate_spline();
     ~thin_plate_spline();
-    double operator()(std::vector< boost::tuple<double,double,double> > sample_points, boost::tuple<double,double,double> query_points );
+    double operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_points );
 
 };

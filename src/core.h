@@ -31,15 +31,15 @@
 #include "module_factory.hpp"
 #include "station.hpp"
 
-#include "interp_t_air.hpp"
-#include "interp_rh.hpp"
 #include "timer.hpp"
 #include "global.hpp"
 
 
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, 
+typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
       boost::property<boost::vertex_color_t, boost::default_color_type>
     > Graph;
+
+//typedef boost::adjacency_list<> Graph;
 
 typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
 typedef std::pair<int, int> Edge;

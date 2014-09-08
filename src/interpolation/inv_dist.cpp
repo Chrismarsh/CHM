@@ -10,27 +10,27 @@ inv_dist::~inv_dist()
     
 }
 
-double inv_dist::operator()(station_list&  stations, mesh_elem& elem,boost::shared_ptr<interp_visitor> visitor, boost::shared_ptr<global> global_param)
+double inv_dist::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_points)
 {
     
     double numerator = 0.0;
     double denominator = 0.0;
 
     double z0 = 0;
-    if (stations.size() == 1)
+    if (sample_points.size() == 1)
     {
         BOOST_THROW_EXCEPTION( interpolation_error()
                                 << errstr_info("IDW requires >=2 stations"));
     }
-    for(auto& itr : stations)
+    for(size_t i=0;i<sample_points.size();i++)
     {
-        double z = visitor->lower(elem,itr,global_param);
+        double z = sample_points.at(i).get<2>();
 
-        double sx = itr->get_x();
-        double sy = itr->get_y();
+        double sx = sample_points.at(i).get<0>();
+        double sy = sample_points.at(i).get<1>();
         
-        double ex = elem->get_x();
-        double ey = elem->get_y();
+        double ex = query_points.get<0>();
+        double ey = query_points.get<1>();
         
         double xdiff = (sx  - ex);
         double ydiff = (sy  - ey);
@@ -52,8 +52,7 @@ double inv_dist::operator()(station_list&  stations, mesh_elem& elem,boost::shar
     }
 
    z0 = (numerator/denominator);
-  z0 = visitor->raise(z0,elem,global_param);
-    
-    return z0;
+
+   return z0;
 
 }

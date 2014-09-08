@@ -14,6 +14,8 @@ module_base* module_factory::get(std::string ID)
             mod = new terrain_shadow(ID);
         else if (ID == "airtemp")
             mod = new air_temp(ID);
+        else if (ID == "rh_llra_var")
+            mod = new rh_llra_var(ID);
 
 
         

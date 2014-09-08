@@ -11,6 +11,7 @@
 #include "solar.hpp"
 #include "terrain_shadows.hpp"
 #include "air_temp.hpp"
+#include "rh_llra_var.hpp"
 
 class module_factory
 {

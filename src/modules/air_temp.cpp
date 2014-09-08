@@ -81,7 +81,8 @@ void air_temp::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     if(interp_method == "spline")
         interp = new thin_plate_spline();
 
-    double value = (*interp)(lowered_values, boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z()));
+    auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
+    double value = (*interp)(lowered_values, query);
 
     //raise value back up to the face's elevation from sea level
     value =  value + lapse_rate * (0.0 - elem->get_z());

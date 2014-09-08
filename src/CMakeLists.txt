@@ -13,6 +13,7 @@ set(MODULE_SRCS
         modules/solar.cpp
         modules/terrain_shadows.cpp
         modules/air_temp.cpp
+        modules/rh_llra_var.cpp
 )
 
 
@@ -26,11 +27,7 @@ set(CHM_SRCS
         
         mesh/triangulation.cpp
 
-#        interpolation/interp_2d.cpp
-#        interpolation/inv_dist.cpp
-#        interpolation/interp_t_air.cpp
-#        interpolation/interp_rh.cpp
-#        interpolation/spline.cpp
+        interpolation/inv_dist.cpp
         interpolation/TPSpline.cpp
 
         timeseries/timestep.cpp
