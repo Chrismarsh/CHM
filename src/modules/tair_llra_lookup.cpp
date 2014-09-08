@@ -3,7 +3,7 @@
 tair_llra_lookup::tair_llra_lookup( std::string ID)
 {
     _provides->push_back("t");
-
+    _provides->push_back("tair_llra_lookup");
     this->ID = ID;
     _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -64,8 +64,8 @@ void tair_llra_lookup::run(mesh_elem& elem, boost::shared_ptr<global> global_par
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : global_param->stations)
     {
-        double v = s->get(global_param->get_variable("Tair")) - lapse_rate * (0.0 - s->get_z());
-        lowered_values.push_back( boost::make_tuple( s->get_x(),s->get_y(), v ) );
+        double v = s->get(global_param->get_variable("Tair")) - lapse_rate * (0.0 - s->z());
+        lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 
     interp_base* interp=nullptr;
@@ -81,6 +81,7 @@ void tair_llra_lookup::run(mesh_elem& elem, boost::shared_ptr<global> global_par
 
     elem->set_face_data(global_param->get_variable("Tair"),value);
 
+    elem->set_face_data("tair_llra_lookup",value);
 
     delete interp;
 }

@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include "station.hpp"
 
 station::~station()
@@ -7,25 +8,25 @@ station::~station()
 
 station::station()
 {
-        _x = 0;
-        _y = 0;
-        _z = 0.0;
-        _obs = NULL;
+    _x = 0;
+    _y = 0;
+    _z = 0.0;
+    _obs = NULL;
 
 }
 
-station::station( std::string ID, std::string file, unsigned int x, unsigned int y, float elevation )
+station::station(std::string ID, size_t x, size_t y, double elevation)
 {
-        _ID = ID;
-        _x = x;
-        _y = y;
-        _z = elevation;
-        _obs = NULL; //initialized in openfile
+    _ID = ID;
+    _x = x;
+    _y = y;
+    _z = elevation;
+    _obs = new time_series();
+    _itr = _obs->begin();
 
-        open(file);
 }
 
-void station::open( std::string file )
+void station::open(std::string file)
 {
     try
     {
@@ -34,37 +35,39 @@ void station::open( std::string file )
 
         _itr = _obs->begin();
     }
-    catch(exception_base& e)
+    catch (exception_base &e)
     {
         //e << errstr_info( std::string("Station:") + _ID ); //hope like hell we've got the ID at this point
         throw;
     }
 }
 
-time_series::date_vec station::get_date_timeseries()
+time_series::date_vec station::date_timeseries()
 {
     return _obs->get_date_timeseries();
 }
 
-int station::get_timeseries_length()
+size_t station::timeseries_length()
 {
     return _obs->get_timeseries_length();
 }
- 
+
 std::vector<std::string> station::list_variables()
 {
     return _obs->list_variables();
 }
 
 
- timestep station::now() 
+timestep& station::now()
 {
     return *_itr;
 }
+
 double station::get(std::string variable)
 {
     return _itr->get(variable);
 }
+
 void station::reset_itrs()
 {
     _itr = _obs->begin();
@@ -72,57 +75,57 @@ void station::reset_itrs()
 
 bool station::next()
 {
-        ++_itr;
-        if(_itr == _obs->end())
-                return false;
-        else
-                return true;
+    ++_itr;
+    if (_itr == _obs->end())
+        return false;
+    else
+        return true;
 }
 
-unsigned int station::get_x()
+size_t station::x()
 {
-        return _x;
+    return _x;
 }
 
-unsigned int station::get_y()
+size_t station::y()
 {
-        return _y;
+    return _y;
 }
 
-void station::set_x( unsigned int x )
+void station::x(size_t x)
 {
-        _x = x;
+    _x = x;
 }
 
-void station::set_y( unsigned int y )
+void station::y(size_t y)
 {
-        _y = y;
+    _y = y;
 }
 
-float station::get_z()
+double station::z()
 {
-        return _z;
+    return _z;
 }
 
-void station::set_z( float elevation )
+void station::z(double elevation)
 {
-        _z = elevation;
+    _z = elevation;
 }
 
-void station::set_ID(std::string ID)
+void station::ID(std::string ID)
 {
     _ID = ID;
 }
 
-std::string station::get_ID()
+std::string station::ID()
 {
     return _ID;
 }
 
-std::ostream& operator<<(std::ostream &strm, const station &s)
+std::ostream &operator<<(std::ostream &strm, const station &s)
 {
-    if(s._obs)
-        return strm << "ID=" << s._ID << " (x,y,z)=("<<s._x<<","<<s._y<<","<<s._z<<") ,"<<"forcing="<<s._obs->get_opened_file();
+    if (s._obs)
+        return strm << "ID=" << s._ID << " (x,y,z)=(" << s._x << "," << s._y << "," << s._z << ") ," << "forcing=" << s._obs->get_opened_file();
     else
-        return strm << "ID=" << s._ID << "; (x,y,z)=("<<s._x<<","<<s._y<<","<<s._z<<"); "<<"forcing=Not opened";
+        return strm << "ID=" << s._ID << "; (x,y,z)=(" << s._x << "," << s._y << "," << s._z << "); " << "forcing=Not opened";
 }

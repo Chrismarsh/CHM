@@ -6,6 +6,8 @@ class StationTest : public testing::Test
 {
 protected:
 
+    StationTest() : s1((__1::basic_string<char, char_traits<char>, allocator<char>>()), 0, 0, 0) {}
+
     virtual void SetUp()
     {
         logging::core::get()->set_logging_enabled(false);
@@ -20,9 +22,9 @@ protected:
 //tests for proper default init
 TEST_F(StationTest, DefaultInit)
 {
-    EXPECT_EQ(0, s0.get_x());
-    EXPECT_EQ(0, s0.get_y());
-    EXPECT_EQ(0, s0.get_z());
+    EXPECT_EQ(0, s0.x());
+    EXPECT_EQ(0, s0.y());
+    EXPECT_EQ(0, s0.z());
 }
 
 //Test that a file that exist doesn't throw
@@ -69,6 +71,6 @@ TEST_F(StationTest, FileContents)
 //test we are returning the correct length
 TEST_F(StationTest, Length)
 {
-    EXPECT_EQ(2,s1.get_timeseries_length());
+    EXPECT_EQ(2, s1.timeseries_length());
 }
 

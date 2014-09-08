@@ -145,16 +145,16 @@ void core::config_forcing(const json_spirit::Value& value)
 
                 if (name == "ID")
                 {
-                    s->set_ID(pair.value_.get_str());
+                    s->ID(pair.value_.get_str());
                 } else if (name == "easting")
                 {
-                    s->set_x(pair.value_.get_real());
+                    s->x(pair.value_.get_real());
                 } else if (name == "northing")
                 {
-                    s->set_y(pair.value_.get_real());
+                    s->y(pair.value_.get_real());
                 } else if (name == "elevation")
                 {
-                    s->set_z(pair.value_.get_real());
+                    s->z(pair.value_.get_real());
                 } else if (name == "file")
                 {
                     s->open(pair.value_.get_str());
@@ -592,8 +592,8 @@ void core::_determine_module_dep()
     for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
 
-        auto date = _global->stations.at(0)->get_date_timeseries();
-        auto size = _global->stations.at(0)->get_timeseries_length();
+        auto date = _global->stations.at(0)->date_timeseries();
+        auto size = _global->stations.at(0)->timeseries_length();
         Delaunay::Face_handle face = fit;
         face->init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
                 date, /*take the first station, later checks ensure all the stations' timeseries match*/
@@ -627,7 +627,7 @@ void core::run()
             if (t != _global->stations.at(i)->now().get_posix())
             {
                 BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                        << errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->get_ID()));
+                        << errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->ID()));
             }
         }
 

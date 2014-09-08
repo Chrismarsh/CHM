@@ -89,9 +89,9 @@ void rh_llra_var::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 
         double dewPointLapseRate = lambda * c / b;
 
-        double newTd = dewPointTemp - dewPointLapseRate * (0.0 - s->get_z());
+        double newTd = dewPointTemp - dewPointLapseRate * (0.0 - s->z());
 
-        lowered_values.push_back( boost::make_tuple( s->get_x(),s->get_y(), newTd ) );
+        lowered_values.push_back( boost::make_tuple(s->x(), s->y(), newTd ) );
     }
 
     interp_base* interp=nullptr;

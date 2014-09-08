@@ -7,215 +7,138 @@
 
 #include "timeseries.hpp"
 
-/*
-Class: Station
-Concept of a met station.
-Allows the station to have a location (x,y) and a station ID. 
-As well, it wraps the iterators of the forcing_data instance.
 
-Example:
->Station s("ExampleStation1","obs.txt",5,400);
->s.now().get<int>("RH");
->s.next();
+/**
+* \class station
+*
+* \brief Concept of a met station.
+*
+* Allows the station to represent a timeseries that has a location (x,y), an elevation, and a station ID.
+* As well, it wraps the iterators of the timeserires instance allowing for easy stepping and access.
 */
 class station : boost::noncopyable
 {
 public:
         
-    /*
-    Function: Station
-    Default constructor
-
-    Parameters: 
-    None
-
-    Throws:
-    Never
-
-    Returns:   
-    - 
-     */
+    /**
+    *    Default constructor
+    */
     station();
 
-    /*
-    Function: Station
-    Creates a station from 
+    /**
+        Creates a new station with the specified attributes.
 
-    Parameters: 
-    std::string ID - Station ID
-    std::string file - Met file to open
-    unsigned int x - X coord
-    unsigned int y - Y coord
-    float elevation - Station elevation
+        \param ID Station name
+        \param x UTM coord
+        \param y UTM coord
+        \param elevation station elevation
+        */
+    station(std::string ID, size_t x, size_t y, double elevation);
 
-    Throws:
-    std::runtime_error - on error
-
-    Returns:   
-    - 
-     */
-    station(std::string ID, std::string file, unsigned int x, unsigned int y, float elevation);
-
+    /**
+    * Default destructor
+    */
     ~station();
     
-    /*
-    Function: open
-    Opens a given met file
-
-    Parameters: 
-    std::string file - path to met file.
-
-    Throws:
-    std::runtime_error - on error
-
-    Returns:   
-    void 
-     */
+    /**
+    * Opens a metfile
+    * \param file Fully qualified path to the file to open
+    */
     void open(std::string file);
 
 
-    /*
-    Function: now
-    Returns the data for the current time step
+    /**
+    * Returns the timestep iterator for the current timestep
+    * \return A timstep iterator
+    */
+     timestep& now() ;
 
-    Parameters: 
-    None
-
-    Throws:
-    Never
-
-    Returns:   
-    forcing_data::timestep - The current timestep. See <timestep>
-     */
-     timestep now() ;
-
-
-    /*
-    Function: next
-    Gets the next timestep	
-
-    Parameters: 
-    None
-
-    Throws:
-    Never
-
-    Returns:   
-    bool - Returns true if this is the last timestep
-     */
+    /**
+    * Increments the internal timestep iterator to the next timestep
+    * \return False if next timestep is one past end of timeseries
+    */
     bool next();
 
-    /*
-    Function: get_x
-    Gets the X coordinate. Begins a 0.
 
-    Parameters: 
-    None
+    /**
+    * Returns the x UTM coordinate of the station
+    * \return UTM coordinate
+    */
+    size_t x();
 
-    Throws:
-    Never
-
-    Returns:   
-    unsigned int - X corrdinate of the station
-     */
-    unsigned int get_x();
-
-    /*
-    Function: get_y
-    Gets the Y coordinate. Begins at 0
-
-    Parameters: 
-    None
-
-    Throws:
-    Never
-
-    Returns:   
-    unsigned int - Y corrdinate of the station
-     */
-    unsigned int get_y();
-    
- 
+    /**
+    * Returns the y UTM coordinate of the station
+    * \return UTM coordinate
+    */
+    size_t y();
 
 
-
-    /*
-    Function: set_x
-    Sets the X coordinate. Begins at 0
-
-    Parameters: 
-    unsigned int x - X coordinate
-
-    Throws:
-    Never
-
-    Returns:   
-    void - 
-     */
-    void set_x(unsigned int x);
+    /**
+    * Sets the X coordinate
+    * \param x UTM coordinate
+    */
+    void x(size_t x);
 
 
-    /*
-    Function: set_y
-    Sets the Y coordinate. Begins at 0
-
-    Parameters: 
-    unsigned int y - Y coordinate
-
-    Throws:
-    Never
-
-    Returns:   
-    void - 
-     */
-    void set_y(unsigned int y);
+    /**
+    * Sets the Y coordinate
+    * \param y UTM coordinate
+    */
+    void y(size_t y);
 
 
-    /*
-    Function: get_elevation
-             Returns the station's elevation
-
-    Parameters: 
-
-    Throws:
-            Never
-
-    Returns:   
-            float - Station elevation
-     */
-    float get_z();
+    /**
+    * Returns the station elevation (m)
+    * \return Station elevation
+    */
+    double z();
 
 
-    /*
-    Function: set_z
-            Sets the station elevation	 
+    /**
+    * Sets the station elevation (m).
+    * \param elevation Station elevation
+    */
+    void z(double elevation);
 
-    Parameters: 
-            float elevation - Station elevation
+    /**
+    * Sets the ID of the station (name)
+    * \param ID
+    */
+    void ID(std::string ID);
 
-    Throws:
-            Never
+    /**
+    * Returns the station ID
+    * \return Station ID
+    */
+    std::string ID();
 
-    Returns:   
-            void 
-     */
-    void set_z(float elevation);
-        
-
-    void set_ID(std::string ID);
-
-
-    std::string get_ID();
-    
+    /**
+    * Resets the internal iterators to point to the begingin of the timeseries
+    */
     void reset_itrs();
-    
+
+    /**
+    * List all (including module provided) variables
+    * \return Vector containing a list of variable names
+    */
     std::vector<std::string> list_variables();
+
+    /**
+    * Returns the vector of all the dates in the timeseries
+    * \return
+    */
+    time_series::date_vec date_timeseries();
     
-    time_series::date_vec get_date_timeseries();
-    
-    //returns the length of the vectors
-    int get_timeseries_length();
-    
+    /**
+    * Returns the length of the timeseries. This is the number of records in the timeseries
+    */
+    size_t timeseries_length();
+
+    /**
+    * Returns the specificed variable of the station at this current timeseries\
+    * \param variable variable name
+    * \return value of the requested variable
+    */
     double get(std::string variable);
     
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
@@ -224,9 +147,9 @@ private:
         std::string _ID;
         time_series* _obs;
         time_series::iterator _itr;
-        unsigned int _x;
-        unsigned int _y;
-        float _z;
+        size_t _x;
+        size_t _y;
+        double _z;
    
 };
 
