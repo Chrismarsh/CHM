@@ -13,11 +13,11 @@
 
 #include <math.h>
 
-class air_temp : public module_base
+class tair_llra_const : public module_base
 {
 public:
-    air_temp(std::string ID);
-    ~air_temp();
+    tair_llra_const(std::string ID);
+    ~tair_llra_const();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 
 

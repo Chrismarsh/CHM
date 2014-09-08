@@ -148,7 +148,7 @@ void triangulation::from_file(std::string file)
     _num_vertex = i;
     LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 
-    _bbox = CGAL::bounding_box(pts.begin(), pts.end());
+    //_bbox = CGAL::bounding_box(pts.begin(), pts.end());
     //    std::cout << "0:"<< _bbox[0] << "1:"<< _bbox[1]<<"2:"<< _bbox[2]<<"3:"<< _bbox[3]<<std::endl;
     //    std::cout << _bbox[0] - _bbox[1] << std::endl;
     //    std::cout << _bbox[2] - _bbox[3] << std::endl;

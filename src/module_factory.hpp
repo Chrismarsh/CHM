@@ -10,8 +10,9 @@
 // Modules to build against
 #include "solar.hpp"
 #include "terrain_shadows.hpp"
-#include "air_temp.hpp"
+#include "tair_llra_const.hpp"
 #include "rh_llra_var.hpp"
+#include "tair_llra_lookup.hpp
 
 class module_factory
 {

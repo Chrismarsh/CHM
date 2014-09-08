@@ -12,7 +12,7 @@ set(JSON_SPIRIT_SRCS
 set(MODULE_SRCS
         modules/solar.cpp
         modules/terrain_shadows.cpp
-        modules/air_temp.cpp
+        modules/tair_llra_const.cpp
         modules/rh_llra_var.cpp
 )
 
