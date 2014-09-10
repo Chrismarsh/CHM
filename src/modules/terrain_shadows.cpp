@@ -40,6 +40,7 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
         {
             auto face = domain->face(i);
             face->set_face_data("z_prime", 0); //unshadowed
+            face->set_face_data("shadowed", 0);
         }
         return;
     }
@@ -79,20 +80,15 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
         vf->prj_vertex = p;
         vf->org_vertex = vert->point();
 
-        vert->set_point(vf->prj_vertex);
+        vert->set_point(vf->prj_vertex); //modify the underlying triangulation to reflect the rotated vertices
     }
 
-    //modify the underlying triangulation to reflect the rotated vertices
-
-
     auto BBR = domain->AABB(5,5);
-    
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-
 
         for (size_t j = 0; j < BBR->n_rows; j++)
         {
@@ -111,9 +107,10 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
             }
 
         }
-        //init memory but do nothing with it here
+        //init memory
         module_shadow_face_info* tv = new module_shadow_face_info;
         face->info = tv;
+        tv->z_prime = CGAL::centroid(face->vertex(0)->point(), face->vertex(1)->point(), face->vertex(2)->point()).z();
     }
 
     LOG_DEBUG << "AABB is " <<BBR->n_rows << "x" << BBR->n_rows;
@@ -135,7 +132,10 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
             std::sort(BBR->get_rect(i, ii)->triangles.begin(), BBR->get_rect(i, ii)->triangles.end(),
                     [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
                     {
-                        return fa->center().z() > fb->center().z();
+                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->info);
+                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->info);
+
+                        return fa_info->z_prime > fb_info->z_prime;
                     });
 
             size_t num_tri = BBR->get_rect(i, ii)->triangles.size();
@@ -143,8 +143,6 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
 //	#pragma omp parallel for            
             for (size_t j = 0; j < num_tri; j++)
             {
-                //        loadbar(j, rot_faces.size());
-
                 triangulation::Face_handle face_j = BBR->get_rect(i, ii)->triangles.at(j);
 
                 K::Triangle_2 tj(K::Point_2(face_j->vertex(0)->point().x(), face_j->vertex(0)->point().y()),
@@ -180,10 +178,11 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
                     }
                 }
 
-                face_j->set_face_data("z_prime", face_j->center().z());
+
 
                 module_shadow_face_info* face_info = reinterpret_cast<module_shadow_face_info*> (face_j->info);
                 face_j->set_face_data("shadowed", face_info->shadow);
+                face_j->set_face_data("z_prime", face_info->z_prime);
 
 
             }

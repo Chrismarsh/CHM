@@ -9,6 +9,7 @@
 #include <utility> // std::pair
 #include <set>
 #include <chrono>
+#include <map>
 
 //graph
 #include <boost/graph/graph_traits.hpp>
@@ -131,8 +132,10 @@ private:
     void _determine_module_dep();
     
         
-    //holds a unique list of all variables provided by all the modules;
-    std::set<std::string> _module_provided_variable_list;
+    //holds a unique list of all variables provided by all the met files;
+    std::set<std::string> _provided_var_met_files;
+    //unique list of all variables provided by all the modules
+    std::set<std::string> _provided_var_module;
     
     
     class output_info

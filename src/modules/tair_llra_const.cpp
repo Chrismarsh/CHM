@@ -6,6 +6,8 @@ tair_llra_const::tair_llra_const( std::string ID)
 
     _provides->push_back("tair_llra_const");
 
+    _depends_from_met->push_back("t");
+
     this->ID = ID;
     _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -15,6 +17,7 @@ tair_llra_const::~tair_llra_const()
 {
 
 }
+
 void tair_llra_const::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 

@@ -52,6 +52,7 @@ public:
     {
         _provides = boost::make_shared<std::vector<std::string> >();
         _depends = boost::make_shared<std::vector<std::string> >();
+        _depends_from_met = boost::make_shared<std::vector<std::string> >();
         IDnum = 0;
         ID = "uninitialized ID";
         _parallel_type = parallel::data; //default to data parallel, most common (?)
@@ -103,17 +104,26 @@ public:
     }
 
     /**
-    * List of the variables that this module depends upon
-    */
+     * List of the variables from other modules that this module depends upon
+     */
     boost::shared_ptr<std::vector<std::string> > depends()
     {
         return _depends;
+    }
+
+    /**
+    * List of the variables from the met files that this module depends upon
+    */
+    boost::shared_ptr<std::vector<std::string> > depends_from_met()
+    {
+        return _depends_from_met;
     }
 
 protected:
     parallel _parallel_type;
     boost::shared_ptr<std::vector<std::string> > _provides;
     boost::shared_ptr<std::vector<std::string> > _depends;
+    boost::shared_ptr<std::vector<std::string> > _depends_from_met;
 
 };
 

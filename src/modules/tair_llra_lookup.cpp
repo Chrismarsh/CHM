@@ -4,6 +4,8 @@ tair_llra_lookup::tair_llra_lookup( std::string ID)
 {
     _provides->push_back("t");
     _provides->push_back("tair_llra_lookup");
+
+    _depends_from_met->push_back("t");
     this->ID = ID;
     _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;

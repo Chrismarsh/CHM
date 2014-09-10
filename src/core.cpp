@@ -220,6 +220,15 @@ void core::config_meshes(const json_spirit::Value& value)
         if (_mesh->size_faces() == 0)
             BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 
+        #pragma omp parallel for
+        for(size_t i = 0; i<_mesh->size_faces(); i++)
+        {
+            auto face = _mesh->face(i);
+            face->slope();
+            face->aspect();
+            face->center();
+            face->normal();
+        }
     }
 }
 
@@ -425,23 +434,37 @@ void core::_determine_module_dep()
 
     size_t size = _modules.size();
 
-    //init a graph of the required size
+    //init a graph of the required size == num of modules
     Graph g(size);
 
     //loop through each module
     for (auto& module : _modules)
     {
-        //Generate a debugging list of all variables, culling duplicates
-        _module_provided_variable_list.insert(module.first->provides()->begin(), module.first->provides()->end());
-        //look at all other modules
+        //Generate a  list of all variables,, provided from this module, and append to the total list, culling duplicates between modules.
+        _provided_var_module.insert(module.first->provides()->begin(), module.first->provides()->end());
+
+
+        //check intermodule depends
         if (module.first->depends()->size() == 0)
         {
-            LOG_DEBUG << "Checking [" << module.first->ID << "], No dependenices";
+            LOG_DEBUG << "Module [" << module.first->ID << "], no inter-module dependenices";
         } else
         {
-            LOG_DEBUG << "Checking [" << module.first->ID << "] against...";
+            LOG_DEBUG << "Module [" << module.first->ID << "] checking against...";
         }
 
+
+        //make a copy of the depends for this module. we will then count references to each dependency
+        //this will allow us to know what is missing
+        std::map< std::string, size_t> curr_mod_depends;
+
+        //populate a list of all the dependencies
+        for (auto& itr : *(module.first->depends()))
+        {
+            curr_mod_depends[itr] = 0; //ref count init to 0
+        }
+
+        //iterate over all the modules,
         for (auto& itr : _modules)
         {
             //don't check against our module
@@ -450,7 +473,7 @@ void core::_determine_module_dep()
                 //loop through each required variable of our current module
                 for (auto& depend_var : *(module.first->depends()))
                 {
-                    LOG_DEBUG << "\t\tModule=" << itr.first->ID << " looking for var=" << depend_var;
+                    LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
 
                     auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var);
                     if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
@@ -459,10 +482,60 @@ void core::_determine_module_dep()
 
                         //add the dependency from module -> itr, such that itr will come before module
                         boost::add_edge(itr.first->IDnum, module.first->IDnum, g);
+
+                        curr_mod_depends[*i]++; //ref count our variable
                     }
                 }
             }
         }
+
+        bool missing_depends = false;
+
+        std::stringstream ss;
+        //build a list of ALL missing variables before dying
+        for (auto& itr : curr_mod_depends)
+        {
+            if(itr.second == 0)
+            {
+                ss << "Missing inter-module dependencies for module [" << module.first->ID << "]: " << itr.first;
+                missing_depends = true;
+            }
+
+        }
+        if(missing_depends)
+        {
+            LOG_ERROR << ss.str();
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info( ss.str()));
+        }
+
+        //check if our module has any met file dependenices
+        if (module.first->depends_from_met()->size() == 0)
+        {
+            LOG_DEBUG << "Module [" << module.first->ID << "], no met file dependenices";
+        } else
+        {
+            LOG_DEBUG << "Module [" << module.first->ID << "] has met file dependencies";
+        }
+
+        //build a list of variables provided by the met files, culling duplicate variables from multiple stations.
+        for (size_t i = 0; i < _global->stations.size(); i++)
+        {
+            auto vars = _global->stations.at(i)->list_variables();
+            _provided_var_met_files.insert(vars.begin(), vars.end());
+        }
+
+        //check this modules met dependencies, bail if we are missing any.
+        for(auto& depend_met_var : *(module.first->depends_from_met()))
+        {
+            auto i = std::find(_provided_var_met_files.begin(), _provided_var_met_files.end(), depend_met_var);
+            if(i==_provided_var_met_files.end())
+            {
+                LOG_ERROR << "\t\t" <<depend_met_var<<"...[missing]";
+                BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Missing dependency for " + depend_met_var));
+            }
+            LOG_DEBUG << "\t\t" <<depend_met_var<<"...[ok]";
+        }
+
     }
 
     std::deque<int> topo_order;
@@ -480,16 +553,6 @@ void core::_determine_module_dep()
 
     std::string     s = ss.str();
     LOG_DEBUG << "Build order: " << s.substr(0, s.length() - 2);
-
-    ss.str("");
-    ss.clear();
-    for (auto& itr : _modules)
-    {
-        ss << itr.first->ID << "->";
-
-    }
-    s = ss.str();
-    LOG_DEBUG << "Current _modules order: " << s.substr(0, s.length() - 2);
 
 
     //sort ascending based on make order number
@@ -532,19 +595,7 @@ void core::_determine_module_dep()
 //        LOG_DEBUG << "time_slot[" << time[*i] << "] = " << _modules.at(*i).first->ID << std::endl;
 //    }
 
-    for (size_t i = 0; i < _global->stations.size(); i++)
-    {
-        auto vars = _global->stations.at(i)->list_variables();
-        _module_provided_variable_list.insert(vars.begin(), vars.end());
-    }
 
-    LOG_DEBUG << "List of all provided variables: ";
-    std::string modlist = "";
-    for (auto itr : _module_provided_variable_list)
-    {
-        modlist += itr + " ";
-    }
-    LOG_DEBUG << modlist;
 
     //organize modules into sorted parallel data/domain chunks
     size_t chunks = 1; //will be 1 behind actual number as we are using this for an index
@@ -595,7 +646,7 @@ void core::_determine_module_dep()
         auto date = _global->stations.at(0)->date_timeseries();
         auto size = _global->stations.at(0)->timeseries_length();
         Delaunay::Face_handle face = fit;
-        face->init_time_series(_module_provided_variable_list, /*list of all the variables that are provided by met files or modules*/
+        face->init_time_series(_provided_var_module, /*list of all the variables that are provided by modules*/
                 date, /*take the first station, later checks ensure all the stations' timeseries match*/
                 size); /*length of all the vectors to initialize*/
     }

@@ -313,7 +313,7 @@ void triangulation::to_vtu(std::string file_name)
         }
         data["Elevation"]->InsertNextTuple1(face->get_z());
         data["Slope"]->InsertNextTuple1(face->slope());
-        data["Aspect"]->InsertNextTuple1(face->azimuth());
+        data["Aspect"]->InsertNextTuple1(face->aspect());
     }
 
     vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();

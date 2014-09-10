@@ -6,6 +6,8 @@ rh_llra_var::rh_llra_var( std::string ID)
     _provides->push_back("rh");
     _depends->push_back("t");
 
+    _depends_from_met->push_back("rh");
+
     this->ID = ID;
     _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;

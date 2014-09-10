@@ -48,7 +48,7 @@ public:
     face(Vertex_handle v0, Vertex_handle v1, Vertex_handle v2, Face_handle n0, Face_handle n1, Face_handle n2);
     face(Vertex_handle v0, Vertex_handle v1, Vertex_handle v2, Face_handle n0, Face_handle n1, Face_handle n2, bool c0, bool c1, bool c2);
 
-    double azimuth();
+    double aspect();
     double slope();
     Vector_3 normal();
     Point_3 center();
@@ -147,7 +147,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
 }
 
 template < class Gt, class Fb>
-double face<Gt, Fb>::azimuth()
+double face<Gt, Fb>::aspect()
 {
     if (_azimuth == -1)
     {

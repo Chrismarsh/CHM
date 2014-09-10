@@ -12,6 +12,12 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+/**
+* \class Solar
+* \breif Calculates shortwave radiation
+*
+* Calculates incoming direct-beam shortwave solar radiation, with no correction for transmissivity.
+*/
 class Solar : public module_base
 {
     public:

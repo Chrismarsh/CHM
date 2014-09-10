@@ -3,8 +3,8 @@
 
 Solar::Solar( std::string ID)
 {
-    _provides->push_back("solar_S_angle");
-    _provides->push_back("solar_short");
+    _provides->push_back("solar_angle");
+    _provides->push_back("Qsi");
     
     _depends->push_back("z_prime");
     
@@ -43,13 +43,13 @@ void Solar::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
         angle = 0.0;
     
     
-    elem->set_face_data("solar_S_angle",angle);
+    elem->set_face_data("solar_angle",angle);
     
     double shadow = elem->face_data("shadowed");
     if(shadow == 1)
         angle = 0;
     
-    elem->set_face_data("solar_short", angle ); //shadow == 1
+    elem->set_face_data("Qsi", angle*1375.0 ); //shadow == 1
     
     
 }
