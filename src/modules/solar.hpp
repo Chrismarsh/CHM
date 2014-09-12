@@ -13,10 +13,19 @@
 #include <math.h>
 
 /**
+* \addtogroup modules
+* @{
 * \class Solar
-* \breif Calculates shortwave radiation
+* \brief Calculates shortwave radiation
 *
 * Calculates incoming direct-beam shortwave solar radiation, with no correction for transmissivity.
+*
+* Depends:
+* - Terrain shadows "shadowed" [-]
+*
+* Provides:
+* - Solar shortwave "Qsi" [W/m^-1]
+* - Angle between surface normal and slope "solar_angle" [rad]
 */
 class Solar : public module_base
 {
@@ -28,3 +37,6 @@ class Solar : public module_base
 
 };
 
+/**
+@}
+*/

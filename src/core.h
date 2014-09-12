@@ -28,6 +28,7 @@
 
 
 #include "json_spirit.h"
+//#include "module_base.hpp"
 
 #include "module_factory.hpp"
 #include "station.hpp"

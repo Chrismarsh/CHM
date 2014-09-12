@@ -1,23 +1,6 @@
 
 #include "terrain_shadows.hpp"
 
-// Process has done i out of n rounds,
-// and we want a bar of width w and resolution r.
-//http://www.rosshemsley.co.uk/2011/02/creating-a-progress-bar-in-c-or-any-other-console-app/
-
-//static inline void loadbar(unsigned int x, unsigned int n, unsigned int w = 50)
-//{
-//    if ((x != n) && (x % (n / 100 + 1) != 0)) return;
-//
-//    float ratio = x / (float) n;
-//    int c = ratio * w;
-//
-//    std::cout << std::setw(3) << (int) (ratio * 100) << "% [";
-//    for (int x = 0; x < c; x++) std::cout << "=";
-//    for (int x = c; x < w; x++) std::cout << " ";
-//    std::cout << "]\r" << std::flush;
-//}
-
 terrain_shadow::terrain_shadow(std::string ID)
 {
     _provides->push_back("shadowed");
@@ -83,7 +66,7 @@ void terrain_shadow::run(mesh domain, boost::shared_ptr<global> global_param)
         vert->set_point(vf->prj_vertex); //modify the underlying triangulation to reflect the rotated vertices
     }
 
-    auto BBR = domain->AABB(5,5);
+    auto BBR = domain->AABB(10,10);
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)

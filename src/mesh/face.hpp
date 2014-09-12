@@ -12,6 +12,10 @@
 
 #include "timeseries.hpp"
 
+/**
+* \struct face_info
+* A way of embedding arbirtrary data into the face. This is how modules should store their data.
+*/
 struct face_info
 {
 
@@ -27,14 +31,28 @@ typedef K::Point_3 Point_3;
 typedef K::Vector_3 Vector_3;
 typedef K::Triangle_3 Triangle_3;
 
+/**
+* \class face
+* \brief Defines the triangle face
+*/
 template < class Gt, class Fb = CGAL::Triangulation_face_base_2<Gt> >
 class face
 : public Fb
 {
 public:
+
     face_info* info;
+
+    /**
+    * \typedef Vertex_handle Handle to a vertex
+    */
     typedef typename Fb::Vertex_handle Vertex_handle;
+
+    /**
+    * \typedef Face_handle Handle to a face
+    */
     typedef typename Fb::Face_handle Face_handle;
+
 
     template < typename TDS2 >
     struct Rebind_TDS
@@ -48,23 +66,112 @@ public:
     face(Vertex_handle v0, Vertex_handle v1, Vertex_handle v2, Face_handle n0, Face_handle n1, Face_handle n2);
     face(Vertex_handle v0, Vertex_handle v1, Vertex_handle v2, Face_handle n0, Face_handle n1, Face_handle n2, bool c0, bool c1, bool c2);
 
+    /**
+    * Aspect of the face. North = 0, CW . Calculated on first use, subsequent usages will not recalculate
+    * \return Face aspect [rad]
+    */
     double aspect();
+
+    /**
+    * Slope of the face. Calculated on first use, subsequent usages will not recalculate
+    * \return slope [rad]
+    */
     double slope();
+
+    /**
+    * Normalized face normal. Calculated on first use, subsequent usages will not recalculate
+    */
     Vector_3 normal();
+
+    /**
+    * Center of the face as defined by a centroid. Calculated on first use, subsequent usages will not recalculate
+    */
     Point_3 center();
+
+    /**
+    * Checks if a point x,y is within the face
+    * \return true if this face contains the point x,y
+    */
     bool contains(double x, double y);
+
+    /**
+    * Checks if a point p is within the face
+    * \return true if this face contains the point p
+    */
     bool contains(Point_3 p);
+
+    /**
+    * Checks if the given face intersects this face in 2D. The algorithm checks if the specified face contains any of the 3 vertexs or center of this face.
+    * \param fh Face handle to the other face
+    * \return true if this face and fh intersects
+    */
     bool intersects(Face_handle fh);
-    void set_face_data(std::string var_ID, double data);
-    double face_data(std::string var_ID);
-    void init_time_series(std::set<std::string> variables, time_series::date_vec datetime, int size);
-    time_series::variable_vec face_time_series(std::string ID);
-    std::vector<std::string> variables_IDs();
+
+    /**
+    * Sets the face data, for the given variable, at the current timestep
+    * \param variable Variable to assign the data to
+    * \param data Data
+    */
+    void set_face_data(std::string variable, double data);
+
+    /**
+    * Returns the face data
+    * \param variable  variable being queried
+    * \return  this timesteps value for the given variable
+    */
+    double face_data(std::string variable);
+
+    /**
+    * Initializes  this faces timeseires with the given varialves, for the given datetime series with the given size
+    * \param variables Names of the variables to add
+    * \param datetime Vector of boost::ptimes for the entire duration of the timesries
+    */
+    void init_time_series(std::set<std::string> variables, timeseries::date_vec datetime);
+
+    /**
+    * Obtains the timeseries associated with the given variable
+    * \param ID variable
+    */
+    timeseries::variable_vec face_time_series(std::string ID);
+
+    /**
+     * Returns a list of variables in this face's timeseries
+     * \return Vector of variable names
+     */
+    std::vector<std::string> variables();
+    
+    /**
+     * Increments the face to the next timestep
+     */
     void next();
+    
+    /**
+     * Resets the face to the start of the timeseries
+     */
     void reset_to_begining();
+    
+    /**
+     * Returns the xcoordinates of the center of the face
+     * @return x UTM coordinate
+     */
     double get_x();
+    
+    /**
+     * Returns the ycoordinates of the center of the face
+     * @return y UTM coordinate
+     */
     double get_y();
+    
+    /**
+     * Returns the zcoordinates of the center of the face
+     * @return  elevation
+     */
     double get_z();
+    
+    /**
+     * Saves this face's timeseries to a file
+     * @param fname specified file name
+     */
     void to_file(std::string fname);
 
 private:
@@ -78,8 +185,8 @@ private:
     boost::shared_ptr<Vector_3> _normal;
 
 
-    boost::shared_ptr<time_series> _data;
-    time_series::iterator _itr;
+    boost::shared_ptr<timeseries> _data;
+    timeseries::iterator _itr;
 
 
 };
@@ -89,7 +196,7 @@ face<Gt, Fb>::face()
 {
     _slope = -1;
     _azimuth = -1;
-    _data = boost::make_shared<time_series>();
+    _data = boost::make_shared<timeseries>();
 
     _center = NULL;
     _normal = NULL;
@@ -107,7 +214,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
 {
     _slope = -1;
     _azimuth = -1;
-    _data = boost::make_shared<time_series>();
+    _data = boost::make_shared<timeseries>();
 
 }
 
@@ -122,7 +229,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
 {
     _slope = -1;
     _azimuth = -1;
-    _data = boost::make_shared<time_series>();
+    _data = boost::make_shared<timeseries>();
 
 
 }
@@ -141,7 +248,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
 {
     _slope = -1;
     _azimuth = -1;
-    _data = boost::make_shared<time_series>();
+    _data = boost::make_shared<timeseries>();
 
 
 }
@@ -265,31 +372,31 @@ bool face<Gt, Fb>::contains(double x, double y)
 
 }
 template < class Gt, class Fb>
-std::vector<std::string> face<Gt, Fb>::variables_IDs()
+std::vector<std::string> face<Gt, Fb>::variables()
 {
     return _data->list_variables();
 }
 template < class Gt, class Fb>
-void face<Gt, Fb>::set_face_data(std::string var_ID, double data)
+void face<Gt, Fb>::set_face_data(std::string variable, double data)
 {
-    _itr->set(var_ID, data);
+    _itr->set(variable, data);
 }
 
 template < class Gt, class Fb>
-double face<Gt, Fb>::face_data(std::string var_ID)
+double face<Gt, Fb>::face_data(std::string variable)
 {
-    return _itr->get(var_ID);
+    return _itr->get(variable);
 }
 
 template < class Gt, class Fb>
-void face<Gt, Fb>::init_time_series(std::set<std::string> variables, time_series::date_vec datetime, int size)
+void face<Gt, Fb>::init_time_series(std::set<std::string> variables, timeseries::date_vec datetime)
 {
-    _data->init(variables, datetime, size);
+    _data->init(variables, datetime);
     _itr = _data->begin();
 }
 
 template < class Gt, class Fb>
-time_series::variable_vec face<Gt, Fb>::face_time_series(std::string ID)
+timeseries::variable_vec face<Gt, Fb>::face_time_series(std::string ID)
 {
     return _data->get_time_series(ID);
 }

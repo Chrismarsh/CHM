@@ -21,7 +21,7 @@ station::station(std::string ID, size_t x, size_t y, double elevation)
     _x = x;
     _y = y;
     _z = elevation;
-    _obs = new time_series();
+    _obs = new timeseries();
     _itr = _obs->begin();
 
 }
@@ -30,7 +30,7 @@ void station::open(std::string file)
 {
     try
     {
-        _obs = new time_series();
+        _obs = new timeseries();
         _obs->open(file);
 
         _itr = _obs->begin();
@@ -42,7 +42,7 @@ void station::open(std::string file)
     }
 }
 
-time_series::date_vec station::date_timeseries()
+timeseries::date_vec station::date_timeseries()
 {
     return _obs->get_date_timeseries();
 }

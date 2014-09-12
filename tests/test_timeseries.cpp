@@ -14,8 +14,8 @@ protected:
         ASSERT_NO_THROW(s1.open("test_met_data.txt"));
     }
 
-    time_series s0;
-    time_series s1;
+    timeseries s0;
+    timeseries s1;
 };
 
 
@@ -174,7 +174,7 @@ TEST_F(TimeseriesTest, Length)
 TEST_F(TimeseriesTest, ToFile)
 {
     s1.to_file("test_s1_output.txt");
-    time_series input;
+    timeseries input;
     ASSERT_NO_THROW(input.open("test_s1_output.txt"));
     
     auto itr = s1.begin();

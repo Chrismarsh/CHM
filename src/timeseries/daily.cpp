@@ -2,7 +2,7 @@
 
 namespace daily
 {
-    double mean(time_series::iterator& start, time_series::iterator& end, std::string variable )
+    double mean(timeseries::iterator& start, timeseries::iterator& end, std::string variable )
     {
         double m = 0.0;
         double count = 0.0;
@@ -14,7 +14,7 @@ namespace daily
         return m/count;
     }
     
-    double max(time_series::iterator& start, time_series::iterator& end, std::string variable )
+    double max(timeseries::iterator& start, timeseries::iterator& end, std::string variable )
     {
         auto m = std::max_element(start->get_itr(variable),end->get_itr(variable));
         return *m;

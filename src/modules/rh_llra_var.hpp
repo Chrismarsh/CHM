@@ -14,7 +14,11 @@
 
 #include <math.h>
 
+
+
 /**
+* \addtogroup modules
+* @{
 * \class rh_llra_var
 * \brief Linear lapse rate adjust for relative humidity
 *
@@ -57,3 +61,6 @@ public:
 };
 
 
+/**
+@}
+*/

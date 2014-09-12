@@ -2,13 +2,13 @@
 
 #include "timeseries.hpp"
 
-void time_series::push_back(double data, std::string variable)
+void timeseries::push_back(double data, std::string variable)
 {
     ts_hashmap::accessor a;
     _variables.insert(a, variable);
     a->second.push_back(data);
 }
-void time_series::init(std::set<std::string> variables, date_vec datetime,  int size)
+void timeseries::init(std::set<std::string> variables, date_vec datetime)
 {
    for (auto& v: variables)
    {
@@ -19,7 +19,7 @@ void time_series::init(std::set<std::string> variables, date_vec datetime,  int 
    //preallocate all the memory required
    for (auto& itr : _variables)
    {
-    itr.second.resize(size);
+    itr.second.resize(datetime.size());
 //       for(int i = 0; i < size; i++)
 //            itr.second.push_back(3.14159);
    }
@@ -28,11 +28,11 @@ void time_series::init(std::set<std::string> variables, date_vec datetime,  int 
    _date_vec = datetime;
 }
 
- time_series::date_vec time_series::get_date_timeseries()
+ timeseries::date_vec timeseries::get_date_timeseries()
  {
      return _date_vec;
  }
-std::vector<std::string> time_series::list_variables()
+std::vector<std::string> timeseries::list_variables()
 {
     std::vector<std::string> vars;
     for(auto& itr : _variables)
@@ -42,7 +42,7 @@ std::vector<std::string> time_series::list_variables()
     
     return vars;
 }
-time_series::variable_vec time_series::get_time_series(std::string variable)
+timeseries::variable_vec timeseries::get_time_series(std::string variable)
 {
     ts_hashmap::const_accessor a;
     if(!_variables.find(a, variable))
@@ -53,7 +53,7 @@ time_series::variable_vec time_series::get_time_series(std::string variable)
     return a->second;
 }
 
-boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boost::posix_time::ptime start_time,boost::posix_time::ptime end_time)
+boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost::posix_time::ptime start_time,boost::posix_time::ptime end_time)
 {
     //look for our requested timestep
     auto itr_find = std::find(_date_vec.begin(),_date_vec.end(),start_time);
@@ -78,7 +78,7 @@ boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boo
         //create the keyname for this variable and store the iterator
         if (!start_step._currentStep->_itrs.insert(a, itr.first))
         {
-            BOOST_THROW_EXCEPTION(forcing_insertion_error()
+            BOOST_THROW_EXCEPTION(forcing_error()
                     << errstr_info("Failed to insert " + itr.first)
                     );
         }
@@ -108,7 +108,7 @@ boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boo
         //create the keyname for this variable and store the iterator
         if (!end_step._currentStep->_itrs.insert(a, itr.first))
         {
-            BOOST_THROW_EXCEPTION(forcing_insertion_error()
+            BOOST_THROW_EXCEPTION(forcing_error()
                     << errstr_info("Failed to insert " + itr.first)
                     );
         }
@@ -120,11 +120,11 @@ boost::tuple<time_series::iterator,time_series::iterator> time_series::range(boo
     //set the date vector to be the begining of the internal data vector
     end_step._currentStep->_date_itr = _date_vec.begin()+dist_end;
     
-    return boost::tuple<time_series::iterator,time_series::iterator>(start_step,end_step);
+    return boost::tuple<timeseries::iterator, timeseries::iterator>(start_step,end_step);
     
     
 }
-time_series::iterator time_series::find(boost::posix_time::ptime time)
+timeseries::iterator timeseries::find(boost::posix_time::ptime time)
 {
     //look for our requested timestep
     auto itr = std::find(_date_vec.begin(),_date_vec.end(),time);
@@ -163,7 +163,7 @@ time_series::iterator time_series::find(boost::posix_time::ptime time)
     return step;
 }
 
-void time_series::open(std::string path)
+void timeseries::open(std::string path)
 {
     std::fstream file(path.c_str());
     std::string line = "";
@@ -363,17 +363,17 @@ void time_series::open(std::string path)
 
 }
 
-int time_series::get_timeseries_length()
+int timeseries::get_timeseries_length()
 {
     return _timeseries_length;
 }
 
-std::string time_series::get_opened_file()
+std::string timeseries::get_opened_file()
 {
     return _file;
 }
 
-time_series::time_series()
+timeseries::timeseries()
 {
     _cols = 0;
     _rows = 0;
@@ -382,12 +382,12 @@ time_series::time_series()
 }
 
 
-time_series::~time_series()
+timeseries::~timeseries()
 {
 
 }
 
-void time_series::to_file(std::string file)
+void timeseries::to_file(std::string file)
 {
     std::ofstream out;
     out.open(file.c_str());
@@ -434,7 +434,7 @@ void time_series::to_file(std::string file)
     delete[] headerItems;
 }
 
-bool time_series::is_open()
+bool timeseries::is_open()
 {
     return _isOpen;
 
@@ -442,7 +442,7 @@ bool time_series::is_open()
 
 //iterator implementation
 //------------------------
-time_series::iterator time_series::begin()
+timeseries::iterator timeseries::begin()
 {
     iterator step;
 
@@ -483,7 +483,7 @@ time_series::iterator time_series::begin()
 }
 
 
-time_series::iterator time_series::end()
+timeseries::iterator timeseries::end()
 {
     iterator step;
     //loop over the variable map and save the iterator to the end
@@ -506,12 +506,12 @@ time_series::iterator time_series::end()
 }
 
 
-timestep& time_series::iterator::dereference() const
+timestep& timeseries::iterator::dereference() const
 {
     return *_currentStep;
 }
 
-bool time_series::iterator::equal(iterator const& other) const
+bool timeseries::iterator::equal(iterator const& other) const
 {
     bool isEqual = false;
 
@@ -539,7 +539,7 @@ bool time_series::iterator::equal(iterator const& other) const
 
 }
 
-void time_series::iterator::increment()
+void timeseries::iterator::increment()
 {
     //walks the map locking each node so that the increment can happen
     //walk order is not guaranteed
@@ -561,7 +561,7 @@ void time_series::iterator::increment()
     delete[] accesors;
 }
 
-void time_series::iterator::decrement()
+void timeseries::iterator::decrement()
 {
     //walks the map locking each node so that the increment can happen
     //walk order is not guaranteed
@@ -583,22 +583,22 @@ void time_series::iterator::decrement()
 
 }
 
-time_series::iterator::iterator()
+timeseries::iterator::iterator()
 {
     _currentStep = new timestep();
 }
 
-time_series::iterator::iterator(const iterator& src)
+timeseries::iterator::iterator(const iterator& src)
 {
     _currentStep = new timestep(src._currentStep);
 }
 
-time_series::iterator::~iterator()
+timeseries::iterator::~iterator()
 {
     delete _currentStep;
 }
 
-time_series::iterator& time_series::iterator::operator=(const time_series::iterator& rhs)
+timeseries::iterator& timeseries::iterator::operator=(const timeseries::iterator& rhs)
 {
     if (this == &rhs)
         return (*this);
@@ -606,7 +606,7 @@ time_series::iterator& time_series::iterator::operator=(const time_series::itera
     return *this;
 }
 
-std::ptrdiff_t time_series::iterator::distance_to(time_series::iterator const& other) const
+std::ptrdiff_t timeseries::iterator::distance_to(timeseries::iterator const& other) const
 {
     return std::distance(this->_currentStep->_date_itr,other._currentStep->_date_itr);
 }

@@ -107,7 +107,7 @@ void triangulation::plot_time_series(double x, double y, std::string ID)
 
     maw::d_vec v(new arma::vec(m->face_time_series(ID).size()));
 
-    time_series::variable_vec ts = m->face_time_series(ID);
+    timeseries::variable_vec ts = m->face_time_series(ID);
 
     for (size_t i = 0; i < v->size(); i++)
     {
@@ -170,13 +170,13 @@ Delaunay::Face_handle triangulation::face(size_t i)
     return _faces.at(i);
 }
 
-void triangulation::to_file(double x, double y, std::string fname)
+void triangulation::timeseries_to_file(double x, double y, std::string fname)
 {
     mesh_elem m = this->locate_face(x, y);
-    to_file(m, fname);
+    timeseries_to_file(m, fname);
 }
 
-void triangulation::to_file(mesh_elem m, std::string fname)
+void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 {
     if (m == NULL)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
@@ -251,7 +251,7 @@ void triangulation::plot(std::string ID)
 }
 #endif
 
-void triangulation::to_vtu(std::string file_name)
+void triangulation::mesh_to_vtu(std::string file_name)
 {
 //    size_t i = 0;
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
@@ -266,7 +266,7 @@ void triangulation::to_vtu(std::string file_name)
     //by this point this should be a fair assumption
     
     Delaunay::Finite_faces_iterator f = this->finite_faces_begin();
-    auto variables = f->variables_IDs();
+    auto variables = f->variables();
     for(auto& v: variables)
     {
         data[v] = vtkSmartPointer<vtkFloatArray>::New();
@@ -433,9 +433,9 @@ void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
     
 }
 
-rect* segmented_AABB::get_rect(size_t i, size_t j)
+rect* segmented_AABB::get_rect(size_t row, size_t col)
 {
-    return m_grid[i][j];
+    return m_grid[row][col];
 }
 
 segmented_AABB::segmented_AABB()

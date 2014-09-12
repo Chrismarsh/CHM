@@ -127,7 +127,7 @@ public:
     * Returns the vector of all the dates in the timeseries
     * \return
     */
-    time_series::date_vec date_timeseries();
+    timeseries::date_vec date_timeseries();
     
     /**
     * Returns the length of the timeseries. This is the number of records in the timeseries
@@ -145,8 +145,8 @@ friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:
         std::string _ID;
-        time_series* _obs;
-        time_series::iterator _itr;
+        timeseries * _obs;
+        timeseries::iterator _itr;
         size_t _x;
         size_t _y;
         double _z;

@@ -10,7 +10,7 @@ inv_dist::~inv_dist()
     
 }
 
-double inv_dist::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_points)
+double inv_dist::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
     
     double numerator = 0.0;
@@ -29,8 +29,8 @@ double inv_dist::operator()(std::vector< boost::tuple<double,double,double> >& s
         double sx = sample_points.at(i).get<0>();
         double sy = sample_points.at(i).get<1>();
         
-        double ex = query_points.get<0>();
-        double ey = query_points.get<1>();
+        double ex = query_point.get<0>();
+        double ey = query_point.get<1>();
         
         double xdiff = (sx  - ex);
         double ydiff = (sy  - ey);

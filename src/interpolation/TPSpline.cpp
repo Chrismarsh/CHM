@@ -1,7 +1,7 @@
 
 #include "TPSpline.hpp"
 
-double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_points )
+double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
 
     size_t size = sample_points.size();
@@ -85,8 +85,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
     {
         double sx = sample_points.at(i).get<0>();
         double sy = sample_points.at(i).get<1>();
-        double ex = query_points.get<0>();
-        double ey =  query_points.get<1>();
+        double ex = query_point.get<0>();
+        double ey =  query_point.get<1>();
         double xdiff = (sx  - ex);
         double ydiff = (sy  - ey);
         double d = pow(sqrt(

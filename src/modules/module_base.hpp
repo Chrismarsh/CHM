@@ -6,6 +6,11 @@
 #include "triangulation.hpp"
 #include "global.hpp"
 
+//Create a process modules group in the doxygen docs to add individual modules to
+/**
+* \defgroup modules Process modules
+*/
+
 /**
 * \class module_base
 * \brief Base class for individual modules

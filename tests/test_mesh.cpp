@@ -25,5 +25,5 @@ TEST_F(MeshTest,ThrowsOnInvalidFile)
 
 TEST_F(MeshTest,ToFileVTU)
 {
-    EXPECT_NO_THROW(t.to_vtu("test.vtu"));
+    EXPECT_NO_THROW(t.mesh_to_vtu("test.vtu"));
 }

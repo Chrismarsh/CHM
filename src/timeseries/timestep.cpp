@@ -76,11 +76,11 @@ boost::posix_time::ptime timestep::get_posix()
     return *_date_itr;
 }
 
-double timestep::get(std::string varName)
+double timestep::get(std::string variable)
 {
     itr_map::const_accessor a;
-    if (!_itrs.find(a, varName))
-        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
+    if (!_itrs.find(a, variable))
+        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
 
 
     double out = a->second[0];
@@ -88,12 +88,12 @@ double timestep::get(std::string varName)
     return out;
 }
 
-void timestep::set(std::string varName, double value)
+void timestep::set(std::string variable, double value)
 {
     itr_map::accessor a;
-    if (!_itrs.find(a, varName))
+    if (!_itrs.find(a, variable))
     {
-        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist.")); 
+        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
     }
 
     a->second[0] = value;

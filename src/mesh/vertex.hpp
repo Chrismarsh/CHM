@@ -5,11 +5,21 @@
 
 #include <boost/tuple/tuple.hpp>
 
+/**
+* \class vertex_info
+* Arbitrary data may be added to the vertex via this class
+*/
 struct vertex_info
 {
     virtual ~vertex_info(){};
 };
 
+/**
+* \class ex_vertex
+*
+* The base CGAL vertex class is extended by ex_vertex to allow for add arbitrary vertex information as well as for incorperating the conecept of an ID. This ID is a global
+* reference that allows for creating a Matlab or VTK based triangulation datastructure.
+*/
 template < class Gt, class Vb = CGAL::Triangulation_vertex_base_2<Gt> >
 class ex_vertex : public Vb
 {
@@ -37,7 +47,16 @@ public:
 
     ex_vertex(Face_handle f);
 
+    /**
+    * Sets the vertex to have a given id. Generally this would be the current x,y,z point read in from a file, for example.
+    * \param id Vertex global id
+    */
     void set_id(size_t id);
+
+    /**
+    * Returns the global id
+    * \return global id
+    */
     size_t get_id();
 
 };

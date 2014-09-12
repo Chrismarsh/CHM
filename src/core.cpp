@@ -1,5 +1,4 @@
 #include "core.h"
-#include "module_base.hpp"
 
 core::core()
 {
@@ -646,9 +645,7 @@ void core::_determine_module_dep()
         auto date = _global->stations.at(0)->date_timeseries();
         auto size = _global->stations.at(0)->timeseries_length();
         Delaunay::Face_handle face = fit;
-        face->init_time_series(_provided_var_module, /*list of all the variables that are provided by modules*/
-                date, /*take the first station, later checks ensure all the stations' timeseries match*/
-                size); /*length of all the vectors to initialize*/
+        face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
     }
 
 }
@@ -723,7 +720,7 @@ void core::run()
         //save timestep to file
         std::stringstream ss;
         ss << "marmot" << num_ts << ".vtu";
-        _mesh->to_vtu(ss.str());
+        _mesh->mesh_to_vtu(ss.str());
         num_ts++;
 
         c.tic();
@@ -770,7 +767,7 @@ void core::run()
 #endif
         if (itr.out_file != "")
         {
-            _mesh->to_file(itr.face, itr.out_file);
+            _mesh->timeseries_to_file(itr.face, itr.out_file);
         }
     }
 
