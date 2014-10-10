@@ -6,7 +6,7 @@ Solar::Solar( std::string ID)
     _provides->push_back("solar_angle");
     _provides->push_back("Qsi");
     
-    _depends->push_back("z_prime");
+    _depends->push_back("shadowed");
     
     
     this->ID = ID;
@@ -49,7 +49,7 @@ void Solar::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     if(shadow == 1)
         angle = 0;
     
-    elem->set_face_data("Qsi", angle*1375.0 ); //shadow == 1
+    elem->set_face_data("Qsi", angle*1375.0 );
     
     
 }

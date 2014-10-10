@@ -6,7 +6,6 @@ class StationTest : public testing::Test
 {
 protected:
 
-    StationTest() : s1((__1::basic_string<char, char_traits<char>, allocator<char>>()), 0, 0, 0) {}
 
     virtual void SetUp()
     {

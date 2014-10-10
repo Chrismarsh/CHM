@@ -46,7 +46,7 @@ typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
 typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
 typedef std::pair<int, int> Edge;
 
-/// The main model core
+
 /**
  * The main model core, handles initialization of the model
 **/

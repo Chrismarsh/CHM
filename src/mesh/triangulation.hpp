@@ -50,8 +50,16 @@
 #include <vtkUnstructuredGrid.h>
 #include <vtkCellData.h> //pointdata
 #include <vtkFloatArray.h>
-
-
+#include <vtkPolyData.h>
+#include <vtkProbeFilter.h>
+#include <vtkDelaunay2D.h>
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkPointData.h>
+#include <vtkPlaneSource.h>
+#include <vtkGeometryFilter.h>
+#include <vtkTransform.h>
+#include <vtkTransformFilter.h>
+#include <vtkElevationFilter.h>
 #ifdef NOMATLAB
 #include "libmaw.h"
 #endif
@@ -179,10 +187,14 @@ public:
     */
     void timeseries_to_file(mesh_elem m, std::string fname);
 
+    vtkSmartPointer<vtkUnstructuredGrid> mesh_to_vtkUstructuredGrid();
+
     /**
     * Saves the mesh with this timesteps values to a vtu file for visualization in Paraview
     */
     void mesh_to_vtu(std::string fname);
+
+    void mesh_to_ascii(std::string file_name);
 private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc

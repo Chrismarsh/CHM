@@ -638,13 +638,14 @@ void core::_determine_module_dep()
     if (_global->stations.size() == 0)
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
-    //#pragma omp parallel for
-    for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
+    #pragma omp parallel for
+    for(size_t it = 0; it < _mesh->size_faces(); it++)
+   // for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
 
         auto date = _global->stations.at(0)->date_timeseries();
         auto size = _global->stations.at(0)->timeseries_length();
-        Delaunay::Face_handle face = fit;
+        Delaunay::Face_handle face = _mesh->face(it);
         face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
     }
 
@@ -721,11 +722,17 @@ void core::run()
         std::stringstream ss;
         ss << "marmot" << num_ts << ".vtu";
         _mesh->mesh_to_vtu(ss.str());
+
+
+        ss.str("");
+        ss.clear();
+        ss << "marmot" << num_ts << ".vtp";
+        _mesh->mesh_to_ascii(ss.str());
         num_ts++;
 
         c.tic();
-#pragma omp parallel for //update all the internal iterators
-        for (size_t i = 0; i < _mesh->size_faces(); i++)
+#pragma omp parallel for
+        for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
         {
             auto face = _mesh->face(i);
             face->next();

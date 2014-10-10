@@ -19,6 +19,9 @@ set(JSON_SPIRIT_SRCS
 set(MODULE_SRCS
         ../src/modules/solar.cpp
         ../src/modules/terrain_shadows.cpp
+        ../src/modules/rh_llra_var.cpp
+        ../src/modules/tair_llra_const.cpp
+        ../src/modules/tair_llra_lookup.cpp
 )
 
 if(MATLAB)
