@@ -22,9 +22,11 @@
 *
 * Depends:
 * - Terrain shadows "shadowed" [-]
+* - Atmospheric transmittance "atm_trans" [-]
 *
 * Provides:
 * - Solar shortwave "Qsi" [W/m^-1]
+* - Uncorrected for transmittance solar shortwave "S0" [W/m^-1]
 * - Angle between surface normal and slope "solar_angle" [rad]
 */
 class Solar : public module_base

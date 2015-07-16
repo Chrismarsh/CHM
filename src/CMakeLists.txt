@@ -15,6 +15,12 @@ set(MODULE_SRCS
         modules/tair_llra_const.cpp
         modules/tair_llra_lookup.cpp
         modules/rh_llra_var.cpp
+        modules/atm_trans_annandale.cpp
+        modules/longwave_sicart.cpp
+        modules/evap_penman_monteith.cpp
+        modules/wind.cpp
+        modules/precip.cpp
+        modules/leaky_bucket.cpp
 )
 
 
@@ -56,35 +62,37 @@ set (EXT_HEADER_FILES
         ${TBB_INCLUDE_DIRS}
         ${GSL_INCLUDE_DIRS}
         ${AMRADILLO_INCLUDE_DIR}
-
+        ${SUNDIALS_INCLUDES}
         ${CGAL_INCLUDE_DIRS}
-${CGAL_3RD_PARTY_INCLUDE_DIRS}
+        ${CGAL_3RD_PARTY_INCLUDE_DIRS}
     )
 set( LIB_FILES
-	${Boost_LIBRARIES}
+	    ${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
         ${GSL_LIBRARIES}
-	${CMAKE_THREAD_LIBS_INIT}
+	    ${CMAKE_THREAD_LIBS_INIT}
         ${ARMADILLO_LIBRARIES} 
-
+        ${SUNDIALS_LIBRARIES}
         ${CGAL_LIBRARIES}
         ${CGAL_3RD_PARTY_LIBRARIES}
         ${VTK_LIBRARIES}
 )
 
+
+#are we linking against matlab?
 if(MATLAB)
     set(LIBMAW_SRCS
         libmaw/graphics.cpp
-        libmaw/matlab_engine.cpp
-    )
+        libmaw/matlab_engine.cpp)
 
-    set( LIB_FILES 
+    set( LIB_FILES
             ${LIB_FILES}
-            ${MATLAB_ENG_LIBRARY} 
-            ${MATLAB_MX_LIBRARY}  )
+            ${MATLAB_ENG_LIBRARY}
+            ${MATLAB_MX_LIBRARY})
 
-    set(EXT_HEADER_FILES ${EXT_HEADER_FILES}
-            ${MATLAB_INCLUDE_DIR})
+    set(EXT_HEADER_FILES
+        ${EXT_HEADER_FILES}
+        ${MATLAB_INCLUDE_DIR})
 
 endif()
 

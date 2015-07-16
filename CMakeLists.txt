@@ -72,6 +72,8 @@ find_package(Boost
              regex
              REQUIRED)
 
+find_package(sundials REQUIRED)
+
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 

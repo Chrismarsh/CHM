@@ -41,7 +41,7 @@ class face
 {
 public:
 
-    face_info* info;
+//    face_info* info;
 
     /**
     * \typedef Vertex_handle Handle to a vertex
@@ -139,7 +139,18 @@ public:
      * \return Vector of variable names
      */
     std::vector<std::string> variables();
-    
+
+    /**
+    * Returns the underlying timeseries object
+    * \return Pointer to the underlying timeseries
+    */
+    boost::shared_ptr<timeseries> get_underlying_timeseries();
+
+    /**
+    * Returns the iterator of the current timestep.
+    */
+    timeseries::iterator now();
+
     /**
      * Increments the face to the next timestep
      */
@@ -174,6 +185,8 @@ public:
      */
     void to_file(std::string fname);
 
+    face_info* module_face_data(std::string module);
+    void set_module_face_data(std::string module,face_info* fi);
 private:
 
     double _slope;
@@ -184,7 +197,7 @@ private:
     boost::shared_ptr<Point_3> _center;
     boost::shared_ptr<Vector_3> _normal;
 
-
+    std::map<std::string,face_info*> _module_face_data;
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
 
@@ -446,4 +459,39 @@ double face<Gt, Fb>::get_z()
 
     return _z;
 }
+template < class Gt, class Fb>
+boost::shared_ptr<timeseries> face<Gt, Fb>::get_underlying_timeseries()
+{
+    return _data;
+}
 
+template < class Gt, class Fb>
+timeseries::iterator face<Gt, Fb>::now()
+{
+    return _itr;
+}
+
+
+template < class Gt, class Fb>
+face_info* face<Gt, Fb>::module_face_data(std::string module)
+{
+    face_info* info=nullptr;
+    try
+    {
+        info = _module_face_data[module];
+    }
+    catch(...)
+    {
+
+    }
+
+    return info;
+
+
+}
+
+template < class Gt, class Fb>
+void face<Gt, Fb>::set_module_face_data(std::string module,face_info* fi)
+{
+    _module_face_data[module] = fi;
+}

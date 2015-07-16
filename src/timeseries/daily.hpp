@@ -6,7 +6,8 @@
 
 namespace daily
 {
-    double mean(timeseries::iterator& start, timeseries::iterator& end, std::string variable );
-    double max(timeseries::iterator& start, timeseries::iterator& end, std::string variable );
-    
+    timeseries::iterator start_of_day(timeseries& ts, timeseries::iterator& now);
+    timeseries::iterator end_of_day(timeseries& ts, timeseries::iterator& now);
+    double max(timeseries& ts,timeseries::iterator& now, std::string variable );
+    double min(timeseries& ts,timeseries::iterator& now, std::string variable);
 }

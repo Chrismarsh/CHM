@@ -107,6 +107,7 @@ public:
     */
     void set(std::string variable, double value);
 
+
     
 private:
     friend class timeseries;

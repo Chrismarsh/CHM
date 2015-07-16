@@ -9,6 +9,7 @@ set(TEST_SRCS
     test_core.cpp
     test_mesh.cpp
     test_regexptokenizer.cpp
+    test_daily.cpp
 )
 set(JSON_SPIRIT_SRCS
 	../src/json_spirit/json_spirit_reader.cpp 
@@ -22,6 +23,7 @@ set(MODULE_SRCS
         ../src/modules/rh_llra_var.cpp
         ../src/modules/tair_llra_const.cpp
         ../src/modules/tair_llra_lookup.cpp
+        ../src/modules/atm_trans_annandale.cpp
 )
 
 if(MATLAB)

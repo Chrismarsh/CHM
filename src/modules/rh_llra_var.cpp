@@ -4,6 +4,9 @@
 rh_llra_var::rh_llra_var( std::string ID)
 {
     _provides->push_back("rh");
+    _provides->push_back("ea");
+    _provides->push_back("es");
+
     _depends->push_back("t");
 
     _depends_from_met->push_back("rh");
@@ -121,7 +124,8 @@ void rh_llra_var::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
         rh = 100.0;
 
     elem->set_face_data(global_param->get_variable("RH"),rh);
-
+    elem->set_face_data("es",es);
+    elem->set_face_data("ea",e);
 
     delete interp;
 }

@@ -23,8 +23,7 @@ protected:
 
 TEST_F(TimeseriesTest, DefaultInit)
 {
-    EXPECT_EQ(false, s0.is_open());
-
+    EXPECT_FALSE(s0.is_open());
 }
 
 //Test that a file that exist doesn't throw
@@ -42,7 +41,26 @@ TEST_F(TimeseriesTest, NoExistFileOpens)
     ASSERT_ANY_THROW(s0.open("file_that_doesnt_exist.txt"));
 }
 
+TEST_F(TimeseriesTest, Advance)
+{
+    auto itr = s1.begin();
+    itr = itr + 1;
 
+    ASSERT_DOUBLE_EQ(14.268, itr->get("t"));
+    ASSERT_DOUBLE_EQ(21.739, itr->get("rh"));
+    ASSERT_DOUBLE_EQ(1.850, itr->get("u"));
+    ASSERT_DOUBLE_EQ(0.0000, itr->get("p"));
+    ASSERT_DOUBLE_EQ(650.219, itr->get("Qsi"));
+    ASSERT_DOUBLE_EQ(4.687, itr->get("T_g"));
+
+    ASSERT_EQ(01, itr->day());
+    ASSERT_EQ(10, itr->month());
+    ASSERT_EQ(2010, itr->year());
+
+    ASSERT_EQ(13, itr->hour());
+    ASSERT_EQ(0, itr->min());
+    ASSERT_EQ(0, itr->sec());
+}
 //ensure we read in the right thing
 
 TEST_F(TimeseriesTest, FileContents)
@@ -210,3 +228,4 @@ TEST_F(TimeseriesTest, ToFile)
     ASSERT_EQ(0, itr->min());
     ASSERT_EQ(0, itr->sec());
 }
+

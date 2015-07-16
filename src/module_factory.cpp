@@ -18,6 +18,18 @@ module_base* module_factory::get(std::string ID)
             mod = new tair_llra_lookup(ID);
         else if (ID == "rh_llra_var")
             mod = new rh_llra_var(ID);
+        else if (ID == "atm_trans_annandale")
+            mod = new atm_trans_annandale(ID);
+        else if (ID == "longwave_sicart")
+            mod = new longwave_sicart(ID);
+        else if (ID == "wind")
+            mod = new wind(ID);
+        else if (ID == "evap_penman_monteith")
+            mod = new evap_penman_monteith(ID);
+        else if (ID == "precip")
+            mod = new precip(ID);
+        else if (ID == "leaky_bucket")
+            mod = new leaky_bucket(ID);
 
 
         

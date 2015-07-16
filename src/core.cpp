@@ -472,7 +472,7 @@ void core::_determine_module_dep()
                 //loop through each required variable of our current module
                 for (auto& depend_var : *(module.first->depends()))
                 {
-                    LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
+                    //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
 
                     auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var);
                     if (i != itr.first->provides()->end()) //itr provides the variable we are looking for

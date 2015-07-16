@@ -440,6 +440,19 @@ bool timeseries::is_open()
 
 }
 
+double timeseries::range_max(timeseries::iterator& start, timeseries::iterator& end, std::string variable )
+{
+    auto m = std::max_element(start->get_itr(variable),++end->get_itr(variable));  //because _element is [first,last)
+    return *m;
+}
+
+double timeseries::range_min(timeseries::iterator& start, timeseries::iterator& end, std::string variable )
+{
+    auto m = std::min_element(start->get_itr(variable),++end->get_itr(variable)); //because _element is [first,last)
+    return *m;
+}
+
+
 //iterator implementation
 //------------------------
 timeseries::iterator timeseries::begin()
@@ -609,4 +622,10 @@ timeseries::iterator& timeseries::iterator::operator=(const timeseries::iterator
 std::ptrdiff_t timeseries::iterator::distance_to(timeseries::iterator const& other) const
 {
     return std::distance(this->_currentStep->_date_itr,other._currentStep->_date_itr);
+}
+
+void timeseries::iterator::advance(timeseries::iterator::difference_type N)
+{
+    for (int i = 0;i<N;i++)
+        this->increment();
 }

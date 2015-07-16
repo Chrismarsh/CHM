@@ -180,7 +180,22 @@ public:
     * Returns the last opened file name
     */
     std::string get_opened_file();
-    
+
+    /**
+    * Calculates the miniumum value in a range [start,end] for the given variable
+    * \param start Start iterator
+    * \param end End iterator
+    * \return min value
+    */
+    double range_min(timeseries::iterator& start, timeseries::iterator& end, std::string variable);
+
+    /**
+    * Calculates the maximum value in a range [start,end] for the given variable
+    * \param start Start iterator
+    * \param end End iterator
+    * \return max value
+    */
+    double range_max(timeseries::iterator& start, timeseries::iterator& end, std::string variable);
     
 private:
     typedef tbb::concurrent_hash_map<std::string, variable_vec, crc_hash_compare> ts_hashmap;
@@ -234,6 +249,7 @@ private:
      bool equal(iterator const& other) const;
      void increment();
      void decrement();
+     void advance(timeseries::iterator::difference_type N);
      std::ptrdiff_t distance_to(iterator const& other) const;
 
      //iterators for the current step
