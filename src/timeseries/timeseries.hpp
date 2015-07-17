@@ -121,8 +121,7 @@ public:
         - Has to be on a constant time step. The first interval is taken as the interval for the rest of the file
         - Missing values are not currently allowed - that is, each row must be complete with n entries where n is number of variables.
         - Whitespace, tab or comma delimited. Allows for mixed usage. ex 1234, 4543 890 is legal
-        - Values can be one of
-        - String (special characters are allowed, no commas)
+        - Values must be numeric
 
     Integer styles:
 

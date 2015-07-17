@@ -46,7 +46,7 @@ public:
     std::string ID;
 
     /**
-    * Upon instantiation the module is assigned a value based upon its initialization order. Primairly used to dependency resolution. No real usage otherwise.
+    * Upon instantiation the module is assigned a value based upon its initialization order. Primarily used to dependency resolution. No real usage otherwise.
     */
     int IDnum;
 

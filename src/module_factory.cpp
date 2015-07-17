@@ -28,8 +28,6 @@ module_base* module_factory::get(std::string ID)
             mod = new evap_penman_monteith(ID);
         else if (ID == "precip")
             mod = new precip(ID);
-        else if (ID == "leaky_bucket")
-            mod = new leaky_bucket(ID);
 
 
         

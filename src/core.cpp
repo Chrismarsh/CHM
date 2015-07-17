@@ -11,7 +11,7 @@ core::core()
     {
         text_sink::locked_backend_ptr pBackend = _log_sink->locked_backend();
 
-        boost::shared_ptr< std::ostream > pStream(&std::clog, logging::empty_deleter());
+        boost::shared_ptr< std::ostream > pStream(&std::clog,  boost::null_deleter());
         pBackend->add_stream(pStream);
 
 
@@ -444,7 +444,7 @@ void core::_determine_module_dep()
 
 
         //check intermodule depends
-        if (module.first->depends()->size() == 0)
+        if (module.first->depends()->size() == 0)  //check if this module requires dependencies
         {
             LOG_DEBUG << "Module [" << module.first->ID << "], no inter-module dependenices";
         } else
@@ -644,7 +644,7 @@ void core::_determine_module_dep()
     {
 
         auto date = _global->stations.at(0)->date_timeseries();
-        auto size = _global->stations.at(0)->timeseries_length();
+        //auto size = _global->stations.at(0)->timeseries_length();
         Delaunay::Face_handle face = _mesh->face(it);
         face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
     }

@@ -10,28 +10,31 @@ set(JSON_SPIRIT_SRCS
  )
 
 set(MODULE_SRCS
+
+        modules/interp_met/tair_llra_const.cpp
+        modules/interp_met/tair_llra_lookup.cpp
+        modules/interp_met/rh_llra_var.cpp
+        modules/interp_met/wind.cpp
+
         modules/solar.cpp
         modules/terrain_shadows.cpp
-        modules/tair_llra_const.cpp
-        modules/tair_llra_lookup.cpp
-        modules/rh_llra_var.cpp
+
         modules/atm_trans_annandale.cpp
         modules/longwave_sicart.cpp
         modules/evap_penman_monteith.cpp
-        modules/wind.cpp
+
         modules/precip.cpp
-        modules/leaky_bucket.cpp
 )
 
 
 set(CHM_SRCS 
-	main.cpp
-	core.cpp
+        main.cpp
+        core.cpp
         module_factory.cpp
         global.cpp
         station.cpp
         variable_map.cpp
-        
+
         mesh/triangulation.cpp
 
         interpolation/inv_dist.cpp
@@ -50,6 +53,7 @@ set (HEADER_FILES
 	json_spirit
         mesh
         modules
+        modules/interp_met
         libmaw
         interpolation
         timeseries
