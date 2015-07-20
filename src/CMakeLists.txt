@@ -11,17 +11,16 @@ set(JSON_SPIRIT_SRCS
 
 set(MODULE_SRCS
 
-        modules/interp_met/tair_llra_const.cpp
-        modules/interp_met/tair_llra_lookup.cpp
-        modules/interp_met/rh_llra_var.cpp
+        modules/interp_met/const_llra_ta.cpp
+        modules/interp_met/Liston_monthly_llra_ta.cpp
+        modules/interp_met/Liston_monthly_llra_rh.cpp
         modules/interp_met/wind.cpp
 
         modules/solar.cpp
-        modules/terrain_shadows.cpp
+        modules/Marsh_shading_iswr.cpp
 
-        modules/atm_trans_annandale.cpp
-        modules/longwave_sicart.cpp
-        modules/evap_penman_monteith.cpp
+        modules/Sicart_ilwr.cpp
+        modules/PenmanMonteith_evaporation.cpp
 
         modules/precip.cpp
 )

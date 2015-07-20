@@ -1,13 +1,48 @@
 /**
-@mainpage Documentation
+@mainpage Welcome
 
-@subpage Overview
+This is the main page
+
 @section Introduction
 CHM is a hydrological modelling framework that attempts to solve some of the problems many modern hydrological models suffer from,
 including difficulty in falsifying process representations due to ridgid model structure. CHM attempts to solve this by
 having a flexbile model structure.
 
-@subpage Modules
-@section lol
-Modules...
+@page Modules
+@section Concept
+
+Process representations are conceptualized into modules. Modules inherit from @ref module_base. The general concept is that modules
+declare dependencies upon variables, as well as provide variables. During model initialization, there is a dependency resolution that
+ generates the order modules should be run in.
+
+ Modules may either operate upon a single terrain element or upon the entire mesh. These two situations are described as either
+ data parallel or domain parallel, respectively. As a result, modules are *chunked* into groups so that parallelsim may be optimized.
+
+ For each timestep, the modules are run in order. If a set of modules are data parallel, the entire domain is automatically run in parallel
+. This is done until a module is domain parallel, at which point it is resolved seperatly. This continues until all modules have be run.
+
+@section Types
+There are two types of modules: those that are part of the interpolation of met files, and those that otherwise operate upon the
+output of other modules.
+
+Those that use the met file input explicitly state these dependencies.
+
+@section Naming
+The naming convention should be
+author_desc_variable
+
+@section Variables
+Variables have a specific naming scheme. This scheme is adopted from literature names, other models, and personal preference.
+All units are SI.
+All variables names are case sensitive
+
+Variable            | Model variable name  | Units
+--------            | ------------------   | --------------
+Relative Humidity   |   rh                 | Percent
+Air temperature     |   t                  | degC
+Wind speed          |   u                  | m/s
+Wind direction      |   ud                 | North Azimuth, degrees
+Incoming lonvwave   |   ilwr               | W/m^2
+Incoming shortwave  |   iswr               | W/m^2
+
 */

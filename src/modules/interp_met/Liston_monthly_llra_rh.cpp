@@ -1,7 +1,7 @@
-#include "rh_llra_var.hpp"
+#include "Liston_monthly_llra_rh.hpp"
 
 
-rh_llra_var::rh_llra_var( std::string ID)
+Liston_monthly_llra_rh::Liston_monthly_llra_rh( std::string ID)
 {
     _provides->push_back("rh");
     _provides->push_back("ea");
@@ -16,11 +16,11 @@ rh_llra_var::rh_llra_var( std::string ID)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-rh_llra_var::~rh_llra_var()
+Liston_monthly_llra_rh::~Liston_monthly_llra_rh()
 {
 
 }
-void rh_llra_var::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Liston_monthly_llra_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 
 

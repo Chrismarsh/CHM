@@ -1,10 +1,10 @@
-#include "tair_llra_const.hpp"
+#include "const_llra_ta.hpp"
 
-tair_llra_const::tair_llra_const( std::string ID)
+const_llra_ta::const_llra_ta( std::string ID)
 {
     _provides->push_back("t");
 
-    _provides->push_back("tair_llra_const");
+    _provides->push_back("const_llra_ta");
 
     _depends_from_met->push_back("t");
 
@@ -13,12 +13,12 @@ tair_llra_const::tair_llra_const( std::string ID)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-tair_llra_const::~tair_llra_const()
+const_llra_ta::~const_llra_ta()
 {
 
 }
 
-void tair_llra_const::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void const_llra_ta::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 
     double lapse_rate = 0.0065;
@@ -44,7 +44,7 @@ void tair_llra_const::run(mesh_elem& elem, boost::shared_ptr<global> global_para
     value =  value + lapse_rate * (0.0 - elem->get_z());
 
     elem->set_face_data(global_param->get_variable("Tair"),value);
-    elem->set_face_data("tair_llra_const",value);
+    elem->set_face_data("const_llra_ta",value);
 
     delete interp;
 }

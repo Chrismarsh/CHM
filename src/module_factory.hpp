@@ -9,14 +9,13 @@
 
 // Modules to build against
 #include "solar.hpp"
-#include "terrain_shadows.hpp"
-#include "tair_llra_const.hpp"
-#include "rh_llra_var.hpp"
-#include "tair_llra_lookup.hpp"
-#include "atm_trans_annandale.hpp"
-#include "longwave_sicart.hpp"
+#include "Marsh_shading_iswr.hpp"
+#include "const_llra_ta.hpp"
+#include "Liston_monthly_llra_rh.hpp"
+#include "Liston_monthly_llra_ta.hpp"
+#include "Sicart_ilwr.hpp"
 #include "wind.hpp"
-#include "evap_penman_monteith.h"
+#include "PenmanMonteith_evaporation.hpp"
 #include "precip.hpp"
 
 

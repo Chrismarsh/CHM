@@ -19,7 +19,7 @@
 /**
 * \addtogroup modules
 * @{
-* \class rh_llra_var
+* \class Liston_monthly_llra_rh
 * \brief Linear lapse rate adjust for relative humidity
 *
 * Monthly-variable linear lapse rate adjustment for relative humidity based upon Liston, et al. (2006).
@@ -29,7 +29,7 @@
 *
 * Provides:
 * - Relative humidity "rh" [%]
-* - Relative humidity "rh_llra_var" [%]
+* - Relative humidity "Liston_monthly_llra_rh" [%]
 *
 * Reference:
 * > Liston, Glen E., and Kelly Elder. 2006. A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of hydrometeorology 7: 217-234
@@ -50,11 +50,11 @@
 * Dec | 0.00040
 
 */
-class rh_llra_var : public module_base
+class Liston_monthly_llra_rh : public module_base
 {
 public:
-    rh_llra_var(std::string ID);
-    ~rh_llra_var();
+    Liston_monthly_llra_rh(std::string ID);
+    ~Liston_monthly_llra_rh();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 
 

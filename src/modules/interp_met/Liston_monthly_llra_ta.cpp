@@ -1,9 +1,9 @@
-#include "tair_llra_lookup.hpp"
+#include "Liston_monthly_llra_ta.hpp"
 
-tair_llra_lookup::tair_llra_lookup( std::string ID)
+Liston_monthly_llra_ta::Liston_monthly_llra_ta( std::string ID)
 {
     _provides->push_back("t");
-    _provides->push_back("tair_llra_lookup");
+    _provides->push_back("Liston_monthly_llra_ta");
 
     _depends_from_met->push_back("t");
     this->ID = ID;
@@ -11,11 +11,11 @@ tair_llra_lookup::tair_llra_lookup( std::string ID)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-tair_llra_lookup::~tair_llra_lookup()
+Liston_monthly_llra_ta::~Liston_monthly_llra_ta()
 {
 
 }
-void tair_llra_lookup::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Liston_monthly_llra_ta::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 
     double lapse_rate = -9999;
@@ -83,7 +83,7 @@ void tair_llra_lookup::run(mesh_elem& elem, boost::shared_ptr<global> global_par
 
     elem->set_face_data(global_param->get_variable("Tair"),value);
 
-    elem->set_face_data("tair_llra_lookup",value);
+    elem->set_face_data("Liston_monthly_llra_ta",value);
 
     delete interp;
 }

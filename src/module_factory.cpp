@@ -10,22 +10,20 @@ module_base* module_factory::get(std::string ID)
         module_base* mod = NULL;
         if (ID == "solar")
             mod = new Solar(ID);
-        else if (ID == "shadows")
-            mod = new terrain_shadow(ID);
-        else if (ID == "tair_llra_const")
-            mod = new tair_llra_const(ID);
-        else if (ID == "tair_llra_lookup")
-            mod = new tair_llra_lookup(ID);
-        else if (ID == "rh_llra_var")
-            mod = new rh_llra_var(ID);
-        else if (ID == "atm_trans_annandale")
-            mod = new atm_trans_annandale(ID);
-        else if (ID == "longwave_sicart")
-            mod = new longwave_sicart(ID);
+        else if (ID == "Marsh_shading_iswr")
+            mod = new Marsh_shading_iswr(ID);
+        else if (ID == "const_llra_ta")
+            mod = new const_llra_ta(ID);
+        else if (ID == "Liston_monthly_llra_ta")
+            mod = new Liston_monthly_llra_ta(ID);
+        else if (ID == "Liston_monthly_llra_rh")
+            mod = new Liston_monthly_llra_rh(ID);
+        else if (ID == "Sicart_ilwr")
+            mod = new Sicart_ilwr(ID);
         else if (ID == "wind")
             mod = new wind(ID);
-        else if (ID == "evap_penman_monteith")
-            mod = new evap_penman_monteith(ID);
+        else if (ID == "PenmanMonteith_evaporation")
+            mod = new PenmanMonteith_evaporation(ID);
         else if (ID == "precip")
             mod = new precip(ID);
 

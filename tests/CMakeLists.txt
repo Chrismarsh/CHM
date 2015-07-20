@@ -19,11 +19,11 @@ set(JSON_SPIRIT_SRCS
 
 set(MODULE_SRCS
         ../src/modules/solar.cpp
-        ../src/modules/terrain_shadows.cpp
-        ../src/modules/interp_met/rh_llra_var.cpp
-        ../src/modules/interp_met/tair_llra_const.cpp
-        ../src/modules/interp_met/tair_llra_lookup.cpp
-        ../src/modules/atm_trans_annandale.cpp
+        ../src/modules/Marsh_shading_iswr.cpp
+        ../src/modules/interp_met/Liston_monthly_llra_rh.cpp
+        ../src/modules/interp_met/const_llra_ta.cpp
+        ../src/modules/interp_met/Liston_monthly_llra_ta.cpp
+
 )
 
 if(MATLAB)
@@ -74,16 +74,16 @@ set (EXT_HEADER_FILES
         ${AMRADILLO_INCLUDE_DIR}
         ${MATLAB_INCLUDE_DIR}
         ${CGAL_INCLUDE_DIRS}
-${CGAL_3RD_PARTY_INCLUDE_DIRS}
+        ${CGAL_3RD_PARTY_INCLUDE_DIRS}
     )
 set( LIB_FILES
-	${Boost_LIBRARIES}
+	    ${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
         ${GSL_LIBRARIES}
-	${CMAKE_THREAD_LIBS_INIT}
+	    ${CMAKE_THREAD_LIBS_INIT}
         ${ARMADILLO_LIBRARIES} 
-	${MATLAB_ENG_LIBRARY} 
-	${MATLAB_MX_LIBRARY}  
+	    ${MATLAB_ENG_LIBRARY}
+	    ${MATLAB_MX_LIBRARY}
         ${CGAL_LIBRARIES}
         ${CGAL_3RD_PARTY_LIBRARIES}
 )

@@ -6,6 +6,7 @@
 
 #include <cstdlib>
 #include <string>
+
 #include <cmath>
 #include <armadillo>
 #define _USE_MATH_DEFINES
@@ -14,27 +15,24 @@
 /**
 * \addtogroup modules
 * @{
-* \class evap_penman_monteith
-* \brief Calculates Penman Monteith evaportation
+* \class Sicart_ilwr
+* \brief Calculates longwave radiation from the atmosphere (no skyview correction) for clear and cloudy days.
 *
 * Calculates evapotranspiration via Penman-Monteith
 *
 * Depends:
-* -  Solar shortwave "Qsi" [W/m^-1]
-* -  Incoming Longwave radiation "Lin" [W/m^2]
-* -  Albedo "albedo" [-]
-* -  Saturated vapour pressure "es" [kpa]
+* -  Transmittance "atm_trans" [-]
 * -  Actual vapour pressure "ea" [kpa]
+* -  Daily atmospheric transmittance "atm_trans" [-]
 *
 * Provides:
-* -
-* - ET "ET" [mm/time]
+* - Incoming longwave  "Lin" [W/m^2]
 */
-class evap_penman_monteith : public module_base
+class Sicart_ilwr : public module_base
 {
 public:
-    evap_penman_monteith(std::string ID);
-    ~evap_penman_monteith();
+    Sicart_ilwr(std::string ID);
+    ~Sicart_ilwr();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 
 

@@ -1,6 +1,6 @@
-#include "longwave_sicart.hpp"
+#include "Sicart_ilwr.hpp"
 
-longwave_sicart::longwave_sicart( std::string ID)
+Sicart_ilwr::Sicart_ilwr( std::string ID)
 {
 
     _depends->push_back("t");
@@ -16,7 +16,7 @@ longwave_sicart::longwave_sicart( std::string ID)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-void longwave_sicart::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Sicart_ilwr::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 
     double T = elem->face_data("t")+273.15; //C->K
@@ -30,7 +30,7 @@ void longwave_sicart::run(mesh_elem& elem, boost::shared_ptr<global> global_para
     elem->set_face_data("Lin", Lin);
 }
 
-longwave_sicart::~longwave_sicart()
+Sicart_ilwr::~Sicart_ilwr()
 {
 
 }

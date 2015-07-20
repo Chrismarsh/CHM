@@ -16,7 +16,7 @@
 /**
 * \addtogroup modules
 * @{
-* \class tair_llra_lookup
+* \class Liston_monthly_llra_ta
 * \brief Constant monthly linear lapse rate adjustment
 *
 * Constant monthly linear lapse rate adjustment for air temperature.
@@ -41,17 +41,17 @@
 *
 * Provides:
 * - Air temperature "t" [degC]
-* - Air temperatue "tair_llra_lookup" [degC]
+* - Air temperatue "Liston_monthly_llra_ta" [degC]
 *
 * Reference:
 * > Liston, Glen E., and Kelly Elder. 2006. A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of hydrometeorology 7: 217-234
 
 */
-class tair_llra_lookup : public module_base
+class Liston_monthly_llra_ta : public module_base
 {
 public:
-    tair_llra_lookup(std::string ID);
-    ~tair_llra_lookup();
+    Liston_monthly_llra_ta(std::string ID);
+    ~Liston_monthly_llra_ta();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 };
 

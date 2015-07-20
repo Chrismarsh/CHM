@@ -1,7 +1,7 @@
 
-#include "evap_penman_monteith.h"
+#include "PenmanMonteith_evaporation.hpp"
 
-evap_penman_monteith::evap_penman_monteith( std::string ID)
+PenmanMonteith_evaporation::PenmanMonteith_evaporation( std::string ID)
 {
 
     _depends->push_back("Qsi");
@@ -20,7 +20,7 @@ evap_penman_monteith::evap_penman_monteith( std::string ID)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
- void evap_penman_monteith::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+ void PenmanMonteith_evaporation::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 
     double albedo = 0.23; //grass and crops
@@ -70,7 +70,7 @@ evap_penman_monteith::evap_penman_monteith( std::string ID)
 
 }
 
-evap_penman_monteith::~evap_penman_monteith()
+PenmanMonteith_evaporation::~PenmanMonteith_evaporation()
 {
 
 }

@@ -16,7 +16,7 @@
 /**
 * \addtogroup modules
 * @{
-* \class tair_llra_const
+* \class const_llra_ta
 * \brief Constant linear lapse rate adjustment.
 *
 * Constant linear lapse rate adjustment for air temperature of 0.0065 degC/m.
@@ -26,13 +26,13 @@
 *
 * Provides:
 * - Air temperatue "t" [degC]
-* - Air temperatue "tair_llra_const" [degC]
+* - Air temperatue "const_llra_ta" [degC]
 */
-class tair_llra_const : public module_base
+class const_llra_ta : public module_base
 {
 public:
-    tair_llra_const(std::string ID);
-    ~tair_llra_const();
+    const_llra_ta(std::string ID);
+    ~const_llra_ta();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 
 
