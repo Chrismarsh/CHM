@@ -22,6 +22,7 @@ struct file_write_error: virtual io_error { };
 struct module_error : virtual exception_base { };
 struct module_not_found : virtual module_error { };
 struct no_modules_defined : virtual module_error {};
+struct module_data_error : virtual module_error {};
 
 //regex tokenizer errors
 struct tokenizer_error : virtual exception_base{};

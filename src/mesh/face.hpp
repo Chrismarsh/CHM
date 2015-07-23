@@ -10,6 +10,7 @@
 
 #include <boost/shared_ptr.hpp>
 
+#include <boost/ptr_container/ptr_map.hpp>
 #include "timeseries.hpp"
 
 /**
@@ -65,6 +66,8 @@ public:
     face(Vertex_handle v0, Vertex_handle v1, Vertex_handle v2);
     face(Vertex_handle v0, Vertex_handle v1, Vertex_handle v2, Face_handle n0, Face_handle n1, Face_handle n2);
     face(Vertex_handle v0, Vertex_handle v1, Vertex_handle v2, Face_handle n0, Face_handle n1, Face_handle n2, bool c0, bool c1, bool c2);
+
+    ~face();
 
     /**
     * Aspect of the face. North = 0, CW . Calculated on first use, subsequent usages will not recalculate
@@ -197,13 +200,22 @@ private:
     boost::shared_ptr<Point_3> _center;
     boost::shared_ptr<Vector_3> _normal;
 
-    std::map<std::string,face_info*> _module_face_data;
+    //boost::ptr_map<std::string,face_info> _module_face_data;
+    std::map<std::string,face_info* > _module_face_data;
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
 
 
 };
 
+template < class Gt, class Fb >
+face<Gt, Fb>::~face()
+{
+    for(auto itr : _module_face_data)
+    {
+        delete itr.second;
+    }
+};
 template < class Gt, class Fb >
 face<Gt, Fb>::face()
 {
@@ -405,6 +417,7 @@ template < class Gt, class Fb>
 void face<Gt, Fb>::init_time_series(std::set<std::string> variables, timeseries::date_vec datetime)
 {
     _data->init(variables, datetime);
+
     _itr = _data->begin();
 }
 
@@ -482,7 +495,7 @@ face_info* face<Gt, Fb>::module_face_data(std::string module)
     }
     catch(...)
     {
-
+        BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
     }
 
     return info;

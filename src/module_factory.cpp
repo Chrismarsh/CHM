@@ -26,6 +26,8 @@ module_base* module_factory::get(std::string ID)
             mod = new PenmanMonteith_evaporation(ID);
         else if (ID == "precip")
             mod = new precip(ID);
+        else if (ID == "Walcek_atm_trans")
+            mod = new Walcek_atm_trans(ID);
 
 
         

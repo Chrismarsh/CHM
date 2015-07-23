@@ -6,9 +6,13 @@
 #include <boost/log/core.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/attributes.hpp>
+#include <boost/version.hpp>
+#if (BOOST_VERSION / 100 % 1000) < 56
+    #include <boost/log/utility/empty_deleter.hpp>
+#else
+    #include <boost/core/null_deleter.hpp>
+#endif
 
-
-#include <boost/core/null_deleter.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/exception_handler.hpp>
 

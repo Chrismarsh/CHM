@@ -2,7 +2,7 @@
 #include "timestep.hpp"
 
 
-timestep::timestep(const timestep* src)
+timestep::timestep(const boost::shared_ptr<timestep> src)
 {
    
     _itrs = itr_map(src->_itrs);

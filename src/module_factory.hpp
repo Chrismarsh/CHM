@@ -17,6 +17,7 @@
 #include "wind.hpp"
 #include "PenmanMonteith_evaporation.hpp"
 #include "precip.hpp"
+#include "Walcek_atm_trans.hpp"
 
 
 class module_factory

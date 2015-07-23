@@ -3,7 +3,7 @@
 Liston_monthly_llra_ta::Liston_monthly_llra_ta( std::string ID)
 {
     _provides->push_back("t");
-    _provides->push_back("Liston_monthly_llra_ta");
+    _provides->push_back("t_lapse_rate");
 
     _depends_from_met->push_back("t");
     this->ID = ID;
@@ -83,7 +83,6 @@ void Liston_monthly_llra_ta::run(mesh_elem& elem, boost::shared_ptr<global> glob
 
     elem->set_face_data(global_param->get_variable("Tair"),value);
 
-    elem->set_face_data("Liston_monthly_llra_ta",value);
-
+    elem->set_face_data("t_lapse_rate",lapse_rate);
     delete interp;
 }

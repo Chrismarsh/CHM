@@ -48,9 +48,14 @@ public:
     //mesh elements need to see these
     //two different types: boost::variant solves this, but is very slow 
     // needs to be either a boost::posix_time or double, and is almost always a double
-    typedef tbb::concurrent_vector< double > variable_vec;
-    typedef tbb::concurrent_vector< boost::posix_time::ptime  > date_vec; 
-    
+    typedef tbb::concurrent_vector< double,std::allocator<double> > variable_vec;
+    typedef tbb::concurrent_vector< boost::posix_time::ptime,std::allocator<boost::posix_time::ptime>  > date_vec;
+ //   typedef tbb::concurrent_vector< double > variable_vec;
+  //  typedef tbb::concurrent_vector< boost::posix_time::ptime > date_vec;
+
+  //  typedef std::vector< double > variable_vec;
+  //  typedef std::vector< boost::posix_time::ptime > date_vec;
+
     class iterator;
     
 
@@ -252,7 +257,7 @@ private:
      std::ptrdiff_t distance_to(iterator const& other) const;
 
      //iterators for the current step
-     timestep* _currentStep;
+     boost::shared_ptr<timestep> _currentStep;
 
  };
 

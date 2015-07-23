@@ -19,7 +19,8 @@ void timeseries::init(std::set<std::string> variables, date_vec datetime)
    //preallocate all the memory required
    for (auto& itr : _variables)
    {
-    itr.second.resize(datetime.size());
+        size_t size = datetime.size();
+        itr.second.resize(size);
 //       for(int i = 0; i < size; i++)
 //            itr.second.push_back(3.14159);
    }
@@ -598,24 +599,24 @@ void timeseries::iterator::decrement()
 
 timeseries::iterator::iterator()
 {
-    _currentStep = new timestep();
+    _currentStep = boost::make_shared<timestep>();
 }
 
 timeseries::iterator::iterator(const iterator& src)
 {
-    _currentStep = new timestep(src._currentStep);
+    _currentStep = boost::make_shared<timestep>(src._currentStep);
 }
 
 timeseries::iterator::~iterator()
 {
-    delete _currentStep;
+   // delete _currentStep;
 }
 
 timeseries::iterator& timeseries::iterator::operator=(const timeseries::iterator& rhs)
 {
     if (this == &rhs)
         return (*this);
-    _currentStep = new timestep(rhs._currentStep);
+    _currentStep = boost::make_shared<timestep>(rhs._currentStep);
     return *this;
 }
 

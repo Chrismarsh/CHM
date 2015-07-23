@@ -32,6 +32,8 @@ void wind::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     double value = (*interp)(values, query);
 
     elem->set_face_data("u", value);
+
+    delete interp;
 }
 
 wind::~wind()

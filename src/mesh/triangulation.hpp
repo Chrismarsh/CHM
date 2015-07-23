@@ -81,7 +81,7 @@ typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds; //our data structure t
 typedef CGAL::Delaunay_triangulation_2<Gt, Tds> Delaunay; //specify a delauany triangulation
 
 typedef Delaunay::Face_handle mesh_elem;
-typedef boost::shared_ptr<tbb::concurrent_vector<double> > vector;
+typedef boost::shared_ptr<tbb::concurrent_vector<double,std::allocator<double> > > vector;
 
 //fwd decl
 class segmented_AABB;
@@ -203,8 +203,8 @@ private:
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
     //that allows us to traverse the triangulation in a deterministic order, as well as play nice with openmp
-    tbb::concurrent_vector< Delaunay::Face_handle > _faces;
-    tbb::concurrent_vector< Delaunay::Vertex_handle > _vertexes;
+    tbb::concurrent_vector< Delaunay::Face_handle , std::allocator<Delaunay::Face_handle> > _faces;
+    tbb::concurrent_vector< Delaunay::Vertex_handle, std::allocator<Delaunay::Vertex_handle> > _vertexes;
     
 #ifdef NOMATLAB
     //ptr to the matlab engine
@@ -240,7 +240,7 @@ public:
 		delete coord;
 	}
 	arma::mat* coord;
-	tbb::concurrent_vector<mesh_elem> triangles;
+    tbb::concurrent_vector<mesh_elem,std::allocator<mesh_elem> > triangles;
 };
 
 /**

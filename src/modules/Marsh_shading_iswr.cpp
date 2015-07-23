@@ -92,19 +92,18 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
         }
         //init memory
         module_shadow_face_info* tv = new module_shadow_face_info;
-//        face->info = tv;
         face->set_module_face_data(ID, tv);
         tv->z_prime = CGAL::centroid(face->vertex(0)->point(), face->vertex(1)->point(), face->vertex(2)->point()).z();
     }
 
-    LOG_DEBUG << "AABB is " <<BBR->n_rows << "x" << BBR->n_rows;
-    for (size_t j = 0; j < BBR->n_rows; j++)
-    {
-        for (size_t k = 0; k < BBR->n_cols; k++)
-        {
-            LOG_DEBUG << BBR->get_rect(j, k)->triangles.size();
-        }
-    }
+//    LOG_DEBUG << "AABB is " <<BBR->n_rows << "x" << BBR->n_rows;
+//    for (size_t j = 0; j < BBR->n_rows; j++)
+//    {
+//        for (size_t k = 0; k < BBR->n_cols; k++)
+//        {
+//            LOG_DEBUG << BBR->get_rect(j, k)->triangles.size();
+//        }
+//    }
 
     tbb::task_scheduler_init init;
     
@@ -119,8 +118,8 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
                     {
 //                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->info);
 //                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->info);
-                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->module_face_data("shadows"));
-                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->module_face_data("shadows"));
+                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->module_face_data("Marsh_shading_iswr"));
+                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->module_face_data("Marsh_shading_iswr"));
 
                         return fa_info->z_prime > fb_info->z_prime;
                     });
@@ -189,6 +188,13 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
         vert->set_point(vf->org_vertex);
 
 
+    }
+
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        delete face->module_face_data("Marsh_shading_iswr");
     }
 }
 

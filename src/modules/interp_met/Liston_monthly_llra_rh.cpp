@@ -6,7 +6,7 @@ Liston_monthly_llra_rh::Liston_monthly_llra_rh( std::string ID)
     _provides->push_back("rh");
     _provides->push_back("ea");
     _provides->push_back("es");
-
+    _provides->push_back("Td_lapse_rate");
     _depends->push_back("t");
 
     _depends_from_met->push_back("rh");
@@ -126,6 +126,7 @@ void Liston_monthly_llra_rh::run(mesh_elem& elem, boost::shared_ptr<global> glob
     elem->set_face_data(global_param->get_variable("RH"),rh);
     elem->set_face_data("es",es);
     elem->set_face_data("ea",e);
+    elem->set_face_data("Td_lapse_rate",dewPointLapseRate);
 
     delete interp;
 }

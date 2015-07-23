@@ -25,8 +25,9 @@ include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D _FORTIFY_SOURCE=0")
 
 #C#####
 #GAL requires strict rounding
@@ -49,7 +50,7 @@ find_package(OpenMP)
 
 if(OPENMP_FOUND)
     if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp 
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 endif()
 
@@ -71,6 +72,8 @@ find_package(Boost
              thread
              regex
              REQUIRED)
+
+find_package(MeteoIO REQUIRED)
 
 find_package(sundials REQUIRED)
 

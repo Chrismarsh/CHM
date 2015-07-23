@@ -23,6 +23,8 @@ set(MODULE_SRCS
         modules/PenmanMonteith_evaporation.cpp
 
         modules/precip.cpp
+
+        modules/Walcek_atm_trans.cpp
 )
 
 
@@ -68,6 +70,7 @@ set (EXT_HEADER_FILES
         ${SUNDIALS_INCLUDES}
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
+        ${METEOIO_INCLUDE_DIR}
     )
 set( LIB_FILES
 	    ${Boost_LIBRARIES}
@@ -79,6 +82,7 @@ set( LIB_FILES
         ${CGAL_LIBRARIES}
         ${CGAL_3RD_PARTY_LIBRARIES}
         ${VTK_LIBRARIES}
+        ${METEOIO_LIBRARY}
 )
 
 
@@ -107,7 +111,7 @@ add_executable(
         ${MODULE_SRCS}
 	${JSON_SPIRIT_SRCS}
         ${LIBMAW_SRCS}
-)
+ )
 
 target_link_libraries(
 	CHM

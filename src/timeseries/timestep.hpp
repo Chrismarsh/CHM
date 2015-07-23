@@ -24,8 +24,8 @@ class timestep
 public:
     //two different. boost::variant solves this, but is very slow 
     // needs to be either a boost::posix_time or double, and is almost always a double
-    typedef tbb::concurrent_vector< double > variable_vec; 
-    typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_variable; 
+    typedef tbb::concurrent_vector< double,std::allocator<double> > variable_vec;
+    typedef tbb::concurrent_vector<  boost::posix_time::ptime,std::allocator<boost::posix_time::ptime> > date_variable;
 
 
     /**
@@ -37,7 +37,7 @@ public:
     /**
     * Copy const.
     */
-    timestep(const timestep* src);
+    timestep(const boost::shared_ptr<timestep> src);
 
     ~timestep();
 
@@ -113,7 +113,7 @@ private:
     friend class timeseries;
 
     typedef tbb::concurrent_hash_map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
-
+   // typedef std::map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
     //holds the iterators for the current timestep. 
     //these are iterators into each vector in the variable hashmap
     itr_map _itrs; 

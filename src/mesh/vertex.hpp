@@ -25,6 +25,7 @@ class ex_vertex : public Vb
 {
     typedef Vb Base;
 public:
+    //TODO: Only allows for 1 module's data!
     vertex_info* info;
     typedef typename Vb::Vertex_handle Vertex_handle;
     typedef typename Vb::Face_handle Face_handle;
@@ -47,6 +48,8 @@ public:
 
     ex_vertex(Face_handle f);
 
+    ~ex_vertex();
+
     /**
     * Sets the vertex to have a given id. Generally this would be the current x,y,z point read in from a file, for example.
     * \param id Vertex global id
@@ -59,6 +62,12 @@ public:
     */
     size_t get_id();
 
+};
+
+template < class Gt, class Vb >
+ex_vertex<Gt, Vb>::~ex_vertex()
+{
+    delete info;
 };
 
 template < class Gt, class Vb>

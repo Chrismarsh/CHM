@@ -11,7 +11,11 @@ core::core()
     {
         text_sink::locked_backend_ptr pBackend = _log_sink->locked_backend();
 
+        #if (BOOST_VERSION / 100 % 1000) < 56
+        boost::shared_ptr< std::ostream > pStream(&std::clog,  logging::empty_deleter());
+        #else
         boost::shared_ptr< std::ostream > pStream(&std::clog,  boost::null_deleter());
+        #endif
         pBackend->add_stream(pStream);
 
 
@@ -649,6 +653,7 @@ void core::_determine_module_dep()
         face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
     }
 
+    double a= 4.9;
 }
 
 void core::run()
