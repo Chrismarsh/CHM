@@ -644,13 +644,16 @@ void core::_determine_module_dep()
 
     #pragma omp parallel for
     for(size_t it = 0; it < _mesh->size_faces(); it++)
-   // for (triangulation::Finite_faces_iterator fit = _mesh->finite_faces_begin(); fit != _mesh->finite_faces_end(); ++fit)
     {
 
         auto date = _global->stations.at(0)->date_timeseries();
         //auto size = _global->stations.at(0)->timeseries_length();
         Delaunay::Face_handle face = _mesh->face(it);
         face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
+
+//        timeseries::date_vec d;
+//        d.push_back(date[0]);
+//        face->init_time_series(_provided_var_module, d);
     }
 
     double a= 4.9;
@@ -698,7 +701,7 @@ void core::run()
             c.tic();
             if (itr.at(0)->parallel_type() == module_base::parallel::data)
             {
-#pragma omp parallel for
+                #pragma omp parallel for
                 for (size_t i = 0; i < _mesh->size_faces(); i++)
                 {
                     //module calls
@@ -736,7 +739,8 @@ void core::run()
         num_ts++;
 
         c.tic();
-#pragma omp parallel for
+
+        #pragma omp parallel for
         for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
         {
             auto face = _mesh->face(i);

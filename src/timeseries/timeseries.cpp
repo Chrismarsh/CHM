@@ -5,7 +5,7 @@
 void timeseries::push_back(double data, std::string variable)
 {
     ts_hashmap::accessor a;
-    _variables.insert(a, variable);
+    _variables->insert(a, variable);
     a->second.push_back(data);
 }
 void timeseries::init(std::set<std::string> variables, date_vec datetime)
@@ -13,11 +13,11 @@ void timeseries::init(std::set<std::string> variables, date_vec datetime)
    for (auto& v: variables)
    {
        ts_hashmap::accessor a;
-       _variables.insert(a,v);
+       _variables->insert(a,v);
    }
 
    //preallocate all the memory required
-   for (auto& itr : _variables)
+   for (auto& itr : *_variables)
    {
         size_t size = datetime.size();
         itr.second.resize(size);
@@ -36,7 +36,7 @@ void timeseries::init(std::set<std::string> variables, date_vec datetime)
 std::vector<std::string> timeseries::list_variables()
 {
     std::vector<std::string> vars;
-    for(auto& itr : _variables)
+    for(auto& itr : *_variables)
     {
         vars.push_back(itr.first);
     }
@@ -46,7 +46,7 @@ std::vector<std::string> timeseries::list_variables()
 timeseries::variable_vec timeseries::get_time_series(std::string variable)
 {
     ts_hashmap::const_accessor a;
-    if(!_variables.find(a, variable))
+    if(!_variables->find(a, variable))
     {
         BOOST_THROW_EXCEPTION(forcing_error()
                                 << errstr_info("Unable to find " + variable));
@@ -72,7 +72,7 @@ boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : _variables)
+    for (auto& itr : *_variables)
     {
         //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
@@ -102,7 +102,7 @@ boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : _variables)
+    for (auto& itr : *_variables)
     {
         //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
@@ -142,7 +142,7 @@ timeseries::iterator timeseries::find(boost::posix_time::ptime time)
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : _variables)
+    for (auto& itr : *_variables)
     {
         //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
@@ -202,7 +202,7 @@ void timeseries::open(std::string path)
             itr++)
     {
         ts_hashmap::const_accessor a;
-        if (!_variables.insert(a, *itr))
+        if (!_variables->insert(a, *itr))
         {
             BOOST_THROW_EXCEPTION(forcing_insertion_error()
                     << errstr_info(std::string("Failed to insert ") + *itr)
@@ -255,7 +255,7 @@ void timeseries::open(std::string path)
                 if ((doubles = floating.tokenize<std::string>(*itr)).size() == 1)
                 {
                     ts_hashmap::accessor a;
-                    if (!_variables.find(a, *headerItr))
+                    if (!_variables->find(a, *headerItr))
                         BOOST_THROW_EXCEPTION(forcing_lookup_error()
                             << errstr_info(std::string("Failed to find ") + *headerItr)
                             << boost::errinfo_file_name(path)
@@ -279,8 +279,8 @@ void timeseries::open(std::string path)
                     
                     //now we know where the date colum is, we remove it from the hashmap if we haven't already
                     ts_hashmap::accessor a;
-                    if (_variables.find(a, *headerItr))
-                        _variables.erase(a);
+                    if (_variables->find(a, *headerItr))
+                        _variables->erase(a);
                   
                 }
                 else
@@ -319,13 +319,13 @@ void timeseries::open(std::string path)
     //	- Time steps are equal
 
     //get iters for each variables
-    LOG_VERBOSE << "Read in " << _variables.size() << " variables";
-    std::string* headerItems = new std::string[_variables.size()];
+    LOG_VERBOSE << "Read in " << _variables->size() << " variables";
+    std::string* headerItems = new std::string[_variables->size()];
 
     int i = 0;
     //build a list of all the headers
     //unknown order
-    for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
+    for (ts_hashmap::iterator itr = _variables->begin(); itr != _variables->end(); itr++)
     {
         LOG_VERBOSE << itr->first;
         headerItems[i++] = itr->first;
@@ -335,12 +335,12 @@ void timeseries::open(std::string path)
     size_t d_length = _date_vec.size();
 
 
-    for (unsigned int l = 0; l < _variables.size(); l++)
+    for (unsigned int l = 0; l < _variables->size(); l++)
     {
         //compare all columns to date length
 
         ts_hashmap::const_accessor a;
-        if (!_variables.find(a, headerItems[l]))
+        if (!_variables->find(a, headerItems[l]))
             BOOST_THROW_EXCEPTION(forcing_lookup_error()
                 << errstr_info(std::string("Failed to find ") + headerItems[l])
                 << boost::errinfo_file_name(path)
@@ -380,6 +380,7 @@ timeseries::timeseries()
     _rows = 0;
     _isOpen = false;
     _timeseries_length=0;
+    _variables = new ts_hashmap;
 }
 
 
@@ -399,14 +400,14 @@ void timeseries::to_file(std::string file)
             << boost::errinfo_file_name(file));
 
     
-    std::string* headerItems = new std::string[_variables.size()];
+    std::string* headerItems = new std::string[_variables->size()];
 
     //build a list of all the headers
     //unknown order
     int i = 0;
     out << "Date\t";
-    variable_vec::const_iterator *tItr = new variable_vec::const_iterator[_variables.size()];
-    for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
+    variable_vec::const_iterator *tItr = new variable_vec::const_iterator[_variables->size()];
+    for (ts_hashmap::iterator itr = _variables->begin(); itr != _variables->end(); itr++)
     {
         headerItems[i] = itr->first;
         out << "\t" << itr->first;
@@ -423,7 +424,7 @@ void timeseries::to_file(std::string file)
     {
         out << boost::posix_time::to_iso_string(_date_vec.at(k)) << "\t";
 //        out << _date_vec.at(k) << "\t";
-        for (size_t j = 0; j < _variables.size(); j++)
+        for (size_t j = 0; j < _variables->size(); j++)
         {
             out << "\t" << *(tItr[j]);
             tItr[j]++;
@@ -462,7 +463,7 @@ timeseries::iterator timeseries::begin()
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : _variables)
+    for (auto& itr : *_variables)
     {
         //itr_map is holding the iterators into each vector
         timestep::itr_map::accessor a;
@@ -502,7 +503,7 @@ timeseries::iterator timeseries::end()
     iterator step;
     //loop over the variable map and save the iterator to the end
     //unknown order that'll get the variables in.
-    for (auto& itr : _variables)
+    for (auto& itr : *_variables)
     {
         timestep::itr_map::accessor a;
 

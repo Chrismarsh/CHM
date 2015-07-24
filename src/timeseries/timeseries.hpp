@@ -48,13 +48,10 @@ public:
     //mesh elements need to see these
     //two different types: boost::variant solves this, but is very slow 
     // needs to be either a boost::posix_time or double, and is almost always a double
-    typedef tbb::concurrent_vector< double,std::allocator<double> > variable_vec;
-    typedef tbb::concurrent_vector< boost::posix_time::ptime,std::allocator<boost::posix_time::ptime>  > date_vec;
- //   typedef tbb::concurrent_vector< double > variable_vec;
+  //  typedef tbb::concurrent_vector< double > variable_vec;
   //  typedef tbb::concurrent_vector< boost::posix_time::ptime > date_vec;
-
-  //  typedef std::vector< double > variable_vec;
-  //  typedef std::vector< boost::posix_time::ptime > date_vec;
+    typedef std::vector< double > variable_vec;
+    typedef std::vector< boost::posix_time::ptime > date_vec;
 
     class iterator;
     
@@ -211,7 +208,7 @@ private:
     //      [...]    |      [...]     |      [...]   |
     //    vector 1   |     vector 2   |     vector 3 |
     //      [...]    |      [...]     |      [...]   |
-    ts_hashmap _variables;
+    ts_hashmap* _variables;
     date_vec _date_vec;
     
     size_t _cols;

@@ -83,6 +83,8 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 find_package (Threads REQUIRED)
 
 find_package(TBB REQUIRED)
+#SET(ENV{LD_PRELOAD} "libtbbmalloc_proxy.so.2")
+
 
 find_package(GSL REQUIRED)
 

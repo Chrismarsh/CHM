@@ -55,6 +55,6 @@ public:
     std::string get_variable(std::string variable);
 
     //each station where observations are
-    tbb::concurrent_vector< boost::shared_ptr<station>,std::allocator<boost::shared_ptr<station>> > stations;
+    tbb::concurrent_vector< boost::shared_ptr<station> > stations;
     
 };

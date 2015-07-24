@@ -125,6 +125,14 @@ public:
     double face_data(std::string variable);
 
     /**
+     * Removes the face data associated with a given ID. Throws if ID not found.
+     * Assumes memory was allocated in a module. This just makes it easier to cleanup.
+     * \param ID Module ID
+     * \return none
+     */
+    void remove_face_data(std::string ID);
+
+    /**
     * Initializes  this faces timeseires with the given varialves, for the given datetime series with the given size
     * \param variables Names of the variables to add
     * \param datetime Vector of boost::ptimes for the entire duration of the timesries
@@ -211,6 +219,7 @@ private:
 template < class Gt, class Fb >
 face<Gt, Fb>::~face()
 {
+
     for(auto itr : _module_face_data)
     {
         delete itr.second;
@@ -502,7 +511,21 @@ face_info* face<Gt, Fb>::module_face_data(std::string module)
 
 
 }
-
+template < class Gt, class Fb>
+void face<Gt, Fb>::remove_face_data(std::string module)
+{
+    try
+    {
+        auto ptr =  _module_face_data[module];
+        //split it up to catch the exception if ID not found
+        delete ptr;
+        _module_face_data.erase(module);
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
+    }
+};
 template < class Gt, class Fb>
 void face<Gt, Fb>::set_module_face_data(std::string module,face_info* fi)
 {

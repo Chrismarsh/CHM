@@ -190,11 +190,11 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
 
     }
 
-#pragma omp parallel for
+    #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        delete face->module_face_data("Marsh_shading_iswr");
+        face->remove_face_data("Marsh_shading_iswr");
     }
 }
 
