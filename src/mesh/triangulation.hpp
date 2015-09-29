@@ -22,19 +22,28 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
-
+#include <vector>
+#include <set>
+#include <stack>
+#include <fstream>
 #define ARMA_DONT_USE_CXX11 //intel on linux breaks otherwise
 #include <armadillo>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 
+
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Projection_traits_xy_3.h>
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_data_structure_2.h>
 #include <CGAL/bounding_box.h>
+//#define CGAL_LAPACK_ENABLED
+#define CGAL_EIGEN3_ENABLED
+#include <CGAL/Monge_via_jet_fitting.h>
 #include <tbb/concurrent_vector.h>
+
+
 
 //http://www.paraview.org/Bug/print_bug_page.php?bug_id=14164
 //http://review.source.kitware.com/#/c/11956/
@@ -60,6 +69,8 @@
 #include <vtkTransform.h>
 #include <vtkTransformFilter.h>
 #include <vtkElevationFilter.h>
+#include <vtkCurvatures.h>
+#include <vtkXMLPolyDataWriter.h>
 #ifdef NOMATLAB
 #include "libmaw.h"
 #endif
@@ -69,9 +80,13 @@
 
 
 
+
+
+
+
+
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef K::Point_3 Point_3;
-
 
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points
 
@@ -82,6 +97,11 @@ typedef CGAL::Delaunay_triangulation_2<Gt, Tds> Delaunay; //specify a delauany t
 
 typedef Delaunay::Face_handle mesh_elem;
 typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
+
+
+
+typedef CGAL::Monge_via_jet_fitting<K>  CGALMongeViaJet;
+typedef CGALMongeViaJet::Monge_form CGALMongeForm;
 
 //fwd decl
 class segmented_AABB;

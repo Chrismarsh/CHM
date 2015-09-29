@@ -83,13 +83,21 @@ public:
 
     /*
      * Needs to be implemented by each  domain parallel module. This will be called and executed for each timestep. Unique to domain parallel modules.
-     * \param domain The terrain element (triangle) to be worked upon for an element parallel domain
+     * \param domain The entier terrain mesh
      * \param global_parama A pointer to the shared global paramter space with domain-wide paramters
      */
     virtual void run(mesh domain, boost::shared_ptr<global> global_param)
     {
     };
 
+    /*
+     * Optional function to run after the dependency constructor call, but before the run function is called. Used to perform any initalization.
+     * \param domain The entire terrain mesh
+     */
+    virtual void init(mesh domain)
+    {
+
+    };
 
     /*
      * Returns the module's parallel type

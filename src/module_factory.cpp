@@ -20,8 +20,8 @@ module_base* module_factory::get(std::string ID)
             mod = new Liston_monthly_llra_rh(ID);
         else if (ID == "Sicart_ilwr")
             mod = new Sicart_ilwr(ID);
-        else if (ID == "wind")
-            mod = new wind(ID);
+        else if (ID == "Liston_wind")
+            mod = new Liston_wind(ID);
         else if (ID == "PenmanMonteith_evaporation")
             mod = new PenmanMonteith_evaporation(ID);
         else if (ID == "precip")

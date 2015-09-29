@@ -41,7 +41,11 @@ class face
 : public Fb
 {
 public:
-
+    /**
+     * Multiuse flag for algorithms to use.
+     * Does not make any gaurantee about state.
+     */
+    bool coloured;
 //    face_info* info;
 
     /**

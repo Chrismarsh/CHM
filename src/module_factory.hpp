@@ -14,7 +14,7 @@
 #include "Liston_monthly_llra_rh.hpp"
 #include "Liston_monthly_llra_ta.hpp"
 #include "Sicart_ilwr.hpp"
-#include "wind.hpp"
+#include "Liston_wind.hpp"
 #include "PenmanMonteith_evaporation.hpp"
 #include "precip.hpp"
 #include "Walcek_atm_trans.hpp"

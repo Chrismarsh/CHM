@@ -9,6 +9,8 @@ set (CHM_VERSION_MINOR 1)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_BUILD_TYPE Debug)
 
+#message(FATAL_ERROR "${CMAKE_CXX_COMPILER_ID}")
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
@@ -25,7 +27,7 @@ include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 -Wall")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D _FORTIFY_SOURCE=0")
 
@@ -50,7 +52,7 @@ find_package(OpenMP)
 
 if(OPENMP_FOUND)
     if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp 
-        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 endif()
 
@@ -60,7 +62,7 @@ if(MATLAB)
 find_package(Matlab REQUIRED)
 endif()
 
-find_package(Armadillo 3.0 REQUIRED)
+find_package(Armadillo REQUIRED)  #at least v3
 
 find_package(Boost
              1.54.0
@@ -85,6 +87,7 @@ find_package (Threads REQUIRED)
 find_package(TBB REQUIRED)
 #SET(ENV{LD_PRELOAD} "libtbbmalloc_proxy.so.2")
 
+find_package(EIGEN3 REQUIRED)
 
 find_package(GSL REQUIRED)
 

@@ -283,8 +283,35 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
     data["Aspect"] = vtkSmartPointer<vtkFloatArray>::New();
     data["Aspect"]->SetName("Aspect");
 
-    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
-         fit != this->finite_faces_end(); ++fit)
+//    data["Mean Curvature"] = vtkSmartPointer<vtkFloatArray>::New();
+//    data["Mean Curvature"]->SetName("Mean Curvature");
+//
+//    data["Gauss Curvature"] = vtkSmartPointer<vtkFloatArray>::New();
+//    data["Gauss Curvature"]->SetName("Gauss Curvature");
+
+//    data["Liston Curvature"] = vtkSmartPointer<vtkFloatArray>::New();
+//    data["Liston Curvature"]->SetName("Liston Curvature");
+
+//    CGALMongeForm monge_form;
+//    CGALMongeViaJet monge_fit;
+
+//        int degree = 1;
+//
+//        std::vector<Point_3> pts;
+//        pts.assign(myPoints.begin(),myPoints.end());
+//        //LOG_DEBUG << pts.size();
+//        monge_form = monge_fit(pts.begin() , pts.end(), 2,2);
+//
+//        double k1 = monge_form.principal_curvatures ( 0 );
+//        double k2 = monge_form.principal_curvatures ( 1 );
+//        curve =  0.5*(k1+k2);
+//        data["Mean Curvature"]->InsertNextTuple1(curve);
+////        curve =  (k1*k2);
+////        data["Gauss Curvature"]->InsertNextTuple1(curve);
+//
+
+    for (Delaunay::Finite_faces_iterator fit = finite_faces_begin();
+         fit != finite_faces_end(); ++fit)
     {
         Delaunay::Face_handle face = fit;
         Delaunay::Triangle t = this->triangle(face);
@@ -292,33 +319,47 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
 
-        tri->GetPointIds()->SetId(0, face->vertex(0)->get_id());
-        tri->GetPointIds()->SetId(1, face->vertex(1)->get_id());
-        tri->GetPointIds()->SetId(2, face->vertex(2)->get_id());
+        tri->GetPointIds()->SetId(0, fit->vertex(0)->get_id());
+        tri->GetPointIds()->SetId(1, fit->vertex(1)->get_id());
+        tri->GetPointIds()->SetId(2, fit->vertex(2)->get_id());
 
 
-        points->SetPoint(face->vertex(0)->get_id(), t[0].x(), t[0].y(), t[0].z());
-        points->SetPoint(face->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
-        points->SetPoint(face->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());
+        points->SetPoint(fit->vertex(0)->get_id(), t[0].x(), t[0].y(), t[0].z());
+        points->SetPoint(fit->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
+        points->SetPoint(fit->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());
 
         triangles->InsertNextCell(tri);
 
-
-//        double elev = (t[0].z() + t[1].z() + t[2].z())/3;
 
         for(auto& v: variables)
         {
             double d = fit->face_data(v);
             data[v]->InsertNextTuple1(d);
         }
-        data["Elevation"]->InsertNextTuple1(face->get_z());
-        data["Slope"]->InsertNextTuple1(face->slope());
-        data["Aspect"]->InsertNextTuple1(face->aspect());
+        data["Elevation"]->InsertNextTuple1(fit->get_z());
+        data["Slope"]->InsertNextTuple1(fit->slope());
+        data["Aspect"]->InsertNextTuple1(fit->aspect());
     }
+
+
 
     vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
     unstructuredGrid->SetPoints(points);
     unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
+
+    vtkSmartPointer<vtkGeometryFilter> geometryFilter =  vtkSmartPointer<vtkGeometryFilter>::New();
+    geometryFilter->SetInputData(unstructuredGrid);
+    geometryFilter->Update();
+    vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>(geometryFilter->GetOutput());
+
+//    vtkSmartPointer<vtkCurvatures> curvaturesFilter = vtkSmartPointer<vtkCurvatures>::New();
+//
+//    curvaturesFilter->SetInputData(polydata);
+//    curvaturesFilter->SetCurvatureTypeToMean();
+//    curvaturesFilter->Update();
+//
+//    unstructuredGrid->GetPointData()->AddArray(curvaturesFilter->GetOutput()->GetPointData()->GetScalars());
+
 
     for(auto& m : data)
     {

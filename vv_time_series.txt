@@ -1,2 +1,2 @@
-Date		ET	Lin	Td_lapse_rate	u	solar_angle	Qsi	z_prime	atm_trans	es	t	S0	shadowed	ea	rh	t_lapse_rate
-20101002T130000		0.153018	291.369	0.00509421	1.41274	0.634178	725.162	-4.65485e+06	0.831613	2044.09	17.8533	871.995	0	660.414	32.3084	0.0068
+Date		Liston Curvature	Td_lapse_rate	u	atm_trans	es	t	ea	rh	t_lapse_rate
+20101002T130000		0.0250187	0.00509421	1.41274	0.831613	2044.09	17.8533	660.414	32.3084	0.0068

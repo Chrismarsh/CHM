@@ -22,17 +22,19 @@
 *
 * Depends:
 * - Wind from met file "u" [m/s]
+* - Direction from met file 'ud' [degrees]
 *
 * Provides:
 * - Wind "u" [m/s]
+* - Wind direction 'ud' [degrees]
 */
-class wind : public module_base
+class Liston_wind : public module_base
 {
 public:
-    wind(std::string ID);
-    ~wind();
+    Liston_wind(std::string ID);
+    ~Liston_wind();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
-
+    virtual void init(mesh domain);
 
 };
 

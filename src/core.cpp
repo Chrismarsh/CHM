@@ -69,7 +69,7 @@ core::core()
 
 core::~core()
 {
-    LOG_DEBUG << "Terminating";
+    LOG_DEBUG << "Finished";
 }
 
 void core::config_debug(const json_spirit::Value& value)
@@ -520,6 +520,8 @@ void core::_determine_module_dep()
             LOG_DEBUG << "Module [" << module.first->ID << "] has met file dependencies";
         }
 
+
+        LOG_DEBUG << "size " << _global->stations.size();
         //build a list of variables provided by the met files, culling duplicate variables from multiple stations.
         for (size_t i = 0; i < _global->stations.size(); i++)
         {
@@ -649,11 +651,12 @@ void core::_determine_module_dep()
         auto date = _global->stations.at(0)->date_timeseries();
         //auto size = _global->stations.at(0)->timeseries_length();
         Delaunay::Face_handle face = _mesh->face(it);
-        face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
 
-//        timeseries::date_vec d;
-//        d.push_back(date[0]);
-//        face->init_time_series(_provided_var_module, d);
+// face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
+
+        timeseries::date_vec d;
+        d.push_back(date[0]);
+        face->init_time_series(_provided_var_module, d);
     }
 
     double a= 4.9;
@@ -661,14 +664,22 @@ void core::_determine_module_dep()
 
 void core::run()
 {
-    LOG_DEBUG << "Entering main loop";
-
-
     timer c;
+    LOG_DEBUG << "Running init() for each module";
     c.tic();
+    for (auto& itr : _chunked_modules)
+    {
+        for (auto& jtr : itr)
+        {
+            jtr->init(_mesh);
+        }
 
+    }
+    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 
+    LOG_DEBUG << "Starting model run";
 
+    c.tic();
 
     size_t num_ts = 0;
     bool done = false;
@@ -697,7 +708,7 @@ void core::run()
         size_t chunks = 0;
         for (auto& itr : _chunked_modules)
         {
-            LOG_DEBUG << "Working on chunk[" << chunks << "]:parallel=" << (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
+            LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" << (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
             c.tic();
             if (itr.at(0)->parallel_type() == module_base::parallel::data)
             {
@@ -740,12 +751,12 @@ void core::run()
 
         c.tic();
 
-        #pragma omp parallel for
-        for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
-        {
-            auto face = _mesh->face(i);
-            face->next();
-        }
+//        #pragma omp parallel for
+//        for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
+//        {
+//            auto face = _mesh->face(i);
+//            face->next();
+//        }
 
         //update all the stations internal iterators to point to the next time step
         for (auto& itr : _global->stations)

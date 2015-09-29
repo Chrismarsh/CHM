@@ -14,7 +14,7 @@ set(MODULE_SRCS
         modules/interp_met/const_llra_ta.cpp
         modules/interp_met/Liston_monthly_llra_ta.cpp
         modules/interp_met/Liston_monthly_llra_rh.cpp
-        modules/interp_met/wind.cpp
+		modules/interp_met/Liston_wind.cpp
 
         modules/solar.cpp
         modules/Marsh_shading_iswr.cpp
@@ -71,6 +71,7 @@ set (EXT_HEADER_FILES
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
         ${METEOIO_INCLUDE_DIR}
+        ${EIGEN3_INCLUDE_DIR}
     )
 set( LIB_FILES
 	    ${Boost_LIBRARIES}
@@ -83,6 +84,8 @@ set( LIB_FILES
         ${CGAL_3RD_PARTY_LIBRARIES}
         ${VTK_LIBRARIES}
         ${METEOIO_LIBRARY}
+        ${LAPACK_LIBRARIES}
+        ${EIGEN3_LIBRARIES}
 )
 
 
