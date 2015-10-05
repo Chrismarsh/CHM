@@ -7,171 +7,177 @@ Liston_wind::Liston_wind( std::string ID)
     //_depends_from_met->push_back("u");
 
 
-   _provides->push_back("u");
-    _provides->push_back("Liston Curvature");
+    _provides->push_back("VW");
+    _provides->push_back("VW_dir");
+    _provides->push_back("Liston curvature");
 
     this->ID = ID;
-    _parallel_type = parallel::data;
+    _parallel_type = parallel::domain;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
+//Calculates the curvature required
 void Liston_wind::init(mesh domain)
 {
-    for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
-         fit != domain->finite_faces_end(); ++fit)
-    {
-        Delaunay::Face_handle face = fit;
-        face->coloured = false;
-    }
-
-
-    double curmax = -99999.0;
-
-    for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
-         fit != domain->finite_faces_end(); ++fit)
-    {
-        Delaunay::Face_handle face = fit;
-
-
-
-        std::set<Point_3> myPoints;
-        std::stack<Delaunay::Face_handle> neighbours;
-
-
-        std::vector<Delaunay::Face_handle> neighbours_to_uncolor;
-        int cur_depth = 0;
-        int max_depth = 10;
-
-        neighbours.push(face);
-
-        while (!neighbours.empty() && (cur_depth <= max_depth))
+        for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
+             fit != domain->finite_faces_end(); ++fit)
         {
-            Delaunay::Face_handle nface = neighbours.top();
-            neighbours.pop();
-            //this triangle
-            //origin of fitting coord system = first input data point
-            myPoints.insert(nface->center());
-            for (int i = 0; i < 3; i++)
-            {
-                myPoints.insert(nface->vertex(i)->point());
-            }
+            Delaunay::Face_handle face = fit;
+            face->coloured = false;
+        }
 
-            //add all of f's neighbours
-            for (int k = 0; k < 3; k++)
+
+        double curmax = -99999.0;
+
+        for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
+             fit != domain->finite_faces_end(); ++fit)
+        {
+            Delaunay::Face_handle face = fit;
+
+            std::set<Point_3> myPoints;
+            std::stack<Delaunay::Face_handle> neighbours;
+            std::vector<Delaunay::Face_handle> neighbours_to_uncolor;
+            int cur_depth = 0;
+            int max_depth = 10;
+
+            neighbours.push(face);
+
+            while (!neighbours.empty() && (cur_depth <= max_depth))
             {
-                auto n = nface->neighbor(k);
-                if (!domain->is_infinite(n) && !n->coloured)
+                Delaunay::Face_handle nface = neighbours.top();
+                neighbours.pop();
+                //this triangle
+                //origin of fitting coord system = first input data point
+                myPoints.insert(nface->center());
+                for (int i = 0; i < 3; i++)
                 {
-                    n->coloured = true;
-                    neighbours_to_uncolor.push_back(n);
-                    neighbours.push(n);
+                    myPoints.insert(nface->vertex(i)->point());
                 }
 
+                //add all of f's neighbours
+                for (int k = 0; k < 3; k++)
+                {
+                    auto n = nface->neighbor(k);
+                    if (!domain->is_infinite(n) && !n->coloured)
+                    {
+                        n->coloured = true;
+                        neighbours_to_uncolor.push_back(n);
+                        neighbours.push(n);
+                    }
+
+                }
+                cur_depth++;
             }
-            cur_depth++;
+
+            for (auto it:neighbours_to_uncolor)
+            {
+                it->coloured = false;
+            }
+            neighbours_to_uncolor.clear();
+
+            Point_3 me = face->center();
+            Delaunay::Face_handle north;
+            Delaunay::Face_handle south;
+            Delaunay::Face_handle east;
+            Delaunay::Face_handle west;
+
+            Delaunay::Face_handle northeast;
+            Delaunay::Face_handle northwest;
+            Delaunay::Face_handle southeast;
+            Delaunay::Face_handle southwest;
+
+
+            double distance = 100;//300.0;
+
+
+            north = domain->locate_face(me.x(), me.y() + distance);
+            if (north == NULL || domain->is_infinite(north))
+                north = face;
+
+            south = domain->locate_face(me.x(), me.y() - distance);
+            if (south == NULL || domain->is_infinite(south))
+                south = face;
+
+            west = domain->locate_face(me.x() - distance, me.y());
+            if (west == NULL || domain->is_infinite(west))
+                west = face;
+
+            east = domain->locate_face(me.x() + distance, me.y());
+            if (east == NULL || domain->is_infinite(east))
+                east = face;
+
+            double z = face->get_z();
+            double zw = west->get_z();
+            double ze = east->get_z();
+            double zs = south->get_z();
+            double zn = north->get_z();
+
+            double znw = 0.;
+            double zne = 0.;
+            double zse = 0.;
+            double zsw = 0.;
+
+            northeast = domain->locate_face(me.x() + distance, me.y() + distance);
+            if (northeast == NULL || domain->is_infinite(northeast))
+                zne = (ze + zn) / 2.;
+            else
+                zne = northeast->get_z();
+
+            northwest = domain->locate_face(me.x() - distance, me.y() + distance);
+            if (northwest == NULL || domain->is_infinite(south))
+                znw = (zw + zn) / 2.;
+            else
+                znw = northwest->get_z();
+
+            southeast = domain->locate_face(me.x() + distance, me.y() - distance);
+            if (southeast == NULL || domain->is_infinite(west))
+                zse = (ze + zs) / 2.;
+            else
+                zse = southeast->get_z();
+
+            southwest = domain->locate_face(me.x() - distance, me.y() - distance);
+            if (southwest == NULL || domain->is_infinite(east))
+                zsw = (zw + zs) / 2.;
+            else
+                zsw = southwest->get_z();
+
+            double curve = .25 * ((z - .5 * (zw + ze)) / (2 * distance) + (z - .5 * (zs + zn)) / (2 * distance) +
+                                  (z - .5 * (zsw + zne)) / (2 * sqrt(2 * distance)) +
+                                  (z - .5 * (znw + zse)) / (2 * sqrt(2 * distance)));
+
+            face->set_face_data("Liston curvature", curve);
+
+            if (fabs(curve) > curmax)
+                curmax = fabs(curve);
+
         }
 
-        for (auto it:neighbours_to_uncolor)
+
+        for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
+             fit != domain->finite_faces_end(); ++fit)
         {
-            it->coloured = false;
+            double value = fit->face_data("Liston curvature") ;
+            value = value / curmax / 2.0;//rescale to [-0.5,+0.5];
+            fit->set_face_data("Liston curvature", value);
         }
-        neighbours_to_uncolor.clear();
-
-        Point_3 me = face->center();
-        Delaunay::Face_handle north;
-        Delaunay::Face_handle south;
-        Delaunay::Face_handle east;
-        Delaunay::Face_handle west;
-
-        Delaunay::Face_handle northeast;
-        Delaunay::Face_handle northwest;
-        Delaunay::Face_handle southeast;
-        Delaunay::Face_handle southwest;
-
-
-        double distance = 300.0;
-
-
-        north = domain->locate_face(me.x(), me.y() + distance);
-        if (north == NULL || domain->is_infinite(north))
-            north = face;
-
-        south = domain->locate_face(me.x(), me.y() - distance);
-        if (south == NULL || domain->is_infinite(south))
-            south = face;
-
-        west = domain->locate_face(me.x() - distance, me.y());
-        if (west == NULL || domain->is_infinite(west))
-            west = face;
-
-        east = domain->locate_face(me.x() + distance, me.y());
-        if (east == NULL || domain->is_infinite(east))
-            east = face;
-
-        double z = face->get_z();
-        double zw = west->get_z();
-        double ze = east->get_z();
-        double zs = south->get_z();
-        double zn = north->get_z();
-
-        double znw = 0.;
-        double zne = 0.;
-        double zse = 0.;
-        double zsw = 0.;
-
-        northeast = domain->locate_face(me.x() + distance, me.y() + distance);
-        if (northeast == NULL || domain->is_infinite(northeast))
-            zne = (ze + zn) / 2.;
-        else
-            zne = northeast->get_z();
-
-        northwest = domain->locate_face(me.x() - distance, me.y() + distance);
-        if (northwest == NULL || domain->is_infinite(south))
-            znw = (zw + zn) / 2.;
-        else
-            znw = northwest->get_z();
-
-        southeast = domain->locate_face(me.x() + distance, me.y() - distance);
-        if (southeast == NULL || domain->is_infinite(west))
-            zse = (ze + zs) / 2.;
-        else
-            zse = southeast->get_z();
-
-        southwest = domain->locate_face(me.x() - distance, me.y() - distance);
-        if (southwest == NULL || domain->is_infinite(east))
-            zsw = (zw + zs) / 2.;
-        else
-            zsw = southwest->get_z();
-
-        double curve = .25 * ((z - .5 * (zw + ze)) / (2 * distance) + (z - .5 * (zs + zn)) / (2 * distance) +
-                              (z - .5 * (zsw + zne)) / (2 * sqrt(2 * distance)) +
-                              (z - .5 * (znw + zse)) / (2 * sqrt(2 * distance)));
-
-        face->set_face_data("Liston Curvature",curve);
-
-        if ( fabs(curve) > curmax)
-            curmax = fabs(curve);
-
-    }
-
-
-    for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
-         fit != domain->finite_faces_end(); ++fit)
-    {
-        double value = fit->face_data("Liston Curvature");
-        value =  value / curmax / 2.0;//rescale to [-0.5,+0.5];
-        fit->set_face_data("Liston Curvature",value);
-    }
 
 }
-void Liston_wind::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 {
 
-    std::vector< boost::tuple<double, double, double> > values;
+    //testing value
+    //TODO:Use measured wind direction
+    double theta = 45.0 * 3.14159/180.;
+
+    std::vector< boost::tuple<double, double, double> > u;
+    std::vector< boost::tuple<double, double, double> > v;
     for (auto& s : global_param->stations)
     {
-        double u = s->get("u");
-        values.push_back( boost::make_tuple(s->x(), s->y(), u ) );
+        double W = s->get("u");
+        double zonal_u = -W * sin(theta);
+        double zonal_v = -W * cos(theta);
+        u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u ) );
+        v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v ) );
     }
 
     interp_base* interp=nullptr;
@@ -179,12 +185,68 @@ void Liston_wind::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     if(interp_method == "spline")
         interp = new thin_plate_spline();
 
-    auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double value = (*interp)(values, query);
 
-    elem->set_face_data("u", value);
+    // omega_s needs to be scaled on [-0.5,0.5]
+    double max_omega_s = -99999.0;
 
-    delete interp;
+    //this is very slow!!!!
+    //TODO: replace with element storage
+
+    for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
+         fit != domain->finite_faces_end(); ++fit)
+    {
+        Delaunay::Face_handle elem = fit;
+        auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
+        double zonal_u = (*interp)(u, query);
+        double zonal_v = (*interp)(v, query);
+
+        delete interp;
+
+        double W = pow(zonal_u * zonal_u + zonal_v * zonal_v, 0.5);
+        theta = 3 * 3.14159 * 0.5 - atan(zonal_v / zonal_u);
+
+        double omega_s = elem->slope() * cos(theta - elem->aspect());
+
+        if( fabs(omega_s) > max_omega_s)
+            max_omega_s = fabs(omega_s);
+    }
+
+#pragma omp parallel for
+    for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
+         fit != domain->finite_faces_end(); ++fit)
+    {
+
+        Delaunay::Face_handle elem = fit;
+        auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
+        double zonal_u = (*interp)(u, query);
+        double zonal_v = (*interp)(v, query);
+
+        delete interp;
+
+        double W = pow(zonal_u * zonal_u + zonal_v * zonal_v, 0.5);
+        theta = 3 * 3.14159 * 0.5 - atan(zonal_v / zonal_u);
+
+        double omega_s = elem->slope() * cos(theta - elem->aspect());
+
+        omega_s = omega_s / max_omega_s / 2.0;
+
+        double omege_c = elem->face_data("Liston curvature");
+
+        double ys = 0.5;
+        double yc = 0.5;
+
+        double Ww = 1 + ys * omega_s + yc * omege_c;
+
+        W = W * Ww;
+
+        double theta_d = -0.5 * omega_s * sin(2 * (elem->aspect() - theta));
+        theta = theta + theta_d;
+
+        elem->set_face_data("VW", W);
+        elem->set_face_data("VW_dir", theta * 180.0 / 3.14159);
+    }
+
+
 }
 
 Liston_wind::~Liston_wind()
