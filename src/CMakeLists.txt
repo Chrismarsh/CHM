@@ -22,7 +22,7 @@ set(MODULE_SRCS
         modules/Sicart_ilwr.cpp
         modules/PenmanMonteith_evaporation.cpp
 
-        modules/precip.cpp
+		modules/interp_met/precip.cpp
 
         modules/Walcek_atm_trans.cpp
 )

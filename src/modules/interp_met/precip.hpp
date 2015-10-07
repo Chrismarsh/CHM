@@ -18,7 +18,7 @@
 * \class Precip
 * \brief Calculates precip
 *
-* Calculates precip in a terrible way
+* Spatially distributes precip via spline
 *
 * Depends:
 * - Precip from met file "p" [mm]

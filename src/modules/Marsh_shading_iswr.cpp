@@ -5,6 +5,9 @@ Marsh_shading_iswr::Marsh_shading_iswr(std::string ID)
 {
     _provides->push_back("shadowed");
     _provides->push_back("z_prime");
+
+    _depends->push_back("Qsi");
+
     this->ID = ID;
     _parallel_type = parallel::domain;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -171,6 +174,9 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
                 face_j->set_face_data("shadowed", face_info->shadow);
                 face_j->set_face_data("z_prime", face_info->z_prime);
 
+                //if we're shadowed, set direct beam = 0
+                if (face_info->shadow ==1)
+                    face_j->set_face_data("Qsi", 0);
 
             }
         }

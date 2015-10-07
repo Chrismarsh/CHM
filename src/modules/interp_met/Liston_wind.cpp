@@ -200,12 +200,10 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         double zonal_u = (*interp)(u, query);
         double zonal_v = (*interp)(v, query);
 
-        delete interp;
+        double corrected_theta = 3 * 3.14159 * 0.5 - atan(zonal_v / zonal_u);
 
-        double W = pow(zonal_u * zonal_u + zonal_v * zonal_v, 0.5);
-        theta = 3 * 3.14159 * 0.5 - atan(zonal_v / zonal_u);
-
-        double omega_s = elem->slope() * cos(theta - elem->aspect());
+        //eqn 15
+        double omega_s = elem->slope() * cos(corrected_theta - elem->aspect());
 
         if( fabs(omega_s) > max_omega_s)
             max_omega_s = fabs(omega_s);
@@ -221,12 +219,10 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         double zonal_u = (*interp)(u, query);
         double zonal_v = (*interp)(v, query);
 
-        delete interp;
-
         double W = pow(zonal_u * zonal_u + zonal_v * zonal_v, 0.5);
-        theta = 3 * 3.14159 * 0.5 - atan(zonal_v / zonal_u);
+        double corrected_theta = 3 * 3.14159 * 0.5 - atan(zonal_v / zonal_u);
 
-        double omega_s = elem->slope() * cos(theta - elem->aspect());
+        double omega_s = elem->slope() * cos(corrected_theta - elem->aspect());
 
         omega_s = omega_s / max_omega_s / 2.0;
 
@@ -239,13 +235,14 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 
         W = W * Ww;
 
-        double theta_d = -0.5 * omega_s * sin(2 * (elem->aspect() - theta));
-        theta = theta + theta_d;
+        double theta_d = -0.5 * omega_s * sin(2 * (elem->aspect() - corrected_theta));
+        corrected_theta = theta_d + corrected_theta;
 
         elem->set_face_data("VW", W);
-        elem->set_face_data("VW_dir", theta * 180.0 / 3.14159);
+        elem->set_face_data("VW_dir", corrected_theta * 180.0 / 3.14159);
     }
 
+    delete interp;
 
 }
 

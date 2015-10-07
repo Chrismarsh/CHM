@@ -27,7 +27,7 @@ include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -std=c++11 -Wall")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D _FORTIFY_SOURCE=0")
 

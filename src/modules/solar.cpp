@@ -7,7 +7,7 @@ Solar::Solar( std::string ID)
     _provides->push_back("Qsi");
     _provides->push_back("S0");
     
-    _depends->push_back("shadowed");
+//    _depends->push_back("shadowed");
     _depends->push_back("atm_trans");
     
     this->ID = ID;
@@ -46,9 +46,9 @@ void Solar::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     
     elem->set_face_data("solar_angle",angle);
     
-    double shadow = elem->face_data("shadowed");
-    if(shadow == 1)
-        angle = 0;
+//    double shadow = elem->face_data("shadowed");
+//    if(shadow == 1)
+//        angle = 0;
     double tau = elem->face_data("atm_trans");
     elem->set_face_data("Qsi", tau*angle*1375.0 );
     elem->set_face_data("S0",angle*1375.0 );
