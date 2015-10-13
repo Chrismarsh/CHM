@@ -28,6 +28,8 @@ module_base* module_factory::get(std::string ID)
             mod = new precip(ID);
         else if (ID == "Walcek_atm_trans")
             mod = new Walcek_atm_trans(ID);
+        else if (ID == "Harder_precip_phase")
+            mod = new Harder_precip_phase(ID);
 
 
         

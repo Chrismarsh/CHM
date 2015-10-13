@@ -11,21 +11,21 @@ set(JSON_SPIRIT_SRCS
 
 set(MODULE_SRCS
 
-        modules/interp_met/const_llra_ta.cpp
-        modules/interp_met/Liston_monthly_llra_ta.cpp
-        modules/interp_met/Liston_monthly_llra_rh.cpp
+		modules/interp_met/const_llra_ta.cpp
+		modules/interp_met/Liston_monthly_llra_ta.cpp
+		modules/interp_met/Liston_monthly_llra_rh.cpp
 		modules/interp_met/Liston_wind.cpp
 
-        modules/solar.cpp
-        modules/Marsh_shading_iswr.cpp
+		modules/solar.cpp
+		modules/Marsh_shading_iswr.cpp
 
-        modules/Sicart_ilwr.cpp
-        modules/PenmanMonteith_evaporation.cpp
+		modules/Sicart_ilwr.cpp
+		modules/PenmanMonteith_evaporation.cpp
 
 		modules/interp_met/precip.cpp
 
-        modules/Walcek_atm_trans.cpp
-)
+		modules/Walcek_atm_trans.cpp
+		modules/Harder_precip_phase.cpp)
 
 
 set(CHM_SRCS 
@@ -48,6 +48,7 @@ set(CHM_SRCS
         utility/crc_hash_compare.cpp
         utility/regex_tokenizer.cpp
         utility/timer.cpp
+		utility/str_format.h
 
 )
 set (HEADER_FILES

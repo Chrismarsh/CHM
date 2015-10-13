@@ -30,6 +30,7 @@
 * Provides:
 * - Relative humidity "rh" [%]
 * - Relative humidity "Liston_monthly_llra_rh" [%]
+* - Vapour pressure 'ea' [Pa]
 *
 * Reference:
 * > Liston, Glen E., and Kelly Elder. 2006. A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of hydrometeorology 7: 217-234

@@ -18,6 +18,7 @@
 #include "PenmanMonteith_evaporation.hpp"
 #include "precip.hpp"
 #include "Walcek_atm_trans.hpp"
+#include "Harder_precip_phase.hpp"
 
 
 class module_factory

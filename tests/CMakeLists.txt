@@ -33,28 +33,28 @@ set(LIBMAW_SRCS
 )
 endif()
 
-set(CHM_SRCS 
+set(CHM_SRCS
 
-    ../src/core.cpp
-    ../src/module_factory.cpp
-    ../src/global.cpp
-    ../src/station.cpp
+		../src/core.cpp
+		../src/module_factory.cpp
+		../src/global.cpp
+		../src/station.cpp
 
-    ../src/variable_map.cpp
-    
-    ../src/mesh/triangulation.cpp
+		../src/variable_map.cpp
 
-    ../src/interpolation/inv_dist.cpp
-    ../src/interpolation/TPSpline.cpp
+		../src/mesh/triangulation.cpp
 
-    ../src/timeseries/timestep.cpp
-    ../src/timeseries/timeseries.cpp
-    ../src/timeseries/daily.cpp
+		../src/interpolation/inv_dist.cpp
+		../src/interpolation/TPSpline.cpp
 
-    ../src/utility/crc_hash_compare.cpp
-    ../src/utility/regex_tokenizer.cpp
-    ../src/utility/timer.cpp
-)
+		../src/timeseries/timestep.cpp
+		../src/timeseries/timeseries.cpp
+		../src/timeseries/daily.cpp
+
+		../src/utility/crc_hash_compare.cpp
+		../src/utility/regex_tokenizer.cpp
+		../src/utility/timer.cpp
+		../src/utility/str_format.h)
 set (HEADER_FILES
 	../src/json_spirit
     ../src/mesh

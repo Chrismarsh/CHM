@@ -10,12 +10,14 @@
 #include <set>
 #include <chrono>
 #include <map>
+#include <stdio.h>
+#include <cstdlib>
 
 //graph
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/topological_sort.hpp>
-
+#include <boost/graph/graphviz.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 
@@ -35,16 +37,43 @@
 
 #include "timer.hpp"
 #include "global.hpp"
+#include "str_format.h"
+
+struct vertex{
+    std::string name;
+};
+
+struct edge{
+    std::string variable;
+};
+
+//typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
+//      boost::property<boost::vertex_color_t, boost::default_color_type>
+//    > Graph;
+typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS,boost::property<boost::vertex_index_t,int,vertex>,edge> Graph;
 
 
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
-      boost::property<boost::vertex_color_t, boost::default_color_type>
-    > Graph;
+//from http://stackoverflow.com/questions/11369115/how-to-print-a-graph-in-graphviz-with-multiple-properties-displayed
+template <class VariableMap>
+class edge_writer {
+public:
+    edge_writer(VariableMap v) : vm(v) {}
+    template <class Edge>
+    void operator()(ostream &out, const Edge& e) const {
+        out << "[label=\"" << vm[e] << "\", edgetype=" << vm[e] << "]";
+    }
+private:
+    VariableMap vm;
+};
 
-//typedef boost::adjacency_list<> Graph;
+template <class VariableMap>
+inline edge_writer<VariableMap>
+make_edge_writer(VariableMap v) {
+    return edge_writer<VariableMap>(v);
+}
 
-typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
-typedef std::pair<int, int> Edge;
+//typedef boost::graph_traits<Graph>::vertex_descriptor Vertex;
+//typedef std::pair<int, int> Edge;
 
 
 /**

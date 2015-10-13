@@ -440,12 +440,23 @@ void core::_determine_module_dep()
     //init a graph of the required size == num of modules
     Graph g(size);
 
+
+
+    std::set<std::string> graphviz_vars;
+
     //loop through each module
     for (auto& module : _modules)
     {
         //Generate a  list of all variables,, provided from this module, and append to the total list, culling duplicates between modules.
         _provided_var_module.insert(module.first->provides()->begin(), module.first->provides()->end());
 
+//        vertex v;
+//        v.name = module.first->ID;
+//        boost::add_vertex(v,g);
+        g[module.first->IDnum].name=module.first->ID;
+//        output_graph << module.first->IDnum << " [label=\"" << module.first->ID  << "\"];" << std::endl;
+
+        //names.at(module.first->IDnum) =  module.first->ID;
 
         //check intermodule depends
         if (module.first->depends()->size() == 0)  //check if this module requires dependencies
@@ -484,13 +495,21 @@ void core::_determine_module_dep()
                         LOG_DEBUG << "\t\tAdding edge between " << module.first->ID << "[" << module.first->IDnum << "] -> " << itr.first->ID << "[" << itr.first->IDnum << "] for var=" << *i << std::endl;
 
                         //add the dependency from module -> itr, such that itr will come before module
-                        boost::add_edge(itr.first->IDnum, module.first->IDnum, g);
+                        edge e;
+                        e.variable=*i;
+//                        boost::add_edge(itr.first->IDnum, module.first->IDnum, g);
 
+                        boost::add_edge(itr.first->IDnum, module.first->IDnum, e,g);
+
+                        //output_graph << itr.first->IDnum << "->" << module.first->IDnum << " [label=\"" << *i << "\"];" << std::endl;
                         curr_mod_depends[*i]++; //ref count our variable
+
+                        graphviz_vars.insert( *i);
                     }
                 }
             }
         }
+
 
         bool missing_depends = false;
 
@@ -543,11 +562,58 @@ void core::_determine_module_dep()
 
     }
 
+    //great filter file for gvpr
+    std::ofstream gvpr("filter.gvpr");;
+
+    std::string font = "Helvetica";
+    int fontsize = 11;
+
+    std::string edge_str = "E[edgetype == \"%s\"] {\n color=\"/paired12/%i\";\n fontsize=%i;\n     fontname=\"%s\"\n }";
+    int idx=1;
+    for(auto itr : graphviz_vars)
+    {
+        std::string edge = str_format(edge_str, itr.c_str(), idx, fontsize, font.c_str());
+        idx++;
+        gvpr << edge << std::endl;
+    }
+
+    gvpr.close();
+
     std::deque<int> topo_order;
     boost::topological_sort(g, std::front_inserter(topo_order));
 
-    std::stringstream ss;
 
+    std::ostringstream ssdot;
+    boost::write_graphviz(ssdot,g, boost::make_label_writer(boost::get(&vertex::name, g)),make_edge_writer(boost::get(&edge::variable, g)));
+    std::string dot(ssdot.str());
+    size_t pos = dot.find("\n");
+
+    if (pos == std::string::npos)
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Unable to generate dot file"));
+
+    //skip past the newline
+    pos++;
+
+//    Insert the following to make the chart go right to left, landscape
+//    rankdir=LR;
+//    {
+//        node [shape=plaintext, fontsize=16];
+//        "Module execution order"->"";
+//    }
+    dot.insert(pos, "rankdir=LR;\n{\n\tnode [shape=plaintext, fontsize=16];\n\t\"Module execution order\"->\"\";\n}\nsplines=polyline;\n");
+
+    std::ofstream file;
+    file.open("modules.dot.tmp");
+    file << dot;
+    file.close();
+
+    //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
+    std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp");
+    std::system("dot -Tpdf modules.dot -o modules.pdf");
+    std::remove("modules.dot.tmp");
+    std::remove("filter.gvpr");
+
+    std::stringstream ss;
     size_t order = 0;
     for(std::deque<int>::const_iterator i = topo_order.begin();  i != topo_order.end();  ++i)
     {
@@ -659,7 +725,7 @@ void core::_determine_module_dep()
         face->init_time_series(_provided_var_module, d);
     }
 
-    double a= 4.9;
+
 }
 
 void core::run()
