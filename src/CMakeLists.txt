@@ -18,39 +18,35 @@ set(MODULE_SRCS
 
 		modules/solar.cpp
 		modules/Marsh_shading_iswr.cpp
-
 		modules/Sicart_ilwr.cpp
 		modules/PenmanMonteith_evaporation.cpp
-
 		modules/interp_met/precip.cpp
-
 		modules/Walcek_atm_trans.cpp
 		modules/Harder_precip_phase.cpp)
 
 
-set(CHM_SRCS 
-        main.cpp
-        core.cpp
-        module_factory.cpp
-        global.cpp
-        station.cpp
-        variable_map.cpp
+set(CHM_SRCS
+		main.cpp
+		core.cpp
+		module_factory.cpp
+		global.cpp
+		station.cpp
+		variable_map.cpp
 
-        mesh/triangulation.cpp
+		mesh/triangulation.cpp
 
-        interpolation/inv_dist.cpp
-        interpolation/TPSpline.cpp
+		interpolation/inv_dist.cpp
+		interpolation/TPSpline.cpp
 
-        timeseries/timestep.cpp
-        timeseries/timeseries.cpp
-        timeseries/daily.cpp
+		timeseries/timestep.cpp
+		timeseries/timeseries.cpp
+		timeseries/daily.cpp
 
-        utility/crc_hash_compare.cpp
-        utility/regex_tokenizer.cpp
-        utility/timer.cpp
-		utility/str_format.h
+		utility/crc_hash_compare.cpp
+		utility/regex_tokenizer.cpp
+		utility/timer.cpp
+		config.cpp)
 
-)
 set (HEADER_FILES
 	json_spirit
         mesh
@@ -72,7 +68,6 @@ set (EXT_HEADER_FILES
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
         ${METEOIO_INCLUDE_DIR}
-        ${EIGEN3_INCLUDE_DIR}
     )
 set( LIB_FILES
 	    ${Boost_LIBRARIES}
@@ -86,7 +81,7 @@ set( LIB_FILES
         ${VTK_LIBRARIES}
         ${METEOIO_LIBRARY}
         ${LAPACK_LIBRARIES}
-        ${EIGEN3_LIBRARIES}
+
 )
 
 

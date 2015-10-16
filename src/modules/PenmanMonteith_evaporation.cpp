@@ -2,21 +2,20 @@
 #include "PenmanMonteith_evaporation.hpp"
 
 PenmanMonteith_evaporation::PenmanMonteith_evaporation( std::string ID)
+        :module_base(ID,parallel::data)
 {
 
-    _depends->push_back("Qsi");
-    _depends->push_back("Lin");
-//    _depends->push_back("albdeo");
-    _depends->push_back("es");
-    _depends->push_back("ea");
-    _depends->push_back("t");
-    _depends->push_back("u");
+    depends("Qsi");
+    depends("Lin");
+//    depends("albdeo");
+    depends("es");
+    depends("ea");
+    depends("t");
+    depends("u");
 
-    _provides->push_back("ET");
+    provides("ET");
 
 
-    this->ID = ID;
-    _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 

@@ -53,14 +53,20 @@ public:
     /**
     * Default constructor
     */
-    module_base()
+    module_base(){};
+
+    /**
+     * Consturctor that initializes everything
+     */
+    module_base(std::string ID,parallel type)
     {
         _provides = boost::make_shared<std::vector<std::string> >();
         _depends = boost::make_shared<std::vector<std::string> >();
         _depends_from_met = boost::make_shared<std::vector<std::string> >();
         IDnum = 0;
-        ID = "uninitialized ID";
-        _parallel_type = parallel::data; //default to data parallel, most common (?)
+        _parallel_type = type;
+        this->ID = ID;
+
         //nothing
     };
 
@@ -117,6 +123,14 @@ public:
     }
 
     /**
+     * Set a variable that this module provides
+     */
+    void provides(std::string variable)
+    {
+        _provides->push_back(variable);
+    }
+
+    /**
      * List of the variables from other modules that this module depends upon
      */
     boost::shared_ptr<std::vector<std::string> > depends()
@@ -125,11 +139,27 @@ public:
     }
 
     /**
+     * Set a variable, from another module, that this module depends upon
+     */
+    void depends(std::string variable)
+    {
+        _depends->push_back(variable);
+    }
+
+    /**
     * List of the variables from the met files that this module depends upon
     */
     boost::shared_ptr<std::vector<std::string> > depends_from_met()
     {
         return _depends_from_met;
+    }
+
+    /**
+     * Set a variable, from a met file, that this module depends upon
+     */
+    void depends_from_met(std::string variable)
+    {
+        _depends_from_met->push_back(variable);
     }
 
 protected:

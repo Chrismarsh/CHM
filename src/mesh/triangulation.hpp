@@ -39,8 +39,8 @@
 #include <CGAL/Triangulation_data_structure_2.h>
 #include <CGAL/bounding_box.h>
 //#define CGAL_LAPACK_ENABLED
-#define CGAL_EIGEN3_ENABLED
-#include <CGAL/Monge_via_jet_fitting.h>
+//#define CGAL_EIGEN3_ENABLED
+//#include <CGAL/Monge_via_jet_fitting.h>
 #include <tbb/concurrent_vector.h>
 
 
@@ -100,8 +100,8 @@ typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
 
 
 
-typedef CGAL::Monge_via_jet_fitting<K>  CGALMongeViaJet;
-typedef CGALMongeViaJet::Monge_form CGALMongeForm;
+//typedef CGAL::Monge_via_jet_fitting<K>  CGALMongeViaJet;
+//typedef CGALMongeViaJet::Monge_form CGALMongeForm;
 
 //fwd decl
 class segmented_AABB;

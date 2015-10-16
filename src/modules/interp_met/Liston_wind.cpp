@@ -1,18 +1,16 @@
 #include "Liston_wind.hpp"
 
 Liston_wind::Liston_wind( std::string ID)
+        :module_base(ID,parallel::domain)
+
 {
 
-   _depends_from_met->push_back("u");
-    //_depends_from_met->push_back("u");
+    depends_from_met("u");
+    provides("VW");
+    provides("VW_dir");
+    provides("Liston curvature");
 
 
-    _provides->push_back("VW");
-    _provides->push_back("VW_dir");
-    _provides->push_back("Liston curvature");
-
-    this->ID = ID;
-    _parallel_type = parallel::domain;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
@@ -209,7 +207,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
             max_omega_s = fabs(omega_s);
     }
 
-#pragma omp parallel for
+//#pragma omp parallel for
     for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
          fit != domain->finite_faces_end(); ++fit)
     {

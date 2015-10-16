@@ -1,13 +1,14 @@
 #include "Liston_monthly_llra_ta.hpp"
 
 Liston_monthly_llra_ta::Liston_monthly_llra_ta( std::string ID)
-{
-    _provides->push_back("t");
-    _provides->push_back("t_lapse_rate");
+        :module_base(ID,parallel::data)
 
-    _depends_from_met->push_back("t");
-    this->ID = ID;
-    _parallel_type = parallel::data;
+{
+    provides("t");
+    provides("t_lapse_rate");
+
+    depends_from_met("t");
+
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 

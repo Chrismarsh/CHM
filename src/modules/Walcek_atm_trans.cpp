@@ -1,17 +1,16 @@
 #include "Walcek_atm_trans.hpp"
 
 Walcek_atm_trans::Walcek_atm_trans(std::string ID)
+        :module_base(ID,parallel::data)
 {
-    _provides->push_back("atm_trans");
+    provides("atm_trans");
+
+    depends("t");
+    depends("rh");
+    depends("t_lapse_rate");
+    depends("Td_lapse_rate");
 
 
-    _depends->push_back("t");
-    _depends->push_back("rh");
-    _depends->push_back("t_lapse_rate");
-    _depends->push_back("Td_lapse_rate");
-
-    this->ID = ID;
-    _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 Walcek_atm_trans::~Walcek_atm_trans()

@@ -2,16 +2,14 @@
 #include "solar.hpp"
 
 Solar::Solar( std::string ID)
+        :module_base(ID,parallel::data)
 {
-    _provides->push_back("solar_angle");
-    _provides->push_back("Qsi");
-    _provides->push_back("S0");
-    
-//    _depends->push_back("shadowed");
-    _depends->push_back("atm_trans");
-    
-    this->ID = ID;
-    _parallel_type = parallel::data;
+    provides("solar_angle");
+    provides("Qsi");
+    provides("S0");
+
+    depends("atm_trans");
+
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 void Solar::run(mesh_elem& elem, boost::shared_ptr<global> global_param)

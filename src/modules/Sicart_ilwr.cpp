@@ -1,18 +1,16 @@
 #include "Sicart_ilwr.hpp"
 
 Sicart_ilwr::Sicart_ilwr( std::string ID)
+        :module_base(ID,parallel::data)
 {
 
-    _depends->push_back("t");
-    _depends->push_back("ea");
-    _depends->push_back("rh");
-    _depends->push_back("atm_trans");
+    depends("t");
+    depends("ea");
+    depends("rh");
+    depends("atm_trans");
 
-    _provides->push_back("Lin");
+    provides("Lin");
 
-
-    this->ID = ID;
-    _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 

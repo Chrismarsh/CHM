@@ -6,12 +6,20 @@ project (CHMprj)
 set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
+set(USE_OMP FALSE)
+
+macro(remove_cxx_flag flag)
+    string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endmacro()
+
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_BUILD_TYPE Debug)
 
 #message(FATAL_ERROR "${CMAKE_CXX_COMPILER_ID}")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall -D_FORTIFY_SOURCE=0")
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(test "Build all tests." ON) # Makes boolean 'test' available.
@@ -21,15 +29,20 @@ find_package(CGAL REQUIRED)
 if(CGAL_FOUND)
     message(STATUS "Found CGAL")
 endif()
-message(STATUS "${CGAL_USE_FILE}")
+
+#as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
+#but doesn't seem to work
+set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
+
 include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
+
+#remove this flag as it destroys the build on -O1 and spams warnings
+remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
+
+
 
 find_package(VTK REQUIRED)
 include(${VTK_USE_FILE})
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D _FORTIFY_SOURCE=0")
 
 #C#####
 #GAL requires strict rounding
@@ -51,9 +64,11 @@ endif()
 find_package(OpenMP)
 
 if(OPENMP_FOUND)
-    if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp 
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
+    if(OMP)
+        if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        endif()
+    endif()
 endif()
 
 set(MATLAB false)
@@ -87,13 +102,10 @@ find_package (Threads REQUIRED)
 find_package(TBB REQUIRED)
 #SET(ENV{LD_PRELOAD} "libtbbmalloc_proxy.so.2")
 
-find_package(EIGEN3 REQUIRED)
+#find_package(EIGEN3 REQUIRED)
 
 find_package(GSL REQUIRED)
 
-
-
-message(STATUS "CHM CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 
 if (test)

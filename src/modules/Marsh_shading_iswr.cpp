@@ -2,14 +2,14 @@
 #include "Marsh_shading_iswr.hpp"
 
 Marsh_shading_iswr::Marsh_shading_iswr(std::string ID)
+        :module_base(ID,parallel::domain)
 {
-    _provides->push_back("shadowed");
-    _provides->push_back("z_prime");
+    provides("shadowed");
+    provides("z_prime");
 
-    _depends->push_back("Qsi");
+    depends("Qsi");
 
-    this->ID = ID;
-    _parallel_type = parallel::domain;
+
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
 }

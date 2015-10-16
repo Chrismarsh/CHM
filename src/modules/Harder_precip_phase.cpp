@@ -1,19 +1,25 @@
 #include "Harder_precip_phase.hpp"
 Harder_precip_phase::Harder_precip_phase(std::string ID)
+        :module_base(ID,parallel::data)
 {
-    _depends->push_back("t");
-    _depends->push_back("rh");
-    _depends->push_back("ea");
+    depends("t");
+    depends("rh");
+    depends("ea");
 
-    _provides->push_back("p_snow");
-    _provides->push_back("p_rain");
-    _provides->push_back("Ti");
-    _provides->push_back("frac_precip_rain");
-    _provides->push_back("frac_precip_snow");
+    provides("psnow");
+    provides("prain");
+    provides("Ti");
+    provides("frac_precip_rain");
+    provides("frac_precip_snow");
 
-    this->ID = ID;
-    _parallel_type = parallel::data;
+
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
+
+    config cfg;
+    cfg.open("Harder_precip_phase.config");
+    double b = cfg.get<double>("const.b");
+    double c = cfg.get<double>("const.c");
+
 }
 Harder_precip_phase::~Harder_precip_phase()
 {

@@ -2,18 +2,19 @@
 
 
 Liston_monthly_llra_rh::Liston_monthly_llra_rh( std::string ID)
+        :module_base(ID,parallel::data)
+
 {
-    _provides->push_back("rh");
-    _provides->push_back("ea");
-    _provides->push_back("es");
-    _provides->push_back("Td_lapse_rate");
+    provides("rh");
+    provides("ea");
+    provides("es");
+    provides("Td_lapse_rate");
 
-    _depends->push_back("t");
+    depends("t");
 
-    _depends_from_met->push_back("rh");
+    depends_from_met("rh");
 
-    this->ID = ID;
-    _parallel_type = parallel::data;
+
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 

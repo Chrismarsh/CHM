@@ -1,15 +1,14 @@
 #include "precip.hpp"
 
 precip::precip( std::string ID)
+        :module_base(ID,parallel::data)
+
 {
 
-    _depends_from_met->push_back("p");
+    depends_from_met("p");
+    provides("p");
 
-    _provides->push_back("p");
 
-
-    this->ID = ID;
-    _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 

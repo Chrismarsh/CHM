@@ -1,15 +1,14 @@
 #include "const_llra_ta.hpp"
 
 const_llra_ta::const_llra_ta( std::string ID)
+        :module_base(ID,parallel::data)
+
 {
-    _provides->push_back("t");
+    provides("t");
+    provides("const_llra_ta");
 
-    _provides->push_back("const_llra_ta");
+    depends_from_met("t");
 
-    _depends_from_met->push_back("t");
-
-    this->ID = ID;
-    _parallel_type = parallel::data;
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 

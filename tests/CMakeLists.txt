@@ -4,12 +4,12 @@ add_subdirectory (gtest)
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 set(TEST_SRCS
-    test_station.cpp
-    test_timeseries.cpp
+ #   test_station.cpp
+#    test_timeseries.cpp
     test_core.cpp
-    test_mesh.cpp
+#    test_mesh.cpp
     test_regexptokenizer.cpp
-    test_daily.cpp
+#    test_daily.cpp
 )
 set(JSON_SPIRIT_SRCS
 	../src/json_spirit/json_spirit_reader.cpp 
@@ -18,13 +18,19 @@ set(JSON_SPIRIT_SRCS
  )
 
 set(MODULE_SRCS
-        ../src/modules/solar.cpp
-        ../src/modules/Marsh_shading_iswr.cpp
-        ../src/modules/interp_met/Liston_monthly_llra_rh.cpp
-        ../src/modules/interp_met/const_llra_ta.cpp
-        ../src/modules/interp_met/Liston_monthly_llra_ta.cpp
 
-)
+		../src/modules/interp_met/const_llra_ta.cpp
+		../src/modules/interp_met/Liston_monthly_llra_ta.cpp
+		../src/modules/interp_met/Liston_monthly_llra_rh.cpp
+		../src/modules/interp_met/Liston_wind.cpp
+
+		../src/modules/solar.cpp
+		../src/modules/Marsh_shading_iswr.cpp
+		../src/modules/Sicart_ilwr.cpp
+		../src/modules/PenmanMonteith_evaporation.cpp
+		../src/modules/interp_met/precip.cpp
+		../src/modules/Walcek_atm_trans.cpp
+		../src/modules/Harder_precip_phase.cpp)
 
 if(MATLAB)
 set(LIBMAW_SRCS
@@ -59,6 +65,7 @@ set (HEADER_FILES
 	../src/json_spirit
     ../src/mesh
     ../src/modules
+	../src/modules/interp_met
     ../src/libmaw
     ../src/interpolation
     ../src/timeseries
@@ -75,6 +82,7 @@ set (EXT_HEADER_FILES
         ${MATLAB_INCLUDE_DIR}
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
+		${METEOIO_INCLUDE_DIR}
     )
 set( LIB_FILES
 	    ${Boost_LIBRARIES}
@@ -86,6 +94,9 @@ set( LIB_FILES
 	    ${MATLAB_MX_LIBRARY}
         ${CGAL_LIBRARIES}
         ${CGAL_3RD_PARTY_LIBRARIES}
+		${VTK_LIBRARIES}
+		${METEOIO_LIBRARY}
+		${LAPACK_LIBRARIES}
 )
 
 set( GTEST_LINK
