@@ -28,9 +28,9 @@
 
 #include "triangulation.hpp"
 
-
+#include "config.h"
 #include "json_spirit.h"
-//#include "module_base.hpp"
+
 
 #include "module_factory.hpp"
 #include "station.hpp"
@@ -116,13 +116,14 @@ public:
    * @param file The file to open
   **/
     void read_config_file(std::string file);
-    void config_debug(const json_spirit::Value& value);
-    void config_modules(const json_spirit::Value& value);
-    void config_forcing(const json_spirit::Value& value);
-    void config_meshes(const json_spirit::Value& value);
+    void config_debug(const pt::ptree& value);
+    void config_modules(const pt::ptree& value);
+    void config_meshes(const pt::ptree& value);
+    void config_forcing(const pt::ptree& value);
+
     void config_matlab(const json_spirit::Value& value);
-    void config_output(const json_spirit::Value& value);
-    void config_global(const json_spirit::Value& value);
+    void config_output(const pt::ptree& value);
+    void config_global(const pt::ptree& value);
     
     /**
      * Initializes the logger and Matlab engine
@@ -173,8 +174,7 @@ private:
     public:
         output_info()
         {
-            plot = false;
-            out_file = "";
+            fname = "";
             northing = 0;
             easting = 0;
             face = NULL;
@@ -184,9 +184,15 @@ private:
             timeseries,
             mesh
         };
+        enum mesh_outputs
+        {
+            vtp,
+            vtu,
+            ascii
+        };
         output_type type;
-        bool plot;
-        std::string out_file;
+        std::vector<mesh_outputs> mesh_output_formats;
+        std::string fname;
         double northing;
         double easting;
         std::vector<std::string> variables;

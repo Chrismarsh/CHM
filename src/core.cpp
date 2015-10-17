@@ -72,114 +72,83 @@ core::~core()
     LOG_DEBUG << "Finished";
 }
 
-void core::config_debug(const json_spirit::Value& value)
+void core::config_debug(const pt::ptree& value)
 {
-    for (auto& jtr : value.get_obj())
-    {
-        const json_spirit::Pair& pair = jtr;
+    LOG_DEBUG << "Found debug section";
+    std::string s = value.get("debug_level","debug");
 
-        if (pair.name_ == "debug_level")
-        {
-            std::string s = pair.value_.get_str();
+    if (s == "debug")
+        _log_level = debug;
+    else if (s == "warning")
+        _log_level = warning;
+    else if (s == "error")
+        _log_level = error;
+    else if (s == "verbose")
+        _log_level = verbose;
 
-            if (s == "debug")
-                _log_level = debug;
-            else if (s == "warning")
-                _log_level = warning;
-            else if (s == "error")
-                _log_level = error;
-            else if (s == "verbose")
-                _log_level = verbose;
-            else
-            {
-                _log_level = debug; //default to debug 
-            }
+    LOG_DEBUG << "Setting log severity to " << _log_level;
 
-            LOG_DEBUG << "Setting log severity to " << _log_level;
+    _log_sink->set_filter(
+            severity >= _log_level
+            );
 
-            _log_sink->set_filter(
-                    severity >= _log_level
-                    );
-        }
-
-    }
 }
 
-void core::config_modules(const json_spirit::Value& value)
+void core::config_modules(const pt::ptree& value)
 {
+    LOG_DEBUG << "Found modules section";
     int modnum = 0;
     //loop over the list of requested modules
     // these are in the format "type":"ID"
-    for (auto& itr : value.get_array())
+    for (auto& itr : value)
     {
 
-        const json_spirit::Value& v = itr;
-        LOG_DEBUG << "Module type=" << v.get_str();
-
-        boost::shared_ptr<module_base> m(_mfactory.get(v.get_str()));
-
+        std::string module = itr.second.data();
+        LOG_DEBUG << "Module ID=" << module;
+        boost::shared_ptr<module_base> m(_mfactory.get(module));
         //internal tracking of module initialization order
 
         m->IDnum = modnum;
         modnum++;
         _modules.push_back(std::make_pair(m, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
     }
+
+    if (modnum == 0)
+    {
+        BOOST_THROW_EXCEPTION(no_modules_defined() << errstr_info("No modules defined. Aborting"));
+    }
 }
 
-void core::config_forcing(const json_spirit::Value& value)
+void core::config_forcing(const pt::ptree& value)
 {
     LOG_DEBUG << "Found forcing section";
     //loop over the list of forcing data
-    for (auto& jtr : value.get_obj())
+    for (auto& itr : value)
     {
-        const json_spirit::Pair& pair = jtr;
-        const std::string& name = pair.name_;
-        const json_spirit::Value& value = pair.value_;
+        std::string station_name = itr.second.data();
 
+        boost::shared_ptr<station> s = boost::make_shared<station>();
+        s->ID(station_name);
 
-        if (name == "station")
-        {
-            boost::shared_ptr<station> s = boost::make_shared<station>();
-            for (auto& ktr : value.get_obj())
-            {
-                const json_spirit::Pair& pair = ktr;
-                const std::string& name = pair.name_;
+        double easting = itr.second.get<double>("easting");
+        s->x(easting);
 
+        double northing = itr.second.get<double>("northing");
+        s->y(northing);
 
-                if (name == "ID")
-                {
-                    s->ID(pair.value_.get_str());
-                } else if (name == "easting")
-                {
-                    s->x(pair.value_.get_real());
-                } else if (name == "northing")
-                {
-                    s->y(pair.value_.get_real());
-                } else if (name == "elevation")
-                {
-                    s->z(pair.value_.get_real());
-                } else if (name == "file")
-                {
-                    s->open(pair.value_.get_str());
-                } else
-                {
-                    LOG_INFO << "Unknown value '" << name << "'";
-                }
+        double elevation = itr.second.get<double>("elevation");
+        s->z(elevation);
 
-            }
+        std::string file = itr.second.get<std::string>("file");
+        s->open(file);
 
-            LOG_DEBUG << "New station created " << *s;
-            _global->stations.push_back(s);
-
-        } else
-        {
-            LOG_INFO << "Unknown forcing type " << name << ", skipping";
-        }
+        LOG_DEBUG << "New station created " << *s;
+        _global->stations.push_back(s);
 
     }
 }
 
-void core::config_meshes(const json_spirit::Value& value)
+void core::config_meshes(const pt::ptree& value)
 {
     LOG_DEBUG << "Found meshes section";
 #ifdef MATLAB
@@ -187,52 +156,25 @@ void core::config_meshes(const json_spirit::Value& value)
 #else
     _mesh = boost::make_shared<triangulation>();
 #endif
-    for (auto& jtr : value.get_obj())
+
+    std::string dem = value.get<std::string>("DEM.file");
+    LOG_DEBUG << "Found DEM mesh " << dem;
+
+    _mesh->from_file(dem);
+    if (_mesh->size_faces() == 0)
+        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
+
+    LOG_DEBUG << "Initializing DEM mesh attributes";
+    #pragma omp parallel for
+    for(size_t i = 0; i<_mesh->size_faces(); i++)
     {
-        const json_spirit::Pair& pair = jtr;
-        //        const std::string& name = pair.name_;
-        //        const json_spirit::Value& value = pair.value_;
-
-        if (pair.name_ == "")
-        {
-            BOOST_THROW_EXCEPTION(missing_value_error()
-                    << errstr_info("Empty mesh name"));
-
-            return;
-        }
-
-        std::string ID = pair.name_;
-        std::string file = "";
-
-        LOG_DEBUG << "Found mesh " << ID;
-
-        //itr over the mesh paramters
-        for (auto& ktr : pair.value_.get_obj())
-        {
-            const json_spirit::Pair& pair = ktr;
-            //            const std::string& name = pair.name_;
-            //            const json_spirit::Value& value = pair.value_;
-
-            if (pair.name_ == "file")
-            {
-                file = pair.value_.get_str();
-            }
-
-        }
-        _mesh->from_file(file);
-        if (_mesh->size_faces() == 0)
-            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
-
-        #pragma omp parallel for
-        for(size_t i = 0; i<_mesh->size_faces(); i++)
-        {
-            auto face = _mesh->face(i);
-            face->slope();
-            face->aspect();
-            face->center();
-            face->normal();
-        }
+        auto face = _mesh->face(i);
+        face->slope();
+        face->aspect();
+        face->center();
+        face->normal();
     }
+
 }
 
 void core::config_matlab(const json_spirit::Value& value)
@@ -264,163 +206,105 @@ void core::config_matlab(const json_spirit::Value& value)
 #endif
 }
 
-void core::config_output(const json_spirit::Value& value)
+void core::config_output(const pt::ptree& value)
 {
     LOG_DEBUG << "Found output section";
     //loop over the list of matlab options
-    for (auto& jtr : value.get_obj())
+    for (auto& itr : value)
     {
-        const json_spirit::Pair& pair = jtr;
-        const std::string& name = pair.name_;
-        const json_spirit::Value& value = pair.value_;
-
-        if (name == "timeseries" || name == "mesh")
+        output_info out;
+        std::string outype = itr.first.data();
+        if (outype == "timeseries"  )
         {
-            output_info out;
-            if (name == "timeseries")
-                out.type = output_info::timeseries;
-            else if (name == "mesh")
-                out.type = output_info::mesh;
 
-            LOG_DEBUG << "Found " << name;
-            for (auto& ktr : value.get_obj()) //loop over all the paths
-            {
-                const json_spirit::Pair& pair = ktr;
-                const std::string& name = pair.name_;
-                const json_spirit::Value& value = pair.value_;
+//            if (name == "timeseries")
+//                out.type = output_info::timeseries;
+//            out.face = _mesh->locate_face(out.easting, out.northing);
+//            if (out.face == NULL)
+//            {
+//                LOG_WARNING << "Requested an output point that is not in the triangulation domain, skipping";
+//            } else
+//            {
+//                _outputs.push_back(out);
+//            }
+            LOG_WARNING << "Timeseries output not implemented";
+        }
+        else if(outype == "mesh")
+        {
+            out.type = output_info::mesh;
+            out.fname = itr.second.get<std::string>("base_name");
 
-                if (name == "northing")
-                    out.northing = value.get_real();
-                else if (name == "easting")
-                    out.easting = value.get_real();
-                else if (name == "variables")
-                {
-                    for (auto& itr_vars : value.get_array())
-                    {
-                        const json_spirit::Value& v = itr_vars;
-                        LOG_VERBOSE << "Output variable: " << v.get_str();
-                        out.variables.push_back(v.get_str());
-                    }
-                } else if (name == "file")
-                    out.out_file = value.get_str();
-                else if (name == "plot")
-                    out.plot = value.get_bool();
-            }
-
-            if (name == "timeseries")
+            for(auto& jtr: itr.second.get_child("format"))
             {
-                out.face = _mesh->locate_face(out.easting, out.northing);
-                if (out.face == NULL)
-                {
-                    LOG_WARNING << "Requested an output point that is not in the triangulation domain, skipping";
-                } else
-                {
-                    _outputs.push_back(out);
-                }
-            } else
-            {
-                _outputs.push_back(out);
+                LOG_DEBUG << "Output format found: " << jtr.second.data();
+                if(jtr.second.data() == "vtu")
+                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
+                if(jtr.second.data() == "vtp")
+                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtp);
+                if(jtr.second.data() == "ascii")
+                    out.mesh_output_formats.push_back(output_info::mesh_outputs::ascii);
             }
 
         } else
         {
-            LOG_WARNING << "Unknown output type: " << name;
+            LOG_WARNING << "Unknown output type: " << itr.second.data();
         }
+        _outputs.push_back(out);
     }
 }
 
-void core::config_global(const json_spirit::Value& value)
+void core::config_global(const pt::ptree& value)
 {
     LOG_DEBUG << "Found global section";
-    for (auto& jtr : value.get_obj())
-    {
-        const json_spirit::Pair& pair = jtr;
-        const std::string& name = pair.name_;
-        const json_spirit::Value& value = pair.value_;
 
-        if (name == "latitude")
-        {
-            _global->_lat = value.get_real();
-        } else if (name == "longitude")
-        {
-            _global->_lon = value.get_real();
-        } else if (name == "UTC_offset")
-        {
-            _global->_utc_offset = value.get_int();
-        }
-    }
+    _global->_lat = value.get<double>("latitude");
+
+    _global->_lon = value.get<double>("longitude");
+    _global->_utc_offset = value.get<double>("UTC_offset");
+
 }
 
 void core::read_config_file(std::string file)
 {
     BOOST_LOG_FUNCTION();
-    std::ifstream is(file);
-    if (is.fail())
-    {
-        BOOST_THROW_EXCEPTION(file_read_error()
-                << boost::errinfo_errno(errno)
-                << boost::errinfo_file_name(file)
-                );
-
-    }
+    config cfg;
+    cfg.open(file);
 
     LOG_DEBUG << "Reading configuration file " << file;
-    //holds the top level object { ... }
-    json_spirit::Value value;
+    /*
+     * We expect the following sections:
+     *  modules
+     *  meshes
+     *  forcing
+     * The rest may be optional, and will override the defaults.
+     */
+    config_modules(cfg.get_child("modules"));
+    config_meshes(cfg.get_child("meshes"));
+    config_forcing(cfg.get_child("forcing"));
 
-    json_spirit::read(is, value);
 
-    //get the top-level 
-    const json_spirit::Object& top_level = value.get_obj();
+    config_debug(cfg.get_child("debug"));
 
+    LOG_DEBUG << cfg.get<std::string>("output.mesh.base_name");
+    config_output(cfg.get_child("output"));
+    config_global(cfg.get_child("global"));
 
-    //loop over the top-level options
-    for (auto& itr : top_level)
-    {
-        const json_spirit::Pair& pair = itr;
-        const std::string& name = pair.name_;
-        const json_spirit::Value& value = pair.value_;
-
-        //check for debug specification
-        if (name == "debug")
-        {
-            config_debug(value);
-        } else if (name == "modules")
-        {
-            config_modules(value);
-
-        } else if (name == "forcing")
-        {
-            config_forcing(value);
-        } else if (name == "meshes")
-        {
-            config_meshes(value);
-        } else if (name == "matlab")
-        {
-#ifdef NOMATLAB
-            config_matlab(value);
-#endif
-        } else if (name == "output")
-        {
-            config_output(value);
-        } else if (name == "global")
-        {
-            config_global(value);
-        } else
-        {
-            const json_spirit::Pair& pair = itr;
-            const std::string& name = pair.name_;
-            LOG_INFO << "Unknown section '" << name << "', skipping";
-        }
-    }
-
-    //    if (found_modules == false)
-    //    {
-    //        BOOST_THROW_EXCEPTION(no_modules_defined()
-    //                << errstr_info(std::string("No module section found in ") + file)
-    //                );
-    //    }
-
+//#ifdef NOMATLAB
+//            config_matlab(value);
+//#endif
+//        } else if (name == "output")
+//        {
+//            config_output(value);
+//        } else if (name == "global")
+//        {
+//            config_global(value);
+//        } else
+//        {
+//            const json_spirit::Pair& pair = itr;
+//            const std::string& name = pair.name_;
+//            LOG_INFO << "Unknown section '" << name << "', skipping";
+//        }
+//    }
 
     LOG_DEBUG << "Finished initialization";
 
@@ -802,17 +686,34 @@ void core::run()
 
         }
 
+        for (auto& itr : _outputs)
+        {
+            if (itr.type == output_info::output_type::mesh)
+            {
+               for(auto jtr : itr.mesh_output_formats)
+               {
+                   if(jtr == output_info::mesh_outputs::vtu)
+                       _mesh->mesh_to_vtu(itr.fname+std::to_string(num_ts)+".vtu");
+                   if(jtr == output_info::mesh_outputs::vtp)
+                       _mesh->mesh_to_ascii(itr.fname+std::to_string(num_ts)+".vtp");
+                   if(jtr == output_info::mesh_outputs::ascii)
+                       LOG_WARNING << "Ascii output not implemented";
+                       //_mesh->mesh_to_ascii(itr.fname+".vtp");
+               }
+            }
+        }
 
         //save timestep to file
-        std::stringstream ss;
-        ss << "marmot" << num_ts << ".vtu";
-        _mesh->mesh_to_vtu(ss.str());
+//        std::stringstream ss;
+//        ss << "marmot" << num_ts << ".vtu";
+//        _mesh->mesh_to_vtu(ss.str());
+//
+//
+//        ss.str("");
+//        ss.clear();
+//        ss << "marmot" << num_ts << ".vtp";
+//        _mesh->mesh_to_ascii(ss.str());
 
-
-        ss.str("");
-        ss.clear();
-        ss << "marmot" << num_ts << ".vtp";
-        _mesh->mesh_to_ascii(ss.str());
         num_ts++;
 
         c.tic();
@@ -840,28 +741,28 @@ void core::run()
 
 
 
-    for (auto& itr : _outputs)
-    {
-#ifdef NOMATLAB
-        if (itr.plot)
-        {
-            //loop through all the request variables
-            for (auto& jtr : itr.variables)
-            {
-                if (itr.type == output_info::mesh)
-                {
-                    _mesh->plot(jtr);
-                } else if (itr.type == output_info::timeseries)
-                {
-                    _mesh->plot_time_series(itr.easting, itr.northing, jtr);
-                }
-            }
-        }
-#endif
-        if (itr.out_file != "")
-        {
-            _mesh->timeseries_to_file(itr.face, itr.out_file);
-        }
-    }
+//    for (auto& itr : _outputs)
+//    {
+//#ifdef NOMATLAB
+//        if (itr.plot)
+//        {
+//            //loop through all the request variables
+//            for (auto& jtr : itr.variables)
+//            {
+//                if (itr.type == output_info::mesh)
+//                {
+//                    _mesh->plot(jtr);
+//                } else if (itr.type == output_info::timeseries)
+//                {
+//                    _mesh->plot_time_series(itr.easting, itr.northing, jtr);
+//                }
+//            }
+//        }
+//#endif
+//        if (itr.out_file != "")
+//        {
+//            _mesh->timeseries_to_file(itr.face, itr.out_file);
+//        }
+//    }
 
 }
