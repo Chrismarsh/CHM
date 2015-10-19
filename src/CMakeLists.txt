@@ -1,13 +1,4 @@
 
-#http://www.cmake.org/cmake/help/v2.8.10/cmake.html#variable:CMAKE_LANG_COMPILER_ID
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 -xhost -axsse4.2 -opt-prefetch -std=c++11")
-
-
-set(JSON_SPIRIT_SRCS
-	json_spirit/json_spirit_reader.cpp 
-	json_spirit/json_spirit_value.cpp 
-	json_spirit/json_spirit_writer.cpp 
- )
 
 set(MODULE_SRCS
 
@@ -45,10 +36,9 @@ set(CHM_SRCS
 		utility/crc_hash_compare.cpp
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
-		config.cpp)
+		)
 
 set (HEADER_FILES
-	json_spirit
         mesh
         modules
         modules/interp_met
@@ -108,7 +98,6 @@ add_executable(
 	CHM 
 	${CHM_SRCS} 
         ${MODULE_SRCS}
-	${JSON_SPIRIT_SRCS}
         ${LIBMAW_SRCS}
  )
 

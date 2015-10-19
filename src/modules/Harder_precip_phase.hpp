@@ -11,7 +11,6 @@
 #include <armadillo>
 #define _USE_MATH_DEFINES
 #include <math.h>
-#include "config.h"
 #include <boost/math/tools/roots.hpp>
 
 /**
@@ -33,7 +32,7 @@
 class Harder_precip_phase : public module_base
 {
 public:
-    Harder_precip_phase(std::string ID);
+    Harder_precip_phase();
     ~Harder_precip_phase();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

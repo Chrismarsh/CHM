@@ -262,7 +262,7 @@ void timeseries::open(std::string path)
                             );
                     try
                     {
-                        LOG_VERBOSE << "Found " << *headerItr << ": " << doubles[0];
+                        //LOG_VERBOSE << "Found " << *headerItr << ": " << doubles[0];
                         a->second.push_back(boost::lexical_cast<double>(doubles[0]));
                     } catch (...)
                     {
@@ -274,7 +274,7 @@ void timeseries::open(std::string path)
                 } else if ((dates = dateTime.tokenize<std::string>(*itr)).size() == 1)
                 {
 
-                    LOG_VERBOSE << "Found " << *headerItr << ": " << dates[0];
+                    //LOG_VERBOSE << "Found " << *headerItr << ": " << dates[0];
                     _date_vec.push_back(boost::posix_time::from_iso_string(dates[0])); //from_iso_string
                     
                     //now we know where the date colum is, we remove it from the hashmap if we haven't already
@@ -327,7 +327,7 @@ void timeseries::open(std::string path)
     //unknown order
     for (ts_hashmap::iterator itr = _variables->begin(); itr != _variables->end(); itr++)
     {
-        LOG_VERBOSE << itr->first;
+        //LOG_VERBOSE << itr->first;
         headerItems[i++] = itr->first;
     }
 

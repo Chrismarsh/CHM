@@ -32,7 +32,7 @@
 class Solar : public module_base
 {
     public:
-        Solar(std::string ID);
+        Solar();
         ~Solar();
         virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

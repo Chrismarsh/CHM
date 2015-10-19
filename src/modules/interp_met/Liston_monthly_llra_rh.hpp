@@ -54,7 +54,7 @@
 class Liston_monthly_llra_rh : public module_base
 {
 public:
-    Liston_monthly_llra_rh(std::string ID);
+    Liston_monthly_llra_rh();
     ~Liston_monthly_llra_rh();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

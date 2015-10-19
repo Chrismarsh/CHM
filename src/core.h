@@ -20,7 +20,9 @@
 #include <boost/graph/graphviz.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
-
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+namespace pt = boost::property_tree;
 
 
 #include "logger.hpp"
@@ -28,8 +30,6 @@
 
 #include "triangulation.hpp"
 
-#include "config.h"
-#include "json_spirit.h"
 
 
 #include "module_factory.hpp"
@@ -117,11 +117,11 @@ public:
   **/
     void read_config_file(std::string file);
     void config_debug(const pt::ptree& value);
-    void config_modules(const pt::ptree& value);
+    void config_modules(const pt::ptree& value,const pt::ptree& config);
     void config_meshes(const pt::ptree& value);
     void config_forcing(const pt::ptree& value);
 
-    void config_matlab(const json_spirit::Value& value);
+    void config_matlab(const pt::ptree& value);
     void config_output(const pt::ptree& value);
     void config_global(const pt::ptree& value);
     
@@ -141,9 +141,8 @@ private:
     
     //module factory for creating the specified modules
     module_factory _mfactory;
-    
 
-    
+
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
     

@@ -31,7 +31,7 @@
 class Liston_wind : public module_base
 {
 public:
-    Liston_wind(std::string ID);
+    Liston_wind();
     ~Liston_wind();
     virtual void run(mesh domain, boost::shared_ptr<global> global_param);
     virtual void init(mesh domain);

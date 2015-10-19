@@ -1,8 +1,8 @@
 
 #include "solar.hpp"
 
-Solar::Solar( std::string ID)
-        :module_base(ID,parallel::data)
+Solar::Solar()
+        :module_base(parallel::data)
 {
     provides("solar_angle");
     provides("Qsi");

@@ -31,7 +31,7 @@
 class Sicart_ilwr : public module_base
 {
 public:
-    Sicart_ilwr(std::string ID);
+    Sicart_ilwr();
     ~Sicart_ilwr();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

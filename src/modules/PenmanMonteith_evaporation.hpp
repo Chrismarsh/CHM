@@ -33,7 +33,7 @@
 class PenmanMonteith_evaporation : public module_base
 {
 public:
-    PenmanMonteith_evaporation(std::string ID);
+    PenmanMonteith_evaporation();
     ~PenmanMonteith_evaporation();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

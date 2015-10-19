@@ -1,7 +1,7 @@
 #include "Walcek_atm_trans.hpp"
 
-Walcek_atm_trans::Walcek_atm_trans(std::string ID)
-        :module_base(ID,parallel::data)
+Walcek_atm_trans::Walcek_atm_trans()
+        :module_base(parallel::data)
 {
     provides("atm_trans");
 

@@ -2,9 +2,13 @@
 
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+namespace pt = boost::property_tree;
 
 #include "triangulation.hpp"
 #include "global.hpp"
+
 
 //Create a process modules group in the doxygen docs to add individual modules to
 /**
@@ -46,6 +50,11 @@ public:
     std::string ID;
 
     /**
+     * Configuration file. If module does not need one, then this will contain nothing
+     */
+    pt::ptree cfg;
+
+    /**
     * Upon instantiation the module is assigned a value based upon its initialization order. Primarily used to dependency resolution. No real usage otherwise.
     */
     int IDnum;
@@ -58,14 +67,13 @@ public:
     /**
      * Consturctor that initializes everything
      */
-    module_base(std::string ID,parallel type)
+    module_base(parallel type)
     {
         _provides = boost::make_shared<std::vector<std::string> >();
         _depends = boost::make_shared<std::vector<std::string> >();
         _depends_from_met = boost::make_shared<std::vector<std::string> >();
         IDnum = 0;
         _parallel_type = type;
-        this->ID = ID;
 
         //nothing
     };

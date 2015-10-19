@@ -29,7 +29,7 @@
 class precip : public module_base
 {
 public:
-    precip(std::string ID);
+    precip();
     ~precip();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

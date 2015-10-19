@@ -1,8 +1,8 @@
 #include "Liston_monthly_llra_rh.hpp"
 
 
-Liston_monthly_llra_rh::Liston_monthly_llra_rh( std::string ID)
-        :module_base(ID,parallel::data)
+Liston_monthly_llra_rh::Liston_monthly_llra_rh()
+        :module_base(parallel::data)
 
 {
     provides("rh");

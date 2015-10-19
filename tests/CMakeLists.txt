@@ -11,11 +11,6 @@ set(TEST_SRCS
     test_regexptokenizer.cpp
 #    test_daily.cpp
 )
-set(JSON_SPIRIT_SRCS
-	../src/json_spirit/json_spirit_reader.cpp 
-	../src/json_spirit/json_spirit_value.cpp 
-	../src/json_spirit/json_spirit_writer.cpp 
- )
 
 set(MODULE_SRCS
 
@@ -45,7 +40,6 @@ set(CHM_SRCS
 		../src/module_factory.cpp
 		../src/global.cpp
 		../src/station.cpp
-
 		../src/variable_map.cpp
 
 		../src/mesh/triangulation.cpp
@@ -62,7 +56,6 @@ set(CHM_SRCS
 		../src/utility/timer.cpp
 		../src/utility/str_format.h)
 set (HEADER_FILES
-	../src/json_spirit
     ../src/mesh
     ../src/modules
 	../src/modules/interp_met
@@ -111,7 +104,6 @@ add_executable(
     ${CHM_SRCS}
     ${TEST_SRCS} 
     ${MODULE_SRCS}
-    ${JSON_SPIRIT_SRCS}
     ${LIBMAW_SRCS}
 )
 

@@ -1,8 +1,8 @@
 
 #include "PenmanMonteith_evaporation.hpp"
 
-PenmanMonteith_evaporation::PenmanMonteith_evaporation( std::string ID)
-        :module_base(ID,parallel::data)
+PenmanMonteith_evaporation::PenmanMonteith_evaporation()
+        :module_base(parallel::data)
 {
 
     depends("Qsi");

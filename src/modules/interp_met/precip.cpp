@@ -1,7 +1,7 @@
 #include "precip.hpp"
 
-precip::precip( std::string ID)
-        :module_base(ID,parallel::data)
+precip::precip()
+        :module_base(parallel::data)
 
 {
 

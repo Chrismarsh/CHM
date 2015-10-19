@@ -1,5 +1,3 @@
-//#define MATLAB
-#define _FORTIFY_SOURCE 0
 #include <iostream>
 #include "core.h"
 

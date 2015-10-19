@@ -1,7 +1,7 @@
 #include "const_llra_ta.hpp"
 
-const_llra_ta::const_llra_ta( std::string ID)
-        :module_base(ID,parallel::data)
+const_llra_ta::const_llra_ta()
+        :module_base(parallel::data)
 
 {
     provides("t");

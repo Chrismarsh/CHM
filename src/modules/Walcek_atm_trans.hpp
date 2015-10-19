@@ -25,7 +25,7 @@
 class Walcek_atm_trans : public module_base
 {
 public:
-    Walcek_atm_trans(std::string ID);
+    Walcek_atm_trans();
     ~Walcek_atm_trans();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

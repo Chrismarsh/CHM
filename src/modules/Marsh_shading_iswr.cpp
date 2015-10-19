@@ -1,8 +1,8 @@
 
 #include "Marsh_shading_iswr.hpp"
 
-Marsh_shading_iswr::Marsh_shading_iswr(std::string ID)
-        :module_base(ID,parallel::domain)
+Marsh_shading_iswr::Marsh_shading_iswr()
+        :module_base(parallel::domain)
 {
     provides("shadowed");
     provides("z_prime");

@@ -94,7 +94,7 @@ void core::config_debug(const pt::ptree& value)
 
 }
 
-void core::config_modules(const pt::ptree& value)
+void core::config_modules(const pt::ptree& value,const pt::ptree& config)
 {
     LOG_DEBUG << "Found modules section";
     int modnum = 0;
@@ -105,7 +105,19 @@ void core::config_modules(const pt::ptree& value)
 
         std::string module = itr.second.data();
         LOG_DEBUG << "Module ID=" << module;
-        boost::shared_ptr<module_base> m(_mfactory.get(module));
+
+
+        //try grabbing a config for this module, empty string default
+        pt::ptree cfg;
+
+        try
+        {
+            cfg=config.get_child(module);
+        }catch(pt::ptree_bad_path& e)
+        {
+            LOG_DEBUG << "No config for " << module;
+        }
+        boost::shared_ptr<module_base> m(_mfactory.get(module,cfg));
         //internal tracking of module initialization order
 
         m->IDnum = modnum;
@@ -177,7 +189,7 @@ void core::config_meshes(const pt::ptree& value)
 
 }
 
-void core::config_matlab(const json_spirit::Value& value)
+void core::config_matlab(const pt::ptree& value)
 {
     LOG_DEBUG << "Found matlab section";
 #ifdef MATLAB
@@ -267,10 +279,41 @@ void core::config_global(const pt::ptree& value)
 void core::read_config_file(std::string file)
 {
     BOOST_LOG_FUNCTION();
-    config cfg;
-    cfg.open(file);
+    pt::ptree cfg;
+    try
+    {
+        //load the module config into it's own ptree
+        pt::read_json(file, cfg);
 
-    LOG_DEBUG << "Reading configuration file " << file;
+        LOG_DEBUG << "Reading configuration file " << file;
+
+        /*
+         * The module config section is optional, but if it exists, we need it to
+         * setup the modules, so check if it exists
+         */
+             //for each module: config pair
+            for(auto& itr: cfg.get_child("config"))
+            {
+                pt::ptree module_config;
+
+                //load the module config into it's own ptree
+                pt::read_json(itr.second.data(), module_config);
+
+                std::string module_name = itr.first.data();
+                //replace the string config name with that config file
+                cfg.put_child("config."+module_name,module_config);
+ //               LOG_DEBUG << module_config.get<double>("const.b");
+ //               LOG_DEBUG << cfg.get<double>("config.Harder_precip_phase.const.b");
+            }
+    }
+    catch(pt::ptree_bad_path& e)
+    {
+        LOG_DEBUG << "Optional section Module config not found";
+    }
+    catch (pt::json_parser_error &e)
+    {
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info( "Error reading file: " + e.filename() + " on line: " + std::to_string(e.line()) + "with error: " + e.message()));
+    }
     /*
      * We expect the following sections:
      *  modules
@@ -278,16 +321,36 @@ void core::read_config_file(std::string file)
      *  forcing
      * The rest may be optional, and will override the defaults.
      */
-    config_modules(cfg.get_child("modules"));
+    config_modules(cfg.get_child("modules"),cfg.get_child("config"));
     config_meshes(cfg.get_child("meshes"));
     config_forcing(cfg.get_child("forcing"));
 
+    /*
+     * We can expect the following sections to be optional.
+     */
+    try
+    {
+        config_debug(cfg.get_child("debug"));
+    }catch(pt::ptree_bad_path& e)
+    {
+        LOG_DEBUG << "Optional section Debug not found";
+    }
 
-    config_debug(cfg.get_child("debug"));
+    try
+    {
+        config_output(cfg.get_child("output"));
+    }catch(pt::ptree_bad_path& e)
+    {
+        LOG_DEBUG << "Optional section Output not found";
+    }
 
-    LOG_DEBUG << cfg.get<std::string>("output.mesh.base_name");
-    config_output(cfg.get_child("output"));
-    config_global(cfg.get_child("global"));
+    try
+    {
+        config_global(cfg.get_child("global"));
+    }catch(pt::ptree_bad_path& e)
+    {
+        LOG_DEBUG << "Optional section Global not found";
+    }
 
 //#ifdef NOMATLAB
 //            config_matlab(value);
@@ -492,10 +555,13 @@ void core::_determine_module_dep()
     file.close();
 
     //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
+
     std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp");
     std::system("dot -Tpdf modules.dot -o modules.pdf");
     std::remove("modules.dot.tmp");
     std::remove("filter.gvpr");
+
+
 
     std::stringstream ss;
     size_t order = 0;

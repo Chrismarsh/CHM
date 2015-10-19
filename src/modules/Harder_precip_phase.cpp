@@ -1,6 +1,6 @@
 #include "Harder_precip_phase.hpp"
-Harder_precip_phase::Harder_precip_phase(std::string ID)
-        :module_base(ID,parallel::data)
+Harder_precip_phase::Harder_precip_phase()
+        :module_base(parallel::data)
 {
     depends("t");
     depends("rh");
@@ -15,10 +15,8 @@ Harder_precip_phase::Harder_precip_phase(std::string ID)
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
-    config cfg;
-    cfg.open("Harder_precip_phase.config");
-    double b = cfg.get<double>("const.b");
-    double c = cfg.get<double>("const.c");
+
+
 
 }
 Harder_precip_phase::~Harder_precip_phase()
@@ -73,8 +71,10 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
 
     double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
 
-    double b=2.630006;
-    double c=0.09336;
+    double b = cfg.get<double>("const.b");
+    double c = cfg.get<double>("const.c");
+//    double b=2.630006;
+//    double c=0.09336;
     double frTi = 1 / (1+b*pow(c,Ti));
 
     elem->set_face_data("Ti",Ti);

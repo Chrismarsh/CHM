@@ -1,7 +1,7 @@
 #include "Liston_wind.hpp"
 
-Liston_wind::Liston_wind( std::string ID)
-        :module_base(ID,parallel::domain)
+Liston_wind::Liston_wind()
+        :module_base(parallel::domain)
 
 {
 

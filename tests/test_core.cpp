@@ -2,6 +2,11 @@
 #include "../src/core.h"
 #include "gtest/gtest.h"
 
+/**
+ * Tests various functions of the core object including:
+ * - Reading config files
+ *
+ */
 class CoreTest : public testing::Test
 {
 protected:
@@ -13,7 +18,7 @@ protected:
         ASSERT_NO_THROW(c0.read_config_file("test_config_file.config"));
     }
     core c0;
-    void ReadConfigFile_Debug();
+
 };
 
 TEST_F(CoreTest,ThrowsOnInvalidFile)
@@ -28,18 +33,30 @@ TEST_F(CoreTest,NoThrowOnValidFile)
     ASSERT_NO_THROW(c1.read_config_file("test_config_file.config"));
 }
 
-void CoreTest::ReadConfigFile_Debug()
+//Tests proper handling when missing a required section: Modules
+TEST_F(CoreTest,MissingSectionModules)
 {
-    ASSERT_EQ(c0._log_level,debug);
+    core c1;
+    ASSERT_ANY_THROW(c1.read_config_file("test_missing_modules.config"));
 }
-//test different sections
-TEST_F(CoreTest,ReadConfigFile_Debug)
+
+//Tests proper handling when a required section is empty: Modules
+TEST_F(CoreTest,EmptySectionModules)
 {
-    ReadConfigFile_Debug();
+    core c1;
+    ASSERT_ANY_THROW(c1.read_config_file("test_empty_modules.config"));
 }
-//
-//TEST_F(CoreTest,ReadConfigFile_Modules)
-//{
-//   ASSERT_EQ(c0._modules[0].first->ID,"solar");
-//   ASSERT_EQ(c0._modules[1].first->ID,"shadows");
-//}
+
+//Tests proper handling when an optional section is missing
+TEST_F(CoreTest,OptionalSectionDebug)
+{
+    core c1;
+    ASSERT_NO_THROW(c1.read_config_file("test_optional_section.config"));
+}
+
+//Tests proper handling when an optional section is missing
+TEST_F(CoreTest,BrokenConfig)
+{
+    core c1;
+    ASSERT_ANY_THROW(c1.read_config_file("test_malformed_config.config"));
+}

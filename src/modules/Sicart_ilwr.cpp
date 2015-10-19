@@ -1,7 +1,7 @@
 #include "Sicart_ilwr.hpp"
 
-Sicart_ilwr::Sicart_ilwr( std::string ID)
-        :module_base(ID,parallel::data)
+Sicart_ilwr::Sicart_ilwr()
+        :module_base(parallel::data)
 {
 
     depends("t");
