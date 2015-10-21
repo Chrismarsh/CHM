@@ -1,5 +1,7 @@
 #include <iostream>
+#include <string>
 #include "core.h"
+
 
 
 
@@ -8,11 +10,10 @@ int main (int argc, char *argv[])
 
     try
     {
-        //setup logging first
-        
+
         core kernel;
 
-        kernel.read_config_file("CHM.config") ;
+        kernel.init(argc, argv) ;
         
         kernel.run();
     }

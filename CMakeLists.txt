@@ -88,6 +88,7 @@ find_package(Boost
              log
              thread
              regex
+             program_options
              REQUIRED)
 
 find_package(MeteoIO REQUIRED)

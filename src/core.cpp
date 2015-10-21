@@ -276,16 +276,84 @@ void core::config_global(const pt::ptree& value)
 
 }
 
-void core::read_config_file(std::string file)
+std::pair<std::string,std::vector<std::pair<std::string,std::string>>> core::config_cmdl_options(int argc, char **argv)
+{
+    std::string version = "CHM version 0.1";
+
+    std::string config_file = "CHM.config";
+
+    po::options_description desc("Allowed options.");
+    desc.add_options()
+            ("help", "This message")
+            ("version,v","Program version")
+            ("config-file,f", po::value<std::string>(&config_file), "Configuration file to use. Can be passed without --config-file [-f] as well ")
+            ("config,c",po::value<std::vector<std::string>>(),"Specifies a configuration parameter."
+                    "This can over-ride existing values."
+                    "The value is specified with a fully qualified config path. "
+                    "For example:\n"
+                    "-c config.Harder_precip_phase.const.b:1.5 -c config.debug.debug_level:\"error\"")
+            ;
+
+
+    //allow for specifgying config w/o --config
+    po::positional_options_description p;
+    p.add("config-file", -1);
+
+    po::variables_map vm;
+    po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
+    po::notify(vm);
+
+    if (vm.count("help"))
+    {
+        cout << desc << std::endl;
+        exit(1);
+    }
+    else if (vm.count("version"))
+    {
+        cout << version << std::endl;
+        exit(1);
+    }
+
+    std::vector<std::pair<std::string,std::string>> config_extra;
+    if(vm.count("config"))
+    {
+        boost::char_separator<char> sep(":");
+        for(auto&itr : vm["config"].as< std::vector<std::string>>())
+        {
+            boost::tokenizer<boost::char_separator<char>> tok(itr,sep);
+            std::vector<std::string> v;
+
+            for(auto& jtr : tok)
+                v.push_back(jtr);
+
+            if(v.size() != 2)
+                BOOST_THROW_EXCEPTION(io_error() << errstr_info("Config value of " + itr + " is invalid."));
+
+            std::pair<std::string, std::string> override;
+            override.first = v[0];
+            override.second = v[1];
+            config_extra.push_back(override);
+        }
+    }
+
+    return std::make_pair(config_file,config_extra);
+   // return config_extra;
+}
+
+void core::init(int argc, char **argv)
 {
     BOOST_LOG_FUNCTION();
+
+    //get any command line options
+    auto cmdl_options = config_cmdl_options(argc, argv);
+
     pt::ptree cfg;
     try
     {
         //load the module config into it's own ptree
-        pt::read_json(file, cfg);
+        pt::read_json(cmdl_options.first, cfg);
 
-        LOG_DEBUG << "Reading configuration file " << file;
+        LOG_DEBUG << "Reading configuration file " << argc;
 
         /*
          * The module config section is optional, but if it exists, we need it to
@@ -305,6 +373,7 @@ void core::read_config_file(std::string file)
  //               LOG_DEBUG << module_config.get<double>("const.b");
  //               LOG_DEBUG << cfg.get<double>("config.Harder_precip_phase.const.b");
             }
+
     }
     catch(pt::ptree_bad_path& e)
     {
@@ -314,6 +383,28 @@ void core::read_config_file(std::string file)
     {
         BOOST_THROW_EXCEPTION(config_error() << errstr_info( "Error reading file: " + e.filename() + " on line: " + std::to_string(e.line()) + "with error: " + e.message()));
     }
+
+
+
+    //now apply any override or extra configuration parameters from the command line
+    for(auto& itr:cmdl_options.second)
+    {
+        //check if we are overwriting something
+        try
+        {
+            auto value = cfg.get<std::string>(itr.first);
+            LOG_DEBUG << "Overwriting " << itr.first << "=" << value << " with " << itr.first << "=" << itr.second;
+
+        }catch(pt::ptree_bad_path& e)
+        {
+            LOG_DEBUG << "Inserting new config " << itr.first << "=" << itr.second;
+        }
+
+        cfg.put(itr.first,itr.second);
+    }
+
+
+
     /*
      * We expect the following sections:
      *  modules
@@ -368,6 +459,10 @@ void core::read_config_file(std::string file)
 //            LOG_INFO << "Unknown section '" << name << "', skipping";
 //        }
 //    }
+
+    _cfg = cfg;
+
+    LOG_DEBUG << cfg.get<int>("nproc");
 
     LOG_DEBUG << "Finished initialization";
 

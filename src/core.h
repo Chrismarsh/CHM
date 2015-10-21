@@ -22,8 +22,10 @@
 #include <boost/make_shared.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/program_options.hpp>
+#include<boost/tokenizer.hpp>
 namespace pt = boost::property_tree;
-
+namespace po = boost::program_options;
 
 #include "logger.hpp"
 #include "exception.hpp"
@@ -115,7 +117,7 @@ public:
    *   \endcode
    * @param file The file to open
   **/
-    void read_config_file(std::string file);
+    void init(int argc, char **argv);
     void config_debug(const pt::ptree& value);
     void config_modules(const pt::ptree& value,const pt::ptree& config);
     void config_meshes(const pt::ptree& value);
@@ -124,7 +126,10 @@ public:
     void config_matlab(const pt::ptree& value);
     void config_output(const pt::ptree& value);
     void config_global(const pt::ptree& value);
-    
+
+    // .first = config file to use
+    // .second = extra options, if any.
+    std::pair<std::string,std::vector<std::pair<std::string,std::string>>>  config_cmdl_options(int argc, char **argv);
     /**
      * Initializes the logger and Matlab engine
      */
@@ -132,10 +137,12 @@ public:
     ~core();
 
     void run();
+    pt::ptree _cfg;
 
-private:
+protected:
     //current level of the logger. Defaults to debug, but can be changed via configuration settings
     log_level _log_level;
+
     //a text file log
     boost::shared_ptr< text_sink > _log_sink;
     
