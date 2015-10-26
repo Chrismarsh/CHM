@@ -146,6 +146,15 @@ if(DOXYGEN_FOUND)
 
 endif(DOXYGEN_FOUND)
 
+find_program(GVPR gvpr)
+find_program(DOT dot)
+
+if(NOT GVPR OR NOT DOT)
+    message("Could not find gvpr and/or dot, module output to pdf will not function.")
+else()
+    message("gvpr and dot present, module output to pdf will function.")
+endif()
+
 add_subdirectory(src)
 
 if(PV_FILTER)
