@@ -15,13 +15,13 @@ Modular unstructured mesh based hydrological model.
 * C++11 compliant compiler
 
 #To build:
-```cmake .```
-```make```
+    cmake .
+    make
 
 #To test:
-```cmake .```
-```make check```
-```make test```
+    cmake .
+    make check
+    make test
 
 
 # Trouble shooting
