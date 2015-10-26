@@ -24,7 +24,7 @@ Modular unstructured mesh based hydrological model.
     make test
 
 
-# Trouble shooting
+#Trouble shooting
 ##Matlab
 ### OSX 
 * Create a symbolic link from /usr/bin to the matlab install
@@ -32,29 +32,28 @@ Modular unstructured mesh based hydrological model.
 
 ###Linux:
 Usage of the matlab engine requires installing csh
-## Intel compiler
-```/usr/lib/armadillo_bits/config.hpp```
+##Intel compiler
+    /usr/lib/armadillo_bits/config.hpp
 comment out l. 173
 
-## VTK
+##VTK
 Older versions of VTK may have to patch here
 http://review.source.kitware.com/#/c/11956/5/Common/Core/vtkMath.h
 when building with C++11 
 
-## Google test
+##Google test
 Google test can be patched following
 
 http://stackoverflow.com/questions/4655439/print-exception-what-in-google-test
 
 to print the boost::exception diagnostic information
 
-```diff -r /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal copy.h /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal.h
-65,66d64
-< #include <boost/exception/all.hpp>
-< 
-1080,1081c1078
-<     catch (boost::exception &e) { \
-<       std::cout << boost::diagnostic_information(e) << std::endl;  \
----
->     catch (...) { \
-```
+    diff -r /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal copy.h /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal.h
+    65,66d64
+    < #include <boost/exception/all.hpp>
+    < 
+    1080,1081c1078
+    <     catch (boost::exception &e) { \
+    <       std::cout << boost::diagnostic_information(e) << std::endl;  \
+    ---
+    >     catch (...) { \
