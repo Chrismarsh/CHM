@@ -22,8 +22,10 @@
 #include <boost/make_shared.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 #include <boost/program_options.hpp>
-#include<boost/tokenizer.hpp>
+#include <boost/tokenizer.hpp>
+#include <boost/tuple/tuple.hpp>
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 
@@ -129,7 +131,13 @@ public:
 
     // .first = config file to use
     // .second = extra options, if any.
-    std::pair<std::string,std::vector<std::pair<std::string,std::string>>>  config_cmdl_options(int argc, char **argv);
+    typedef boost::tuple<
+            std::string,
+            std::vector<std::pair<std::string,std::string>>,
+            std::vector<std::string>
+    > cmdl_opt;
+    cmdl_opt config_cmdl_options(int argc, char **argv);
+
     /**
      * Initializes the logger and Matlab engine
      */

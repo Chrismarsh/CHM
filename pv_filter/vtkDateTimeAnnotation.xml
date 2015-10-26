@@ -1,0 +1,54 @@
+<ServerManagerConfiguration>
+
+  <ProxyGroup name="filters">
+
+    <!-- ==================================================================== -->
+
+    <SourceProxy name="vtkDateTimeAnnotation" class="vtkDateTimeAnnotation"
+      label="Datetime Filter" >
+      <Documentation
+         short_help="Show data (POSIX time) time as text" >
+        Show data (POSIX time) time as text
+      </Documentation>
+      <InputProperty
+          name="Input"
+          command="SetInputConnection">
+        <ProxyGroupDomain name="groups">
+          <Group name="sources"/>
+          <Group name="filters"/>
+        </ProxyGroupDomain>
+        <Documentation>
+          This property specifies the input dataset for which to display the time.
+        </Documentation>
+      </InputProperty>
+      
+      <StringVectorProperty
+        name="Format"
+        command="SetFormat"
+        number_of_elements="1"
+        default_values="%04i/%02i/%02i %02i:%02i:%02i">
+        <Documentation>
+          The value of this property is a format string used to display the input time. The format string is specified using printf style.
+        </Documentation>
+      </StringVectorProperty>
+
+      <!--<IntVectorProperty-->
+         <!--name="ConvertFromGregorian"-->
+         <!--command="SetConvertFromGregorian"-->
+         <!--number_of_elements="1"-->
+         <!--default_values="0" >-->
+        <!--<BooleanDomain name="bool"/>-->
+      <!--</IntVectorProperty>-->
+
+      <Hints>
+        <Visibility replace_input="0" />
+        <OutputPort name="Output-0" index="0" type="text" />
+      </Hints>
+
+    </SourceProxy>
+
+    <!-- ==================================================================== -->
+
+  </ProxyGroup>
+  
+</ServerManagerConfiguration>

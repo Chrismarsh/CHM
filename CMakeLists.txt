@@ -1,39 +1,49 @@
 cmake_minimum_required (VERSION 2.8)
 
-
 project (CHMprj)
+
 # The version number.
 set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
-set(USE_OMP FALSE)
+# Options. Turn on with 'cmake -Dmyvarname=ON'.
+option(USE_OMP "Enable OpenMP" OFF)
+option(PV_FILTER "Build Paraview time filter" ON)
+option(test "Build all tests." ON) # Makes boolean 'test' available.
+option(MATLAB "Enable Matlab linkage" OFF)
 
 macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
+#Setup output paths
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
-set(CMAKE_BUILD_TYPE Debug)
+set(LIBRARY_OUTPUT_PATH  ${CMAKE_SOURCE_DIR}/lib)
 
-#message(FATAL_ERROR "${CMAKE_CXX_COMPILER_ID}")
-
+#include addition findXXX.cmake files
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -std=c++11 -Wall -D_FORTIFY_SOURCE=0")
+#Setup CXX flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -D_FORTIFY_SOURCE=0")
 
-# Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(test "Build all tests." ON) # Makes boolean 'test' available.
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
+endif()
 
 
 find_package(CGAL REQUIRED)
 if(CGAL_FOUND)
     message(STATUS "Found CGAL")
 endif()
-
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #but doesn't seem to work
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
-
 include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
 #remove this flag as it destroys the build on -O1 and spams warnings
@@ -41,8 +51,7 @@ remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
 
 
 
-find_package(VTK REQUIRED)
-include(${VTK_USE_FILE})
+
 
 #C#####
 #GAL requires strict rounding
@@ -64,14 +73,14 @@ endif()
 find_package(OpenMP)
 
 if(OPENMP_FOUND)
-    if(OMP)
+    if(USE_OMP)
         if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
         endif()
     endif()
 endif()
 
-set(MATLAB false)
+
 if(MATLAB)
 #for matlab to run you need csh installed
 find_package(Matlab REQUIRED)
@@ -107,15 +116,21 @@ find_package(TBB REQUIRED)
 
 find_package(GSL REQUIRED)
 
-
+#can't use both, so if we are building the plugin we need to compile against paraview (which brings in VTK)
+#otherwise use just VTK
+if(PV_FILTER)
+    FIND_PACKAGE(ParaView REQUIRED)
+    INCLUDE(${PARAVIEW_USE_FILE})
+else()
+    find_package(VTK REQUIRED)
+    include(${VTK_USE_FILE})
+endif()
 
 if (test)
     message(STATUS "Tests enabled. Run with make check")
     enable_testing()
     ADD_SUBDIRECTORY (tests)
 endif()
-
-add_subdirectory(src)
 
 # add a target to generate API documentation with Doxygen
 # generate this via 'make doc'
@@ -131,3 +146,8 @@ if(DOXYGEN_FOUND)
 
 endif(DOXYGEN_FOUND)
 
+add_subdirectory(src)
+
+if(PV_FILTER)
+    add_subdirectory(pv_filter)
+endif()

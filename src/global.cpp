@@ -33,6 +33,16 @@ boost::posix_time::ptime global::posix_time()
     return _current_date;
 }
 
+uint64_t global::posix_time_int()
+{
+
+    const boost::posix_time::ptime epoch = boost::posix_time::from_time_t(0);
+    boost::posix_time::time_duration duration = _current_date - epoch;
+    return duration.total_seconds();
+}
+
+
+
 double global::solar_el()
 {
     return _solar_el;

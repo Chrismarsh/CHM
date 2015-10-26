@@ -26,6 +26,32 @@ protected:
 
 };
 
+//TEST_F(CoreTest,CmdlHelp)
+//{
+//
+//
+//    core c1;
+//    char* argv[] =
+//            {
+//                    (char*) "/path/to/CHM",
+//                    (char*) "-h"
+//            };
+//    ASSERT_ANY_THROW(c1.init(2,argv));
+//}
+//
+//TEST_F(CoreTest,CmdlVersion)
+//{
+//
+//
+//    core c1;
+//    char* argv[] =
+//            {
+//                    (char*) "/path/to/CHM",
+//                    (char*) "-v"
+//            };
+//    ASSERT_ANY_THROW(c1.init(2,argv));
+//}
+
 TEST_F(CoreTest,ThrowsOnInvalidFile)
 {
 
@@ -202,5 +228,41 @@ TEST_F(CoreTest,CmdlOptionsPositional2)
 
     ASSERT_EQ(c1._cfg.get<double>("config.Harder_precip_phase.const.b"),3.14);
     ASSERT_EQ(c1._cfg.get<int>("nproc"),2);
+
+}
+
+//tests erasing keys
+TEST_F(CoreTest,CmdlOptionsErase)
+{
+    core c1;
+
+    char* argv[] =
+            {
+                    (char*) "/path/to/CHM",
+                    (char*) "-c",
+                    (char*) "config.Harder_precip_phase.const.b:3.14",
+                    (char*) "test_config_file.config",
+                    (char*) "-c",
+                    (char*) "nproc:2",
+                    (char*) "-r",
+                    (char*) "nproc",
+                    (char*) "-r",
+                    (char*) "output",
+                    (char*) "-r",
+                    (char*) "global.UTC_offset"
+
+            };
+
+
+
+    ASSERT_NO_THROW(c1.init(12,argv));
+    ASSERT_EQ(c1._cfg.get<double>("config.Harder_precip_phase.const.b"),3.14);
+
+    //removals are done after -c so, this should not exist
+
+    ASSERT_ANY_THROW(c1._cfg.get<int>("nproc"));
+    ASSERT_ANY_THROW(c1._cfg.get<int>("global.UTC_offset"));
+    ASSERT_ANY_THROW(c1._cfg.get_child("output"));  //confirms the entire section got nuked
+
 
 }

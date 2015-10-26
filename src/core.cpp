@@ -276,7 +276,7 @@ void core::config_global(const pt::ptree& value)
 
 }
 
-std::pair<std::string,std::vector<std::pair<std::string,std::string>>> core::config_cmdl_options(int argc, char **argv)
+core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
 {
     std::string version = "CHM version 0.1";
 
@@ -289,9 +289,14 @@ std::pair<std::string,std::vector<std::pair<std::string,std::string>>> core::con
             ("config-file,f", po::value<std::string>(&config_file), "Configuration file to use. Can be passed without --config-file [-f] as well ")
             ("config,c",po::value<std::vector<std::string>>(),"Specifies a configuration parameter."
                     "This can over-ride existing values."
-                    "The value is specified with a fully qualified config path. "
+                    "The value is specified with a fully qualified config path. Does not support list values []"
                     "For example:\n"
                     "-c config.Harder_precip_phase.const.b:1.5 -c config.debug.debug_level:\"error\"")
+            ("remove,r",po::value<std::vector<std::string>>(),"Removes a configuration paramter."
+                    " Removals are processed after any --config paramters are parsed, so -r will override -c. "
+                    "Does not support remove of individual list [] itmes. For example:"
+                    "-c nproc:2 -r nproc\n "
+                    "will result in nproc being remove.")
             ;
 
 
@@ -336,7 +341,12 @@ std::pair<std::string,std::vector<std::pair<std::string,std::string>>> core::con
         }
     }
 
-    return std::make_pair(config_file,config_extra);
+    std::vector<std::string> rm_config_extra;
+    if(vm.count("remove"))
+        rm_config_extra = vm["remove"].as< std::vector<std::string>>();
+
+
+    return boost::make_tuple(config_file,config_extra,rm_config_extra);
    // return config_extra;
 }
 
@@ -351,7 +361,7 @@ void core::init(int argc, char **argv)
     try
     {
         //load the module config into it's own ptree
-        pt::read_json(cmdl_options.first, cfg);
+        pt::read_json(cmdl_options.get<0>(), cfg);
 
         LOG_DEBUG << "Reading configuration file " << argc;
 
@@ -381,13 +391,13 @@ void core::init(int argc, char **argv)
     }
     catch (pt::json_parser_error &e)
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info( "Error reading file: " + e.filename() + " on line: " + std::to_string(e.line()) + "with error: " + e.message()));
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info( "Error reading file: " + e.filename() + " on line: " + std::to_string(e.line()) + " with error: " + e.message()));
     }
 
 
 
     //now apply any override or extra configuration parameters from the command line
-    for(auto& itr:cmdl_options.second)
+    for(auto& itr:cmdl_options.get<1>())
     {
         //check if we are overwriting something
         try
@@ -401,6 +411,39 @@ void core::init(int argc, char **argv)
         }
 
         cfg.put(itr.first,itr.second);
+    }
+
+    //now apply any removal parameters from the command line
+    for(auto& itr:cmdl_options.get<2>())
+    {
+        //check if we are overwriting something
+        try
+        {
+            auto value = cfg.get<std::string>(itr);
+
+            std::size_t found = itr.rfind(".");
+
+            //if we have a subkey
+            if (found != std::string::npos )
+            {
+                std::string parent = itr.substr(0,found);
+                std::string child = itr.substr(found+1, itr.length() - found+1);
+
+                cfg.get_child(parent).erase(child);
+            }
+            else //otherwise just blow it away.
+            {
+                cfg.erase(itr);
+            }
+
+
+            LOG_DEBUG << "Removing " << itr;
+
+        }catch(pt::ptree_bad_path& e)
+        {
+            LOG_DEBUG << "No value " << itr << " to remove";
+        }
+
     }
 
 
@@ -461,8 +504,6 @@ void core::init(int argc, char **argv)
 //    }
 
     _cfg = cfg;
-
-    LOG_DEBUG << cfg.get<int>("nproc");
 
     LOG_DEBUG << "Finished initialization";
 
@@ -788,6 +829,11 @@ void core::run()
     }
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 
+    //setup a XML writer for the PVD paraview format
+    pt::ptree pvd;
+    pvd.add("VTKFile.<xmlattr>.type","Collection");
+    pvd.add("VTKFile.<xmlattr>.version","0.1");
+
     LOG_DEBUG << "Starting model run";
 
     c.tic();
@@ -853,10 +899,21 @@ void core::run()
             {
                for(auto jtr : itr.mesh_output_formats)
                {
+                   std::string base_name = itr.fname+std::to_string(num_ts);
+
                    if(jtr == output_info::mesh_outputs::vtu)
-                       _mesh->mesh_to_vtu(itr.fname+std::to_string(num_ts)+".vtu");
+                   {
+                       pt::ptree& dataset = pvd.add("VTKFile.Collection.DataSet","");
+                       dataset.add("<xmlattr>.timestep",_global->posix_time_int());
+//                       dataset.add("<xmlattr>.timestep", num_ts);
+                       dataset.add("<xmlattr>.group","");
+                       dataset.add("<xmlattr>.part",0);
+                       dataset.add("<xmlattr>.file",base_name+".vtu");
+                       _mesh->mesh_to_vtu(base_name+".vtu");
+                   }
+
                    if(jtr == output_info::mesh_outputs::vtp)
-                       _mesh->mesh_to_ascii(itr.fname+std::to_string(num_ts)+".vtp");
+                       _mesh->mesh_to_ascii(base_name+".vtp");
                    if(jtr == output_info::mesh_outputs::ascii)
                        LOG_WARNING << "Ascii output not implemented";
                        //_mesh->mesh_to_ascii(itr.fname+".vtp");
@@ -899,6 +956,16 @@ void core::run()
     }
     double elapsed = c.toc<s>();
     LOG_DEBUG << "Took " << elapsed << "s";
+    try
+    {
+        std::string base_name = _cfg.get<std::string>("output.mesh.base_name");
+
+        pt::write_xml(base_name+".pvd",
+                     pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+    }catch(pt::ptree_bad_path& e)
+    {
+        //no mesh section, just ignore. XML file won't be written
+    }
 
 
 
