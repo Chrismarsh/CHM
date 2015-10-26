@@ -1,45 +1,54 @@
+Modular unstructured mesh based hydrological model.
 
-TROUBLE SHOOTING:
-OSX: 
-Create a symbolic link from /usr/bin to the matlab install
-sudo ln -s /Applications/MATLAB_R2013a.app/bin/matlab /usr/bin/matlab
+![](output.gif)
+![](modules_readme.png)
 
-Linux:
-Usage of the matlab engine requires install csh
+#Dependencies
+* Matlab (optional)
+* Armadillo
+* boost
+* GNU GSL
+* Intel TBB
+* CGAL
+* Paraview (if building the filter) otherwise VTK
+* MetoIO 
+* C++11 compliant compiler
 
-Dependencies:
-Matlab
-Armadillo
-boost
-GNU GSL
-Intel TBB
-CGAL
+#To build:
+```cmake .```
+```make```
 
-To build:
-cmake .
-make
-
-To test:
-cmake .
-make check
-make test
-
+#To test:
+```cmake .```
+```make check```
+```make test```
 
 
-Intel compiler
-/usr/lib/armadillo_bits/config.hpp
-comment out l 173
+# Trouble shooting
+##Matlab
+### OSX 
+* Create a symbolic link from /usr/bin to the matlab install
+* ```sudo ln -s /Applications/MATLAB_R2013a.app/bin/matlab /usr/bin/matlab```
 
+###Linux:
+Usage of the matlab engine requires installing csh
+## Intel compiler
+```/usr/lib/armadillo_bits/config.hpp```
+comment out l. 173
+
+## VTK
 Older versions of VTK may have to patch here
 http://review.source.kitware.com/#/c/11956/5/Common/Core/vtkMath.h
 when building with C++11 
 
-
+## Google test
 Google test can be patched following
+
 http://stackoverflow.com/questions/4655439/print-exception-what-in-google-test
+
 to print the boost::exception diagnostic information
 
-diff -r /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal copy.h /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal.h
+```diff -r /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal copy.h /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal.h
 65,66d64
 < #include <boost/exception/all.hpp>
 < 
@@ -48,3 +57,4 @@ diff -r /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/g
 <       std::cout << boost::diagnostic_information(e) << std::endl;  \
 ---
 >     catch (...) { \
+```
