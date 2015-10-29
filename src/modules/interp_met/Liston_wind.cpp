@@ -166,6 +166,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
     //testing value
     //TODO:Use measured wind direction
     double theta = 45.0 * 3.14159/180.;
+    double PI = 3.14159;
 
     std::vector< boost::tuple<double, double, double> > u;
     std::vector< boost::tuple<double, double, double> > v;
@@ -198,10 +199,13 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         double zonal_u = (*interp)(u, query);
         double zonal_v = (*interp)(v, query);
 
-        double corrected_theta = 3 * 3.14159 * 0.5 - atan(zonal_v / zonal_u);
+        double theta = 3.0 * PI * 0.5 - atan2(zonal_v , zonal_u);
+
+        if (theta > 2*PI)
+            theta = theta - 2*PI;
 
         //eqn 15
-        double omega_s = elem->slope() * cos(corrected_theta - elem->aspect());
+        double omega_s = elem->slope() * cos(theta - elem->aspect());
 
         if( fabs(omega_s) > max_omega_s)
             max_omega_s = fabs(omega_s);
@@ -217,8 +221,12 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         double zonal_u = (*interp)(u, query);
         double zonal_v = (*interp)(v, query);
 
-        double W = pow(zonal_u * zonal_u + zonal_v * zonal_v, 0.5);
-        double corrected_theta = 3 * 3.14159 * 0.5 - atan(zonal_v / zonal_u);
+        double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
+        double corrected_theta = 3.0 * PI * 0.5 - atan2(zonal_v , zonal_u);
+
+        if (corrected_theta > 2*PI)
+            corrected_theta = corrected_theta - 2*PI;
+
 
         double omega_s = elem->slope() * cos(corrected_theta - elem->aspect());
 
