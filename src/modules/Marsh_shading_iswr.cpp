@@ -21,7 +21,7 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
 
     if (global_param->solar_el() < 5)
     {
-#pragma omp parallel for
+        #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
             auto face = domain->face(i);
@@ -50,9 +50,11 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
         auto vert = domain->vertex(i);
-        if (!vert->info)
-            vert->info = new vertex_data();
-        vertex_data * vf = reinterpret_cast<vertex_data *> (vert->info);
+        vertex_data* vf = vert->make_module_data<vertex_data>(ID);
+
+//        if (!vert->info)
+//            vert->info = new vertex_data();
+//        vertex_data * vf = reinterpret_cast<vertex_data *> (vert->info);
 
         arma::vec coord(3);
         triangulation::Point p;
@@ -94,8 +96,9 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
 
         }
         //init memory
-        module_shadow_face_info* tv = new module_shadow_face_info;
-        face->set_module_face_data(ID, tv);
+        auto tv = face->make_module_data<module_shadow_face_info>(ID);
+       // module_shadow_face_info* tv = new module_shadow_face_info;
+        //face->set_module_data(ID, tv);
         tv->z_prime = CGAL::centroid(face->vertex(0)->point(), face->vertex(1)->point(), face->vertex(2)->point()).z();
     }
 
@@ -121,8 +124,12 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
                     {
 //                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->info);
 //                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->info);
-                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->module_face_data("Marsh_shading_iswr"));
-                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->module_face_data("Marsh_shading_iswr"));
+//                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->get_module_data("Marsh_shading_iswr"));
+//                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->get_module_data("Marsh_shading_iswr"));
+                          auto fa_info = fa->get_module_data<module_shadow_face_info>(
+                                  "Marsh_shading_iswr");
+                          auto fb_info = fb->get_module_data<module_shadow_face_info>(
+                                  "Marsh_shading_iswr");
 
                         return fa_info->z_prime > fb_info->z_prime;
                     });
@@ -144,7 +151,8 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
                 for (size_t k = j + 1; k < num_tri; k++)
                 {
                     triangulation::Face_handle face_k = BBR->get_rect(i, ii)->triangles.at(k);
-                    module_shadow_face_info* face_k_info = reinterpret_cast<module_shadow_face_info*> (face_k->module_face_data(ID));
+                    //module_shadow_face_info* face_k_info = reinterpret_cast<module_shadow_face_info*> (face_k->get_module_data(ID));
+                    auto face_k_info = face_k->get_module_data<module_shadow_face_info>(ID);
 
                     if (face_k_info->shadow == 0)
                     {
@@ -170,7 +178,8 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
 
 
 
-                module_shadow_face_info* face_info = reinterpret_cast<module_shadow_face_info*> (face_j->module_face_data(ID));
+                //module_shadow_face_info* face_info = reinterpret_cast<module_shadow_face_info*> (face_j->get_module_data(ID));
+                auto face_info = face_j->get_module_data<module_shadow_face_info>(ID);
                 face_j->set_face_data("shadowed", face_info->shadow);
                 face_j->set_face_data("z_prime", face_info->z_prime);
 
@@ -187,13 +196,11 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
         auto vert = domain->vertex(i);
-        if (!vert->info)
-            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Null vertex info"));
-
-        vertex_data * vf = reinterpret_cast<vertex_data *> (vert->info);
+//        if (!vert->info)
+//            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Null vertex info"));
+        auto vf = vert->get_module_data<vertex_data>(ID);
+//        vertex_data * vf = reinterpret_cast<vertex_data *> (vert->info);
         vert->set_point(vf->org_vertex);
-
-
     }
 
     #pragma omp parallel for

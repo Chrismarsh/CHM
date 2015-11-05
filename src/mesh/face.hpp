@@ -121,6 +121,7 @@ public:
     */
     void set_face_data(std::string variable, double data);
 
+
     /**
     * Returns the face data
     * \param variable  variable being queried
@@ -137,7 +138,7 @@ public:
     void remove_face_data(std::string ID);
 
     /**
-    * Initializes  this faces timeseires with the given varialves, for the given datetime series with the given size
+    * Initializes  this faces timeseires with the given variables, for the given datetime series with the given size
     * \param variables Names of the variables to add
     * \param datetime Vector of boost::ptimes for the entire duration of the timesries
     */
@@ -200,8 +201,13 @@ public:
      */
     void to_file(std::string fname);
 
-    face_info* module_face_data(std::string module);
-    void set_module_face_data(std::string module,face_info* fi);
+    template<typename T>
+    T*get_module_data(std::string module);
+
+    void set_module_data(std::string module, face_info *fi);
+
+    template<typename T>
+    T*make_module_data(std::string module);
 private:
 
     double _slope;
@@ -414,6 +420,10 @@ std::vector<std::string> face<Gt, Fb>::variables()
 {
     return _data->list_variables();
 }
+
+
+
+
 template < class Gt, class Fb>
 void face<Gt, Fb>::set_face_data(std::string variable, double data)
 {
@@ -498,8 +508,26 @@ timeseries::iterator face<Gt, Fb>::now()
 }
 
 
+template < class Gt, class Vb>
+template<typename T>
+T* face<Gt, Vb>::make_module_data(std::string module)
+{
+    auto it = _module_face_data.find(module);
+
+    //we don't already have this, make a new one.
+    if(it == _module_face_data.end())
+    {
+        T* vert_data = new T;
+        set_module_data(module,vert_data);
+    }
+
+    return get_module_data<T>(module);
+}
+
+
 template < class Gt, class Fb>
-face_info* face<Gt, Fb>::module_face_data(std::string module)
+template < typename T>
+T* face<Gt, Fb>::get_module_data(std::string module)
 {
     face_info* info=nullptr;
     try
@@ -511,7 +539,7 @@ face_info* face<Gt, Fb>::module_face_data(std::string module)
         BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
     }
 
-    return info;
+    return reinterpret_cast<T*>(info);
 
 
 }
@@ -531,7 +559,7 @@ void face<Gt, Fb>::remove_face_data(std::string module)
     }
 };
 template < class Gt, class Fb>
-void face<Gt, Fb>::set_module_face_data(std::string module,face_info* fi)
+void face<Gt, Fb>::set_module_data(std::string module, face_info *fi)
 {
     _module_face_data[module] = fi;
 }

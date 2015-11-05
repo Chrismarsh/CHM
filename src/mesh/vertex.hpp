@@ -5,6 +5,8 @@
 
 #include <boost/tuple/tuple.hpp>
 
+#include "exception.hpp"
+
 /**
 * \class vertex_info
 * Arbitrary data may be added to the vertex via this class
@@ -26,7 +28,7 @@ class ex_vertex : public Vb
     typedef Vb Base;
 public:
     //TODO: Only allows for 1 module's data!
-    vertex_info* info;
+   // vertex_info* info;
     typedef typename Vb::Vertex_handle Vertex_handle;
     typedef typename Vb::Face_handle Face_handle;
     typedef typename Vb::Point Point;
@@ -39,6 +41,7 @@ public:
     };
 private:
     size_t _id;
+    std::map<std::string,vertex_info* > _vertex_module_data;
 public:
     ex_vertex();
 
@@ -62,33 +65,41 @@ public:
     */
     size_t get_id();
 
+    template<typename T>
+    T*get_module_data(std::string module);
+
+    template<typename T>
+    T*make_module_data(std::string module);
+
+    void set_module_data(std::string module, vertex_info *vi);
+
 };
 
 template < class Gt, class Vb >
 ex_vertex<Gt, Vb>::~ex_vertex()
 {
-    delete info;
+   // delete info;
 };
 
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex() : Base()
 {
-    info = NULL;
+   // info = NULL;
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(const Point & p) : Base(p)
 {
-    info = NULL;
+  //  info = NULL;
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(const Point & p, Face_handle f) : Base(f, p)
 {
-    info = NULL;
+  //  info = NULL;
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(Face_handle f) : Base(f)
 {
-    info = NULL;
+   // info = NULL;
 }
 
 template < class Gt, class Vb>
@@ -103,3 +114,43 @@ size_t ex_vertex<Gt, Vb>::get_id()
     return _id;
 }
 
+template < class Gt, class Vb>
+template<typename T>
+T* ex_vertex<Gt, Vb>::make_module_data(std::string module)
+{
+    auto it = _vertex_module_data.find(module);
+
+    //we don't already have this, make a new one.
+    if(it == _vertex_module_data.end())
+    {
+        T* vert_data = new T;
+        set_module_data(module,vert_data);
+    }
+
+    return get_module_data<T>(module);
+}
+
+
+template < class Gt, class Vb>
+template<typename T>
+T* ex_vertex<Gt, Vb>::get_module_data(std::string module)
+{
+    vertex_info* info=nullptr;
+    try
+    {
+        info = _vertex_module_data[module];
+    }
+    catch(...)
+    {
+        BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
+    }
+
+    return reinterpret_cast<T*>(info);
+
+}
+
+template < class Gt, class Vb>
+void ex_vertex<Gt, Vb>::set_module_data(std::string module, vertex_info *vi)
+{
+    _vertex_module_data[module] = vi;
+}
