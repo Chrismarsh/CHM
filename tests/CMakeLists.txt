@@ -19,13 +19,13 @@ set(MODULE_SRCS
 		../src/modules/interp_met/Liston_monthly_llra_rh.cpp
 		../src/modules/interp_met/Liston_wind.cpp
 
-		../src/modules/solar.cpp
+		../src/modules/slope_iswr.cpp
 		../src/modules/Marsh_shading_iswr.cpp
 		../src/modules/Sicart_ilwr.cpp
 		../src/modules/PenmanMonteith_evaporation.cpp
 		../src/modules/interp_met/precip.cpp
-		../src/modules/Walcek_atm_trans.cpp
-		../src/modules/Harder_precip_phase.cpp)
+		../src/modules/Walcek_cloud.cpp
+		../src/modules/Harder_precip_phase.cpp ../src/modules/Burridge_iswr.cpp ../src/modules/Burridge_iswr.h ../src/modules/Iqbal_iswr.cpp ../src/modules/Iqbal_iswr.h ../src/modules/interp_met/iswr_from_obs.cpp ../src/modules/interp_met/iswr_from_obs.h ../src/modules/interp_met/Dodson_NSA_ta.cpp ../src/modules/interp_met/Dodson_NSA_ta.h)
 
 if(MATLAB)
 set(LIBMAW_SRCS

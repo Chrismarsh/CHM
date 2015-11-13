@@ -7,7 +7,7 @@ set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(USE_OMP "Enable OpenMP" OFF)
+option(USE_OMP "Enable OpenMP" ON)
 option(PV_FILTER "Build Paraview time filter" ON)
 option(test "Build all tests." ON) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage" OFF)
@@ -49,10 +49,6 @@ include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 #remove this flag as it destroys the build on -O1 and spams warnings
 remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
 
-
-
-
-
 #C#####
 #GAL requires strict rounding
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
@@ -72,13 +68,13 @@ endif()
 
 find_package(OpenMP)
 
-if(OPENMP_FOUND)
-    if(USE_OMP)
-        if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp
+#if(OPENMP_FOUND)
+#    if(USE_OMP)
+#        if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #Clang doesn't have mainline support for openmp
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-        endif()
-    endif()
-endif()
+#        endif()
+#    endif()
+#endif()
 
 
 if(MATLAB)

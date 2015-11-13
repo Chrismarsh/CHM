@@ -10,7 +10,7 @@ module_base* module_factory::get(std::string ID, pt::ptree& config)
     module_base* mod = nullptr;
     
     if (ID == "solar")
-        mod = new Solar();
+        mod = new slope_iswr();
     else if (ID == "Marsh_shading_iswr")
         mod = new Marsh_shading_iswr();
     else if (ID == "const_llra_ta")
@@ -27,10 +27,19 @@ module_base* module_factory::get(std::string ID, pt::ptree& config)
         mod = new PenmanMonteith_evaporation();
     else if (ID == "precip")
         mod = new precip();
-    else if (ID == "Walcek_atm_trans")
-        mod = new Walcek_atm_trans();
+    else if (ID == "Walcek_cloud")
+        mod = new Walcek_cloud();
     else if (ID == "Harder_precip_phase")
         mod = new Harder_precip_phase();
+    else if (ID == "Burridge_iswr")
+        mod = new Burridge_iswr();
+    else if (ID == "Iqbal_iswr")
+        mod = new Iqbal_iswr();
+    else if (ID == "iswr_from_obs")
+        mod = new iswr_from_obs();
+    else if (ID == "Dodson_NSA_ta")
+        mod = new Dodson_NSA_ta();
+
     if(mod == nullptr)
     {
         BOOST_THROW_EXCEPTION(module_not_found() 

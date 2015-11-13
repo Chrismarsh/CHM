@@ -77,6 +77,8 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
 //    double c=0.09336;
     double frTi = 1 / (1+b*pow(c,Ti));
 
+    frTi = std::trunc(100.0*frTi) / 100.0; //truncate to 2 decimal positions
+
     elem->set_face_data("Ti",Ti);
     elem->set_face_data("frac_precip_rain",frTi);
     elem->set_face_data("frac_precip_snow",1-frTi);

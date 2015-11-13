@@ -1,10 +1,9 @@
-#include "Walcek_atm_trans.hpp"
+#include "Walcek_cloud.hpp"
 
-Walcek_atm_trans::Walcek_atm_trans()
+Walcek_cloud::Walcek_cloud()
         :module_base(parallel::data)
 {
-    provides("atm_trans");
-
+    provides("cloud_frac");
     depends("t");
     depends("rh");
     depends("t_lapse_rate");
@@ -13,11 +12,11 @@ Walcek_atm_trans::Walcek_atm_trans()
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
-Walcek_atm_trans::~Walcek_atm_trans()
+Walcek_cloud::~Walcek_cloud()
 {
 
 };
-void Walcek_atm_trans::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Walcek_cloud::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 
     double press_ratio = 0.7;
@@ -26,9 +25,8 @@ void Walcek_atm_trans::run(mesh_elem& elem, boost::shared_ptr<global> global_par
     double Ta = elem->face_data("t");
     double Rh = elem->face_data("rh");
 
+    double Td = mio::Atmosphere::RhtoDewPoint(Rh/100.0,Ta+273.15,false);
 
-
-    double Td = mio::Atmosphere::RhtoDewPoint(Rh,Ta+273.15,false);
 
     double z = elem->get_z();
     double dz = z - 3000.0;// assume 700mb is at 3000m
@@ -45,15 +43,16 @@ void Walcek_atm_trans::run(mesh_elem& elem, boost::shared_ptr<global> global_par
     rh_700 = std::min(1.0,rh_700);
     rh_700 = std::max(0.0,rh_700);
 
-
-    double f_max = 78.0 + 80.0/15.5; //eqn (2)
+    double dx = 80.0;
+    double f_max = 78.0 + dx/15.5; //eqn (2)
     double f_100 = f_max * (press_ratio - 0.1) / 0.6 / 100.0; // eqn (3)
-    double one_minus_RHe = 0.196 + (0.76-80.0/2834.0) * (1.0 - press_ratio); // eqn (5)
+    double one_minus_RHe = 0.196 + (0.76-dx/2834.0) * (1.0 - press_ratio); // eqn (5)
 
 
     double cloud_frac = f_100 * exp((rh_700 - 1.0)/one_minus_RHe);
-    cloud_frac = std::min(cloud_frac,100.0);
+    cloud_frac = std::min(cloud_frac,1.0);
 
-    elem->set_face_data("atm_trans",cloud_frac);
+
+    elem->set_face_data("cloud_frac",cloud_frac);
 
 }

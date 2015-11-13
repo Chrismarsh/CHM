@@ -7,13 +7,14 @@ set(MODULE_SRCS
 		modules/interp_met/Liston_monthly_llra_rh.cpp
 		modules/interp_met/Liston_wind.cpp
 
-		modules/solar.cpp
+		modules/slope_iswr.cpp
 		modules/Marsh_shading_iswr.cpp
 		modules/Sicart_ilwr.cpp
 		modules/PenmanMonteith_evaporation.cpp
 		modules/interp_met/precip.cpp
-		modules/Walcek_atm_trans.cpp
-		modules/Harder_precip_phase.cpp)
+		modules/Walcek_cloud.cpp
+		modules/Harder_precip_phase.cpp
+		modules/Burridge_iswr.cpp modules/Iqbal_iswr.cpp modules/Iqbal_iswr.h modules/interp_met/iswr_from_obs.cpp modules/interp_met/iswr_from_obs.h modules/interp_met/Dodson_NSA_ta.cpp modules/interp_met/Dodson_NSA_ta.h)
 
 
 set(CHM_SRCS

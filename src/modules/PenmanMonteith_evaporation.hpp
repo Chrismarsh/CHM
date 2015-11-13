@@ -20,7 +20,7 @@
 * Calculates evapotranspiration via Penman-Monteith
 *
 * Depends:
-* -  Solar shortwave "Qsi" [W/m^-1]
+* -  slope_iswr shortwave "Qsi" [W/m^-1]
 * -  Incoming Longwave radiation "Lin" [W/m^2]
 * -  Albedo "albedo" [-]
 * -  Saturated vapour pressure "es" [kpa]

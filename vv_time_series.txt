@@ -1,2 +1,0 @@
-Date		frac_precip_rain	Liston curvature	Td_lapse_rate	frac_precip_snow	solar_angle	Ti	Qsi	prain	VW_dir	VW	psnow	atm_trans	es	t	S0	ea	rh	t_lapse_rate
-20101002T130000		0.96444	-0.0210325	0.00509421	0.0355596	0.634178	1.79958	725.162	0	224.916	1.436	0	0.831613	811.311	3.96343	871.995	573.908	70.7383	0.0068

@@ -9,7 +9,7 @@
 namespace pt = boost::property_tree;
 
 // Modules to build against
-#include "solar.hpp"
+#include "slope_iswr.hpp"
 #include "Marsh_shading_iswr.hpp"
 #include "const_llra_ta.hpp"
 #include "Liston_monthly_llra_rh.hpp"
@@ -18,8 +18,12 @@ namespace pt = boost::property_tree;
 #include "Liston_wind.hpp"
 #include "PenmanMonteith_evaporation.hpp"
 #include "precip.hpp"
-#include "Walcek_atm_trans.hpp"
+#include "Walcek_cloud.hpp"
 #include "Harder_precip_phase.hpp"
+#include "Burridge_iswr.h"
+#include "Iqbal_iswr.h"
+#include "iswr_from_obs.h"
+#include "Dodson_NSA_ta.h"
 
 namespace pt = boost::property_tree;
 class module_factory

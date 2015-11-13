@@ -6,8 +6,13 @@ Marsh_shading_iswr::Marsh_shading_iswr()
 {
     provides("shadowed");
     provides("z_prime");
+    provides("iswr");
+    provides("iswr_direct");
+    provides("iswr_diffuse");
 
-    depends("Qsi");
+    depends("iswr");
+    depends("iswr_direct");
+    depends("iswr_diffuse");
 
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -185,7 +190,9 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
 
                 //if we're shadowed, set direct beam = 0
                 if (face_info->shadow ==1)
-                    face_j->set_face_data("Qsi", 0);
+                    face_j->set_face_data("iswr_direct", 0);
+
+
 
             }
         }
@@ -208,6 +215,10 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
     {
         auto face = domain->face(i);
         face->remove_face_data("Marsh_shading_iswr");
+
+        auto swr = face->face_data("iswr_direct");
+        auto diff = face->face_data("iswr_diffuse");
+        face->set_face_data("iswr",swr+diff);
     }
 }
 

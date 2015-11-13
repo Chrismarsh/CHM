@@ -192,6 +192,7 @@ protected:
             northing = 0;
             easting = 0;
             face = NULL;
+            name = "";
         }
         enum output_type
         {
@@ -205,6 +206,7 @@ protected:
             ascii
         };
         output_type type;
+        std::string name;
         std::vector<mesh_outputs> mesh_output_formats;
         std::string fname;
         double northing;

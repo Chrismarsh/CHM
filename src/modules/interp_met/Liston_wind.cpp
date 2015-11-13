@@ -165,7 +165,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 
     //testing value
     //TODO:Use measured wind direction
-    double theta = 45.0 * 3.14159/180.;
+    double theta = 292.5 * 3.14159/180.;
     double PI = 3.14159;
 
     std::vector< boost::tuple<double, double, double> > u;

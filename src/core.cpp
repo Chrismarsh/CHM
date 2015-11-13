@@ -137,9 +137,10 @@ void core::config_forcing(const pt::ptree& value)
     //loop over the list of forcing data
     for (auto& itr : value)
     {
-        std::string station_name = itr.second.data();
+        std::string station_name = itr.first.data();
 
         boost::shared_ptr<station> s = boost::make_shared<station>();
+
         s->ID(station_name);
 
         double easting = itr.second.get<double>("easting");
@@ -225,23 +226,25 @@ void core::config_output(const pt::ptree& value)
     for (auto& itr : value)
     {
         output_info out;
-        std::string outype = itr.first.data();
-        if (outype == "timeseries"  )
+        std::string out_type = itr.first.data();
+        if (out_type != "mesh"  )  // anything else *should* be a time series*......
         {
+            out.type = output_info::timeseries;
+            out.name = out_type;
+            out.fname = itr.second.get<std::string>("file");
+            out.easting = itr.second.get<double>("easting");
+            out.northing = itr.second.get<double>("northing");
 
-//            if (name == "timeseries")
-//                out.type = output_info::timeseries;
-//            out.face = _mesh->locate_face(out.easting, out.northing);
-//            if (out.face == NULL)
-//            {
-//                LOG_WARNING << "Requested an output point that is not in the triangulation domain, skipping";
-//            } else
-//            {
-//                _outputs.push_back(out);
-//            }
-            LOG_WARNING << "Timeseries output not implemented";
+            out.face = _mesh->locate_face(out.easting, out.northing);
+            if (out.face == NULL)
+            {
+                BOOST_THROW_EXCEPTION(config_error() <<
+                                              errstr_info("Requested an output point that is not in the triangulation domain. Pt:"
+                                                          + std::to_string(out.easting) + "," + std::to_string(out.northing)));
+            }
+          //  LOG_WARNING << "Timeseries output not implemented";
         }
-        else if(outype == "mesh")
+        else if(out_type == "mesh")
         {
             out.type = output_info::mesh;
             out.fname = itr.second.get<std::string>("base_name");
@@ -489,19 +492,7 @@ void core::init(int argc, char **argv)
 //#ifdef NOMATLAB
 //            config_matlab(value);
 //#endif
-//        } else if (name == "output")
-//        {
-//            config_output(value);
-//        } else if (name == "global")
-//        {
-//            config_global(value);
-//        } else
-//        {
-//            const json_spirit::Pair& pair = itr;
-//            const std::string& name = pair.name_;
-//            LOG_INFO << "Unknown section '" << name << "', skipping";
-//        }
-//    }
+
 
     _cfg = cfg;
 
@@ -513,6 +504,56 @@ void core::init(int argc, char **argv)
     LOG_DEBUG << "Determining module dependencies";
     _determine_module_dep();
 
+    LOG_DEBUG << "Initializing and allocating memory for timeseries";
+
+    if (_global->stations.size() == 0)
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
+
+#pragma omp parallel for
+    for(size_t it = 0; it < _mesh->size_faces(); it++)
+    {
+
+        auto date = _global->stations.at(0)->date_timeseries();
+        //auto size = _global->stations.at(0)->timeseries_length();
+        Delaunay::Face_handle face = _mesh->face(it);
+
+        bool full_init = false;
+
+        for(auto& itr : _outputs)
+        {
+
+            //only do full timeseries init on the faces we need
+            if(itr.type == output_info::output_type::timeseries
+                    && itr.face == face)
+            {
+                itr.face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
+                full_init = true;
+            }
+        }
+
+        if(!full_init)
+        {
+            //only do 1 init. The time is wrong, but that is ok.
+            timeseries::date_vec d;
+            d.push_back(date[0]);
+            face->init_time_series(_provided_var_module, d);
+        }
+
+        full_init = false;
+    }
+
+    timer c;
+    LOG_DEBUG << "Running init() for each module";
+    c.tic();
+    for (auto& itr : _chunked_modules)
+    {
+        for (auto& jtr : itr)
+        {
+            jtr->init(_mesh);
+        }
+
+    }
+    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 }
 
 void core::_determine_module_dep()
@@ -580,7 +621,6 @@ void core::_determine_module_dep()
                         //add the dependency from module -> itr, such that itr will come before module
                         edge e;
                         e.variable=*i;
-//                        boost::add_edge(itr.first->IDnum, module.first->IDnum, g);
 
                         boost::add_edge(itr.first->IDnum, module.first->IDnum, e,g);
 
@@ -791,25 +831,7 @@ void core::_determine_module_dep()
         chunks++;
     }
 
-    LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
-    if (_global->stations.size() == 0)
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
-
-    #pragma omp parallel for
-    for(size_t it = 0; it < _mesh->size_faces(); it++)
-    {
-
-        auto date = _global->stations.at(0)->date_timeseries();
-        //auto size = _global->stations.at(0)->timeseries_length();
-        Delaunay::Face_handle face = _mesh->face(it);
-
-// face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
-
-        timeseries::date_vec d;
-        d.push_back(date[0]);
-        face->init_time_series(_provided_var_module, d);
-    }
 
 
 }
@@ -817,17 +839,7 @@ void core::_determine_module_dep()
 void core::run()
 {
     timer c;
-    LOG_DEBUG << "Running init() for each module";
-    c.tic();
-    for (auto& itr : _chunked_modules)
-    {
-        for (auto& jtr : itr)
-        {
-            jtr->init(_mesh);
-        }
 
-    }
-    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 
     //setup a XML writer for the PVD paraview format
     pt::ptree pvd;
@@ -851,8 +863,15 @@ void core::run()
         {
             if (t != _global->stations.at(i)->now().get_posix())
             {
+                std::stringstream expected;
+                expected << _global->stations.at(0)->now().get_posix();
+                std::stringstream found;
+                found << _global->stations.at(i)->now().get_posix();
                 BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                        << errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->ID()));
+                        << errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->ID()
+                                       + "\nExpected: " + expected.str()
+                                       + "\nFound: " +  found.str()
+                ));
             }
         }
 
@@ -936,6 +955,14 @@ void core::run()
 
         c.tic();
 
+        for(auto& itr : _outputs)
+        {
+            //only update the full timeseries
+            if(itr.type == output_info::output_type::timeseries)
+            {
+                itr.face->next(); /*length of all the vectors to initialize*/
+            }
+        }
 //        #pragma omp parallel for
 //        for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
 //        {
@@ -967,6 +994,14 @@ void core::run()
         //no mesh section, just ignore. XML file won't be written
     }
 
+    for(auto& itr : _outputs)
+    {
+        //save the full timeseries
+        if(itr.type == output_info::output_type::timeseries)
+        {
+            itr.face->to_file(itr.fname);
+        }
+    }
 
 
 //    for (auto& itr : _outputs)
