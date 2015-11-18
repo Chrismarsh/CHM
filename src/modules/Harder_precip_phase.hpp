@@ -17,7 +17,7 @@
 * \addtogroup modules
 * @{
 * \class Harder_precip_phase
-* \brief Calculates precip phase based
+* \brief Calculates Thornton_p phase based
 *
 * Calculates wind in a terrible way
 *
@@ -26,8 +26,8 @@
 * - Relative Humidity 'rh' [degrees]
 *
 * Provides:
-* - Snow precip p_snow [m]
-* - Liquid precip p_rain [m]
+* - Snow Thornton_p p_snow [m]
+* - Liquid Thornton_p p_rain [m]
 */
 class Harder_precip_phase : public module_base
 {

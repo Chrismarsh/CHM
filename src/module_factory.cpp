@@ -9,7 +9,7 @@ module_base* module_factory::get(std::string ID, pt::ptree& config)
     
     module_base* mod = nullptr;
     
-    if (ID == "solar")
+    if (ID == "slope_iswr")
         mod = new slope_iswr();
     else if (ID == "Marsh_shading_iswr")
         mod = new Marsh_shading_iswr();
@@ -25,8 +25,8 @@ module_base* module_factory::get(std::string ID, pt::ptree& config)
         mod = new Liston_wind();
     else if (ID == "PenmanMonteith_evaporation")
         mod = new PenmanMonteith_evaporation();
-    else if (ID == "precip")
-        mod = new precip();
+    else if (ID == "Thornton_p")
+        mod = new Thornton_p();
     else if (ID == "Walcek_cloud")
         mod = new Walcek_cloud();
     else if (ID == "Harder_precip_phase")
@@ -39,6 +39,10 @@ module_base* module_factory::get(std::string ID, pt::ptree& config)
         mod = new iswr_from_obs();
     else if (ID == "Dodson_NSA_ta")
         mod = new Dodson_NSA_ta();
+    else if (ID == "Thornton_p")
+        mod = new Thornton_p();
+    else if (ID == "Thornton_var_p")
+        mod = new Thornton_var_p;
 
     if(mod == nullptr)
     {

@@ -30,11 +30,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
-else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
-endif()
+
 
 
 find_package(CGAL REQUIRED)
@@ -49,7 +45,18 @@ include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 #remove this flag as it destroys the build on -O1 and spams warnings
 remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
 
+remove_cxx_flag("-O2")
+remove_cxx_flag("-O3")
+
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
+endif()
+
+
 #C#####
+
 #GAL requires strict rounding
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -fp-model strict -msse4 -finline ") #-frounding-math needed for cgal

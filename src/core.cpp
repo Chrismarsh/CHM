@@ -94,16 +94,44 @@ void core::config_debug(const pt::ptree& value)
 
 }
 
-void core::config_modules(const pt::ptree& value,const pt::ptree& config)
+void core::config_modules(const pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add)
 {
     LOG_DEBUG << "Found modules section";
     int modnum = 0;
     //loop over the list of requested modules
     // these are in the format "type":"ID"
+    std::set<std::string> modules; //use a set to avoid duplicates (ie, user error!)
     for (auto& itr : value)
     {
-
         std::string module = itr.second.data();
+
+        //see if the module is one in the remove list
+        //if it isn't, add it
+        if(std::find(remove.begin(),remove.end(),module) == remove.end())
+        {
+            modules.insert(module);
+        //    LOG_DEBUG << "inserted module " << module;
+        }
+        else
+        {
+            LOG_DEBUG << "Removed module " << module;
+        }
+
+    }
+
+    //straight up add anything
+    for (auto& itr : add)
+    {
+        modules.insert(itr);
+        LOG_DEBUG << "Inserted module " << itr << " from cmdl";
+    }
+
+
+
+    for (auto& itr : modules)
+    {
+
+        std::string module = itr;
         LOG_DEBUG << "Module ID=" << module;
 
 
@@ -222,6 +250,7 @@ void core::config_matlab(const pt::ptree& value)
 void core::config_output(const pt::ptree& value)
 {
     LOG_DEBUG << "Found output section";
+    size_t ID = 0;
     //loop over the list of matlab options
     for (auto& itr : value)
     {
@@ -242,6 +271,9 @@ void core::config_output(const pt::ptree& value)
                                               errstr_info("Requested an output point that is not in the triangulation domain. Pt:"
                                                           + std::to_string(out.easting) + "," + std::to_string(out.northing)));
             }
+            out.face->_debug_name = out_type; //out_type holds the station name
+            out.face->_debug_ID = ID;
+            ++ID;
           //  LOG_WARNING << "Timeseries output not implemented";
         }
         else if(out_type == "mesh")
@@ -300,6 +332,9 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
                     "Does not support remove of individual list [] itmes. For example:"
                     "-c nproc:2 -r nproc\n "
                     "will result in nproc being remove.")
+            ("remove-module,d",po::value<std::vector<std::string>>(),"Removes a module."
+                    " Removals are processed after any --config paramters are parsed, so -d will override -c. ")
+            ("add-module,m",po::value<std::vector<std::string>>(),"Adds a module.")
             ;
 
 
@@ -348,9 +383,15 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if(vm.count("remove"))
         rm_config_extra = vm["remove"].as< std::vector<std::string>>();
 
+    std::vector<std::string> remove_module;
+    if(vm.count("remove-module"))
+        remove_module = vm["remove-module"].as< std::vector<std::string>>();
 
-    return boost::make_tuple(config_file,config_extra,rm_config_extra);
-   // return config_extra;
+    std::vector<std::string> add_module;
+    if(vm.count("add-module"))
+        add_module = vm["add-module"].as< std::vector<std::string>>();
+
+    return boost::make_tuple(config_file,config_extra,rm_config_extra,remove_module,add_module);
 }
 
 void core::init(int argc, char **argv)
@@ -383,8 +424,6 @@ void core::init(int argc, char **argv)
                 std::string module_name = itr.first.data();
                 //replace the string config name with that config file
                 cfg.put_child("config."+module_name,module_config);
- //               LOG_DEBUG << module_config.get<double>("const.b");
- //               LOG_DEBUG << cfg.get<double>("config.Harder_precip_phase.const.b");
             }
 
     }
@@ -400,7 +439,7 @@ void core::init(int argc, char **argv)
 
 
     //now apply any override or extra configuration parameters from the command line
-    for(auto& itr:cmdl_options.get<1>())
+    for(auto& itr : cmdl_options.get<1>())
     {
         //check if we are overwriting something
         try
@@ -449,8 +488,7 @@ void core::init(int argc, char **argv)
 
     }
 
-
-
+    //remove and add modules
     /*
      * We expect the following sections:
      *  modules
@@ -458,7 +496,7 @@ void core::init(int argc, char **argv)
      *  forcing
      * The rest may be optional, and will override the defaults.
      */
-    config_modules(cfg.get_child("modules"),cfg.get_child("config"));
+    config_modules(cfg.get_child("modules"),cfg.get_child("config"),cmdl_options.get<3>(),cmdl_options.get<4>());
     config_meshes(cfg.get_child("meshes"));
     config_forcing(cfg.get_child("forcing"));
 
@@ -880,12 +918,12 @@ void core::run()
         _global->update();
 
         LOG_DEBUG << "Timestep: " << _global->posix_time();
-
+        c.tic();
         size_t chunks = 0;
         for (auto& itr : _chunked_modules)
         {
             LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" << (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
-            c.tic();
+
             if (itr.at(0)->parallel_type() == module_base::parallel::data)
             {
                 #pragma omp parallel for
@@ -907,11 +945,11 @@ void core::run()
                     jtr->run(_mesh, _global);
                 }
             }
-            LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+
             chunks++;
 
         }
-
+        LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
         for (auto& itr : _outputs)
         {
             if (itr.type == output_info::output_type::mesh)
@@ -924,7 +962,6 @@ void core::run()
                    {
                        pt::ptree& dataset = pvd.add("VTKFile.Collection.DataSet","");
                        dataset.add("<xmlattr>.timestep",_global->posix_time_int());
-//                       dataset.add("<xmlattr>.timestep", num_ts);
                        dataset.add("<xmlattr>.group","");
                        dataset.add("<xmlattr>.part",0);
                        dataset.add("<xmlattr>.file",base_name+".vtu");
@@ -953,7 +990,7 @@ void core::run()
 
         num_ts++;
 
-        c.tic();
+  //      c.tic();
 
         for(auto& itr : _outputs)
         {
@@ -978,11 +1015,11 @@ void core::run()
         }
        
             
-        LOG_DEBUG << "Updating iterators took " << c.toc<ms>() <<"ms";
+       // LOG_DEBUG << "Updating iterators took " << c.toc<ms>() <<"ms";
 
     }
     double elapsed = c.toc<s>();
-    LOG_DEBUG << "Took " << elapsed << "s";
+    LOG_DEBUG << "Total runtime was " << elapsed << "s";
     try
     {
         std::string base_name = _cfg.get<std::string>("output.mesh.base_name");

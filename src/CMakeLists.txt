@@ -11,10 +11,10 @@ set(MODULE_SRCS
 		modules/Marsh_shading_iswr.cpp
 		modules/Sicart_ilwr.cpp
 		modules/PenmanMonteith_evaporation.cpp
-		modules/interp_met/precip.cpp
+		modules/interp_met/Thornton_p.cpp
 		modules/Walcek_cloud.cpp
 		modules/Harder_precip_phase.cpp
-		modules/Burridge_iswr.cpp modules/Iqbal_iswr.cpp modules/Iqbal_iswr.h modules/interp_met/iswr_from_obs.cpp modules/interp_met/iswr_from_obs.h modules/interp_met/Dodson_NSA_ta.cpp modules/interp_met/Dodson_NSA_ta.h)
+		modules/Burridge_iswr.cpp modules/Iqbal_iswr.cpp modules/Iqbal_iswr.h modules/interp_met/iswr_from_obs.cpp modules/interp_met/iswr_from_obs.h modules/interp_met/Dodson_NSA_ta.cpp modules/interp_met/Dodson_NSA_ta.h modules/interp_met/Thornton_var_p.cpp modules/interp_met/Thornton_var_p.h)
 
 
 set(CHM_SRCS

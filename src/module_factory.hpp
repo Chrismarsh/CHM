@@ -17,13 +17,15 @@ namespace pt = boost::property_tree;
 #include "Sicart_ilwr.hpp"
 #include "Liston_wind.hpp"
 #include "PenmanMonteith_evaporation.hpp"
-#include "precip.hpp"
+#include "Thornton_p.hpp"
 #include "Walcek_cloud.hpp"
 #include "Harder_precip_phase.hpp"
 #include "Burridge_iswr.h"
 #include "Iqbal_iswr.h"
 #include "iswr_from_obs.h"
 #include "Dodson_NSA_ta.h"
+#include "Thornton_p.hpp"
+#include "Thornton_var_p.h"
 
 namespace pt = boost::property_tree;
 class module_factory

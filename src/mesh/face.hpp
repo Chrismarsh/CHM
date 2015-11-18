@@ -208,6 +208,9 @@ public:
 
     template<typename T>
     T*make_module_data(std::string module);
+
+    std::string _debug_name; //for debugging to find the elem that we want
+    size_t _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
 private:
 
     double _slope;
@@ -215,6 +218,7 @@ private:
     double _x;
     double _y;
     double _z;
+
     boost::shared_ptr<Point_3> _center;
     boost::shared_ptr<Vector_3> _normal;
 

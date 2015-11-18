@@ -121,7 +121,7 @@ public:
   **/
     void init(int argc, char **argv);
     void config_debug(const pt::ptree& value);
-    void config_modules(const pt::ptree& value,const pt::ptree& config);
+    void config_modules(const pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
     void config_meshes(const pt::ptree& value);
     void config_forcing(const pt::ptree& value);
 
@@ -132,10 +132,17 @@ public:
     // .first = config file to use
     // .second = extra options, if any.
     typedef boost::tuple<
-            std::string,
-            std::vector<std::pair<std::string,std::string>>,
-            std::vector<std::string>
+            std::string, //config file path to load. defaults to CHM.config
+            std::vector<std::pair<std::string,std::string>>, //insert or overide config value
+            std::vector<std::string>, //remove config value
+            std::vector<std::string>, //remove module
+            std::vector<std::string>  // add module
     > cmdl_opt;
+//    typedef boost::tuple<
+//            std::string,
+//            po::variables_map
+//    > cmdl_opt;
+
     cmdl_opt config_cmdl_options(int argc, char **argv);
 
     /**

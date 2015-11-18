@@ -23,9 +23,9 @@ set(MODULE_SRCS
 		../src/modules/Marsh_shading_iswr.cpp
 		../src/modules/Sicart_ilwr.cpp
 		../src/modules/PenmanMonteith_evaporation.cpp
-		../src/modules/interp_met/precip.cpp
+		../src/modules/interp_met/Thornton_p.cpp
 		../src/modules/Walcek_cloud.cpp
-		../src/modules/Harder_precip_phase.cpp ../src/modules/Burridge_iswr.cpp ../src/modules/Burridge_iswr.h ../src/modules/Iqbal_iswr.cpp ../src/modules/Iqbal_iswr.h ../src/modules/interp_met/iswr_from_obs.cpp ../src/modules/interp_met/iswr_from_obs.h ../src/modules/interp_met/Dodson_NSA_ta.cpp ../src/modules/interp_met/Dodson_NSA_ta.h)
+		../src/modules/Harder_precip_phase.cpp ../src/modules/Burridge_iswr.cpp ../src/modules/Burridge_iswr.h ../src/modules/Iqbal_iswr.cpp ../src/modules/Iqbal_iswr.h ../src/modules/interp_met/iswr_from_obs.cpp ../src/modules/interp_met/iswr_from_obs.h ../src/modules/interp_met/Dodson_NSA_ta.cpp ../src/modules/interp_met/Dodson_NSA_ta.h ../src/modules/interp_met/Thornton_var_p.cpp ../src/modules/interp_met/Thornton_var_p.h)
 
 if(MATLAB)
 set(LIBMAW_SRCS

@@ -42,6 +42,10 @@ public:
     
     int year();
     int day();
+
+    /*
+     * Month on [1,12]
+     */
     int month();
     int hour();
     int min();

@@ -6,8 +6,7 @@ Harder_precip_phase::Harder_precip_phase()
     depends("rh");
     depends("ea");
 
-    provides("psnow");
-    provides("prain");
+
     provides("Ti");
     provides("frac_precip_rain");
     provides("frac_precip_snow");

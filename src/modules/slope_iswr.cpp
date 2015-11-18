@@ -9,9 +9,9 @@ slope_iswr::slope_iswr()
     depends("iswr_direct");
 
     provides("solar_angle");
-    depends("iswr");
-    depends("iswr_diffuse");
-    depends("iswr_direct");
+    provides("iswr");
+    provides("iswr_diffuse");
+    provides("iswr_direct");
 
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
