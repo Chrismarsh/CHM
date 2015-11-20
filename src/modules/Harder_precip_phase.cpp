@@ -4,17 +4,15 @@ Harder_precip_phase::Harder_precip_phase()
 {
     depends("t");
     depends("rh");
-    depends("ea");
-
+    depends("p");
 
     provides("Ti");
     provides("frac_precip_rain");
     provides("frac_precip_snow");
-
+    provides("p_snow");
+    provides("p_rain");
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
-
-
 
 
 }
@@ -28,7 +26,6 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
     double Ta = elem->face_data("t")+273.15; //K
     double T =  elem->face_data("t");
     double RH = elem->face_data("rh");
-    //double ea = elem->face_data("ea")*0.001; // Pa -> kPa
     double ea = RH/100 * 0.611*exp( (17.3*T) / (237.3+T));
 
     // (A.6)
@@ -53,8 +50,8 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
      */
     double mw = 0.01801528 * 1000.0; //[kgmol-1]
     double R = 8.31441 /1000.0; // [J mol-1 K-1]
-    double rho = (mw * ea) / (R*Ta);
 
+    double rho = (mw * ea) / (R*Ta);
 
     auto fx = [=](double Ti)
     {
@@ -70,10 +67,12 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
 
     double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
 
+    //     default values:
+    //     b=2.630006;
+    //     c=0.09336;
     double b = cfg.get<double>("const.b");
     double c = cfg.get<double>("const.c");
-//    double b=2.630006;
-//    double c=0.09336;
+
     double frTi = 1 / (1+b*pow(c,Ti));
 
     frTi = std::trunc(100.0*frTi) / 100.0; //truncate to 2 decimal positions
@@ -81,5 +80,10 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
     elem->set_face_data("Ti",Ti);
     elem->set_face_data("frac_precip_rain",frTi);
     elem->set_face_data("frac_precip_snow",1-frTi);
+
+    double p = elem->face_data("p");
+
+    elem->set_face_data("p_rain", p * frTi);
+    elem->set_face_data("p_snow", p * (1-frTi));
 
 }

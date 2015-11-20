@@ -26,10 +26,11 @@ namespace pt = boost::property_tree;
 #include "Dodson_NSA_ta.h"
 #include "Thornton_p.hpp"
 #include "Thornton_var_p.h"
+#include "rh_from_obs.h"
 
-namespace pt = boost::property_tree;
+
 class module_factory
 {
 public:
-    module_base* get(std::string ID, pt::ptree& cfg);
+    module_base* get(std::string ID, pt::ptree config);
 };

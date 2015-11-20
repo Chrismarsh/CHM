@@ -18,7 +18,7 @@
 
 triangulation::triangulation()
 {
-    LOG_WARNING << "No Matlab engine, plotting and all Matlab functionality will be disabled";
+ //   LOG_WARNING << "No Matlab engine, plotting and all Matlab functionality will be disabled";
 #ifdef MATLAB
     _engine = NULL;
     _gfx = NULL;

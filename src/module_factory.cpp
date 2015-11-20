@@ -3,7 +3,7 @@
 
 
 
-module_base* module_factory::get(std::string ID, pt::ptree& config)
+module_base* module_factory::get(std::string ID, pt::ptree config)
 {
     LOG_DEBUG << "Module ID=" << ID;
     
@@ -43,6 +43,8 @@ module_base* module_factory::get(std::string ID, pt::ptree& config)
         mod = new Thornton_p();
     else if (ID == "Thornton_var_p")
         mod = new Thornton_var_p;
+    else if (ID == "rh_from_obs")
+        mod = new rh_from_obs;
 
     if(mod == nullptr)
     {
@@ -55,7 +57,5 @@ module_base* module_factory::get(std::string ID, pt::ptree& config)
     mod->cfg = config;
     
     return mod;
-       
-
 
 }

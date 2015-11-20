@@ -17,6 +17,7 @@ struct io_error: virtual exception_base { };
 struct file_read_error: virtual io_error { };
 struct file_write_error: virtual io_error { };
 
+struct model_init_error: virtual io_error { };
 
 // Module errors
 struct module_error : virtual exception_base { };

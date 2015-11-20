@@ -140,7 +140,13 @@ public:
     * \return value of the requested variable
     */
     double get(std::string variable);
-    
+
+    /**
+     * Save the internal timeseres to a file
+     * \param filename
+     */
+    void tofile(std::string file);
+
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:

@@ -405,7 +405,7 @@ void timeseries::to_file(std::string file)
     //build a list of all the headers
     //unknown order
     int i = 0;
-    out << "Date,";
+    out << "Date";
     variable_vec::const_iterator *tItr = new variable_vec::const_iterator[_variables->size()];
     for (ts_hashmap::iterator itr = _variables->begin(); itr != _variables->end(); itr++)
     {
@@ -422,7 +422,7 @@ void timeseries::to_file(std::string file)
     
     for (size_t k = 0; k < _rows; k++)
     {
-        out << boost::posix_time::to_iso_string(_date_vec.at(k)) << ",";
+        out << boost::posix_time::to_iso_string(_date_vec.at(k));// << ",";
 //        out << _date_vec.at(k) << "\t";
         for (size_t j = 0; j < _variables->size(); j++)
         {

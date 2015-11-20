@@ -1,11 +1,17 @@
 
+set(FILTER_SRCS
+		filters/macdonald_undercatch.cpp
 
+		)
 set(MODULE_SRCS
 
 		modules/interp_met/const_llra_ta.cpp
 		modules/interp_met/Liston_monthly_llra_ta.cpp
 		modules/interp_met/Liston_monthly_llra_rh.cpp
 		modules/interp_met/Liston_wind.cpp
+		modules/interp_met/iswr_from_obs.cpp
+		modules/interp_met/Dodson_NSA_ta.cpp
+		modules/interp_met/Thornton_var_p.cpp
 
 		modules/slope_iswr.cpp
 		modules/Marsh_shading_iswr.cpp
@@ -14,16 +20,23 @@ set(MODULE_SRCS
 		modules/interp_met/Thornton_p.cpp
 		modules/Walcek_cloud.cpp
 		modules/Harder_precip_phase.cpp
-		modules/Burridge_iswr.cpp modules/Iqbal_iswr.cpp modules/Iqbal_iswr.h modules/interp_met/iswr_from_obs.cpp modules/interp_met/iswr_from_obs.h modules/interp_met/Dodson_NSA_ta.cpp modules/interp_met/Dodson_NSA_ta.h modules/interp_met/Thornton_var_p.cpp modules/interp_met/Thornton_var_p.h)
+		modules/Burridge_iswr.cpp
+		modules/Iqbal_iswr.cpp
+
+		modules/interp_met/rh_from_obs.cpp modules/interp_met/rh_from_obs.h)
 
 
 set(CHM_SRCS
 		main.cpp
 		core.cpp
 		module_factory.cpp
+		filter_factory.cpp
 		global.cpp
 		station.cpp
 		variable_map.cpp
+
+		ui/ui.cpp
+		ui/ncstream.cpp
 
 		mesh/triangulation.cpp
 
@@ -41,12 +54,14 @@ set(CHM_SRCS
 
 set (HEADER_FILES
         mesh
+		ui
         modules
         modules/interp_met
         libmaw
         interpolation
         timeseries
         utility
+		filters
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
@@ -59,7 +74,11 @@ set (EXT_HEADER_FILES
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
         ${METEOIO_INCLUDE_DIR}
+		${CURSES_INCLUDE_DIR}
+
     )
+
+#set(CURSES_LIBRARIES "${CURSES_LIBRARIES} /usr/lib64/libpanel.so")
 set( LIB_FILES
 	    ${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
@@ -72,7 +91,7 @@ set( LIB_FILES
         ${VTK_LIBRARIES}
         ${METEOIO_LIBRARY}
         ${LAPACK_LIBRARIES}
-
+		${CURSES_LIBRARIES}
 )
 
 
@@ -97,7 +116,8 @@ include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
 
 add_executable(
 	CHM 
-	${CHM_SRCS} 
+	${CHM_SRCS}
+	${FILTER_SRCS}
         ${MODULE_SRCS}
         ${LIBMAW_SRCS}
  )

@@ -119,6 +119,8 @@ find_package(TBB REQUIRED)
 
 find_package(GSL REQUIRED)
 
+find_package(Curses REQUIRED)
+
 #can't use both, so if we are building the plugin we need to compile against paraview (which brings in VTK)
 #otherwise use just VTK
 if(PV_FILTER)

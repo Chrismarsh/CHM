@@ -6,12 +6,9 @@ Liston_monthly_llra_rh::Liston_monthly_llra_rh()
 
 {
     provides("rh");
-    provides("ea");
-    provides("es");
     provides("Td_lapse_rate");
 
     depends("t");
-
     depends_from_met("rh");
 
 
@@ -24,79 +21,39 @@ Liston_monthly_llra_rh::~Liston_monthly_llra_rh()
 }
 void Liston_monthly_llra_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
+    size_t ID = elem->_debug_ID;
+    // 1/m
+    double lambda_table[] = {0.00041,
+                           0.00042,
+                           0.00040,
+                           0.00039,
+                           0.00038,
+                           0.00036,
+                           0.00033,
+                           0.00033,
+                           0.00036,
+                           0.00037,
+                           0.00040,
+                           0.00040};
+    double lambda = lambda_table[ global_param->month() - 1 ];
 
-
-    double lambda = 0.0;
-
-    switch(global_param->month())
-    {
-        case 1:
-            lambda = 0.00041;
-            break;
-        case 2:
-            lambda = 0.00042;
-            break;
-        case 3:
-            lambda = 0.00040;
-            break;
-        case 4:
-            lambda = 0.00039;
-            break;
-        case 5:
-            lambda = 0.00038;
-            break;
-        case 6:
-            lambda = 0.00036;
-            break;
-        case 7:
-            lambda = 0.00033;
-            break;
-        case 8:
-            lambda = 0.00033;
-            break;
-        case 9:
-            lambda = 0.00036;
-            break;
-        case 10:
-            lambda = 0.00037;
-            break;
-        case 11:
-            lambda = 0.00040;
-            break;
-        case 12:
-            lambda = 0.00040;
-            break;
-
-    }
-
-    if(lambda == 0.0)
-        BOOST_THROW_EXCEPTION(interp_error() << errstr_info("rh lapse rate == 0"));
+    //taken from mio
+    const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
+    const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : global_param->stations)
     {
-        //use water for the moment as per Liston, Elder
-        double a = 611.21;
-        double b = 17.502;
-        double c = 240.97;
-        double temp = s->get(global_param->get_variable("Tair"));
-        double rh = s->get(global_param->get_variable("RH"));
 
-        //because boom otherwise
-        if (rh <= 0.0)
-        {
-            rh = 1.0;
-        }
-        //solve RH ~= 100* e/es for e
-        double es = a * exp((b * temp) / (c + temp));
-        double e = rh / 100.0 * es;
+        double t = s->get("t")+273.15;
+        double rh = s->get("rh")/100.;
 
-        double dewPointTemp = (c * log(e / a)) / (b - log(e / a));
+        double dewPointTemp = mio::Atmosphere::RhtoDewPoint(rh,t,false); // K
+        double f = t < 273.15 ?  Ci / Bi : Cw/Bw; // T<0 -> use w.r.t ice
+        double dewPointLapseRate = lambda * f;
 
-        double dewPointLapseRate = lambda * c / b;
-
-        double newTd = dewPointTemp - dewPointLapseRate * (0.0 - s->z());
+        double newTd = dewPointTemp - dewPointLapseRate * (s->z() - 0.0);
 
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), newTd ) );
     }
@@ -107,27 +64,18 @@ void Liston_monthly_llra_rh::run(mesh_elem& elem, boost::shared_ptr<global> glob
         interp = new thin_plate_spline();
 
     auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double value = (*interp)(lowered_values, query);
+    double value = (*interp)(lowered_values, query);//K
 
     //raise value back up to the face's elevation from sea level
     //use water for the moment as per Liston, Elder
-    double a = 611.21;
-    double b = 17.502;
-    double c = 240.97;
-    double dewPointLapseRate = lambda * c / b;
-    double Td = value - (-dewPointLapseRate)*(0 - elem->get_z());
-    double e = a * exp((b * Td) / (c + Td));
-    double temp = elem->face_data("t");
-    double es = a * exp((b * temp) / (c + temp));
+    double t = elem->face_data("t")+273.15;
+    double f = t < 273.15 ?  Ci / Bi : Cw/Bw; // T<0 -> use w.r.t ice
+    double dewPointLapseRate = lambda * f;
 
-    //RH value replaces Tdew value
-    double rh = 100.0 * e / es;
-    if (rh > 100.0)
-        rh = 100.0;
+    double Td = value - dewPointLapseRate*(0.0 - elem->get_z());
+    double rh = mio::Atmosphere::DewPointtoRh(Td,t,false);
 
-    elem->set_face_data(global_param->get_variable("RH"),rh);
-    elem->set_face_data("es",es);
-    elem->set_face_data("ea",e);
+    elem->set_face_data("rh",rh*100.0);
     elem->set_face_data("Td_lapse_rate",dewPointLapseRate);
 
     delete interp;

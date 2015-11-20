@@ -1,6 +1,6 @@
 #pragma once
 
-
+//std includes
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -12,8 +12,9 @@
 #include <map>
 #include <stdio.h>
 #include <cstdlib>
+#include <chrono>
 
-//graph
+//boost includes
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/topological_sort.hpp>
@@ -26,22 +27,21 @@
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/tuple/tuple.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 
+//includes from CHM
 #include "logger.hpp"
 #include "exception.hpp"
-
 #include "triangulation.hpp"
-
-
-
+#include "filter_factory.h"
 #include "module_factory.hpp"
 #include "station.hpp"
-
 #include "timer.hpp"
 #include "global.hpp"
 #include "str_format.h"
+#include "ui.h"
 
 struct vertex{
     std::string name;
@@ -120,7 +120,7 @@ public:
    * @param file The file to open
   **/
     void init(int argc, char **argv);
-    void config_debug(const pt::ptree& value);
+    void config_options(const pt::ptree &value);
     void config_modules(const pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
     void config_meshes(const pt::ptree& value);
     void config_forcing(const pt::ptree& value);
@@ -160,10 +160,11 @@ protected:
 
     //a text file log
     boost::shared_ptr< text_sink > _log_sink;
+    boost::shared_ptr< text_sink > _cout_log_sink;
     
     //module factory for creating the specified modules
     module_factory _mfactory;
-
+    filter_factory _filtfactory;
 
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
@@ -221,8 +222,9 @@ protected:
         std::vector<std::string> variables;
         mesh_elem face;
     };
-    
-    
+
+    bool _enable_ui;
+    ui _ui;
     std::vector<output_info> _outputs;
 };
 

@@ -4,30 +4,35 @@
 #include "triangulation.hpp"
 #include "module_base.hpp"
 #include "TPSpline.hpp"
+
 #include <cstdlib>
 #include <string>
-
 #include <cmath>
 #include <armadillo>
 #define _USE_MATH_DEFINES
 #include <math.h>
+
 #include <boost/math/tools/roots.hpp>
 
+//#include <meteoio/MeteoIO.h>
 /**
 * \addtogroup modules
 * @{
 * \class Harder_precip_phase
-* \brief Calculates Thornton_p phase based
+* \brief Calculates precip phase based
 *
-* Calculates wind in a terrible way
+* Calculates precipitation phase via falling hydrometeor energy balance
 *
 * Depends:
-* - Air temperature "t" [degrees]
-* - Relative Humidity 'rh' [degrees]
+* - Air temperature "t" [C]
+* - Relative Humidity 'rh' [C]
+* - Precip "p" [mm]
 *
 * Provides:
-* - Snow Thornton_p p_snow [m]
-* - Liquid Thornton_p p_rain [m]
+* - Snow precip p_snow [m]
+* - Liquid precip p_rain [m]
+* - Fractional rain frac_precip_rain [-]
+* - Fractional snow frac_precip_snow [-]
 */
 class Harder_precip_phase : public module_base
 {

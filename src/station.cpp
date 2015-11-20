@@ -129,3 +129,7 @@ std::ostream &operator<<(std::ostream &strm, const station &s)
     else
         return strm << "ID=" << s._ID << "; (x,y,z)=(" << s._x << "," << s._y << "," << s._z << "); " << "forcing=Not opened";
 }
+void station::tofile(std::string file)
+{
+    _obs->to_file(file);
+}

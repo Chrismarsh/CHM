@@ -4,33 +4,63 @@ core::core()
 {
     BOOST_LOG_FUNCTION();
 
+
+    //get this up as fast as possible so we can start showing the UI
+    //if we run under a shitty terminal that doesn't support ncurses, or GDB
+    //we do have to turn this off and fall back to just showing cout
+    try
+    {
+        _ui.init();
+
+    }catch(model_init_error& e)
+    {
+        LOG_WARNING << "ncurses did not init, falling back to cout";
+        _enable_ui = false;
+    }
+
+
+
     //default logging level
     _log_level = debug;
 
+
+    _cout_log_sink = boost::make_shared< text_sink >();
+
+    text_sink::locked_backend_ptr pBackend_cout = _cout_log_sink->locked_backend();
+
+    #if (BOOST_VERSION / 100 % 1000) < 56
+    boost::shared_ptr< std::ostream > pStream(&std::clog,  logging::empty_deleter());
+    #else
+    boost::shared_ptr< std::ostream > pStream(&std::cout,  boost::null_deleter()); //clog
+    #endif
+    pBackend_cout->add_stream(pStream);
+
+    _cout_log_sink->set_formatter
+            (
+                    expr::format("[%1%]: %2%")
+                    % expr::attr< log_level>("Severity")
+                    % expr::smessage
+            );
+    _cout_log_sink->set_filter(
+            severity >= debug
+    );
+    logging::core::get()->add_sink(_cout_log_sink);
+
+
     _log_sink = boost::make_shared< text_sink >();
+    text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
+    boost::shared_ptr< std::ofstream > pStream2(new std::ofstream("CHM.log"));
+
+    if (!pStream2->is_open())
     {
-        text_sink::locked_backend_ptr pBackend = _log_sink->locked_backend();
-
-        #if (BOOST_VERSION / 100 % 1000) < 56
-        boost::shared_ptr< std::ostream > pStream(&std::clog,  logging::empty_deleter());
-        #else
-        boost::shared_ptr< std::ostream > pStream(&std::clog,  boost::null_deleter());
-        #endif
-        pBackend->add_stream(pStream);
-
-
-        boost::shared_ptr< std::ofstream > pStream2(new std::ofstream("CHM.log"));
-
-        if (!pStream2->is_open())
-        {
-            BOOST_THROW_EXCEPTION(file_write_error()
-                    << boost::errinfo_errno(errno)
-                    << boost::errinfo_file_name("CHM.log")
-                    );
-        }
-
-        pBackend->add_stream(pStream2);
+        BOOST_THROW_EXCEPTION(file_write_error()
+                << boost::errinfo_errno(errno)
+                << boost::errinfo_file_name("CHM.log")
+                );
     }
+
+    pBackend_file->add_stream(pStream2);
+
 
     _log_sink->set_formatter
             (
@@ -65,6 +95,8 @@ core::core()
 
     //don't just abort and die
     gsl_set_error_handler_off();
+
+    _enable_ui = true;
 }
 
 core::~core()
@@ -72,9 +104,11 @@ core::~core()
     LOG_DEBUG << "Finished";
 }
 
-void core::config_debug(const pt::ptree& value)
+void core::config_options(const pt::ptree &value)
 {
-    LOG_DEBUG << "Found debug section";
+    LOG_DEBUG << "Found options section";
+
+    //setup debugging level, default to debug if not specified
     std::string s = value.get("debug_level","debug");
 
     if (s == "debug")
@@ -90,9 +124,16 @@ void core::config_debug(const pt::ptree& value)
 
     _log_sink->set_filter(
             severity >= _log_level
-            );
+    );
+
+
+    //enable/disable ncurses UI. default is enable
+//    boost::optional<bool> u = value.get_optional<bool>("ui");
+//    if(u)
+//        _enable_ui = *u;
 
 }
+
 
 void core::config_modules(const pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add)
 {
@@ -182,6 +223,27 @@ void core::config_forcing(const pt::ptree& value)
 
         std::string file = itr.second.get<std::string>("file");
         s->open(file);
+
+
+        try
+        {
+           auto filter_section = itr.second.get_child("filter");
+
+            for(auto& jtr: filter_section)
+            {
+                auto name = jtr.first.data();
+
+                auto filter = _filtfactory.get(name,jtr.second);
+                filter->process(s);
+                s->reset_itrs(); // reset all the internal iterators
+            }
+
+            s->tofile("uc_doubled.txt");
+        }catch (pt::ptree_bad_path& e)
+        {
+            //ignore
+        }
+
 
         LOG_DEBUG << "New station created " << *s;
         _global->stations.push_back(s);
@@ -398,6 +460,7 @@ void core::init(int argc, char **argv)
 {
     BOOST_LOG_FUNCTION();
 
+
     //get any command line options
     auto cmdl_options = config_cmdl_options(argc, argv);
 
@@ -445,7 +508,7 @@ void core::init(int argc, char **argv)
         try
         {
             auto value = cfg.get<std::string>(itr.first);
-            LOG_DEBUG << "Overwriting " << itr.first << "=" << value << " with " << itr.first << "=" << itr.second;
+            LOG_WARNING << "Overwriting " << itr.first << "=" << value << " with " << itr.first << "=" << itr.second;
 
         }catch(pt::ptree_bad_path& e)
         {
@@ -454,6 +517,8 @@ void core::init(int argc, char **argv)
 
         cfg.put(itr.first,itr.second);
     }
+
+
 
     //now apply any removal parameters from the command line
     for(auto& itr:cmdl_options.get<2>())
@@ -505,10 +570,10 @@ void core::init(int argc, char **argv)
      */
     try
     {
-        config_debug(cfg.get_child("debug"));
+        config_options(cfg.get_child("option"));
     }catch(pt::ptree_bad_path& e)
     {
-        LOG_DEBUG << "Optional section Debug not found";
+        LOG_DEBUG << "Optional section option not found";
     }
 
     try
@@ -886,12 +951,17 @@ void core::run()
 
     LOG_DEBUG << "Starting model run";
 
+
+
     c.tic();
 
+    double meantime =0;
     size_t num_ts = 0;
+    size_t max_ts = _global->stations.at(0)->date_timeseries().size();
     bool done = false;
     while (!done)
     {
+
         //ensure all the stations are at the same timestep
         boost::posix_time::ptime t;
         t = _global->stations.at(0)->now().get_posix(); //get first stations time
@@ -917,7 +987,12 @@ void core::run()
 
         _global->update();
 
-        LOG_DEBUG << "Timestep: " << _global->posix_time();
+      //  LOG_DEBUG << "Timestep: " << _global->posix_time();
+        std::stringstream ss;
+        ss<< _global->posix_time();
+        _ui.write_timestep(ss.str());
+        _ui.write_progress( int ((double)num_ts/(double)max_ts*100.0) );
+
         c.tic();
         size_t chunks = 0;
         for (auto& itr : _chunked_modules)
@@ -949,7 +1024,7 @@ void core::run()
             chunks++;
 
         }
-        LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+
         for (auto& itr : _outputs)
         {
             if (itr.type == output_info::output_type::mesh)
@@ -975,6 +1050,7 @@ void core::run()
                        //_mesh->mesh_to_ascii(itr.fname+".vtp");
                }
             }
+
         }
 
         //save timestep to file
@@ -988,7 +1064,7 @@ void core::run()
 //        ss << "marmot" << num_ts << ".vtp";
 //        _mesh->mesh_to_ascii(ss.str());
 
-        num_ts++;
+
 
   //      c.tic();
 
@@ -1013,8 +1089,36 @@ void core::run()
             if (!itr->next()) //
                 done = true;
         }
-       
-            
+        auto timestep = c.toc<ms>();
+        meantime += timestep;
+
+        num_ts++;
+
+        double mt = meantime/num_ts;
+        double ms = true;
+        if(mt > 1000)
+        {
+            mt /= 1000.;
+            ms = false;
+        }
+
+        std::string s = std::to_string( std::lround(mt) ) + (ms==true?" ms":"s");
+        _ui.write_meantime(s);
+
+        //we need it in seconds now
+        if(ms)
+        {
+            mt /=1000.0;
+        }
+
+
+        boost::posix_time::ptime pt( boost::posix_time::second_clock::local_time());
+        pt = pt+ boost::posix_time::seconds(mt*(max_ts-num_ts));
+        _ui.write_time_estimate( boost::posix_time::to_simple_string(pt) );
+
+
+
+      //  LOG_DEBUG << "Took " << timestep << "ms";
        // LOG_DEBUG << "Updating iterators took " << c.toc<ms>() <<"ms";
 
     }
