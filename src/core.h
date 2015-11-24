@@ -27,7 +27,8 @@
 #include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/tuple/tuple.hpp>
-#include "boost/date_time/posix_time/posix_time.hpp"
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/filesystem.hpp>
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 
@@ -152,6 +153,7 @@ public:
     ~core();
 
     void run();
+    void end();
     pt::ptree _cfg;
 
 protected:

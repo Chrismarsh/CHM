@@ -13,6 +13,26 @@ rh_from_obs::~rh_from_obs()
 {
 
 }
+
+double esat(double TA)
+{
+
+    double Es, E, Rhi, Rhw, Rh;                         //saturation and current water vapro pressure
+    const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
+    const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
+    const double Tfreeze = 0.;                          //freezing temperature
+
+    if (TA >= Tfreeze )
+    {
+        //above freezing point, water
+        Es = Aw * exp((Bw * TA) / (Cw + TA));
+    }
+    else
+    {
+        Es = Ai * exp( (Bi * TA) / (Ci + TA) );
+    }
+    return Es;
+}
 void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
     //generate lapse rates
@@ -31,7 +51,7 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
         {
             double rh = s->get("rh")/100.;
             double t = s->get("t");
-            double es = mio::Atmosphere::waterSaturationPressure(t+273.15);
+            double es = esat(t);
             double ea = rh * es;
             sea.push_back( ea  );
             sz.push_back( s->z());
@@ -53,9 +73,10 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     {
         double rh = s->get("rh")/100.;
         double t = s->get("t");
-        double es = mio::Atmosphere::waterSaturationPressure(t+273.15);
+        double es = esat(t);
         double ea = rh * es;
-        ea = ea - lapse*(0.0-s->z());
+        double z = s->z();
+        ea = ea + lapse*(0.0-z);
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), ea ) );
 
     }
@@ -69,11 +90,14 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     double ea = (*interp)(lowered_values, query);
 
     //raise it back up
-    ea = ea - lapse*(elem->get_z()-0.0);
+    ea = ea + lapse*( elem->get_z() - 0.0);
     double t = elem->face_data("t")+237.15;
 
-    double es = mio::Atmosphere::waterSaturationPressure(t);
+    double es = esat(elem->face_data("t"));
     double rh = ea/es*100.0;
+
+    rh = std::min(rh,100.0);
+    rh = std::max(10.0,rh);
 
     elem->set_face_data("rh",rh);
 

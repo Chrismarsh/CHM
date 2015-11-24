@@ -4,16 +4,8 @@
 Marsh_shading_iswr::Marsh_shading_iswr()
         :module_base(parallel::domain)
 {
-    provides("shadowed");
+    provides("shadow");
     provides("z_prime");
-    provides("iswr");
-    provides("iswr_direct");
-    provides("iswr_diffuse");
-
-    depends("iswr");
-    depends("iswr_direct");
-    depends("iswr_diffuse");
-
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
@@ -31,7 +23,7 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
         {
             auto face = domain->face(i);
             face->set_face_data("z_prime", 0); //unshadowed
-            face->set_face_data("shadowed", 0);
+            face->set_face_data("shadow", 0);
         }
         return;
     }
@@ -185,12 +177,12 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
 
                 //module_shadow_face_info* face_info = reinterpret_cast<module_shadow_face_info*> (face_j->get_module_data(ID));
                 auto face_info = face_j->get_module_data<module_shadow_face_info>(ID);
-                face_j->set_face_data("shadowed", face_info->shadow);
+                face_j->set_face_data("shadow", face_info->shadow);
                 face_j->set_face_data("z_prime", face_info->z_prime);
 
                 //if we're shadowed, set direct beam = 0
-                if (face_info->shadow ==1)
-                    face_j->set_face_data("iswr_direct", 0);
+//                if (face_info->shadow ==1)
+//                    face_j->set_face_data("iswr_direct_slope", 0);
 
 
 
@@ -216,9 +208,9 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
         auto face = domain->face(i);
         face->remove_face_data("Marsh_shading_iswr");
 
-        auto swr = face->face_data("iswr_direct");
-        auto diff = face->face_data("iswr_diffuse");
-        face->set_face_data("iswr",swr+diff);
+//        auto swr = face->face_data("iswr_direct_slope");
+//        auto diff = face->face_data("iswr_diffuse");
+//        face->set_face_data("iswr",swr+diff);
     }
 }
 

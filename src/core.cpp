@@ -3,100 +3,6 @@
 core::core()
 {
     BOOST_LOG_FUNCTION();
-
-
-    //get this up as fast as possible so we can start showing the UI
-    //if we run under a shitty terminal that doesn't support ncurses, or GDB
-    //we do have to turn this off and fall back to just showing cout
-    try
-    {
-        _ui.init();
-
-    }catch(model_init_error& e)
-    {
-        LOG_WARNING << "ncurses did not init, falling back to cout";
-        _enable_ui = false;
-    }
-
-
-
-    //default logging level
-    _log_level = debug;
-
-
-    _cout_log_sink = boost::make_shared< text_sink >();
-
-    text_sink::locked_backend_ptr pBackend_cout = _cout_log_sink->locked_backend();
-
-    #if (BOOST_VERSION / 100 % 1000) < 56
-    boost::shared_ptr< std::ostream > pStream(&std::clog,  logging::empty_deleter());
-    #else
-    boost::shared_ptr< std::ostream > pStream(&std::cout,  boost::null_deleter()); //clog
-    #endif
-    pBackend_cout->add_stream(pStream);
-
-    _cout_log_sink->set_formatter
-            (
-                    expr::format("[%1%]: %2%")
-                    % expr::attr< log_level>("Severity")
-                    % expr::smessage
-            );
-    _cout_log_sink->set_filter(
-            severity >= debug
-    );
-    logging::core::get()->add_sink(_cout_log_sink);
-
-
-    _log_sink = boost::make_shared< text_sink >();
-    text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
-    boost::shared_ptr< std::ofstream > pStream2(new std::ofstream("CHM.log"));
-
-    if (!pStream2->is_open())
-    {
-        BOOST_THROW_EXCEPTION(file_write_error()
-                << boost::errinfo_errno(errno)
-                << boost::errinfo_file_name("CHM.log")
-                );
-    }
-
-    pBackend_file->add_stream(pStream2);
-
-
-    _log_sink->set_formatter
-            (
-            expr::format("%1% %2% [%3%]: %4%")
-            % expr::attr< boost::posix_time::ptime >("TimeStamp")
-            % expr::format_named_scope("Scope",
-            keywords::format = "%n:%l",
-            keywords::iteration = expr::reverse,
-            keywords::depth = 1)
-            % expr::attr< log_level>("Severity")
-            % expr::smessage
-            );
-
-    logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
-    logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
-
-    logging::core::get()->add_sink(_log_sink);
-
-    LOG_DEBUG << "Logger initialized. Writing to cout and CHM.log";
-
-#ifdef NOMATLAB
-    _engine = boost::make_shared<maw::matlab_engine>();
-
-
-    _engine->start();
-    _engine->set_working_dir();
-
-    LOG_DEBUG << "Matlab engine started";
-#endif
-
-    _global = boost::make_shared<global>();
-
-    //don't just abort and die
-    gsl_set_error_handler_off();
-
-    _enable_ui = true;
 }
 
 core::~core()
@@ -128,9 +34,23 @@ void core::config_options(const pt::ptree &value)
 
 
     //enable/disable ncurses UI. default is enable
-//    boost::optional<bool> u = value.get_optional<bool>("ui");
-//    if(u)
-//        _enable_ui = *u;
+    boost::optional<bool> u = value.get_optional<bool>("ui");
+    if(u)
+    {
+        _enable_ui = *u;
+        LOG_DEBUG << "Set ui to " << *u;
+    }
+
+
+    // project name
+    boost::optional<std::string> prj = value.get_optional<std::string>("prj_name");
+    if(prj)
+    {
+        //_prj_name = *prj;
+        _ui.write_model_name(*prj);
+        LOG_DEBUG << "Set project name to " << *prj;
+    }
+
 
 }
 
@@ -266,6 +186,7 @@ void core::config_meshes(const pt::ptree& value)
     _mesh->from_file(dem);
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
+    _ui.write_mesh_details(_mesh->size_faces());
 
     LOG_DEBUG << "Initializing DEM mesh attributes";
     #pragma omp parallel for
@@ -460,24 +381,116 @@ void core::init(int argc, char **argv)
 {
     BOOST_LOG_FUNCTION();
 
+        //get this up as fast as possible so we can start showing the UI
+        //if we run under a shitty terminal that doesn't support ncurses, or GDB
+        //we do have to turn this off and fall back to just showing cout
+        try
+        {
+            _ui.init();
 
-    //get any command line options
-    auto cmdl_options = config_cmdl_options(argc, argv);
+        } catch (model_init_error &e)
+        {
+            LOG_WARNING << "ncurses did not init, falling back to cout";
+            _enable_ui = false;
+        }
 
-    pt::ptree cfg;
-    try
-    {
-        //load the module config into it's own ptree
-        pt::read_json(cmdl_options.get<0>(), cfg);
+        boost::filesystem::path full_path( boost::filesystem::current_path() );
+        _ui.write_cwd(full_path.string());
+        //default logging level
+        _log_level = debug;
 
-        LOG_DEBUG << "Reading configuration file " << argc;
 
-        /*
-         * The module config section is optional, but if it exists, we need it to
-         * setup the modules, so check if it exists
-         */
-             //for each module: config pair
-            for(auto& itr: cfg.get_child("config"))
+        _cout_log_sink = boost::make_shared<text_sink>();
+
+        text_sink::locked_backend_ptr pBackend_cout = _cout_log_sink->locked_backend();
+
+#if (BOOST_VERSION / 100 % 1000) < 56
+        boost::shared_ptr< std::ostream > pStream(&std::clog,  logging::empty_deleter());
+#else
+        boost::shared_ptr<std::ostream> pStream(&std::cout, boost::null_deleter()); //clog
+#endif
+        pBackend_cout->add_stream(pStream);
+
+        _cout_log_sink->set_formatter
+                (
+                        expr::format("[%1%]: %2%")
+                        % expr::attr<log_level>("Severity")
+                        % expr::smessage
+                );
+        _cout_log_sink->set_filter(
+                severity >= debug
+        );
+        logging::core::get()->add_sink(_cout_log_sink);
+
+
+        _log_sink = boost::make_shared<text_sink>();
+        text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
+        boost::shared_ptr<std::ofstream> pStream2(new std::ofstream("CHM.log"));
+
+        if (!pStream2->is_open())
+        {
+            BOOST_THROW_EXCEPTION(file_write_error()
+                                  << boost::errinfo_errno(errno)
+                                  << boost::errinfo_file_name("CHM.log")
+            );
+        }
+
+        pBackend_file->add_stream(pStream2);
+
+
+        _log_sink->set_formatter
+                (
+                        expr::format("%1% %2% [%3%]: %4%")
+                        % expr::attr<boost::posix_time::ptime>("TimeStamp")
+                        % expr::format_named_scope("Scope",
+                                                   keywords::format = "%n:%l",
+                                                   keywords::iteration = expr::reverse,
+                                                   keywords::depth = 1)
+                        % expr::attr<log_level>("Severity")
+                        % expr::smessage
+                );
+
+        logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
+        logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
+
+        logging::core::get()->add_sink(_log_sink);
+
+        LOG_DEBUG << "Logger initialized. Writing to cout and CHM.log";
+
+#ifdef NOMATLAB
+        _engine = boost::make_shared<maw::matlab_engine>();
+
+
+        _engine->start();
+        _engine->set_working_dir();
+
+        LOG_DEBUG << "Matlab engine started";
+#endif
+
+        _global = boost::make_shared<global>();
+
+        //don't just abort and die
+        gsl_set_error_handler_off();
+
+        _enable_ui = true;
+
+        //get any command line options
+        auto cmdl_options = config_cmdl_options(argc, argv);
+
+        pt::ptree cfg;
+        try
+        {
+            //load the module config into it's own ptree
+            pt::read_json(cmdl_options.get<0>(), cfg);
+
+            LOG_DEBUG << "Reading configuration file " << argc;
+
+            /*
+             * The module config section is optional, but if it exists, we need it to
+             * setup the modules, so check if it exists
+             */
+            //for each module: config pair
+            for (auto &itr: cfg.get_child("config"))
             {
                 pt::ptree module_config;
 
@@ -486,177 +499,180 @@ void core::init(int argc, char **argv)
 
                 std::string module_name = itr.first.data();
                 //replace the string config name with that config file
-                cfg.put_child("config."+module_name,module_config);
+                cfg.put_child("config." + module_name, module_config);
             }
 
-    }
-    catch(pt::ptree_bad_path& e)
-    {
-        LOG_DEBUG << "Optional section Module config not found";
-    }
-    catch (pt::json_parser_error &e)
-    {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info( "Error reading file: " + e.filename() + " on line: " + std::to_string(e.line()) + " with error: " + e.message()));
-    }
-
-
-
-    //now apply any override or extra configuration parameters from the command line
-    for(auto& itr : cmdl_options.get<1>())
-    {
-        //check if we are overwriting something
-        try
+        }
+        catch (pt::ptree_bad_path &e)
         {
-            auto value = cfg.get<std::string>(itr.first);
-            LOG_WARNING << "Overwriting " << itr.first << "=" << value << " with " << itr.first << "=" << itr.second;
-
-        }catch(pt::ptree_bad_path& e)
+            LOG_DEBUG << "Optional section Module config not found";
+        }
+        catch (pt::json_parser_error &e)
         {
-            LOG_DEBUG << "Inserting new config " << itr.first << "=" << itr.second;
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                    "Error reading file: " + e.filename() + " on line: " + std::to_string(e.line()) + " with error: " +
+                    e.message()));
         }
 
-        cfg.put(itr.first,itr.second);
-    }
 
 
-
-    //now apply any removal parameters from the command line
-    for(auto& itr:cmdl_options.get<2>())
-    {
-        //check if we are overwriting something
-        try
+        //now apply any override or extra configuration parameters from the command line
+        for (auto &itr : cmdl_options.get<1>())
         {
-            auto value = cfg.get<std::string>(itr);
-
-            std::size_t found = itr.rfind(".");
-
-            //if we have a subkey
-            if (found != std::string::npos )
+            //check if we are overwriting something
+            try
             {
-                std::string parent = itr.substr(0,found);
-                std::string child = itr.substr(found+1, itr.length() - found+1);
+                auto value = cfg.get<std::string>(itr.first);
+                LOG_WARNING << "Overwriting " << itr.first << "=" << value << " with " << itr.first << "=" <<
+                            itr.second;
 
-                cfg.get_child(parent).erase(child);
-            }
-            else //otherwise just blow it away.
+            } catch (pt::ptree_bad_path &e)
             {
-                cfg.erase(itr);
+                LOG_DEBUG << "Inserting new config " << itr.first << "=" << itr.second;
             }
 
-
-            LOG_DEBUG << "Removing " << itr;
-
-        }catch(pt::ptree_bad_path& e)
-        {
-            LOG_DEBUG << "No value " << itr << " to remove";
+            cfg.put(itr.first, itr.second);
         }
 
-    }
 
-    //remove and add modules
-    /*
-     * We expect the following sections:
-     *  modules
-     *  meshes
-     *  forcing
-     * The rest may be optional, and will override the defaults.
-     */
-    config_modules(cfg.get_child("modules"),cfg.get_child("config"),cmdl_options.get<3>(),cmdl_options.get<4>());
-    config_meshes(cfg.get_child("meshes"));
-    config_forcing(cfg.get_child("forcing"));
 
-    /*
-     * We can expect the following sections to be optional.
-     */
-    try
-    {
-        config_options(cfg.get_child("option"));
-    }catch(pt::ptree_bad_path& e)
-    {
-        LOG_DEBUG << "Optional section option not found";
-    }
+        //now apply any removal parameters from the command line
+        for (auto &itr:cmdl_options.get<2>())
+        {
+            //check if we are overwriting something
+            try
+            {
+                auto value = cfg.get<std::string>(itr);
 
-    try
-    {
-        config_output(cfg.get_child("output"));
-    }catch(pt::ptree_bad_path& e)
-    {
-        LOG_DEBUG << "Optional section Output not found";
-    }
+                std::size_t found = itr.rfind(".");
 
-    try
-    {
-        config_global(cfg.get_child("global"));
-    }catch(pt::ptree_bad_path& e)
-    {
-        LOG_DEBUG << "Optional section Global not found";
-    }
+                //if we have a subkey
+                if (found != std::string::npos)
+                {
+                    std::string parent = itr.substr(0, found);
+                    std::string child = itr.substr(found + 1, itr.length() - found + 1);
+
+                    cfg.get_child(parent).erase(child);
+                }
+                else //otherwise just blow it away.
+                {
+                    cfg.erase(itr);
+                }
+
+
+                LOG_DEBUG << "Removing " << itr;
+
+            } catch (pt::ptree_bad_path &e)
+            {
+                LOG_DEBUG << "No value " << itr << " to remove";
+            }
+
+        }
+
+        //remove and add modules
+        /*
+         * We expect the following sections:
+         *  modules
+         *  meshes
+         *  forcing
+         * The rest may be optional, and will override the defaults.
+         */
+        config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
+        config_meshes(cfg.get_child("meshes"));
+        config_forcing(cfg.get_child("forcing"));
+
+        /*
+         * We can expect the following sections to be optional.
+         */
+        try
+        {
+            config_options(cfg.get_child("option"));
+        } catch (pt::ptree_bad_path &e)
+        {
+            LOG_DEBUG << "Optional section option not found";
+        }
+
+        try
+        {
+            config_output(cfg.get_child("output"));
+        } catch (pt::ptree_bad_path &e)
+        {
+            LOG_DEBUG << "Optional section Output not found";
+        }
+
+        try
+        {
+            config_global(cfg.get_child("global"));
+        } catch (pt::ptree_bad_path &e)
+        {
+            LOG_DEBUG << "Optional section Global not found";
+        }
 
 //#ifdef NOMATLAB
 //            config_matlab(value);
 //#endif
 
 
-    _cfg = cfg;
+        _cfg = cfg;
 
-    LOG_DEBUG << "Finished initialization";
+        LOG_DEBUG << "Finished initialization";
 
-    LOG_DEBUG << "Init variables mapping";
-    _global->_variables.init_from_file("Un-init path");
+        LOG_DEBUG << "Init variables mapping";
+        _global->_variables.init_from_file("Un-init path");
 
-    LOG_DEBUG << "Determining module dependencies";
-    _determine_module_dep();
+        LOG_DEBUG << "Determining module dependencies";
+        _determine_module_dep();
 
-    LOG_DEBUG << "Initializing and allocating memory for timeseries";
+        LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
-    if (_global->stations.size() == 0)
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
+        if (_global->stations.size() == 0)
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
 #pragma omp parallel for
-    for(size_t it = 0; it < _mesh->size_faces(); it++)
-    {
-
-        auto date = _global->stations.at(0)->date_timeseries();
-        //auto size = _global->stations.at(0)->timeseries_length();
-        Delaunay::Face_handle face = _mesh->face(it);
-
-        bool full_init = false;
-
-        for(auto& itr : _outputs)
+        for (size_t it = 0; it < _mesh->size_faces(); it++)
         {
 
-            //only do full timeseries init on the faces we need
-            if(itr.type == output_info::output_type::timeseries
-                    && itr.face == face)
+            auto date = _global->stations.at(0)->date_timeseries();
+            //auto size = _global->stations.at(0)->timeseries_length();
+            Delaunay::Face_handle face = _mesh->face(it);
+
+            bool full_init = false;
+
+            for (auto &itr : _outputs)
             {
-                itr.face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
-                full_init = true;
+
+                //only do full timeseries init on the faces we need
+                if (itr.type == output_info::output_type::timeseries
+                    && itr.face == face)
+                {
+                    itr.face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
+                    full_init = true;
+                }
             }
+
+            if (!full_init)
+            {
+                //only do 1 init. The time is wrong, but that is ok.
+                timeseries::date_vec d;
+                d.push_back(date[0]);
+                face->init_time_series(_provided_var_module, d);
+            }
+
+            full_init = false;
         }
 
-        if(!full_init)
+        timer c;
+        LOG_DEBUG << "Running init() for each module";
+        c.tic();
+        for (auto &itr : _chunked_modules)
         {
-            //only do 1 init. The time is wrong, but that is ok.
-            timeseries::date_vec d;
-            d.push_back(date[0]);
-            face->init_time_series(_provided_var_module, d);
+            for (auto &jtr : itr)
+            {
+                jtr->init(_mesh);
+            }
+
         }
-
-        full_init = false;
-    }
-
-    timer c;
-    LOG_DEBUG << "Running init() for each module";
-    c.tic();
-    for (auto& itr : _chunked_modules)
-    {
-        for (auto& jtr : itr)
-        {
-            jtr->init(_mesh);
-        }
-
-    }
-    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+        LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 }
 
 void core::_determine_module_dep()
@@ -731,6 +747,31 @@ void core::_determine_module_dep()
                         curr_mod_depends[*i]++; //ref count our variable
 
                         graphviz_vars.insert( *i);
+                    }
+                }
+
+                //loop through each required variable of our current module
+                for (auto& optional_var : *(module.first->optionals()))
+                {
+                    //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
+
+                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), optional_var);
+                    if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
+                    {
+                        LOG_DEBUG << "\t\tAdding optional edge between " << module.first->ID << "[" << module.first->IDnum << "] -> " << itr.first->ID << "[" << itr.first->IDnum << "] for var=" << *i << std::endl;
+
+                        //add the dependency from module -> itr, such that itr will come before module
+                        edge e;
+                        e.variable=*i;
+
+                        boost::add_edge(itr.first->IDnum, module.first->IDnum, e,g);
+
+                        //output_graph << itr.first->IDnum << "->" << module.first->IDnum << " [label=\"" << *i << "\"];" << std::endl;
+                        //curr_mod_depends[*i]++; //ref count our variable
+
+                        graphviz_vars.insert( *i);
+
+                        module.first->set_optional_found(*i);
                     }
                 }
             }
@@ -873,6 +914,7 @@ void core::_determine_module_dep()
     s = ss.str();
     LOG_DEBUG << "_modules order after sort: " << s.substr(0, s.length() - 2);
 
+    _ui.write_modules(s.substr(0, s.length() - 2));
     // Parallel compilation ordering
 //    std::vector<int> time(size, 0);
 //    for (auto i = make_order.begin(); i != make_order.end(); ++i)
@@ -941,119 +983,121 @@ void core::_determine_module_dep()
 
 void core::run()
 {
-    timer c;
+
+        timer c;
 
 
-    //setup a XML writer for the PVD paraview format
-    pt::ptree pvd;
-    pvd.add("VTKFile.<xmlattr>.type","Collection");
-    pvd.add("VTKFile.<xmlattr>.version","0.1");
+        //setup a XML writer for the PVD paraview format
+        pt::ptree pvd;
+        pvd.add("VTKFile.<xmlattr>.type", "Collection");
+        pvd.add("VTKFile.<xmlattr>.version", "0.1");
 
-    LOG_DEBUG << "Starting model run";
+        LOG_DEBUG << "Starting model run";
 
-
-
-    c.tic();
-
-    double meantime =0;
-    size_t num_ts = 0;
-    size_t max_ts = _global->stations.at(0)->date_timeseries().size();
-    bool done = false;
-    while (!done)
-    {
-
-        //ensure all the stations are at the same timestep
-        boost::posix_time::ptime t;
-        t = _global->stations.at(0)->now().get_posix(); //get first stations time
-        for (size_t i = 1; //on purpose to skip first station
-             i < _global->stations.size();
-             i++)
-        {
-            if (t != _global->stations.at(i)->now().get_posix())
-            {
-                std::stringstream expected;
-                expected << _global->stations.at(0)->now().get_posix();
-                std::stringstream found;
-                found << _global->stations.at(i)->now().get_posix();
-                BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                        << errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->ID()
-                                       + "\nExpected: " + expected.str()
-                                       + "\nFound: " +  found.str()
-                ));
-            }
-        }
-
-        _global->_current_date = _global->stations.at(0)->now().get_posix();
-
-        _global->update();
-
-      //  LOG_DEBUG << "Timestep: " << _global->posix_time();
-        std::stringstream ss;
-        ss<< _global->posix_time();
-        _ui.write_timestep(ss.str());
-        _ui.write_progress( int ((double)num_ts/(double)max_ts*100.0) );
 
         c.tic();
-        size_t chunks = 0;
-        for (auto& itr : _chunked_modules)
-        {
-            LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" << (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
 
-            if (itr.at(0)->parallel_type() == module_base::parallel::data)
+        double meantime = 0;
+        size_t num_ts = 0;
+        size_t max_ts = _global->stations.at(0)->date_timeseries().size();
+        bool done = false;
+        while (!done)
+        {
+
+            //ensure all the stations are at the same timestep
+            boost::posix_time::ptime t;
+            t = _global->stations.at(0)->now().get_posix(); //get first stations time
+            for (size_t i = 1; //on purpose to skip first station
+                 i < _global->stations.size();
+                 i++)
             {
-                #pragma omp parallel for
-                for (size_t i = 0; i < _mesh->size_faces(); i++)
+                if (t != _global->stations.at(i)->now().get_posix())
                 {
-                    //module calls
-                    for (auto& jtr : itr)
+                    std::stringstream expected;
+                    expected << _global->stations.at(0)->now().get_posix();
+                    std::stringstream found;
+                    found << _global->stations.at(i)->now().get_posix();
+                    BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
+                                          <<
+                                          errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->ID()
+                                                      + "\nExpected: " + expected.str()
+                                                      + "\nFound: " + found.str()
+                                          ));
+                }
+            }
+
+            _global->_current_date = _global->stations.at(0)->now().get_posix();
+
+            _global->update();
+
+            //  LOG_DEBUG << "Timestep: " << _global->posix_time();
+            std::stringstream ss;
+            ss << _global->posix_time();
+            _ui.write_timestep(ss.str());
+            _ui.write_progress(int((double) num_ts / (double) max_ts * 100.0));
+
+            c.tic();
+            size_t chunks = 0;
+            for (auto &itr : _chunked_modules)
+            {
+                LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" <<
+                            (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
+
+                if (itr.at(0)->parallel_type() == module_base::parallel::data)
+                {
+                    #pragma omp parallel for
+                    for (size_t i = 0; i < _mesh->size_faces(); i++)
                     {
-                        auto face = _mesh->face(i);
-                        jtr->run(face, _global);
+                        //module calls
+                        for (auto &jtr : itr)
+                        {
+                            auto face = _mesh->face(i);
+                            jtr->run(face, _global);
+                        }
+                    }
+
+                } else
+                {
+                    //module calls for domain parallel
+                    for (auto &jtr : itr)
+                    {
+                        jtr->run(_mesh, _global);
                     }
                 }
 
-            } else
+                chunks++;
+
+            }
+
+            for (auto &itr : _outputs)
             {
-                //module calls for domain parallel
-                for (auto& jtr : itr)
+                if (itr.type == output_info::output_type::mesh)
                 {
-                    jtr->run(_mesh, _global);
+                    for (auto jtr : itr.mesh_output_formats)
+                    {
+                        std::string base_name = itr.fname + std::to_string(num_ts);
+
+                        if (jtr == output_info::mesh_outputs::vtu)
+                        {
+                            pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
+                            dataset.add("<xmlattr>.timestep", _global->posix_time_int());
+                            dataset.add("<xmlattr>.group", "");
+                            dataset.add("<xmlattr>.part", 0);
+                            dataset.add("<xmlattr>.file", base_name + ".vtu");
+                            _mesh->mesh_to_vtu(base_name + ".vtu");
+                        }
+
+                        if (jtr == output_info::mesh_outputs::vtp)
+                            _mesh->mesh_to_ascii(base_name + ".vtp");
+                        if (jtr == output_info::mesh_outputs::ascii)
+                        LOG_WARNING << "Ascii output not implemented";
+                        //_mesh->mesh_to_ascii(itr.fname+".vtp");
+                    }
                 }
+
             }
 
-            chunks++;
-
-        }
-
-        for (auto& itr : _outputs)
-        {
-            if (itr.type == output_info::output_type::mesh)
-            {
-               for(auto jtr : itr.mesh_output_formats)
-               {
-                   std::string base_name = itr.fname+std::to_string(num_ts);
-
-                   if(jtr == output_info::mesh_outputs::vtu)
-                   {
-                       pt::ptree& dataset = pvd.add("VTKFile.Collection.DataSet","");
-                       dataset.add("<xmlattr>.timestep",_global->posix_time_int());
-                       dataset.add("<xmlattr>.group","");
-                       dataset.add("<xmlattr>.part",0);
-                       dataset.add("<xmlattr>.file",base_name+".vtu");
-                       _mesh->mesh_to_vtu(base_name+".vtu");
-                   }
-
-                   if(jtr == output_info::mesh_outputs::vtp)
-                       _mesh->mesh_to_ascii(base_name+".vtp");
-                   if(jtr == output_info::mesh_outputs::ascii)
-                       LOG_WARNING << "Ascii output not implemented";
-                       //_mesh->mesh_to_ascii(itr.fname+".vtp");
-               }
-            }
-
-        }
-
-        //save timestep to file
+            //save timestep to file
 //        std::stringstream ss;
 //        ss << "marmot" << num_ts << ".vtu";
 //        _mesh->mesh_to_vtu(ss.str());
@@ -1066,16 +1110,16 @@ void core::run()
 
 
 
-  //      c.tic();
+            //      c.tic();
 
-        for(auto& itr : _outputs)
-        {
-            //only update the full timeseries
-            if(itr.type == output_info::output_type::timeseries)
+            for (auto &itr : _outputs)
             {
-                itr.face->next(); /*length of all the vectors to initialize*/
+                //only update the full timeseries
+                if (itr.type == output_info::output_type::timeseries)
+                {
+                    itr.face->next(); /*length of all the vectors to initialize*/
+                }
             }
-        }
 //        #pragma omp parallel for
 //        for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
 //        {
@@ -1083,67 +1127,66 @@ void core::run()
 //            face->next();
 //        }
 
-        //update all the stations internal iterators to point to the next time step
-        for (auto& itr : _global->stations)
-        {
-            if (!itr->next()) //
-                done = true;
+            //update all the stations internal iterators to point to the next time step
+            for (auto &itr : _global->stations)
+            {
+                if (!itr->next()) //
+                    done = true;
+            }
+            auto timestep = c.toc<ms>();
+            meantime += timestep;
+
+            num_ts++;
+
+            double mt = meantime / num_ts;
+            double ms = true;
+            if (mt > 1000)
+            {
+                mt /= 1000.;
+                ms = false;
+            }
+
+            std::string s = std::to_string(std::lround(mt)) + (ms == true ? " ms" : "s");
+            _ui.write_meantime(s);
+
+            //we need it in seconds now
+            if (ms)
+            {
+                mt /= 1000.0;
+            }
+
+
+            boost::posix_time::ptime pt(boost::posix_time::second_clock::local_time());
+            pt = pt + boost::posix_time::seconds(mt * (max_ts - num_ts));
+            _ui.write_time_estimate(boost::posix_time::to_simple_string(pt));
+
+
+
+            //  LOG_DEBUG << "Took " << timestep << "ms";
+            // LOG_DEBUG << "Updating iterators took " << c.toc<ms>() <<"ms";
+
         }
-        auto timestep = c.toc<ms>();
-        meantime += timestep;
-
-        num_ts++;
-
-        double mt = meantime/num_ts;
-        double ms = true;
-        if(mt > 1000)
+        double elapsed = c.toc<s>();
+        LOG_DEBUG << "Total runtime was " << elapsed << "s";
+        try
         {
-            mt /= 1000.;
-            ms = false;
+            std::string base_name = _cfg.get<std::string>("output.mesh.base_name");
+
+            pt::write_xml(base_name + ".pvd",
+                          pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+        } catch (pt::ptree_bad_path &e)
+        {
+            //no mesh section, just ignore. XML file won't be written
         }
 
-        std::string s = std::to_string( std::lround(mt) ) + (ms==true?" ms":"s");
-        _ui.write_meantime(s);
-
-        //we need it in seconds now
-        if(ms)
+        for (auto &itr : _outputs)
         {
-            mt /=1000.0;
+            //save the full timeseries
+            if (itr.type == output_info::output_type::timeseries)
+            {
+                itr.face->to_file(itr.fname);
+            }
         }
-
-
-        boost::posix_time::ptime pt( boost::posix_time::second_clock::local_time());
-        pt = pt+ boost::posix_time::seconds(mt*(max_ts-num_ts));
-        _ui.write_time_estimate( boost::posix_time::to_simple_string(pt) );
-
-
-
-      //  LOG_DEBUG << "Took " << timestep << "ms";
-       // LOG_DEBUG << "Updating iterators took " << c.toc<ms>() <<"ms";
-
-    }
-    double elapsed = c.toc<s>();
-    LOG_DEBUG << "Total runtime was " << elapsed << "s";
-    try
-    {
-        std::string base_name = _cfg.get<std::string>("output.mesh.base_name");
-
-        pt::write_xml(base_name+".pvd",
-                     pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
-    }catch(pt::ptree_bad_path& e)
-    {
-        //no mesh section, just ignore. XML file won't be written
-    }
-
-    for(auto& itr : _outputs)
-    {
-        //save the full timeseries
-        if(itr.type == output_info::output_type::timeseries)
-        {
-            itr.face->to_file(itr.fname);
-        }
-    }
-
 
 //    for (auto& itr : _outputs)
 //    {
@@ -1169,4 +1212,10 @@ void core::run()
 //        }
 //    }
 
+}
+
+void core::end()
+{
+    LOG_DEBUG << "Cleaning up";
+    _ui.end(); //make sure we clean up
 }

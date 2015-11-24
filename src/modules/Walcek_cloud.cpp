@@ -7,7 +7,7 @@ Walcek_cloud::Walcek_cloud()
     depends("t");
     depends("rh");
     depends("t_lapse_rate");
-    depends("Td_lapse_rate");
+ //   depends("Td_lapse_rate");
 
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -18,6 +18,23 @@ Walcek_cloud::~Walcek_cloud()
 };
 void Walcek_cloud::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
+    //Kunkel RH lapse rates
+    // 1/km
+    double lapse_rates[] =
+            {-0.09,
+             0.0,
+             0.09,
+             0.11,
+             0.11,
+             0.12,
+             0.14,
+             0.15,
+             0.11,
+             0.07,
+             -0.02,
+             -0.07
+            };
+
 
     double press_ratio = 0.7;
 
@@ -25,19 +42,25 @@ void Walcek_cloud::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     double Ta = elem->face_data("t");
     double Rh = elem->face_data("rh");
 
-    double Td = mio::Atmosphere::RhtoDewPoint(Rh/100.0,Ta+273.15,false);
+//    double Td = mio::Atmosphere::RhtoDewPoint(Rh/100.0,Ta+273.15,false);
+//
+//
+//    double z = elem->get_z();
+//    double dz = z - 3000.0;// assume 700mb is at 3000m
+//
+//    double Td_lapse_rate = elem->face_data("Td_lapse_rate");
+//    double T_lapse_rate = elem->face_data("t_lapse_rate");
+//
+//    double Td_700 = Td + Td_lapse_rate * dz;
+//    double Tair_700 = Ta + T_lapse_rate * dz;
+//
+//    double rh_700 = mio::Atmosphere::DewPointtoRh(Td_700,Tair_700+273.15 ,false);
 
+    double lapse = lapse_rates[global_param->month() - 1] / 1000.0; // -> 1/m
+    double rh_700 = Rh * exp(lapse*(3000.0-elem->get_z()));
 
-    double z = elem->get_z();
-    double dz = z - 3000.0;// assume 700mb is at 3000m
+    rh_700 /= 100.0;//factional
 
-    double Td_lapse_rate = elem->face_data("Td_lapse_rate");
-    double T_lapse_rate = elem->face_data("t_lapse_rate");
-
-    double Td_700 = Td + Td_lapse_rate * dz;
-    double Tair_700 = Ta + T_lapse_rate * dz;
-
-    double rh_700 = mio::Atmosphere::DewPointtoRh(Td_700,Tair_700+273.15 ,false);
 
     //bound RH
     rh_700 = std::min(1.0,rh_700);

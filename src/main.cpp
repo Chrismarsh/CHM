@@ -7,19 +7,23 @@
 
 int main (int argc, char *argv[])
 {
+    core kernel;
 
     try
     {
 
-        core kernel;
 
         kernel.init(argc, argv) ;
         
         kernel.run();
+
+        kernel.end();
     }
     catch( boost::exception& e)
     {
-       LOG_ERROR << boost::diagnostic_information(e);
+        kernel.end(); //make sure endwin() is called so ncurses cleans up
+
+        LOG_ERROR << boost::diagnostic_information(e);
     }
 
 

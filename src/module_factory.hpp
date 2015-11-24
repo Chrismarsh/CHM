@@ -12,7 +12,7 @@ namespace pt = boost::property_tree;
 #include "slope_iswr.hpp"
 #include "Marsh_shading_iswr.hpp"
 #include "const_llra_ta.hpp"
-#include "Liston_monthly_llra_rh.hpp"
+#include "Kunkel_monthlyTd_rh.hpp"
 #include "Liston_monthly_llra_ta.hpp"
 #include "Sicart_ilwr.hpp"
 #include "Liston_wind.hpp"
@@ -27,7 +27,7 @@ namespace pt = boost::property_tree;
 #include "Thornton_p.hpp"
 #include "Thornton_var_p.h"
 #include "rh_from_obs.h"
-
+#include "kunkel_rh.hpp"
 
 class module_factory
 {

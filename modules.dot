@@ -1,0 +1,53 @@
+digraph G {
+	graph [rankdir=LR,
+		splines=polyline
+	];
+	{
+		node [fontsize=16,
+			shape=plaintext
+		];
+		"Module execution order"		 [fontsize=16,
+			shape=plaintext];
+		""		 [fontsize=16,
+			shape=plaintext];
+		"Module execution order" -> "";
+	}
+	0	 [label=Harder_precip_phase];
+	1	 [label=Liston_monthly_llra_ta];
+	1 -> 0	 [color="/paired12/6",
+		edgetype=t,
+		fontname=Helvetica,
+		fontsize=11,
+		label=t];
+	2	 [label=Liston_wind];
+	3	 [label=Marsh_shading_iswr];
+	4	 [label=Thornton_p];
+	4 -> 0	 [color="/paired12/4",
+		edgetype=p,
+		fontname=Helvetica,
+		fontsize=11,
+		label=p];
+	5	 [label=iswr_from_obs];
+	7	 [label=slope_iswr];
+	5 -> 7	 [color="/paired12/1",
+		edgetype=iswr,
+		fontname=Helvetica,
+		fontsize=11,
+		label=iswr];
+	5 -> 7	 [color="/paired12/2",
+		edgetype=iswr_diffuse,
+		fontname=Helvetica,
+		fontsize=11,
+		label=iswr_diffuse];
+	5 -> 7	 [color="/paired12/3",
+		edgetype=iswr_direct,
+		fontname=Helvetica,
+		fontsize=11,
+		label=iswr_direct];
+	6	 [label=kunkel_rh];
+	6 -> 0	 [color="/paired12/5",
+		edgetype=rh,
+		fontname=Helvetica,
+		fontsize=11,
+		label=rh];
+}

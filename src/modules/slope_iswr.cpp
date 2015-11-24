@@ -8,11 +8,11 @@ slope_iswr::slope_iswr()
     depends("iswr_diffuse");
     depends("iswr_direct");
 
-    provides("solar_angle");
     provides("iswr");
-    provides("iswr_diffuse");
     provides("iswr_direct");
+    provides("solar_angle");
 
+    optional("shadowed");
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
@@ -46,6 +46,16 @@ void slope_iswr::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
         angle = 0.0;
 
     elem->set_face_data("solar_angle",angle);
+
+    //if we have remote shadowing
+    if(has_optional("shadow"))
+    {
+        if(elem->face_data("shadow") == 1)
+        {
+            angle = 0;
+        }
+    }
+
     double swr =  angle * elem->face_data("iswr_direct");
     double diff = elem->face_data("iswr_diffuse");
 

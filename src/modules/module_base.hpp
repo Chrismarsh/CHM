@@ -72,6 +72,7 @@ public:
         _provides = boost::make_shared<std::vector<std::string> >();
         _depends = boost::make_shared<std::vector<std::string> >();
         _depends_from_met = boost::make_shared<std::vector<std::string> >();
+        _optional = boost::make_shared<std::vector<std::string> >();
         IDnum = 0;
         _parallel_type = type;
 
@@ -147,6 +148,15 @@ public:
     }
 
     /**
+     * List of the optional depends variables from other modules that this module depends upon
+     */
+    boost::shared_ptr<std::vector<std::string> > optionals()
+    {
+        return _optional;
+    }
+
+
+    /**
      * Set a variable, from another module, that this module depends upon
      */
     void depends(std::string variable)
@@ -170,11 +180,44 @@ public:
         _depends_from_met->push_back(variable);
     }
 
+    /**
+     * Set an optional (not required) variable, from another module, that this module depends upon.
+     *
+     */
+    void optional(std::string variable)
+    {
+        _optional->push_back(variable);
+        _optional_found.insert( std::pair<std::string,bool>(variable,false));
+    }
+
+    /**
+     * Checks if an optional variable was found
+     */
+    bool has_optional(std::string variable)
+    {
+        auto it = _optional_found.find(variable);
+        if(it!=_optional_found.end())
+            return true;
+        else
+            return false;
+    }
+    /**
+     * Set that an optional variable was found
+     */
+    void set_optional_found(std::string variable)
+    {
+        _optional_found[variable]=true;
+    }
+
 protected:
     parallel _parallel_type;
     boost::shared_ptr<std::vector<std::string> > _provides;
     boost::shared_ptr<std::vector<std::string> > _depends;
     boost::shared_ptr<std::vector<std::string> > _depends_from_met;
+    boost::shared_ptr<std::vector<std::string> > _optional;
+
+    //lists the options that were found
+    std::map<std::string,bool> _optional_found;
 
 };
 

@@ -17,8 +17,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new const_llra_ta();
     else if (ID == "Liston_monthly_llra_ta")
         mod = new Liston_monthly_llra_ta();
-    else if (ID == "Liston_monthly_llra_rh")
-        mod = new Liston_monthly_llra_rh();
+    else if (ID == "Kunkel_monthlyTd_rh")
+        mod = new Kunkel_monthlyTd_rh();
     else if (ID == "Sicart_ilwr")
         mod = new Sicart_ilwr();
     else if (ID == "Liston_wind")
@@ -45,6 +45,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new Thornton_var_p;
     else if (ID == "rh_from_obs")
         mod = new rh_from_obs;
+    else if (ID == "kunkel_rh")
+        mod = new kunkel_rh;
 
     if(mod == nullptr)
     {

@@ -7,11 +7,12 @@ set(MODULE_SRCS
 
 		modules/interp_met/const_llra_ta.cpp
 		modules/interp_met/Liston_monthly_llra_ta.cpp
-		modules/interp_met/Liston_monthly_llra_rh.cpp
+		modules/interp_met/Kunkel_monthlyTd_rh.cpp
 		modules/interp_met/Liston_wind.cpp
 		modules/interp_met/iswr_from_obs.cpp
 		modules/interp_met/Dodson_NSA_ta.cpp
 		modules/interp_met/Thornton_var_p.cpp
+		modules/interp_met/kunkel_rh.cpp
 
 		modules/slope_iswr.cpp
 		modules/Marsh_shading_iswr.cpp

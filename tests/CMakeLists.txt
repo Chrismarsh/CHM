@@ -16,7 +16,7 @@ set(MODULE_SRCS
 
 		../src/modules/interp_met/const_llra_ta.cpp
 		../src/modules/interp_met/Liston_monthly_llra_ta.cpp
-		../src/modules/interp_met/Liston_monthly_llra_rh.cpp
+		../src/modules/interp_met/Kunkel_monthlyTd_rh.cpp
 		../src/modules/interp_met/Liston_wind.cpp
 
 		../src/modules/slope_iswr.cpp
