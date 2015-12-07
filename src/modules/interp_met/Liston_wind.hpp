@@ -12,6 +12,11 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
+class lwinddata : public face_info
+{
+public:
+    double curvature;
+};
 /**
 * \addtogroup modules
 * @{

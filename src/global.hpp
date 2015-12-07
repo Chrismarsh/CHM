@@ -39,7 +39,8 @@ private:
     var _variables;
 
 public:
-    
+
+    global();
     int year();
     int day();
 
@@ -55,7 +56,7 @@ public:
     double solar_el();
     double solar_az();
     
-    
+    bool first_time_step;
     std::string get_variable(std::string variable);
 
     //each station where observations are

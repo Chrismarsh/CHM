@@ -12,6 +12,7 @@
 
 #include <boost/ptr_container/ptr_map.hpp>
 #include "timeseries.hpp"
+#include "sno.h"
 
 /**
 * \struct face_info
@@ -41,6 +42,7 @@ class face
 : public Fb
 {
 public:
+
     /**
      * Multiuse flag for algorithms to use.
      * Does not make any gaurantee about state.
@@ -210,7 +212,7 @@ public:
     T*make_module_data(std::string module);
 
     std::string _debug_name; //for debugging to find the elem that we want
-    size_t _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
+    int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
 private:
 
     double _slope;
@@ -263,6 +265,9 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _slope = -1;
     _azimuth = -1;
     _data = boost::make_shared<timeseries>();
+    _center = NULL;
+    _normal = NULL;
+
 
 }
 
@@ -278,6 +283,9 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _slope = -1;
     _azimuth = -1;
     _data = boost::make_shared<timeseries>();
+    _center = NULL;
+    _normal = NULL;
+
 
 
 }
@@ -297,6 +305,8 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _slope = -1;
     _azimuth = -1;
     _data = boost::make_shared<timeseries>();
+    _center = NULL;
+    _normal = NULL;
 
 
 }
@@ -516,13 +526,15 @@ template < class Gt, class Vb>
 template<typename T>
 T* face<Gt, Vb>::make_module_data(std::string module)
 {
+
+
     auto it = _module_face_data.find(module);
 
     //we don't already have this, make a new one.
     if(it == _module_face_data.end())
     {
-        T* vert_data = new T;
-        set_module_data(module,vert_data);
+        T* data = new T;
+        _module_face_data[module] = data;
     }
 
     return get_module_data<T>(module);
@@ -533,17 +545,15 @@ template < class Gt, class Fb>
 template < typename T>
 T* face<Gt, Fb>::get_module_data(std::string module)
 {
-    face_info* info=nullptr;
-    try
-    {
-        info = _module_face_data[module];
-    }
-    catch(...)
+    auto it = _module_face_data.find(module);
+
+    //we don't already have this, make a new one.
+    if(it == _module_face_data.end())
     {
         BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
     }
 
-    return reinterpret_cast<T*>(info);
+    return dynamic_cast<T*>(it->second);
 
 
 }

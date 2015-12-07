@@ -91,7 +91,6 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 
     //raise it back up
     ea = ea + lapse*( elem->get_z() - 0.0);
-    double t = elem->face_data("t")+237.15;
 
     double es = esat(elem->face_data("t"));
     double rh = ea/es*100.0;

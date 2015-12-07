@@ -3,6 +3,9 @@
 core::core()
 {
     BOOST_LOG_FUNCTION();
+
+    _start_ts = nullptr;
+    _end_ts = nullptr;
 }
 
 core::~core()
@@ -51,6 +54,21 @@ void core::config_options(const pt::ptree &value)
         LOG_DEBUG << "Set project name to " << *prj;
     }
 
+    // custom start time
+    boost::optional<std::string> start = value.get_optional<std::string>("startdate");
+    if(start)
+    {
+        _start_ts = new boost::posix_time::ptime(boost::posix_time::from_iso_string(*start));
+        LOG_DEBUG << "User-specified startdate: " << *_start_ts;
+    }
+
+    // custom start time
+    boost::optional<std::string> end = value.get_optional<std::string>("enddate");
+    if(end)
+    {
+        _end_ts = new boost::posix_time::ptime(boost::posix_time::from_iso_string(*end));
+        LOG_DEBUG << "User-specified endate: " << *_end_ts;
+    }
 
 }
 
@@ -254,7 +272,7 @@ void core::config_output(const pt::ptree& value)
                                               errstr_info("Requested an output point that is not in the triangulation domain. Pt:"
                                                           + std::to_string(out.easting) + "," + std::to_string(out.northing)));
             }
-            out.face->_debug_name = out_type; //out_type holds the station name
+            out.face->_debug_name = out.name; //out_type holds the station name
             out.face->_debug_ID = ID;
             ++ID;
           //  LOG_WARNING << "Timeseries output not implemented";
@@ -299,7 +317,8 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     std::string version = "CHM version 0.1";
 
     std::string config_file = "CHM.config";
-
+    std::string start;
+    std::string end;
     po::options_description desc("Allowed options.");
     desc.add_options()
             ("help", "This message")
@@ -374,6 +393,8 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if(vm.count("add-module"))
         add_module = vm["add-module"].as< std::vector<std::string>>();
 
+
+
     return boost::make_tuple(config_file,config_extra,rm_config_extra,remove_module,add_module);
 }
 
@@ -387,7 +408,7 @@ void core::init(int argc, char **argv)
         try
         {
             _ui.init();
-
+            _enable_ui=true;
         } catch (model_init_error &e)
         {
             LOG_WARNING << "ncurses did not init, falling back to cout";
@@ -472,7 +493,7 @@ void core::init(int argc, char **argv)
         //don't just abort and die
         gsl_set_error_handler_off();
 
-        _enable_ui = true;
+
 
         //get any command line options
         auto cmdl_options = config_cmdl_options(argc, argv);
@@ -613,6 +634,7 @@ void core::init(int argc, char **argv)
 //#endif
 
 
+
         _cfg = cfg;
 
         LOG_DEBUG << "Finished initialization";
@@ -627,6 +649,41 @@ void core::init(int argc, char **argv)
 
         if (_global->stations.size() == 0)
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
+
+
+        //ensure all the stations have the same start and end times
+    // per-timestep agreeent happens during runtime.
+        auto start_time = _global->stations.at(0)->date_timeseries().at(0);
+        auto end_time     = _global->stations.at(0)->date_timeseries().back();
+
+        for (size_t i = 1; //on purpose to skip first station
+             i < _global->stations.size();
+             i++)
+        {
+            if (_global->stations.at(i)->date_timeseries().at(0) != start_time ||
+                _global->stations.at(i)->date_timeseries().back() != end_time)
+            {
+                BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
+                                      <<
+                                      errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->ID()));
+            }
+        }
+
+        if(!_start_ts)
+        {
+            _start_ts = new boost::posix_time::ptime(start_time);
+        }
+        if(!_end_ts)
+        {
+            _end_ts  = new boost::posix_time::ptime(end_time);
+        }
+
+        for(auto& s : _global->stations)
+        {
+            s->raw_timeseries()->subset(*_start_ts,*_end_ts);
+            s->reset_itrs();
+            LOG_DEBUG << s->date_timeseries().back();
+        }
 
 #pragma omp parallel for
         for (size_t it = 0; it < _mesh->size_faces(); it++)
@@ -652,7 +709,7 @@ void core::init(int argc, char **argv)
 
             if (!full_init)
             {
-                //only do 1 init. The time is wrong, but that is ok.
+                //only do 1 init. The time is wrong, but that is ok as it's never used
                 timeseries::date_vec d;
                 d.push_back(date[0]);
                 face->init_time_series(_provided_var_module, d);
@@ -976,6 +1033,9 @@ void core::_determine_module_dep()
         chunks++;
     }
 
+#ifdef _OPENMP
+    LOG_DEBUG << "Built with OpenMP support";
+#endif
 
 
 
@@ -1001,9 +1061,10 @@ void core::run()
         size_t num_ts = 0;
         size_t max_ts = _global->stations.at(0)->date_timeseries().size();
         bool done = false;
+    try
+    {
         while (!done)
         {
-
             //ensure all the stations are at the same timestep
             boost::posix_time::ptime t;
             t = _global->stations.at(0)->now().get_posix(); //get first stations time
@@ -1030,7 +1091,12 @@ void core::run()
 
             _global->update();
 
-            //  LOG_DEBUG << "Timestep: " << _global->posix_time();
+            if(!_enable_ui)
+            {
+                LOG_DEBUG << "Timestep: " << _global->posix_time();
+            }
+
+
             std::stringstream ss;
             ss << _global->posix_time();
             _ui.write_timestep(ss.str());
@@ -1045,7 +1111,7 @@ void core::run()
 
                 if (itr.at(0)->parallel_type() == module_base::parallel::data)
                 {
-                    #pragma omp parallel for
+#pragma omp parallel for
                     for (size_t i = 0; i < _mesh->size_faces(); i++)
                     {
                         //module calls
@@ -1089,8 +1155,8 @@ void core::run()
 
                         if (jtr == output_info::mesh_outputs::vtp)
                             _mesh->mesh_to_ascii(base_name + ".vtp");
-                        if (jtr == output_info::mesh_outputs::ascii)
-                        LOG_WARNING << "Ascii output not implemented";
+//                        if (jtr == output_info::mesh_outputs::ascii)
+//                        LOG_WARNING << "Ascii output not implemented";
                         //_mesh->mesh_to_ascii(itr.fname+".vtp");
                     }
                 }
@@ -1130,9 +1196,14 @@ void core::run()
             //update all the stations internal iterators to point to the next time step
             for (auto &itr : _global->stations)
             {
-                if (!itr->next()) //
+                if (!itr->next()) //this met station has no more met data, so doesn't matter what, we need to end now.
+                {
                     done = true;
+                    break;
+                }
             }
+
+
             auto timestep = c.toc<ms>();
             meantime += timestep;
 
@@ -1160,7 +1231,7 @@ void core::run()
             pt = pt + boost::posix_time::seconds(mt * (max_ts - num_ts));
             _ui.write_time_estimate(boost::posix_time::to_simple_string(pt));
 
-
+            _global->first_time_step = false;
 
             //  LOG_DEBUG << "Took " << timestep << "ms";
             // LOG_DEBUG << "Updating iterators took " << c.toc<ms>() <<"ms";
@@ -1168,12 +1239,33 @@ void core::run()
         }
         double elapsed = c.toc<s>();
         LOG_DEBUG << "Total runtime was " << elapsed << "s";
+    }
+    catch(exception_base& e)
+    {
+        //if we die in a module, try to dump our time series out so we can figur eout wtf went wrong
+        LOG_ERROR << "Exception has occured, dumping timeseries. THESE WILL BE INCOMPLETE!";
+        for (auto &itr : _outputs)
+        {
+            //save the full timeseries
+            if (itr.type == output_info::output_type::timeseries)
+            {
+                itr.face->to_file("ABORT_"+itr.fname);
+            }
+        }
+        throw;
+    }
+
         try
         {
             std::string base_name = _cfg.get<std::string>("output.mesh.base_name");
 
+#if (BOOST_VERSION / 100 % 1000) < 56
+            pt::write_xml(base_name + ".pvd",
+                          pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
+#else
             pt::write_xml(base_name + ".pvd",
                           pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+#endif
         } catch (pt::ptree_bad_path &e)
         {
             //no mesh section, just ignore. XML file won't be written

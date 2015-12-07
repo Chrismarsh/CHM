@@ -42,6 +42,12 @@ void station::open(std::string file)
     }
 }
 
+
+timeseries* station::raw_timeseries()
+{
+    return _obs;
+}
+
 timeseries::date_vec station::date_timeseries()
 {
     return _obs->get_date_timeseries();

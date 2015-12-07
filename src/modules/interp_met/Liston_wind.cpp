@@ -6,8 +6,8 @@ Liston_wind::Liston_wind()
 {
 
     depends_from_met("u");
-    provides("VW");
-    provides("VW_dir");
+    provides("vw");
+    provides("vw_dir");
     provides("Liston curvature");
 
 
@@ -27,10 +27,10 @@ void Liston_wind::init(mesh domain)
 
         double curmax = -99999.0;
 
-        for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
-             fit != domain->finite_faces_end(); ++fit)
-        {
-            Delaunay::Face_handle face = fit;
+    #pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+            auto face = domain->face(i);
 
             std::set<Point_3> myPoints;
             std::stack<Delaunay::Face_handle> neighbours;
@@ -143,7 +143,9 @@ void Liston_wind::init(mesh domain)
                                   (z - .5 * (zsw + zne)) / (2 * sqrt(2 * distance)) +
                                   (z - .5 * (znw + zse)) / (2 * sqrt(2 * distance)));
 
-            face->set_face_data("Liston curvature", curve);
+            auto* c = face->make_module_data<lwinddata>(ID);
+            c->curvature = curve;
+//            face->set_face_data("Liston curvature", curve);
 
             if (fabs(curve) > curmax)
                 curmax = fabs(curve);
@@ -151,13 +153,17 @@ void Liston_wind::init(mesh domain)
         }
 
 
-        for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
-             fit != domain->finite_faces_end(); ++fit)
-        {
-            double value = fit->face_data("Liston curvature") ;
-            value = value / curmax / 2.0;//rescale to [-0.5,+0.5];
-            fit->set_face_data("Liston curvature", value);
-        }
+    #pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        lwinddata* c = face->get_module_data<lwinddata>(ID);
+
+//        double value = face->face_data("Liston curvature") ;
+        double value = c->curvature / curmax / 2.0;//rescale to [-0.5,+0.5];
+        c->curvature = value;
+//        face->set_face_data("Liston curvature", value);
+    }
 
 }
 void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
@@ -191,10 +197,10 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
     //this is very slow!!!!
     //TODO: replace with element storage
 
-    for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
-         fit != domain->finite_faces_end(); ++fit)
+    #pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        Delaunay::Face_handle elem = fit;
+        auto elem = domain->face(i);
         auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
         double zonal_u = (*interp)(u, query);
         double zonal_v = (*interp)(v, query);
@@ -211,12 +217,10 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
             max_omega_s = fabs(omega_s);
     }
 
-//#pragma omp parallel for
-    for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
-         fit != domain->finite_faces_end(); ++fit)
+    #pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
-        Delaunay::Face_handle elem = fit;
+        auto elem = domain->face(i);
         auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
         double zonal_u = (*interp)(u, query);
         double zonal_v = (*interp)(v, query);
@@ -232,20 +236,21 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 
         omega_s = omega_s / max_omega_s / 2.0;
 
-        double omege_c = elem->face_data("Liston curvature");
+        double omega_c = elem->get_module_data<lwinddata>(ID)->curvature;//elem->face_data("Liston curvature");
 
         double ys = 0.5;
         double yc = 0.5;
 
-        double Ww = 1 + ys * omega_s + yc * omege_c;
+        double Ww = 1 + ys * omega_s + yc * omega_c;
 
         W = W * Ww;
 
         double theta_d = -0.5 * omega_s * sin(2 * (elem->aspect() - corrected_theta));
         corrected_theta = theta_d + corrected_theta;
 
-        elem->set_face_data("VW", W);
-        elem->set_face_data("VW_dir", corrected_theta * 180.0 / 3.14159);
+        elem->set_face_data("vw", W);
+        elem->set_face_data("Liston curvature",omega_c);
+        elem->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
     }
 
     delete interp;

@@ -156,6 +156,9 @@ void ui::write_meantime(std::string s)
 void ui::init()
 {
     FILE *fd = fopen("/dev/tty", "r+");
+    if(!fd)
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to initialize ncurses!"));
+
     scr = newterm(NULL, fd, fd);
     noecho(); //don't echo input
     curs_set(0); //no cursor

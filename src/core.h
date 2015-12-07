@@ -138,6 +138,7 @@ public:
             std::vector<std::string>, //remove config value
             std::vector<std::string>, //remove module
             std::vector<std::string>  // add module
+
     > cmdl_opt;
 //    typedef boost::tuple<
 //            std::string,
@@ -191,7 +192,9 @@ protected:
     std::set<std::string> _provided_var_met_files;
     //unique list of all variables provided by all the modules
     std::set<std::string> _provided_var_module;
-    
+
+    boost::posix_time::ptime* _start_ts;
+    boost::posix_time::ptime* _end_ts;
     
     class output_info
     {

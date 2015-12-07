@@ -21,7 +21,7 @@ Kunkel_monthlyTd_rh::~Kunkel_monthlyTd_rh()
 }
 void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
-    size_t ID = elem->_debug_ID;
+//    size_t ID = elem->_debug_ID;
     // 1/km
     double lapse_rates[] = {
             0.41,
@@ -41,8 +41,8 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
     double lapse = lapse_rates[ global_param->month() - 1 ] / 1000.; // -> 1/m
 
     //taken from mio
-    const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
-    const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
+    const double  Bw = 17.502, Cw = 240.97; //parameters for water
+    const double Bi = 22.452, Ci = 272.55; //parameters for ice
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
@@ -59,7 +59,7 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
 
         double z = 0.;
         double z0 = elem->get_z();
-        double am = lapse;
+//        double am = lapse;
         double Td_z = -lapse*C*(z-z0) / B + Tdz0;
 //        double Td_z = (-am*(z-z0)*(C+Tdz0)/B+Tdz0)/(1+am*(z-z0)*(C+Tdz0)/(B*C));
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), Td_z ) );
@@ -80,7 +80,7 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
 
     double z0 = 0.;
     double z = elem->get_z();
-    double am = lapse;
+//    double am = lapse;
     double Td_z = -lapse*C*(z-z0) / B + Tdz0;
 //    double Td_z = (-am*(z-z0)*(C+Tdz0)/B+Tdz0)/(1+am*(z-z0)*(C+Tdz0)/(B*C));
 

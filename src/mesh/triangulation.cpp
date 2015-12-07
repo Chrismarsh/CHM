@@ -152,10 +152,13 @@ void triangulation::from_file(std::string file)
     //    std::cout << "0:"<< _bbox[0] << "1:"<< _bbox[1]<<"2:"<< _bbox[2]<<"3:"<< _bbox[3]<<std::endl;
     //    std::cout << _bbox[0] - _bbox[1] << std::endl;
     //    std::cout << _bbox[2] - _bbox[3] << std::endl;
+    int f = 0;
     for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
             fit != this->finite_faces_end(); ++fit)
     {
         Delaunay::Face_handle face = fit;
+        face->_debug_ID= --f; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
+        face->_debug_name= std::to_string(f);
         _faces.push_back(face);
     }
 }

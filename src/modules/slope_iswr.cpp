@@ -1,4 +1,3 @@
-#include <meteoio/meteolaws/Meteoconst.h>
 #include "slope_iswr.hpp"
 
 slope_iswr::slope_iswr()

@@ -20,9 +20,9 @@ void timeseries::init(std::set<std::string> variables, date_vec datetime)
    for (auto& itr : *_variables)
    {
         size_t size = datetime.size();
-        itr.second.resize(size);
-//       for(int i = 0; i < size; i++)
-//            itr.second.push_back(3.14159);
+//        itr.second.resize(size);
+        itr.second.assign(size,-9999.9);
+
    }
 
    //setup date vector
@@ -54,6 +54,43 @@ timeseries::variable_vec timeseries::get_time_series(std::string variable)
     return a->second;
 }
 
+void timeseries::subset(boost::posix_time::ptime start,boost::posix_time::ptime end)
+{
+    //look for our requested timestep
+    auto itrstart = std::find(_date_vec.begin(),_date_vec.end(),start);
+    if ( itrstart == _date_vec.end())
+    {
+        BOOST_THROW_EXCEPTION(forcing_timestep_notfound()
+                              << errstr_info("Timestep not found"));
+    }
+
+    //Find the first one
+    //get offset from iterator
+    auto dist_start = std::distance(_date_vec.begin(), itrstart);
+    auto itrend = std::find(_date_vec.begin()+dist_start,_date_vec.end(),end);
+    itrend++;//need to include the last item we asked for, so step once more.
+    auto dist_end = std::distance(_date_vec.begin(), itrend);
+
+    //iterate over the map of vectors and build a list of all the variable names
+    //unknown order
+    for (auto& itr : *_variables)
+    {
+       auto start_itr = itr.second.begin() + dist_start;
+       auto end_itr = itr.second.begin() + dist_end;
+
+        std::vector<double> temp(start_itr,end_itr);
+        //insert the iterator
+        itr.second = temp;
+    }
+
+    auto start_itr =_date_vec.begin() + dist_start;
+    auto end_itr = _date_vec.begin() + dist_end;
+    date_vec temp(start_itr,end_itr);
+    _date_vec = temp;
+
+
+
+}
 boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost::posix_time::ptime start_time,boost::posix_time::ptime end_time)
 {
     //look for our requested timestep
@@ -95,6 +132,7 @@ boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost
     
     //ok we can cheat and start from where we currently are instead of two straight calls to find
     itr_find = std::find(_date_vec.begin()+dist_start,_date_vec.end(),end_time);
+
     //get offset from iterator
     int dist_end = std::distance(_date_vec.begin(), itr_find);
     ++dist_end; //get 1 past where we are going

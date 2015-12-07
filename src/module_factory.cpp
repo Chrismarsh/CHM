@@ -25,8 +25,6 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new Liston_wind();
     else if (ID == "PenmanMonteith_evaporation")
         mod = new PenmanMonteith_evaporation();
-    else if (ID == "Thornton_p")
-        mod = new Thornton_p();
     else if (ID == "Walcek_cloud")
         mod = new Walcek_cloud();
     else if (ID == "Harder_precip_phase")
@@ -42,11 +40,13 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
     else if (ID == "Thornton_p")
         mod = new Thornton_p();
     else if (ID == "Thornton_var_p")
-        mod = new Thornton_var_p;
+        mod = new Thornton_var_p();
     else if (ID == "rh_from_obs")
-        mod = new rh_from_obs;
+        mod = new rh_from_obs();
     else if (ID == "kunkel_rh")
-        mod = new kunkel_rh;
+        mod = new kunkel_rh();
+    else if (ID == "snobal")
+        mod = new snobal();
 
     if(mod == nullptr)
     {

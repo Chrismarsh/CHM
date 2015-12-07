@@ -1,5 +1,9 @@
 #include "global.hpp"
 
+global::global()
+{
+    first_time_step = true;
+}
 void global::update()
 {
     solar_el_az();

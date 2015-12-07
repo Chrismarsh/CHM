@@ -60,7 +60,10 @@ public:
  
     ~timeseries();
 
-
+    /**
+     * Subsets the internal vectors to be [start,end]. There is no going back from this!
+     */
+    void subset(boost::posix_time::ptime start,boost::posix_time::ptime end);
     /**
     * Return the timeseries for the given variable.
     * \param variable Variable name

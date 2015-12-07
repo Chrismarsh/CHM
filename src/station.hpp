@@ -128,7 +128,14 @@ public:
     * \return
     */
     timeseries::date_vec date_timeseries();
-    
+
+
+    /**
+    * Returns the underlying timeseries
+    * \return
+    */
+    timeseries* raw_timeseries();
+
     /**
     * Returns the length of the timeseries. This is the number of records in the timeseries
     */

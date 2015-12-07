@@ -28,6 +28,7 @@ namespace pt = boost::property_tree;
 #include "Thornton_var_p.h"
 #include "rh_from_obs.h"
 #include "kunkel_rh.hpp"
+#include "snobal.hpp"
 
 class module_factory
 {

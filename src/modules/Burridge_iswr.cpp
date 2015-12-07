@@ -1,4 +1,4 @@
-#include <meteoio/meteolaws/Meteoconst.h>
+
 #include "Burridge_iswr.h"
 
 Burridge_iswr::Burridge_iswr()
