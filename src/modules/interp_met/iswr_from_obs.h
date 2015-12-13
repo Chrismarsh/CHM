@@ -21,6 +21,7 @@
 * - Shortwave all beam "iswr" [W/m^2]
 * - Shortwave direct "iswr_direct" [W/m^2]
 * - Shortwave diffuse "iswr_diffuse" [W/m^2]
+* - Atmospheric transmittance, [0,1] "atm_trans" [-]
 */
 class iswr_from_obs : public module_base
 {

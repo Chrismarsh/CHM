@@ -10,6 +10,7 @@ iswr_from_obs::iswr_from_obs()
     provides("iswr_direct");
     provides("iswr_diffuse");
     provides("iswr");
+    provides("atm_trans");
 }
 iswr_from_obs::~iswr_from_obs()
 {
@@ -70,5 +71,6 @@ void iswr_from_obs::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     elem->set_face_data("iswr_direct",obs_dir);
     elem->set_face_data("iswr_diffuse",obs_diff);
     elem->set_face_data("iswr",iswr_measured);
+    elem->set_face_data("atm_trans",iswr_measured/1375.);
 }
 

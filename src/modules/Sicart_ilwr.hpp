@@ -11,7 +11,7 @@
 #include <armadillo>
 #define _USE_MATH_DEFINES
 #include <math.h>
-
+#include <meteoio/MeteoIO.h>
 /**
 * \addtogroup modules
 * @{
@@ -22,11 +22,10 @@
 *
 * Depends:
 * -  Transmittance "atm_trans" [-]
-* -  Actual vapour pressure "ea" [kpa]
 * -  Daily atmospheric transmittance "atm_trans" [-]
 *
 * Provides:
-* - Incoming longwave  "Lin" [W/m^2]
+* - Incoming longwave  "ilwr" [W/m^2]
 */
 class Sicart_ilwr : public module_base
 {

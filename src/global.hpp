@@ -38,6 +38,8 @@ private:
     
     var _variables;
 
+protected:
+    int _dt;
 public:
 
     global();
@@ -51,6 +53,7 @@ public:
     int hour();
     int min();
     int sec();
+    int dt();
     boost::posix_time::ptime posix_time();
     uint64_t posix_time_int();
     double solar_el();

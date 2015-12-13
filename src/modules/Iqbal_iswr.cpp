@@ -15,6 +15,7 @@ Iqbal_iswr::Iqbal_iswr()
     provides("iswr");
     provides("iswr_direct");
     provides("iswr_diffuse");
+    provides("atm_trans");
 }
 
 Iqbal_iswr::~Iqbal_iswr()
@@ -167,5 +168,6 @@ void Iqbal_iswr::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     elem->set_face_data("iswr_direct",dir);
     elem->set_face_data("iswr_diffuse",R_diffuse);
     elem->set_face_data("iswr",dir+R_diffuse);
+    elem->set_face_data("atm_trans",(dir+R_diffuse)/1375.);
 
 }

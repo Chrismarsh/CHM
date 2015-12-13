@@ -54,13 +54,6 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
 
     }
 
-//    int i=0;
-//    for(auto& itr : stations)
-//    {
-//        B[i] = visitor->lower(elem,itr,global_param);
-//        ++i;
-//    }
-
     for(size_t i=0;i<size-1;i++)
         B[i] = sample_points.at(i).get<2>() ; //z
 
@@ -110,7 +103,6 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
     delete[] B;
     delete[] A;
 
-//    z0 = visitor->raise(z0,elem,global_param);
     return z0;
 
 

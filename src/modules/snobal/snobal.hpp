@@ -14,7 +14,7 @@ class snodata : public face_info
 {
 public:
     sno data;
-    bool dead;
+    int dead;
 
 };
 class snobal : public module_base

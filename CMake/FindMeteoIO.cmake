@@ -48,7 +48,7 @@ ELSE(WIN32)
 			"/usr/local/lib"
 			"/usr/lib"
 			"/opt/lib"
-			"/Users/chris/Documents/PhD/code/MeteoIO-2.4.2/lib/"
+			"/Users/chris/Documents/PhD/code/MeteoIO-2.5.0/lib/"
 		DOC "Location of the libmeteoio, like /usr/lib/libmeteoio.dylib"
 		)
 	ELSE(APPLE)
@@ -62,8 +62,7 @@ ELSE(WIN32)
 			"/usr/local/lib"
 			"/usr/lib"
 			"/opt/lib"
-			"/home/chris/Documents/PhD/code/MeteoIO-2.4.2/lib/"
-			"/Users/chris/Documents/PhD/code/MeteoIO-2.4.2/lib/"
+			"/home/chris/Documents/PhD/code/MeteoIO-2.5.0/lib/"
 		DOC "Location of the libmeteoio, like /usr/lib/libmeteoio.so"
 		)
 	ENDIF(APPLE)
@@ -85,8 +84,8 @@ FIND_PATH(METEOIO_INCLUDE_DIR
 	"/usr/local/include"
 	"/usr/include"
 	"/opt/include"
-	"/home/chris/Documents/PhD/code/MeteoIO-2.4.2/"
-	"/Users/chris/Documents/PhD/code/MeteoIO-2.4.2/"
+	"/home/chris/Documents/PhD/code/MeteoIO-2.5.0/"
+	"/Users/chris/Documents/PhD/code/MeteoIO-2.5.0/"
   DOC "Location of the meteoio headers, like /usr/include"
 )
 

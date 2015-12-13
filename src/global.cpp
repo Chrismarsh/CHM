@@ -160,3 +160,8 @@ std::string global::get_variable(std::string variable)
     return _variables(variable);
     
 }
+
+int global::dt()
+{
+    return _dt;
+}

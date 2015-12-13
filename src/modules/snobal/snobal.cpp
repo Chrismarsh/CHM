@@ -10,6 +10,9 @@ snobal::snobal()
     depends("t");
     depends("vw");
     depends("p");
+    depends("ilwr");
+
+    depends("snow_albedo");
 
     provides("swe");
 
@@ -23,6 +26,8 @@ snobal::snobal()
     provides("T_s");
     provides("T_s_0");
     provides("dead");
+    provides("iswr_net");
+    provides("isothermal");
 
 
 }
@@ -37,7 +42,7 @@ void snobal::init(mesh domain)
 
         snodata* g = face->make_module_data<snodata>(ID);
         auto* sbal = &(g->data);
-        g->dead=false;
+        g->dead=0;
         /**
          * Snopack config
          */
@@ -48,10 +53,12 @@ void snobal::init(mesh domain)
         sbal->m_s_l = 0.;
         sbal->max_h2o_vol = 0.0001;
         sbal->rho = 0.;
-        sbal->T_s = -75. + 273.15;
-        sbal->T_s_0 = -75. + 273.15; //assuming no snow
-        sbal->T_s_l = -75. + 273.15;
+        sbal->T_s = -75. + FREEZE;
+        sbal->T_s_0 = -75. + FREEZE; //assuming no snow
+        sbal->T_s_l = -75. + FREEZE;
         sbal->z_s = 0.;
+
+        sbal->KT_WETSAND = 0.08;
 
         sbal->ro_data = 0;
 
@@ -61,8 +68,8 @@ void snobal::init(mesh domain)
 
         /// Heights
         sbal->z_0 = 0.001; //fix TODO: hardcode z_0
-        sbal->z_T = 10.;
-        sbal->z_u = 10.;
+        sbal->z_T = 2.6;
+        sbal->z_u = 2.96;
         sbal->z_g = 0.1;
         sbal->relative_hts = 1;  //docs are wrong. 1 == absolute
 
@@ -133,24 +140,9 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
 {
     //debugging
     auto id = elem->_debug_ID;
+
     bool run=false;
 
-
-//
-//    if(id ==2 || id ==1)
-//    {
-//     //   return;
-//        run=true;
-//    }
-//
-//    if(!run)
-//    {
-//        return;
-//    }
-
-//    std::string s=elem->_debug_name;
-//    LOG_DEBUG << id;
-//    LOG_DEBUG << elem->_debug_name;
 
     auto hour = global_param->hour();
     auto day = global_param->day();
@@ -169,17 +161,19 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
 
     sbal->P_a = mio::Atmosphere::stdAirPressure( elem->get_z());
 
-
+    double albedo = elem->face_data("snow_albedo");
+    double ilwr = elem->face_data("ilwr");
     double rh = elem->face_data("rh");
     double t = elem->face_data("t");
-    double ea = mio::Atmosphere::saturatedVapourPressure(t+273.15) * rh/100.;
+    //double ea = mio::Atmosphere::saturatedVapourPressure(t+273.15) * rh/100.;
+    double ea = mio::Atmosphere::waterSaturationPressure(t+273.15);
 
-    sbal->input_rec2.S_n = elem->face_data("iswr");
-    sbal->input_rec2.I_lw = 100.; //TODO: fix this with a longwave estimate
+    sbal->input_rec2.S_n = (1-albedo) * elem->face_data("iswr"); //
+    sbal->input_rec2.I_lw = ilwr;
     sbal->input_rec2.T_a = t+FREEZE;
     sbal->input_rec2.e_a = ea;
     sbal->input_rec2.u = elem->face_data("vw");
-    sbal->input_rec2.T_g = -10+FREEZE; //TODO: FIx this with a gflux estimate
+    sbal->input_rec2.T_g = -4+FREEZE; //TODO: FIx this with a gflux estimate
     sbal->input_rec2.ro = 0.;
 
     if(global_param->first_time_step)
@@ -216,16 +210,17 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     {
         if(! sbal->do_data_tstep() )
         {
-            g->dead=true;
-            // BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
+            g->dead=1;
+//            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
         }
     }catch(...)
     {
-        g->dead=true;
+        g->dead=1;
+//        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
     }
 
 
-    elem->set_face_data("dead",(int)g->dead);
+    elem->set_face_data("dead",g->dead);
 
     elem->set_face_data("swe",sbal->m_s);
 
@@ -238,6 +233,10 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     elem->set_face_data("cc",sbal->cc_s);
     elem->set_face_data("T_s",sbal->T_s);
     elem->set_face_data("T_s_0",sbal->T_s_0);
+    elem->set_face_data("iswr_net",sbal->S_n);
+    elem->set_face_data("isothermal",sbal->isothermal);
+
+
 
     sbal->input_rec1.S_n =sbal->input_rec2.S_n;
     sbal->input_rec1.I_lw =sbal->input_rec2.I_lw;

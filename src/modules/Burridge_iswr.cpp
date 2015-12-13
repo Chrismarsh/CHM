@@ -10,7 +10,7 @@ Burridge_iswr::Burridge_iswr()
     provides("iswr");
     provides("iswr_diffuse");
     provides("iswr_direct");
-
+    provides("atm_trans");
 }
 
 Burridge_iswr::~Burridge_iswr()
@@ -67,4 +67,5 @@ void Burridge_iswr::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     elem->set_face_data("iswr_diffuse",diff);
     elem->set_face_data("iswr_direct",dir);
     elem->set_face_data("iswr",dir+diff);
+    elem->set_face_data("atm_trans", (dir+diff) / 1375.);
 }

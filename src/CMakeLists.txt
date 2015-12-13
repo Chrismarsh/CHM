@@ -7,41 +7,7 @@ set(FILTER_SRCS
 set(SNOBAL_SRC
 		modules/snobal/snobal.cpp #<-- main module files
 		modules/snobal/sno.cpp
-#		modules/snobal/_adj_layers.cpp
-#		modules/snobal/do_data_tstep.cpp
-#		modules/snobal/_h_le.cpp
-#		modules/snobal/_runoff.cpp
-#		modules/snobal/_adj_snow.cpp
-#		modules/snobal/_do_tstep.cpp
-#		modules/snobal/_below_thold.cpp
-#		modules/snobal/init_snow.cpp
-#		modules/snobal/_advec.cpp
-#		modules/snobal/_e_bal.cpp
-#		modules/snobal/_layer_mass.cpp
-#		modules/snobal/_snobal.cpp
-#		modules/snobal/_evap_cond.cpp
-#		modules/snobal/_mass_bal.cpp
-#		modules/snobal/_snowmelt.cpp
-#		modules/snobal/_calc_layers.cpp
-#		modules/snobal/g_snow.cpp
-#		modules/snobal/_net_rad.cpp
-#		modules/snobal/_time_compact.cpp
-#		modules/snobal/_cold_content.cpp
-#		modules/snobal/g_soil.cpp
-#		modules/snobal/_new_density.cpp
-#		modules/snobal/_vars.cpp
-#		modules/snobal/_divide_tstep.cpp
-#		modules/snobal/_h2o_compact.cpp
-#		modules/snobal/_precip.cpp
-#		modules/snobal/vars.cpp
-#		modules/snobal/hle1.cpp
-#		modules/snobal/sati.cpp
-#		modules/snobal/satw.cpp
-#		modules/snobal/ssxfr.cpp
-#		modules/snobal/heat_stor.cpp
-#		modules/snobal/new_tsno.cpp
-#		modules/snobal/efcon.cpp
-		)
+	)
 
 set(MODULE_SRCS
 
@@ -64,7 +30,7 @@ set(MODULE_SRCS
 		modules/Harder_precip_phase.cpp
 		modules/Burridge_iswr.cpp
 		modules/Iqbal_iswr.cpp
-
+		modules/Richard_albedo.cpp
 		${SNOBAL_SRC}
 
 		)
@@ -94,7 +60,7 @@ set(CHM_SRCS
 		utility/crc_hash_compare.cpp
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
-		)
+	)
 
 set (HEADER_FILES
         mesh

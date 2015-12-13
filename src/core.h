@@ -44,6 +44,7 @@ namespace po = boost::program_options;
 #include "str_format.h"
 #include "ui.h"
 
+
 struct vertex{
     std::string name;
 };
@@ -125,6 +126,7 @@ public:
     void config_modules(const pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
     void config_meshes(const pt::ptree& value);
     void config_forcing(const pt::ptree& value);
+    void config_module_overrides(const pt::ptree& value);
 
     void config_matlab(const pt::ptree& value);
     void config_output(const pt::ptree& value);
@@ -181,7 +183,7 @@ protected:
     //pair as we also need to store the make order
     std::vector< std::pair<module,size_t> > _modules;
     std::vector< std::vector < module> > _chunked_modules;
-    
+    std::vector< std::pair<std::string,std::string> > _overrides;
     boost::shared_ptr<global> _global;
     
     //calculates the order modules are to be run in
@@ -195,6 +197,9 @@ protected:
 
     boost::posix_time::ptime* _start_ts;
     boost::posix_time::ptime* _end_ts;
+
+    //a full timeseires per triangle
+    bool _per_triangle_timeseries;
     
     class output_info
     {
@@ -204,12 +209,12 @@ protected:
             fname = "";
             northing = 0;
             easting = 0;
-            face = NULL;
+            face = nullptr;
             name = "";
         }
         enum output_type
         {
-            timeseries,
+            time_series,
             mesh
         };
         enum mesh_outputs
@@ -226,6 +231,7 @@ protected:
         double easting;
         std::vector<std::string> variables;
         mesh_elem face;
+        timeseries ts;
     };
 
     bool _enable_ui;

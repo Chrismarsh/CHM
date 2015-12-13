@@ -40,7 +40,7 @@ This class holds meterological data. Each variable name is a string which acts a
     [...]         |      [...]     |      [...]   |
 
  */
-class timeseries : boost::noncopyable
+class timeseries// : boost::noncopyable
 {
 
 public:
@@ -59,6 +59,8 @@ public:
     timeseries();
  
     ~timeseries();
+
+    double& at(std::string variable, size_t idx);
 
     /**
      * Subsets the internal vectors to be [start,end]. There is no going back from this!

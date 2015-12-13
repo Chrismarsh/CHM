@@ -29,6 +29,7 @@ namespace pt = boost::property_tree;
 #include "rh_from_obs.h"
 #include "kunkel_rh.hpp"
 #include "snobal.hpp"
+#include "Richard_albedo.hpp"
 
 class module_factory
 {

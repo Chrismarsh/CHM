@@ -43,6 +43,17 @@ std::vector<std::string> timeseries::list_variables()
     
     return vars;
 }
+double& timeseries::at(std::string variable, size_t idx)
+{
+    ts_hashmap::const_accessor a;
+    if(!_variables->find(a, variable))
+    {
+        BOOST_THROW_EXCEPTION(forcing_error()
+                              << errstr_info("Unable to find " + variable));
+    }
+    return const_cast<double&>(a->second.at(idx));
+}
+
 timeseries::variable_vec timeseries::get_time_series(std::string variable)
 {
     ts_hashmap::const_accessor a;
@@ -61,14 +72,23 @@ void timeseries::subset(boost::posix_time::ptime start,boost::posix_time::ptime 
     if ( itrstart == _date_vec.end())
     {
         BOOST_THROW_EXCEPTION(forcing_timestep_notfound()
-                              << errstr_info("Timestep not found"));
+                              << errstr_info("Start timestep not found"));
     }
 
     //Find the first one
     //get offset from iterator
     auto dist_start = std::distance(_date_vec.begin(), itrstart);
     auto itrend = std::find(_date_vec.begin()+dist_start,_date_vec.end(),end);
-    itrend++;//need to include the last item we asked for, so step once more.
+
+    if(itrend == _date_vec.end())
+    {
+        LOG_WARNING << "Requested end date is past last date. Setting date end = time series end.";
+        itrend = std::next(_date_vec.begin(),  _date_vec.size() - 1); //skip to last item
+    }
+    else{
+        itrend++;//need to include the last item we asked for, so step once more.
+    }
+
     auto dist_end = std::distance(_date_vec.begin(), itrend);
 
     //iterate over the map of vectors and build a list of all the variable names

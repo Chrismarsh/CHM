@@ -47,6 +47,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new kunkel_rh();
     else if (ID == "snobal")
         mod = new snobal();
+    else if (ID == "Richard_albedo")
+        mod = new Richard_albedo();
 
     if(mod == nullptr)
     {
