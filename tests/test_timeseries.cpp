@@ -44,7 +44,7 @@ TEST_F(TimeseriesTest, NoExistFileOpens)
 TEST_F(TimeseriesTest, Advance)
 {
     auto itr = s1.begin();
-    itr = itr + 1;
+    itr++;
 
     ASSERT_DOUBLE_EQ(14.268, itr->get("t"));
     ASSERT_DOUBLE_EQ(21.739, itr->get("rh"));

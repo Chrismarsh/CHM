@@ -13,26 +13,17 @@ rh_from_obs::~rh_from_obs()
 {
 
 }
-
-double esat(double TA)
+void rh_from_obs::init(mesh domain, boost::shared_ptr<global> global_param)
 {
-
-    double Es, E, Rhi, Rhw, Rh;                         //saturation and current water vapro pressure
-    const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
-    const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
-    const double Tfreeze = 0.;                          //freezing temperature
-
-    if (TA >= Tfreeze )
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        //above freezing point, water
-        Es = Aw * exp((Bw * TA) / (Cw + TA));
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
     }
-    else
-    {
-        Es = Ai * exp( (Bi * TA) / (Ci + TA) );
-    }
-    return Es;
 }
+
 void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
     //generate lapse rates
@@ -51,7 +42,7 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
         {
             double rh = s->get("rh")/100.;
             double t = s->get("t");
-            double es = esat(t);
+            double es = mio::Atmosphere::waterSaturationPressure(t+273.15);
             double ea = rh * es;
             sea.push_back( ea  );
             sz.push_back( s->z());
@@ -73,7 +64,7 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     {
         double rh = s->get("rh")/100.;
         double t = s->get("t");
-        double es = esat(t);
+        double es = mio::Atmosphere::waterSaturationPressure(t+273.15);
         double ea = rh * es;
         double z = s->z();
         ea = ea + lapse*(0.0-z);
@@ -81,18 +72,14 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 
     }
 
-    interp_base* interp=nullptr;
-    std::string interp_method = "spline";
-    if(interp_method == "spline")
-        interp = new thin_plate_spline();
 
     auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double ea = (*interp)(lowered_values, query);
+    double ea = elem->get_module_data<data>(ID)->interp(lowered_values, query);
 
     //raise it back up
     ea = ea + lapse*( elem->get_z() - 0.0);
 
-    double es = esat(elem->face_data("t"));
+    double es = mio::Atmosphere::waterSaturationPressure(elem->face_data("t")+273.15);
     double rh = ea/es*100.0;
 
     rh = std::min(rh,100.0);

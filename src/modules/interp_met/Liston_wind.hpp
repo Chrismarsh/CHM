@@ -3,7 +3,6 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
-#include "TPSpline.hpp"
 #include <cstdlib>
 #include <string>
 
@@ -12,11 +11,7 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
-class lwinddata : public face_info
-{
-public:
-    double curvature;
-};
+
 /**
 * \addtogroup modules
 * @{
@@ -39,8 +34,13 @@ public:
     Liston_wind();
     ~Liston_wind();
     virtual void run(mesh domain, boost::shared_ptr<global> global_param);
-    virtual void init(mesh domain);
-
+    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    class lwinddata : public face_info
+    {
+    public:
+        double curvature;
+        interpolation interp;
+    };
 };
 
 /**

@@ -16,6 +16,16 @@ iswr_from_obs::~iswr_from_obs()
 {
 
 }
+void iswr_from_obs::init(mesh domain, boost::shared_ptr<global> global_param)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+    }
+}
 void iswr_from_obs::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
 {
     //interpolate all the measured qsi
@@ -28,9 +38,9 @@ void iswr_from_obs::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 
-    thin_plate_spline interp;
+
     auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double iswr_measured = interp(lowered_values, query);
+    double iswr_measured =elem->get_module_data<data>(ID)->interp(lowered_values, query);
 
     double splitting_coef = 0.0;
 

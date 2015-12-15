@@ -20,7 +20,16 @@ Thornton_var_p::~Thornton_var_p()
 template <typename T> int signum(T val) {
     return (T(0) < val) - (val < T(0));
 }
-
+void Thornton_var_p::init(mesh domain, boost::shared_ptr<global> global_param)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+    }
+}
 void Thornton_var_p::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 
@@ -93,11 +102,11 @@ void Thornton_var_p::run(mesh_elem& elem, boost::shared_ptr<global> global_param
         station_z.push_back( boost::make_tuple(s->x(), s->y(), s->z() ) );
     }
 
-    thin_plate_spline interp;
+
 
     auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double p0 = interp(ppt, query);
-    double z0 = interp(station_z,query);
+    double p0 = elem->get_module_data<data>(ID)->interp(ppt, query);
+    double z0 = elem->get_module_data<data>(ID)->interp(station_z,query);
     double z = elem->get_z();
 
     double f = lapse*(z-z0);

@@ -109,7 +109,7 @@ public:
      * Optional function to run after the dependency constructor call, but before the run function is called. Used to perform any initalization.
      * \param domain The entire terrain mesh
      */
-    virtual void init(mesh domain)
+    virtual void init(mesh domain, boost::shared_ptr<global> global)
     {
 
     };

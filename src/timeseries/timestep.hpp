@@ -113,8 +113,9 @@ public:
 private:
     friend class timeseries;
 
-    typedef tbb::concurrent_hash_map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
+//    typedef tbb::concurrent_hash_map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
    // typedef std::map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
+    typedef std::map< std::string, variable_vec::iterator> itr_map;
     //holds the iterators for the current timestep. 
     //these are iterators into each vector in the variable hashmap
     itr_map _itrs; 

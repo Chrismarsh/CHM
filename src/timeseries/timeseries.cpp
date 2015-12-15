@@ -4,25 +4,16 @@
 
 void timeseries::push_back(double data, std::string variable)
 {
-    ts_hashmap::accessor a;
-    _variables->insert(a, variable);
-    a->second.push_back(data);
+    _variables[variable].push_back(data);
+
 }
 void timeseries::init(std::set<std::string> variables, date_vec datetime)
 {
+    size_t size = datetime.size();
+
    for (auto& v: variables)
    {
-       ts_hashmap::accessor a;
-       _variables->insert(a,v);
-   }
-
-   //preallocate all the memory required
-   for (auto& itr : *_variables)
-   {
-        size_t size = datetime.size();
-//        itr.second.resize(size);
-        itr.second.assign(size,-9999.9);
-
+       _variables[v].assign(size,-9999.9);
    }
 
    //setup date vector
@@ -36,7 +27,7 @@ void timeseries::init(std::set<std::string> variables, date_vec datetime)
 std::vector<std::string> timeseries::list_variables()
 {
     std::vector<std::string> vars;
-    for(auto& itr : *_variables)
+    for(auto& itr : _variables)
     {
         vars.push_back(itr.first);
     }
@@ -45,24 +36,24 @@ std::vector<std::string> timeseries::list_variables()
 }
 double& timeseries::at(std::string variable, size_t idx)
 {
-    ts_hashmap::const_accessor a;
-    if(!_variables->find(a, variable))
+    auto res = _variables.find(variable);
+    if(res == _variables.end())
     {
         BOOST_THROW_EXCEPTION(forcing_error()
                               << errstr_info("Unable to find " + variable));
     }
-    return const_cast<double&>(a->second.at(idx));
+    return const_cast<double&>(res->second.at(idx));
 }
 
 timeseries::variable_vec timeseries::get_time_series(std::string variable)
 {
-    ts_hashmap::const_accessor a;
-    if(!_variables->find(a, variable))
+    auto res = _variables.find(variable);
+    if(res == _variables.end())
     {
         BOOST_THROW_EXCEPTION(forcing_error()
                                 << errstr_info("Unable to find " + variable));
     }   
-    return a->second;
+    return res->second;
 }
 
 void timeseries::subset(boost::posix_time::ptime start,boost::posix_time::ptime end)
@@ -93,7 +84,7 @@ void timeseries::subset(boost::posix_time::ptime start,boost::posix_time::ptime 
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : *_variables)
+    for (auto& itr : _variables)
     {
        auto start_itr = itr.second.begin() + dist_start;
        auto end_itr = itr.second.begin() + dist_end;
@@ -129,20 +120,23 @@ boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : *_variables)
+    for (auto& itr : _variables)
     {
         //itr_map is holding the iterators into each vector
-        timestep::itr_map::accessor a;
+//        timestep::itr_map::accessor a;
         //create the keyname for this variable and store the iterator
-        if (!start_step._currentStep->_itrs.insert(a, itr.first))
-        {
-            BOOST_THROW_EXCEPTION(forcing_error()
-                    << errstr_info("Failed to insert " + itr.first)
-                    );
-        }
-        
+
+//        auto res = start_step._currentStep->_itrs.insert(itr.first);
+//        if (!start_step._currentStep->_itrs.insert(a, itr.first))
+//        {
+//            BOOST_THROW_EXCEPTION(forcing_error()
+//                    << errstr_info("Failed to insert " + itr.first)
+//                    );
+//        }
+//
+        start_step._currentStep->_itrs[itr.first]= itr.second.begin()+dist_start;
         //insert the iterator
-        a->second = itr.second.begin()+dist_start;
+//        res->second =
     }
 
     //set the date vector to be the begining of the internal data vector
@@ -160,20 +154,19 @@ boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : *_variables)
+    for (auto& itr : _variables)
     {
-        //itr_map is holding the iterators into each vector
-        timestep::itr_map::accessor a;
-        //create the keyname for this variable and store the iterator
-        if (!end_step._currentStep->_itrs.insert(a, itr.first))
-        {
-            BOOST_THROW_EXCEPTION(forcing_error()
-                    << errstr_info("Failed to insert " + itr.first)
-                    );
-        }
-        
+
+//        //create the keyname for this variable and store the iterator
+//        if (!end_step._currentStep->_itrs.insert(itr.first))
+//        {
+//            BOOST_THROW_EXCEPTION(forcing_error()
+//                    << errstr_info("Failed to insert " + itr.first)
+//                    );
+//        }
+//
         //insert the iterator
-        a->second = itr.second.begin()+dist_end;
+        end_step._currentStep->_itrs[itr.first] = itr.second.begin()+dist_end;
     }
 
     //set the date vector to be the begining of the internal data vector
@@ -200,20 +193,18 @@ timeseries::iterator timeseries::find(boost::posix_time::ptime time)
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : *_variables)
+    for (auto& itr : _variables)
     {
-        //itr_map is holding the iterators into each vector
-        timestep::itr_map::accessor a;
-        //create the keyname for this variable and store the iterator
-        if (!step._currentStep->_itrs.insert(a, itr.first))
-        {
-            BOOST_THROW_EXCEPTION(forcing_insertion_error()
-                    << errstr_info("Failed to insert " + itr.first)
-                    );
-        }
+//        //create the keyname for this variable and store the iterator
+//        if (!step._currentStep->_itrs.insert(itr.first))
+//        {
+//            BOOST_THROW_EXCEPTION(forcing_insertion_error()
+//                    << errstr_info("Failed to insert " + itr.first)
+//                    );
+//        }
         
         //insert the iterator
-        a->second = itr.second.begin()+dist;
+        step._currentStep->_itrs[itr.first] = itr.second.begin()+dist;
     }
 
     //set the date vector to be the begining of the internal data vector
@@ -255,20 +246,19 @@ void timeseries::open(std::string path)
     //take that the number of headers is how many columns there should be
     _cols = header.size();
 
-    for (std::vector<std::string>::const_iterator itr = header.begin();
-            itr != header.end();
-            itr++)
-    {
-        ts_hashmap::const_accessor a;
-        if (!_variables->insert(a, *itr))
-        {
-            BOOST_THROW_EXCEPTION(forcing_insertion_error()
-                    << errstr_info(std::string("Failed to insert ") + *itr)
-                    << boost::errinfo_file_name(path)
-                    );
-
-        }
-    }
+//    for (std::vector<std::string>::const_iterator itr = header.begin();
+//            itr != header.end();
+//            itr++)
+//    {
+//        if (!_variables.insert(*itr))
+//        {
+//            BOOST_THROW_EXCEPTION(forcing_insertion_error()
+//                    << errstr_info(std::string("Failed to insert ") + *itr)
+//                    << boost::errinfo_file_name(path)
+//                    );
+//
+//        }
+//    }
 
 
 
@@ -312,16 +302,16 @@ void timeseries::open(std::string path)
 
                 if ((doubles = floating.tokenize<std::string>(*itr)).size() == 1)
                 {
-                    ts_hashmap::accessor a;
-                    if (!_variables->find(a, *headerItr))
-                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
-                            << errstr_info(std::string("Failed to find ") + *headerItr)
-                            << boost::errinfo_file_name(path)
-                            );
+//                    auto res = _variables.find(*headerItr);
+//                    if (res == _variables.end())
+//                        BOOST_THROW_EXCEPTION(forcing_lookup_error()
+//                            << errstr_info(std::string("Failed to find ") + *headerItr)
+//                            << boost::errinfo_file_name(path)
+//                            );
                     try
                     {
                         //LOG_VERBOSE << "Found " << *headerItr << ": " << doubles[0];
-                        a->second.push_back(boost::lexical_cast<double>(doubles[0]));
+                        _variables[*headerItr].push_back(boost::lexical_cast<double>(doubles[0]));
                     } catch (...)
                     {
                         BOOST_THROW_EXCEPTION(forcing_badcast()
@@ -336,9 +326,7 @@ void timeseries::open(std::string path)
                     _date_vec.push_back(boost::posix_time::from_iso_string(dates[0])); //from_iso_string
                     
                     //now we know where the date colum is, we remove it from the hashmap if we haven't already
-                    ts_hashmap::accessor a;
-                    if (_variables->find(a, *headerItr))
-                        _variables->erase(a);
+                    _variables.erase(*headerItr);
                   
                 }
                 else
@@ -377,13 +365,13 @@ void timeseries::open(std::string path)
     //	- Time steps are equal
 
     //get iters for each variables
-    LOG_VERBOSE << "Read in " << _variables->size() << " variables";
-    std::string* headerItems = new std::string[_variables->size()];
+    LOG_VERBOSE << "Read in " << _variables.size() << " variables";
+    std::string* headerItems = new std::string[_variables.size()];
 
     int i = 0;
     //build a list of all the headers
     //unknown order
-    for (ts_hashmap::iterator itr = _variables->begin(); itr != _variables->end(); itr++)
+    for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
         //LOG_VERBOSE << itr->first;
         headerItems[i++] = itr->first;
@@ -393,20 +381,19 @@ void timeseries::open(std::string path)
     size_t d_length = _date_vec.size();
 
 
-    for (unsigned int l = 0; l < _variables->size(); l++)
+    for (unsigned int l = 0; l < _variables.size(); l++)
     {
         //compare all columns to date length
-
-        ts_hashmap::const_accessor a;
-        if (!_variables->find(a, headerItems[l]))
+        auto res = _variables.find( headerItems[l]);
+        if (res == _variables.end())
             BOOST_THROW_EXCEPTION(forcing_lookup_error()
                 << errstr_info(std::string("Failed to find ") + headerItems[l])
                 << boost::errinfo_file_name(path)
                 );
 
         //check all cols are the same size as the first col
-        LOG_VERBOSE << "Column " + headerItems[l] + " length=" + boost::lexical_cast<std::string>( a->second.size()), + "expected=" + boost::lexical_cast<std::string>(d_length);
-        if (d_length != a->second.size())
+        LOG_VERBOSE << "Column " + headerItems[l] + " length=" + boost::lexical_cast<std::string>( res->second.size()), + "expected=" + boost::lexical_cast<std::string>(d_length);
+        if (d_length != res->second.size())
         {
             LOG_ERROR << "Col " + headerItems[l] + " is a different size. Expected size="+boost::lexical_cast<std::string>(d_length);
             BOOST_THROW_EXCEPTION(forcing_lookup_error()
@@ -438,7 +425,6 @@ timeseries::timeseries()
     _rows = 0;
     _isOpen = false;
     _timeseries_length=0;
-    _variables = new ts_hashmap;
 }
 
 
@@ -458,14 +444,14 @@ void timeseries::to_file(std::string file)
             << boost::errinfo_file_name(file));
 
     
-    std::string* headerItems = new std::string[_variables->size()];
+    std::string* headerItems = new std::string[_variables.size()];
 
     //build a list of all the headers
     //unknown order
     int i = 0;
     out << "Date";
-    variable_vec::const_iterator *tItr = new variable_vec::const_iterator[_variables->size()];
-    for (ts_hashmap::iterator itr = _variables->begin(); itr != _variables->end(); itr++)
+    variable_vec::const_iterator *tItr = new variable_vec::const_iterator[_variables.size()];
+    for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {
         headerItems[i] = itr->first;
         out << "," << itr->first;
@@ -480,9 +466,8 @@ void timeseries::to_file(std::string file)
     
     for (size_t k = 0; k < _rows; k++)
     {
-        out << boost::posix_time::to_iso_string(_date_vec.at(k));// << ",";
-//        out << _date_vec.at(k) << "\t";
-        for (size_t j = 0; j < _variables->size(); j++)
+        out << boost::posix_time::to_iso_string(_date_vec.at(k));
+        for (size_t j = 0; j < _variables.size(); j++)
         {
             out << "," << *(tItr[j]);
             tItr[j]++;
@@ -521,20 +506,19 @@ timeseries::iterator timeseries::begin()
 
     //iterate over the map of vectors and build a list of all the variable names
     //unknown order
-    for (auto& itr : *_variables)
+    for (auto& itr : _variables)
     {
-        //itr_map is holding the iterators into each vector
-        timestep::itr_map::accessor a;
+//        auto res = step._currentStep->_itrs.insert(itr.first);
         //create the keyname for this variable and store the iterator
-        if (!step._currentStep->_itrs.insert(a, itr.first))
-        {
-            BOOST_THROW_EXCEPTION(forcing_insertion_error()
-                    << errstr_info("Failed to insert " + itr.first)
-                    );
-        }
-        
+//        if (res == )
+//        {
+//            BOOST_THROW_EXCEPTION(forcing_insertion_error()
+//                    << errstr_info("Failed to insert " + itr.first)
+//                    );
+//        }
+//
         //insert the iterator
-        a->second = itr.second.begin();
+        step._currentStep->_itrs[itr.first] = itr.second.begin();
     }
 
     //set the date vector to be the begining of the internal data vector
@@ -561,17 +545,16 @@ timeseries::iterator timeseries::end()
     iterator step;
     //loop over the variable map and save the iterator to the end
     //unknown order that'll get the variables in.
-    for (auto& itr : *_variables)
+    for (auto& itr : _variables)
     {
-        timestep::itr_map::accessor a;
-
-        if (!step._currentStep->_itrs.insert(a, itr.first))
-        {
-            BOOST_THROW_EXCEPTION(forcing_insertion_error()
-                    << errstr_info("Failed to insert " + itr.first)
-                    );
-        }
-        a->second = itr.second.end();
+//        auto res = step._currentStep->_itrs.insert(itr.first);
+//        if (!)
+//        {
+//            BOOST_THROW_EXCEPTION(forcing_insertion_error()
+//                    << errstr_info("Failed to insert " + itr.first)
+//                    );
+//        }
+        step._currentStep->_itrs[itr.first] = itr.second.end();
 
     }
     step._currentStep->_date_itr = _date_vec.end();
@@ -616,43 +599,44 @@ void timeseries::iterator::increment()
 {
     //walks the map locking each node so that the increment can happen
     //walk order is not guaranteed
-    unsigned int size = _currentStep->_itrs.size();
-    std::string *headers = new std::string[size];
-    timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
+//    unsigned int size = _currentStep->_itrs.size();
+//    std::string *headers = new std::string[size];
+//    timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
     int i = 0;
 
     for (auto& itr : _currentStep->_itrs)
     {
-        _currentStep->_itrs.find(accesors[i], itr.first);
-        (accesors[i]->second)++;     
-        i++;
+        itr.second++;
+//        _currentStep->_itrs.find(accesors[i], itr.first);
+//        (accesors[i]->second)++;
+//        i++;
     }
     
     _currentStep->_date_itr++;
-
-    delete[] headers;
-    delete[] accesors;
+//
+//    delete[] headers;
+//    delete[] accesors;
 }
 
 void timeseries::iterator::decrement()
 {
     //walks the map locking each node so that the increment can happen
     //walk order is not guaranteed
-    unsigned int size = _currentStep->_itrs.size();
-    std::string *headers = new std::string[size];
-    timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
-    int i = 0;
+//    unsigned int size = _currentStep->_itrs.size();
+//    std::string *headers = new std::string[size];
+//    timestep::itr_map::accessor *accesors = new timestep::itr_map::accessor[size];
+//    int i = 0;
 
     for (auto& itr : _currentStep->_itrs)
     {
-        _currentStep->_itrs.find(accesors[i], itr.first);
-        (accesors[i]->second)--;
-        
-        i++;
+//        _currentStep->_itrs.find(accesors[i], itr.first);
+//        (accesors[i]->second)--;
+        itr.second --;
+//        i++;
     }
     _currentStep->_date_itr--;
-    delete[] headers;
-    delete[] accesors;
+//    delete[] headers;
+//    delete[] accesors;
 
 }
 

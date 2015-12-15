@@ -3,7 +3,6 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
-#include "TPSpline.hpp"
 
 /**
 * \addtogroup modules
@@ -30,8 +29,11 @@ public:
     ~kunkel_rh();
 
     virtual void run(mesh_elem &elem, boost::shared_ptr <global> global_param);
-
-
+    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    struct data : public face_info
+    {
+        interpolation interp;
+    };
 };
 
 

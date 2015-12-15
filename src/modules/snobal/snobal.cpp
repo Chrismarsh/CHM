@@ -32,7 +32,7 @@ snobal::snobal()
 
 }
 
-void snobal::init(mesh domain)
+void snobal::init(mesh domain, boost::shared_ptr<global> global)
 {
     //store all of snobals global variables from this timestep to be used as ICs for the next timestep
     #pragma omp parallel for

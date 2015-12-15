@@ -16,6 +16,16 @@ Liston_monthly_llra_ta::~Liston_monthly_llra_ta()
 {
 
 }
+void Liston_monthly_llra_ta::init(mesh domain, boost::shared_ptr<global> global_param)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+    }
+}
 void Liston_monthly_llra_ta::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 
@@ -67,23 +77,19 @@ void Liston_monthly_llra_ta::run(mesh_elem& elem, boost::shared_ptr<global> glob
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : global_param->stations)
     {
-        double v = s->get(global_param->get_variable("Tair")) - lapse_rate * (0.0 - s->z());
+        double v = s->get("t") - lapse_rate * (0.0 - s->z());
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 
-    interp_base* interp=nullptr;
-    std::string interp_method = "spline";
-    if(interp_method == "spline")
-        interp = new thin_plate_spline();
 
     auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double value = (*interp)(lowered_values, query);
+    double value = elem->get_module_data<data>(ID)->interp(lowered_values, query);
 
     //raise value back up to the face's elevation from sea level
     value =  value + lapse_rate * (0.0 - elem->get_z());
 
-    elem->set_face_data(global_param->get_variable("Tair"),value);
+    elem->set_face_data("t",value);
 
     elem->set_face_data("t_lapse_rate",lapse_rate);
-    delete interp;
+
 }

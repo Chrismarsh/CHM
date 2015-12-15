@@ -3,7 +3,7 @@
 #include <math.h>
 #include <algorithm>
 #include <meteoio/MeteoIO.h>
-#include "TPSpline.hpp"
+
 
 /**
 * \addtogroup modules
@@ -29,6 +29,11 @@ public:
     iswr_from_obs();
     ~iswr_from_obs();
     void run(mesh_elem &elem, boost::shared_ptr<global> global_param);
+    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    struct data : public face_info
+    {
+        interpolation interp;
+    };
 };
 
 

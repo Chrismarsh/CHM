@@ -21,7 +21,7 @@ public:
     Richard_albedo();
     ~Richard_albedo();
     void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
-    void init(mesh domain);
+    void init(mesh domain, boost::shared_ptr<global> global);
 
 
     double amin;

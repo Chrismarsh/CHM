@@ -14,7 +14,16 @@ kunkel_rh::~kunkel_rh()
 {
 
 }
-
+void kunkel_rh::init(mesh domain, boost::shared_ptr<global> global_param)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+    }
+}
 void kunkel_rh::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
 {
     // 1/km
@@ -45,13 +54,9 @@ void kunkel_rh::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
         lowered_values.push_back(boost::make_tuple(s->x(), s->y(), rh_z));
     }
 
-    interp_base *interp = nullptr;
-    std::string interp_method = "spline";
-    if (interp_method == "spline")
-        interp = new thin_plate_spline();
 
     auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double value = (*interp)(lowered_values, query);//C
+    double value = elem->get_module_data<data>(ID)->interp(lowered_values, query);//C
 
     double rh = value * exp(lapse * (elem->get_z() - 0.0));
 

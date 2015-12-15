@@ -701,6 +701,9 @@ void core::init(int argc, char **argv)
         }
     }
 
+    //set interpolation algorithm
+    _global->interp_algorithm = interp_alg::tpspline;
+
     //figure out what our timestepping is
     auto t0 = _global->stations.at(0)->date_timeseries().at(0);
     auto t1 = _global->stations.at(0)->date_timeseries().at(1);
@@ -765,7 +768,7 @@ void core::init(int argc, char **argv)
     {
         for (auto &jtr : itr)
         {
-            jtr->init(_mesh);
+            jtr->init(_mesh,_global);
         }
 
     }

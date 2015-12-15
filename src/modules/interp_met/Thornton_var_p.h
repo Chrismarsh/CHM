@@ -2,7 +2,6 @@
 
 #include "module_base.hpp"
 #include <gsl/gsl_fit.h>
-#include "TPSpline.hpp"
 #include <vector>
 #include <gsl/gsl_combination.h>
 
@@ -31,5 +30,10 @@ public:
     Thornton_var_p();
     ~Thornton_var_p();
     void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
+    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    struct data : public face_info
+    {
+        interpolation interp;
+    };
 };
 

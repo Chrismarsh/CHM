@@ -5,12 +5,21 @@ include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 set(TEST_SRCS
  #   test_station.cpp
-#    test_timeseries.cpp
+		test_interpolation.cpp
+    test_timeseries.cpp
     test_core.cpp
 #    test_mesh.cpp
     test_regexptokenizer.cpp
 #    test_daily.cpp
 )
+set(FILTER_SRCS
+		../src/filters/macdonald_undercatch.cpp
+
+		)
+set(SNOBAL_SRC
+		../src/modules/snobal/snobal.cpp #<-- main module files
+		../src/modules/snobal/sno.cpp
+		)
 
 set(MODULE_SRCS
 
@@ -18,6 +27,11 @@ set(MODULE_SRCS
 		../src/modules/interp_met/Liston_monthly_llra_ta.cpp
 		../src/modules/interp_met/Kunkel_monthlyTd_rh.cpp
 		../src/modules/interp_met/Liston_wind.cpp
+		../src/modules/interp_met/iswr_from_obs.cpp
+		../src/modules/interp_met/Dodson_NSA_ta.cpp
+		../src/modules/interp_met/Thornton_var_p.cpp
+		../src/modules/interp_met/kunkel_rh.cpp
+		../src/modules/interp_met/rh_from_obs.cpp
 
 		../src/modules/slope_iswr.cpp
 		../src/modules/Marsh_shading_iswr.cpp
@@ -28,10 +42,9 @@ set(MODULE_SRCS
 		../src/modules/Harder_precip_phase.cpp
 		../src/modules/Burridge_iswr.cpp
 		../src/modules/Iqbal_iswr.cpp
-		../src/modules/interp_met/iswr_from_obs.cpp
-		../src/modules/interp_met/Dodson_NSA_ta.cpp
-		../src/modules/interp_met/Thornton_var_p.cpp
 		../src/modules/Richard_albedo.cpp
+		${SNOBAL_SRC}
+
 		)
 
 if(MATLAB)
@@ -48,6 +61,10 @@ set(CHM_SRCS
 		../src/global.cpp
 		../src/station.cpp
 		../src/variable_map.cpp
+		../src/filter_factory.cpp
+
+		../src/ui/ui.cpp
+		../src/ui/ncstream.cpp
 
 		../src/mesh/triangulation.cpp
 
@@ -61,16 +78,20 @@ set(CHM_SRCS
 		../src/utility/crc_hash_compare.cpp
 		../src/utility/regex_tokenizer.cpp
 		../src/utility/timer.cpp
-		)
+		${FILTER_SRCS}
+		../src/interpolation/interpolation.cpp)
 set (HEADER_FILES
     ../src/mesh
+		../src/ui
     ../src/modules
 	../src/modules/interp_met
+		../src/modules/snobal
     ../src/libmaw
     ../src/interpolation
     ../src/timeseries
     ../src/utility
     ../src
+		../src/filters
     ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
@@ -83,6 +104,7 @@ set (EXT_HEADER_FILES
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
 		${METEOIO_INCLUDE_DIR}
+		${CURSES_INCLUDE_DIR}
     )
 set( LIB_FILES
 	    ${Boost_LIBRARIES}
@@ -97,6 +119,7 @@ set( LIB_FILES
 		${VTK_LIBRARIES}
 		${METEOIO_LIBRARY}
 		${LAPACK_LIBRARIES}
+		${CURSES_LIBRARIES}
 )
 
 set( GTEST_LINK

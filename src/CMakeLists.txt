@@ -60,7 +60,7 @@ set(CHM_SRCS
 		utility/crc_hash_compare.cpp
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
-	)
+		interpolation/interpolation.cpp)
 
 set (HEADER_FILES
         mesh

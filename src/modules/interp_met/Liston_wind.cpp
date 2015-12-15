@@ -15,17 +15,21 @@ Liston_wind::Liston_wind()
 }
 
 //Calculates the curvature required
-void Liston_wind::init(mesh domain)
+void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
 {
-        for (Delaunay::Finite_faces_iterator fit = domain->finite_faces_begin();
-             fit != domain->finite_faces_end(); ++fit)
-        {
-            Delaunay::Face_handle face = fit;
+
+
+    #pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+            auto face = domain->face(i);
+            auto d = face->make_module_data<lwinddata>(ID);
+            d->interp.init(global_param->interp_algorithm,global_param->stations.size());
             face->coloured = false;
-        }
+    }
 
 
-        double curmax = -99999.0;
+    double curmax = -99999.0;
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -185,12 +189,6 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v ) );
     }
 
-    interp_base* interp=nullptr;
-    std::string interp_method = "spline";
-    if(interp_method == "spline")
-        interp = new thin_plate_spline();
-
-
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
 
@@ -202,8 +200,8 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto elem = domain->face(i);
         auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-        double zonal_u = (*interp)(u, query);
-        double zonal_v = (*interp)(v, query);
+        double zonal_u = elem->get_module_data<lwinddata>(ID)->interp(u, query);
+        double zonal_v = elem->get_module_data<lwinddata>(ID)->interp(v, query);
 
         double theta = 3.0 * PI * 0.5 - atan2(zonal_v , zonal_u);
 
@@ -222,8 +220,8 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto elem = domain->face(i);
         auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-        double zonal_u = (*interp)(u, query);
-        double zonal_v = (*interp)(v, query);
+        double zonal_u = elem->get_module_data<lwinddata>(ID)->interp(u, query);
+        double zonal_v = elem->get_module_data<lwinddata>(ID)->interp(v, query);
 
         double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
         double corrected_theta = 3.0 * PI * 0.5 - atan2(zonal_v , zonal_u);
@@ -253,7 +251,6 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         elem->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
     }
 
-    delete interp;
 
 }
 

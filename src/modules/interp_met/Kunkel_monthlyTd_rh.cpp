@@ -19,6 +19,16 @@ Kunkel_monthlyTd_rh::~Kunkel_monthlyTd_rh()
 {
 
 }
+void Kunkel_monthlyTd_rh::init(mesh domain, boost::shared_ptr<global> global_param)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+    }
+}
 void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
 //    size_t ID = elem->_debug_ID;
@@ -65,13 +75,10 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), Td_z ) );
     }
 
-    interp_base* interp=nullptr;
-    std::string interp_method = "spline";
-    if(interp_method == "spline")
-        interp = new thin_plate_spline();
+   
 
     auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double Tdz0 = (*interp)(lowered_values, query);//C
+    double Tdz0 = elem->get_module_data<data>(ID)->interp(lowered_values, query);//C
 
     //raise value back up to the face's elevation from sea level
     double t = elem->face_data("t") + 273.15;
@@ -89,5 +96,4 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
     elem->set_face_data("rh",rh*100.0);
     elem->set_face_data("Td_lapse_rate",lapse);
 
-    delete interp;
 }

@@ -21,6 +21,8 @@
 #include <boost/graph/graphviz.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/move/unique_ptr.hpp>
+#include <boost/move/make_unique.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -43,6 +45,7 @@ namespace po = boost::program_options;
 #include "global.hpp"
 #include "str_format.h"
 #include "ui.h"
+#include "interpolation.h"
 
 
 struct vertex{

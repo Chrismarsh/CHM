@@ -12,6 +12,16 @@ Dodson_NSA_ta::~Dodson_NSA_ta()
 {
 
 }
+void Dodson_NSA_ta::init(mesh domain, boost::shared_ptr<global> global_param)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+    }
+}
 void Dodson_NSA_ta::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
 {
 
@@ -25,7 +35,7 @@ void Dodson_NSA_ta::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
-    thin_plate_spline interp;
+
 
     for (auto& s : global_param->stations)
     {
@@ -47,7 +57,7 @@ void Dodson_NSA_ta::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
 
     //interpolated virtual temp, now go back to station
-    double theta = interp(lowered_values, query);
+    double theta = elem->get_module_data<data>(ID)->interp(lowered_values, query);
     double elev = elem->get_z();
     double Pz = Po * pow(Tb/(Tb+ (-lapse)*elev),(m*g)/((-lapse)*R));
     double ratio = (Po/Pz);

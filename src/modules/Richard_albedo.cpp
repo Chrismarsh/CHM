@@ -73,7 +73,7 @@ void Richard_albedo::run(mesh_elem &elem, boost::shared_ptr<global> global_param
     elem->get_module_data<Richard_albedo::data>(ID)->albedo = albedo;
 }
 
-void Richard_albedo::init(mesh domain)
+void Richard_albedo::init(mesh domain, boost::shared_ptr<global> global)
 {
 
     //these

@@ -1,9 +1,10 @@
 #pragma once
 //#include "core.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/move/unique_ptr.hpp>
 #include <string>
 
-#include "variable_map.hpp"
+#include "interpolation.h"
 #include "station.hpp"
 /**
  * Basin wide paramters such as transmissivity, solar elevation, solar aspec, etc.
@@ -45,9 +46,9 @@ public:
     global();
     int year();
     int day();
-
+    interp_alg interp_algorithm;
     /*
-     * Month on [1,12]
+     * Montboosth on [1,12]
      */
     int month();
     int hour();

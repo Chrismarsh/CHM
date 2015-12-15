@@ -204,8 +204,8 @@ public:
     double range_max(timeseries::iterator& start, timeseries::iterator& end, std::string variable);
     
 private:
-    typedef tbb::concurrent_hash_map<std::string, variable_vec, crc_hash_compare> ts_hashmap;
-
+//    typedef tbb::concurrent_hash_map<std::string, variable_vec, crc_hash_compare> ts_hashmap;
+    typedef std::map<std::string,variable_vec> ts_hashmap;
 
     // This is a hashmap interface, vector back end
     // "var1"        |     "var2"     |     "var3"   |      
@@ -213,7 +213,7 @@ private:
     //      [...]    |      [...]     |      [...]   |
     //    vector 1   |     vector 2   |     vector 3 |
     //      [...]    |      [...]     |      [...]   |
-    ts_hashmap* _variables;
+    ts_hashmap _variables;
     date_vec _date_vec;
     
     size_t _cols;

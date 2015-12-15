@@ -28,7 +28,7 @@ public:
 
     virtual void run(mesh domain, boost::shared_ptr <global> global_param);
 
-    virtual void init(mesh domain);
+    virtual void init(mesh domain, boost::shared_ptr<global> global);
 
 };
 

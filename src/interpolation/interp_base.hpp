@@ -21,7 +21,7 @@ public:
     */
     virtual double operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
     {
-        return 0.0;
+        return -9999.0;
     };
 
     virtual ~interp_base(){};
