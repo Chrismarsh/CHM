@@ -94,19 +94,19 @@ public:
     * Gets the value associated with a variable.
     * \param variable Variable name
     */
-    double get(std::string variable) ;
+    double get(const std::string &variable) ;
 
     /**
     * Returns a copy of the current iterator for this variable. That is, an iterator into the underlying variable vector. Useful for std algorithms, eg std::max
     */
-    variable_vec::iterator get_itr(std::string varName);
+    variable_vec::iterator get_itr(const std::string &varName);
 
     /**
     * Sets the given variable's value for this timestep
     * \param variable Variable name
     * \param value the value
     */
-    void set(std::string variable, double value);
+    void set(const std::string &variable, const double &value);
 
 
     

@@ -34,6 +34,9 @@
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 //includes from CHM
 #include "logger.hpp"
 #include "exception.hpp"

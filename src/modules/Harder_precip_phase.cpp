@@ -1,5 +1,5 @@
 #include "Harder_precip_phase.hpp"
-Harder_precip_phase::Harder_precip_phase()
+Harder_precip_phase::Harder_precip_phase(config_file cfg)
         :module_base(parallel::data)
 {
     depends("t");
@@ -11,6 +11,12 @@ Harder_precip_phase::Harder_precip_phase()
     provides("frac_precip_snow");
     provides("p_snow");
     provides("p_rain");
+
+    //     default values:
+    //     b=2.630006;
+    //     c=0.09336;
+    b = cfg.get<double>("const.b");
+    c = cfg.get<double>("const.c");
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
@@ -67,11 +73,7 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
 
     double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
 
-    //     default values:
-    //     b=2.630006;
-    //     c=0.09336;
-    double b = cfg.get<double>("const.b");
-    double c = cfg.get<double>("const.c");
+
 
     double frTi = 1 / (1+b*pow(c,Ti));
 

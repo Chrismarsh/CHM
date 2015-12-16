@@ -24,7 +24,7 @@
 class kunkel_rh : public module_base
 {
 public:
-    kunkel_rh();
+    kunkel_rh(config_file cfg);
 
     ~kunkel_rh();
 

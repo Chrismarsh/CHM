@@ -4,7 +4,7 @@
 
 #include "Iqbal_iswr.h"
 
-Iqbal_iswr::Iqbal_iswr()
+Iqbal_iswr::Iqbal_iswr(config_file cfg)
         :module_base(parallel::data)
 {
 

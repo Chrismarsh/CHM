@@ -20,7 +20,7 @@ public:
 class snobal : public module_base
 {
 public:
-    snobal();
+    snobal(config_file cfg);
 
     ~snobal();
 

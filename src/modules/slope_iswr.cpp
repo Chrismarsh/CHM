@@ -1,6 +1,6 @@
 #include "slope_iswr.hpp"
 
-slope_iswr::slope_iswr()
+slope_iswr::slope_iswr(config_file cfg)
         :module_base(parallel::data)
 {
     depends("iswr");

@@ -1,7 +1,7 @@
 
 #include "rh_from_obs.h"
 
-rh_from_obs::rh_from_obs()
+rh_from_obs::rh_from_obs(config_file cfg)
 :module_base(parallel::data)
 {
     depends_from_met("rh");

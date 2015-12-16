@@ -259,13 +259,13 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
 
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     points->SetNumberOfPoints(this->_num_vertex);
+ //   points->Allocate(this->_num_vertex);
 
-    vtkSmartPointer<vtkCellArray> triangles =
-            vtkSmartPointer<vtkCellArray>::New();
+    vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
+    triangles->Allocate(this->_num_vertex);
 
-    typedef vtkFloatArray vtkFArray;
 
-    std::map<std::string, vtkSmartPointer<vtkFArray> > data;
+    std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 
     //assume that all the faces have the same number of variables and the same types of variables
     //by this point this should be a fair assumption
@@ -274,21 +274,21 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
     auto variables = f->variables();
     for(auto& v: variables)
     {
-        data[v] = vtkSmartPointer<vtkFArray>::New();
+        data[v] = vtkSmartPointer<vtkFloatArray>::New();
         data[v]->SetName(v.c_str());
     }
 
     //handle elevation/aspect/slope
-    data["Elevation"] = vtkSmartPointer<vtkFArray>::New();
+    data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
     data["Elevation"]->SetName("Elevation");
 
-    data["Slope"] = vtkSmartPointer<vtkFArray>::New();
+    data["Slope"] = vtkSmartPointer<vtkFloatArray>::New();
     data["Slope"]->SetName("Slope");
 
-    data["Aspect"] = vtkSmartPointer<vtkFArray>::New();
+    data["Aspect"] = vtkSmartPointer<vtkFloatArray>::New();
     data["Aspect"]->SetName("Aspect");
 
-//    auto test = vtkSmartPointer<vtkFArray>::New();
+//    auto test = vtkSmartPointer<vtkFloatArray>::New();
 //    test->SetName("TEST");
 //    test->SetNumberOfComponents(3);
 
@@ -319,11 +319,11 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
 ////        data["Gauss Curvature"]->InsertNextTuple1(curve);
 //
     int ii=0;
-    for (Delaunay::Finite_faces_iterator fit = finite_faces_begin();
-         fit != finite_faces_end(); ++fit)
+
+    for (size_t i = 0; i < this->size_faces(); i++)
     {
-        Delaunay::Face_handle face = fit;
-        Delaunay::Triangle t = this->triangle(face);
+        Delaunay::Face_handle fit = this->face(i);
+        Delaunay::Triangle t = this->triangle(fit);
 
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
@@ -337,10 +337,11 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
         points->SetPoint(fit->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
         points->SetPoint(fit->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());
 
+
         triangles->InsertNextCell(tri);
 
 
-        for(auto& v: variables)
+        for (auto &v: variables)
         {
             double d = fit->face_data(v);
             data[v]->InsertNextTuple1(d);

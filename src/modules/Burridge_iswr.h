@@ -27,7 +27,7 @@
 class Burridge_iswr : public module_base
 {
 public:
-    Burridge_iswr();
+    Burridge_iswr(config_file cfg);
     ~Burridge_iswr();
     void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

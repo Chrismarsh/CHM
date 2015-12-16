@@ -138,7 +138,6 @@ void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::
 
         //try grabbing a config for this module, empty string default
         pt::ptree cfg;
-
         try
         {
             cfg = config.get_child(module);
@@ -148,7 +147,6 @@ void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::
         }
         boost::shared_ptr<module_base> m(_mfactory.get(module, cfg));
         //internal tracking of module initialization order
-
         m->IDnum = modnum;
         modnum++;
         _modules.push_back(
@@ -526,7 +524,7 @@ void core::init(int argc, char **argv)
         //load the module config into it's own ptree
         pt::read_json(cmdl_options.get<0>(), cfg);
 
-        LOG_DEBUG << "Reading configuration file " << argc;
+        LOG_DEBUG << "Reading configuration file " << cmdl_options.get<0>();
 
         /*
          * The module config section is optional, but if it exists, we need it to
@@ -539,6 +537,8 @@ void core::init(int argc, char **argv)
 
             //load the module config into it's own ptree
             pt::read_json(itr.second.data(), module_config);
+
+
 
             std::string module_name = itr.first.data();
             //replace the string config name with that config file
@@ -1100,7 +1100,7 @@ void core::_determine_module_dep()
     }
 
 #ifdef _OPENMP
-    LOG_DEBUG << "Built with OpenMP support";
+    LOG_DEBUG << "Built with OpenMP support, #threads = " << omp_get_max_threads();
 #endif
 
 
@@ -1178,7 +1178,7 @@ void core::run()
 
                 if (itr.at(0)->parallel_type() == module_base::parallel::data)
                 {
-#pragma omp parallel for
+                    #pragma omp parallel for
                     for (size_t i = 0; i < _mesh->size_faces(); i++)
                     {
                         //module calls
@@ -1202,29 +1202,42 @@ void core::run()
 
             }
 
+
             for (auto &itr : _outputs)
             {
                 if (itr.type == output_info::output_type::mesh)
                 {
-                    for (auto jtr : itr.mesh_output_formats)
+                    #pragma omp parallel
                     {
-                        std::string base_name = itr.fname + std::to_string(current_ts);
-
-                        if (jtr == output_info::mesh_outputs::vtu)
+                        #pragma omp single
                         {
-                            pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
-                            dataset.add("<xmlattr>.timestep", _global->posix_time_int());
-                            dataset.add("<xmlattr>.group", "");
-                            dataset.add("<xmlattr>.part", 0);
-                            dataset.add("<xmlattr>.file", base_name + ".vtu");
-                            _mesh->mesh_to_vtu(base_name + ".vtu");
-                        }
+                            for (auto jtr : itr.mesh_output_formats)
+                            {
+                                #pragma omp task
+                                {
+                                    std::string base_name = itr.fname + std::to_string(current_ts);
 
-                        if (jtr == output_info::mesh_outputs::vtp)
-                            _mesh->mesh_to_ascii(base_name + ".vtp");
+                                    if (jtr == output_info::mesh_outputs::vtu)
+                                    {
+                                        pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
+                                        dataset.add("<xmlattr>.timestep", _global->posix_time_int());
+                                        dataset.add("<xmlattr>.group", "");
+                                        dataset.add("<xmlattr>.part", 0);
+                                        dataset.add("<xmlattr>.file", base_name + ".vtu");
+                                        _mesh->mesh_to_vtu(base_name + ".vtu");
+                                    }
+
+                                    if (jtr == output_info::mesh_outputs::vtp)
+                                    {
+                                        _mesh->mesh_to_ascii(base_name + ".vtp");
+                                    }
+
 //                        if (jtr == output_info::mesh_outputs::ascii)
 //                        LOG_WARNING << "Ascii output not implemented";
-                        //_mesh->mesh_to_ascii(itr.fname+".vtp");
+                                    //_mesh->mesh_to_ascii(itr.fname+".vtp");
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -1314,6 +1327,7 @@ void core::run()
     }
     catch (exception_base &e)
     {
+        LOG_ERROR << "Exception at timestep: " << _global->posix_time();
         //if we die in a module, try to dump our time series out so we can figur eout wtf went wrong
         LOG_ERROR << "Exception has occured, dumping timeseries. THESE WILL BE INCOMPLETE!";
         for (auto &itr : _outputs)

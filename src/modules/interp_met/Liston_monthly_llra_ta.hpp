@@ -47,7 +47,7 @@
 class Liston_monthly_llra_ta : public module_base
 {
 public:
-    Liston_monthly_llra_ta();
+    Liston_monthly_llra_ta(config_file cfg);
     ~Liston_monthly_llra_ta();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
     virtual void init(mesh domain, boost::shared_ptr<global> global_param);

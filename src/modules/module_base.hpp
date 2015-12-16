@@ -225,3 +225,4 @@ protected:
 * Convenience typedef for modules.
 */
 typedef boost::shared_ptr<module_base> module;
+typedef pt::ptree config_file;

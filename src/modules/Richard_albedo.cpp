@@ -1,6 +1,6 @@
 #include "Richard_albedo.hpp"
 
-Richard_albedo::Richard_albedo()
+Richard_albedo::Richard_albedo(config_file cfg)
 : module_base(parallel::data)
 {
 

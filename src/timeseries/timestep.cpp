@@ -76,46 +76,30 @@ boost::posix_time::ptime timestep::get_posix()
     return *_date_itr;
 }
 
-double timestep::get(std::string variable)
+double timestep::get(const std::string &variable)
 {
-//    itr_map::const_accessor a;
-//    if (!_itrs.find(a, variable))
-//        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
-    auto res = _itrs.find(variable);
-    if(res == _itrs.end())
-        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
-
-    double out = res->second[0];
-
-    return out;
+    return _itrs[variable][0]; //this will throw for us, so don't need the explicit check
 }
 
-void timestep::set(std::string variable, double value)
+void timestep::set(const std::string &variable, const double &value)
 {
+    //this is slower than just getting the value, but it prevents subtle bugs where
+    // a module tries to create a variable it didn't allocate in a provides call
     auto res = _itrs.find(variable);
     if(res == _itrs.end())
         BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
-
-//    itr_map::accessor a;
-//    if (!_itrs.find(a, variable))
-//    {
-//        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
-//    }
-
     res->second[0] = value;
 
+//    _itrs[variable][0]=value;
+
+
 }
 
-timestep::variable_vec::iterator timestep::get_itr(std::string varName)
+timestep::variable_vec::iterator timestep::get_itr(const std::string &varName)
 {
     auto res = _itrs.find(varName);
     if(res == _itrs.end())
         BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
-
-//    itr_map::const_accessor a;
-//    if (!_itrs.find(a, varName))
-//        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
-
 
     return res->second;
 

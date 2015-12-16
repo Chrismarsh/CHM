@@ -1,7 +1,7 @@
 
 #include "Marsh_shading_iswr.hpp"
 
-Marsh_shading_iswr::Marsh_shading_iswr()
+Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
         :module_base(parallel::domain)
 {
     provides("shadow");

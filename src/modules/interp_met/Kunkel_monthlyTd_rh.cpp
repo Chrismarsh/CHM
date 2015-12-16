@@ -1,7 +1,7 @@
 #include "Kunkel_monthlyTd_rh.hpp"
 
 
-Kunkel_monthlyTd_rh::Kunkel_monthlyTd_rh()
+Kunkel_monthlyTd_rh::Kunkel_monthlyTd_rh(config_file cfg)
         :module_base(parallel::data)
 
 {

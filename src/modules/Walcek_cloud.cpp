@@ -1,6 +1,6 @@
 #include "Walcek_cloud.hpp"
 
-Walcek_cloud::Walcek_cloud()
+Walcek_cloud::Walcek_cloud(config_file cfg)
         :module_base(parallel::data)
 {
     provides("cloud_frac");

@@ -1,6 +1,6 @@
 #include "Liston_wind.hpp"
 
-Liston_wind::Liston_wind()
+Liston_wind::Liston_wind(config_file cfg)
         :module_base(parallel::domain)
 
 {

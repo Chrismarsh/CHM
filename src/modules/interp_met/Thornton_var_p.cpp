@@ -4,7 +4,7 @@
 
 #include "Thornton_var_p.h"
 
-Thornton_var_p::Thornton_var_p()
+Thornton_var_p::Thornton_var_p(config_file cfg)
 : module_base(parallel::data)
 {
     depends_from_met("p");

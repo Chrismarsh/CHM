@@ -1,7 +1,7 @@
 
 #include "Burridge_iswr.h"
 
-Burridge_iswr::Burridge_iswr()
+Burridge_iswr::Burridge_iswr(config_file cfg)
         :module_base(parallel::data)
 {
 

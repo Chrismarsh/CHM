@@ -1,6 +1,6 @@
 #include "Dodson_NSA_ta.h"
 
-Dodson_NSA_ta::Dodson_NSA_ta()
+Dodson_NSA_ta::Dodson_NSA_ta(config_file cfg)
 :module_base(parallel::data)
 {
 

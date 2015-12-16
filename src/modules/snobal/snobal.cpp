@@ -1,6 +1,6 @@
 #include "snobal.hpp"
 
-snobal::snobal()
+snobal::snobal(config_file cfg)
         : module_base(parallel::data)
 {
     depends("p_rain");

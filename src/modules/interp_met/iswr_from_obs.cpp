@@ -2,7 +2,7 @@
 #include "iswr_from_obs.h"
 
 
-iswr_from_obs::iswr_from_obs()
+iswr_from_obs::iswr_from_obs(config_file cfg)
         : module_base(parallel::data)
 {
     depends_from_met("Qsi");

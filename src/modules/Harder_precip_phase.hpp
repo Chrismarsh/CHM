@@ -37,10 +37,12 @@
 class Harder_precip_phase : public module_base
 {
 public:
-    Harder_precip_phase();
+    Harder_precip_phase(config_file cfg);
     ~Harder_precip_phase();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 
+    double b;
+    double c;
 
 };
 

@@ -30,7 +30,7 @@
 class Sicart_ilwr : public module_base
 {
 public:
-    Sicart_ilwr();
+    Sicart_ilwr(config_file cfg);
     ~Sicart_ilwr();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
 

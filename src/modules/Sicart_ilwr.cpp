@@ -1,6 +1,6 @@
 #include "Sicart_ilwr.hpp"
 
-Sicart_ilwr::Sicart_ilwr()
+Sicart_ilwr::Sicart_ilwr(config_file cfg)
         :module_base(parallel::data)
 {
 

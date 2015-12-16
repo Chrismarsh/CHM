@@ -1,7 +1,7 @@
 
 #include "PenmanMonteith_evaporation.hpp"
 
-PenmanMonteith_evaporation::PenmanMonteith_evaporation()
+PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
         :module_base(parallel::data)
 {
 

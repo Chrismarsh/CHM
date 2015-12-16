@@ -1,6 +1,6 @@
 #include "kunkel_rh.hpp"
 
-kunkel_rh::kunkel_rh()
+kunkel_rh::kunkel_rh(config_file cfg)
         : module_base(parallel::data)
 {
     provides("rh");

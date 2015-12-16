@@ -34,7 +34,7 @@
 class Thornton_p : public module_base
 {
 public:
-    Thornton_p();
+    Thornton_p(config_file cfg);
     ~Thornton_p();
     virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
     virtual void init(mesh domain, boost::shared_ptr<global> global_param);
