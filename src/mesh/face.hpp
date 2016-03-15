@@ -121,7 +121,7 @@ public:
     * \param variable Variable to assign the data to
     * \param data Data
     */
-    void set_face_data(std::string variable, double data);
+    void set_face_data(const std::string& variable, double data);
 
 
     /**
@@ -129,7 +129,7 @@ public:
     * \param variable  variable being queried
     * \return  this timesteps value for the given variable
     */
-    double face_data(std::string variable);
+    double face_data(const std::string& variable);
 
     /**
      * Removes the face data associated with a given ID. Throws if ID not found.
@@ -151,6 +151,11 @@ public:
     * \param ID variable
     */
     timeseries::variable_vec face_time_series(std::string ID);
+
+    /**
+     * Returns true if the variable is present
+     */
+    bool has(const std::string& variable);
 
     /**
      * Returns a list of variables in this face's timeseries
@@ -436,16 +441,20 @@ std::vector<std::string> face<Gt, Fb>::variables()
 }
 
 
-
+template < class Gt, class Fb>
+bool face<Gt, Fb>::has(const std::string& variable)
+{
+    return _itr->has(variable);
+};
 
 template < class Gt, class Fb>
-void face<Gt, Fb>::set_face_data(std::string variable, double data)
+void face<Gt, Fb>::set_face_data(const std::string& variable, double data)
 {
     _itr->set(variable, data);
 }
 
 template < class Gt, class Fb>
-double face<Gt, Fb>::face_data(std::string variable)
+double face<Gt, Fb>::face_data(const std::string& variable)
 {
     return _itr->get(variable);
 }

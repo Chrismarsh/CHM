@@ -172,7 +172,6 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
 }
 void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 {
-
     //testing value
     //TODO:Use measured wind direction
     double theta = 292.5 * 3.14159/180.;
@@ -192,8 +191,6 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
 
-    //this is very slow!!!!
-    //TODO: replace with element storage
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)

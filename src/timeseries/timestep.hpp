@@ -97,6 +97,11 @@ public:
     double get(const std::string &variable) ;
 
     /**
+     * Returns true if the specified variable is available in the timeseries.
+     */
+    bool has(const std::string &variable);
+
+    /**
     * Returns a copy of the current iterator for this variable. That is, an iterator into the underlying variable vector. Useful for std algorithms, eg std::max
     */
     variable_vec::iterator get_itr(const std::string &varName);

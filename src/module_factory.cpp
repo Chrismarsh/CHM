@@ -49,6 +49,12 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new snobal(config);
     else if (ID == "Richard_albedo")
         mod = new Richard_albedo(config);
+    else if (ID == "snowpack")
+        mod = new Lehning_snowpack(config);
+    else if (ID == "point_mode")
+        mod = new point_mode(config);
+    else if (ID == "threshold_p_phase")
+        mod = new threshold_p_phase(config);
 
     if(mod == nullptr)
     {

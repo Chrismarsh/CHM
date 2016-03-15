@@ -24,6 +24,7 @@ triangulation::triangulation()
     _gfx = NULL;
 #endif
     _num_faces = 0;
+    _vtk_unstructuredGrid = nullptr;
 }
 
 #ifdef MATLAB
@@ -139,6 +140,7 @@ void triangulation::from_file(std::string file)
     while (in >> pt)
     {
         Vertex_handle Vh = this->insert(pt);
+
         Vh->set_id(i);
         ++i;
         pts.push_back(K::Point_2(pt.x(), pt.y()));
@@ -254,24 +256,55 @@ void triangulation::plot(std::string ID)
 }
 #endif
 
-vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
+void triangulation::init_vtkUnstructured_Grid()
 {
-
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     points->SetNumberOfPoints(this->_num_vertex);
- //   points->Allocate(this->_num_vertex);
+    //   points->Allocate(this->_num_vertex);
 
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
     triangles->Allocate(this->_num_vertex);
 
+    for (size_t i = 0; i < this->size_faces(); i++)
+    {
+        Delaunay::Face_handle fit = this->face(i);
+        Delaunay::Triangle t = this->triangle(fit);
+
+        vtkSmartPointer<vtkTriangle> tri =
+                vtkSmartPointer<vtkTriangle>::New();
+
+        tri->GetPointIds()->SetId(0, fit->vertex(0)->get_id());
+        tri->GetPointIds()->SetId(1, fit->vertex(1)->get_id());
+        tri->GetPointIds()->SetId(2, fit->vertex(2)->get_id());
+
+        points->SetPoint(fit->vertex(0)->get_id(), t[0].x(), t[0].y(), t[0].z());
+        points->SetPoint(fit->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
+        points->SetPoint(fit->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());
+
+        triangles->InsertNextCell(tri);
+    }
+
+    _vtk_unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+    _vtk_unstructuredGrid->SetPoints(points);
+    _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
+
+}
+
+void triangulation::update_vtk_data()
+{
+    //if we haven't inited yet, do so.
+    if(!_vtk_unstructuredGrid)
+    {
+        this->init_vtkUnstructured_Grid();
+    }
 
     std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 
     //assume that all the faces have the same number of variables and the same types of variables
     //by this point this should be a fair assumption
 
-    Delaunay::Finite_faces_iterator f = this->finite_faces_begin();
-    auto variables = f->variables();
+//    Delaunay::Finite_faces_iterator f = this->face(0); //this->finite_faces_begin();
+    auto variables = this->face(0)->variables();
     for(auto& v: variables)
     {
         data[v] = vtkSmartPointer<vtkFloatArray>::New();
@@ -318,28 +351,10 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
 ////        curve =  (k1*k2);
 ////        data["Gauss Curvature"]->InsertNextTuple1(curve);
 //
-    int ii=0;
 
     for (size_t i = 0; i < this->size_faces(); i++)
     {
         Delaunay::Face_handle fit = this->face(i);
-        Delaunay::Triangle t = this->triangle(fit);
-
-        vtkSmartPointer<vtkTriangle> tri =
-                vtkSmartPointer<vtkTriangle>::New();
-
-        tri->GetPointIds()->SetId(0, fit->vertex(0)->get_id());
-        tri->GetPointIds()->SetId(1, fit->vertex(1)->get_id());
-        tri->GetPointIds()->SetId(2, fit->vertex(2)->get_id());
-
-
-        points->SetPoint(fit->vertex(0)->get_id(), t[0].x(), t[0].y(), t[0].z());
-        points->SetPoint(fit->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
-        points->SetPoint(fit->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());
-
-
-        triangles->InsertNextCell(tri);
-
 
         for (auto &v: variables)
         {
@@ -359,15 +374,6 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
 
 
 
-    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-    unstructuredGrid->SetPoints(points);
-    unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
-//    unstructuredGrid->GetPointData()->SetVectors(test);
-
-    vtkSmartPointer<vtkGeometryFilter> geometryFilter =  vtkSmartPointer<vtkGeometryFilter>::New();
-    geometryFilter->SetInputData(unstructuredGrid);
-    geometryFilter->Update();
-    vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>(geometryFilter->GetOutput());
 
 //    vtkSmartPointer<vtkCurvatures> curvaturesFilter = vtkSmartPointer<vtkCurvatures>::New();
 //
@@ -375,40 +381,42 @@ vtkSmartPointer<vtkUnstructuredGrid> triangulation::mesh_to_vtkUstructuredGrid()
 //    curvaturesFilter->SetCurvatureTypeToMean();
 //    curvaturesFilter->Update();
 //
-//    unstructuredGrid->GetPointData()->AddArray(curvaturesFilter->GetOutput()->GetPointData()->GetScalars());
+//    _vtk_unstructuredGrid->GetPointData()->AddArray(curvaturesFilter->GetOutput()->GetPointData()->GetScalars());
 
+    //    _vtk_unstructuredGrid->GetPointData()->SetVectors(test);
 
     for(auto& m : data)
     {
-        unstructuredGrid->GetCellData()->AddArray(m.second);
+        _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
     }
 
-    return unstructuredGrid;
+//    return _vtk_unstructuredGrid;
 }
-void triangulation::mesh_to_vtu(std::string file_name)
+void triangulation::write_vtu(std::string file_name)
 {
-
-    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = this->mesh_to_vtkUstructuredGrid();
+    //this now needs to be called from outside these functions
+//    update_vtk_data();
 
     vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
     writer->SetFileName(file_name.c_str());
 #if VTK_MAJOR_VERSION <= 5
     writer->SetInput(unstructuredGrid);
 #else
-    writer->SetInputData(unstructuredGrid);
+    writer->SetInputData(_vtk_unstructuredGrid);
 #endif
     writer->Write();
 
 }
 
-void triangulation::mesh_to_ascii(std::string file_name)
+void triangulation::write_vtp(std::string file_name)
 {
-    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = this->mesh_to_vtkUstructuredGrid();
+    //this now needs to be called from outside these functions
+//    update_vtk_data();
 
     vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
-    geometryFilter->SetInputData(unstructuredGrid);
+    geometryFilter->SetInputData(_vtk_unstructuredGrid);
     geometryFilter->Update();
-    geometryFilter->GetOutput()->GetPointData()->SetScalars(unstructuredGrid->GetCellData()->GetScalars());
+    geometryFilter->GetOutput()->GetPointData()->SetScalars(_vtk_unstructuredGrid->GetCellData()->GetScalars());
 
 
     vtkSmartPointer<vtkTransform> flattener = vtkSmartPointer<vtkTransform>::New();
@@ -420,7 +428,7 @@ void triangulation::mesh_to_ascii(std::string file_name)
     filt->SetTransform(flattener);
     filt->Update();
 
-    double* bounds = unstructuredGrid->GetBounds();
+    double* bounds = _vtk_unstructuredGrid->GetBounds();
 
 
     // Create a grid of points to interpolate over
@@ -447,8 +455,6 @@ void triangulation::mesh_to_ascii(std::string file_name)
     probeFilter->SetSourceData(filt->GetOutput());
     probeFilter->SetInputData(gridPoints->GetOutput());
     probeFilter->Update();
-
-//    probeFilter->GetOutput()->GetCellData()->GetScalars(<#(const char*)name#>)
 
     vtkSmartPointer<vtkXMLPolyDataWriter> gridWriter =  vtkSmartPointer<vtkXMLPolyDataWriter>::New();
     gridWriter->SetFileName ( file_name.c_str());

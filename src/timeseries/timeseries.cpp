@@ -449,7 +449,7 @@ void timeseries::to_file(std::string file)
     //build a list of all the headers
     //unknown order
     int i = 0;
-    out << "Date";
+    out << "datetime";
     variable_vec::const_iterator *tItr = new variable_vec::const_iterator[_variables.size()];
     for (ts_hashmap::iterator itr = _variables.begin(); itr != _variables.end(); itr++)
     {

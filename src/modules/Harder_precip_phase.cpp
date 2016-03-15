@@ -15,8 +15,8 @@ Harder_precip_phase::Harder_precip_phase(config_file cfg)
     //     default values:
     //     b=2.630006;
     //     c=0.09336;
-    b = cfg.get<double>("const.b");
-    c = cfg.get<double>("const.c");
+    b = cfg.get("const.b",2.630006);
+    c = cfg.get("const.c",0.09336);
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
@@ -72,8 +72,6 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
     double digits = 6;
 
     double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
-
-
 
     double frTi = 1 / (1+b*pow(c,Ti));
 

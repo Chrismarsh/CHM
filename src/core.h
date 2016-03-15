@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <chrono>
+#include <algorithm>
 
 //boost includes
 #include <boost/graph/graph_traits.hpp>
@@ -21,7 +22,10 @@
 #include <boost/graph/graphviz.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+
 #include <boost/move/unique_ptr.hpp>
+
+
 #include <boost/move/make_unique.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -148,10 +152,6 @@ public:
             std::vector<std::string>  // add module
 
     > cmdl_opt;
-//    typedef boost::tuple<
-//            std::string,
-//            po::variables_map
-//    > cmdl_opt;
 
     cmdl_opt config_cmdl_options(int argc, char **argv);
 
@@ -168,6 +168,14 @@ public:
 protected:
     //current level of the logger. Defaults to debug, but can be changed via configuration settings
     log_level _log_level;
+
+    // if the users passes in a config file path that isn't the currently directory
+    // e.g. CHM -f /some/other/path/CHM.json
+    // then we need to affix every file IO (excep the log ?) with this path.
+    boost::filesystem::path cwd_dir;
+
+    //this is called via system call when the model is done to notify the user
+    std::string _notification_script;
 
     //a text file log
     boost::shared_ptr< text_sink > _log_sink;
@@ -206,7 +214,16 @@ protected:
 
     //a full timeseires per triangle
     bool _per_triangle_timeseries;
-    
+
+    struct point_mode_info
+    {
+        bool enable;
+        std::string output;
+        std::string forcing;
+
+    } point_mode;
+
+
     class output_info
     {
     public:

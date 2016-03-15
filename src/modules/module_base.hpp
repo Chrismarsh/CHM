@@ -196,10 +196,15 @@ public:
     bool has_optional(std::string variable)
     {
         auto it = _optional_found.find(variable);
-        if(it!=_optional_found.end())
-            return true;
-        else
-            return false;
+
+        //asked for a variable that isn't optional, just return false
+        if(it ==_optional_found.end())
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Requested a non-optional variable"));
+//            return false;
+
+        return it->second; //return if we found it
+
+
     }
     /**
      * Set that an optional variable was found

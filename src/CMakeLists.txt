@@ -21,6 +21,8 @@ set(MODULE_SRCS
 		modules/interp_met/kunkel_rh.cpp
 		modules/interp_met/rh_from_obs.cpp
 
+		modules/point_mode.cpp
+
 		modules/slope_iswr.cpp
 		modules/Marsh_shading_iswr.cpp
 		modules/Sicart_ilwr.cpp
@@ -31,9 +33,10 @@ set(MODULE_SRCS
 		modules/Burridge_iswr.cpp
 		modules/Iqbal_iswr.cpp
 		modules/Richard_albedo.cpp
+		modules/snowpack.cpp
 		${SNOBAL_SRC}
 
-		)
+		modules/threshold_p_phase.cpp)
 
 
 set(CHM_SRCS
@@ -86,13 +89,13 @@ set (EXT_HEADER_FILES
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
         ${METEOIO_INCLUDE_DIR}
+		${LIBSNOWPACK_INCLUDE_DIR}
 		${CURSES_INCLUDE_DIR}
 
     )
 
-#set(CURSES_LIBRARIES "${CURSES_LIBRARIES} /usr/lib64/libpanel.so")
 set( LIB_FILES
-	    ${Boost_LIBRARIES} #old var
+	    ${Boost_LIBRARIES}
         ${TBB_LIBRARIES}
         ${GSL_LIBRARIES}
 	    ${CMAKE_THREAD_LIBS_INIT}
@@ -101,6 +104,7 @@ set( LIB_FILES
         ${CGAL_3RD_PARTY_LIBRARIES}
         ${VTK_LIBRARIES}
         ${METEOIO_LIBRARY}
+		${LIBSNOWPACK_LIBRARY}
         ${LAPACK_LIBRARIES}
 		${CURSES_LIBRARIES}
 )
@@ -110,7 +114,7 @@ set( LIB_FILES
 if(MATLAB)
     set(LIBMAW_SRCS
         libmaw/graphics.cpp
-        libmaw/matlab_engine.cpp modules/snobal/snomacros.h)
+        libmaw/matlab_engine.cpp)
 
     set( LIB_FILES
             ${LIB_FILES}

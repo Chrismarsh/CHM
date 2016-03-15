@@ -35,7 +35,11 @@
 //#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Projection_traits_xy_3.h>
-#include <CGAL/Delaunay_triangulation_2.h>
+
+//#include <CGAL/Delaunay_triangulation_2.h>
+#include <CGAL/Constrained_Delaunay_triangulation_2.h>
+#include <CGAL/Triangulation_conformer_2.h>
+
 #include <CGAL/Triangulation_data_structure_2.h>
 #include <CGAL/bounding_box.h>
 //#define CGAL_LAPACK_ENABLED
@@ -86,7 +90,9 @@ typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on 
 typedef ex_vertex<Gt> Vb; //custom vertex class
 typedef face<Gt> Fb; //custom face class
 typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds; //our data structure that is using the custom classes
-typedef CGAL::Delaunay_triangulation_2<Gt, Tds> Delaunay; //specify a delauany triangulation
+//typedef CGAL::Delaunay_triangulation_2<Gt, Tds> Delaunay; //specify a delauany triangulation
+
+typedef CGAL::Constrained_Delaunay_triangulation_2<Gt, Tds> Delaunay;
 
 typedef Delaunay::Face_handle mesh_elem;
 typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
@@ -200,18 +206,31 @@ public:
     */
     void timeseries_to_file(mesh_elem m, std::string fname);
 
-    vtkSmartPointer<vtkUnstructuredGrid> mesh_to_vtkUstructuredGrid();
+	/**
+	 * If output to the mesh vtk/vtu format is required, this will be allocate the vtk data structure.
+	 */
+	void init_vtkUnstructured_Grid();
+
+	/**
+	 * Updates the internal vtk structure with this timesteps data. Must be called prior to calling the write_vt* functions.
+	 * The write_vt* functions could call this, however it makes them not threadsafe.
+	 */
+    void update_vtk_data();
 
     /**
     * Saves the mesh with this timesteps values to a vtu file for visualization in Paraview
     */
-    void mesh_to_vtu(std::string fname);
+    void write_vtu(std::string fname);
 
-    void mesh_to_ascii(std::string file_name);
+    void write_vtp(std::string file_name);
 private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
+
+	//holds the vtk ugrid if we are outputing to vtk formats
+	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
+
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles

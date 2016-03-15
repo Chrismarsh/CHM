@@ -40,7 +40,7 @@ void Richard_albedo::run(mesh_elem &elem, boost::shared_ptr<global> global_param
 
     if ( swe > 0.)
     {
-        if (elem->face_data("T_s_0") > 273.)  //melting snow
+        if (elem->face_data("T_s_0") >= 273.)  //melting snow, T_s_0???
         {
             albedo = (albedo - amin) * exp(-dt/a2) + amin;
             elem->set_face_data("melting albedo",1);
@@ -54,18 +54,13 @@ void Richard_albedo::run(mesh_elem &elem, boost::shared_ptr<global> global_param
         double psnow = elem->face_data("p_snow");
         albedo = albedo + (amax - albedo) * (psnow )/min_swe_refresh; //* dt
 
+        albedo = std::max(albedo,amin);
+        albedo = std::min(albedo,amax);
     }
     else
     {
         elem->set_face_data("melting albedo",0);
         albedo = albedo_bare;
-    }
-
-    //only do bounds check if there is snow
-    if( swe > 0)
-    {
-        albedo = std::max(albedo,amin);
-        albedo = std::min(albedo,amax);
     }
 
 
@@ -81,7 +76,7 @@ void Richard_albedo::init(mesh domain, boost::shared_ptr<global> global)
     amax = cfg.get("albedo_max",0.84);
     a1 = cfg.get("a1",1.08e7); //cold snow decay const
     a2 = cfg.get("a2",7.2e5);  //melting snow decay const
-    min_swe_refresh = cfg.get("min_swe_refresh",30.); //min swe to refresh albedo
+    min_swe_refresh = cfg.get("min_swe_refresh",1.); //min swe to refresh albedo
     albedo_snow = cfg.get("init_albedo_snow",0.85); // intial snow albedo
     albedo_bare = cfg.get("init_albedo_bare",0.17); //initial bare ground albedo
 

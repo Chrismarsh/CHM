@@ -30,7 +30,9 @@ namespace pt = boost::property_tree;
 #include "kunkel_rh.hpp"
 #include "snobal.hpp"
 #include "Richard_albedo.hpp"
-
+#include "snowpack.hpp"
+#include "point_mode.hpp"
+#include "threshold_p_phase.hpp"
 class module_factory
 {
 public:

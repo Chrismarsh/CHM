@@ -2,27 +2,37 @@ cmake_minimum_required (VERSION 2.8)
 
 project (CHMprj)
 
+#http://stackoverflow.com/questions/31561309/cmake-warnings-under-os-x-macosx-rpath-is-not-specified-for-the-following-targe
+#https://cmake.org/cmake/help/v3.0/policy/CMP0042.html
+set(CMAKE_MACOSX_RPATH 1)
+
 # The version number.
 set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(USE_OMP "Enable OpenMP"  ON )
+option(USE_OMP "Enable OpenMP"  OFF )
 option(PV_FILTER "Build Paraview time filter"  ON )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 
 
-## Any custom cmake paths
-option(optional_cmake "optional cmake incl" OFF)
-if(optional_cmake)
-    set(Boost_NO_SYSTEM_PATHS TRUE)
-    set(BOOST_ROOT /home/cbm038/boost159)
-    set(BOOST_LIBRARYDIR /home/cbm038/boost159/lib)
+#the mio and snowpack includes behave odly if you don't do the Cmake_source_dir like below, so treat these differently than the rest.
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
-    #for hardcoded findcmake files,
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeopt/")
+#some machines need to be told where odd system libraries are, so put them here
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
+
+#for meton
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
+
+## Any custom boost path. Few of the hpc systems have out of date boost libs
+set(Boost_NO_SYSTEM_PATHS FALSE)
+if (Boost_NO_SYSTEM_PATHS)
+    set(BOOST_ROOT "/home/cbm038/boost_1_58_0")
+#    set(BOOST_LIBRARYDIR /home/cbm038/boost158/lib)
+
 endif()
 
 
@@ -35,9 +45,6 @@ endmacro()
 #Setup output paths
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH  ${CMAKE_SOURCE_DIR}/lib)
-
-#include addition findXXX.cmake files
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 
 #Setup CXX flags
@@ -76,16 +83,15 @@ else()
 endif()
 
 #Setup CXX flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -D_FORTIFY_SOURCE=0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -D_FORTIFY_SOURCE=0 -Wno-unused-variable")
 
-#C#####
 
 #GAL requires strict rounding
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -fp-model strict -msse4 -finline ") #-frounding-math needed for cgal
 endif()
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") # OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -frounding-math")
 endif()
 ########
@@ -108,8 +114,8 @@ endif()
 
 
 if(MATLAB)
-#for matlab to run you need csh installed
-find_package(Matlab REQUIRED)
+    #for matlab to run you need csh installed
+    find_package(Matlab REQUIRED)
 endif()
 
 find_package(Armadillo REQUIRED)  #at least v3
@@ -132,6 +138,7 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 
 find_package(MeteoIO REQUIRED)
+find_package(Libsnowpack REQUIRED)
 
 find_package (Threads REQUIRED)
 
@@ -141,8 +148,8 @@ find_package(GSL REQUIRED)
 
 find_package(Curses REQUIRED)
 
-#can't use both, so if we are building the plugin we need to compile against paraview (which brings in VTK)
-#otherwise use just VTK
+#if we are building the plugin we need to compile against paraview (which brings in VTK)
+#otherwise use just VTK. You cannot link against both at the same time
 if(PV_FILTER)
     FIND_PACKAGE(ParaView REQUIRED)
     INCLUDE(${PARAVIEW_USE_FILE})

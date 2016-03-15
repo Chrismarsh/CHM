@@ -24,7 +24,13 @@ int main (int argc, char *argv[])
         kernel.end(); //make sure endwin() is called so ncurses cleans up
 
         LOG_ERROR << boost::diagnostic_information(e);
+
+        return -1;
     }
+//    catch(...)
+//    {
+//        LOG_ERROR << "wtf";
+//    }
 
 
 

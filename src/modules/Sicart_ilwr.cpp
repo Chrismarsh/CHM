@@ -6,8 +6,9 @@ Sicart_ilwr::Sicart_ilwr(config_file cfg)
 
     depends("t");
     depends("rh");
+    depends("iswr");
     depends("atm_trans");
-
+    depends("cloud_frac");
     provides("ilwr");
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -17,7 +18,8 @@ void Sicart_ilwr::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
     double T = elem->face_data("t")+273.15; //C->K
     double tau = elem->face_data("atm_trans");
-
+    if( elem->face_data("iswr") < 3.)
+        tau = elem->face_data("cloud_frac");
 
     double RH = elem->face_data("rh") / 100.0;
     double es = mio::Atmosphere::waterSaturationPressure(T);//mio::Atmosphere::saturatedVapourPressure(T);

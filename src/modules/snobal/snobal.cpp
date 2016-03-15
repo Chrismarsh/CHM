@@ -28,6 +28,7 @@ snobal::snobal(config_file cfg)
     provides("dead");
     provides("iswr_net");
     provides("isothermal");
+    provides("ilwr_out");
 
 
 }
@@ -51,26 +52,26 @@ void snobal::init(mesh domain, boost::shared_ptr<global> global)
         sbal->m_s = 0.;
         sbal->m_s_0 = 0.;
         sbal->m_s_l = 0.;
-        sbal->max_h2o_vol = 0.0001;
+        sbal->max_h2o_vol = cfg.get("hax_h2o_vol",0.0001);
         sbal->rho = 0.;
         sbal->T_s = -75. + FREEZE;
         sbal->T_s_0 = -75. + FREEZE; //assuming no snow
         sbal->T_s_l = -75. + FREEZE;
         sbal->z_s = 0.;
 
-        sbal->KT_WETSAND = 0.08;
+        sbal->KT_WETSAND = cfg.get("kt_wetsand",0.08);
 
         sbal->ro_data = 0;
 
-        sbal->max_z_s_0 = .1;
+        sbal->max_z_s_0 = cfg.get("max_active_layer",.1);
         sbal->h2o_total = 0;
         sbal->isothermal = 0;
 
         /// Heights
-        sbal->z_0 = 0.001; //fix TODO: hardcode z_0
-        sbal->z_T = 2.6;
-        sbal->z_u = 2.96;
-        sbal->z_g = 0.1;
+        sbal->z_0 = cfg.get("z_0",0.001); 
+        sbal->z_T = cfg.get("z_T",2.6);
+        sbal->z_u = cfg.get("z_u",2.96);
+        sbal->z_g = cfg.get("z_g",0.1);
         sbal->relative_hts = 1;  //docs are wrong. 1 == absolute
 
         sbal->R_n_bar = 0.0;
@@ -92,14 +93,14 @@ void snobal::init(mesh domain, boost::shared_ptr<global> global)
 
         //init the step_info struct
         sbal->tstep_info[DATA_TSTEP].level = DATA_TSTEP;
-        sbal->tstep_info[DATA_TSTEP].time_step = 3600; // 1hr TODO: fix hard code snobal timesteps
+        sbal->tstep_info[DATA_TSTEP].time_step = global->dt(); //3600; // 1hr TODO: fix hard code snobal timesteps
         sbal->tstep_info[DATA_TSTEP].intervals = 0;
         sbal->tstep_info[DATA_TSTEP].threshold = 60;
         sbal->tstep_info[DATA_TSTEP].output = 0;
 
 
         sbal->tstep_info[NORMAL_TSTEP].level = NORMAL_TSTEP;
-        sbal->tstep_info[NORMAL_TSTEP].time_step = 3600;
+        sbal->tstep_info[NORMAL_TSTEP].time_step = global->dt();//3600;
         sbal->tstep_info[NORMAL_TSTEP].intervals = sbal->tstep_info[DATA_TSTEP].time_step /
                                                              sbal->tstep_info[NORMAL_TSTEP].time_step;;
         sbal->tstep_info[NORMAL_TSTEP].threshold = 60;
@@ -107,7 +108,7 @@ void snobal::init(mesh domain, boost::shared_ptr<global> global)
 
 
         sbal->tstep_info[MEDIUM_TSTEP].level = MEDIUM_TSTEP;
-        sbal->tstep_info[MEDIUM_TSTEP].time_step = 3600. / 4.; //15min
+        sbal->tstep_info[MEDIUM_TSTEP].time_step = global->dt()/4; //3600. / 4.; //15min
         sbal->tstep_info[MEDIUM_TSTEP].intervals = sbal->tstep_info[NORMAL_TSTEP].time_step /
                                                              sbal->tstep_info[MEDIUM_TSTEP].time_step;
         sbal->tstep_info[MEDIUM_TSTEP].threshold = 10;
@@ -115,7 +116,7 @@ void snobal::init(mesh domain, boost::shared_ptr<global> global)
 
 
         sbal->tstep_info[SMALL_TSTEP].level = SMALL_TSTEP;
-        sbal->tstep_info[SMALL_TSTEP].time_step = 3600. / 60.;
+        sbal->tstep_info[SMALL_TSTEP].time_step = global->dt()/ 60;//3600. / 60.;
         sbal->tstep_info[SMALL_TSTEP].intervals = sbal->tstep_info[MEDIUM_TSTEP].time_step /
                                                             sbal->tstep_info[SMALL_TSTEP].time_step;
         sbal->tstep_info[SMALL_TSTEP].threshold = 1;
@@ -151,10 +152,7 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
 
     //get the previous timesteps data out of the global store.
     snodata* g = elem->get_module_data<snodata>(ID);
-    if(g->dead)
-    {
-        return;
-    }
+
     auto* sbal = &(g->data);
 
     sbal->_debug_id = id;
@@ -165,8 +163,7 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     double ilwr = elem->face_data("ilwr");
     double rh = elem->face_data("rh");
     double t = elem->face_data("t");
-    //double ea = mio::Atmosphere::saturatedVapourPressure(t+273.15) * rh/100.;
-    double ea = mio::Atmosphere::waterSaturationPressure(t+273.15);
+    double ea = mio::Atmosphere::waterSaturationPressure(t+273.15)  * rh/100.;
 
     sbal->input_rec2.S_n = (1-albedo) * elem->face_data("iswr"); //
     sbal->input_rec2.I_lw = ilwr;
@@ -205,7 +202,12 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
         sbal->stop_no_snow=0;
     }
 
-   // sbal->init_snow();
+    if(g->dead == 1)
+    {
+        sbal->init_snow();
+        g->dead = 0;
+    }
+
     try
     {
         if(! sbal->do_data_tstep() )
@@ -235,6 +237,7 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     elem->set_face_data("T_s_0",sbal->T_s_0);
     elem->set_face_data("iswr_net",sbal->S_n);
     elem->set_face_data("isothermal",sbal->isothermal);
+    elem->set_face_data("ilwr_out", sbal->R_n - sbal->S_n - sbal->I_lw);
 
 
 

@@ -4,6 +4,7 @@ core::core()
 {
     BOOST_LOG_FUNCTION();
 
+    _enable_ui=true; //default to having a UI
     _start_ts = nullptr;
     _end_ts = nullptr;
     _per_triangle_timeseries = false;
@@ -78,6 +79,27 @@ void core::config_options(const pt::ptree &value)
         _per_triangle_timeseries = *per_triangle_storage;
         LOG_DEBUG << "per triangle timer series storage: " << _per_triangle_timeseries;
     }
+
+    // point mode options
+    try
+    {
+        auto pm = value.get_child("point_mode");
+
+        point_mode.enable = true;
+        point_mode.forcing = pm.get<std::string>("forcing");
+        point_mode.output  = pm.get<std::string>("output");
+    }
+    catch(pt::ptree_bad_path &e)
+    {
+        point_mode.enable = false; // we don't have point_mode
+    }
+
+    auto notify_sh = value.get_optional<std::string>("notification_script");
+    if(notify_sh)
+    {
+        _notification_script = *notify_sh;
+    }
+
 
 }
 
@@ -181,7 +203,8 @@ void core::config_forcing(const pt::ptree &value)
         s->z(elevation);
 
         std::string file = itr.second.get<std::string>("file");
-        s->open(file);
+        auto f = cwd_dir / file;
+        s->open(f.string());
 
 
         try
@@ -197,7 +220,6 @@ void core::config_forcing(const pt::ptree &value)
                 s->reset_itrs(); // reset all the internal iterators
             }
 
-            s->tofile("uc_doubled.txt");
         } catch (pt::ptree_bad_path &e)
         {
             //ignore
@@ -222,7 +244,8 @@ void core::config_meshes(const pt::ptree &value)
     std::string dem = value.get<std::string>("DEM.file");
     LOG_DEBUG << "Found DEM mesh " << dem;
 
-    _mesh->from_file(dem);
+    auto f = cwd_dir / dem;
+    _mesh->from_file(f.string());
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
     _ui.write_mesh_details(_mesh->size_faces());
@@ -282,11 +305,18 @@ void core::config_output(const pt::ptree &value)
         {
             out.type = output_info::time_series;
             out.name = out_type;
-            out.fname = itr.second.get<std::string>("file");
+
+            auto fname = itr.second.get<std::string>("file");
+            auto f = cwd_dir / fname;
+            out.fname = f.string();
+
             out.easting = itr.second.get<double>("easting");
             out.northing = itr.second.get<double>("northing");
 
             out.face = _mesh->locate_face(out.easting, out.northing);
+
+            LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
+
             if (out.face == NULL)
             {
                 BOOST_THROW_EXCEPTION(config_error() <<
@@ -301,7 +331,11 @@ void core::config_output(const pt::ptree &value)
         else if (out_type == "mesh")
         {
             out.type = output_info::mesh;
-            out.fname = itr.second.get<std::string>("base_name");
+
+            auto fname = itr.second.get<std::string>("base_name");
+            auto f = cwd_dir / fname;
+            out.fname = f.string();
+
 
             for (auto &jtr: itr.second.get_child("format"))
             {
@@ -337,7 +371,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
 {
     std::string version = "CHM version 0.1";
 
-    std::string config_file = "CHM.config";
+    std::string config_file = "CHM.json";
     std::string start;
     std::string end;
     po::options_description desc("Allowed options.");
@@ -355,7 +389,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
                     " Removals are processed after any --config paramters are parsed, so -r will override -c. "
                     "Does not support remove of individual list [] itmes. For example:"
                     "-c nproc:2 -r nproc\n "
-                    "will result in nproc being remove.")
+                    "will result in nproc being removed.")
             ("remove-module,d", po::value<std::vector<std::string>>(), "Removes a module."
                     " Removals are processed after any --config paramters are parsed, so -d will override -c. ")
             ("add-module,m", po::value<std::vector<std::string>>(), "Adds a module.");
@@ -422,21 +456,7 @@ void core::init(int argc, char **argv)
 {
     BOOST_LOG_FUNCTION();
 
-    //get this up as fast as possible so we can start showing the UI
-    //if we run under a shitty terminal that doesn't support ncurses, or GDB
-    //we do have to turn this off and fall back to just showing cout
-    try
-    {
-        _ui.init();
-        _enable_ui = true;
-    } catch (model_init_error &e)
-    {
-        LOG_WARNING << "ncurses did not init, falling back to cout";
-        _enable_ui = false;
-    }
 
-    boost::filesystem::path full_path(boost::filesystem::current_path());
-    _ui.write_cwd(full_path.string());
     //default logging level
     _log_level = debug;
 
@@ -518,6 +538,13 @@ void core::init(int argc, char **argv)
     //get any command line options
     auto cmdl_options = config_cmdl_options(argc, argv);
 
+    //see if we are getting passed a path for our config file. If so, we need to append this path to
+    //any config files we are about to read in the main config file.
+
+    boost::filesystem::path path(cmdl_options.get<0>());
+    cwd_dir = path.parent_path();
+
+
     pt::ptree cfg;
     try
     {
@@ -535,14 +562,18 @@ void core::init(int argc, char **argv)
         {
             pt::ptree module_config;
 
-            //load the module config into it's own ptree
-            pt::read_json(itr.second.data(), module_config);
+            //should we try to load a config file? if second.data() is a substree it's string is "" so this will properly work
+            if(itr.second.data().find(".json") != std::string::npos)
+            {
+                //load the module config into it's own ptree
+                auto dir =  cwd_dir / itr.second.data();
+                pt::read_json( dir.string(), module_config);
 
+                std::string module_name = itr.first.data();
+                //replace the string config name with that config file
+                cfg.put_child("config." + module_name, module_config);
+            }
 
-
-            std::string module_name = itr.first.data();
-            //replace the string config name with that config file
-            cfg.put_child("config." + module_name, module_config);
         }
 
     }
@@ -635,6 +666,25 @@ void core::init(int argc, char **argv)
         LOG_DEBUG << "Optional section option not found";
     }
 
+
+    //if we run under a shitty terminal that doesn't support ncurses, or GDB
+    //we do have to turn this off and fall back to just showing cout
+    if(_enable_ui)
+    {
+        try
+        {
+            _ui.init();
+        } catch (model_init_error &e)
+        {
+            LOG_WARNING << "ncurses did not init, falling back to cout";
+            _enable_ui = false;
+        }
+    }
+
+
+    boost::filesystem::path full_path(boost::filesystem::current_path());
+    _ui.write_cwd(full_path.string());
+
     try
     {
         config_output(cfg.get_child("output"));
@@ -664,7 +714,41 @@ void core::init(int argc, char **argv)
 //            config_matlab(value);
 //#endif
 
+    //if we are to run in point mode, we need to remove all the input and outputs that aren't associated with point mode
+    // we do this so the user doesn't have to modify a lot of the config file when going between point and dist mode.
 
+    if(point_mode.enable)
+    {
+        LOG_INFO << "Running in point mode";
+
+        //remove everything but the one forcing
+        _global->stations.erase(std::remove_if(_global->stations.begin(),_global->stations.end(),
+                       [this](boost::shared_ptr<station> s){return s->ID() != point_mode.forcing;}),
+                                _global->stations.end());
+
+        _outputs.erase(std::remove_if(_outputs.begin(),_outputs.end(),
+                                      [this](output_info o){return o.name  != point_mode.output;}),
+                       _outputs.end());
+
+        LOG_DEBUG << _global->stations.size();
+        LOG_DEBUG << _outputs.size();
+        if ( _global->stations.size() != 1 ||
+                _outputs.size() !=1)
+        {
+            BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(">1 station or outputs in point mode"));
+
+        }
+        for(auto s: _global->stations)
+        {
+            LOG_DEBUG << *s;
+        }
+
+
+        for(auto o:_outputs)
+        {
+            LOG_DEBUG << o.name;
+        }
+    }
 
     _cfg = cfg;
 
@@ -741,10 +825,14 @@ void core::init(int argc, char **argv)
     }
 
 
-#pragma omp parallel for
+
+    #pragma omp parallel for
     for (size_t it = 0; it < _mesh->size_faces(); it++)
     {
         Delaunay::Face_handle face = _mesh->face(it);
+        if(point_mode.enable && face->_debug_name != _outputs[0].name )
+            continue;
+
         //_per_triangle_timeseries=true will create a full timeseries on each triangle. this takes up a crazy amount of ram
         if (_per_triangle_timeseries)
         {
@@ -761,10 +849,26 @@ void core::init(int argc, char **argv)
 
     }
 
+    if(point_mode.enable)
+    {
+        for(auto itr:_chunked_modules)
+        {
+            for(auto jtr:itr)
+            {
+                if(jtr->parallel_type() == module_base::parallel::domain)
+                {
+                    BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Domain parallel module being run in point-mode."));
+                }
+            }
+        }
+    }
+
+
     timer c;
     LOG_DEBUG << "Running init() for each module";
     c.tic();
-    for (auto &itr : _chunked_modules)
+
+    for (auto& itr : _chunked_modules)
     {
         for (auto &jtr : itr)
         {
@@ -999,7 +1103,6 @@ void core::_determine_module_dep()
     file.close();
 
     //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
-
     std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp");
     std::system("dot -Tpdf modules.dot -o modules.pdf");
     std::remove("modules.dot.tmp");
@@ -1181,10 +1284,14 @@ void core::run()
                     #pragma omp parallel for
                     for (size_t i = 0; i < _mesh->size_faces(); i++)
                     {
+                        auto face = _mesh->face(i);
+                        if(point_mode.enable && face->_debug_name != _outputs[0].name )
+                            continue;
+
+
                         //module calls
                         for (auto &jtr : itr)
                         {
-                            auto face = _mesh->face(i);
                             jtr->run(face, _global);
                         }
                     }
@@ -1202,6 +1309,15 @@ void core::run()
 
             }
 
+            //check that we actually need a mesh output.
+            for (auto &itr : _outputs)
+            {
+                if(itr.type == output_info::output_type::mesh)
+                {
+                    _mesh->update_vtk_data(); //update the internal vtk mesh
+                    break; // we're done as soon as we've called update once. No need to do it multiple times.
+                }
+            }
 
             for (auto &itr : _outputs)
             {
@@ -1223,18 +1339,23 @@ void core::run()
                                         dataset.add("<xmlattr>.timestep", _global->posix_time_int());
                                         dataset.add("<xmlattr>.group", "");
                                         dataset.add("<xmlattr>.part", 0);
-                                        dataset.add("<xmlattr>.file", base_name + ".vtu");
-                                        _mesh->mesh_to_vtu(base_name + ".vtu");
+
+                                        //because a full path can be provided for the base_name, we need to strip this off
+                                        //to make it a relative path in the xml file.
+                                        boost::filesystem::path p(base_name);
+
+                                        dataset.add("<xmlattr>.file", p.filename().string() + ".vtu");
+                                        _mesh->write_vtu(base_name + ".vtu");
                                     }
 
                                     if (jtr == output_info::mesh_outputs::vtp)
                                     {
-                                        _mesh->mesh_to_ascii(base_name + ".vtp");
+                                        _mesh->write_vtp(base_name + ".vtp");
                                     }
 
 //                        if (jtr == output_info::mesh_outputs::ascii)
 //                        LOG_WARNING << "Ascii output not implemented";
-                                    //_mesh->mesh_to_ascii(itr.fname+".vtp");
+                                    //_mesh->write_vtp(itr.fname+".vtp");
                                 }
                             }
                         }
@@ -1246,13 +1367,13 @@ void core::run()
             //save timestep to file
 //        std::stringstream ss;
 //        ss << "marmot" << current_ts << ".vtu";
-//        _mesh->mesh_to_vtu(ss.str());
+//        _mesh->write_vtu(ss.str());
 //
 //
 //        ss.str("");
 //        ss.clear();
 //        ss << "marmot" << current_ts << ".vtp";
-//        _mesh->mesh_to_ascii(ss.str());
+//        _mesh->write_vtp(ss.str());
 
 
 
@@ -1272,9 +1393,12 @@ void core::run()
 
             if (_per_triangle_timeseries)
             {
-#pragma omp parallel for
+                #pragma omp parallel for
                 for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
                 {
+                    if(point_mode.enable && _mesh->face(i)->_debug_name != _outputs[0].name )
+                        continue;
+
                     _mesh->face(i)->next();
                 }
 
@@ -1377,29 +1501,13 @@ void core::run()
 
     }
 
-//    for (auto& itr : _outputs)
-//    {
-//#ifdef NOMATLAB
-//        if (itr.plot)
-//        {
-//            //loop through all the request variables
-//            for (auto& jtr : itr.variables)
-//            {
-//                if (itr.type == output_info::mesh)
-//                {
-//                    _mesh->plot(jtr);
-//                } else if (itr.type == output_info::timeseries)
-//                {
-//                    _mesh->plot_time_series(itr.easting, itr.northing, jtr);
-//                }
-//            }
-//        }
-//#endif
-//        if (itr.out_file != "")
-//        {
-//            _mesh->timeseries_to_file(itr.face, itr.out_file);
-//        }
-//    }
+    if(_notification_script != "")
+    {
+        LOG_DEBUG << "Calling notification script";
+        std::system(_notification_script.c_str());
+    }
+
+
 
 }
 

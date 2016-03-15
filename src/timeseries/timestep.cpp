@@ -76,9 +76,23 @@ boost::posix_time::ptime timestep::get_posix()
     return *_date_itr;
 }
 
+bool timestep::has(const std::string &variable)
+{
+    auto res = _itrs.find(variable);
+
+    if(res == _itrs.end())
+        return false;
+    else
+        return true;
+}
+
 double timestep::get(const std::string &variable)
 {
-    return _itrs[variable][0]; //this will throw for us, so don't need the explicit check
+//    auto res = _itrs.find(variable);
+//    if(res == _itrs.end())
+//        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
+
+    return _itrs[variable][0]; //map will throw for us, so don't need the explicit check
 }
 
 void timestep::set(const std::string &variable, const double &value)
@@ -89,8 +103,6 @@ void timestep::set(const std::string &variable, const double &value)
     if(res == _itrs.end())
         BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
     res->second[0] = value;
-
-//    _itrs[variable][0]=value;
 
 
 }

@@ -40,7 +40,7 @@ private:
     var _variables;
 
 protected:
-    int _dt;
+    int _dt; //seconds
 public:
 
     global();
@@ -64,6 +64,7 @@ public:
     std::string get_variable(std::string variable);
 
     //each station where observations are
-    tbb::concurrent_vector< boost::shared_ptr<station> > stations;
+    std::vector< boost::shared_ptr<station> > stations; //tbb::concurrent_vector
+
     
 };

@@ -5,9 +5,7 @@
 #include "module_base.hpp"
 #include "TPSpline.hpp"
 #include <meteoio/MeteoIO.h>
-//#include "_snobal.h"
-//#include "do_data_tstep.h"
-//#include "init_snow.h"
+
 #include "sno.h"
 #include "snomacros.h"
 class snodata : public face_info

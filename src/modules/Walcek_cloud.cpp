@@ -6,7 +6,7 @@ Walcek_cloud::Walcek_cloud(config_file cfg)
     provides("cloud_frac");
     depends("t");
     depends("rh");
-    depends("t_lapse_rate");
+//    depends("t_lapse_rate");
  //   depends("Td_lapse_rate");
 
 

@@ -33,6 +33,8 @@ set(MODULE_SRCS
 		../src/modules/interp_met/kunkel_rh.cpp
 		../src/modules/interp_met/rh_from_obs.cpp
 
+		../src/modules/point_mode.cpp
+
 		../src/modules/slope_iswr.cpp
 		../src/modules/Marsh_shading_iswr.cpp
 		../src/modules/Sicart_ilwr.cpp
@@ -43,9 +45,10 @@ set(MODULE_SRCS
 		../src/modules/Burridge_iswr.cpp
 		../src/modules/Iqbal_iswr.cpp
 		../src/modules/Richard_albedo.cpp
+		../src/modules/snowpack.cpp
 		${SNOBAL_SRC}
 
-		)
+		../src/modules/threshold_p_phase.cpp)
 
 if(MATLAB)
 set(LIBMAW_SRCS
@@ -105,6 +108,7 @@ set (EXT_HEADER_FILES
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
 		${METEOIO_INCLUDE_DIR}
 		${CURSES_INCLUDE_DIR}
+		${LIBSNOWPACK_INCLUDE_DIR}
     )
 set( LIB_FILES
 	    ${Boost_LIBRARIES}
@@ -120,6 +124,7 @@ set( LIB_FILES
 		${METEOIO_LIBRARY}
 		${LAPACK_LIBRARIES}
 		${CURSES_LIBRARIES}
+		${LIBSNOWPACK_LIBRARY}
 )
 
 set( GTEST_LINK

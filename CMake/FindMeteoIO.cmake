@@ -1,5 +1,4 @@
-INCLUDE(LibFindMacros)
-
+include("LibFindMacros")
 # Finally the library itself
 GET_FILENAME_COMPONENT(SRC_DIR ${CMAKE_SOURCE_DIR} PATH) #ie goes up one level
 STRING(REPLACE " " "\\ " SRC_DIR ${SRC_DIR})
@@ -94,5 +93,5 @@ FIND_PATH(METEOIO_INCLUDE_DIR
 SET(METEOIO_PROCESS_INCLUDES METEOIO_INCLUDE_DIR)
 SET(METEOIO_PROCESS_LIBS METEOIO_LIBRARY)
 
-
+#find_package(METEOIO)
 libfind_process(METEOIO)
