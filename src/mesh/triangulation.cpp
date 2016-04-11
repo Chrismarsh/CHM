@@ -45,26 +45,26 @@ triangulation::~triangulation()
 #endif
 }
 
-void triangulation::init(vector x, vector y, vector z)
-{
-    //    _mesh = boost::make_shared<Delaunay>();
-    for (size_t i = 0; i < x->size(); i++)
-    {
-        Point p(x->at(i), y->at(i), z->at(i));
-        Delaunay::Vertex_handle Vh = this->insert(p);
-        Vh->set_id(i);
-        ++i;
-    }
-    
-    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
-            fit != this->finite_faces_end(); ++fit)
-    {
-        Delaunay::Face_handle face = fit;
-        _faces.push_back(face);
-    }
-    
-    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
-}
+//void triangulation::init(vector x, vector y, vector z)
+//{
+//    //    _mesh = boost::make_shared<Delaunay>();
+//    for (size_t i = 0; i < x->size(); i++)
+//    {
+//        Point_3 p(x->at(i), y->at(i), z->at(i));
+//        Delaunay::Vertex_handle Vh = this->insert(p);
+//        Vh->set_id(i);
+//        ++i;
+//    }
+//
+//    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
+//            fit != this->finite_faces_end(); ++fit)
+//    {
+//        Delaunay::Face_handle face = fit;
+//        _faces.push_back(face);
+//    }
+//
+//    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
+//}
 
 size_t triangulation::size_faces()
 {
@@ -78,18 +78,29 @@ size_t triangulation::size_vertex()
 
 mesh_elem triangulation::locate_face(double x, double y)
 {
-    Point_3 p(x, y, 0);
+    //TODO: fix locate_face to return the correct value
 
-    Delaunay::Locate_type lt0;
-    int li;
+    for(auto itr = faces_begin(); itr < faces_end(); itr++)
+    {
+        if(itr->contains(x,y))
+            return itr;
+    }
 
-    mesh_elem m = this->locate(p, lt0, li);
+    return nullptr;
 
-
-    if (lt0 != Delaunay::FACE)
-        return NULL;
-    else
-        return m;
+//
+//    Point_3 p(x, y, 0);
+//
+//    Delaunay::Locate_type lt0;
+//    int li;
+//
+//    mesh_elem m = this->locate(p, lt0, li);
+//
+//
+//    if (lt0 != Delaunay::FACE)
+//        return NULL;
+//    else
+//        return m;
 }
 
 #ifdef NOMATLAB
@@ -122,47 +133,134 @@ void triangulation::plot_time_series(double x, double y, std::string ID)
 }
 #endif
 
-void triangulation::from_file(std::string file)
+void triangulation::serialize(std::string output_path, std::string variable)
 {
-    std::ifstream in(file);
-    if (in.fail())
+
+    pt::ptree out;
+    pt::ptree subtree;
+
+    for(auto& face : _faces)
     {
-        BOOST_THROW_EXCEPTION(file_read_error()
-                << boost::errinfo_errno(errno)
-                << boost::errinfo_file_name(file)
-                );
+        pt::ptree item;
+        item.put_value(face->face_data(variable));
+        subtree.push_back(std::make_pair("",item));
+    }
+    out.put_child( pt::ptree::path_type("parameters."+variable),subtree);
+
+    pt::write_json(output_path,out);
+
+}
+std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
+{
+
+    size_t nvertex_toread = mesh.get<int>("mesh.nvertex");
+    LOG_DEBUG << "Reading in #vertex=" << nvertex_toread;
+    size_t i=0;
+    for (auto &itr : mesh.get_child("mesh.vertex"))
+    {
+        std::vector<double> items;
+        //iterate over the vertex triples
+        for(auto& jtr: itr.second)
+        {
+            items.push_back(jtr.second.get_value<double>());
+        }
+        Point_3 pt(items[0], items[1], items[2]);
+
+        Vertex_handle Vh = this->create_vertex();
+        Vh->set_point(pt);
+        Vh->set_id(i);
+        _vertexes.push_back(Vh);
+        i++;
+    }
+    _num_vertex = this->number_of_vertices();
+    LOG_DEBUG << "# nodes created = " << _num_vertex;
+
+    if( this->number_of_vertices() != nvertex_toread)
+    {
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                "Expected: " + std::to_string(nvertex_toread) + " vertex, got: " + std::to_string(this->number_of_vertices())));
+    }
+
+    //read in faces
+    size_t num_elem = mesh.get<int>("mesh.nelem");
+    LOG_DEBUG << "Reading in #elem = " << num_elem;
+    //set our mesh dimensions
+    this->set_dimension(2);
+
+    i = 0;
+    for (auto &itr : mesh.get_child("mesh.elem"))
+    {
+        std::vector<size_t> items;
+        //iterate over the vertex triples
+        for(auto& jtr: itr.second)
+        {
+            items.push_back(jtr.second.get_value<size_t>());
+        }
+        auto vert1 = _vertexes.at(items[0]); //0 indexing
+        auto vert2 = _vertexes.at(items[1]);
+        auto vert3 = _vertexes.at(items[2]);
+
+        auto face = this->create_face(vert1,vert2,vert3);
+
+        face->_debug_ID= --i; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
+        face->_debug_name= std::to_string(i);
+        _faces.push_back(face);
 
     }
 
-    Point pt;
-    size_t i = 0;
-    std::vector< K::Point_2 > pts;  //TODO: clean this up
-    while (in >> pt)
-    {
-        Vertex_handle Vh = this->insert(pt);
 
-        Vh->set_id(i);
-        ++i;
-        pts.push_back(K::Point_2(pt.x(), pt.y()));
-        _vertexes.push_back(Vh);
+    _num_faces = this->number_of_faces();
+
+    LOG_DEBUG << "Created a mesh with " << this->size_faces() << " triangles";
+
+    if( this->number_of_faces() != num_elem)
+    {
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                "Expected: " + std::to_string(nvertex_toread) + " elems, got: " + std::to_string(this->size_faces())));
+    }
+
+    LOG_DEBUG << "Building face neighbours";
+    i=0;
+    for (auto &itr : mesh.get_child("mesh.neigh"))
+    {
+        std::vector<size_t> items;
+        //iterate over the vertex triples
+        for(auto& jtr: itr.second)
+        {
+            items.push_back(jtr.second.get_value<int>());
+        }
+        auto face = _faces.at(i);
+        //-2 is now the no neighbour value
+        Face_handle face0 =  items[0] != -2 ?_faces.at( items[0] ) : Face_handle();
+        Face_handle face1 =  items[1] != -2 ?_faces.at( items[1] ) : Face_handle();
+        Face_handle face2 =  items[2] != -2 ?_faces.at( items[2] ) : Face_handle();
+
+        face->set_neighbors(face0,face1,face2);
+
+        i++;
+    }
+    //loop over parameter name
+
+    std::set<std::string> parameters;
+    for (auto &itr : mesh.get_child("parameters"))
+    {
+        i=0; // reset evertime we get a new parameter set
+        auto name = itr.first.data();
+        LOG_DEBUG << "Applying parameter: " << name;
+        for (auto &jtr : itr.second)
+        {
+            auto face = _faces.at(i);
+            double value = jtr.second.get_value<double>();
+            face->set_parameter(name,value);
+            i++;
+        }
+
+        parameters.insert(name);
     }
     _num_faces = this->number_of_faces();
-    _num_vertex = i;
-    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
+    _num_vertex = this->number_of_vertices();
 
-    //_bbox = CGAL::bounding_box(pts.begin(), pts.end());
-    //    std::cout << "0:"<< _bbox[0] << "1:"<< _bbox[1]<<"2:"<< _bbox[2]<<"3:"<< _bbox[3]<<std::endl;
-    //    std::cout << _bbox[0] - _bbox[1] << std::endl;
-    //    std::cout << _bbox[2] - _bbox[3] << std::endl;
-    int f = 0;
-    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
-            fit != this->finite_faces_end(); ++fit)
-    {
-        Delaunay::Face_handle face = fit;
-        face->_debug_ID= --f; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
-        face->_debug_name= std::to_string(f);
-        _faces.push_back(face);
-    }
+    return parameters;
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
@@ -268,7 +366,7 @@ void triangulation::init_vtkUnstructured_Grid()
     for (size_t i = 0; i < this->size_faces(); i++)
     {
         Delaunay::Face_handle fit = this->face(i);
-        Delaunay::Triangle t = this->triangle(fit);
+//        Delaunay::Triangle t = this->triangle(fit);
 
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
@@ -277,9 +375,13 @@ void triangulation::init_vtkUnstructured_Grid()
         tri->GetPointIds()->SetId(1, fit->vertex(1)->get_id());
         tri->GetPointIds()->SetId(2, fit->vertex(2)->get_id());
 
-        points->SetPoint(fit->vertex(0)->get_id(), t[0].x(), t[0].y(), t[0].z());
-        points->SetPoint(fit->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
-        points->SetPoint(fit->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());
+        points->SetPoint(fit->vertex(0)->get_id(), face(i)->vertex(0)->point().x(), face(i)->vertex(0)->point().y(), face(i)->vertex(0)->point().z());
+        points->SetPoint(fit->vertex(1)->get_id(), face(i)->vertex(1)->point().x(), face(i)->vertex(1)->point().y(), face(i)->vertex(1)->point().z());
+        points->SetPoint(fit->vertex(2)->get_id(), face(i)->vertex(2)->point().x(), face(i)->vertex(2)->point().y(), face(i)->vertex(2)->point().z());
+
+//        points->SetPoint(fit->vertex(0)->get_id(), t[0].x(), t[0].y(), t[0].z());
+//        points->SetPoint(fit->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
+//        points->SetPoint(fit->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());  <<--- BUG???
 
         triangles->InsertNextCell(tri);
     }
@@ -310,6 +412,14 @@ void triangulation::update_vtk_data()
         data[v] = vtkSmartPointer<vtkFloatArray>::New();
         data[v]->SetName(v.c_str());
     }
+
+    auto params = this->face(0)->parameters();
+    for(auto& v: params)
+    {
+        data[v] = vtkSmartPointer<vtkFloatArray>::New();
+        data[v]->SetName(v.c_str());
+    }
+
 
     //handle elevation/aspect/slope
     data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
@@ -361,6 +471,11 @@ void triangulation::update_vtk_data()
             double d = fit->face_data(v);
             data[v]->InsertNextTuple1(d);
         }
+        for(auto& v: params)
+        {
+            double d = fit->get_parameter(v);
+            data[v]->InsertNextTuple1(d);
+        }
         data["Elevation"]->InsertNextTuple1(fit->get_z());
         data["Slope"]->InsertNextTuple1(fit->slope());
         data["Aspect"]->InsertNextTuple1(fit->aspect());
@@ -371,17 +486,6 @@ void triangulation::update_vtk_data()
 //        test->InsertNextTuple3( -mag * sin(dir * 3.14159/180.0), -mag*cos(dir* 3.14159/180.0),fit->slope() * cos(fit->slope()*3.14159/180.0));
 //        ii++;
     }
-
-
-
-
-//    vtkSmartPointer<vtkCurvatures> curvaturesFilter = vtkSmartPointer<vtkCurvatures>::New();
-//
-//    curvaturesFilter->SetInputData(polydata);
-//    curvaturesFilter->SetCurvatureTypeToMean();
-//    curvaturesFilter->Update();
-//
-//    _vtk_unstructuredGrid->GetPointData()->AddArray(curvaturesFilter->GetOutput()->GetPointData()->GetScalars());
 
     //    _vtk_unstructuredGrid->GetPointData()->SetVectors(test);
 
@@ -489,7 +593,8 @@ void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
 
     std::vector<K::Point_2> bboxpt;
     bboxpt.reserve( domain->number_of_vertices());
-    for(auto v = domain->finite_vertices_begin(); v!=domain->finite_vertices_end();v++ )
+
+    for(auto v = domain->vertices_begin(); v!=domain->vertices_end();v++ )
     {
         bboxpt.push_back(K::Point_2(v->point().x(),v->point().y()));
     }

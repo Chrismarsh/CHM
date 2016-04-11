@@ -3,8 +3,8 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Triangulation_ds_face_base_2.h>
 
-#include <CGAL/Triangulation_face_base_2.h>
-
+//#include <CGAL/Triangulation_face_base_2.h>
+//#include <CGAL/Constrained_Delaunay_triangulation_face_base_2.h>
 #include <set>
 #include <string>
 
@@ -37,7 +37,8 @@ typedef K::Triangle_3 Triangle_3;
 * \class face
 * \brief Defines the triangle face
 */
-template < class Gt, class Fb = CGAL::Triangulation_face_base_2<Gt> >
+
+template < class Gt, class Fb = CGAL::Constrained_triangulation_face_base_2<Gt> >
 class face
 : public Fb
 {
@@ -218,6 +219,11 @@ public:
 
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
+
+    void set_parameter(std::string key,double value);
+    double get_parameter(std::string key);
+    std::vector<std::string>  parameters();
+    bool has_parameter(std::string key);
 private:
 
     double _slope;
@@ -231,11 +237,43 @@ private:
 
     //boost::ptr_map<std::string,face_info> _module_face_data;
     std::map<std::string,face_info* > _module_face_data;
+    std::map<std::string,double> _parameters;
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
 
 
 };
+
+template < class Gt, class Fb >
+bool face<Gt, Fb>::has_parameter(std::string key)
+{
+    return _parameters.find( key ) != _parameters.end();
+}
+
+template < class Gt, class Fb >
+void face<Gt, Fb>::set_parameter(std::string key, double value)
+{
+    _parameters[key] = value;
+}
+
+template < class Gt, class Fb >
+double face<Gt, Fb>::get_parameter(std::string key)
+{
+    return _parameters[key];
+};
+
+template < class Gt, class Fb >
+std::vector<std::string>  face<Gt, Fb>::parameters()
+{
+    std::vector<std::string> params;
+    for(auto& itr : _parameters)
+    {
+        params.push_back(itr.first);
+    }
+    return params;
+};
+
+
 
 template < class Gt, class Fb >
 face<Gt, Fb>::~face()

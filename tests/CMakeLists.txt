@@ -82,7 +82,7 @@ set(CHM_SRCS
 		../src/utility/regex_tokenizer.cpp
 		../src/utility/timer.cpp
 		${FILTER_SRCS}
-		../src/interpolation/interpolation.cpp)
+		../src/interpolation/interpolation.cpp ../src/utility/readjson.cpp)
 set (HEADER_FILES
     ../src/mesh
 		../src/ui

@@ -31,7 +31,7 @@
 
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
-
+#include <boost/tuple/tuple.hpp>
 //#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Projection_traits_xy_3.h>
@@ -42,11 +42,17 @@
 
 #include <CGAL/Triangulation_data_structure_2.h>
 #include <CGAL/bounding_box.h>
+#include <CGAL/Triangulation_2.h>
+
 //#define CGAL_LAPACK_ENABLED
 //#define CGAL_EIGEN3_ENABLED
 //#include <CGAL/Monge_via_jet_fitting.h>
 #include <tbb/concurrent_vector.h>
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
+namespace pt = boost::property_tree;
 
 
 //http://www.paraview.org/Bug/print_bug_page.php?bug_id=14164
@@ -89,10 +95,12 @@ typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on 
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
 typedef face<Gt> Fb; //custom face class
-typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds; //our data structure that is using the custom classes
+//typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds;
 //typedef CGAL::Delaunay_triangulation_2<Gt, Tds> Delaunay; //specify a delauany triangulation
 
-typedef CGAL::Constrained_Delaunay_triangulation_2<Gt, Tds> Delaunay;
+//typedef CGAL::Constrained_Delaunay_triangulation_2<Gt, Tds,CGAL::Exact_intersections_tag> Delaunay;
+//typedef CGAL::Triangulation_2<Gt,Tds> Delaunay;
+typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Delaunay;
 
 typedef Delaunay::Face_handle mesh_elem;
 typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
@@ -133,15 +141,21 @@ public:
     * Loads a mesh from file. Should by x y z values with no header, space delimited.
     * \param file Fully qualified path to a file.
     */
-    void from_file(std::string file);
+	std::set<std::string> from_json(pt::ptree& mesh);
 
+	/**
+	 * Serializes a mesh attribute to file so it can be read into the model.
+	 * \param output_path Full qualified path to a file to output to.
+	 * \param variable The variable from a module to be output.
+	 */
+	void serialize(std::string output_path, std::string variable);
     /**
     * Initializes a triangulation from the given x,y,z vectors
     * \param x X values
     * \param y Y values
     * \param z Z values
     */
-    void init(vector x, vector y, vector z);
+//    void init(vector x, vector y, vector z);
 
     /**
     * Return the number of faces in the triangluation
@@ -235,8 +249,8 @@ private:
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
     //that allows us to traverse the triangulation in a deterministic order, as well as play nice with openmp
-    tbb::concurrent_vector< Delaunay::Face_handle  > _faces;
-    tbb::concurrent_vector< Delaunay::Vertex_handle > _vertexes;
+    std::vector< Delaunay::Face_handle  > _faces;
+    std::vector< Delaunay::Vertex_handle > _vertexes;
     
 #ifdef NOMATLAB
     //ptr to the matlab engine

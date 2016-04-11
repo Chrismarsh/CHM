@@ -234,20 +234,52 @@ void core::config_forcing(const pt::ptree &value)
 
 void core::config_meshes(const pt::ptree &value)
 {
-    LOG_DEBUG << "Found meshes section";
+    LOG_DEBUG << "Found meshes sections.";
 #ifdef MATLAB
     _mesh = boost::make_shared<triangulation>(_engine);
 #else
     _mesh = boost::make_shared<triangulation>();
 #endif
 
-    std::string dem = value.get<std::string>("DEM.file");
-    LOG_DEBUG << "Found DEM mesh " << dem;
+    std::string mesh_path = value.get<std::string>("mesh");
+    LOG_DEBUG << "Found mesh:" << mesh_path;
 
-    auto f = cwd_dir / dem;
-    _mesh->from_file(f.string());
+    mesh_path = (cwd_dir / mesh_path).string();
+
+    pt::ptree mesh = read_json(mesh_path);
+
+    //see if we have additional parameter files to load
+    try
+    {
+        for(auto &itr : value.get_child("parameters"))
+        {
+            LOG_DEBUG << "Parameter file: " << itr.second.data();
+
+            auto param_mesh_path = (cwd_dir / itr.second.data()).string();
+
+            pt::ptree param_json = read_json(param_mesh_path);
+
+            for(auto& ktr : param_json.get_child("parameters"))
+            {
+                //use put to ensure there are no duplciate parameters...
+                std::string key = ktr.first.data();
+                mesh.put_child( "parameters." + key ,ktr.second);
+                LOG_DEBUG << "Inserted parameter " << ktr.first.data() << " into the config tree.";
+            }
+
+        }
+    }
+    catch(...)
+    {
+        LOG_DEBUG << "No addtional paramters found in mesh section.";
+    }
+
+
+    _provided_parameters = _mesh->from_json(mesh);
+
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
+
     _ui.write_mesh_details(_mesh->size_faces());
 
     LOG_DEBUG << "Initializing DEM mesh attributes";
@@ -315,7 +347,6 @@ void core::config_output(const pt::ptree &value)
 
             out.face = _mesh->locate_face(out.easting, out.northing);
 
-            LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
 
             if (out.face == NULL)
             {
@@ -324,6 +355,9 @@ void core::config_output(const pt::ptree &value)
                                               "Requested an output point that is not in the triangulation domain. Pt:"
                                               + std::to_string(out.easting) + "," + std::to_string(out.northing)));
             }
+
+            LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
+
             out.face->_debug_name = out.name; //out_type holds the station name
             out.face->_debug_ID = ID;
             ++ID;
@@ -352,6 +386,7 @@ void core::config_output(const pt::ptree &value)
         {
             LOG_WARNING << "Unknown output type: " << itr.second.data();
         }
+
         _outputs.push_back(out);
     }
 }
@@ -548,10 +583,8 @@ void core::init(int argc, char **argv)
     pt::ptree cfg;
     try
     {
-        //load the module config into it's own ptree
-        pt::read_json(cmdl_options.get<0>(), cfg);
-
         LOG_DEBUG << "Reading configuration file " << cmdl_options.get<0>();
+        cfg = read_json(cmdl_options.get<0>());
 
         /*
          * The module config section is optional, but if it exists, we need it to
@@ -567,7 +600,8 @@ void core::init(int argc, char **argv)
             {
                 //load the module config into it's own ptree
                 auto dir =  cwd_dir / itr.second.data();
-                pt::read_json( dir.string(), module_config);
+
+                module_config = read_json(dir.string());
 
                 std::string module_name = itr.first.data();
                 //replace the string config name with that config file
@@ -584,7 +618,7 @@ void core::init(int argc, char **argv)
     catch (pt::json_parser_error &e)
     {
         BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Error reading file: " + e.filename() + " on line: " + std::to_string(e.line()) + " with error: " +
+                "Error reading file: " + cmdl_options.get<0>() + " on line: " + std::to_string(e.line()) + " with error: " +
                 e.message()));
     }
 

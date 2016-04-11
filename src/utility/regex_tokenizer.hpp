@@ -114,7 +114,8 @@ class regex_tokenizer
                         {
                                 try
                                 {
-                                        items.push_back(boost::lexical_cast<T>(what[0]));
+                                    std::string tmp = what[0];
+                                    items.push_back(boost::lexical_cast<T>(tmp));
                                 }
                                 catch (boost::bad_lexical_cast)
                                 {

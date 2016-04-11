@@ -63,7 +63,9 @@ set(CHM_SRCS
 		utility/crc_hash_compare.cpp
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
-		interpolation/interpolation.cpp)
+		utility/jsonstrip.cpp
+
+		interpolation/interpolation.cpp utility/readjson.cpp)
 
 set (HEADER_FILES
         mesh
@@ -114,7 +116,7 @@ set( LIB_FILES
 if(MATLAB)
     set(LIBMAW_SRCS
         libmaw/graphics.cpp
-        libmaw/matlab_engine.cpp)
+        libmaw/matlab_engine.cpp utility/jsonstrip.hpp.hpp)
 
     set( LIB_FILES
             ${LIB_FILES}

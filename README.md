@@ -30,6 +30,15 @@ Modular unstructured mesh based hydrological model.
 * Create a symbolic link from /usr/bin to the matlab install
 * ```sudo ln -s /Applications/MATLAB_R2013a.app/bin/matlab /usr/bin/matlab```
 
+###OSX:
+## Triangle
+Triangle needs to be edited to remove the fpu_control.h header
+    $ cat > /usr/include/fpu_control.h
+
+    #define _FPU_SETCW(cw) // nothing
+    #define _FPU_GETCW(cw) // nothing
+http://stackoverflow.com/a/4766863/410074
+
 ###Linux:
 Usage of the matlab engine requires installing csh
 ##Intel compiler

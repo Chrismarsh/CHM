@@ -53,7 +53,7 @@ namespace po = boost::program_options;
 #include "str_format.h"
 #include "ui.h"
 #include "interpolation.h"
-
+#include "readjson.hpp"
 
 struct vertex{
     std::string name;
@@ -208,6 +208,9 @@ protected:
     std::set<std::string> _provided_var_met_files;
     //unique list of all variables provided by all the modules
     std::set<std::string> _provided_var_module;
+
+    //unique set of all the paramters provided by the meshes
+    std::set<std::string> _provided_parameters;
 
     boost::posix_time::ptime* _start_ts;
     boost::posix_time::ptime* _end_ts;

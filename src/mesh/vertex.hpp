@@ -27,7 +27,6 @@ class ex_vertex : public Vb
 {
     typedef Vb Base;
 public:
-    //TODO: Only allows for 1 module's data!
    // vertex_info* info;
     typedef typename Vb::Vertex_handle Vertex_handle;
     typedef typename Vb::Face_handle Face_handle;

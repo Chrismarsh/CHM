@@ -8,7 +8,7 @@ Liston_wind::Liston_wind(config_file cfg)
     depends_from_met("u");
     provides("vw");
     provides("vw_dir");
-    provides("Liston curvature");
+//    provides("Liston curvature");
 
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -18,16 +18,20 @@ Liston_wind::Liston_wind(config_file cfg)
 void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
 {
 
-
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-            auto face = domain->face(i);
-            auto d = face->make_module_data<lwinddata>(ID);
-            d->interp.init(global_param->interp_algorithm,global_param->stations.size());
-            face->coloured = false;
+        auto face = domain->face(i);
+        auto d = face->make_module_data<lwinddata>(ID);
+        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+        face->coloured = false;
     }
 
+    if (domain->face(0)->has_parameter("Liston curvature"))
+    {
+        LOG_DEBUG << "Liston curvature available as paramter, using that.";
+        return ;
+    }
 
     double curmax = -99999.0;
 
@@ -60,7 +64,8 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
                 for (int k = 0; k < 3; k++)
                 {
                     auto n = nface->neighbor(k);
-                    if (!domain->is_infinite(n) && !n->coloured)
+//                    if (!domain->is_infinite(n) && !n->coloured)
+                    if (n!=nullptr && !n->coloured)
                     {
                         n->coloured = true;
                         neighbours_to_uncolor.push_back(n);
@@ -93,19 +98,19 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
 
 
             north = domain->locate_face(me.x(), me.y() + distance);
-            if (north == NULL || domain->is_infinite(north))
+            if (north == nullptr )// || domain->is_infinite(north))
                 north = face;
 
             south = domain->locate_face(me.x(), me.y() - distance);
-            if (south == NULL || domain->is_infinite(south))
+            if (south == nullptr)// || domain->is_infinite(south))
                 south = face;
 
             west = domain->locate_face(me.x() - distance, me.y());
-            if (west == NULL || domain->is_infinite(west))
+            if (west == nullptr)//  || domain->is_infinite(west))
                 west = face;
 
             east = domain->locate_face(me.x() + distance, me.y());
-            if (east == NULL || domain->is_infinite(east))
+            if (east == nullptr)//  || domain->is_infinite(east))
                 east = face;
 
             double z = face->get_z();
@@ -120,25 +125,25 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
             double zsw = 0.;
 
             northeast = domain->locate_face(me.x() + distance, me.y() + distance);
-            if (northeast == NULL || domain->is_infinite(northeast))
+            if (northeast == nullptr )//|| domain->is_infinite(northeast))
                 zne = (ze + zn) / 2.;
             else
                 zne = northeast->get_z();
 
             northwest = domain->locate_face(me.x() - distance, me.y() + distance);
-            if (northwest == NULL || domain->is_infinite(south))
+            if (northwest == nullptr)// || domain->is_infinite(south))
                 znw = (zw + zn) / 2.;
             else
                 znw = northwest->get_z();
 
             southeast = domain->locate_face(me.x() + distance, me.y() - distance);
-            if (southeast == NULL || domain->is_infinite(west))
+            if (southeast == nullptr)//|| domain->is_infinite(west))
                 zse = (ze + zs) / 2.;
             else
                 zse = southeast->get_z();
 
             southwest = domain->locate_face(me.x() - distance, me.y() - distance);
-            if (southwest == NULL || domain->is_infinite(east))
+            if (southwest == nullptr)// || domain->is_infinite(east))
                 zsw = (zw + zs) / 2.;
             else
                 zsw = southwest->get_z();
@@ -147,12 +152,14 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
                                   (z - .5 * (zsw + zne)) / (2 * sqrt(2 * distance)) +
                                   (z - .5 * (znw + zse)) / (2 * sqrt(2 * distance)));
 
-            auto* c = face->make_module_data<lwinddata>(ID);
+            auto* c = face->get_module_data<lwinddata>(ID);
             c->curvature = curve;
-//            face->set_face_data("Liston curvature", curve);
 
             if (fabs(curve) > curmax)
+            {
                 curmax = fabs(curve);
+            }
+
 
         }
 
@@ -161,12 +168,19 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        lwinddata* c = face->get_module_data<lwinddata>(ID);
+        auto* c = face->get_module_data<lwinddata>(ID);
 
-//        double value = face->face_data("Liston curvature") ;
         double value = c->curvature / curmax / 2.0;//rescale to [-0.5,+0.5];
         c->curvature = value;
-//        face->set_face_data("Liston curvature", value);
+        face->set_parameter("Liston curvature", value);
+    }
+
+
+    if ( cfg.get("serialize",false) )
+    {
+        LOG_DEBUG << "Serializing liston curvature";
+        domain->serialize( cfg.get("serialize_file", "liston_curvature.mesh"),
+                "Liston curvature");
     }
 
 }
@@ -231,7 +245,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 
         omega_s = omega_s / max_omega_s / 2.0;
 
-        double omega_c = elem->get_module_data<lwinddata>(ID)->curvature;//elem->face_data("Liston curvature");
+        double omega_c = elem->get_parameter("Liston curvature");//elem->get_module_data<lwinddata>(ID)->curvature;
 
         double ys = 0.5;
         double yc = 0.5;
@@ -244,7 +258,6 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         corrected_theta = theta_d + corrected_theta;
 
         elem->set_face_data("vw", W);
-        elem->set_face_data("Liston curvature",omega_c);
         elem->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
     }
 

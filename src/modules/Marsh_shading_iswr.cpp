@@ -49,19 +49,15 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
         auto vert = domain->vertex(i);
         vertex_data* vf = vert->make_module_data<vertex_data>(ID);
 
-//        if (!vert->info)
-//            vert->info = new vertex_data();
-//        vertex_data * vf = reinterpret_cast<vertex_data *> (vert->info);
-
         arma::vec coord(3);
-        triangulation::Point p;
 
+        Point_3 p;
         coord(0) = vert->point().x();
         coord(1) = vert->point().y();
         coord(2) = vert->point().z();
 
         coord = K*coord;
-        p = triangulation::Point(coord(0), coord(1), coord(2));
+        p = Point_3(coord(0), coord(1), coord(2));
         vf->prj_vertex = p;
         vf->org_vertex = vert->point();
 

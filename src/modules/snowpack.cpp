@@ -89,6 +89,8 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
 //    Mdata.psum_ph = elem->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
     Mdata.psum = elem->face_data("p");
 
+
+
     //setup a single ground temp measurement
 //    mio::MeteoData soil_meas;
 //    soil_meas.addParameter("HTS1");
