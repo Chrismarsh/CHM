@@ -11,9 +11,11 @@ slope_iswr::slope_iswr(config_file cfg)
     provides("iswr_direct");
     provides("solar_angle");
 
-    optional("shadowed");
+    optional("shadow");
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
+
+    assume_no_slope = cfg.get("no_slope",false);
 }
 void slope_iswr::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 {
@@ -30,13 +32,24 @@ void slope_iswr::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
       << cos(E) * cos(A) << arma::endr
       << sin(E) << arma::endr;
 
-    
-    Vector_3 n = elem->normal();
-        arma::vec N;
-    
-    N << n[0] << arma::endr
-      << n[1] << arma::endr
-      << n[2] << arma::endr;
+    arma::vec N;
+    if (assume_no_slope)
+    {
+
+        N << 0 << arma::endr
+        << 0 << arma::endr
+        << 1 << arma::endr;
+    }
+    else
+    {
+        Vector_3 n = elem->normal();
+
+
+        N << n[0] << arma::endr
+        << n[1] << arma::endr
+        << n[2] << arma::endr;
+    }
+
     
     double angle = acos(arma::dot(S,N));
     angle = cos(angle);

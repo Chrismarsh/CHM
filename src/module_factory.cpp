@@ -55,6 +55,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new point_mode(config);
     else if (ID == "threshold_p_phase")
         mod = new threshold_p_phase(config);
+    else if (ID == "Gray_inf")
+        mod = new Gray_inf(config);
 
     if(mod == nullptr)
     {

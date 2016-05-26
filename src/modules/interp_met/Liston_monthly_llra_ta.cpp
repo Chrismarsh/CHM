@@ -77,6 +77,8 @@ void Liston_monthly_llra_ta::run(mesh_elem& elem, boost::shared_ptr<global> glob
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : global_param->stations)
     {
+        if( is_nan(s->get("t")))
+            continue;
         double v = s->get("t") - lapse_rate * (0.0 - s->z());
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }

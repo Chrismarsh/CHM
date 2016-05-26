@@ -48,6 +48,8 @@ void Thornton_var_p::run(mesh_elem& elem, boost::shared_ptr<global> global_param
     {
         for (auto& s : global_param->stations)
         {
+            if( is_nan(s->get("p")))
+                continue;
             double u = s->get("p");
             sp.push_back( u  );
             sz.push_back( s->z());
@@ -97,6 +99,8 @@ void Thornton_var_p::run(mesh_elem& elem, boost::shared_ptr<global> global_param
     std::vector< boost::tuple<double, double, double> > station_z;
     for (auto& s : global_param->stations)
     {
+        if( is_nan(s->get("t")))
+            continue;
         double u = s->get("p");
         ppt.push_back( boost::make_tuple(s->x(), s->y(), u ) );
         station_z.push_back( boost::make_tuple(s->x(), s->y(), s->z() ) );

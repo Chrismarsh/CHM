@@ -40,6 +40,8 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     {
         for (auto& s : global_param->stations)
         {
+            if( is_nan(s->get("t")) || is_nan(s->get("rh")))
+                continue;
             double rh = s->get("rh")/100.;
             double t = s->get("t");
             double es = mio::Atmosphere::waterSaturationPressure(t+273.15);
@@ -62,6 +64,9 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : global_param->stations)
     {
+        if( is_nan(s->get("t")) || is_nan(s->get("rh")))
+            continue;
+
         double rh = s->get("rh")/100.;
         double t = s->get("t");
         double es = mio::Atmosphere::waterSaturationPressure(t+273.15);

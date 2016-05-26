@@ -2,7 +2,8 @@
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Triangulation_ds_face_base_2.h>
-
+#include <CGAL/Kernel/global_functions.h>
+#include <CGAL/Triangle_2.h>
 //#include <CGAL/Triangulation_face_base_2.h>
 //#include <CGAL/Constrained_Delaunay_triangulation_face_base_2.h>
 #include <set>
@@ -202,7 +203,11 @@ public:
      * @return  elevation
      */
     double get_z();
-    
+
+    /**
+     * Get triangle area (m)
+     */
+    double get_area();
     /**
      * Saves this face's timeseries to a file
      * @param fname specified file name
@@ -219,7 +224,7 @@ public:
 
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
-
+    size_t cell_id;
     void set_parameter(std::string key,double value);
     double get_parameter(std::string key);
     std::vector<std::string>  parameters();
@@ -228,6 +233,7 @@ private:
 
     double _slope;
     double _azimuth;
+    double _area;
     double _x;
     double _y;
     double _z;
@@ -294,7 +300,7 @@ face<Gt, Fb>::face()
     _center = NULL;
     _normal = NULL;
 
-
+    _area = -1.;
 
 
 }
@@ -310,7 +316,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _data = boost::make_shared<timeseries>();
     _center = NULL;
     _normal = NULL;
-
+    _area = -1.;
 
 }
 
@@ -328,7 +334,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _data = boost::make_shared<timeseries>();
     _center = NULL;
     _normal = NULL;
-
+    _area = -1.;
 
 
 }
@@ -350,7 +356,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _data = boost::make_shared<timeseries>();
     _center = NULL;
     _normal = NULL;
-
+    _area = -1.;
 
 }
 
@@ -624,3 +630,25 @@ void face<Gt, Fb>::set_module_data(std::string module, face_info *fi)
 {
     _module_face_data[module] = fi;
 }
+template < class Gt, class Fb>
+double face<Gt, Fb>::get_area()
+{
+    if(_area == -1)
+    {
+
+        auto x1 = this->vertex(0)->point().x();
+        auto y1 = this->vertex(0)->point().y();
+
+        auto x2 = this->vertex(1)->point().x();
+        auto y2 = this->vertex(1)->point().y();
+
+        auto x3 = this->vertex(2)->point().x();
+        auto y3 = this->vertex(2)->point().y();
+
+//        auto lol= CGAL::area(this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point());
+        _area = 0.5 * fabs( x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2) );
+    }
+
+
+    return _area;
+};

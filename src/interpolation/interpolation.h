@@ -32,4 +32,6 @@ public:
 
 private:
     boost::movelib::unique_ptr<interp_base> base;
+    size_t size;
+    interp_alg ia;
 };

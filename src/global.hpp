@@ -4,6 +4,9 @@
 #include <boost/move/unique_ptr.hpp>
 #include <string>
 
+#include <boost/property_tree/ptree.hpp>
+namespace pt = boost::property_tree;
+
 #include "interpolation.h"
 #include "station.hpp"
 /**
@@ -41,6 +44,7 @@ private:
 
 protected:
     int _dt; //seconds
+
 public:
 
     global();
@@ -66,5 +70,15 @@ public:
     //each station where observations are
     std::vector< boost::shared_ptr<station> > stations; //tbb::concurrent_vector
 
+//    template<class T>
+//    T get_parameter_value(std::string key);
+
+    pt::ptree parameters;
     
 };
+//
+//template<class T>
+//T global::get_parameter_value(std::string key)
+//{
+//    return parameters.get<T>(key);
+//}

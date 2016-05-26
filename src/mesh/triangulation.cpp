@@ -79,11 +79,21 @@ size_t triangulation::size_vertex()
 mesh_elem triangulation::locate_face(double x, double y)
 {
     //TODO: fix locate_face to return the correct value
+//
+//    int i =0;
+//    for(auto itr = faces_begin(); itr < faces_end(); itr++)
+//    {
+//        if(itr->contains(x,y))
+//            return itr;
+//        LOG_DEBUG << i++;
+//    }
 
-    for(auto itr = faces_begin(); itr < faces_end(); itr++)
+    for (size_t i = 0; i < size_faces(); i++)
     {
-        if(itr->contains(x,y))
-            return itr;
+        auto f = face(i);
+
+        if(f->contains(x,y))
+            return f;
     }
 
     return nullptr;
@@ -133,7 +143,7 @@ void triangulation::plot_time_series(double x, double y, std::string ID)
 }
 #endif
 
-void triangulation::serialize(std::string output_path, std::string variable)
+void triangulation::serialize_parameter(std::string output_path, std::string parameter)
 {
 
     pt::ptree out;
@@ -142,10 +152,10 @@ void triangulation::serialize(std::string output_path, std::string variable)
     for(auto& face : _faces)
     {
         pt::ptree item;
-        item.put_value(face->face_data(variable));
+        item.put_value(face->get_parameter(parameter));
         subtree.push_back(std::make_pair("",item));
     }
-    out.put_child( pt::ptree::path_type("parameters."+variable),subtree);
+    out.put_child( pt::ptree::path_type("parameters."+parameter),subtree);
 
     pt::write_json(output_path,out);
 
@@ -188,6 +198,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     this->set_dimension(2);
 
     i = 0;
+    size_t cid = 0;
     for (auto &itr : mesh.get_child("mesh.elem"))
     {
         std::vector<size_t> items;
@@ -201,6 +212,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         auto vert3 = _vertexes.at(items[2]);
 
         auto face = this->create_face(vert1,vert2,vert3);
+        face->cell_id = cid++;
 
         face->_debug_ID= --i; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
         face->_debug_name= std::to_string(i);
@@ -366,7 +378,6 @@ void triangulation::init_vtkUnstructured_Grid()
     for (size_t i = 0; i < this->size_faces(); i++)
     {
         Delaunay::Face_handle fit = this->face(i);
-//        Delaunay::Triangle t = this->triangle(fit);
 
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
@@ -378,10 +389,6 @@ void triangulation::init_vtkUnstructured_Grid()
         points->SetPoint(fit->vertex(0)->get_id(), face(i)->vertex(0)->point().x(), face(i)->vertex(0)->point().y(), face(i)->vertex(0)->point().z());
         points->SetPoint(fit->vertex(1)->get_id(), face(i)->vertex(1)->point().x(), face(i)->vertex(1)->point().y(), face(i)->vertex(1)->point().z());
         points->SetPoint(fit->vertex(2)->get_id(), face(i)->vertex(2)->point().x(), face(i)->vertex(2)->point().y(), face(i)->vertex(2)->point().z());
-
-//        points->SetPoint(fit->vertex(0)->get_id(), t[0].x(), t[0].y(), t[0].z());
-//        points->SetPoint(fit->vertex(1)->get_id(), t[1].x(), t[1].y(), t[1].z());
-//        points->SetPoint(fit->vertex(2)->get_id(), t[2].x(), t[2].y(), t[1].z());  <<--- BUG???
 
         triangles->InsertNextCell(tri);
     }
@@ -431,6 +438,9 @@ void triangulation::update_vtk_data()
     data["Aspect"] = vtkSmartPointer<vtkFloatArray>::New();
     data["Aspect"]->SetName("Aspect");
 
+    data["Area"] = vtkSmartPointer<vtkFloatArray>::New();
+    data["Area"]->SetName("Area");
+
 //    auto test = vtkSmartPointer<vtkFloatArray>::New();
 //    test->SetName("TEST");
 //    test->SetNumberOfComponents(3);
@@ -469,16 +479,26 @@ void triangulation::update_vtk_data()
         for (auto &v: variables)
         {
             double d = fit->face_data(v);
+            if(d == -9999.)
+            {
+                d = nan("");
+            }
+
             data[v]->InsertNextTuple1(d);
         }
         for(auto& v: params)
         {
             double d = fit->get_parameter(v);
+            if(d == -9999.)
+            {
+                d = nan("");
+            }
             data[v]->InsertNextTuple1(d);
         }
         data["Elevation"]->InsertNextTuple1(fit->get_z());
         data["Slope"]->InsertNextTuple1(fit->slope());
         data["Aspect"]->InsertNextTuple1(fit->aspect());
+        data["Area"]->InsertNextTuple1(fit->get_area());
 
         //TODO: remove this hard coded test & add ability to do this for any
 //        auto dir =*data["VW_dir"]->GetTuple(ii);
@@ -538,8 +558,8 @@ void triangulation::write_vtp(std::string file_name)
     // Create a grid of points to interpolate over
     vtkSmartPointer<vtkPlaneSource> gridPoints = vtkSmartPointer<vtkPlaneSource>::New();
 
-    size_t dx = 25; //(meters)
-    size_t dy = 25;
+    size_t dx = 300; //(meters)
+    size_t dy = 300;
 
     double distx = bounds[1] - bounds[0];
     double disty = bounds[3] - bounds[2];

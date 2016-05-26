@@ -7,6 +7,8 @@ Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
     provides("shadow");
     provides("z_prime");
 
+    x_AABB = cfg.get<int>("x_AABB",10);
+    y_AABB = cfg.get<int>("y_AABB",10);
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
 }
@@ -64,7 +66,7 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
         vert->set_point(vf->prj_vertex); //modify the underlying triangulation to reflect the rotated vertices
     }
 
-    auto BBR = domain->AABB(10,10);
+    auto BBR = domain->AABB(x_AABB,y_AABB);
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)

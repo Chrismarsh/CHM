@@ -137,7 +137,7 @@ public:
     void config_meshes(const pt::ptree& value);
     void config_forcing(const pt::ptree& value);
     void config_module_overrides(const pt::ptree& value);
-
+    void config_parameters(pt::ptree &value);
     void config_matlab(const pt::ptree& value);
     void config_output(const pt::ptree& value);
     void config_global(const pt::ptree& value);

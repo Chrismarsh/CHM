@@ -231,6 +231,26 @@ void core::config_forcing(const pt::ptree &value)
 
     }
 }
+void core::config_parameters(pt::ptree &value)
+{
+    LOG_DEBUG << "Found parameters section";
+
+    //replace any references to external files with the file contents
+    for(auto &itr : value)
+    {
+        if(itr.second.data().find(".json") != std::string::npos)
+        {
+            auto dir =  cwd_dir / itr.second.data();
+
+            auto cfg = read_json(dir.string());
+            std::string param_name = itr.first.data();
+            //replace the string config name with that config file
+            value.put_child(param_name, cfg);
+        }
+    }
+
+    this->_global->parameters = value.get_child(""); //get root
+}
 
 void core::config_meshes(const pt::ptree &value)
 {
@@ -743,6 +763,13 @@ void core::init(int argc, char **argv)
         LOG_DEBUG << "Optional section remove_depency not found";
     }
 
+    try
+    {
+        config_parameters(cfg.get_child("parameters"));
+    } catch (pt::ptree_bad_path &e)
+    {
+        LOG_DEBUG << "Optional section parameters not found";
+    }
 
 //#ifdef NOMATLAB
 //            config_matlab(value);

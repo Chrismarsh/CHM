@@ -39,9 +39,10 @@ void Dodson_NSA_ta::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
 
     for (auto& s : global_param->stations)
     {
+        if( is_nan(s->get("t")))
+            continue;
+
         double elev = s->z(); //station elevation
-
-
         //pressure at station's elevation
         double Pz = Po * pow(Tb/(Tb+lapse*elev),(m*g)/(lapse*R));
         double ta = s->get("t") + 273.15; //to K

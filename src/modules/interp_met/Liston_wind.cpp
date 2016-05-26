@@ -4,12 +4,11 @@ Liston_wind::Liston_wind(config_file cfg)
         :module_base(parallel::domain)
 
 {
-
     depends_from_met("u");
+    depends_from_met("vw_dir");
+
     provides("vw");
     provides("vw_dir");
-//    provides("Liston curvature");
-
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
@@ -33,7 +32,7 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
         return ;
     }
 
-    double curmax = -99999.0;
+    double curmax = -9999.0;
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -176,26 +175,33 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
     }
 
 
-    if ( cfg.get("serialize",false) )
+    if ( cfg.get("serialize",true) )
     {
         LOG_DEBUG << "Serializing liston curvature";
-        domain->serialize( cfg.get("serialize_file", "liston_curvature.mesh"),
-                "Liston curvature");
+        domain->serialize_parameter(cfg.get("serialize_output", "liston_curvature.mesh"),
+                                    "Liston curvature");
     }
 
 }
+
+
 void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 {
     //testing value
-    //TODO:Use measured wind direction
-    double theta = 292.5 * 3.14159/180.;
+
+
     double PI = 3.14159;
 
     std::vector< boost::tuple<double, double, double> > u;
     std::vector< boost::tuple<double, double, double> > v;
     for (auto& s : global_param->stations)
     {
+        if( is_nan(s->get("u")) || is_nan(s->get("vw_dir")))
+            continue;
+
         double W = s->get("u");
+
+        double theta = s->get("vw_dir") * 3.14159/180.;
         double zonal_u = -W * sin(theta);
         double zonal_v = -W * cos(theta);
         u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u ) );

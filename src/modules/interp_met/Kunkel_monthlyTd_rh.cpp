@@ -58,6 +58,8 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : global_param->stations)
     {
+        if( is_nan(s->get("t")) || is_nan(s->get("rh")))
+            continue;
 
         double t = s->get("t")+273.15;
         double rh = s->get("rh")/100.;

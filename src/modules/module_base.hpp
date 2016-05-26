@@ -214,6 +214,11 @@ public:
         _optional_found[variable]=true;
     }
 
+    bool is_nan(double variable)
+    {
+        return variable == -9999.;
+    }
+
 protected:
     parallel _parallel_type;
     boost::shared_ptr<std::vector<std::string> > _provides;

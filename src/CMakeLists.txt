@@ -34,6 +34,7 @@ set(MODULE_SRCS
 		modules/Iqbal_iswr.cpp
 		modules/Richard_albedo.cpp
 		modules/snowpack.cpp
+		modules/Gray_inf.cpp
 		${SNOBAL_SRC}
 
 		modules/threshold_p_phase.cpp)
@@ -64,8 +65,9 @@ set(CHM_SRCS
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
 		utility/jsonstrip.cpp
+		utility/readjson.cpp
 
-		interpolation/interpolation.cpp utility/readjson.cpp)
+		interpolation/interpolation.cpp )
 
 set (HEADER_FILES
         mesh
@@ -116,7 +118,7 @@ set( LIB_FILES
 if(MATLAB)
     set(LIBMAW_SRCS
         libmaw/graphics.cpp
-        libmaw/matlab_engine.cpp utility/jsonstrip.hpp.hpp)
+        libmaw/matlab_engine.cpp )
 
     set( LIB_FILES
             ${LIB_FILES}

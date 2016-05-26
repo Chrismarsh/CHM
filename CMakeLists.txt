@@ -104,7 +104,7 @@ endif()
 
 find_package(OpenMP)
 
-if(OPENMP_FOUND)
+if(OPENMP_FOUND AND CMAKE_BUILD_TYPE MATCHES Release)
     if(USE_OMP)
         if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #osx Clang doesn't have mainline support for openmp
             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
@@ -194,3 +194,5 @@ add_subdirectory(src)
 if(PV_FILTER)
     add_subdirectory(pv_filter)
 endif()
+
+add_subdirectory(triangle)

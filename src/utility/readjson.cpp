@@ -1,9 +1,4 @@
-//
-// Created by Chris Marsh on 2016-04-11.
-//
-
 #include "readjson.hpp"
-
 
 pt::ptree read_json(const std::string& path)
 {

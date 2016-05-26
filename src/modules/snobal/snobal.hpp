@@ -12,6 +12,8 @@ class snodata : public face_info
 {
 public:
     sno data;
+    double sum_runoff;
+    double sum_melt;
     int dead;
 
 };

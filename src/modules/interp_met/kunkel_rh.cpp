@@ -46,7 +46,8 @@ void kunkel_rh::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     std::vector<boost::tuple<double, double, double> > lowered_values;
     for (auto &s : global_param->stations)
     {
-
+        if( is_nan(s->get("rh")))
+            continue;
         double rh = s->get("rh");
 
         double rh_z = rh * exp(lapse * (0.0 - s->z()));

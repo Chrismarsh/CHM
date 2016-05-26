@@ -148,7 +148,7 @@ public:
 	 * \param output_path Full qualified path to a file to output to.
 	 * \param variable The variable from a module to be output.
 	 */
-	void serialize(std::string output_path, std::string variable);
+	void serialize_parameter(std::string output_path, std::string parameter);
     /**
     * Initializes a triangulation from the given x,y,z vectors
     * \param x X values

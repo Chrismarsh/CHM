@@ -346,7 +346,7 @@ void timeseries::open(std::string path)
             if (cols_so_far != _cols)
             {
                 BOOST_THROW_EXCEPTION(forcing_badcast()
-                        << errstr_info("Expected " + boost::lexical_cast<std::string>(_cols) + "lines")
+                        << errstr_info("Expected " + std::to_string(_cols) + " columns on line " + std::to_string(_rows) )
                         << boost::errinfo_file_name(path)
                         );
             }

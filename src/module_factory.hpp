@@ -33,6 +33,8 @@ namespace pt = boost::property_tree;
 #include "snowpack.hpp"
 #include "point_mode.hpp"
 #include "threshold_p_phase.hpp"
+#include "Gray_inf.hpp"
+
 class module_factory
 {
 public:

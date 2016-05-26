@@ -59,7 +59,8 @@ class Marsh_shading_iswr : public module_base
         ~Marsh_shading_iswr();
         virtual void run(mesh domain, boost::shared_ptr<global> global_param);
         
-
+    int x_AABB;
+    int y_AABB;
 };
 
 /**

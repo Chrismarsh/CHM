@@ -7,6 +7,7 @@ import numpy as np
 import scipy.stats.mstats as sp
 import sys
 
+gdal.UseExceptions()  # Enable errors
 
 # Print iterations progress
 # http://stackoverflow.com/a/34325723/410074
@@ -43,7 +44,36 @@ def bbox_to_pixel_offsets(gt, bbox):
     ysize = y2 - y1
     return (x1, y1, xsize, ysize)
 
+def bbox_to_pixel_offsets2(gt, bbox, rasterXsize, rasterYsize):
+    originX = gt[0]
+    originY = gt[3]
+    pixel_width = gt[1]
+    pixel_height = gt[5]
+    x1 = int((bbox[0] - originX) / pixel_width)
+    x2 = int((bbox[1] - originX) / pixel_width) + 1
 
+    y1 = int((bbox[3] - originY) / pixel_height)
+    y2 = int((bbox[2] - originY) / pixel_height) + 1
+
+    xsize = x2 - x1
+    ysize = y2 - y1
+
+    #only apply this correction if we are touching the underlying raster.
+    if x1 < rasterXsize and y1 < rasterYsize:
+        #deal with small out of bounds
+        if x1 < 0:
+            x1 = 0
+
+        if y1 < 0:
+            y1 = 0
+
+        if x1 + xsize > rasterXsize:
+            xsize = rasterXsize-x1
+
+        if y1 + ysize > rasterYsize:
+            ysize = rasterYsize-y1
+
+    return (x1, y1, xsize, ysize)
 
 def extract_point(raster,mx,my):
     # Convert from map to pixel coordinates.
@@ -69,71 +99,150 @@ def extract_point(raster,mx,my):
         dy = 1
 
         #attempt to pick points from the surrounding 8
-        z1 = rb.ReadAsArray(px - dx if px > 0 else px, py, 1, 1)[0]
-        z2 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py, 1, 1)[0]
-        z3 = rb.ReadAsArray(px, py + dy if py < raster.RasterYSize else py, 1, 1)[0]
-        z4 = rb.ReadAsArray(px, py - dy if py > 0 else py, 1, 1)[0]
+        z1 = rb.ReadAsArray(px - dx if px > 0 else px, py, 1, 1)
+        z1 = z1[0] if z1 is not None else rb.GetNoDataValue()
 
-        z5 = rb.ReadAsArray(px - dx if px > 0 else px,                  py - dy if py > 0 else py, 1, 1)[0]
-        z6 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py - dy if py > 0 else py, 1, 1)[0]
-        z7 = rb.ReadAsArray(px - dx if px > 0 else px,                  py + dy if py < raster.RasterYSize else py, 1, 1)[0]
-        z8 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py - dy if py > 0 else py, 1, 1)[0]
+        z2 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py, 1, 1)
+        z2 = z2[0] if z2 is not None else rb.GetNoDataValue()
+
+        z3 = rb.ReadAsArray(px, py + dy if py < raster.RasterYSize else py, 1, 1)
+        z3 = z3[0] if z3 is not None else rb.GetNoDataValue()
+
+        z4 = rb.ReadAsArray(px, py - dy if py > 0 else py, 1, 1)[0]
+        z4 = z4[0] if z4 is not None else rb.GetNoDataValue()
+
+        z5 = rb.ReadAsArray(px - dx if px > 0 else px,                  py - dy if py > 0 else py, 1, 1)
+        z5 = z5[0] if z5 is not None else rb.GetNoDataValue()
+
+        z6 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py - dy if py > 0 else py, 1, 1)
+        z6 = z6[0] if z6 is not None else rb.GetNoDataValue()
+
+        z7 = rb.ReadAsArray(px - dx if px > 0 else px,                  py + dy if py < raster.RasterYSize else py, 1, 1)
+        z7 = z7[0] if z7 is not None else rb.GetNoDataValue()
+
+        z8 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py - dy if py > 0 else py, 1, 1)
+        z8 = z8[0] if z8 is not None else rb.GetNoDataValue()
 
         z=[z1, z2, z3, z4,z5,z6,z7,z8]
         z = [x for x in z if x != rb.GetNoDataValue()]
 
         if len(z) == 0:
-            print 'Error: The point (%f,%f) and its 8-neighbours lies outside of the DEM domain' %(mx,my)
-            exit(1)
+            print 'Warning: The point (%f,%f) and its 8-neighbours lies outside of the DEM domain' %(mx,my)
+            return rb.GetNoDataValue()
+            #exit(1)
 
-        mz = np.mean(z)
+        mz = float(np.mean(z))
     return mz
 
 def main():
 
 #######  user configurable paramters here    #######
-    dem_filename = 'wolf_dem_30m.tif'
 
+    # EPSG=32611 #canmore 11N
+    # # dem_filename = 'canmore.tif'
+    # parameter_files={ }
+    # dem_filename='Fortress_2m_DEM1.tif'
+    # max_area=100
+    #we need to be in UTM
+   #http://spatialreference.org/ref/epsg/
+    # EPSG=32611 #canmore 11N
+    # dem_filename = '2016_04_12_rgb_kenaston_dsm.tif'
+    # parameter_files={ }
+    # max_area=100
+
+    EPSG=26908 #wolf 8N
+    dem_filename = 'granger30.tif'
+    max_area=500
     parameter_files = {
         'landcover': { 'file' : 'eosd.tif',
                        'method':'mode'},  # mode, mean
         'svf':{'file':'wolf_svf1.tif',
-               'method':'mean'}
+               'method':'mean'
+               },
+        'swe2':{'file':'granger_swe_2001.tif','method':'mean'},
+        'sm':{'file':'granger_sm_2000.tif','method':'mean'}
     }
-
-    #plgs_shp = None #plgs_shp constrains the triangulation. If this is None, the input raster's extent is used
 
     simplify     =   False
     simplify_tol =   5   #amount in meters to simplify the polygon by. Careful as too much will cause many lines to be outside of the bounds of the raster.
 
+    triangle_path = '../../bin/Debug/triangle'
 ########################################################
 
-    src_ds=gdal.Open(dem_filename)
+
     base_name = dem_filename[:dem_filename.rfind('.')]
+
+    os.mkdir(base_name)
+
+    base_dir = base_name + '/'
+
+
+
+    #ensures we are in UTM and fills the nodata with -9999. tif default no data is a pain to compare against and is often giving the wrong answer.
+    subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d"' % (dem_filename, base_dir + base_name+'_projected.tif',EPSG)], shell=True)
+    src_ds=gdal.Open(base_dir + base_name+'_projected.tif')
+
     if src_ds is None:
         print 'Unable to open %s' % dem_filename
         exit(1)
 
-    # paramater_fhandles={} #file handles for paramters
-    # for key,file in parameter_files.iteritems():
-    #     paramater_fhandles[key] = open(base_name + '_' + key + '.ele_data','w')
+    #####
+    # Z = src_ds.GetRasterBand(1).ReadAsArray()
+    # (x, y) = Z.shape
+    # driver = gdal.GetDriverByName("GTiff")
+    # dst_datatype = gdal.GDT_Int16 #gdal.GDT_Float32   #<--- this is fine as we don't actually store elevation data.
+    # tmp_raster = 'rotate_'+base_name+'.tif'
+    # dst_ds = driver.Create(tmp_raster, y, x, 1, dst_datatype)
 
-    #load up all the paramter files
+    # import numpy as np
+    # angle = 90 * 3.1415926/180.
+    # old_gt = src_ds.GetGeoTransform()
+
+    # new_gt = (
+    #     old_gt[0],                      # [0]
+    #     old_gt[1] * np.cos(angle),      # [1]
+    #     old_gt[1] * -1 * np.sin(angle), # [2]
+    #     old_gt[3],                      # [3]
+    #     old_gt[5] * np.sin(angle),      # [4]
+    #     old_gt[5] * np.cos(angle)       # [5]
+    # )
+
+    # dst_ds.SetGeoTransform(new_gt)
+    # dst_ds.SetProjection(src_ds.GetProjection())
+    # dst_ds.GetRasterBand(1).SetNoDataValue(src_ds.GetRasterBand(1).GetNoDataValue())
+    # dst_ds.GetRasterBand(1).WriteArray(Z)
+    # dst_ds.FlushCache()  #super key to get this to disk
+
+
+
+    # #######
+
+
+    gt = src_ds.GetGeoTransform()
+    #x,y origin
+    xmin = gt[0]
+    ymax = gt[3]
+
+    pixel_width = gt[1]
+    pixel_height = gt[5]
+
+    xmax = xmin + pixel_width * src_ds.RasterXSize
+    ymin = ymax + pixel_height * src_ds.RasterYSize  #pixel_height is negative
+
     for key,data in parameter_files.iteritems():
-        parameter_files[key]['file'] = gdal.Open( data['file'])
+        #force all the paramter files to have the same extent as the input DEM
+        subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d" -te %f %f %f %f' % (data['file'], base_dir + data['file']+'_projected.tif',EPSG,xmin,ymin,xmax,ymax)], shell=True)
+        parameter_files[key]['file'] = gdal.Open(base_dir + data['file']+'_projected.tif')
+        # os.remove(data['file']+'_projected.tif')
         if parameter_files[key]['file'] is None:
             print 'Error: Unable to open raster for: %s' % key
             exit(1)
 
 
-    #if plgs_shp is None:
 
     plgs_shp = base_name + '.shp'
 
     dem = src_ds.GetRasterBand(1)
-
-
-    # gt = src_ds.GetGeoTransform()
 
     #Step 1: Create a mask raster that has a uniform value for all cells
     # read all elevation data. Might be worth changing to the for-loop approach we use below so we don't have to read in all into ram.
@@ -148,7 +257,7 @@ def main():
     (x, y) = Z.shape
     driver = gdal.GetDriverByName("GTiff")
     dst_datatype = gdal.GDT_Int16 #gdal.GDT_Float32   #<--- this is fine as we don't actually store elevation data.
-    tmp_raster = 'mask_'+base_name+'.tif'
+    tmp_raster = base_dir + 'mask_'+base_name+'.tif'
     dst_ds = driver.Create(tmp_raster, y, x, 1, dst_datatype)
     dst_ds.SetGeoTransform(src_ds.GetGeoTransform())
     dst_ds.SetProjection(src_ds.GetProjection())
@@ -158,10 +267,13 @@ def main():
     dst_ds = None #close file
 
     #raster -> polygon
-    subprocess.check_call(['gdal_polygonize.py %s -b 1 -f "ESRI Shapefile" %s' % (tmp_raster,plgs_shp)], shell=True)
+    subprocess.check_call(['gdal_polygonize.py %s -b 1 -mask %s -f "ESRI Shapefile" %s' % (tmp_raster,tmp_raster,
+                                                                                           base_dir +
+                                                                                           plgs_shp)], shell=True)
 
     print 'Converting polygon to linestring'
-    exec_string = 'ogr2ogr -overwrite %s %s  -nlt LINESTRING' % ('line_'+plgs_shp, plgs_shp )
+    exec_string = 'ogr2ogr -overwrite %s %s  -nlt LINESTRING' % (base_dir + 'line_'+plgs_shp, base_dir +
+                                                                 plgs_shp )
     if simplify:
         exec_string = exec_string + ' -simplify ' + simplify_tol
 
@@ -169,12 +281,15 @@ def main():
 
     #convert to geoJSON because it's easy to parse
     poly_plgs = base_name + '.geojson'
-    subprocess.check_call(['ogr2ogr -f GeoJSON %s %s' % (poly_plgs,'line_'+plgs_shp )], shell=True)
+    subprocess.check_call(['ogr2ogr -f GeoJSON %s %s' % (base_dir +
+                                                         poly_plgs, base_dir + 'line_'+plgs_shp )], shell=True)
 
-    with open(poly_plgs) as f:
+    with open(base_dir +
+                      poly_plgs) as f:
         plgs = json.load(f)
 
-    os.remove(poly_plgs)
+    os.remove(base_dir +
+              poly_plgs)
 
     #assuming just the first feature is what we want. Need to add in more to support rivers and lakes
     if plgs['features'][0]['geometry']['type'] != 'LineString':
@@ -185,7 +300,8 @@ def main():
 
     #Create the PLGS to constrain the triangulation
     poly_file = 'PLGS'+base_name+'.poly'
-    with open(poly_file,'w') as f:
+    with open(base_dir +
+                      poly_file,'w') as f:
         header = '%d 2 0 0\n' % (len(coords))
         f.write(header)
         vert = 1
@@ -205,7 +321,8 @@ def main():
 
         f.write('0\n')
 
-    subprocess.check_call(['./triangle -a1000 -p %s -n' % (poly_file)],shell=True)
+    subprocess.check_call(['%s -a%d -p %s -n' % (triangle_path,max_area, base_dir +
+                                                         poly_file)],shell=True)
 
     #read in the node, ele, and neigh from
 
@@ -216,8 +333,9 @@ def main():
 
     read_header=False
 
+    invalid_nodes=[]  #any nodes that are outside of the domain AND
     print 'Reading nodes'
-    with open('PLGS'+base_name+'.1.node') as f:
+    with open( base_dir + 'PLGS'+base_name+'.1.node') as f:
         for line in f:
             if '#' not in line:
                 if not read_header:
@@ -229,16 +347,21 @@ def main():
                     items = re.findall(r"[+-]?\d+(?:\.\d+)?",line)
                     mx = float(items[1])
                     my = float(items[2])
+
                     mz = extract_point(src_ds,mx,my)
+
+                    if mz == dem.GetNoDataValue():
+                        invalid_nodes.append( int(items[0])-1)
 
                     mesh['mesh']['vertex'].append( [mx,my,mz] )
 
+    print 'Length of invalid nodes = ' + str(len(invalid_nodes))
 
     # read in the neighbour file
     print 'Reading in neighbour file'
     read_header = False
     mesh['mesh']['neigh'] = []
-    with open('PLGS' + base_name + '.1.neigh') as elem:
+    with open( base_dir + 'PLGS' + base_name + '.1.neigh') as elem:
         for line in elem:
             if '#' not in line:
                 if not read_header:
@@ -255,7 +378,14 @@ def main():
     # set up the shapefile driver
     driver = ogr.GetDriverByName("ESRI Shapefile")
     # create the data source
-    output_usm = driver.CreateDataSource(base_name + '_USM.shp')
+    try:
+        os.remove(base_dir +
+                  base_name + '_USM.shp')
+    except OSError:
+        pass
+
+    output_usm = driver.CreateDataSource(base_dir +
+                                         base_name + '_USM.shp')
 
     # create the spatial reference from the raster dataset
     wkt = src_ds.GetProjection()
@@ -264,6 +394,8 @@ def main():
 
     # create the layer
     layer = output_usm.CreateLayer(base_name, srs, ogr.wkbPolygon)
+
+
     layer.CreateField(ogr.FieldDefn("triangle", ogr.OFTInteger))  # holds the triangle id.
 
     for key,value in parameter_files.iteritems():
@@ -284,7 +416,7 @@ def main():
 
 
     i=0
-    with open('PLGS'+base_name+'.1.ele') as elem:
+    with open( base_dir + 'PLGS'+base_name+'.1.ele') as elem:
         for line in elem:
             if '#' not in line:
                 if not read_header:
@@ -301,12 +433,45 @@ def main():
                     v1 = int(items[2])-1
                     v2 = int(items[3])-1
 
+                    #estimate an invalid node's z coord from this triangles other nodes' z value
+                    if v0 in invalid_nodes:
+                        z_v1 = mesh['mesh']['vertex'][v1][2]
+                        z_v2 = mesh['mesh']['vertex'][v2][2]
+                        tmp = [x for x in [z_v1,z_v2] if x != dem.GetNoDataValue()]
+                        # print 'found v0'
+                        if len(tmp) != 0:
+                            mesh['mesh']['vertex'][v0][2] = float(np.mean(tmp))
+                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v0])
+                            invalid_nodes = [x for x in invalid_nodes if x != v0] #remove from out invalid nodes list.
+
+                    if v1 in invalid_nodes:
+                        z_v0 = mesh['mesh']['vertex'][v0][2]
+                        z_v2 = mesh['mesh']['vertex'][v2][2]
+                        tmp = [x for x in [z_v0,z_v2] if x != dem.GetNoDataValue()]
+                        # print 'found v1'
+                        if len(tmp) != 0:
+                            mesh['mesh']['vertex'][v1][2] = float(np.mean(tmp))
+                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v1])
+                            invalid_nodes = [x for x in invalid_nodes if x != v1] #remove from out invalid nodes list.
+
+                    if v2 in invalid_nodes:
+                        # print 'found v2'
+                        z_v1 = mesh['mesh']['vertex'][v1][2]
+                        z_v0 = mesh['mesh']['vertex'][v0][2]
+                        tmp = [x for x in [z_v1,z_v0] if x != dem.GetNoDataValue()]
+                        if len(tmp) != 0:
+                            mesh['mesh']['vertex'][v2][2] = float(np.mean(tmp))
+                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v2])
+                            invalid_nodes = [x for x in invalid_nodes if x != v2] #remove from out invalid nodes list.
+
+
                     mesh['mesh']['elem'].append( [v0, v1, v2] )
 
                     ring = ogr.Geometry(ogr.wkbLinearRing)
                     ring.AddPoint( mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1] )
                     ring.AddPoint( mesh['mesh']['vertex'][v1][0], mesh['mesh']['vertex'][v1][1] )
                     ring.AddPoint( mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1] )
+                    ring.AddPoint( mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1] ) # add again to complete the ring.
 
                     tpoly = ogr.Geometry(ogr.wkbPolygon)
                     tpoly.AddGeometry(ring)
@@ -326,7 +491,8 @@ def main():
                         gt = raster.GetGeoTransform()
                         rb = raster.GetRasterBand(1)
 
-                        src_offset = bbox_to_pixel_offsets(gt, feature.geometry().GetEnvelope())
+
+                        src_offset = bbox_to_pixel_offsets2(gt, feature.geometry().GetEnvelope(),raster.RasterXSize,raster.RasterYSize)
                         src_array = rb.ReadAsArray(*src_offset)
 
                         # calculate new geotransform of the feature subset
@@ -348,13 +514,14 @@ def main():
                         # Rasterize it
                         rvds = driver.Create('', src_offset[2], src_offset[3], 1, gdal.GDT_Byte)
                         rvds.SetGeoTransform(new_gt)
-                        gdal.RasterizeLayer(rvds, [1], mem_layer, burn_values=[1])
-                        rv_array = rvds.ReadAsArray()
+                        gdal.RasterizeLayer(rvds, [1], mem_layer, burn_values=[1],options=['ALL_TOUCHED=TRUE'])
+                        rv_array = rvds.ReadAsArray()  # holds a mask of where the triangle is on the raster
 
 
                         # Mask the source data array with our current feature
                         # we take the logical_not to flip 0<->1 to get the correct mask effect
                         # we also mask out nodata values explictly
+
                         masked = np.ma.MaskedArray(
                             src_array,
                             mask=np.logical_or(
@@ -373,28 +540,32 @@ def main():
                         #     'fid': int(feat.GetFID())
                         # }
 
-                        output = -9999
+
+                        #  # we have a triangle that only touches a no-value. So give up and use surrounding values.
+                        # if masked.count() == 0:
+                        #     masked = np.ma.masked_where(
+                        #         src_array == rb.GetNoDataValue(), src_array)
+                        #
+                        # if masked.count() == 0 or src_array is None:
+                        #     #alright, we're in a bit of trouble now. We will save this triangle for later, and try to just duplciate any neighbouring triangle's data.
+                        #     #this only seems to happen right at the edge of the triangulation.
+                        #     triangles_to_fix.append( { 'key':key,'elem': int(items[0])-1 ,'nodata':rb.GetNoDataValue(),'method':data['method'] } )
+                        #     output = rb.GetNoDataValue() #fill with no data....
+                        # else:
+
+                        output = rb.GetNoDataValue()
+                        # we have a triangle that only touches a no-value. So give up and use surrounding values.
+                        # if masked.count() == 0:
+                        #     masked = np.ma.masked_where(
+                        #         src_array == rb.GetNoDataValue(), src_array)
+
                         if data['method'] == 'mode':
                             output = sp.mode(masked.flatten())[0][0]
                         elif data['method'] == 'mean':
                             if masked.count() > 0:
                                 output = float(masked.mean())  #if it's entirely masked, then we get nan and a warning printed to stdout. would like to avoid showing this warning.
-                            else:
-                                output = 0
                         else:
                             print 'Error: unknown data aggregation method %s' % data['method']
-
-                        #we have a triangle that only touches a no-value. So give up and use surrounding values.
-                        if output == 0:
-                            masked = np.ma.masked_where(
-                                    src_array == rb.GetNoDataValue(), src_array )
-                            output = sp.mode(masked.flatten())[0][0]
-
-
-                        if output == 0:
-                            #alright, we're in a bit of trouble now. We will save this triangle for later, and try to just duplciate any neighbouring triangle's data.
-                            #this only seems to happen right at the edge of the triangulation.
-                            triangles_to_fix.append( { 'key':key,'elem': int(items[0])-1 ,'nodata':rb.GetNoDataValue(),'method':data['method'] } )
 
                         feature.SetField(key, output)
                         mesh['parameters'][key].append( output )
@@ -404,6 +575,7 @@ def main():
                     i=i+1
 
 
+    print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
 
     print 'There are %d triangles with no data' % len(triangles_to_fix)
     i=1
@@ -412,25 +584,25 @@ def main():
 
         values = []
         #get each neighbour index to the problem triangle
-        n0 = mesh['mesh']['elem'][t['elem']][0]
-        n1 = mesh['mesh']['elem'][t['elem']][1]
-        n2 = mesh['mesh']['elem'][t['elem']][2]
+        n0 = mesh['mesh']['neigh'][t['elem']][0]
+        n1 = mesh['mesh']['neigh'][t['elem']][1]
+        n2 = mesh['mesh']['neigh'][t['elem']][2]
 
-        nv = [ layer.GetFeature( n0 ).GetField( t['key'] ),
-                        layer.GetFeature( n1 ).GetField( t['key'] ),
-                        layer.GetFeature( n2 ).GetField( t['key'] ) ]
+        neigh = [x for x in n0,n1,n2 if x != -2]
+        feat = [layer.GetFeature( n ).GetField( t['key'] ) for n in neigh]
+        nv = np.array(feat)
 
         masked = np.ma.masked_where(
             nv == t['nodata'], nv)
 
-        output = -9999
+        output = rb.GetNoDataValue()# -9999
         if t['method'] == 'mode':
             output = sp.mode(masked.flatten())[0][0]
         elif t['method'] == 'mean':
             if masked.count() > 0:
                 output = float(masked.mean())  #if it's entirely masked, then we get nan and a warning printed to stdout. would like to avoid showing this warning.
-            else:
-                output = 0
+            # else:
+            #     output = 0
 
         else:
             print 'Error: unknown data aggregation method %s' % data['method']
@@ -441,10 +613,11 @@ def main():
         layer.SetFeature(f)
         i=i+1
 
+    output_usm = None #close the file
     print 'Saving mesh and parameters to file ' + base_name+'.mesh'
     with open(base_name+'.mesh', 'w') as outfile:
         json.dump(mesh, outfile,indent=4)
-
+    print 'Done'
 
 if __name__ == "__main__":
 
