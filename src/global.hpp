@@ -1,7 +1,7 @@
 #pragma once
 //#include "core.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/move/unique_ptr.hpp>
+//#include <boost/move/unique_ptr.hpp>
 #include <string>
 
 #include <boost/property_tree/ptree.hpp>
