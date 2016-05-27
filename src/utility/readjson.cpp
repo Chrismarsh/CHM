@@ -22,7 +22,8 @@ pt::ptree read_json(const std::string& path)
     //strip out json comments for ptress
     bool whitespace = true;
     auto stripped = stripComments(json_file.str(), whitespace);
-    auto json_file_stripped = std::stringstream(stripped);
+//    auto json_file_stripped = std::stringstream(stripped);
+    std::stringstream json_file_stripped (stripped);
 
     pt::ptree config;
     try
