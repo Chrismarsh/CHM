@@ -6,9 +6,10 @@
 
 #include <vector>
 #include <boost/tuple/tuple.hpp>
-#include <boost/move/unique_ptr.hpp>
-#include <boost/move/make_unique.hpp>
-
+//#include <boost/move/unique_ptr.hpp>
+//#include <boost/move/make_unique.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
 enum interp_alg
 {
     tpspline,
@@ -31,7 +32,8 @@ public:
     double operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point);
 
 private:
-    boost::movelib::unique_ptr<interp_base> base;
+//    boost::movelib::unique_ptr<interp_base> base;
+    boost::shared_ptr<interp_base> base;
     size_t size;
     interp_alg ia;
 };

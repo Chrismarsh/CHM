@@ -10,10 +10,14 @@ void interpolation::init(interp_alg ia, size_t size)
     switch(ia)
     {
         case interp_alg::tpspline:
+//            if(size)
+//                base = boost::movelib::make_unique<thin_plate_spline>(size);
+//            else
+//                base = boost::movelib::make_unique<thin_plate_spline>();
             if(size)
-                base = boost::movelib::make_unique<thin_plate_spline>(size);
+                base = boost::make_shared<thin_plate_spline>(size);
             else
-                base = boost::movelib::make_unique<thin_plate_spline>();
+                base = boost::make_shared<thin_plate_spline>();
         break;
     };
 
