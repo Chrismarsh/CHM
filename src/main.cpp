@@ -11,8 +11,6 @@ int main (int argc, char *argv[])
 
     try
     {
-
-
         kernel.init(argc, argv) ;
         
         kernel.run();
