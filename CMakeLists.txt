@@ -17,7 +17,6 @@ option(PV_FILTER "Build Paraview time filter"  ON )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 
-
 #the mio and snowpack includes behave odly if you don't do the Cmake_source_dir like below, so treat these differently than the rest.
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
