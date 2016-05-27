@@ -1,6 +1,6 @@
 include("LibFindMacros")
 
-# Finally the library itself
+
 GET_FILENAME_COMPONENT(SRC_DIR ${CMAKE_SOURCE_DIR} PATH) #ie goes up one level
 STRING(REPLACE " " "\\ " SRC_DIR ${SRC_DIR})
 
