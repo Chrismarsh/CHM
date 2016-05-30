@@ -150,18 +150,23 @@ def main():
     # parameter_files={ }
     # max_area=100
 
-    EPSG=26908 #wolf 8N
-    dem_filename = 'granger30.tif'
-    max_area=500
-    parameter_files = {
-        'landcover': { 'file' : 'eosd.tif',
-                       'method':'mode'},  # mode, mean
-        'svf':{'file':'wolf_svf1.tif',
-               'method':'mean'
-               },
-        'swe2':{'file':'granger_swe_2001.tif','method':'mean'},
-        'sm':{'file':'granger_sm_2000.tif','method':'mean'}
-    }
+    EPSG=4617 #Bow 11N
+    dem_filename = 'cdsm_dem_160525_134628.tif'
+    parameter_files={ }
+    max_area=1000000 # 1km^2	
+
+    #EPSG=26908 #wolf 8N
+    #dem_filename = 'granger30.tif'
+    #max_area=500
+    #parameter_files = {
+    #    'landcover': { 'file' : 'eosd.tif',
+    #                   'method':'mode'},  # mode, mean
+    #    'svf':{'file':'wolf_svf1.tif',
+    #           'method':'mean'
+    #           },
+    #    'swe2':{'file':'granger_swe_2001.tif','method':'mean'},
+    #    'sm':{'file':'granger_sm_2000.tif','method':'mean'}
+    #}
 
     simplify     =   False
     simplify_tol =   5   #amount in meters to simplify the polygon by. Careful as too much will cause many lines to be outside of the bounds of the raster.
@@ -171,8 +176,10 @@ def main():
 
 
     base_name = dem_filename[:dem_filename.rfind('.')]
-
-    os.mkdir(base_name)
+    
+    # Make dir if it doesn't exist
+    if not os.path.isdir(base_name):
+    	os.mkdir(base_name)
 
     base_dir = base_name + '/'
 
