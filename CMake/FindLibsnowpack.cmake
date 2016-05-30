@@ -41,7 +41,8 @@ ELSE(WIN32)
 			"/usr/local/lib"
 			"/usr/lib"
 			"/opt/lib"
-				"/Users/chris/Documents/PhD/code/snowpack-3.3.0/lib"
+			"/Users/chris/Documents/PhD/code/snowpack-3.3.0/lib"
+			"/home/nwayand/custom/snowpack-3.3.0/lib"
 			${SRC_DIR}/snowpack/lib
 		DOC "Location of the libsnowpack, like /usr/lib/libsnowpack.dylib"
 		)
@@ -53,8 +54,9 @@ ELSE(WIN32)
 			"~/usr/lib"
 			"/usr/local/lib"
 			"/usr/lib"
+			"/home/chris/Documents/PhD/code/snowpack-3.3.0/lib"
+			"/home/nwayand/custom/snowpack-3.3.0/lib"
 			"/opt/lib"
-				"/home/chris/Documents/PhD/code/snowpack-3.3.0/lib"
 			${SRC_DIR}/snowpack/lib
 				DOC "Location of the libsnowpack, like /usr/lib"
 		)
@@ -80,9 +82,10 @@ FIND_PATH(LIBSNOWPACK_INCLUDE_DIR
 	"~/usr/include"
 	"/usr/local/include"
 	"/usr/include"
+	"/home/nwayand/custom/snowpack-3.3.0/"
 	"/opt/include"
-		"/Users/chris/Documents/PhD/code/snowpack-3.3.0/"
-		"/home/chris/Documents/PhD/code/snowpack-3.3.0/"
+	"/Users/chris/Documents/PhD/code/snowpack-3.3.0/"
+	"/home/chris/Documents/PhD/code/snowpack-3.3.0/"
 		DOC "Location of the libsnowpack headers, like /usr/include"
 )
 
