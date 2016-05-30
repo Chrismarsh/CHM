@@ -42,7 +42,7 @@ Relative Humidity   |   rh                 | Percent
 Air temperature     |   t                  | degC
 Wind speed          |   u                  | m/s
 Wind direction      |   ud                 | North Azimuth, degrees
-Incoming lonvwave   |   ilwr               | W/m^2
+Incoming longvwave  |   ilwr               | W/m^2
 Incoming shortwave  |   iswr               | W/m^2
 
 */
