@@ -48,6 +48,7 @@ ELSE(WIN32)
 			"/usr/lib"
 			"/opt/lib"
 			"/Users/chris/Documents/PhD/code/MeteoIO-2.5.0/lib/"
+			"/home/nwayand/custom/MeteoIO-2.5.0-x86_64/usr/lib/"
 		DOC "Location of the libmeteoio, like /usr/lib/libmeteoio.dylib"
 		)
 	ELSE(APPLE)
@@ -84,6 +85,7 @@ FIND_PATH(METEOIO_INCLUDE_DIR
 	"/usr/include"
 	"/opt/include"
 	"/home/chris/Documents/PhD/code/MeteoIO-2.5.0/"
+	"/home/nwayand/custom/MeteoIO-2.5.0-x86_64/usr/"
 	"/Users/chris/Documents/PhD/code/MeteoIO-2.5.0/"
   DOC "Location of the meteoio headers, like /usr/include"
 )
