@@ -136,56 +136,26 @@ def extract_point(raster,mx,my):
 
 def main():
 
-#######  user configurable paramters here    #######
+#######  load user configurable paramters here    #######
+    # Check user defined configuraiton file
+    if len(sys.argv) == 1:
+        sys.error('main.py requires one argument [configuration file] (i.e. main.py Bow')
 
-    # EPSG=32611 #canmore 11N
-    # # dem_filename = 'canmore.tif'
-    # parameter_files={ }
-    # dem_filename='Fortress_2m_DEM1.tif'
-    # max_area=100
-    #we need to be in UTM
-   #http://spatialreference.org/ref/epsg/
-    # EPSG=32611 #canmore 11N
-    # dem_filename = '2016_04_12_rgb_kenaston_dsm.tif'
-    # parameter_files={ }
-    # max_area=100
+    # Get name of configuration file/module
+    configfile = sys.argv[-1]
+    
+    # Load in configuration file as module
+    X = __import__(configfile)
 
-    #EPSG=4617 #Bow 11N
-    #dem_filename = 'cdsm_dem_160525_134628.tif'
-    #parameter_files={ }
-    #max_area=60000 # m	
-
-    #EPSG=26910 #4326 vertical  # 26910 horizontal 
-    #dem_filename = 'bow_srtm.tif'
-    #max_area=10000
-    #parameter_files={ }
-
-    EPSG=26911 # horizontal
-    dem_filename = 'bow_srtm1.tif'
-    max_area=1000000 # 1000
-    parameter_files={ }
-
-    #EPSG=26910 #26910 horizontal, 5703 vertical
-    #dem_filename = 'Cedar_lidar.tif'
-    #max_area=30
-    #parameter_files={ }
-
-    #EPSG=26908 #wolf 8N
-    #dem_filename = 'granger30.tif'
-    #max_area=500
-    #parameter_files = {
-    #    'landcover': { 'file' : 'eosd.tif',
-    #                   'method':'mode'},  # mode, mean
-    #    'svf':{'file':'wolf_svf1.tif',
-    #           'method':'mean'
-    #           },
-    #    'swe2':{'file':'granger_swe_2001.tif','method':'mean'},
-    #    'sm':{'file':'granger_sm_2000.tif','method':'mean'}
-    #}
-
-    simplify     =   False
-    simplify_tol =   5   #amount in meters to simplify the polygon by. Careful as too much will cause many lines to be outside of the bounds of the raster.
-
+    # Assinge to local variables
+    EPSG=X.EPSG
+    dem_filename=X.dem_filename
+    max_area=X.max_area
+    parameter_files=X.parameter_files
+    simplify=X.simplify
+    simplify_tol=X.simplify_tol
+    
+    # path to triangle executable
     triangle_path = '../../bin/Debug/triangle'
 ########################################################
 
