@@ -155,15 +155,15 @@ def main():
     #parameter_files={ }
     #max_area=60000 # m	
 
-    EPSG=26910 #4326 vertical  # 26910 horizontal 
-    dem_filename = 'bow_srtm.tif'
-    max_area=100
-    parameter_files={ }
-
-    #EPSG=26911 # horizontal
-    #dem_filename = 'bow_srtm1.tif'
-    #max_area=100
+    #EPSG=26910 #4326 vertical  # 26910 horizontal 
+    #dem_filename = 'bow_srtm.tif'
+    #max_area=10000
     #parameter_files={ }
+
+    EPSG=26911 # horizontal
+    dem_filename = 'bow_srtm1.tif'
+    max_area=1000000 # 1000
+    parameter_files={ }
 
     #EPSG=26910 #26910 horizontal, 5703 vertical
     #dem_filename = 'Cedar_lidar.tif'
