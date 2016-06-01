@@ -6,6 +6,7 @@ import os
 import numpy as np
 import scipy.stats.mstats as sp
 import sys
+import shutil
 
 gdal.UseExceptions()  # Enable errors
 
@@ -159,12 +160,14 @@ def main():
     triangle_path = '../../bin/Debug/triangle'
 ########################################################
 
-
     base_name = dem_filename[:dem_filename.rfind('.')]
     
-    # Make dir if it doesn't exist
-    if not os.path.isdir(base_name):
-    	os.mkdir(base_name)
+    # Delete previous dir (if exists)
+    if os.path.isdir(base_name):
+    	shutil.rmtree(base_name)
+    
+    # make new output dir
+    os.mkdir(base_name)
 
     base_dir = base_name + '/'
 
