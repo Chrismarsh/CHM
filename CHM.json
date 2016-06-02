@@ -19,7 +19,7 @@
 
 //    "startdate":"20010501T000000",
      "enddate":"20010501T170000",
-    "startdate":"20010501T080000"
+    "startdate":"20010501T170000"
 //     "enddate":"20010613T000000"
   },
   "modules": //important these are [ ]
@@ -193,7 +193,7 @@
      "mesh":
      {
        "base_name":"output/granger",
-       "format": [ "vtu"] //, "vtp"
+       "variables":["swe","t","rh"]
      }
   },
   "global":

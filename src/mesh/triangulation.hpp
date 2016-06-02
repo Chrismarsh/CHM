@@ -225,16 +225,20 @@ public:
 	 */
 	void init_vtkUnstructured_Grid();
 
+
 	/**
-	 * Updates the internal vtk structure with this timesteps data. Must be called prior to calling the write_vt* functions.
+	 * Updates the internal vtk structure with this timesteps data.
+	 * Must be called prior to calling the write_vt* functions.
 	 * The write_vt* functions could call this, however it makes them not threadsafe.
+	 * If output_variables is empty, it will write all variables out
+	 * @param output_variables Selected variables to write out.
 	 */
-    void update_vtk_data();
+    void update_vtk_data(std::vector<std::string> output_variables);
 
     /**
     * Saves the mesh with this timesteps values to a vtu file for visualization in Paraview
     */
-    void write_vtu(std::string fname);
+	void write_vtu(std::string fname);
 
     void write_vtp(std::string file_name);
 private:
