@@ -145,23 +145,25 @@ def main():
     # max_area=100
     #we need to be in UTM
    #http://spatialreference.org/ref/epsg/
-    # EPSG=32611 #canmore 11N
-    # dem_filename = '2016_04_12_rgb_kenaston_dsm.tif'
-    # parameter_files={ }
-    # max_area=100
+
 
     EPSG=26908 #wolf 8N
-    dem_filename = 'granger30.tif'
-    max_area=500
+    dem_filename = 'wolf_lidar1.tif'
+    max_area=5
     parameter_files = {
-        'landcover': { 'file' : 'eosd.tif',
-                       'method':'mode'},  # mode, mean
+        # 'landcover': { 'file' : 'eosd.tif',
+        #                'method':'mode'},  # mode, mean
         'svf':{'file':'wolf_svf1.tif',
                'method':'mean'
                },
-        'swe2':{'file':'granger_swe_2001.tif','method':'mean'},
-        'sm':{'file':'granger_sm_2000.tif','method':'mean'}
+        'swe2':{'file':'granger_const_swe_2001.tif','method':'mean'},
+        'sm':{'file':'granger_const_sm_2000.tif','method':'mean'}
     }
+
+    # EPSG=26910 #4326 vertical  # 26910 horizontal
+    # dem_filename = 'bow_srtm.tif'
+    # max_area=5000
+    # parameter_files={ }
 
     simplify     =   False
     simplify_tol =   5   #amount in meters to simplify the polygon by. Careful as too much will cause many lines to be outside of the bounds of the raster.

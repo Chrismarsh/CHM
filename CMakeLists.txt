@@ -120,7 +120,7 @@ endif()
 find_package(Armadillo REQUIRED)  #at least v3
 
 find_package(Boost
-             1.54.0
+             1.57.0
              COMPONENTS
              system
              filesystem
