@@ -478,7 +478,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
     {
         Delaunay::Face_handle fit = this->face(i);
 
-        for (auto &v: variables)
+        for (auto &v: output_variables)
         {
             double d = fit->face_data(v);
             if(d == -9999.)
