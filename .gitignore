@@ -4,6 +4,13 @@
 *.csv
 .DS_Store
 *.a
+*.ipynb
+*.txt
+*.log
+*.xls
+*.Rhistory
+*.obs
+*.prj
 Makefile
 /bin/
 /CHM.log
@@ -13,9 +20,11 @@ Makefile
 /nbproject/
 /tests/CMakeFiles
 /tests/gtest/CMakeFiles/
-
+/tools/mesher/*
+/tools/vtu2geo/*
+!/tools/vtu2geo/main.py
 !/tools/mesher/main.py
-
+meshes/*
 cmake_install.cmake
 CMakeCache.txt
 compile_commands.json
