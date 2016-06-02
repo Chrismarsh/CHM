@@ -6,6 +6,7 @@ import os
 import numpy as np
 import scipy.stats.mstats as sp
 import sys
+import shutil
 
 gdal.UseExceptions()  # Enable errors
 
@@ -136,44 +137,36 @@ def extract_point(raster,mx,my):
 
 def main():
 
-#######  user configurable paramters here    #######
+#######  load user configurable paramters here    #######
+    # Check user defined configuraiton file
+    if len(sys.argv) == 1:
+        sys.error('main.py requires one argument [configuration file] (i.e. main.py Bow')
 
-    # EPSG=32611 #canmore 11N
-    # # dem_filename = 'canmore.tif'
-    # parameter_files={ }
-    # dem_filename='Fortress_2m_DEM1.tif'
-    # max_area=100
-    #we need to be in UTM
-   #http://spatialreference.org/ref/epsg/
+    # Get name of configuration file/module
+    configfile = sys.argv[-1]
+    
+    # Load in configuration file as module
+    X = __import__(configfile)
 
-
-    EPSG=26908 #wolf 8N
-    dem_filename = 'wolf_lidar1.tif'
-    max_area=5
-    parameter_files = {
-        # 'landcover': { 'file' : 'eosd.tif',
-        #                'method':'mode'},  # mode, mean
-        'svf':{'file':'wolf_svf1.tif',
-               'method':'mean'
-               },
-        'swe2':{'file':'granger_const_swe_2001.tif','method':'mean'},
-        'sm':{'file':'granger_const_sm_2000.tif','method':'mean'}
-    }
-
-    # EPSG=26910 #4326 vertical  # 26910 horizontal
-    # dem_filename = 'bow_srtm.tif'
-    # max_area=5000
-    # parameter_files={ }
-
-    simplify     =   False
-    simplify_tol =   5   #amount in meters to simplify the polygon by. Careful as too much will cause many lines to be outside of the bounds of the raster.
-
+    # Assinge to local variables
+    EPSG=X.EPSG
+    dem_filename=X.dem_filename
+    max_area=X.max_area
+    parameter_files=X.parameter_files
+    simplify=X.simplify
+    simplify_tol=X.simplify_tol
+    
+    # path to triangle executable
     triangle_path = '../../bin/Debug/triangle'
 ########################################################
 
-
     base_name = dem_filename[:dem_filename.rfind('.')]
-
+    
+    # Delete previous dir (if exists)
+    if os.path.isdir(base_name):
+    	shutil.rmtree(base_name)
+    
+    # make new output dir
     os.mkdir(base_name)
 
     base_dir = base_name + '/'
