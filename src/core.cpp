@@ -391,16 +391,36 @@ void core::config_output(const pt::ptree &value)
             out.fname = f.string();
 
 
-            for (auto &jtr: itr.second.get_child("format"))
+            try
             {
-                LOG_DEBUG << "Output format found: " << jtr.second.data();
-                if (jtr.second.data() == "vtu")
-                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
-                if (jtr.second.data() == "vtp")
-                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtp);
-                if (jtr.second.data() == "ascii")
-                    out.mesh_output_formats.push_back(output_info::mesh_outputs::ascii);
+                for (auto &jtr: itr.second.get_child("variables"))
+                {
+                    out.variables.insert(jtr.second.data());
+                }
             }
+            catch (pt::ptree_bad_path &e)
+            {
+                LOG_DEBUG << "Writing all variables to output mesh";
+            }
+
+
+
+
+            out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
+
+            // can do all non-vtu formats with vtu2geo tool, which is also faster. So move towards removing all this
+            //functionality
+
+//            for (auto &jtr: itr.second.get_child("format"))
+//            {
+//                LOG_DEBUG << "Output format found: " << jtr.second.data();
+//                if (jtr.second.data() == "vtu")
+//                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
+//                if (jtr.second.data() == "vtp")
+//                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtp);
+//                if (jtr.second.data() == "ascii")
+//                    out.mesh_output_formats.push_back(output_info::mesh_outputs::ascii);
+//            }
 
         } else
         {
@@ -1375,7 +1395,10 @@ void core::run()
             {
                 if(itr.type == output_info::output_type::mesh)
                 {
-                    _mesh->update_vtk_data(); //update the internal vtk mesh
+                    std::vector<std::string> output;
+                    output.assign(itr.variables.begin(),itr.variables.end()); //convert to list to match internal lists
+
+                    _mesh->update_vtk_data(output); //update the internal vtk mesh
                     break; // we're done as soon as we've called update once. No need to do it multiple times.
                 }
             }
@@ -1414,9 +1437,6 @@ void core::run()
                                         _mesh->write_vtp(base_name + ".vtp");
                                     }
 
-//                        if (jtr == output_info::mesh_outputs::ascii)
-//                        LOG_WARNING << "Ascii output not implemented";
-                                    //_mesh->write_vtp(itr.fname+".vtp");
                                 }
                             }
                         }

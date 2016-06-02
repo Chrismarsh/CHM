@@ -399,7 +399,7 @@ void triangulation::init_vtkUnstructured_Grid()
 
 }
 
-void triangulation::update_vtk_data()
+void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 {
     //if we haven't inited yet, do so.
     if(!_vtk_unstructuredGrid)
@@ -413,7 +413,9 @@ void triangulation::update_vtk_data()
     //by this point this should be a fair assumption
 
 //    Delaunay::Finite_faces_iterator f = this->face(0); //this->finite_faces_begin();
-    auto variables = this->face(0)->variables();
+
+
+    auto variables = output_variables.size() == 0 ? this->face(0)->variables() : output_variables;
     for(auto& v: variables)
     {
         data[v] = vtkSmartPointer<vtkFloatArray>::New();

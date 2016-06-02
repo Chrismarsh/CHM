@@ -255,9 +255,10 @@ protected:
         std::string fname;
         double northing;
         double easting;
-        std::vector<std::string> variables;
+        std::set<std::string> variables;
         mesh_elem face;
         timeseries ts;
+//        std::set<std::string>
     };
 
     bool _enable_ui;

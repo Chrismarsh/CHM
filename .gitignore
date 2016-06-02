@@ -12,6 +12,8 @@
 *.obs
 *.prj
 Makefile
+modules.pdf
+/output/*
 /bin/
 /CHM.log
 /CMakeFiles/*
