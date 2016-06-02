@@ -1,0 +1,56 @@
+{
+	"Snowpack":
+	{
+		"MEAS_TSS" : false,
+		"ENFORCE_MEASURED_SNOW_HEIGHTS" : false,
+		"SW_MODE" : "BOTH",
+		"HEIGHT_OF_WIND_VALUE" : 2,
+		"HEIGHT_OF_METEO_VALUES" : 2,
+		"ATMOSPHERIC_STABILITY" : "MONIN_OBUKHOV",
+		"ROUGHNESS_LENGTH" : 0.001,
+		"CHANGE_BC" : false,
+		"THRESH_CHANGE_BC" : -1.0,
+		"SNP_SOIL" : false,
+		"SOIL_FLUX" : false,
+		"GEO_HEAT" : 0.06,
+		"CANOPY" : false
+	},
+	"SnowpackAdvanced":
+	{
+		"MAX_NUMBER_MEAS_TEMPERATURES":1,
+//		"FIXED_POSITIONS" : -0.10,
+		"ALPINE3D" : false,
+		"SNOW_EROSION" : false,
+		"MEAS_INCOMING_LONGWAVE" : true,
+		"THRESH_RAIN" : 2,
+		"THRESH_RAIN_RANGE" : 2,
+		"WATERTRANSPORTMODEL_SNOW" : "BUCKET",
+		"VARIANT":"DEFAULT"
+	},
+	"sno":  //mostly unused, fix later
+	{
+		"station_id"       : "UC",
+		"station_name"     : "Marmot:Upper_clearing",
+		"latitude"          : 50.9,
+		"longitude"        : -115.175323,
+		"altitude"         : 1845,
+		"nodata"           : -999,
+		"tz"               : -7,
+		"source"           : "marmot",
+		"ProfileDate"      : "2007-10-02T00:00",
+		"HS_Last"          : 0.0000,
+		"SlopeAngle"       : 0.0,
+		"SlopeAzi"         : 0.0,
+		"nSoilLayerData"   : 0,
+		"nSnowLayerData"   : 0,
+		"SoilAlbedo"       : 0.09,
+		"BareSoil_z0"      : 0.200,
+		"CanopyHeight"     : 0.00,
+		"CanopyLeafAreaIndex" : 0.00,
+		"CanopyDirectThroughfall" : 1.00,
+		"WindScalingFactor" : 1.00,
+		"ErosionLevel"     : 0,
+		"TimeCountDeltaHS" : 0.000000
+	}
+
+}
