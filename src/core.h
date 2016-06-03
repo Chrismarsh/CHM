@@ -258,6 +258,7 @@ protected:
         std::set<std::string> variables;
         mesh_elem face;
         timeseries ts;
+        size_t frequency;
 //        std::set<std::string>
     };
 

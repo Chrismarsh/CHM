@@ -18,8 +18,9 @@
     "prj_name":"Granger creek",
 
 //    "startdate":"20010501T000000",
-     "enddate":"20010501T170000",
-    "startdate":"20010501T170000"
+
+    "startdate":"20010501T000000",
+    "enddate":"20010502T000000"
 //     "enddate":"20010613T000000"
   },
   "modules": //important these are [ ]
@@ -192,8 +193,9 @@
     },
      "mesh":
      {
-       "base_name":"output/granger"
-//       "variables":["swe","t","rh"]
+       "base_name":"output/granger",
+       "variables":["swe","t","rh"],
+       "frequency":3 //every N timesteps
      }
   },
   "global":

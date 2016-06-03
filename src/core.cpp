@@ -403,8 +403,8 @@ void core::config_output(const pt::ptree &value)
                 LOG_DEBUG << "Writing all variables to output mesh";
             }
 
-
-
+            out.frequency = itr.second.get("frequency",1); //defaults to every timestep
+            LOG_DEBUG << "Output every " << out.frequency <<" timesteps.";
 
             out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
 
@@ -1407,36 +1407,40 @@ void core::run()
             {
                 if (itr.type == output_info::output_type::mesh)
                 {
-                    #pragma omp parallel
+                    if(current_ts % itr.frequency == 0)
                     {
-                        #pragma omp single
+
+                        #pragma omp parallel
                         {
-                            for (auto jtr : itr.mesh_output_formats)
+                            #pragma omp single
                             {
-                                #pragma omp task
+                                for (auto jtr : itr.mesh_output_formats)
                                 {
-                                    std::string base_name = itr.fname + std::to_string(current_ts);
-
-                                    if (jtr == output_info::mesh_outputs::vtu)
+                                    #pragma omp task
                                     {
-                                        pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
-                                        dataset.add("<xmlattr>.timestep", _global->posix_time_int());
-                                        dataset.add("<xmlattr>.group", "");
-                                        dataset.add("<xmlattr>.part", 0);
+                                        std::string base_name = itr.fname + std::to_string(current_ts);
 
-                                        //because a full path can be provided for the base_name, we need to strip this off
-                                        //to make it a relative path in the xml file.
-                                        boost::filesystem::path p(base_name);
+                                        if (jtr == output_info::mesh_outputs::vtu  )
+                                        {
+                                            pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
+                                            dataset.add("<xmlattr>.timestep", _global->posix_time_int());
+                                            dataset.add("<xmlattr>.group", "");
+                                            dataset.add("<xmlattr>.part", 0);
 
-                                        dataset.add("<xmlattr>.file", p.filename().string() + ".vtu");
-                                        _mesh->write_vtu(base_name + ".vtu");
+                                            //because a full path can be provided for the base_name, we need to strip this off
+                                            //to make it a relative path in the xml file.
+                                            boost::filesystem::path p(base_name);
+
+                                            dataset.add("<xmlattr>.file", p.filename().string() + ".vtu");
+                                            _mesh->write_vtu(base_name + ".vtu");
+                                        }
+
+                                        if (jtr == output_info::mesh_outputs::vtp)
+                                        {
+                                            _mesh->write_vtp(base_name + ".vtp");
+                                        }
+
                                     }
-
-                                    if (jtr == output_info::mesh_outputs::vtp)
-                                    {
-                                        _mesh->write_vtp(base_name + ".vtp");
-                                    }
-
                                 }
                             }
                         }
