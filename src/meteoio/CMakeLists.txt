@@ -1,0 +1,80 @@
+INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/dataClasses/CMakeLists.txt")
+INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/plugins/CMakeLists.txt")
+INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/meteoLaws/CMakeLists.txt")
+INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/meteoStats/CMakeLists.txt")
+INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/meteoFilters/CMakeLists.txt")
+
+
+SET(meteoio_sources
+	${dataClasses_sources}
+	Timer.cc
+	Config.cc
+	IOExceptions.cc
+	IOUtils.cc
+	FileUtils.cc
+	Graphics.cc
+	GridsManager.cc
+	TimeSeriesManager.cc
+	IOManager.cc
+	IOHandler.cc
+	MeteoProcessor.cc
+	ResamplingAlgorithms.cc
+	ResamplingAlgorithms2D.cc
+	InterpolationAlgorithms.cc
+	Meteo1DInterpolator.cc
+	Meteo2DInterpolator.cc
+	DataGenerator.cc
+	GeneratorAlgorithms.cc
+	plugins/libsmet.cc
+	${plugins_sources}
+	${meteoLaws_sources}
+	${meteoStats_sources}
+	${meteoFilters_sources}
+)
+
+
+#
+##shared library.
+#IF(BUILD_SHARED_LIBS)
+#	SET(SHAREDNAME ${PROJECT_NAME})
+#	ADD_LIBRARY(${SHAREDNAME} ${meteoio_sources})
+#	TARGET_LINK_LIBRARIES(${SHAREDNAME} ${plugin_libs} ${LIBPROJ} ${EXTRA_LINK_FLAGS} ${GUI_LIBS})
+#	SET_TARGET_PROPERTIES(${SHAREDNAME} PROPERTIES
+#		MACOSX_RPATH "${CMAKE_INSTALL_RPATH}"
+#		PREFIX "${LIBPREFIX}"
+#		LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
+#		ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
+#		RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
+#		CLEAN_DIRECT_OUTPUT 1
+#		VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
+#		SOVERSION "${VERSION_MAJOR}"
+#	)
+#	INSTALL(TARGETS ${SHAREDNAME}
+#		RUNTIME DESTINATION lib COMPONENT libraries
+#		LIBRARY DESTINATION lib COMPONENT libraries
+#		ARCHIVE DESTINATION lib COMPONENT libraries
+#	)
+#ENDIF(BUILD_SHARED_LIBS)
+#
+##static library. Please keep in mind that for Windows, a dll is a runtime
+#IF(BUILD_STATIC_LIBS)
+#	SET(STATICNAME ${PROJECT_NAME}_STATIC)
+#	SET(STATICLIBNAME ${PROJECT_NAME})
+#	ADD_LIBRARY(${STATICNAME} STATIC ${meteoio_sources})
+#	TARGET_LINK_LIBRARIES(${STATICNAME} ${plugin_libs} ${LIBPROJ} ${EXTRA_LINK_FLAGS} ${GUI_LIBS})
+#	SET_TARGET_PROPERTIES(${STATICNAME} PROPERTIES
+#		MACOSX_RPATH "${CMAKE_INSTALL_RPATH}"
+#		PREFIX "${LIBPREFIX}"
+#		LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
+#		ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
+#		RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
+#		CLEAN_DIRECT_OUTPUT 1
+#		OUTPUT_NAME ${STATICLIBNAME}
+#	)
+#	INSTALL(TARGETS ${STATICNAME}
+#		RUNTIME DESTINATION lib COMPONENT libraries
+#		LIBRARY DESTINATION lib COMPONENT libraries
+#		ARCHIVE DESTINATION lib COMPONENT libraries
+#	)
+#ENDIF(BUILD_STATIC_LIBS)
+
