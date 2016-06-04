@@ -2,7 +2,7 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake/")
 
 #causes headaches to do this.
-#CONFIGURE_FILE( ${PROJECT_SOURCE_DIR}/src/meteoio/IOHandler.cmake.cc ${PROJECT_SOURCE_DIR}/src/meteoio/IOHandler.cc )
+CONFIGURE_FILE( ${PROJECT_SOURCE_DIR}/src/meteoio/IOHandler.cmake.cc ${PROJECT_SOURCE_DIR}/src/meteoio/IOHandler.cc )
 
 IF(PLUGIN_ALPUG)
 	SET(plugins_sources ${plugins_sources} plugins/ALPUG.cc)
