@@ -2,7 +2,7 @@
 SET(_versionString "2.5.0")
 SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
-INCLUDE(meteoio/CMakeLists.txt)
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/meteoio/CMakeLists.txt)
 
 SET(METEOIO_SRCS "")
 FOREACH(f ${meteoio_sources})
@@ -10,7 +10,7 @@ FOREACH(f ${meteoio_sources})
 ENDFOREACH(f)
 
 #snowpack specific
-INCLUDE(modules/snowpack/CMakeLists.txt)
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/CMakeLists.txt)
 SET(SNOWPACK_SRCS "")
 FOREACH(f ${snowpacklib_sources})
 	LIST(APPEND SNOWPACK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/${f}")
