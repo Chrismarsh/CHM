@@ -193,9 +193,9 @@
     },
      "mesh":
      {
-       "base_name":"output/granger",
-       "variables":["swe","t","rh"],
-       "frequency":3 //every N timesteps
+       "base_name":"output/granger"
+//       "variables":["swe","t","rh"],
+//       "frequency":1 //every N timesteps
      }
   },
   "global":

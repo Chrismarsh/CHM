@@ -76,6 +76,7 @@ set (HEADER_FILES
         modules/interp_met
 		modules/snobal
         libmaw
+		meteoio
         interpolation
         timeseries
         utility
@@ -92,7 +93,7 @@ set (EXT_HEADER_FILES
         ${SUNDIALS_INCLUDES}
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
-        ${METEOIO_INCLUDE_DIR}
+#        ${METEOIO_INCLUDE_DIR}
 		${LIBSNOWPACK_INCLUDE_DIR}
 		${CURSES_INCLUDE_DIR}
 
@@ -107,7 +108,7 @@ set( LIB_FILES
         ${SUNDIALS_LIBRARIES}
         ${CGAL_3RD_PARTY_LIBRARIES}
         ${VTK_LIBRARIES}
-        ${METEOIO_LIBRARY}
+#        ${METEOIO_LIBRARY}
 		${LIBSNOWPACK_LIBRARY}
         ${LAPACK_LIBRARIES}
 		${CURSES_LIBRARIES}
@@ -131,12 +132,23 @@ if(MATLAB)
 
 endif()
 
+SET(_versionString "2.5.0")
+SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
+INCLUDE(meteoio/CMakeLists.txt)
+
+SET(METEOIO_SRCS "")
+FOREACH(f ${meteoio_sources})
+	LIST(APPEND METEOIO_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/meteoio/${f}")
+ENDFOREACH(f)
+
 
 include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
 link_directories(${TBB_LIBRARY_DIRS}) # as per https://code.google.com/p/findtbb/wiki/HowTo
 add_executable(
 	CHM 
 	${CHM_SRCS}
+	${METEOIO_SRCS}
 	${FILTER_SRCS}
     ${MODULE_SRCS}
 	${LIBMAW_SRCS}
