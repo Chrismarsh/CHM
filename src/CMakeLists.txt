@@ -1,3 +1,20 @@
+#meteoio specific
+SET(_versionString "2.5.0")
+SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
+INCLUDE(meteoio/CMakeLists.txt)
+
+SET(METEOIO_SRCS "")
+FOREACH(f ${meteoio_sources})
+	LIST(APPEND METEOIO_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/meteoio/${f}")
+ENDFOREACH(f)
+
+#snowpack specific
+INCLUDE(modules/snowpack/CMakeLists.txt)
+SET(SNOWPACK_SRCS "")
+FOREACH(f ${snowpacklib_sources})
+	LIST(APPEND SNOWPACK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/${f}")
+ENDFOREACH(f)
 
 set(FILTER_SRCS
 		filters/macdonald_undercatch.cpp
@@ -37,7 +54,9 @@ set(MODULE_SRCS
 		modules/Gray_inf.cpp
 		${SNOBAL_SRC}
 
-		modules/threshold_p_phase.cpp)
+		modules/threshold_p_phase.cpp
+		${SNOWPACK_SRCS}
+		)
 
 
 set(CHM_SRCS
@@ -67,7 +86,9 @@ set(CHM_SRCS
 		utility/jsonstrip.cpp
 		utility/readjson.cpp
 
-		interpolation/interpolation.cpp )
+		interpolation/interpolation.cpp
+		${METEOIO_SRCS}
+		)
 
 set (HEADER_FILES
         mesh
@@ -94,7 +115,7 @@ set (EXT_HEADER_FILES
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
 #        ${METEOIO_INCLUDE_DIR}
-		${LIBSNOWPACK_INCLUDE_DIR}
+#		${LIBSNOWPACK_INCLUDE_DIR}
 		${CURSES_INCLUDE_DIR}
 
     )
@@ -109,7 +130,7 @@ set( LIB_FILES
         ${CGAL_3RD_PARTY_LIBRARIES}
         ${VTK_LIBRARIES}
 #        ${METEOIO_LIBRARY}
-		${LIBSNOWPACK_LIBRARY}
+#		${LIBSNOWPACK_LIBRARY}
         ${LAPACK_LIBRARIES}
 		${CURSES_LIBRARIES}
 )
@@ -132,15 +153,6 @@ if(MATLAB)
 
 endif()
 
-SET(_versionString "2.5.0")
-SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
-INCLUDE(meteoio/CMakeLists.txt)
-
-SET(METEOIO_SRCS "")
-FOREACH(f ${meteoio_sources})
-	LIST(APPEND METEOIO_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/meteoio/${f}")
-ENDFOREACH(f)
 
 
 include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
@@ -148,7 +160,6 @@ link_directories(${TBB_LIBRARY_DIRS}) # as per https://code.google.com/p/findtbb
 add_executable(
 	CHM 
 	${CHM_SRCS}
-	${METEOIO_SRCS}
 	${FILTER_SRCS}
     ${MODULE_SRCS}
 	${LIBMAW_SRCS}

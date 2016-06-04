@@ -164,7 +164,7 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 
 #find_package(MeteoIO REQUIRED)
-find_package(Libsnowpack REQUIRED)
+#find_package(Libsnowpack REQUIRED)
 
 find_package (Threads REQUIRED)
 

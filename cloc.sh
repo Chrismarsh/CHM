@@ -1,2 +1,2 @@
 
-cloc --exclude-dir=CMakeFiles,matlab_support  --exclude-lang=make,CMake  src/ tools/mesher
+cloc --exclude-dir=CMakeFiles,matlab_support,meteoio  --exclude-lang=make,CMake,XML  src/ tools/mesher tools/vtu2geo pv_filter
