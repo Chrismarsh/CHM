@@ -36,14 +36,6 @@ interpolation::~interpolation()
 
 double interpolation::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
-//    std::vector< boost::tuple<double,double,double> > isfinite_sample_points;
-//    for(auto& itr: sample_points)
-//    {
-//        if (itr.get<2>() != -9999.)
-//        {
-//            isfinite_sample_points.push_back(itr);
-//        }
-//    }
     if (sample_points.size() == 0)
     {
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Interpolation sample point length = 0."));

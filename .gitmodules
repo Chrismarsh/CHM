@@ -1,0 +1,3 @@
+[submodule "CHM.wiki"]
+	path = CHM.wiki
+	url = git@github.com:Chrismarsh/CHM.wiki.git

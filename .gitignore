@@ -4,7 +4,6 @@
 *.csv
 .DS_Store
 *.a
-*.ipynb
 *.log
 *.xls
 *.Rhistory

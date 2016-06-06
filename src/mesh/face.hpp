@@ -600,7 +600,7 @@ T* face<Gt, Fb>::get_module_data(std::string module)
 {
     auto it = _module_face_data.find(module);
 
-    //we don't already have this, make a new one.
+    //we don't already have this
     if(it == _module_face_data.end())
     {
         BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
