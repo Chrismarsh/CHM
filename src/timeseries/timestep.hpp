@@ -91,7 +91,7 @@ public:
     boost::posix_time::ptime get_posix();
 
     /**
-    * Gets the value associated with a variable.
+    * Gets the value associated with a variable. If it doesn't exist, return NaN
     * \param variable Variable name
     */
     double get(const std::string &variable) ;
