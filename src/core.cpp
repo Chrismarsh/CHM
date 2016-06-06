@@ -874,7 +874,7 @@ void core::init(int argc, char **argv)
     auto t1 = _global->stations.at(0)->date_timeseries().at(1);
     auto dt = (t1 - t0);
     _global->_dt = dt.total_seconds();
-    LOG_DEBUG << "model dt = " << _global->dt();
+    LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
 
     if (!_start_ts)
     {
@@ -883,6 +883,11 @@ void core::init(int argc, char **argv)
     if (!_end_ts)
     {
         _end_ts = new boost::posix_time::ptime(end_time);
+    }
+
+    if( _start_ts > _end_ts)
+    {
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Start time is after endtime."));
     }
 
     for (auto &s : _global->stations)
