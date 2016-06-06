@@ -1,5 +1,7 @@
-Modular unstructured mesh based hydrological model.
 
+
+Modular unstructured mesh based hydrological model.
+![](https://github.com/Chrismarsh/CHM/blob/master/mesh.png)
 
 #Dependencies
 * Matlab (optional)
