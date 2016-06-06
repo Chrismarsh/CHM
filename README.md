@@ -1,7 +1,5 @@
 Modular unstructured mesh based hydrological model.
 
-![](output.gif)
-![](modules_readme.png)
 
 #Dependencies
 * Matlab (optional)
@@ -11,7 +9,6 @@ Modular unstructured mesh based hydrological model.
 * Intel TBB
 * CGAL
 * Paraview (if building the filter) otherwise VTK
-* MetoIO 
 * C++11 compliant compiler
 
 #To build:
