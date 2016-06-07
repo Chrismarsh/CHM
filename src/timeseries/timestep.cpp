@@ -95,7 +95,7 @@ double timestep::get(const std::string &variable)
     }
 //        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
 
-    return _itrs[variable][0]; 
+    return _itrs[variable][0];
 }
 
 void timestep::set(const std::string &variable, const double &value)
