@@ -184,11 +184,7 @@ else()
     include(${VTK_USE_FILE})
 endif()
 
-if (test)
-    message(STATUS "Tests enabled. Run with make check")
-    enable_testing()
-    ADD_SUBDIRECTORY (tests)
-endif()
+
 
 # add a target to generate API documentation with Doxygen
 # generate this via 'make doc'
@@ -208,14 +204,20 @@ find_program(GVPR gvpr)
 find_program(DOT dot)
 
 if(NOT GVPR OR NOT DOT)
-    message("Could not find gvpr and/or dot, module output to pdf will not function.")
+    message(STATUS "Could not find gvpr and/or dot, module output to pdf will not function.")
 else()
-    message("gvpr and dot present, module output to pdf will function.")
+    message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
 
 #setup src dirs
 add_subdirectory(src)
+
+if (test)
+    message(STATUS "Tests enabled. Run with make check")
+    enable_testing()
+#    ADD_SUBDIRECTORY (src/tests)
+endif()
 
 if(PV_FILTER)
     add_subdirectory(pv_filter)

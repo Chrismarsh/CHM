@@ -6,19 +6,23 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/meteoio/CMakeLists.txt)
 
 SET(METEOIO_SRCS "")
 FOREACH(f ${meteoio_sources})
-	LIST(APPEND METEOIO_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/meteoio/${f}")
+#	LIST(APPEND METEOIO_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/meteoio/${f}")
+	LIST(APPEND METEOIO_SRCS "meteoio/${f}")
 ENDFOREACH(f)
+
 
 #snowpack specific
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/CMakeLists.txt)
 SET(SNOWPACK_SRCS "")
 FOREACH(f ${snowpacklib_sources})
-	LIST(APPEND SNOWPACK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/${f}")
+#	LIST(APPEND SNOWPACK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/${f}")
+LIST(APPEND SNOWPACK_SRCS "modules/snowpack/${f}")
 ENDFOREACH(f)
 
 set(FILTER_SRCS
 		filters/macdonald_undercatch.cpp
 
+		CACHE INTERNAL "" FORCE
 		)
 
 set(SNOBAL_SRC
@@ -56,11 +60,12 @@ set(MODULE_SRCS
 
 		modules/threshold_p_phase.cpp
 		${SNOWPACK_SRCS}
+		CACHE INTERNAL "" FORCE
 		)
 
 
 set(CHM_SRCS
-		main.cpp
+		#main.cpp needs to be added below so we can re use CHM_SRCS in the gtest build
 		core.cpp
 		module_factory.cpp
 		filter_factory.cpp
@@ -88,7 +93,9 @@ set(CHM_SRCS
 
 		interpolation/interpolation.cpp
 		${METEOIO_SRCS}
+		CACHE INTERNAL "" FORCE
 		)
+
 
 set (HEADER_FILES
         mesh
@@ -103,7 +110,9 @@ set (HEADER_FILES
         utility
 		filters
         ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+		CACHE INTERNAL "" FORCE
+		)
+
 
 set (EXT_HEADER_FILES
 		${BOOST_INCLUDE_PATH} #old version of boost???
@@ -114,10 +123,9 @@ set (EXT_HEADER_FILES
         ${SUNDIALS_INCLUDES}
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
-#        ${METEOIO_INCLUDE_DIR}
-#		${LIBSNOWPACK_INCLUDE_DIR}
 		${CURSES_INCLUDE_DIR}
 
+		CACHE INTERNAL "" FORCE
     )
 
 set( LIB_FILES
@@ -129,10 +137,10 @@ set( LIB_FILES
         ${SUNDIALS_LIBRARIES}
         ${CGAL_3RD_PARTY_LIBRARIES}
         ${VTK_LIBRARIES}
-#        ${METEOIO_LIBRARY}
-#		${LIBSNOWPACK_LIBRARY}
         ${LAPACK_LIBRARIES}
 		${CURSES_LIBRARIES}
+
+		CACHE INTERNAL "" FORCE
 )
 
 
@@ -156,9 +164,11 @@ endif()
 
 
 include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
+
 link_directories(${TBB_LIBRARY_DIRS}) # as per https://code.google.com/p/findtbb/wiki/HowTo
 add_executable(
-	CHM 
+	CHM
+	main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
 	${CHM_SRCS}
 	${FILTER_SRCS}
     ${MODULE_SRCS}
@@ -169,3 +179,57 @@ target_link_libraries(
 	CHM
 	${LIB_FILES}
 )
+
+if (test)
+
+	add_subdirectory (tests/googletest/googletest)
+	include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+
+	set(TEST_SRCS
+			#   test_station.cpp
+			tests/test_interpolation.cpp
+			tests/test_timeseries.cpp
+			tests/test_core.cpp
+			#    test_mesh.cpp
+			tests/test_regexptokenizer.cpp
+			#    test_daily.cpp
+			)
+
+
+	set( GTEST_LINK
+			gtest
+			gtest_main
+
+			)
+
+	add_executable(
+			runUnitTests
+			${CHM_SRCS}
+			${FILTER_SRCS}
+			${MODULE_SRCS}
+			${LIBMAW_SRCS}
+			${TEST_SRCS}
+	)
+
+	target_link_libraries(
+			runUnitTests
+			${LIB_FILES}
+			${GTEST_LINK}
+	)
+
+	# You can also omit NAME and COMMAND. The second argument could be some other
+	# test executable.
+	add_test(runUnitTests runUnitTests)
+
+	#  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
+	#                  DEPENDS ${EXECUTABLE_OUTPUT_PATH}/runUnitTests)
+	add_custom_target(check COMMAND ${EXECUTABLE_OUTPUT_PATH}/runUnitTests DEPENDS runUnitTests WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
+	message(STATUS "Copying files to test dir ${EXECUTABLE_OUTPUT_PATH} from ${CMAKE_SOURCE_DIR}/tests/files/")
+
+	add_custom_command(TARGET runUnitTests PRE_BUILD
+			COMMAND ${CMAKE_COMMAND} -E copy_directory
+			${CMAKE_SOURCE_DIR}/tests/files $<TARGET_FILE_DIR:runUnitTests>)
+
+
+
+endif()
