@@ -221,15 +221,16 @@ if (test)
 	# test executable.
 	add_test(runUnitTests runUnitTests)
 
-	#  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}
-	#                  DEPENDS ${EXECUTABLE_OUTPUT_PATH}/runUnitTests)
 	add_custom_target(check COMMAND ${EXECUTABLE_OUTPUT_PATH}/runUnitTests DEPENDS runUnitTests WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
-	message(STATUS "Copying files to test dir ${EXECUTABLE_OUTPUT_PATH} from ${CMAKE_SOURCE_DIR}/tests/files/")
 
-	add_custom_command(TARGET runUnitTests PRE_BUILD
+
+	set(COPY_TO_PATH ${EXECUTABLE_OUTPUT_PATH})
+
+	add_custom_command(TARGET runUnitTests POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
-			${CMAKE_SOURCE_DIR}/tests/files $<TARGET_FILE_DIR:runUnitTests>)
-
+			${CMAKE_SOURCE_DIR}/src/tests/files
+			$<TARGET_FILE_DIR:runUnitTests>
+			COMMENT "Copying files to $<TARGET_FILE_DIR:runUnitTests> from ${CMAKE_SOURCE_DIR}/src/tests/files/")
 
 
 endif()
