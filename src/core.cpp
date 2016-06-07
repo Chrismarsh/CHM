@@ -446,7 +446,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
 {
     std::string version = "CHM version 0.1";
 
-    std::string config_file = "CHM.json";
+    std::string config_file = "";
     std::string start;
     std::string end;
     po::options_description desc("Allowed options.");
@@ -524,12 +524,12 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if (vm.count("add-module"))
         add_module = vm["add-module"].as<std::vector<std::string>>();
 
-//    if (!vm.count("config-file"))
-//    {
-//        LOG_ERROR << "Configuration file required.";
-//        cout << desc << std::endl;
-//        exit(1);
-//    }
+    if (!vm.count("config-file"))
+    {
+        LOG_ERROR << "Configuration file required.";
+        cout << desc << std::endl;
+        exit(1);
+    }
 
     return boost::make_tuple(config_file, config_extra, rm_config_extra, remove_module, add_module);
 }
