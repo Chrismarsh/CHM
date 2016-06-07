@@ -1,24 +1,6 @@
+The Canadian Hydrological Model (CHM) is a novel modular unstructured mesh based approach. It can move between spatial scale, temporal scale, and spatial extents. It is designed for developing and testing process representations for hydrological models.
 
-
-Modular unstructured mesh based hydrological model.
 ![](https://github.com/Chrismarsh/CHM/blob/master/mesh.png)
 
-#Dependencies
-* Matlab (optional)
-* Armadillo
-* boost
-* GNU GSL
-* Intel TBB
-* CGAL
-* Paraview (if building the filter) otherwise VTK
-* C++11 compliant compiler
 
-#To build:
-    cmake .
-    make
-
-#To test:
-    cmake .
-    make check
-    make test
 
