@@ -5,7 +5,7 @@ This is the main page
 
 @section Introduction
 CHM is a hydrological modelling framework that attempts to solve some of the problems many modern hydrological models suffer from,
-including difficulty in falsifying process representations due to ridgid model structure. CHM attempts to solve this by
+including difficulty in falsifying process representations due to rigid model structure. CHM attempts to solve this by
 having a flexbile model structure.
 
 @page Modules
