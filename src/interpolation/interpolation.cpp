@@ -41,11 +41,11 @@ double interpolation::operator()(std::vector< boost::tuple<double,double,double>
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Interpolation sample point length = 0."));
     }
 
-    if(sample_points.size() != this->size)
+    if(sample_points.size() != this->size || this->size == 0)
     {
 
         this->init(ia,sample_points.size());
     }
 
-    base->operator()(sample_points,query_point);
+    return base->operator()(sample_points,query_point);
 }
