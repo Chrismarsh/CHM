@@ -226,7 +226,7 @@ if (test)
 
 	set(COPY_TO_PATH ${EXECUTABLE_OUTPUT_PATH})
 
-	add_custom_command(TARGET runUnitTests POST_BUILD
+	add_custom_command(TARGET runUnitTests PRE_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
 			${CMAKE_SOURCE_DIR}/src/tests/files
 			$<TARGET_FILE_DIR:runUnitTests>

@@ -19,8 +19,9 @@
 
 //    "startdate":"20010501T000000",
 
-    "startdate":"20010501T000000",
-    "enddate":"20010502T000000"
+
+    "startdate ":"20010501T000000",
+    "enddate":   "20010501T003000"
 //     "enddate":"20010613T000000"
   },
   "modules": //important these are [ ]
@@ -70,22 +71,22 @@
     {
       "min_swe_refresh":10,
       "init_albedo_snow":0.8
-    },
-    "Liston_wind":
-    {
-      "serialize":false,
-      "serialize_output":"meshes/granger30_liston_curvature.mesh"
     }
+    // "Liston_wind":
+    // {
+    //   "serialize":false,
+    //   "serialize_output":"meshes/granger30_liston_curvature.mesh"
+    // }
   },
   "meshes":
   {
-    "mesh":"meshes/granger30.mesh",
+    "mesh":"meshes/granger30.mesh"
 //
     //map internal variables/parameters to the .mesh file's parameter section.
-    "parameters":
-    {
-      "file":"meshes/granger30_liston_curvature.mesh"
-    }
+    // "parameters":
+    // {
+    //   "file":"meshes/granger30_liston_curvature.mesh"
+    // }
 
   },
 
@@ -212,33 +213,33 @@
          "easting": 489216.601,
          "northing": 6709533.168,
          "elevation": 1305
-       },
-     "alpine":
-     {
-       "file":"alp_1999-2002",  //fr_sep_15_2006
-       "easting": 489879.341,
-       "northing":  6714611.183,
-       "elevation": 1559
-      // "filter":
-      // {
-      //   "macdonald_undercatch":
-      //   {
-      //     "variable":"p"
-      //   }
-      },
-      "forest":
-      {
-        "file":"for_1999-2002",  //fr_sep_15_2006
-        "easting": 502601.621,
-        "northing":   6717779.327 ,
-        "elevation": 739
-        // "filter":
-        // {
-        //   "macdonald_undercatch":
-        //   {
-        //     "variable":"p"
-        //   }
-      }
+       }
+     // "alpine":
+     // {
+     //   "file":"alp_1999-2002",  //fr_sep_15_2006
+     //   "easting": 489879.341,
+     //   "northing":  6714611.183,
+     //   "elevation": 1559
+     //  // "filter":
+     //  // {
+     //  //   "macdonald_undercatch":
+     //  //   {
+     //  //     "variable":"p"
+     //  //   }
+     //  },
+     //  "forest":
+     //  {
+     //    "file":"for_1999-2002",  //fr_sep_15_2006
+     //    "easting": 502601.621,
+     //    "northing":   6717779.327 ,
+     //    "elevation": 739
+     //    // "filter":
+     //    // {
+     //    //   "macdonald_undercatch":
+     //    //   {
+     //    //     "variable":"p"
+     //    //   }
+     //  }
 
     
   }  
