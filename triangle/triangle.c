@@ -212,6 +212,7 @@
 
 #include <gdal.h>
 #include "ogr_api.h"
+#include "ogr_srs_api.h"
 #include "cpl_conv.h" /* for CPLMalloc() */
 
 #ifdef SINGLE
@@ -1408,26 +1409,74 @@ int triunsuitable(triorg, tridest, triapex, area, b)
     //there is no need to test the area here. This is because -aX comes first in the if chain, prior to -u
     //so we only need to check if we are violating other constraints as we don't even get this far if area > b->max area
 
-    GDALDriverH *poDriver;
-    poDriver = (GDALDriverH*) GDALGetDriverByName("MEM" );
+//    OGRSFDriverH* driver = OGR_DS_GetDriver("MEM");
+//    OGRDataSourceH* DS   = OGR_Dr_CreateDataSource(driver,'out',NULL);
 
-    GDALDatasetH *hDS;
-    hDS =  GDALCreate( poDriver, "lol.shp", 0, 0, 0, GDT_Unknown, NULL );
+    OGRSFDriverH* driver = OGRGetDriverByName("Esri Shapefile");
+    OGRDataSourceH* DS   = OGR_Dr_CreateDataSource(driver,"lol.shp",NULL);
 
-    if( hDS == NULL )
+    //get spatial reference from our raster
+    const char* wkt = GDALGetProjectionRef(b->hDataset);
+
+    OGRSpatialReferenceH* srs = OSRNewSpatialReference(wkt);
+//    OSRImportFromWkt(srs,wkt);
+
+
+    OGRLayerH* layer = OGR_DS_CreateLayer(DS,"poly",srs,wkbPolygon,NULL);
+
+    if(layer == NULL)
     {
-        printf( "Creation of output file failed.\n" );
-        exit( 1 );
+        printf("Failed to create layer");
+        exit(1);
     }
-
-
-    OGRLayerH hLayer;
-    hLayer = GDALDatasetCreateLayer( hDS, "poly", NULL, wkbPolygon, NULL );
-    if( hLayer == NULL )
+    OGRGeometryH ring = OGR_G_CreateGeometry(wkbLinearRing);
+    if(ring == NULL)
     {
-        printf( "Layer creation failed.\n" );
-        exit( 1 );
+        printf("Failed to create ring");
+        exit(1);
     }
+    OGR_G_AddPoint_2D(ring,triorg[0],triorg[1]);
+    OGR_G_AddPoint_2D(ring,tridest[0],tridest[1]);
+    OGR_G_AddPoint_2D(ring,triapex[0],triapex[1]);
+    OGR_G_AddPoint_2D(ring,triorg[0],triorg[1]);
+
+    OGRGeometryH poly = OGR_G_CreateGeometry(wkbPolygon);
+    if(poly == NULL)
+    {
+        printf("Failed to create poly");
+        exit(1);
+    }
+    OGR_G_AddGeometry(poly, ring);
+
+    OGRFeatureH* feature = OGR_F_Create( OGR_L_GetLayerDefn(layer));
+    OGR_F_SetGeometry(feature,poly);
+
+    OGR_L_CreateFeature(layer,feature);
+
+    OGR_DS_Destroy(DS);
+
+    exit(1);
+//
+//    GDALDriverH *poDriver;
+//    poDriver = (GDALDriverH*) GDALGetDriverByName("MEM" );
+//
+//    GDALDatasetH *hDS;
+//    hDS =  GDALCreate( poDriver, "", 0, 0, 0, GDT_Unknown, NULL );
+//
+//    if( hDS == NULL )
+//    {
+//        printf( "Creation of output file failed.\n" );
+//        exit( 1 );
+//    }
+//
+//
+//    OGRLayerH hLayer;
+//    hLayer = GDALDatasetCreateLayer( hDS, "poly", NULL, wkbPolygon, NULL );
+//    if( hLayer == NULL )
+//    {
+//        printf( "Layer creation failed.\n" );
+//        exit( 1 );
+//    }
 
 //    GDALDriverH hDriver = GDALGetDriverByName( "MEM" );
 //
