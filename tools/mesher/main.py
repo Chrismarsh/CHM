@@ -155,6 +155,7 @@ def main():
     parameter_files=X.parameter_files
     simplify=X.simplify
     simplify_tol=X.simplify_tol
+    max_tolerance=X.max_tolerance
     
     # path to triangle executable
     triangle_path = '../../bin/Debug/triangle'
@@ -316,8 +317,11 @@ def main():
 
         f.write('0\n')
 
-    subprocess.check_call(['%s -a%d -p %s -n' % (triangle_path,max_area, base_dir +
-                                                         poly_file)],shell=True)
+    subprocess.check_call(['%s -a%d -p %s -n -t%d -T %s -u' % (triangle_path,max_area, base_dir +
+                                                         poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
+    # subprocess.check_call(['%s -a%d -p %s -n ' % (triangle_path,max_area, base_dir +
+    #                                                      poly_file)],shell=True)
+
 
     #read in the node, ele, and neigh from
 
