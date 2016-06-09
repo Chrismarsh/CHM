@@ -4,12 +4,16 @@ project (triangle)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 ")
 
+find_package(gdal 2.0)
+
 include_directories(${GDAL_INCLUDE_DIR})
-find_package(gdal)
+
+
 add_executable(
 	triangle
-	triangle.c
+		triangle.c
  )
+#message(STATUS ${GDAL_INCLUDE_DIR})
 
 target_link_libraries(
 	triangle

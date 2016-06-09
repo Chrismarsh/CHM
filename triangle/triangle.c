@@ -210,7 +210,8 @@
 
 /* #define SINGLE */
 
-#include "gdal.h"
+#include <gdal.h>
+#include "ogr_api.h"
 #include "cpl_conv.h" /* for CPLMalloc() */
 
 #ifdef SINGLE
@@ -1385,6 +1386,7 @@ int minus1mod3[3] = {2, 0, 1};
 /*                                                                           */
 /*****************************************************************************/
 
+
 #ifdef EXTERNAL_TEST
 
 int triunsuitable();
@@ -1406,8 +1408,31 @@ int triunsuitable(triorg, tridest, triapex, area, b)
     //there is no need to test the area here. This is because -aX comes first in the if chain, prior to -u
     //so we only need to check if we are violating other constraints as we don't even get this far if area > b->max area
 
+    GDALDriverH *poDriver;
+    poDriver = (GDALDriverH*) GDALGetDriverByName("MEM" );
 
-    printf("%f",triorg[0]);
+    GDALDatasetH *hDS;
+    hDS =  GDALCreate( poDriver, "lol.shp", 0, 0, 0, GDT_Unknown, NULL );
+
+    if( hDS == NULL )
+    {
+        printf( "Creation of output file failed.\n" );
+        exit( 1 );
+    }
+
+
+    OGRLayerH hLayer;
+    hLayer = GDALDatasetCreateLayer( hDS, "poly", NULL, wkbPolygon, NULL );
+    if( hLayer == NULL )
+    {
+        printf( "Layer creation failed.\n" );
+        exit( 1 );
+    }
+
+//    GDALDriverH hDriver = GDALGetDriverByName( "MEM" );
+//
+//    GDALDatasetH hDstDS = GDALCreateDataSource( 'out');
+
 
 
 //  REAL dxoa, dxda, dxod;
