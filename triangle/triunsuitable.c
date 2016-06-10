@@ -115,8 +115,8 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
 void rasterizeTriangle(vertex triorg, vertex tridest, vertex triapex, OGRSpatialReferenceH srs, const double *gt,
         GDALDatasetH* rvds, int* x1, int* y1, int* xsize, int* ysize)
 {
-    GDALDriverH driver = GDALGetDriverByName("ESRI Shapefile"); //MEM ESRI Shapefile
-    GDALDatasetH DS = GDALCreate(driver, "lol.shp", 0, 0, 0, GDT_Unknown, NULL);
+    GDALDriverH driver = GDALGetDriverByName("Memory"); //MEM ESRI Shapefile
+    GDALDatasetH DS = GDALCreate(driver, "", 0, 0, 0, GDT_Unknown, NULL);
 
 //    GDALDriverH driver = GDALGetDriverByName("MEM"); //MEM ESRI Shapefile
 //    GDALDatasetH DS   = GDALCreate	(driver,"out",0,0,0,GDT_Unknown,NULL);
