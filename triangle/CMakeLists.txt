@@ -11,7 +11,9 @@ include_directories(${GDAL_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(
 	triangle
 		triangle.c
-		triunsuitable.c)
+		triunsuitable.c
+		error_metrics.c
+		masked_array.c)
 
 target_link_libraries(
 	triangle
