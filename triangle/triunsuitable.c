@@ -32,12 +32,12 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
     //there is no need to test the area here. This is because -aX comes first in the if chain, prior to -u
     //so we only need to check if we are violating other constraints as we don't even get this far if area > b->max area
 
-    remove("lol.shp");
-    GDALDriverH driver = GDALGetDriverByName("ESRI Shapefile"); //MEM ESRI Shapefile
-    GDALDatasetH DS   = GDALCreate	(driver,"lol.shp",0,0,0,GDT_Unknown,NULL);
+//    remove("lol.shp");
+//    GDALDriverH driver = GDALGetDriverByName("ESRI Shapefile"); //MEM ESRI Shapefile
+//    GDALDatasetH DS   = GDALCreate	(driver,"lol.shp",0,0,0,GDT_Unknown,NULL);
 
-//    GDALDriverH driver = GDALGetDriverByName("MEM"); //MEM ESRI Shapefile
-//    GDALDatasetH DS   = GDALCreate	(driver,"out",0,0,0,GDT_Unknown,NULL);
+    GDALDriverH driver = GDALGetDriverByName("Memory"); //MEM ESRI Shapefile
+    GDALDatasetH DS   = GDALCreate	(driver,"",0,0,0,GDT_Unknown,NULL);
 
     //get spatial reference from our raster
     const char* wkt = GDALGetProjectionRef(b->hDataset);
