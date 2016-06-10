@@ -6,7 +6,7 @@
 #include "ogr_srs_api.h"
 #include "cpl_conv.h" /* for CPLMalloc() */
 #include <cpl_string.h>
-
+#include <stdio.h>
 
 double getRasterCell(const double *gt, const void *raster, double x, double y)
 {//extract the elevation from the 3 vertexes
@@ -32,6 +32,7 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
     //there is no need to test the area here. This is because -aX comes first in the if chain, prior to -u
     //so we only need to check if we are violating other constraints as we don't even get this far if area > b->max area
 
+    remove("lol.shp");
     GDALDriverH driver = GDALGetDriverByName("ESRI Shapefile"); //MEM ESRI Shapefile
     GDALDatasetH DS   = GDALCreate	(driver,"lol.shp",0,0,0,GDT_Unknown,NULL);
 
