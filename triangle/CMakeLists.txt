@@ -6,14 +6,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -g ")
 
 find_package(gdal 2.0)
 
-include_directories(${GDAL_INCLUDE_DIR})
-
+include_directories(${GDAL_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(
 	triangle
 		triangle.c
- )
-#message(STATUS ${GDAL_INCLUDE_DIR})
+		triunsuitable.c)
 
 target_link_libraries(
 	triangle
