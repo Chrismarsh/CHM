@@ -24,6 +24,11 @@ double get_MA(const struct masked_array* array, int row, int col)
 
 }
 
+double get_MA_data(const struct masked_array* array, int row, int col)
+{
+    int idx = col+array->xsize*row;
+    return array->data[idx];
+}
 struct masked_array* malloc_MA(int xsize, int ysize)
 {
 

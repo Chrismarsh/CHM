@@ -1,10 +1,12 @@
+#include <ogr_core.h>
 #include "tri.h"
 
 
 struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDatasetH raster)
 {
     struct tri* t = malloc(sizeof(struct tri));
-
+    t->is_nan = 0;
+//    GDALDatasetH raster = GDALOpen( "granger30_projected.tif", GA_ReadOnly );
     //get spatial reference data from our raster
     double *gt = malloc(6 * sizeof(double));
     GDALGetGeoTransform(raster, gt);
@@ -37,6 +39,11 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     OGR_G_AddPoint_2D(ring, tridest[0], tridest[1]);
     OGR_G_AddPoint_2D(ring, triapex[0], triapex[1]);
     OGR_G_AddPoint_2D(ring, triorg[0], triorg[1]);
+//
+//    printf("%f %f\n", triorg[0], triorg[1]);
+//    printf("%f %f\n",  tridest[0], tridest[1]);
+//    printf("%f %f\n",  triapex[0], triapex[1]);
+
 
     OGRGeometryH poly = OGR_G_CreateGeometry(wkbPolygon);
     if (poly == NULL)
@@ -64,7 +71,10 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 
     //extents of the rasterized triangle
 
-
+    bbox.MinX -= 10;
+    bbox.MaxX += 10;
+    bbox.MinY -= 10;
+    bbox.MaxY += 10;
 
     double* new_gt = malloc(sizeof(double) * 6);
 
@@ -86,9 +96,9 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 //    GDALDriverH mem_drv = GDALGetDriverByName("MEM");
 //    *rvds = GDALCreate(mem_drv, "", *xsize, *ysize, 1, GDT_Byte, NULL);
 
-    GDALDriverH mem_drv = GDALGetDriverByName("GTiff");
+    GDALDriverH mem_drv = GDALGetDriverByName("MEM");
     GDALDatasetH rvds=NULL; //output rasterized triangle
-    rvds = GDALCreate(mem_drv, "rasterized_tri.tif", xsize, ysize, 1, GDT_Byte, NULL);
+    rvds = GDALCreate(mem_drv, "", xsize, ysize, 1, GDT_Byte , NULL); //GDT_Byte
     GDALSetGeoTransform(rvds, new_gt);
 
     char *pszSRS_WKT = NULL;
@@ -99,7 +109,8 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     int *panBandList = (int *) malloc(sizeof(int) * nBandCount);
     panBandList[0] = 1; //raster band to use
     int nLayerCount = 1;
-    double burnValue = 1;
+    double* burnValue = malloc(sizeof(double));
+    *burnValue = 1;
 
     OGRLayerH *pahLayers = (OGRLayerH *) malloc(sizeof(OGRLayerH) * nLayerCount);
     pahLayers[0] = layer;
@@ -107,9 +118,9 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     char **options = NULL;
 
     options = CSLSetNameValue(options, "ALL_TOUCHED", "TRUE");
-    CPLErr err = GDALRasterizeLayers(rvds, nBandCount, panBandList, nLayerCount, pahLayers, NULL, NULL, &burnValue, options, NULL,
+    CPLErr err = GDALRasterizeLayers(rvds, nBandCount, panBandList, nLayerCount, pahLayers, NULL, NULL, burnValue, options, NULL,
                                      NULL);
-    printf("Return err was %d\n",err);
+//    printf("Return err was %d\n",err);
 
     OSRDestroySpatialReference(srs);
 
@@ -144,38 +155,63 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     int py;
     double pz;
 
+    // because of how the rasterization works we MIGHT have a cell that lies out side of our actual dem domain.
+    //for these edge effects we might have to average out the triangle vertexes
+    int is_nan[3]={0,0,0};
     /*
      * VERTEX 0
      */
     xyToPixel(triorg[0],triorg[1],&px,&py,new_gt,rvds);
+
+
     pz = get_MA(array,py,px);
 
     t->v0[0] = px;
     t->v0[1] = py;
     t->v0[2] = pz;
-
+    if(isnan(pz))
+    {
+        is_nan[0]=1;
+    }
     /*
      * VERTEX 1
      */
     xyToPixel(tridest[0],tridest[1],&px,&py,new_gt,raster);
     pz = get_MA(array,py,px);
 
-    t->v0[0] = px;
-    t->v0[1] = py;
-    t->v0[2] = pz;
+    t->v1[0] = px;
+    t->v1[1] = py;
+    t->v1[2] = pz;
+    if(isnan(pz))
+    {
+        is_nan[1]=1;
+    }
 
     /*
      * VERTEX 2
      */
-    xyToPixel(triapex[0],triapex[1],&px,&py,new_gt,raster);
+    xyToPixel(tridest[0],triapex[1],&px,&py,new_gt,raster);
     pz = get_MA(array,py,px);
 
-    t->v0[0] = px;
-    t->v0[1] = py;
-    t->v0[2] = pz;
+    t->v2[0] = px;
+    t->v2[1] = py;
+    t->v2[2] = pz;
+    if(isnan(pz))
+    {
+        is_nan[2]=1;
+    }
+
+    if(is_nan[0] && is_nan[1] && is_nan[2])
+    {
+        printf("Triangle vertexes are all nan");
+        return NULL;
+//        exit(-1);
+    }
 
     t->rasterize_triangle = array;
 
+
+    return t;
 }
 /**
  * Rasterizes a triangle as given by 3 verticies.

@@ -16,9 +16,9 @@ int is_invalid_mean_elevation_diff(struct tri* t, double maxtolerance)
         ++tri_count;
     }
 
-    if ( !isnan(t->v1[2]))
+    if ( !isnan(t->v2[2]))
     {
-        triangle_z_mean += t->v1[2];
+        triangle_z_mean += t->v2[2];
         ++tri_count;
     }
 

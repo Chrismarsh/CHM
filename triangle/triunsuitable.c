@@ -21,17 +21,25 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
     int errormetric = 1;
     int is_invalid = 0;
 
-    switch(errormetric)
+    if(t)
     {
-        case 1:
-            is_invalid = is_invalid_mean_elevation_diff(t, b->maxtolerance);
-            break;
-        case 2:
-            is_invalid = is_invalid_tolerance(t, b->maxtolerance);
-            break;
-        default:
-            printf("Invalid error metric chosen");
-            exit(1);
+        switch(errormetric)
+        {
+            case 1:
+                is_invalid = is_invalid_mean_elevation_diff(t, b->maxtolerance);
+                break;
+            case 2:
+                is_invalid = is_invalid_tolerance(t, b->maxtolerance);
+                break;
+            default:
+                printf("Invalid error metric chosen");
+                exit(1);
+        }
+
+    }
+    else
+    {
+        is_invalid = 0;
     }
 
     return is_invalid;

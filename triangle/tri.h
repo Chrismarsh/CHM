@@ -21,6 +21,9 @@ struct tri
     double v1[3];
     double v2[3];
 
+    //if 1, then just ignore this triangle due to edge effects
+    int is_nan;
+
 };
 
 void rasterizeTriangle(vertex triorg, vertex tridest, vertex triapex, OGRSpatialReferenceH srs, const double *gt,
