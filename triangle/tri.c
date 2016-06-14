@@ -6,7 +6,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 {
     struct tri* t = malloc(sizeof(struct tri));
     t->is_nan = 0;
-//    GDALDatasetH raster = GDALOpen( "granger30_projected.tif", GA_ReadOnly );
+
     //get spatial reference data from our raster
     double *gt = malloc(6 * sizeof(double));
     GDALGetGeoTransform(raster, gt);
@@ -15,9 +15,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     OGRSpatialReferenceH srs = OSRNewSpatialReference(wkt);
 
 
-//    rasterizeTriangle(triorg, tridest, triapex, srs, gt,
-//                      &rvds, &x1, &y1, &xsize, &ysize, &new_gt);
-        GDALDriverH driver = GDALGetDriverByName("Memory"); //MEM ESRI Shapefile
+    GDALDriverH driver = GDALGetDriverByName("Memory"); //MEM ESRI Shapefile
     GDALDatasetH DS = GDALCreate(driver, "", 0, 0, 0, GDT_Unknown, NULL);
 //    GDALDriverH driver = GDALGetDriverByName("ESRI Shapefile"); //MEM ESRI Shapefile
 //    GDALDatasetH DS = GDALCreate(driver, "tri.shp", 0, 0, 0, GDT_Unknown, NULL);
@@ -39,7 +37,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     OGR_G_AddPoint_2D(ring, tridest[0], tridest[1]);
     OGR_G_AddPoint_2D(ring, triapex[0], triapex[1]);
     OGR_G_AddPoint_2D(ring, triorg[0], triorg[1]);
-//
+
 //    printf("%f %f\n", triorg[0], triorg[1]);
 //    printf("%f %f\n",  tridest[0], tridest[1]);
 //    printf("%f %f\n",  triapex[0], triapex[1]);
@@ -92,9 +90,6 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     new_gt[3] = gt[3] + (y1 * gt[5]);
     new_gt[4] = 0.0;
     new_gt[5] = gt[5];
-
-//    GDALDriverH mem_drv = GDALGetDriverByName("MEM");
-//    *rvds = GDALCreate(mem_drv, "", *xsize, *ysize, 1, GDT_Byte, NULL);
 
     GDALDriverH mem_drv = GDALGetDriverByName("MEM");
     GDALDatasetH rvds=NULL; //output rasterized triangle
@@ -264,35 +259,3 @@ double getRasterCell(const double *gt, const void *raster, double x, double y)
 
     return pafScanline;
 }
-/**
- * Converts the global x,y coordinate into the pixel x,y of a rasterized triangle
- * @param x
- * @param y
- * @param px
- * @param py
- * @param x1
- * @param y1
- * @param gt
- * @param raster
- * @return
- */
-double getRasterizedPixel(double x, double y, int* px, int* py, int x1, int y1, const double* gt, const void *raster)
-{
-    int _px, _py;
-    //get px and py have x,y in terms of the full raster
-    xyToPixel(x,y,&_px,&_py,gt,raster);
-
-    //uper x and y coords in pixel
-    double Ux = gt[0] + (x1 * gt[1]); //upper x
-    double Uy =  gt[3] + (y1 * gt[5]); //upper y
-
-    int pUx, pUy;
-    xyToPixel(Ux,Uy,&pUx,&pUy,gt,raster);
-
-    //subtract the (0,0) pixel coordinates
-    *px = _px - pUx;
-    *py = _py - pUy;
-
-}
-//    OGR_DS_Destroy(DS);
-

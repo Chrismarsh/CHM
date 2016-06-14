@@ -28,5 +28,4 @@ struct tri
 
 void xyToPixel(double x, double y, int* px, int* py, const double *gt, const void *raster);
 double getRasterCell(const double *gt, const void *raster, double x, double y);
-double getRasterizedPixel(double x, double y, int* px, int* py, int x1, int y1, const double* gt, const void *raster);
 struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDatasetH raster);
