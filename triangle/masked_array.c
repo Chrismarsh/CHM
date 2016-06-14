@@ -18,6 +18,11 @@ void destroy_MA(struct masked_array** array)
 double get_MA(const struct masked_array* array, int row, int col)
 {
 
+    if(row < 0 || col < 0 || row*col >= array->xsize*array->ysize || row == array->ysize || col == array->xsize)
+    {
+        return nan("");
+    }
+
     //col + NCOLS * row
     int idx = col+array->xsize*row;
     double value;

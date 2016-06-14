@@ -69,10 +69,10 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 
     //extents of the rasterized triangle
 
-    bbox.MinX -= 10;
-    bbox.MaxX += 10;
-    bbox.MinY -= 10;
-    bbox.MaxY += 10;
+//    bbox.MinX -= 10;
+//    bbox.MaxX += 10;
+//    bbox.MinY -= 10;
+//    bbox.MaxY += 10;
 
     double* new_gt = malloc(sizeof(double) * 6);
 
@@ -91,7 +91,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     new_gt[4] = 0.0;
     new_gt[5] = gt[5];
 
-    GDALDriverH mem_drv = GDALGetDriverByName("MEM");
+    GDALDriverH mem_drv = GDALGetDriverByName("MEM"); //MEM
     GDALDatasetH rvds=NULL; //output rasterized triangle
     rvds = GDALCreate(mem_drv, "", xsize, ysize, 1, GDT_Byte , NULL); //GDT_Byte
     GDALSetGeoTransform(rvds, new_gt);
@@ -115,7 +115,13 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     options = CSLSetNameValue(options, "ALL_TOUCHED", "TRUE");
     CPLErr err = GDALRasterizeLayers(rvds, nBandCount, panBandList, nLayerCount, pahLayers, NULL, NULL, burnValue, options, NULL,
                                      NULL);
-//    printf("Return err was %d\n",err);
+
+    if(err != 0)
+    {
+        printf("Return err was %d\n",err);
+        exit(1);
+    }
+//
 
     OSRDestroySpatialReference(srs);
 
@@ -198,7 +204,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 
     if(is_nan[0] && is_nan[1] && is_nan[2])
     {
-        printf("Triangle vertexes are all nan");
+        printf("Triangle vertexes are all nan\n");
         return NULL;
 //        exit(-1);
     }
