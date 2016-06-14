@@ -4,6 +4,17 @@
 
 #include "masked_array.h"
 
+void destroy_MA(struct masked_array** array)
+{
+    free((*array)->data);
+    free((*array)->mask);
+
+    (*array)->data = NULL;
+    (*array)->mask = NULL;
+
+    free( (*array)->gt);
+    (*array)->gt = NULL;
+}
 double get_MA(const struct masked_array* array, int row, int col)
 {
 

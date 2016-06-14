@@ -36,11 +36,16 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
                 exit(1);
         }
 
+        destory_triangle(t);
+        free(t);
+        t = NULL;
+
     }
     else
     {
         is_invalid = 0;
     }
+
 
     return is_invalid;
 

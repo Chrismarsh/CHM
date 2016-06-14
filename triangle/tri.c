@@ -259,3 +259,22 @@ double getRasterCell(const double *gt, const void *raster, double x, double y)
 
     return pafScanline;
 }
+
+void destory_triangle(struct tri* t)
+{
+    free( t->rasterize_triangle->data);
+    free(t->rasterize_triangle->mask);
+    free(t->rasterize_triangle->gt);
+
+    t->rasterize_triangle->data = NULL;
+    t->rasterize_triangle->mask = NULL;
+    t->rasterize_triangle->gt = NULL;
+
+    free(t->rasterize_triangle);
+    t->rasterize_triangle = NULL;
+//    destroy_MA( &((*t)->rasterize_triangle));
+//    free( (*t)->rasterize_triangle);
+//    (*t) = NULL;
+//
+
+}
