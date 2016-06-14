@@ -8,7 +8,11 @@ struct masked_array
     float* mask;
     int xsize;
     int ysize;
+    int x1;
+    int y1;
+    double* gt;
 } ;
 
-double get_MA(const struct masked_array* array, int i, int j);
-void malloc_MA(struct masked_array* array, int xsize, int ysize);
+
+double get_MA(const struct masked_array* array, int row, int col);
+struct masked_array* malloc_MA(int xsize, int ysize);

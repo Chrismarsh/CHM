@@ -4,34 +4,36 @@
 
 #include "masked_array.h"
 
-double get_MA(const struct masked_array* array, int i, int j)
+double get_MA(const struct masked_array* array, int row, int col)
 {
 
-    if (array->mask[i*array->xsize+j] == 0)
+    //col + NCOLS * row
+    int idx = col+array->xsize*row;
+    double value;
+    if (array->mask[idx] == 0)
     {
-        return nan("");
+        value = nan("");
     }
     else
     {
-        return array->data[i*array->xsize+j];
+        value = array->data[idx];
     }
+
+    value = value == -9999.?nan(""):value;
+    return value;
 
 }
 
-void malloc_MA(struct masked_array* array, int xsize, int ysize)
+struct masked_array* malloc_MA(int xsize, int ysize)
 {
-//    array->mask = malloc(sizeof(double*) * ysize);
-//    array->data = malloc(sizeof(double*) * ysize);
-//    for(int i =0; i < ysize; ++i )
-//    {
-//        array->mask[i] = (double*)malloc(sizeof(double) * xsize);
-//        array->data[i] = (double*)malloc(sizeof(double) * xsize);
-//    }
 
+    struct masked_array*  array = malloc(sizeof(struct masked_array));
     array->mask = malloc(sizeof(float) * ysize*xsize);
     array->data = malloc(sizeof(float) * ysize*xsize);
 
     array->xsize = xsize;
     array->ysize = ysize;
+
+    return array;
 
 }

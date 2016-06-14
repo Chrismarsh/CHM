@@ -2,9 +2,9 @@ cmake_minimum_required (VERSION 2.8)
 
 project (triangle)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -g ")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -fPIC") #fPIC is needded for building under CLion on linux...no real idea why.
 
-find_package(gdal 2.0)
+find_package(GDAL REQUIRED)
 
 include_directories(${GDAL_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -12,8 +12,9 @@ add_executable(
 	triangle
 		triangle.c
 		triunsuitable.c
-		error_metrics.c
-		masked_array.c)
+		tri.c
+		masked_array.c error_metrics.c
+)
 
 target_link_libraries(
 	triangle
