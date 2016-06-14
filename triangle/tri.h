@@ -8,6 +8,7 @@
 #include "ogr_srs_api.h"
 #include "cpl_conv.h" /* for CPLMalloc() */
 #include <cpl_string.h>
+#include <cpl_error.h>
 struct tri
 {
     //holds the rasterized triangle along with the masked array.
