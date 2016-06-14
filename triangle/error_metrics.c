@@ -32,10 +32,11 @@ int is_invalid_mean_elevation_diff(struct tri* t, double maxtolerance)
 
     double sum = 0;
     double count = 0;
-
-    for (int i = 0; i < t->rasterize_triangle->ysize; i++)
+    int i;
+    int j;
+    for (i = 0; i < t->rasterize_triangle->ysize; i++)
     {
-        for (int j = 0; j < t->rasterize_triangle->xsize; j++)
+        for (j = 0; j < t->rasterize_triangle->xsize; j++)
         {
             double value = get_MA(t->rasterize_triangle,i,j);
 
