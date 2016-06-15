@@ -204,7 +204,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 
     if(is_nan[0] && is_nan[1] && is_nan[2])
     {
-        printf("Triangle vertexes are all nan\n");
+//        printf("Triangle vertexes are all nan\n");
         return NULL;
 //        exit(-1);
     }

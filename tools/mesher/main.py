@@ -317,10 +317,10 @@ def main():
 
         f.write('0\n')
 
-    # subprocess.check_call(['%s -a%d -p %s -n -t%d -T %s -u' % (triangle_path,max_area, base_dir +
-    #                                                      poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
-    subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
+    subprocess.check_call(['%s -a%d -p %s -n -t%d -T %s -u' % (triangle_path,max_area, base_dir +
                                                          poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
+    # subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
+    #                                                      poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
     # subprocess.check_call(['%s -a%d -p %s -n ' % (triangle_path,max_area, base_dir +
     #                                                      poly_file)],shell=True)
 

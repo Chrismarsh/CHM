@@ -63,8 +63,8 @@ int is_invalid_mean_elevation_diff(struct tri* t, double maxtolerance)
     double diff = fabs(triangle_z_mean - mean);
     if (diff > maxtolerance)
     {
-        printf("DEM mean = %f, tri mean = %f\n",mean,triangle_z_mean);
-        printf("Tolerance exceeded!\n");
+//        printf("DEM mean = %f, tri mean = %f\n",mean,triangle_z_mean);
+//        printf("Tolerance exceeded!\n");
         is_invalid = 1;
 //        exit(1);
 
