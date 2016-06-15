@@ -177,7 +177,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     /*
      * VERTEX 1
      */
-    xyToPixel(tridest[0],tridest[1],&px,&py,new_gt,raster);
+    xyToPixel(tridest[0],tridest[1],&px,&py,new_gt,rvds);
     pz = get_MA(array,py,px);
 
     t->v1[0] = px;
@@ -191,7 +191,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     /*
      * VERTEX 2
      */
-    xyToPixel(tridest[0],triapex[1],&px,&py,new_gt,raster);
+    xyToPixel(tridest[0],triapex[1],&px,&py,new_gt,rvds);
     pz = get_MA(array,py,px);
 
     t->v2[0] = px;
@@ -211,6 +211,25 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 
     t->rasterize_triangle = array;
 
+//    GDALDestroyDriver(driver);
+//    GDALDestroyDriver(mem_drv);
+
+//    CPLFree(wkt);
+
+    GDALClose(DS);
+    GDALClose(rvds);
+
+//    OGR_F_Destroy(layer);
+//    OGR_F_Destroy(ring);
+//    OGR_F_Destroy(poly);
+    OGR_F_Destroy(feature);
+
+
+
+    free(pszSRS_WKT);
+    free(panBandList);
+    free(burnValue);
+    free(pahLayers);
 
     return t;
 }

@@ -16,7 +16,7 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
 
     if(area > b->maxarea)
         return 1;
-    
+
     struct tri* t = createTriangle(triorg, tridest, triapex, b->hDataset);
 
     int errormetric = 1;
