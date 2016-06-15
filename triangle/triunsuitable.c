@@ -13,9 +13,10 @@
 
 int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, struct behavior *b)
 {
-//there is no need to test the area here. This is because -aX comes first in the if chain, prior to -u
-//so we only need to check if we are violating other constraints as we don't even get this far if area > b->max area
 
+    if(area > b->maxarea)
+        return 1;
+    
     struct tri* t = createTriangle(triorg, tridest, triapex, b->hDataset);
 
     int errormetric = 1;

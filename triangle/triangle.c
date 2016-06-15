@@ -2701,6 +2701,7 @@ void parsecommandline(argc, argv, b)
                 {
                     b->quality = 1;
                     b->usertest = 1;
+                    b->fixedarea = 0; //don't override -u if we specify -a. allows for still getting b->fixedarea into trisuitable for -u
                 }
 #endif /* not CDT_ONLY */
                 if (argv[i][j] == 'A')
