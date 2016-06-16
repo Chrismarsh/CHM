@@ -892,9 +892,13 @@ void core::init(int argc, char **argv)
         _end_ts = new boost::posix_time::ptime(end_time);
     }
 
-    if( _start_ts > _end_ts)
+    if( *_start_ts > *_end_ts)
     {
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Start time is after endtime."));
+        std::stringstream ss;
+        ss << "Start time is after endtime. ";
+        ss << " Start date: " << *_start_ts;
+        ss << " End date: " << *_end_ts;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
     }
 
     for (auto &s : _global->stations)
