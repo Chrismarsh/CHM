@@ -116,6 +116,8 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     CPLErr err = GDALRasterizeLayers(rvds, nBandCount, panBandList, nLayerCount, pahLayers, NULL, NULL, burnValue, options, NULL,
                                      NULL);
 
+    CPLFree(*options);
+    CPLFree(options);
     if(err != 0)
     {
         printf("Return err was %d\n",err);
@@ -205,7 +207,8 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     if(is_nan[0] && is_nan[1] && is_nan[2])
     {
 //        printf("Triangle vertexes are all nan\n");
-        return NULL;
+        t->is_nan = 1;
+//        return NULL;
 //        exit(-1);
     }
 
@@ -214,18 +217,20 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 //    GDALDestroyDriver(driver);
 //    GDALDestroyDriver(mem_drv);
 
-//    CPLFree(wkt);
+//   CPLFree(wkt);
 
     GDALClose(DS);
     GDALClose(rvds);
 
+
+
 //    OGR_F_Destroy(layer);
-//    OGR_F_Destroy(ring);
-//    OGR_F_Destroy(poly);
+    OGR_G_DestroyGeometry(poly);
+    OGR_G_DestroyGeometry(ring);
     OGR_F_Destroy(feature);
 
 
-
+    free(gt);
     free(pszSRS_WKT);
     free(panBandList);
     free(burnValue);
@@ -287,7 +292,7 @@ double getRasterCell(const double *gt, const void *raster, double x, double y)
 
 void destory_triangle(struct tri* t)
 {
-    free( t->rasterize_triangle->data);
+    free(t->rasterize_triangle->data);
     free(t->rasterize_triangle->mask);
     free(t->rasterize_triangle->gt);
 

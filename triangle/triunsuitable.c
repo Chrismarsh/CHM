@@ -22,7 +22,7 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
     int errormetric = 1;
     int is_invalid = 0;
 
-    if(t)
+    if(!t->is_nan)
     {
         switch(errormetric)
         {
@@ -36,17 +36,16 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
                 printf("Invalid error metric chosen");
                 exit(1);
         }
-
-        destory_triangle(t);
-        free(t);
-        t = NULL;
-
     }
     else
     {
         is_invalid = 0;
     }
 
+
+    destory_triangle(t);
+    free(t);
+    t = NULL;
 
     return is_invalid;
 
