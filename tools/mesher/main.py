@@ -156,7 +156,9 @@ def main():
     simplify=X.simplify
     simplify_tol=X.simplify_tol
     max_tolerance=X.max_tolerance
-    
+    min_area=X.min_area
+    errormetric=X.errormetric
+
     # path to triangle executable
     triangle_path = '../../bin/Debug/triangle'
 ########################################################
@@ -317,8 +319,9 @@ def main():
 
         f.write('0\n')
 
-    subprocess.check_call(['%s -a%d -p %s -n -t%d -T %s -u' % (triangle_path,max_area, base_dir +
-                                                         poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
+    print('Running Triangle')
+    subprocess.check_call(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir +
+                                                         poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)],shell=True)
     # subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
     #                                                      poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
     # subprocess.check_call(['%s -a%d -p %s -n ' % (triangle_path,max_area, base_dir +

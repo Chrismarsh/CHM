@@ -17,9 +17,12 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
     if(area > b->maxarea)
         return 1;
 
+    if(area <= b->minarea)
+        return 0;
+
     struct tri* t = createTriangle(triorg, tridest, triapex, b->hDataset);
 
-    int errormetric = 1;
+    int errormetric = b->tol_method; // 1 is the default
     int is_invalid = 0;
 
     if(!t->is_nan)
@@ -46,6 +49,7 @@ int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, stru
     destory_triangle(t);
     free(t);
     t = NULL;
+
 
     return is_invalid;
 

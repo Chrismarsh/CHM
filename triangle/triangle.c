@@ -2599,6 +2599,8 @@ void parsecommandline(argc, argv, b)
     b->hDataset = NULL;
     b->demfilename[0] = '\0';
     b->quiet = b->verbose = 0;
+    b->minarea = 0;
+    b->tol_method = 1;
 #ifndef TRILIBRARY
     b->innodefilename[0] = '\0';
 #endif /* not TRILIBRARY */
@@ -2639,6 +2641,44 @@ void parsecommandline(argc, argv, b)
                             printf("Error:  Maximum tolerance must be greater than zero.\n");
                             triexit(1);
                         }
+                    }
+                }
+                if (argv[i][j] == 'm')
+                {
+                    if (((argv[i][j + 1] >= '0') && (argv[i][j + 1] <= '9')) ||
+                        (argv[i][j + 1] == '.'))
+                    {
+                        k = 0;
+                        while (((argv[i][j + 1] >= '0') && (argv[i][j + 1] <= '9')) ||
+                               (argv[i][j + 1] == '.'))
+                        {
+                            j++;
+                            workstring[k] = argv[i][j];
+                            k++;
+                        }
+                        workstring[k] = '\0';
+                        b->minarea = (REAL) strtod(workstring, (char **) NULL);
+                        if (b->minarea <= 0.0)
+                        {
+                            printf("Error:  Minimum area must be greater than zero.\n");
+                            triexit(1);
+                        }
+                    }
+                }
+                if (argv[i][j] == 'M')
+                {
+                    if (((argv[i][j + 1] >= '0') && (argv[i][j + 1] <= '9')))
+                    {
+                        k = 0;
+                        while (((argv[i][j + 1] >= '0') && (argv[i][j + 1] <= '9')))
+                        {
+                            j++;
+                            workstring[k] = argv[i][j];
+                            k++;
+                        }
+                        workstring[k] = '\0';
+                        b->tol_method = (int) strtod(workstring, (char **) NULL);
+
                     }
                 }
                 if (argv[i][j] == 'T')
@@ -2700,6 +2740,7 @@ void parsecommandline(argc, argv, b)
                 if (argv[i][j] == 'u')
                 {
                     b->quality = 1;
+                    b->minangle = 20.0;
                     b->usertest = 1;
                     b->fixedarea = 0; //don't override -u if we specify -a. allows for still getting b->fixedarea into trisuitable for -u
                 }

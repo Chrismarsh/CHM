@@ -634,8 +634,10 @@ struct behavior
     int nobisect;
     int steiner;
     REAL minangle, goodangle, offconstant;
+    REAL minarea; // used in our custom triunsuitable to ensure we aren't refining past the point of no return
     REAL maxarea;
     REAL maxtolerance;
+    int tol_method; //tolerance method to use
     GDALDatasetH  hDataset;
 
 /* Variables for file names.                                                 */
