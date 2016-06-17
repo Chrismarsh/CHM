@@ -57,6 +57,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new threshold_p_phase(config);
     else if (ID == "Gray_inf")
         mod = new Gray_inf(config);
+    else if (ID == "Longwave_from_obs")
+        mod = new Longwave_from_obs(config);
 
     if(mod == nullptr)
     {
