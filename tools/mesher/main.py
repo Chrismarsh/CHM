@@ -30,22 +30,7 @@ def printProgress(iteration, total, prefix='', suffix='', decimals=2, barLength=
         print("\n")
 
 #Zonal stats from here https://gist.github.com/perrygeo/5667173
-def bbox_to_pixel_offsets(gt, bbox):
-    originX = gt[0]
-    originY = gt[3]
-    pixel_width = gt[1]
-    pixel_height = gt[5]
-    x1 = int((bbox[0] - originX) / pixel_width)
-    x2 = int((bbox[1] - originX) / pixel_width) + 1
-
-    y1 = int((bbox[3] - originY) / pixel_height)
-    y2 = int((bbox[2] - originY) / pixel_height) + 1
-
-    xsize = x2 - x1
-    ysize = y2 - y1
-    return (x1, y1, xsize, ysize)
-
-def bbox_to_pixel_offsets2(gt, bbox, rasterXsize, rasterYsize):
+def bbox_to_pixel_offsets(gt, bbox, rasterXsize, rasterYsize):
     originX = gt[0]
     originY = gt[3]
     pixel_width = gt[1]
@@ -152,12 +137,31 @@ def main():
     EPSG=X.EPSG
     dem_filename=X.dem_filename
     max_area=X.max_area
-    parameter_files=X.parameter_files
-    simplify=X.simplify
-    simplify_tol=X.simplify_tol
+
+
+    parameter_files = {}
+    if hasattr(X,'parameter_files'):
+        parameter_files=X.parameter_files
+
+    initial_conditions = {}
+    if hasattr(X, 'initial_conditions'):
+        initial_conditions=X.initial_conditions
+
+
+    simplify = False
+    simplify_tol = 0
+    if hasattr(X,'simplify'):
+        simplify=X.simplify
+        simplify_tol = X.simplify_tol
+
+
     max_tolerance=X.max_tolerance
     min_area=X.min_area
     errormetric=X.errormetric
+
+    reuse_mesh = False
+    if hasattr(X,'reuse_mesh'):
+        reuse_mesh = X.reuse_mesh
 
     # path to triangle executable
     triangle_path = '../../bin/Debug/triangle'
@@ -166,15 +170,19 @@ def main():
     base_name = dem_filename[:dem_filename.rfind('.')]
     
     # Delete previous dir (if exists)
-    if os.path.isdir(base_name):
-    	shutil.rmtree(base_name)
-    
-    # make new output dir
-    os.mkdir(base_name)
+    if os.path.isdir(base_name) and not reuse_mesh:
+    	shutil.rmtree(base_name,ignore_errors=True)
+
+    #these have to be seperate ifs for the logic to work correctly
+    if not reuse_mesh:
+        # make new output dir
+        os.mkdir(base_name)
+
+    # we want to reuse an already generated mesh, but we will need to clean up the shp file as gdal won't overwrite an existing one
+    if reuse_mesh:
+        os.remove(base_name + '/'+base_name+'_USM.shp')
 
     base_dir = base_name + '/'
-
-
 
     #ensures we are in UTM and fills the nodata with -9999. tif default no data is a pain to compare against and is often giving the wrong answer.
     subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d"' % (dem_filename, base_dir + base_name+'_projected.tif',EPSG)], shell=True)
@@ -184,37 +192,7 @@ def main():
         print 'Unable to open %s' % dem_filename
         exit(1)
 
-    #####
-    # Z = src_ds.GetRasterBand(1).ReadAsArray()
-    # (x, y) = Z.shape
-    # driver = gdal.GetDriverByName("GTiff")
-    # dst_datatype = gdal.GDT_Int16 #gdal.GDT_Float32   #<--- this is fine as we don't actually store elevation data.
-    # tmp_raster = 'rotate_'+base_name+'.tif'
-    # dst_ds = driver.Create(tmp_raster, y, x, 1, dst_datatype)
-
-    # import numpy as np
-    # angle = 90 * 3.1415926/180.
-    # old_gt = src_ds.GetGeoTransform()
-
-    # new_gt = (
-    #     old_gt[0],                      # [0]
-    #     old_gt[1] * np.cos(angle),      # [1]
-    #     old_gt[1] * -1 * np.sin(angle), # [2]
-    #     old_gt[3],                      # [3]
-    #     old_gt[5] * np.sin(angle),      # [4]
-    #     old_gt[5] * np.cos(angle)       # [5]
-    # )
-
-    # dst_ds.SetGeoTransform(new_gt)
-    # dst_ds.SetProjection(src_ds.GetProjection())
-    # dst_ds.GetRasterBand(1).SetNoDataValue(src_ds.GetRasterBand(1).GetNoDataValue())
-    # dst_ds.GetRasterBand(1).WriteArray(Z)
-    # dst_ds.FlushCache()  #super key to get this to disk
-
-
-
     # #######
-
 
     gt = src_ds.GetGeoTransform()
     #x,y origin
@@ -227,6 +205,8 @@ def main():
     xmax = xmin + pixel_width * src_ds.RasterXSize
     ymin = ymax + pixel_height * src_ds.RasterYSize  #pixel_height is negative
 
+
+
     for key,data in parameter_files.iteritems():
         #force all the paramter files to have the same extent as the input DEM
         subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d" -te %f %f %f %f' % (data['file'], base_dir + data['file']+'_projected.tif',EPSG,xmin,ymin,xmax,ymax)], shell=True)
@@ -236,6 +216,14 @@ def main():
             print 'Error: Unable to open raster for: %s' % key
             exit(1)
 
+    for key,data in initial_conditions.iteritems():
+        #force all the initial condition files to have the same extent as the input DEM
+        subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d" -te %f %f %f %f' % (data['file'], base_dir + data['file']+'_projected.tif',EPSG,xmin,ymin,xmax,ymax)], shell=True)
+        initial_conditions[key]['file'] = gdal.Open(base_dir + data['file']+'_projected.tif')
+        # os.remove(data['file']+'_projected.tif')
+        if initial_conditions[key]['file'] is None:
+            print 'Error: Unable to open raster for: %s' % key
+            exit(1)
 
 
     plgs_shp = base_name + '.shp'
@@ -282,12 +270,10 @@ def main():
     subprocess.check_call(['ogr2ogr -f GeoJSON %s %s' % (base_dir +
                                                          poly_plgs, base_dir + 'line_'+plgs_shp )], shell=True)
 
-    with open(base_dir +
-                      poly_plgs) as f:
+    with open(base_dir + poly_plgs) as f:
         plgs = json.load(f)
 
-    os.remove(base_dir +
-              poly_plgs)
+    os.remove(base_dir + poly_plgs)
 
     #assuming just the first feature is what we want. Need to add in more to support rivers and lakes
     if plgs['features'][0]['geometry']['type'] != 'LineString':
@@ -319,13 +305,14 @@ def main():
 
         f.write('0\n')
 
-    print('Running Triangle')
-    subprocess.check_call(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir +
-                                                         poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)],shell=True)
-    # subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
-    #                                                      poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
-    # subprocess.check_call(['%s -a%d -p %s -n ' % (triangle_path,max_area, base_dir +
-    #                                                      poly_file)],shell=True)
+    if not reuse_mesh:
+        print('Running Triangle')
+        subprocess.check_call(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir +
+                                                             poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)],shell=True)
+        # subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
+        #                                                      poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
+        # subprocess.check_call(['%s -a%d -p %s -n ' % (triangle_path,max_area, base_dir +
+        #                                                      poly_file)],shell=True)
 
 
     #read in the node, ele, and neigh from
@@ -405,19 +392,26 @@ def main():
     for key,value in parameter_files.iteritems():
         layer.CreateField(ogr.FieldDefn(key,       ogr.OFTReal))
 
+    for key,value in initial_conditions.iteritems():
+        layer.CreateField(ogr.FieldDefn(key,       ogr.OFTReal))
+
     read_header=False
     i=1
 
-    print 'Parameterizing triangles'
+    print 'Computing parameters and initial conditions'
 
     triangles_to_fix=[]
     mesh['mesh']['elem'] = []
 
 
-    mesh['parameters']={}
+    # holds paratmers and initial conditions for CHM
+    params = {}
+    ics = {}
     for key, data in parameter_files.iteritems():
-        mesh['parameters'][key]=[]
+        params[key]=[]
 
+    for key, data in initial_conditions.iteritems():
+        ics[key] = []
 
     i=0
     with open( base_dir + 'PLGS'+base_name+'.1.ele') as elem:
@@ -486,93 +480,11 @@ def main():
 
                     #get the value under each triangle from each paramter file
                     for key, data in parameter_files.iteritems():
-                        raster = data['file']
-
-                        wkt = raster.GetProjection()
-                        srs = osr.SpatialReference()
-                        srs.ImportFromWkt(wkt)
-
-                        gt = raster.GetGeoTransform()
-                        rb = raster.GetRasterBand(1)
-
-
-                        src_offset = bbox_to_pixel_offsets2(gt, feature.geometry().GetEnvelope(),raster.RasterXSize,raster.RasterYSize)
-                        src_array = rb.ReadAsArray(*src_offset)
-
-                        # calculate new geotransform of the feature subset
-                        new_gt = (
-                            (gt[0] + (src_offset[0] * gt[1])),
-                            gt[1],
-                            0.0,
-                            (gt[3] + (src_offset[1] * gt[5])),
-                            0.0,
-                            gt[5]
-                        )
-                        # Create a temporary vector layer in memory
-                        mem_drv = ogr.GetDriverByName('Memory')
-                        driver = gdal.GetDriverByName('MEM')
-                        mem_ds = mem_drv.CreateDataSource('out')
-                        mem_layer = mem_ds.CreateLayer('poly', srs, ogr.wkbPolygon)
-                        mem_layer.CreateFeature(feature.Clone())
-
-                        # Rasterize it
-                        rvds = driver.Create('', src_offset[2], src_offset[3], 1, gdal.GDT_Byte)
-                        rvds.SetGeoTransform(new_gt)
-                        gdal.RasterizeLayer(rvds, [1], mem_layer, burn_values=[1],options=['ALL_TOUCHED=TRUE'])
-                        rv_array = rvds.ReadAsArray()  # holds a mask of where the triangle is on the raster
-
-
-                        # Mask the source data array with our current feature
-                        # we take the logical_not to flip 0<->1 to get the correct mask effect
-                        # we also mask out nodata values explictly
-
-                        masked = np.ma.MaskedArray(
-                            src_array,
-                            mask=np.logical_or(
-                                src_array == rb.GetNoDataValue(),
-                                np.logical_not(rv_array)
-                            )
-                        )
-
-                        # feature_stats = {
-                        #     'min': float(masked.min()),
-                        #     'mean': float(masked.mean()),
-                        #     'max': float(masked.max()),
-                        #     'std': float(masked.std()),
-                        #     'sum': float(masked.sum()),
-                        #     'count': int(masked.count()),
-                        #     'fid': int(feat.GetFID())
-                        # }
-
-
-                        #  # we have a triangle that only touches a no-value. So give up and use surrounding values.
-                        # if masked.count() == 0:
-                        #     masked = np.ma.masked_where(
-                        #         src_array == rb.GetNoDataValue(), src_array)
-                        #
-                        # if masked.count() == 0 or src_array is None:
-                        #     #alright, we're in a bit of trouble now. We will save this triangle for later, and try to just duplciate any neighbouring triangle's data.
-                        #     #this only seems to happen right at the edge of the triangulation.
-                        #     triangles_to_fix.append( { 'key':key,'elem': int(items[0])-1 ,'nodata':rb.GetNoDataValue(),'method':data['method'] } )
-                        #     output = rb.GetNoDataValue() #fill with no data....
-                        # else:
-
-                        output = rb.GetNoDataValue()
-                        # we have a triangle that only touches a no-value. So give up and use surrounding values.
-                        # if masked.count() == 0:
-                        #     masked = np.ma.masked_where(
-                        #         src_array == rb.GetNoDataValue(), src_array)
-
-                        if data['method'] == 'mode':
-                            output = sp.mode(masked.flatten())[0][0]
-                        elif data['method'] == 'mean':
-                            if masked.count() > 0:
-                                output = float(masked.mean())  #if it's entirely masked, then we get nan and a warning printed to stdout. would like to avoid showing this warning.
-                        else:
-                            print 'Error: unknown data aggregation method %s' % data['method']
-
-                        feature.SetField(key, output)
-                        mesh['parameters'][key].append( output )
+                        output = rasterize_elem(data, feature, key)
+                        params[key].append( output )
+                    for key, data in initial_conditions.iteritems():
+                        output = rasterize_elem(data, feature, key)
+                        ics[key].append( output )
 
                     layer.CreateFeature(feature)
 
@@ -581,47 +493,127 @@ def main():
 
     print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
 
-    print 'There are %d triangles with no data' % len(triangles_to_fix)
+# I think this check for the next section can be removed
+#     if len(triangles_to_fix) != 0:
+#         print 'Error! There are %d triangles with no data' % len(triangles_to_fix)
+#         exit(-1)
     i=1
-    for t in triangles_to_fix:
-        f = layer.GetFeature( t['elem'])
 
-        values = []
-        #get each neighbour index to the problem triangle
-        n0 = mesh['mesh']['neigh'][t['elem']][0]
-        n1 = mesh['mesh']['neigh'][t['elem']][1]
-        n2 = mesh['mesh']['neigh'][t['elem']][2]
-
-        neigh = [x for x in n0,n1,n2 if x != -2]
-        feat = [layer.GetFeature( n ).GetField( t['key'] ) for n in neigh]
-        nv = np.array(feat)
-
-        masked = np.ma.masked_where(
-            nv == t['nodata'], nv)
-
-        output = rb.GetNoDataValue()# -9999
-        if t['method'] == 'mode':
-            output = sp.mode(masked.flatten())[0][0]
-        elif t['method'] == 'mean':
-            if masked.count() > 0:
-                output = float(masked.mean())  #if it's entirely masked, then we get nan and a warning printed to stdout. would like to avoid showing this warning.
-            # else:
-            #     output = 0
-
-        else:
-            print 'Error: unknown data aggregation method %s' % data['method']
-
-        print '[ %d / %d ] Changed nodata value to %f for triangle id: %d' % (i,len(triangles_to_fix),output,t['elem'])
-        mesh['parameters'][t['key']][t['elem']] = output
-        f.SetField( t['key'], output)
-        layer.SetFeature(f)
-        i=i+1
+#I think this section can be removed
+    # for t in triangles_to_fix:
+    #     f = layer.GetFeature( t['elem'])
+    #
+    #     values = []
+    #     #get each neighbour index to the problem triangle
+    #     n0 = mesh['mesh']['neigh'][t['elem']][0]
+    #     n1 = mesh['mesh']['neigh'][t['elem']][1]
+    #     n2 = mesh['mesh']['neigh'][t['elem']][2]
+    #
+    #     neigh = [x for x in n0,n1,n2 if x != -2]
+    #     feat = [layer.GetFeature( n ).GetField( t['key'] ) for n in neigh]
+    #     nv = np.array(feat)
+    #
+    #     masked = np.ma.masked_where(
+    #         nv == t['nodata'], nv)
+    #
+    #     output = rb.GetNoDataValue()# -9999
+    #     if t['method'] == 'mode':
+    #         output = sp.mode(masked.flatten())[0][0]
+    #     elif t['method'] == 'mean':
+    #         if masked.count() > 0:
+    #             output = float(masked.mean())  #if it's entirely masked, then we get nan and a warning printed to stdout. would like to avoid showing this warning.
+    #         # else:
+    #         #     output = 0
+    #
+    #     else:
+    #         print 'Error: unknown data aggregation method %s' % data['method']
+    #
+    #     print '[ %d / %d ] Changed nodata value to %f for triangle id: %d' % (i,len(triangles_to_fix),output,t['elem'])
+    #     mesh['parameters'][t['key']][t['elem']] = output
+    #     f.SetField( t['key'], output)
+    #     layer.SetFeature(f)
+    #     i=i+1
 
     output_usm = None #close the file
-    print 'Saving mesh and parameters to file ' + base_name+'.mesh'
+    print 'Saving mesh to file ' + base_name+'.mesh'
     with open(base_name+'.mesh', 'w') as outfile:
         json.dump(mesh, outfile,indent=4)
+
+    print 'Saving parameters to file ' + base_name+'_param.mesh'
+    with open(base_name+'._param.mesh', 'w') as outfile:
+        json.dump(params, outfile,indent=4)
+
+    print 'Saving initial conditions  to file ' + base_name+'_ic.mesh'
+    with open(base_name+'._ic.mesh', 'w') as outfile:
+        json.dump(ics, outfile,indent=4)
     print 'Done'
+
+
+def rasterize_elem(data, feature, key):
+    raster = data['file']
+    wkt = raster.GetProjection()
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(wkt)
+    gt = raster.GetGeoTransform()
+    rb = raster.GetRasterBand(1)
+    src_offset = bbox_to_pixel_offsets(gt, feature.geometry().GetEnvelope(), raster.RasterXSize, raster.RasterYSize)
+    src_array = rb.ReadAsArray(*src_offset)
+    # calculate new geotransform of the feature subset
+    new_gt = (
+        (gt[0] + (src_offset[0] * gt[1])),
+        gt[1],
+        0.0,
+        (gt[3] + (src_offset[1] * gt[5])),
+        0.0,
+        gt[5]
+    )
+    # Create a temporary vector layer in memory
+    mem_drv = ogr.GetDriverByName('Memory')
+    driver = gdal.GetDriverByName('MEM')
+    mem_ds = mem_drv.CreateDataSource('out')
+    mem_layer = mem_ds.CreateLayer('poly', srs, ogr.wkbPolygon)
+    mem_layer.CreateFeature(feature.Clone())
+    # Rasterize it
+    rvds = driver.Create('', src_offset[2], src_offset[3], 1, gdal.GDT_Byte)
+    rvds.SetGeoTransform(new_gt)
+    gdal.RasterizeLayer(rvds, [1], mem_layer, burn_values=[1], options=['ALL_TOUCHED=TRUE'])
+    rv_array = rvds.ReadAsArray()  # holds a mask of where the triangle is on the raster
+    # Mask the source data array with our current feature
+    # we take the logical_not to flip 0<->1 to get the correct mask effect
+    # we also mask out nodata values explictly
+    masked = np.ma.MaskedArray(
+        src_array,
+        mask=np.logical_or(
+            src_array == rb.GetNoDataValue(),
+            np.logical_not(rv_array)
+        )
+    )
+    # feature_stats = {
+    #     'min': float(masked.min()),
+    #     'mean': float(masked.mean()),
+    #     'max': float(masked.max()),
+    #     'std': float(masked.std()),
+    #     'sum': float(masked.sum()),
+    #     'count': int(masked.count()),
+    #     'fid': int(feat.GetFID())
+    # }
+    output = rb.GetNoDataValue()
+    # we have a triangle that only touches a no-value. So give up and use surrounding values.
+    # if masked.count() == 0:
+    #     masked = np.ma.masked_where(
+    #         src_array == rb.GetNoDataValue(), src_array)
+    if data['method'] == 'mode':
+        output = sp.mode(masked.flatten())[0][0]
+    elif data['method'] == 'mean':
+        if masked.count() > 0:
+            output = float(
+                masked.mean())  # if it's entirely masked, then we get nan and a warning printed to stdout. would like to avoid showing this warning.
+    else:
+        print 'Error: unknown data aggregation method %s' % data['method']
+
+    feature.SetField(key, output)
+    return output
+
 
 if __name__ == "__main__":
 
