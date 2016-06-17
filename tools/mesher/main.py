@@ -539,12 +539,12 @@ def main():
     with open(base_name+'.mesh', 'w') as outfile:
         json.dump(mesh, outfile,indent=4)
 
-    print 'Saving parameters to file ' + base_name+'_param.mesh'
-    with open(base_name+'._param.mesh', 'w') as outfile:
+    print 'Saving parameters to file ' + base_name+'.param'
+    with open(base_name+'.param', 'w') as outfile:
         json.dump(params, outfile,indent=4)
 
-    print 'Saving initial conditions  to file ' + base_name+'_ic.mesh'
-    with open(base_name+'._ic.mesh', 'w') as outfile:
+    print 'Saving initial conditions  to file ' + base_name+'.ic'
+    with open(base_name+'.ic', 'w') as outfile:
         json.dump(ics, outfile,indent=4)
     print 'Done'
 
