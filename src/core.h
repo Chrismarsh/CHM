@@ -211,6 +211,7 @@ protected:
 
     //unique set of all the paramters provided by the meshes
     std::set<std::string> _provided_parameters;
+    std::set<std::string> _provided_initial_conditions;
 
     boost::posix_time::ptime* _start_ts;
     boost::posix_time::ptime* _end_ts;

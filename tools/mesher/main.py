@@ -10,115 +10,6 @@ import shutil
 
 gdal.UseExceptions()  # Enable errors
 
-# Print iterations progress
-# http://stackoverflow.com/a/34325723/410074
-def printProgress(iteration, total, prefix='', suffix='', decimals=2, barLength=100):
-    """
-    Call in a loop to create terminal progress bar
-    @params:
-        iterations  - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-    """
-    filledLength = int(round(barLength * iteration / float(total)))
-    percents = round(100.00 * (iteration / float(total)), decimals)
-    bar = '#' * filledLength + '-' * (barLength - filledLength)
-    sys.stdout.write('%s [%s] %s%s %s\r' % (prefix, bar, percents, '%', suffix)),
-    sys.stdout.flush()
-    if iteration == total:
-        print("\n")
-
-#Zonal stats from here https://gist.github.com/perrygeo/5667173
-def bbox_to_pixel_offsets(gt, bbox, rasterXsize, rasterYsize):
-    originX = gt[0]
-    originY = gt[3]
-    pixel_width = gt[1]
-    pixel_height = gt[5]
-    x1 = int((bbox[0] - originX) / pixel_width)
-    x2 = int((bbox[1] - originX) / pixel_width) + 1
-
-    y1 = int((bbox[3] - originY) / pixel_height)
-    y2 = int((bbox[2] - originY) / pixel_height) + 1
-
-    xsize = x2 - x1
-    ysize = y2 - y1
-
-    #only apply this correction if we are touching the underlying raster.
-    if x1 < rasterXsize and y1 < rasterYsize:
-        #deal with small out of bounds
-        if x1 < 0:
-            x1 = 0
-
-        if y1 < 0:
-            y1 = 0
-
-        if x1 + xsize > rasterXsize:
-            xsize = rasterXsize-x1
-
-        if y1 + ysize > rasterYsize:
-            ysize = rasterYsize-y1
-
-    return (x1, y1, xsize, ysize)
-
-def extract_point(raster,mx,my):
-    # Convert from map to pixel coordinates.
-    # Only works for geotransforms with no rotation.
-
-    rb = raster.GetRasterBand(1)
-    gt = raster.GetGeoTransform()
-
-    px = int((mx - gt[0]) / gt[1])  # x pixel
-    py = int((my - gt[3]) / gt[5])  # y pixel
-
-    #boundary verticies from Triangle can end up outside of the domain by 1 pixel.
-    #if we adjusted back by  1 pixel to get the dz value, it's no problem and still gives a good boundary
-    if px == raster.RasterXSize:
-        px = px -1
-    if py == raster.RasterYSize:
-        py = py - 1
-    mz = rb.ReadAsArray(px, py, 1, 1)
-    mz = float(mz.flatten()[0])
-
-    if mz == rb.GetNoDataValue():
-        dx = 1
-        dy = 1
-
-        #attempt to pick points from the surrounding 8
-        z1 = rb.ReadAsArray(px - dx if px > 0 else px, py, 1, 1)
-        z1 = z1[0] if z1 is not None else rb.GetNoDataValue()
-
-        z2 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py, 1, 1)
-        z2 = z2[0] if z2 is not None else rb.GetNoDataValue()
-
-        z3 = rb.ReadAsArray(px, py + dy if py < raster.RasterYSize else py, 1, 1)
-        z3 = z3[0] if z3 is not None else rb.GetNoDataValue()
-
-        z4 = rb.ReadAsArray(px, py - dy if py > 0 else py, 1, 1)[0]
-        z4 = z4[0] if z4 is not None else rb.GetNoDataValue()
-
-        z5 = rb.ReadAsArray(px - dx if px > 0 else px,                  py - dy if py > 0 else py, 1, 1)
-        z5 = z5[0] if z5 is not None else rb.GetNoDataValue()
-
-        z6 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py - dy if py > 0 else py, 1, 1)
-        z6 = z6[0] if z6 is not None else rb.GetNoDataValue()
-
-        z7 = rb.ReadAsArray(px - dx if px > 0 else px,                  py + dy if py < raster.RasterYSize else py, 1, 1)
-        z7 = z7[0] if z7 is not None else rb.GetNoDataValue()
-
-        z8 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py - dy if py > 0 else py, 1, 1)
-        z8 = z8[0] if z8 is not None else rb.GetNoDataValue()
-
-        z=[z1, z2, z3, z4,z5,z6,z7,z8]
-        z = [x for x in z if x != rb.GetNoDataValue()]
-
-        if len(z) == 0:
-            print 'Warning: The point (%f,%f) and its 8-neighbours lies outside of the DEM domain' %(mx,my)
-            return rb.GetNoDataValue()
-            #exit(1)
-
-        mz = float(np.mean(z))
-    return mz
 
 def main():
 
@@ -547,6 +438,116 @@ def main():
     with open(base_name+'.ic', 'w') as outfile:
         json.dump(ics, outfile,indent=4)
     print 'Done'
+
+# Print iterations progress
+# http://stackoverflow.com/a/34325723/410074
+def printProgress(iteration, total, prefix='', suffix='', decimals=2, barLength=100):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iterations  - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+    """
+    filledLength = int(round(barLength * iteration / float(total)))
+    percents = round(100.00 * (iteration / float(total)), decimals)
+    bar = '#' * filledLength + '-' * (barLength - filledLength)
+    sys.stdout.write('%s [%s] %s%s %s\r' % (prefix, bar, percents, '%', suffix)),
+    sys.stdout.flush()
+    if iteration == total:
+        print("\n")
+
+#Zonal stats from here https://gist.github.com/perrygeo/5667173
+def bbox_to_pixel_offsets(gt, bbox, rasterXsize, rasterYsize):
+    originX = gt[0]
+    originY = gt[3]
+    pixel_width = gt[1]
+    pixel_height = gt[5]
+    x1 = int((bbox[0] - originX) / pixel_width)
+    x2 = int((bbox[1] - originX) / pixel_width) + 1
+
+    y1 = int((bbox[3] - originY) / pixel_height)
+    y2 = int((bbox[2] - originY) / pixel_height) + 1
+
+    xsize = x2 - x1
+    ysize = y2 - y1
+
+    #only apply this correction if we are touching the underlying raster.
+    if x1 < rasterXsize and y1 < rasterYsize:
+        #deal with small out of bounds
+        if x1 < 0:
+            x1 = 0
+
+        if y1 < 0:
+            y1 = 0
+
+        if x1 + xsize > rasterXsize:
+            xsize = rasterXsize-x1
+
+        if y1 + ysize > rasterYsize:
+            ysize = rasterYsize-y1
+
+    return (x1, y1, xsize, ysize)
+
+def extract_point(raster,mx,my):
+    # Convert from map to pixel coordinates.
+    # Only works for geotransforms with no rotation.
+
+    rb = raster.GetRasterBand(1)
+    gt = raster.GetGeoTransform()
+
+    px = int((mx - gt[0]) / gt[1])  # x pixel
+    py = int((my - gt[3]) / gt[5])  # y pixel
+
+    #boundary verticies from Triangle can end up outside of the domain by 1 pixel.
+    #if we adjusted back by  1 pixel to get the dz value, it's no problem and still gives a good boundary
+    if px == raster.RasterXSize:
+        px = px -1
+    if py == raster.RasterYSize:
+        py = py - 1
+    mz = rb.ReadAsArray(px, py, 1, 1)
+    mz = float(mz.flatten()[0])
+
+    if mz == rb.GetNoDataValue():
+        dx = 1
+        dy = 1
+
+        #attempt to pick points from the surrounding 8
+        z1 = rb.ReadAsArray(px - dx if px > 0 else px, py, 1, 1)
+        z1 = z1[0] if z1 is not None else rb.GetNoDataValue()
+
+        z2 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py, 1, 1)
+        z2 = z2[0] if z2 is not None else rb.GetNoDataValue()
+
+        z3 = rb.ReadAsArray(px, py + dy if py < raster.RasterYSize else py, 1, 1)
+        z3 = z3[0] if z3 is not None else rb.GetNoDataValue()
+
+        z4 = rb.ReadAsArray(px, py - dy if py > 0 else py, 1, 1)[0]
+        z4 = z4[0] if z4 is not None else rb.GetNoDataValue()
+
+        z5 = rb.ReadAsArray(px - dx if px > 0 else px,                  py - dy if py > 0 else py, 1, 1)
+        z5 = z5[0] if z5 is not None else rb.GetNoDataValue()
+
+        z6 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py - dy if py > 0 else py, 1, 1)
+        z6 = z6[0] if z6 is not None else rb.GetNoDataValue()
+
+        z7 = rb.ReadAsArray(px - dx if px > 0 else px,                  py + dy if py < raster.RasterYSize else py, 1, 1)
+        z7 = z7[0] if z7 is not None else rb.GetNoDataValue()
+
+        z8 = rb.ReadAsArray(px + dx if px < raster.RasterXSize else px, py - dy if py > 0 else py, 1, 1)
+        z8 = z8[0] if z8 is not None else rb.GetNoDataValue()
+
+        z=[z1, z2, z3, z4,z5,z6,z7,z8]
+        z = [x for x in z if x != rb.GetNoDataValue()]
+
+        if len(z) == 0:
+            print 'Warning: The point (%f,%f) and its 8-neighbours lies outside of the DEM domain' %(mx,my)
+            return rb.GetNoDataValue()
+            #exit(1)
+
+        mz = float(np.mean(z))
+    return mz
 
 
 def rasterize_elem(data, feature, key):

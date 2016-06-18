@@ -263,11 +263,30 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         {
             auto face = _faces.at(i);
             double value = jtr.second.get_value<double>();
+//            value == -9999. ? value = nan("") : value;
             face->set_parameter(name,value);
             i++;
         }
 
         parameters.insert(name);
+    }
+
+    std::set<std::string> ics;
+    for (auto &itr : mesh.get_child("initial_conditions"))
+    {
+        i=0; // reset evertime we get a new parameter set
+        auto name = itr.first.data();
+        LOG_DEBUG << "Applying IC: " << name;
+        for (auto &jtr : itr.second)
+        {
+            auto face = _faces.at(i);
+            double value = jtr.second.get_value<double>();
+//            alue == -9999. ? value = nan("") : value;
+            face->set_initial_condition(name,value);
+            i++;
+        }
+
+        ics.insert(name);
     }
     _num_faces = this->number_of_faces();
     _num_vertex = this->number_of_vertices();
@@ -429,6 +448,13 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         data[v]->SetName(v.c_str());
     }
 
+    auto ics = this->face(0)->initial_conditions();
+    for(auto& v: ics)
+    {
+        data[v] = vtkSmartPointer<vtkFloatArray>::New();
+        data[v]->SetName(v.c_str());
+    }
+
 
     //handle elevation/aspect/slope
     data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
@@ -491,6 +517,16 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         for(auto& v: params)
         {
             double d = fit->get_parameter(v);
+            if(d == -9999.)
+            {
+                d = nan("");
+            }
+            data[v]->InsertNextTuple1(d);
+        }
+
+        for(auto& v: ics)
+        {
+            double d = fit->get_initial_condition(v);
             if(d == -9999.)
             {
                 d = nan("");

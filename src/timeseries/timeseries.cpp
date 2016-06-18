@@ -13,7 +13,7 @@ void timeseries::init(std::set<std::string> variables, date_vec datetime)
 
    for (auto& v: variables)
    {
-       _variables[v].assign(size,-9999.9);
+       _variables[v].assign(size,-9999.0);
    }
 
    //setup date vector
