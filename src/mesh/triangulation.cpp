@@ -385,7 +385,7 @@ void triangulation::plot(std::string ID)
 }
 #endif
 
-void triangulation::init_vtkUnstructured_Grid()
+void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     points->SetNumberOfPoints(this->_num_vertex);
@@ -416,17 +416,7 @@ void triangulation::init_vtkUnstructured_Grid()
     _vtk_unstructuredGrid->SetPoints(points);
     _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
 
-}
 
-void triangulation::update_vtk_data(std::vector<std::string> output_variables)
-{
-    //if we haven't inited yet, do so.
-    if(!_vtk_unstructuredGrid)
-    {
-        this->init_vtkUnstructured_Grid();
-    }
-
-    std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 
     //assume that all the faces have the same number of variables and the same types of variables
     //by this point this should be a fair assumption
@@ -469,6 +459,18 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
     data["Area"] = vtkSmartPointer<vtkFloatArray>::New();
     data["Area"]->SetName("Area");
 
+}
+
+void triangulation::update_vtk_data(std::vector<std::string> output_variables)
+{
+    //if we haven't inited yet, do so.
+    if(!_vtk_unstructuredGrid)
+    {
+        this->init_vtkUnstructured_Grid(output_variables);
+    }
+
+
+
 //    auto test = vtkSmartPointer<vtkFloatArray>::New();
 //    test->SetName("TEST");
 //    test->SetNumberOfComponents(3);
@@ -500,6 +502,10 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 ////        data["Gauss Curvature"]->InsertNextTuple1(curve);
 //
 
+    auto variables = output_variables.size() == 0 ? this->face(0)->variables() : output_variables;
+    auto params = this->face(0)->parameters();
+    auto ics = this->face(0)->initial_conditions();
+
     for (size_t i = 0; i < this->size_faces(); i++)
     {
         Delaunay::Face_handle fit = this->face(i);
@@ -512,7 +518,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
                 d = nan("");
             }
 
-            data[v]->InsertNextTuple1(d);
+            data[v]->InsertTuple1(i,d);
+//            data[v]->InsertNextTuple1(d);
         }
         for(auto& v: params)
         {
@@ -521,7 +528,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             {
                 d = nan("");
             }
-            data[v]->InsertNextTuple1(d);
+            data[v]->InsertTuple1(i,d);
+//            data[v]->InsertNextTuple1(d);
         }
 
         for(auto& v: ics)
@@ -531,12 +539,19 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             {
                 d = nan("");
             }
-            data[v]->InsertNextTuple1(d);
+            data[v]->InsertTuple1(i,d);
+//            data[v]->InsertNextTuple1(d);
         }
-        data["Elevation"]->InsertNextTuple1(fit->get_z());
-        data["Slope"]->InsertNextTuple1(fit->slope());
-        data["Aspect"]->InsertNextTuple1(fit->aspect());
-        data["Area"]->InsertNextTuple1(fit->get_area());
+
+        data["Elevation"]->InsertTuple1(i,fit->get_z());
+        data["Slope"]->InsertTuple1(i,fit->slope());
+        data["Aspect"]->InsertTuple1(i,fit->aspect());
+        data["Area"]->InsertTuple1(i,fit->get_area());
+
+//        data["Elevation"]->InsertNextTuple1(fit->get_z());
+//        data["Slope"]->InsertNextTuple1(fit->slope());
+//        data["Aspect"]->InsertNextTuple1(fit->aspect());
+//        data["Area"]->InsertNextTuple1(fit->get_area());
 
         //TODO: remove this hard coded test & add ability to do this for any
 //        auto dir =*data["VW_dir"]->GetTuple(ii);
