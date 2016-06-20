@@ -25,7 +25,7 @@ def main():
     X = __import__(configfile)
 
     # Assinge to local variables
-    EPSG=X.EPSG
+    # EPSG=X.EPSG
 
 
     dem_filename=X.dem_filename
@@ -76,6 +76,15 @@ def main():
         os.remove(base_name + '/'+base_name+'_USM.shp')
 
     base_dir = base_name + '/'
+
+# figure out what srs out input is in, we will reproject everything to this
+    src_ds = gdal.Open(dem_filename)
+    wkt = src_ds.GetProjection()
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(wkt)
+    EPSG = int(srs.GetAttrValue("AUTHORITY", 1))
+
+    is_geographic = srs.IsGeographic()
 
     #ensures we are in UTM and fills the nodata with -9999. tif default no data is a pain to compare against and is often giving the wrong answer.
     subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d"' % (dem_filename, base_dir + base_name+'_projected.tif',EPSG)], shell=True)
@@ -279,7 +288,7 @@ def main():
     wkt = src_ds.GetProjection()
     srs = osr.SpatialReference()
     srs.ImportFromWkt(wkt)
-    is_geographic = srs.IsGeographic()
+
 
     # create the layer
     layer = output_usm.CreateLayer(base_name, srs, ogr.wkbPolygon)
