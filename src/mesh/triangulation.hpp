@@ -223,7 +223,7 @@ public:
 	/**
 	 * If output to the mesh vtk/vtu format is required, this will be allocate the vtk data structure.
 	 */
-	void init_vtkUnstructured_Grid();
+	void init_vtkUnstructured_Grid(std::vector<std::string> output_variables);
 
 
 	/**
@@ -248,6 +248,9 @@ private:
 
 	//holds the vtk ugrid if we are outputing to vtk formats
 	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
+
+	//holds the vectors we use to create the vtu file
+	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed

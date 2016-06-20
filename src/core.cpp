@@ -279,7 +279,7 @@ void core::config_meshes(const pt::ptree &value)
 
             pt::ptree param_json = read_json(param_mesh_path);
 
-            for(auto& ktr : param_json.get_child("parameters"))
+            for(auto& ktr : param_json)
             {
                 //use put to ensure there are no duplciate parameters...
                 std::string key = ktr.first.data();
@@ -288,12 +288,37 @@ void core::config_meshes(const pt::ptree &value)
             }
 
         }
+
     }
-    catch(...)
+    catch(pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "No addtional paramters found in mesh section.";
+        LOG_DEBUG << "No addtional parameters found in mesh section.";
     }
 
+    try
+    {
+        for(auto &itr : value.get_child("initial_conditions"))
+        {
+            LOG_DEBUG << "Initial condition file: " << itr.second.data();
+
+            auto param_mesh_path = (cwd_dir / itr.second.data()).string();
+
+            pt::ptree ic_json = read_json(param_mesh_path);
+
+            for(auto& ktr : ic_json)
+            {
+                //use put to ensure there are no duplciate parameters...
+                std::string key = ktr.first.data();
+                mesh.put_child( "initial_conditions." + key ,ktr.second);
+                LOG_DEBUG << "Inserted initial condition " << ktr.first.data() << " into the config tree.";
+            }
+
+        }
+    }
+    catch(pt::ptree_bad_path &e)
+    {
+        LOG_DEBUG << "No addtional initial conditions found in mesh section.";
+    }
 
     _provided_parameters = _mesh->from_json(mesh);
 

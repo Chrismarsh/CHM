@@ -129,15 +129,15 @@ void snobal::init(mesh domain, boost::shared_ptr<global> global)
 
 
         ////////
-        if (face->has_parameter("swe2"))
+        if (face->has_initial_condition("swe"))
         {
-            if( !is_nan(face->get_parameter("swe2")))
+            if( !is_nan(face->get_initial_condition("swe")))
             {
                 sbal->rho = cfg.get("IC_rho",300.);
                 sbal->T_s =  -10 + FREEZE;
                 sbal->T_s_0 = -15. + FREEZE; //assuming no snow
                 sbal->T_s_l = -15. + FREEZE;
-                sbal->z_s = face->get_parameter("swe2") / sbal->rho;
+                sbal->z_s = face->get_initial_condition("swe") / sbal->rho;
             }
         }
         

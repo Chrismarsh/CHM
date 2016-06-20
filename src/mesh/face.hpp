@@ -229,6 +229,11 @@ public:
     double get_parameter(std::string key);
     std::vector<std::string>  parameters();
     bool has_parameter(std::string key);
+
+    void set_initial_condition(std::string key,double value);
+    double get_initial_condition(std::string key);
+    std::vector<std::string>  initial_conditions();
+    bool has_initial_condition(std::string key);
 private:
 
     double _slope;
@@ -244,6 +249,7 @@ private:
     //boost::ptr_map<std::string,face_info> _module_face_data;
     std::map<std::string,face_info* > _module_face_data;
     std::map<std::string,double> _parameters;
+    std::map<std::string,double> _initial_conditions;
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
 
@@ -269,6 +275,24 @@ double face<Gt, Fb>::get_parameter(std::string key)
 };
 
 template < class Gt, class Fb >
+bool face<Gt, Fb>::has_initial_condition(std::string key)
+{
+    return _initial_conditions.find( key ) != _parameters.end();
+}
+
+template < class Gt, class Fb >
+void face<Gt, Fb>::set_initial_condition(std::string key, double value)
+{
+    _initial_conditions[key] = value;
+}
+
+template < class Gt, class Fb >
+double face<Gt, Fb>::get_initial_condition(std::string key)
+{
+    return _initial_conditions[key];
+};
+
+template < class Gt, class Fb >
 std::vector<std::string>  face<Gt, Fb>::parameters()
 {
     std::vector<std::string> params;
@@ -279,6 +303,16 @@ std::vector<std::string>  face<Gt, Fb>::parameters()
     return params;
 };
 
+template < class Gt, class Fb >
+std::vector<std::string>  face<Gt, Fb>::initial_conditions()
+{
+    std::vector<std::string> ics;
+    for(auto& itr : _initial_conditions)
+    {
+        ics.push_back(itr.first);
+    }
+    return ics;
+};
 
 
 template < class Gt, class Fb >

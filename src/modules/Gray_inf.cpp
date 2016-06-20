@@ -52,7 +52,7 @@ void Gray_inf::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     auto id = elem->cell_id;
     double C = 2.;
     double S0 = 1;
-    double SI = elem->get_parameter("sm")/100.;
+    double SI = elem->get_initial_condition("sm")/100.;
 
     double TI = 272.;
 
@@ -103,7 +103,7 @@ void Gray_inf::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     }
 
 
-    if(elem->get_parameter("sm") != -9999.)
+    if( !is_nan(elem->get_initial_condition("sm")))
     {
         elem->set_face_data("total_excess",d->total_excess);
         elem->set_face_data("total_inf",d->total_inf);
