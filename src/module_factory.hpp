@@ -34,6 +34,7 @@ namespace pt = boost::property_tree;
 #include "point_mode.hpp"
 #include "threshold_p_phase.hpp"
 #include "Gray_inf.hpp"
+#include "Longwave_from_obs.hpp"
 
 class module_factory
 {
