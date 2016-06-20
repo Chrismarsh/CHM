@@ -6,9 +6,13 @@
 #include "ogr_api.h"
 #include <gdal_alg.h>
 #include "ogr_srs_api.h"
+
+
 #include "cpl_conv.h" /* for CPLMalloc() */
 #include <cpl_string.h>
 #include <cpl_error.h>
+
+
 struct tri
 {
     //holds the rasterized triangle along with the masked array.
@@ -23,6 +27,7 @@ struct tri
 
     //if 1, then just ignore this triangle due to edge effects
     int is_nan;
+    double area; //triangle area in m^2
 
 };
 

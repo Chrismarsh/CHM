@@ -14,9 +14,14 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     const char *wkt = GDALGetProjectionRef(raster);
     OGRSpatialReferenceH srs = OSRNewSpatialReference(wkt);
 
+    //determine if we need to enable the projection specific codepath for dealing with lat-long
+    int is_geographic = OSRIsGeographic(srs);
+//    printf("Is geographic = %d",is_geographic);
 
     GDALDriverH driver = GDALGetDriverByName("Memory"); //MEM ESRI Shapefile
-    GDALDatasetH DS = GDALCreate(driver, "", 0, 0, 0, GDT_Unknown, NULL);
+    GDALDatasetH DS = NULL;
+    DS = GDALCreate(driver, "", 0, 0, 0, GDT_Unknown, NULL);
+
 //    GDALDriverH driver = GDALGetDriverByName("ESRI Shapefile"); //MEM ESRI Shapefile
 //    GDALDatasetH DS = GDALCreate(driver, "tri.shp", 0, 0, 0, GDT_Unknown, NULL);
 
@@ -33,6 +38,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
         printf("Failed to create ring");
         exit(1);
     }
+//    OGR_G_AssignSpatialReference(ring,srs);
     OGR_G_AddPoint_2D(ring, triorg[0], triorg[1]);
     OGR_G_AddPoint_2D(ring, tridest[0], tridest[1]);
     OGR_G_AddPoint_2D(ring, triapex[0], triapex[1]);
@@ -49,7 +55,41 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
         printf("Failed to create poly");
         exit(1);
     }
+//    OGR_G_AssignSpatialReference(poly,srs);
     OGR_G_AddGeometry(poly, ring);
+
+    //triangle area in m^2
+    double area=0;
+/**
+ * Uses a Equal area projection to determine the area in m^2 of a triangle
+ */
+    if(is_geographic)
+    {
+        const char *wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+
+        OGRSpatialReferenceH srs_out = OSRNewSpatialReference(wkt_out);
+        if (!srs_out)
+        {
+            printf("error");
+            exit(1);
+        }
+        OGRSpatialReferenceH trans = OCTNewCoordinateTransformation(srs, srs_out);
+
+        OGRGeometryH poly_prj = OGR_G_Clone(poly);
+        OGR_G_Transform(poly_prj, trans);
+
+        area = OGR_G_Area(poly_prj);   //    OGR_G_GetArea() is deprecated
+
+        OGR_G_DestroyGeometry(poly_prj);
+        OCTDestroyCoordinateTransformation(trans);
+    }
+    else
+    {
+        area = OGR_G_Area(poly); //use a non projected triangle
+    }
+/**
+ * Done transformation
+ */
 
     OGRFeatureH feature = OGR_F_Create(OGR_L_GetLayerDefn(layer));
     OGR_F_SetGeometry(feature, poly);
@@ -63,6 +103,8 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
 
     double pixel_width = gt[1];
     double pixel_height = gt[5];
+
+
 
     OGREnvelope bbox;
     OGR_G_GetEnvelope(poly, &bbox);
@@ -91,9 +133,11 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     new_gt[4] = 0.0;
     new_gt[5] = gt[5];
 
-    GDALDriverH mem_drv = GDALGetDriverByName("MEM"); //MEM
+    GDALDriverH mem_drv = GDALGetDriverByName("MEM");
+//    GDALDriverH mem_drv = GDALGetDriverByName("GTiff");
     GDALDatasetH rvds=NULL; //output rasterized triangle
     rvds = GDALCreate(mem_drv, "", xsize, ysize, 1, GDT_Byte , NULL); //GDT_Byte
+//    rvds = GDALCreate(mem_drv, "triraster.tiff", xsize, ysize, 1, GDT_Byte , NULL); //GDT_Byte
     GDALSetGeoTransform(rvds, new_gt);
 
     char *pszSRS_WKT = NULL;
@@ -213,6 +257,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     }
 
     t->rasterize_triangle = array;
+    t->area = area;
 
 //    GDALDestroyDriver(driver);
 //    GDALDestroyDriver(mem_drv);

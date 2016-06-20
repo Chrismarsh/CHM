@@ -10,17 +10,33 @@
 //#include <cpl_string.h>
 
 
-
 int triunsuitable(vertex triorg, vertex tridest, vertex triapex, REAL area, struct behavior *b)
 {
 
-    if(area > b->maxarea)
+    struct tri* t=NULL;
+
+    const char *wkt = GDALGetProjectionRef(b->hDataset);
+    OGRSpatialReferenceH srs = OSRNewSpatialReference(wkt);
+    int isGeographic = OSRIsGeographic(srs);
+//    printf("DEM is geographic = %d\n",b->isGeographic);
+
+    //if we are lat/long geographic, we have to project the triangle, which requires a call to create triangle
+    if(isGeographic)
+    {
+        t = createTriangle(triorg, tridest, triapex, b->hDataset);
+        area = t->area; //override with our projection calculated area
+    }
+
+    //if we are already projected, we can try to skip the createTriangel call. So try to bail early
+    if(area >  b->maxarea)
         return 1;
 
     if(area <= b->minarea)
         return 0;
 
-    struct tri* t = createTriangle(triorg, tridest, triapex, b->hDataset);
+    if(!isGeographic)
+        t = createTriangle(triorg, tridest, triapex, b->hDataset);
+
 
     int errormetric = b->tol_method; // 1 is the default
     int is_invalid = 0;

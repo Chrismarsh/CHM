@@ -254,39 +254,51 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     //loop over parameter name
 
     std::set<std::string> parameters;
-    for (auto &itr : mesh.get_child("parameters"))
+    try
     {
-        i=0; // reset evertime we get a new parameter set
-        auto name = itr.first.data();
-        LOG_DEBUG << "Applying parameter: " << name;
-        for (auto &jtr : itr.second)
+        for (auto &itr : mesh.get_child("parameters"))
         {
-            auto face = _faces.at(i);
-            double value = jtr.second.get_value<double>();
-//            value == -9999. ? value = nan("") : value;
-            face->set_parameter(name,value);
-            i++;
-        }
+            i = 0; // reset evertime we get a new parameter set
+            auto name = itr.first.data();
+            LOG_DEBUG << "Applying parameter: " << name;
+            for (auto &jtr : itr.second)
+            {
+                auto face = _faces.at(i);
+                double value = jtr.second.get_value<double>();
+                //            value == -9999. ? value = nan("") : value;
+                face->set_parameter(name, value);
+                i++;
+            }
 
-        parameters.insert(name);
+            parameters.insert(name);
+        }
+    }catch(pt::ptree_bad_path& e)
+    {
+        // we don't have this section, no worries
     }
 
     std::set<std::string> ics;
-    for (auto &itr : mesh.get_child("initial_conditions"))
+    try
     {
-        i=0; // reset evertime we get a new parameter set
-        auto name = itr.first.data();
-        LOG_DEBUG << "Applying IC: " << name;
-        for (auto &jtr : itr.second)
+        for (auto &itr : mesh.get_child("initial_conditions"))
         {
-            auto face = _faces.at(i);
-            double value = jtr.second.get_value<double>();
-//            alue == -9999. ? value = nan("") : value;
-            face->set_initial_condition(name,value);
-            i++;
-        }
+            i=0; // reset evertime we get a new parameter set
+            auto name = itr.first.data();
+            LOG_DEBUG << "Applying IC: " << name;
+            for (auto &jtr : itr.second)
+            {
+                auto face = _faces.at(i);
+                double value = jtr.second.get_value<double>();
+    //            alue == -9999. ? value = nan("") : value;
+                face->set_initial_condition(name,value);
+                i++;
+            }
 
-        ics.insert(name);
+            ics.insert(name);
+        }
+    }catch(pt::ptree_bad_path& e)
+    {
+        // we don't have this section, no worries
     }
     _num_faces = this->number_of_faces();
     _num_vertex = this->number_of_vertices();
