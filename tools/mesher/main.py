@@ -78,11 +78,14 @@ def main():
     base_dir = base_name + '/'
 
 # figure out what srs out input is in, we will reproject everything to this
-    src_ds = gdal.Open(dem_filename)
-    wkt = src_ds.GetProjection()
-    srs = osr.SpatialReference()
-    srs.ImportFromWkt(wkt)
-    EPSG = int(srs.GetAttrValue("AUTHORITY", 1))
+    if hasattr(X, 'EPSG'):
+        EPSG = X.EPSG
+    else:
+        src_ds = gdal.Open(dem_filename)
+        wkt = src_ds.GetProjection()
+        srs = osr.SpatialReference()
+        srs.ImportFromWkt(wkt)
+        EPSG = int(srs.GetAttrValue("AUTHORITY", 1))
 
     is_geographic = srs.IsGeographic()
 
