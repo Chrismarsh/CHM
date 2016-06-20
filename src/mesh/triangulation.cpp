@@ -163,9 +163,14 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
 std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 {
 
-    size_t nvertex_toread = mesh.get<int>("mesh.nvertex");
+    size_t nvertex_toread = mesh.get<size_t>("mesh.nvertex");
     LOG_DEBUG << "Reading in #vertex=" << nvertex_toread;
     size_t i=0;
+
+    //paraview struggles with lat/long as it doesn't seem to have the accuracy. So we need to scale up lat-long.
+    int is_geographic = mesh.get<int>("mesh.is_geographic");
+    double scale = is_geographic == 1 ? 100000. : 1.;
+
     for (auto &itr : mesh.get_child("mesh.vertex"))
     {
         std::vector<double> items;
@@ -174,7 +179,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         {
             items.push_back(jtr.second.get_value<double>());
         }
-        Point_3 pt(items[0], items[1], items[2]);
+        Point_3 pt( items[0]*scale, items[1]*scale, items[2]);
 
         Vertex_handle Vh = this->create_vertex();
         Vh->set_point(pt);

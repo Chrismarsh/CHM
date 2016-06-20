@@ -26,6 +26,8 @@ def main():
 
     # Assinge to local variables
     EPSG=X.EPSG
+
+
     dem_filename=X.dem_filename
     max_area=X.max_area
 
@@ -79,11 +81,14 @@ def main():
     subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d"' % (dem_filename, base_dir + base_name+'_projected.tif',EPSG)], shell=True)
     src_ds=gdal.Open(base_dir + base_name+'_projected.tif')
 
+
     if src_ds is None:
         print 'Unable to open %s' % dem_filename
         exit(1)
 
     # #######
+
+
 
     gt = src_ds.GetGeoTransform()
     #x,y origin
@@ -274,6 +279,7 @@ def main():
     wkt = src_ds.GetProjection()
     srs = osr.SpatialReference()
     srs.ImportFromWkt(wkt)
+    is_geographic = srs.IsGeographic()
 
     # create the layer
     layer = output_usm.CreateLayer(base_name, srs, ogr.wkbPolygon)
@@ -294,7 +300,7 @@ def main():
 
     triangles_to_fix=[]
     mesh['mesh']['elem'] = []
-
+    mesh['mesh']['is_geographic'] = is_geographic
 
     # holds paratmers and initial conditions for CHM
     params = {}
