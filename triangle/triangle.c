@@ -2927,9 +2927,8 @@ void parsecommandline(argc, argv, b)
         if( b->hDataset == NULL )
         {
             printf("Error: unable to open DEM file");
+            exit(1);
         }
-
-
 
     }
     if (!strcmp(&b->innodefilename[strlen(b->innodefilename) - 5], ".node"))

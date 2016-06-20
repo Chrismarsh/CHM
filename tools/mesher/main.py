@@ -196,6 +196,7 @@ def main():
 
         f.write('0\n')
 
+    print(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir + poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)])
     if not reuse_mesh:
         print('Running Triangle')
         subprocess.check_call(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir +
