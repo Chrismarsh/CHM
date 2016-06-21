@@ -229,13 +229,14 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
         if(! sbal->do_data_tstep() )
         {
             g->dead=1;
-//            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
         }
     }catch(module_error& e)
     {
         g->dead=1;
         LOG_DEBUG << boost::diagnostic_information(e);
-//        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
+        auto details = "("+std::to_string(elem->center().x()) + "," + std::to_string(elem->center().y())+","+std::to_string(elem->center().z())+")";
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snobal died. Triangle center = "+details));
     }
 
 
