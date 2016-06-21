@@ -137,7 +137,8 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     }catch(std::exception& e)
     {
         LOG_DEBUG << e.what();
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snowpack error"));
+        auto details = "("+std::to_string(elem->center().x()) + "," + std::to_string(elem->center().y())+","+std::to_string(elem->center().z())+")";
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snowpack died. Triangle center = "+details));
     }
 
 

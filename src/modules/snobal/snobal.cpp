@@ -231,6 +231,7 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
             g->dead=1;
             BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
         }
+//        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died TEST ALWAYS THROWS"));
     }catch(module_error& e)
     {
         g->dead=1;

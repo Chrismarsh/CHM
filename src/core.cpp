@@ -1403,20 +1403,24 @@ void core::run()
 
                 if (itr.at(0)->parallel_type() == module_base::parallel::data)
                 {
+                    ompException oe;
                     #pragma omp parallel for
                     for (size_t i = 0; i < _mesh->size_faces(); i++)
                     {
                         auto face = _mesh->face(i);
                         if(point_mode.enable && face->_debug_name != _outputs[0].name )
                             continue;
+                        oe.Run([&]
+                               {
+                                   //module calls
+                                   for (auto &jtr : itr)
+                                   {
+                                        jtr->run(face, _global);
+                                   }
 
-
-                        //module calls
-                        for (auto &jtr : itr)
-                        {
-                            jtr->run(face, _global);
-                        }
+                               });
                     }
+                    oe.Rethrow();
 
                 } else
                 {

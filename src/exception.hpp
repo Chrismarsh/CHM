@@ -57,3 +57,35 @@ struct mesh_lookup_error : virtual mesh_error{};
 
 struct interpolation_error : virtual exception_base{};
 
+class ompException
+{
+    std::exception_ptr Ptr;
+    std::mutex Lock;
+public:
+    ompException() : Ptr(nullptr)
+    {}
+
+    ~ompException()
+    {
+//        this->Rethrow();
+    }
+
+    void Rethrow()
+    {
+        if (this->Ptr) std::rethrow_exception(this->Ptr);
+    }
+
+    template <typename Function, typename... Parameters>
+    void Run(Function f, Parameters... params)
+    {
+        try
+        {
+            f(params...);
+        }
+        catch (...)
+        {
+            std::unique_lock<std::mutex> guard(this->Lock);
+            this->Ptr = std::current_exception();
+        }
+    }
+};
