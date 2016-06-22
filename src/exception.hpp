@@ -57,6 +57,7 @@ struct mesh_lookup_error : virtual mesh_error{};
 
 struct interpolation_error : virtual exception_base{};
 
+//http://stackoverflow.com/questions/11828539/elegant-exceptionhandling-in-openmp
 class ompException
 {
     std::exception_ptr Ptr;
@@ -67,7 +68,7 @@ public:
 
     ~ompException()
     {
-//        this->Rethrow();
+
     }
 
     void Rethrow()
