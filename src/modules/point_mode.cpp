@@ -9,6 +9,8 @@ point_mode::point_mode(config_file cfg)
      vw = cfg.get<bool>("provide.u",true);
      p = cfg.get<bool>("provide.p",true);
      ilwr = cfg.get<bool>("provide.ilwr",true);
+     iswr = cfg.get<bool>("provide.iswr",true);
+     vw_dir = cfg.get<bool>("provide.vw_dir",true);
 
     if(t)
     {
@@ -25,8 +27,12 @@ point_mode::point_mode(config_file cfg)
     if(vw)
     {
         depends_from_met("u");
-        depends_from_met("vw_dir");
         provides("vw");
+    }
+
+    if(vw_dir)
+    {
+        depends_from_met("vw_dir");
         provides("vw_dir");
     }
 
@@ -41,6 +47,13 @@ point_mode::point_mode(config_file cfg)
         depends_from_met("Qli");
         provides("ilwr");
     }
+
+    if(iswr)
+    {
+        depends_from_met("Qsi");
+        provides("iswr");
+    }
+
 
 }
 
@@ -70,9 +83,15 @@ void point_mode::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
         double su = global_param->stations.at(0)->get("u");
 
         //make sure we don't have zero windpseeds
-        su = std::max(su,0.5);
+        //su = std::max(su,0.5);
         elem->set_face_data("vw",su);
-        elem->set_face_data("vw_dir",global_param->stations.at(0)->get("vw_dir")); //TODO: real wind direction
+        //elem->set_face_data("vw_dir",global_param->stations.at(0)->get("vw_dir")); //TODO: real wind direction
+    }
+
+    if(vw_dir)
+    {
+        double sdir = global_param->stations.at(0)->get("vw_dir");
+        elem->set_face_data("vw_dir",sdir);
     }
 
     if(p)
