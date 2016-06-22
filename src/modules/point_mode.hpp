@@ -23,6 +23,8 @@ public:
     bool vw ;
     bool p ;
     bool ilwr ;
+    bool iswr ;
+    bool vw_dir ;
 };
 
 
