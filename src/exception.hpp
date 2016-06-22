@@ -2,7 +2,7 @@
 
 #include <boost/exception/all.hpp>
 #include <boost/throw_exception.hpp>
-
+#include <mutex>
 #include <string>
 
 struct exception_base: virtual std::exception, virtual boost::exception { };
