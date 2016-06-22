@@ -25,6 +25,7 @@ point_mode::point_mode(config_file cfg)
     if(vw)
     {
         depends_from_met("u");
+        depends_from_met("vw_dir");
         provides("vw");
         provides("vw_dir");
     }
@@ -71,7 +72,7 @@ void point_mode::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
         //make sure we don't have zero windpseeds
         su = std::max(su,0.5);
         elem->set_face_data("vw",su);
-        elem->set_face_data("vw_dir",270.); //TODO: real wind direction
+        elem->set_face_data("vw_dir",global_param->stations.at(0)->get("vw_dir")); //TODO: real wind direction
     }
 
     if(p)
