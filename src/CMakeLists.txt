@@ -106,6 +106,7 @@ set (HEADER_FILES
 		modules/snobal
         libmaw
 		meteoio
+		meteoio/meteoLaws
         interpolation
         timeseries
         utility

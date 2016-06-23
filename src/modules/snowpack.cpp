@@ -56,7 +56,7 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     Mdata.vw_drift =  Mdata.vw ;//mio::IOUtils::nodata;
     Mdata.dw_drift = Mdata.dw;//0;
 
-    Mdata.tss= mio::IOUtils::nodata; //Constants::undefined;;//
+
 
     Mdata.iswr      = elem->face_data("iswr");
 
@@ -81,12 +81,12 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
 
 
     double lw_in = elem->face_data("ilwr");
-    Mdata.ea  = SnLaws::AirEmissivity(lw_in, Mdata.ta, "default"); //atmospheric emissivity!
-
+//    Mdata.ea  = SnLaws::AirEmissivity(lw_in, Mdata.ta, "default"); //atmospheric emissivity!
+    Mdata.ea = mio::Atmosphere::blkBody_Emissivity(lw_in, Mdata.ta);
     double thresh_rain = 2 + 273.15;
 
-    Mdata.psum_ph = (Mdata.ta>= thresh_rain) ? 1. : 0.;
-//    Mdata.psum_ph = elem->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
+//    Mdata.psum_ph = (Mdata.ta>= thresh_rain) ? 1. : 0.;
+    Mdata.psum_ph = elem->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
     Mdata.psum = elem->face_data("p");
 
 
@@ -101,7 +101,8 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
 //    Mdata.ts.push_back(soil_meas("TS1"));
 //    Mdata.zv_ts.push_back(soil_meas("HTS1"));
 
-    Mdata.ts0 = 273.15-4.;
+    Mdata.tss=  data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
+    Mdata.ts0 = Mdata.tss;//mio::IOUtils::nodata;//273.15-4.;
 
 
     Mdata.hs = mio::IOUtils::nodata;
