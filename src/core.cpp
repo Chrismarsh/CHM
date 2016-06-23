@@ -1443,6 +1443,7 @@ void core::run()
                 LOG_ERROR << "Exception has occured. Timeseries and meshes WILL BE INCOMPLETE!";
                 *_end_ts = _global->posix_time();
                 done = true;
+                LOG_ERROR << boost::diagnostic_information(e);
 //                for (auto &itr : _outputs)
 //                {
 //                    //save the full timeseries

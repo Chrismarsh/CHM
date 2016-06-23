@@ -13,7 +13,7 @@ set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
-option(PV_FILTER "Build Paraview time filter"  OFF )
+option(PV_FILTER "Build Paraview time filter"  ON )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 
@@ -44,7 +44,7 @@ SET(DATA_QA OFF CACHE BOOL "Data Quality Assurance outputs ON or OFF")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 #some machines need to be told where odd system libraries are, so put them here
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
 
 #for meton
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
