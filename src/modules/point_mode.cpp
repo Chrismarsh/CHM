@@ -105,5 +105,11 @@ void point_mode::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
         elem->set_face_data("ilwr", silwr);
 
     }
+    if(iswr)
+    {
+        double iswr = global_param->stations.at(0)->get("Qsi");
+        elem->set_face_data("iswr", iswr);
+
+    }
 }
 
