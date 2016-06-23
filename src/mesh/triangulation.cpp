@@ -155,7 +155,7 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
         item.put_value(face->get_parameter(parameter));
         subtree.push_back(std::make_pair("",item));
     }
-    out.put_child( pt::ptree::path_type("parameters."+parameter),subtree);
+    out.put_child( pt::ptree::path_type(parameter),subtree);
 
     pt::write_json(output_path,out);
 
