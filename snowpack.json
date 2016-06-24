@@ -19,7 +19,7 @@
 	{
 		"MAX_NUMBER_MEAS_TEMPERATURES":1,
 //		"FIXED_POSITIONS" : -0.10,
-		"ALPINE3D" : false,
+		"ALPINE3D" : true,
 		"SNOW_EROSION" : false,
 		"MEAS_INCOMING_LONGWAVE" : true,
 		"THRESH_RAIN" : 2,

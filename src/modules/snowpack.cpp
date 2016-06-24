@@ -105,16 +105,19 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     Mdata.ts0 = Mdata.tss;//mio::IOUtils::nodata;//273.15-4.;
 
 
-    Mdata.hs = mio::IOUtils::nodata;
+//    Mdata.hs = mio::IOUtils::nodata;
 
     Mdata.diff      = elem->face_data("iswr_diffuse");
     Mdata.dir_h     = elem->face_data("iswr_direct");
     Mdata.elev      = global_param->solar_el()*mio::Cst::to_rad;
 
-    Mdata.tss_a12h = Constants::undefined;
-    Mdata.tss_a24h = Constants::undefined;
-    Mdata.hs_a3h = Constants::undefined;
-    Mdata.hs_rate = Constants::undefined;
+//    Mdata.tss_a12h = Constants::undefined;
+//    Mdata.tss_a24h = Constants::undefined;
+//    Mdata.hs_a3h = Constants::undefined;
+//    Mdata.hs_rate = Constants::undefined;
+
+    data->cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
+    data->meteo->compMeteo(Mdata,*(data->Xdata),false); // no canopy model
 
     // To collect surface exchange data for output
     SurfaceFluxes surface_fluxes;
@@ -125,15 +128,10 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
 
     // Boundary condition (fluxes)
     BoundCond Bdata;
-    data->meteo->compMeteo(Mdata,*(data->Xdata),false); // no canopy model
-
-    data->cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
 
     try
     {
         data->sp->runSnowpackModel(Mdata, *(data->Xdata), data->cum_precip, Bdata,surface_fluxes);
-//        data->stability->checkStability(Mdata, *(data->Xdata));
-
         surface_fluxes.collectSurfaceFluxes(Bdata, *(data->Xdata), Mdata);
     }catch(std::exception& e)
     {
@@ -191,10 +189,11 @@ void Lehning_snowpack::init(mesh domain, boost::shared_ptr <global> global_param
 
         //setup critical keys.
         //overwrite the user if a dangerous key is set
-        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(1)); // Hz. I think this should be just 1 for us.
+//        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(1)); // Hz. I think this should be just 1 for us.
+        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(4)); // Hz. I think this should be just 1 for us.
         d->config.addKey("MEAS_TSS", "Snowpack", "false");
-        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt() / 60) ); 	//minutes
 
+        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt() /60 ) ); //specified as  minutes
 
         d->Spackconfig = boost::make_shared<SnowpackConfig>(d->config);
 
@@ -219,10 +218,10 @@ void Lehning_snowpack::init(mesh domain, boost::shared_ptr <global> global_param
 
         SSdata.meta.stationName = cfg.get<std::string>("sno.station_name");
         SSdata.meta.position.setAltitude(face->get_z());
-    //    SSdata.meta.position.setXY(face->get_x(),face->get_y(),face->get_z());
-       // SSdata.meta.setSlope(face->slope() ,face->aspect());
 
-//        SSdata.meta.setSlope(face->slope() * 180./3.14159,face->aspect()* 180./3.14159);
+        SSdata.meta.position.setXY(face->get_x(),face->get_y(),face->get_z());
+        SSdata.meta.setSlope(face->slope() ,face->aspect());
+        SSdata.meta.setSlope(face->slope() * 180./3.14159,face->aspect()* 180./3.14159);
 
 
         SSdata.HS_last = 0.; //cfg.get<double>("sno.HS_Last");
@@ -249,14 +248,12 @@ void Lehning_snowpack::init(mesh domain, boost::shared_ptr <global> global_param
 //        SSdata.Ldata
 
 
+
         SSdata.Canopy_Height = cfg.get<double>("sno.CanopyHeight");
         SSdata.Canopy_LAI = cfg.get<double>("sno.CanopyLeafAreaIndex");
         SSdata.Canopy_Direct_Throughfall = cfg.get<double>("sno.CanopyDirectThroughfall");
 
         SSdata.ErosionLevel = cfg.get<double>("sno.ErosionLevel");
-
-
-
 
         d->Xdata = boost::make_shared<SnowStation>(false,false);
         d->Xdata->initialize(SSdata,0);
