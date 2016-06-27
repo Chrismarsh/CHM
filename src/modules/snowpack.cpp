@@ -189,8 +189,7 @@ void Lehning_snowpack::init(mesh domain, boost::shared_ptr <global> global_param
 
         //setup critical keys.
         //overwrite the user if a dangerous key is set
-//        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(1)); // Hz. I think this should be just 1 for us.
-        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(4)); // Hz. I think this should be just 1 for us.
+        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(global_param->dt() / 4)); // Hz. Number of met per hour
         d->config.addKey("MEAS_TSS", "Snowpack", "false");
 
         d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt() /60 ) ); //specified as  minutes
