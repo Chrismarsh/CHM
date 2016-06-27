@@ -81,8 +81,7 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
 
 
     double lw_in = elem->face_data("ilwr");
-//    Mdata.ea  = SnLaws::AirEmissivity(lw_in, Mdata.ta, "default"); //atmospheric emissivity!
-    Mdata.ea = mio::Atmosphere::blkBody_Emissivity(lw_in, Mdata.ta);
+    Mdata.ea = mio::Atmosphere::blkBody_Emissivity(lw_in, Mdata.ta); //in line with Alpine3D
     double thresh_rain = 2 + 273.15;
 
 //    Mdata.psum_ph = (Mdata.ta>= thresh_rain) ? 1. : 0.;
@@ -102,8 +101,9 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
 //    Mdata.zv_ts.push_back(soil_meas("HTS1"));
 
     Mdata.tss=  data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
-    Mdata.ts0 = Mdata.tss;//mio::IOUtils::nodata;//273.15-4.;
 
+    //setting this to tss is inline with Alpine3d if there is no soil node. However, it might make more sense to use a const ground temp?
+    Mdata.ts0 = Mdata.tss;//273.15-4.;
 
 //    Mdata.hs = mio::IOUtils::nodata;
 
