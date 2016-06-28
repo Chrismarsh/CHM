@@ -110,12 +110,6 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     OGR_G_GetEnvelope(poly, &bbox);
 
     //extents of the rasterized triangle
-
-//    bbox.MinX -= 10;
-//    bbox.MaxX += 10;
-//    bbox.MinY -= 10;
-//    bbox.MaxY += 10;
-
     double* new_gt = malloc(sizeof(double) * 6);
 
     int x1 = (int) ((bbox.MinX - originX) / pixel_width);
@@ -126,6 +120,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     int xsize = x2 - x1;
     int ysize = y2 - y1;
 
+    //make a window into the main extent
     new_gt[0] = gt[0] + (x1 * gt[1]);
     new_gt[1] = gt[1];
     new_gt[2] = 0.0;
@@ -133,9 +128,11 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     new_gt[4] = 0.0;
     new_gt[5] = gt[5];
 
+
+    GDALDatasetH rvds=NULL; //output rasterized triangle
+
     GDALDriverH mem_drv = GDALGetDriverByName("MEM");
 //    GDALDriverH mem_drv = GDALGetDriverByName("GTiff");
-    GDALDatasetH rvds=NULL; //output rasterized triangle
     rvds = GDALCreate(mem_drv, "", xsize, ysize, 1, GDT_Byte , NULL); //GDT_Byte
 //    rvds = GDALCreate(mem_drv, "triraster.tiff", xsize, ysize, 1, GDT_Byte , NULL); //GDT_Byte
     GDALSetGeoTransform(rvds, new_gt);
@@ -167,22 +164,27 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
         printf("Return err was %d\n",err);
         exit(1);
     }
-//
+
 
     OSRDestroySpatialReference(srs);
 
     GDALRasterBandH dem = GDALGetRasterBand(raster, 1);
     GDALRasterBandH masked = GDALGetRasterBand(rvds, 1);
 
-    //check for trivial out of bounds
-    if (y1 + ysize >= GDALGetRasterBandYSize(dem))
-    {
-        ysize = GDALGetRasterBandYSize(dem) - y1;
 
-    }
-    if (x1 + xsize >= GDALGetRasterBandXSize(dem))
+    //we can end up 1 pixel out of bounds of the main DEM.
+    //if this happens, the calls to fill the masked array will fail. So if we end up off by one
+    //shrink the domain to make sure it's inline with the main DEM bounds
+
+    int y_raster_size = GDALGetRasterBandYSize(dem);
+    int x_raster_size = GDALGetRasterBandXSize(dem);
+    if (y1 + ysize >= y_raster_size)
     {
-        xsize = GDALGetRasterBandXSize(dem) - x1;
+        ysize = y_raster_size - y1;
+    }
+    if (x1 + xsize >=x_raster_size)
+    {
+        xsize = x_raster_size - x1;
     }
 
     struct masked_array* array=  malloc_MA(xsize,ysize);
@@ -191,7 +193,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     array->gt = new_gt; //store our new reference
 
     GDALRasterIO(dem, GF_Read, x1, y1, xsize, ysize,
-                 array->data, xsize, ysize,GDT_Float32,
+                 array->data, xsize, ysize, GDT_Float32,
                  0, 0);
 
     GDALRasterIO(masked, GF_Read, 0, 0, xsize, ysize,
@@ -208,10 +210,10 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     /*
      * VERTEX 0
      */
-    xyToPixel(triorg[0],triorg[1],&px,&py,new_gt,rvds);
+    xyToPixel(triorg[0],triorg[1],&px,&py,new_gt,xsize,ysize);
 
 
-    pz = get_MA(array,py,px);
+    pz = get_MA_data(array,py,px);
 
     t->v0[0] = px;
     t->v0[1] = py;
@@ -223,8 +225,8 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     /*
      * VERTEX 1
      */
-    xyToPixel(tridest[0],tridest[1],&px,&py,new_gt,rvds);
-    pz = get_MA(array,py,px);
+    xyToPixel(tridest[0],tridest[1],&px,&py,new_gt,xsize,ysize);
+    pz = get_MA_data(array,py,px);
 
     t->v1[0] = px;
     t->v1[1] = py;
@@ -237,8 +239,8 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     /*
      * VERTEX 2
      */
-    xyToPixel(tridest[0],triapex[1],&px,&py,new_gt,rvds);
-    pz = get_MA(array,py,px);
+    xyToPixel(triapex[0],triapex[1],&px,&py,new_gt,xsize,ysize);
+    pz = get_MA_data(array,py,px);
 
     t->v2[0] = px;
     t->v2[1] = py;
@@ -252,9 +254,9 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
     {
 //        printf("Triangle vertexes are all nan\n");
         t->is_nan = 1;
-//        return NULL;
-//        exit(-1);
+
     }
+
 
     t->rasterize_triangle = array;
     t->area = area;
@@ -294,7 +296,7 @@ struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDa
  * @param gt
  * @param raster
  */
-void xyToPixel(double x, double y, int* px, int* py, const double *gt, const void *raster)
+void xyToPixel(double x, double y, int* px, int* py, const double *gt, int max_x, int max_y)
 {
 //    adfGeoTransform[0] /* top left x */
 //    adfGeoTransform[1] /* w-e pixel resolution */
@@ -306,11 +308,20 @@ void xyToPixel(double x, double y, int* px, int* py, const double *gt, const voi
     *px = (int) ((x - gt[0]) / gt[1]);  // x pixel
     *py = (int) ((y - gt[3]) / gt[5]);  // y pixel
 
-    //trivial out of bound issue
-    if (*px == GDALGetRasterBandXSize(raster))
-        *px = *px - 1;
-    if (*py == GDALGetRasterBandYSize(raster))
-        *py = *py - 1;
+
+    //out of bound issue when we are off by one
+    if (*px == max_x)
+        *px = max_x - 1;
+
+    if (*py == max_y)
+        *py = max_y - 1;
+
+    if(*py == -1)
+        *py = 0;
+
+    if(*px == -1)
+        *px = 0;
+
 }
 
 /**
@@ -321,19 +332,19 @@ void xyToPixel(double x, double y, int* px, int* py, const double *gt, const voi
  * @param y
  * @return
  */
-double getRasterCell(const double *gt, const void *raster, double x, double y)
-{
-
-    int px,py;
-    xyToPixel(x,y,&px,&py,gt,raster);
-    float pafScanline;
-
-    GDALRasterIO(raster, GF_Read, px, py, 1, 1,
-                 &pafScanline, 1, 1, GDT_Float32,
-                 0, 0);
-
-    return pafScanline;
-}
+//double getRasterCell(const double *gt, const void *raster, double x, double y)
+//{
+//
+//    int px,py;
+//    xyToPixel(x,y,&px,&py,gt,max_x,max_y);
+//    float pafScanline;
+//
+//    GDALRasterIO(raster, GF_Read, px, py, 1, 1,
+//                 &pafScanline, 1, 1, GDT_Float32,
+//                 0, 0);
+//
+//    return pafScanline;
+//}
 
 void destory_triangle(struct tri* t)
 {

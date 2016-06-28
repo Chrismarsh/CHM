@@ -77,6 +77,13 @@ int is_invalid_mean_elevation_diff(struct tri* t, double maxtolerance)
 
 int is_invalid_tolerance(struct tri* t, double maxtolerance)
 {
+    //Xs or Y s are collinear. This seems to happen if we've set a min triangle area less than the pixel resolution of our dem
+    //when this happens, all the points end up collinear in 1 axis, and anything that depends on this
+    if(  (t->v0[0] == 0 && t->v1[0] == 0 && t->v2[0] == 0) || (t->v0[1] == 0 && t->v1[1] == 0 && t->v2[1] == 0) )
+    {
+//        printf("Vertexes are collinear");
+        return 0; //bail out, this triangle is fine.
+    }
 
     //create the vectors veco0 and
     double u1,u2,u3;
@@ -96,13 +103,13 @@ int is_invalid_tolerance(struct tri* t, double maxtolerance)
 
     //following http://www.had2know.com/academics/equation-plane-through-3-points.html
     //create the two vectors
-    u1 = t->v1[0] - t->v0[0];
-    u2 = t->v1[1] - t->v0[1];
-    u3 = t->v1[2] - t->v0[2];
+    u1 = t->v1[0] - o1;
+    u2 = t->v1[1] - o2;
+    u3 = t->v1[2] - o3;
 
-    v1 = t->v2[0] - t->v0[0];
-    v2 = t->v2[1] - t->v0[1];
-    v3 = t->v2[2] - t->v0[2];
+    v1 = t->v2[0] - o1;
+    v2 = t->v2[1] - o2;
+    v3 = t->v2[2] - o3;
 
     //calculate the normal vector via cross product
     double a, b, c;
@@ -135,9 +142,9 @@ int is_invalid_tolerance(struct tri* t, double maxtolerance)
         }
     }
 
-    //bail
+    //bail, somehow we have no raster cells under out triangle./
     if (n == 0.)
-        return 0; // don't bother checking again
+        return 1;
 
     rmse /= n;
 

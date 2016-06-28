@@ -49,7 +49,7 @@ def main():
 
 
     max_tolerance=X.max_tolerance
-    min_area=X.min_area
+
     errormetric=X.errormetric
 
     reuse_mesh = False
@@ -110,6 +110,13 @@ def main():
     pixel_width = gt[1]
     pixel_height = gt[5]
 
+
+    if hasattr(X,'min_area'):
+        min_area=X.min_area
+    else:
+        min_area = pixel_width * pixel_height  # if the user doesn't specify, then limit to the underlying resolution. No point going past this!
+
+
     xmax = xmin + pixel_width * src_ds.RasterXSize
     ymin = ymax + pixel_height * src_ds.RasterYSize  #pixel_height is negative
 
@@ -169,7 +176,7 @@ def main():
     exec_string = 'ogr2ogr -overwrite %s %s  -nlt LINESTRING' % (base_dir + 'line_'+plgs_shp, base_dir +
                                                                  plgs_shp )
     if simplify:
-        exec_string = exec_string + ' -simplify ' + simplify_tol
+        exec_string = exec_string + ' -simplify ' + str(simplify_tol)
 
     subprocess.check_call(exec_string, shell=True)
 
@@ -213,9 +220,10 @@ def main():
 
         f.write('0\n')
 
-    print(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir + poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)])
+
     if not reuse_mesh:
         print('Running Triangle')
+        print(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir + poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)])
         subprocess.check_call(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir +
                                                              poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)],shell=True)
         # subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
