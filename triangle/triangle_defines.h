@@ -639,7 +639,7 @@ struct behavior
     REAL maxtolerance;
     int tol_method; //tolerance method to use
     GDALDatasetH  hDataset;
-    int isGeographic; //is the above dataset geographic?
+
 
 /* Variables for file names.                                                 */
 

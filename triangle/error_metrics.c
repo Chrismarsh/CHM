@@ -144,14 +144,17 @@ int is_invalid_tolerance(struct tri* t, double maxtolerance)
 
     //bail, somehow we have no raster cells under out triangle./
     if (n == 0.)
-        return 1;
+        return 0;
 
     rmse /= n;
 
     rmse = sqrt(rmse);
 
-    if(rmse > maxtolerance)
+    if(rmse >= maxtolerance)
+    {
         return 1;
+    }
+
 
     return 0;
 

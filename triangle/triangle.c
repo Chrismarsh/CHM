@@ -2920,8 +2920,6 @@ void parsecommandline(argc, argv, b)
     if ( b->demfilename[0] != '\0' && b->maxtolerance >0)
     {
         printf("Loading dem file...");
-
-
         GDALAllRegister();
         b->hDataset = GDALOpen( b->demfilename, GA_ReadOnly );
         if( b->hDataset == NULL )
@@ -16628,6 +16626,7 @@ int main(argc, argv)
 #endif /* not REDUCED */
 
     triangledeinit(&m, &b);
+
 #ifndef TRILIBRARY
     return 0;
 #endif /* not TRILIBRARY */

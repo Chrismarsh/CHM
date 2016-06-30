@@ -332,19 +332,19 @@ void xyToPixel(double x, double y, int* px, int* py, const double *gt, int max_x
  * @param y
  * @return
  */
-//double getRasterCell(const double *gt, const void *raster, double x, double y)
-//{
-//
-//    int px,py;
-//    xyToPixel(x,y,&px,&py,gt,max_x,max_y);
-//    float pafScanline;
-//
-//    GDALRasterIO(raster, GF_Read, px, py, 1, 1,
-//                 &pafScanline, 1, 1, GDT_Float32,
-//                 0, 0);
-//
-//    return pafScanline;
-//}
+double getRasterCell(const double *gt, const void *raster, double x, double y)
+{
+
+    int px,py;
+    xyToPixel(x,y,&px,&py,gt,1,1); //todo fix
+    float pafScanline;
+
+    GDALRasterIO(raster, GF_Read, px, py, 1, 1,
+                 &pafScanline, 1, 1, GDT_Float32,
+                 0, 0);
+
+    return pafScanline;
+}
 
 void destory_triangle(struct tri* t)
 {

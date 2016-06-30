@@ -35,6 +35,6 @@ struct tri
  * Max_x and Max_y are used to impose limits, common for being off by 1 with rasterized triangles
  */
 void xyToPixel(double x, double y, int* px, int* py, const double *gt, int max_x, int max_y);
-//double getRasterCell(const double *gt, const void *raster, double x, double y);
+double getRasterCell(const double *gt, const void *raster, double x, double y);
 struct tri* createTriangle(vertex triorg, vertex tridest, vertex triapex, GDALDatasetH raster);
 void destory_triangle(struct tri* t);
