@@ -114,7 +114,7 @@ def main():
     if hasattr(X,'min_area'):
         min_area=X.min_area
     else:
-        min_area = pixel_width * pixel_height  # if the user doesn't specify, then limit to the underlying resolution. No point going past this!
+        min_area = abs(pixel_width * pixel_height)  # if the user doesn't specify, then limit to the underlying resolution. No point going past this!
 
 
     xmax = xmin + pixel_width * src_ds.RasterXSize
@@ -224,10 +224,10 @@ def main():
     if not reuse_mesh:
         print('Running Triangle')
         print(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir + poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)])
-        subprocess.check_call(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir +
-                                                             poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)],shell=True)
-        # subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
-        #                                                      poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
+        # subprocess.check_call(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir +
+        #                                                      poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)],shell=True,stderr=subprocess.STDOUT)
+        subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
+                                                             poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
         # subprocess.check_call(['%s -a%d -p %s -n ' % (triangle_path,max_area, base_dir +
         #                                                      poly_file)],shell=True)
 
