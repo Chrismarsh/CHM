@@ -9,6 +9,7 @@
 *.Rhistory
 *.obs
 *.prj
+*.json
 Makefile
 modules.pdf
 /output/*
