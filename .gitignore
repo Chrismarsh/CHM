@@ -30,3 +30,5 @@ CMakeCache.txt
 compile_commands.json
 Doxyfile
 err.xml
+/tools/meshstats/*
+!/tools/meshstats/meshstats.py
