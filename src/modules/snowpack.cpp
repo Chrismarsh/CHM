@@ -14,6 +14,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     depends("ilwr");
 
     optional("snow_albedo");
+    optional("ta_subcanopy");
 
     provides("dQ");
     provides("swe");
@@ -47,7 +48,12 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
      */
     CurrentMeteo Mdata(data->config);
     Mdata.date   =  mio::Date( global_param->year(), global_param->month(), global_param->day(),global_param->hour(),global_param->min(),-6 );
-    Mdata.ta     =  elem->face_data("t")+273.15;
+    if(has_optional("ta_subcanopy")) {
+        Mdata.ta     =  elem->face_data("ta_subcanopy")+273.15;
+    } else {
+        Mdata.ta     =  elem->face_data("t")+273.15;
+    }
+
     Mdata.rh     =  elem->face_data("rh")/100.;
     Mdata.vw     =  elem->face_data("vw");
     Mdata.dw     =  elem->face_data("vw_dir");

@@ -41,7 +41,7 @@ set(MODULE_SRCS
 		modules/interp_met/Thornton_var_p.cpp
 		modules/interp_met/kunkel_rh.cpp
 		modules/interp_met/rh_from_obs.cpp
-                modules/interp_met/Longwave_from_obs.cpp
+        modules/interp_met/Longwave_from_obs.cpp
 
 		modules/point_mode.cpp
 
@@ -57,6 +57,7 @@ set(MODULE_SRCS
 		modules/Richard_albedo.cpp
 		modules/snowpack.cpp
 		modules/Gray_inf.cpp
+		modules/Simple_Canopy.cpp
 		${SNOBAL_SRC}
 
 		modules/threshold_p_phase.cpp

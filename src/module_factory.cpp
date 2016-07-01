@@ -59,6 +59,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new Gray_inf(config);
     else if (ID == "Longwave_from_obs")
         mod = new Longwave_from_obs(config);
+    else if (ID == "Simple_Canopy")
+        mod = new Simple_Canopy(config);
 
     if(mod == nullptr)
     {
