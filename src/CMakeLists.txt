@@ -58,6 +58,7 @@ set(MODULE_SRCS
 		modules/snowpack.cpp
 		modules/Gray_inf.cpp
 		modules/Simple_Canopy.cpp
+		modules/PhysConsts.h
 		${SNOBAL_SRC}
 
 		modules/threshold_p_phase.cpp
