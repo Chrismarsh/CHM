@@ -13,7 +13,7 @@ set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
-option(PV_FILTER "Build Paraview time filter"  ON )
+option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 
@@ -53,13 +53,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
 set(Boost_NO_SYSTEM_PATHS FALSE)
 if (Boost_NO_SYSTEM_PATHS)
     set(BOOST_ROOT "/opt/boost/boost_1_61_0")
-endif()
-#set(Boost_NO_SYSTEM_PATHS FALSE)
-#if (Boost_NO_SYSTEM_PATHS)
 #    set(BOOST_ROOT "/home/cbm038/boost_1_58_0")
-##    set(BOOST_LIBRARYDIR /home/cbm038/boost158/lib)
-#
-#endif()
+endif()
 
 
 #########
@@ -223,5 +218,5 @@ if(PV_FILTER)
     add_subdirectory(pv_filter)
 endif()
 
-add_subdirectory(triangle)
+add_subdirectory(mesher)
 

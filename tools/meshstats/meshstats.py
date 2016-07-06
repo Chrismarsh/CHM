@@ -3,19 +3,24 @@
 from osgeo import gdal,ogr,osr
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import math
 import sys
-import pandas as pd
+import csv
 
 def main():
     mesher_output_dir = '../mesher/wolf_lidar1/'
-
+    # raster_file ='../mesher/wolf_lidar1/wolf_lidar1_projected.tif'
+    # shp_file='../mesher/wolf_lidar1/Export_Output.shp'
 
     #############
-    base_name =os.path.basename(os.path.normpath(mesher_output_dir))
-    raster_file = os.path.normpath(mesher_output_dir)+'/'+base_name+'_projected.tif'
-    shp_file = os.path.normpath(mesher_output_dir)+'/'+base_name+'_USM.shp'
+    if 'mesher_output_dir' in locals():
+        base_name =os.path.basename(os.path.normpath(mesher_output_dir))
+        raster_file = os.path.normpath(mesher_output_dir)+'/'+base_name+'_projected.tif'
+        shp_file = os.path.normpath(mesher_output_dir)+'/'+base_name+'_USM.shp'
+    elif 'raster_file' not in locals() or 'shp_file' not in locals():
+        print 'If mesher output folder not given, must manually specify both shp and raster file'
+        exit(1)
 
     raster_ds = gdal.Open(raster_file)
     if raster_ds is None:
@@ -30,12 +35,6 @@ def main():
         exit(1)
 
 
-    #get raster coord
-    gt = raster_ds.GetGeoTransform()
-    raster = raster_ds.GetRasterBand(1)
-    Z = raster.ReadAsArray()
-
-
     layer = mesh.GetLayer()
     num_elem = layer.GetFeatureCount()
     print "Number of triangles = %d" % (num_elem)
@@ -45,17 +44,17 @@ def main():
     rmse_value = []
 
     layerDefinition = layer.GetLayerDefn()
-    shp_names = []
+    field_names = []
     for i in range(layerDefinition.GetFieldCount()):
-        shp_names.append(layerDefinition.GetFieldDefn(i).GetName())
+        field_names.append(layerDefinition.GetFieldDefn(i).GetName())
 
-    if 'area' not in shp_names:
+    if 'area' not in field_names:
         layer.CreateField(ogr.FieldDefn('area', ogr.OFTReal))
-    if 'min_angle' not in shp_names:
+    if 'min_angle' not in field_names:
         layer.CreateField(ogr.FieldDefn('min_angle', ogr.OFTReal))
-    if 'max_angle' not in shp_names:
+    if 'max_angle' not in field_names:
         layer.CreateField(ogr.FieldDefn('max_angle', ogr.OFTReal))
-    if 'rmse' not in shp_names:
+    if 'rmse' not in field_names:
         layer.CreateField(ogr.FieldDefn('rmse', ogr.OFTReal))
 
     i=0
@@ -65,12 +64,7 @@ def main():
         geom = feature.GetGeometryRef()
         ring = geom.GetGeometryRef(0)
 
-        tri_id = feature.GetField('triangle')
-
-        x1, y1, z = ring.GetPoint(0)
-        x2, y2, z = ring.GetPoint(1)
-        x3, y3, z = ring.GetPoint(2)
-        p = [(x1,y1),(x2,y2),(x3,y3)]
+        # tri_id = feature.GetField('triangle')
 
         geom_area = geom.GetArea()
         area.append(geom_area)
@@ -98,8 +92,28 @@ def main():
         i+=1
 
     mesh= None
-    plt.hist(area, 100)
-    # plt.hist(angles, 10)
+
+    #
+    with open('stats.csv','w') as f:
+        writer = csv.writer(f)
+        writer.writerow(["rmse", "area", "angle"])
+        max_len = max(len(rmse_value), len(area), len(angles))
+        for i in range(max_len):
+            try:
+                cur_rmse_value = rmse_value[i]
+            except IndexError:
+                cur_rmse_value = None
+            try:
+                cur_area = area[i]
+            except IndexError:
+                cur_area = None
+
+            try:
+                cur_angle = angles[i]
+            except IndexError:
+                cur_angle = None
+
+            writer.writerow([cur_rmse_value, cur_area, cur_angle])
 
 def tri_angles(raster_ds, ring):
     x1, y1, z = ring.GetPoint(0)  # this z is 0,
@@ -137,28 +151,8 @@ def tri_angles(raster_ds, ring):
 def tri_rmse(raster_ds,feature):
     geom = feature.GetGeometryRef()
     ring = geom.GetGeometryRef(0)
-    new_gt, rtri = rasterize_elem(raster_ds, feature, '')
-    gt = raster_ds.GetGeoTransform()
-    y_raster_size = raster_ds.RasterYSize
-    x_raster_size = raster_ds.RasterXSize
 
-    originX = gt[0]
-    originY = gt[3]
-    pixel_width = gt[1]
-    pixel_height = gt[5]
-    bbox = feature.geometry().GetEnvelope()
-    x1 = int((bbox[0] - originX) / pixel_width)
-    x2 = int((bbox[1] - originX) / pixel_width) + 1
-    y1 = int((bbox[3] - originY) / pixel_height)
-    y2 = int((bbox[2] - originY) / pixel_height) + 1
-
-    xsize = x2-x1
-    if x1 + xsize >=x_raster_size:
-        xsize = x_raster_size - x1
-
-    ysize = y2-y1
-    if y1 + ysize >= y_raster_size:
-        ysize = y_raster_size - y1
+    new_gt, rtri,xsize,ysize = rasterize_elem(raster_ds, feature, '')
 
     #get triangle verticies
     x1, y1, z = ring.GetPoint(0)  # this z is 0,
@@ -179,7 +173,7 @@ def tri_rmse(raster_ds,feature):
 
     u1 = x2 - x1
     u2 = y2 - y1
-    u3 = z3 - z1
+    u3 = z2 - z1
 
     v1 = x3 - x1
     v2 = y3 - y1
@@ -213,8 +207,8 @@ def tri_rmse(raster_ds,feature):
     rmse /= n
     rmse = math.sqrt(rmse)
 
-    #return max_diff
-    rmse = ((z1+z2+z3)/3)-float(rtri.mean())
+    # return max_diff
+    # rmse = ((z1+z2+z3)/3)-float(rtri.mean())
     return abs(rmse)
 
 #Zonal stats from here https://gist.github.com/perrygeo/5667173
@@ -233,19 +227,19 @@ def bbox_to_pixel_offsets(gt, bbox, rasterXsize, rasterYsize):
     ysize = y2 - y1
 
     #only apply this correction if we are touching the underlying raster.
-    if x1 < rasterXsize and y1 < rasterYsize:
+    # if x1 < rasterXsize and y1 < rasterYsize:
         #deal with small out of bounds
-        if x1 < 0:
-            x1 = 0
+    if x1 < 0:
+        x1 = 0
 
-        if y1 < 0:
-            y1 = 0
+    if y1 < 0:
+        y1 = 0
 
-        if x1 + xsize > rasterXsize:
-            xsize = rasterXsize-x1
+    if x1 + xsize >= rasterXsize:
+        xsize = rasterXsize-x1
 
-        if y1 + ysize > rasterYsize:
-            ysize = rasterYsize-y1
+    if y1 + ysize >= rasterYsize:
+        ysize = rasterYsize-y1
 
     return (x1, y1, xsize, ysize)
 
@@ -261,16 +255,16 @@ def xyToPixel( gt, x,  y,  max_x,  max_y):
     py = int((y - gt[3]) / gt[5])  # y pixel
 
     #out of bound issue when we are off by one
-    if px == max_x:
+    if px >= max_x:
         px = max_x - 1;
 
-    if py == max_y:
+    if py >= max_y:
         py = max_y - 1;
 
-    if py == -1:
+    if py < 0:
         py = 0;
 
-    if px == -1:
+    if px <0 :
         px = 0;
 
     return (px,py)
@@ -283,6 +277,7 @@ def rasterize_elem(raster, feature, key):
     gt = raster.GetGeoTransform()
     rb = raster.GetRasterBand(1)
     src_offset = bbox_to_pixel_offsets(gt, feature.geometry().GetEnvelope(), raster.RasterXSize, raster.RasterYSize)
+
     src_array = rb.ReadAsArray(*src_offset)
     # calculate new geotransform of the feature subset
     new_gt = (
@@ -293,6 +288,7 @@ def rasterize_elem(raster, feature, key):
         0.0,
         gt[5]
     )
+
     # Create a temporary vector layer in memory
     mem_drv = ogr.GetDriverByName('Memory')
     mem_ds = mem_drv.CreateDataSource('out')
@@ -301,12 +297,14 @@ def rasterize_elem(raster, feature, key):
 
     mem_layer = mem_ds.CreateLayer('poly', srs, ogr.wkbPolygon)
     mem_layer.CreateFeature(feature.Clone())
+
     # Rasterize it
     driver = gdal.GetDriverByName('MEM')
     rvds = driver.Create('', src_offset[2], src_offset[3], 1, gdal.GDT_Byte)
     # driver = gdal.GetDriverByName('GTiff')
     # rvds = driver.Create('rasterized.tif', src_offset[2], src_offset[3], 1, gdal.GDT_Byte)
     rvds.SetGeoTransform(new_gt)
+
     gdal.RasterizeLayer(rvds, [1], mem_layer, burn_values=[1], options=['ALL_TOUCHED=TRUE'])
     rv_array = rvds.ReadAsArray()  # holds a mask of where the triangle is on the raster
 
@@ -340,8 +338,7 @@ def rasterize_elem(raster, feature, key):
     # else:
     #     print 'Error: unknown data aggregation method %s' % data['method']
 
-
-    return new_gt,masked
+    return new_gt,masked,src_offset[2],src_offset[3]
 def extract_point(raster,mx,my):
     # Convert from map to pixel coordinates.
     # Only works for geotransforms with no rotation.
@@ -422,22 +419,5 @@ def printProgress(iteration, total, prefix='', suffix='', decimals=2, barLength=
         print("\n")
 
 if __name__ == "__main__":
-    # driver = ogr.GetDriverByName("ESRI Shapefile")
-    # shp = driver.CreateDataSource('test.shp')
-    # layer = shp.CreateLayer('test', None, ogr.wkbPolygon)
-    # layer.CreateField(ogr.FieldDefn("area", ogr.OFTReal))
-    # ring = ogr.Geometry(ogr.wkbLinearRing)
-    # ring.AddPoint(625287.900 , 5630592.279)
-    # ring.AddPoint(625295.698 , 5630603.198)
-    # ring.AddPoint(625308.697 , 5630598.519 )
-    # ring.AddPoint(625287.900 , 5630592.279)
-    # tpoly = ogr.Geometry(ogr.wkbPolygon)
-    # tpoly.AddGeometry(ring)
-    #
-    # feature = ogr.Feature( layer.GetLayerDefn() )
-    # feature.SetField('area',tpoly.GetArea())
-    # feature.SetGeometry(tpoly)
-    # layer.CreateFeature(feature)
-    # shp = None
 
     main()

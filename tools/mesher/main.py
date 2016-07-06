@@ -57,7 +57,7 @@ def main():
         reuse_mesh = X.reuse_mesh
 
     # path to triangle executable
-    triangle_path = '../../bin/Debug/triangle'
+    triangle_path = '../../bin/Debug/mesher'
 ########################################################
 
     base_name = dem_filename[:dem_filename.rfind('.')]
@@ -222,15 +222,16 @@ def main():
 
 
     if not reuse_mesh:
-        print('Running Triangle')
-        print(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir + poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)])
-        # subprocess.check_call(['%s -V  -a%d -p %s -n -t%f -T %s -u -m%f -M%d' % (triangle_path,max_area, base_dir +
-        #                                                      poly_file,max_tolerance,base_dir + base_name+'_projected.tif',min_area,errormetric)],shell=True,stderr=subprocess.STDOUT)
-        subprocess.check_call(['%s -p %s -n -t%d -T %s -u' % (triangle_path, base_dir +
-                                                             poly_file,max_tolerance,base_dir + base_name+'_projected.tif')],shell=True)
-        # subprocess.check_call(['%s -a%d -p %s -n ' % (triangle_path,max_area, base_dir +
-        #                                                      poly_file)],shell=True)
-
+        # print('Running Triangle')
+        # print(['%s --poly-file %s --tolerance %f --raster %s --area %f ' % (triangle_path, base_dir +
+        #                                                                     poly_file, max_tolerance,
+        #                                                                     base_dir + base_name + '_projected.tif',
+        #                                                                     max_area)]
+        #       )
+        #
+        subprocess.check_call(['%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s' % (triangle_path, base_dir +
+                                                              poly_file, max_tolerance,
+                                                              base_dir + base_name + '_projected.tif',max_area,min_area,errormetric)], shell=True)
 
     #read in the node, ele, and neigh from
 
