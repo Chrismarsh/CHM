@@ -31,6 +31,8 @@ public:
 
     double gamma(double air_pressure, double ta);
 
+    double Qs(double air_pressure, double ta);
+
     struct data : public face_info {
         //boost::shared_ptr<Snowpack> sp;
 
@@ -51,7 +53,7 @@ public:
     };
 
 
-    double Qs(double pressure, double t1);
+
 };
 
 
