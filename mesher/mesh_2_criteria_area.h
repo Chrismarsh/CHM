@@ -331,13 +331,15 @@
             {
                 if (q.area() > max_area)
                     return CGAL::Mesh_2::IMPERATIVELY_BAD; //IMPERATIVELY_BAD
+
                 if (q.sine() < this->B)
                     return CGAL::Mesh_2::BAD;
+
                 if (q.area() <= min_area )
                     return CGAL::Mesh_2::NOT_BAD;
 
                 if (q.tol() > max_tolerance)
-                    return CGAL::Mesh_2::IMPERATIVELY_BAD;
+                    return CGAL::Mesh_2::BAD;
 
                 return CGAL::Mesh_2::NOT_BAD;
             }
@@ -391,8 +393,8 @@
                 if (max_tolerance != 0)
                 {
                     //ok, we need to check the tolerance.
-//                    q._tolerance = mean_elevation_diff(fh);
-                    q._tolerance = elevation_tolerance(fh);
+                    q._tolerance = mean_elevation_diff(fh);
+//                    q._tolerance = elevation_tolerance(fh);
                 }
 
                 return operator()(q);

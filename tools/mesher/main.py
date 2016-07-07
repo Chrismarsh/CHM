@@ -47,8 +47,10 @@ def main():
         simplify=X.simplify
         simplify_tol = X.simplify_tol
 
+    max_tolerance = None
+    if hasattr(X,'max_tolerance'):
+        max_tolerance=X.max_tolerance
 
-    max_tolerance=X.max_tolerance
 
     errormetric=X.errormetric
 
@@ -229,9 +231,13 @@ def main():
         #                                                                     max_area)]
         #       )
         #
-        subprocess.check_call(['%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s' % (triangle_path, base_dir +
-                                                              poly_file, max_tolerance,
-                                                              base_dir + base_name + '_projected.tif',max_area,min_area,errormetric)], shell=True)
+         if max_tolerance is not None:
+            subprocess.check_call(['%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s' % (triangle_path, base_dir +
+                                      poly_file, max_tolerance,
+                                      base_dir + base_name + '_projected.tif',max_area,min_area,errormetric)], shell=True)
+         else:
+            subprocess.check_call(['%s --poly-file %s --area %f --min-area %f --error-metric %s' % (triangle_path, base_dir +
+                                                              poly_file,max_area,min_area,errormetric)], shell=True)
 
     #read in the node, ele, and neigh from
 

@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
             ("tolerance,t", po::value<std::vector<double>>(), "Tolerances, same units as the method"
                     " Must be give in the same order as the rasters.")
             ("area,a", po::value<double>(&max_area), "Maximum area a triangle can be. Square unit.")
-            ("min-area,m", po::value<double>(&max_area), "Minimum area a triangle can be. Square unit.")
+            ("min-area,m", po::value<double>(&min_area), "Minimum area a triangle can be. Square unit.")
             ("error-metric,M", po::value<std::vector<std::string>>(), "Error metric. One of: rmse, mean_tol.");
 
     po::variables_map vm;
@@ -212,26 +212,34 @@ int main(int argc, char *argv[])
 
     for(auto itr = cdt.finite_faces_begin(); itr != cdt.finite_faces_end(); itr++ )
     {
-        itr->id = i;
-        ++i;
+        if(itr->is_in_domain())
+        {
+            itr->id = i;
+            ++i;
+        }
+
     }
 
     i=1;
 
     for(auto itr = cdt.finite_faces_begin(); itr != cdt.finite_faces_end(); itr++ )
     {
-        size_t v0 = itr->vertex(0)->info();
-        size_t v1 = itr->vertex(1)->info();
-        size_t v2 = itr->vertex(2)->info();
+        if(itr->is_in_domain())
+        {
+            size_t v0 = itr->vertex(0)->info();
+            size_t v1 = itr->vertex(1)->info();
+            size_t v2 = itr->vertex(2)->info();
 
-        elemfile << i << "    " << v0 << "    " << v1 << "    "<< v2 << std::endl;
+            elemfile << i << "    " << v0 << "    " << v1 << "    "<< v2 << std::endl;
 
-        auto n0 = itr->neighbor(0); cdt.is_infinite(n0) ? NULL : n0; //only want finite nieghbours
-        auto n1 = itr->neighbor(1); cdt.is_infinite(n1) ? NULL : n1;
-        auto n2 = itr->neighbor(2); cdt.is_infinite(n2) ? NULL : n2;
+            auto n0 = itr->neighbor(0); cdt.is_infinite(n0) ? NULL : n0; //only want finite nieghbours
+            auto n1 = itr->neighbor(1); cdt.is_infinite(n1) ? NULL : n1;
+            auto n2 = itr->neighbor(2); cdt.is_infinite(n2) ? NULL : n2;
 
-        neighfile << i <<  "  " << (n0 != NULL ? n0->id : -1) << "  " << (n1 != NULL ? n1->id : -1) <<"  "<<(n1 != NULL ? n1->id : -1) << std::endl;
-        ++i;
+            neighfile << i <<  "  " << (n0 != NULL ? n0->id : -1) << "  " << (n1 != NULL ? n1->id : -1) <<"  "<<(n1 != NULL ? n1->id : -1) << std::endl;
+            ++i;
+        }
+
     }
 
     elemfile.close();
