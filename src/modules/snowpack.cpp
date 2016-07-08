@@ -19,7 +19,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     optional("ta_subcanopy");
     optional("rh_subcanopy");
     optional("vw_subcanopy");
-    optional("p_rain_subcanopy"); //TODO: snowpack not using this currnelty, how does it partitioning precip?
+    optional("p_rain_subcanopy"); //TODO: Snowpack needs the fraction rain/snow of given p
     optional("p_snow_subcanopy");
     optional("iswr_subcanopy");
     optional("ilwr_subcanopy");
@@ -116,10 +116,10 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     } else {
         Mdata.ilwr     =  elem->face_data("ilwr");
     }
-    double lw_in = elem->face_data("ilwr"); //TODO: why is lw_in not even being used??? should pass to Mdata, check used later?
 
-
-    Mdata.ea  = SnLaws::AirEmissivity(lw_in, Mdata.ta, "default"); //atmospheric emissivity!
+    Mdata.ea  = SnLaws::AirEmissivity(elem->face_data("ilwr"), Mdata.ta, "default"); //atmospheric emissivity!
+    // Note this is used later throughout the code line 673 in Snowpack.cc, dealing with the emissivity of the snowpack! (might be a bug).
+    // Left the ea calculation here for now
 
     double thresh_rain = 2 + mio::Cst::t_water_freezing_pt;
 
