@@ -82,8 +82,8 @@ def main():
                 angles.append(a)
                 triangle.append(a)
 
-        feature.SetField('min_angle',min(triangle))
-        feature.SetField('max_angle',max(triangle))
+            feature.SetField('min_angle',min(triangle))
+            feature.SetField('max_angle',max(triangle))
 
         rmse = tri_rmse(raster_ds, feature)
         if rmse is not None:

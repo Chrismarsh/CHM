@@ -130,9 +130,7 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     rasterized_triangle->getBand()->RasterIO(GF_Read, 0, 0, xsize, ysize,
                  mask, xsize, ysize, GDT_Float32,
                  0, 0);
-//    rvds->GetRasterBand(1)->RasterIO(GF_Read, 0, 0, xsize, ysize,
-//                                             mask, xsize, ysize, GDT_Float32,
-//                                             0, 0);
+
 
     rasterized_triangle->setMask(mask);
 

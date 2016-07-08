@@ -4,7 +4,10 @@
 #include <CGAL/Delaunay_mesh_criteria_2.h>
 #include <utility>
 #include <ostream>
+#include <algorithm>
+#include <map>
 #include <boost/shared_ptr.hpp>
+#include <vector>
 #include "triangle.h"
 
     template<class CDT>
@@ -16,24 +19,24 @@
         double min_area;
         double B;
         Geom_traits traits;
-        double max_tolerance;
-        const raster& r;
+        const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r;
+        const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters;
     public:
 
         mesh_2_criterion_area(const double aspect_bound = 0.125,
                               const double max_area = 0,
                               const double min_area = 1,
-                              const double tolerance = 0,
-                              const raster& inraster = raster(),
+                              const std::vector< std::pair< boost::shared_ptr<raster>,double> >& rasters = std::vector< std::pair< boost::shared_ptr<raster>,double>> (),
+                              const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters = std::vector< std::pair< boost::shared_ptr<raster>,double>>(),
                               const Geom_traits &traits = Geom_traits())
-        : r(inraster)
+        : r(rasters),category_rasters(category_rasters)
 
         {
             this->max_area = max_area;
             this->min_area = min_area;
             B = aspect_bound;
-            max_tolerance = tolerance;
             this->traits=traits;
+
         }
 
         inline
@@ -60,17 +63,16 @@
             Quality()
             {
                 _sine = 0;
-                _tolerance = 0;
                 _area = 0;
-
             };
-
-            Quality(double sine, double area, double tolerance)
-            {
-                _sine = sine;
-                _tolerance = tolerance;
-                _area = area;
-            }
+//
+//            Quality(double sine, double area, double tolerance)
+//            {
+//                _sine = sine;
+//
+//                _area = area;
+//
+//            }
 
             const double &area() const
             { return _area; }
@@ -85,31 +87,44 @@
 //        // ( q1 == *this, q2 == q )
             bool operator<(const Quality &q) const
             {
-                if (area() > 0)
+                if ( this->_area < q._area)
+                    return true;
+                else
                 {
-                    return (area() > q.area());
-                }
-                else{
-                    if (tol() > 0)
-                    {
-                        return (tol() > q.tol());
-                    }
+                    if( this->_sine < q._sine)
+                        return true;
                     else
                     {
-                        return (sine() < q.sine());
+                        if(_tolerance.size() != 0 && q._tolerance.size() == 0)
+                            return false; //they're empty, we aren't, we should check their tolerance
+                        if(_tolerance.size() == 0 && q._tolerance.size() != 0)
+                            return true; //we're empty, they aren't, we should check our tolerance
+
+                        if(_tolerance.size() != 0 && q._tolerance.size() != 0)
+                        {
+                            //compare who has the the greatest current error
+                            auto my_max_tol = std::max_element(_tolerance.begin(), _tolerance.end(),
+                                                               [] (std::pair< double,double> const& lhs, std::pair< double,double> const& rhs)
+                                                               {return lhs.first < rhs.first;});
+
+                            auto their_max_tol = std::max_element(q._tolerance.begin(), q._tolerance.end(),
+                                                                  [] (std::pair< double,double> const& lhs, std::pair< double,double> const& rhs)
+                                                                  {return lhs.first < rhs.first;});
+
+                            if(my_max_tol->first > their_max_tol->first )
+                                return true; //remember we want to be preferential if our max tolerance is worse
+                        }
+
+                        return (sine() < q.sine()); //check angles as tie breaker
                     }
                 }
             }
-//
-//        std::ostream& operator<<(std::ostream& out) const
-//        {
-//            return out << "(area=" << area()
-//                       << ", sine=" << sine() << ")";
-//        }
 
             double _area;
             double _sine;
-            double _tolerance;
+            std::vector< std::pair<double,double> > _tolerance; // first = tol, seond = max tol
+
+            std::vector<std::pair<double,double>> _category_tol; //first = current percent, second = threshold percent
 
         };
 
@@ -120,8 +135,8 @@
             const double B;
             const double max_area;
             const double min_area;
-            const double max_tolerance;
-            const raster& r;
+            const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r;
+            const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters;
             const Geom_traits &traits;
         public:
 
@@ -130,15 +145,16 @@
             Is_bad(const double aspect_bound,
                    const double area_bound,
                    const double min_area,
-                   const double max_tolerance,
-                   const raster& r,
+                   const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r,
+                   const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters,
                    const Geom_traits &traits)
-                    : B(aspect_bound), max_area(area_bound), min_area(min_area),max_tolerance(max_tolerance), r(r), traits(traits)
+                    : B(aspect_bound), max_area(area_bound), min_area(min_area),
+                      r(r), category_rasters(category_rasters),traits(traits)
             {
 
             }
 
-            double elevation_tolerance(const typename CDT::Face_handle &fh) const
+            double elevation_tolerance(const typename CDT::Face_handle &fh, const raster& r) const
             {
                 triangle t;
                 vertex _v0;
@@ -217,6 +233,8 @@
 
                 double rmse = 0;
                 double n = 0;
+
+                std::map<int,int> lc;
                 for (int y = 0; y < t.rasterized_triangle->getDs()->GetRasterYSize(); y++)
                 {
                     for (int x = 0; x < t.rasterized_triangle->getDs()->GetRasterXSize(); x++)
@@ -244,7 +262,69 @@
                 return rmse;
 
             }
-            double mean_elevation_diff(const typename CDT::Face_handle &fh) const
+            double categoryraster_isok(const typename CDT::Face_handle &fh,const raster& r) const
+            {
+                triangle t;
+                vertex _v0;
+                vertex _v1;
+                vertex _v2;
+
+                _v0[0] = fh->vertex(0)->point().x();
+                _v0[1] = fh->vertex(0)->point().y();
+
+                _v1[0] = fh->vertex(1)->point().x();
+                _v1[1] = fh->vertex(1)->point().y();
+
+                _v2[0] = fh->vertex(2)->point().x();
+                _v2[1] = fh->vertex(2)->point().y();
+
+                t.make_rasterized(_v0, _v1, _v2, r);
+
+
+                if(t.is_nan)
+                    return true; //bail
+
+                if( t.v0[2] != t.v1[2] ||
+                    t.v0[2] != t.v2[2] ||
+                    t.v1[2] != t.v2[2])
+                    return false;
+
+                double n=0;//total tri
+                std::map<int,int> lc; //holds the count of each category (e.g., landcover type)
+                for (int y = 0; y < t.rasterized_triangle->getDs()->GetRasterYSize(); y++)
+                {
+                    for (int x = 0; x < t.rasterized_triangle->getDs()->GetRasterXSize(); x++)
+                    {
+                        double value = t.rasterized_triangle->getpXpY(x, y);
+                        if (!isnan(value))
+                        {
+                            int key = (int)value;
+                            if(lc.find(key) != lc.end())
+                                lc[key]++;
+                            else
+                                lc[key] = 1;
+                            n++;
+                        }
+                    }
+                }
+
+                if (n==0)
+                    return true; //bail
+
+                bool isok=false;
+
+                std::vector<double> percents;
+
+                for(auto& itr : lc)
+                {
+                    double pCover =  itr.second / n;
+                    percents.push_back(pCover);
+
+                }
+                return *std::max_element(percents.begin(),percents.end()); // the most dominate landcover
+
+            }
+            double mean_elevation_diff(const typename CDT::Face_handle &fh,const raster & r) const
             {
                 triangle t;
                 vertex v0;
@@ -338,8 +418,21 @@
                 if (q.area() <= min_area )
                     return CGAL::Mesh_2::NOT_BAD;
 
-                if (q.tol() > max_tolerance)
-                    return CGAL::Mesh_2::BAD;
+                for(auto& itr : q._tolerance)
+                {
+                    //first == current tol
+                    //second == max tol
+                    if(itr.first > itr.second) //do we violate the max tol
+                        return CGAL::Mesh_2::BAD;
+                }
+
+                for(auto& itr : q._category_tol)
+                {
+                    //first == current tol
+                    //second == max tol
+                    if(itr.first < itr.second)  // is our max land cover below the required threshold to keep this triangle?
+                        return CGAL::Mesh_2::BAD;
+                }
 
                 return CGAL::Mesh_2::NOT_BAD;
             }
@@ -390,19 +483,32 @@
                 if (current_badness != CGAL::Mesh_2::NOT_BAD)
                     return current_badness;
 
-                if (max_tolerance != 0)
+                //do numeric rasters
+                for(auto& itr : r)
                 {
-                    //ok, we need to check the tolerance.
-                    q._tolerance = mean_elevation_diff(fh);
-//                    q._tolerance = elevation_tolerance(fh);
+                    auto t = elevation_tolerance(fh,*(itr.first));
+                    q._tolerance.push_back(std::make_pair(t,itr.second));
+
+                    current_badness = operator()(q);
+                    if (current_badness != CGAL::Mesh_2::NOT_BAD)
+                        return current_badness;
                 }
 
+                for(auto& itr : category_rasters)
+                {
+                    auto t = categoryraster_isok(fh,*(itr.first));
+                    q._category_tol.push_back(std::make_pair(t,itr.second));
+
+                    current_badness = operator()(q);
+                    if (current_badness != CGAL::Mesh_2::NOT_BAD)
+                        return current_badness;
+                }
                 return operator()(q);
             }
         };
 
         Is_bad is_bad_object() const
         {
-            return Is_bad(this->bound(), max_area, min_area, max_tolerance, r, this->traits);
+            return Is_bad(this->bound(), max_area, min_area, r, category_rasters, this->traits);
         }
     };

@@ -26,6 +26,13 @@ int main(int argc, char *argv[])
     std::string poly_file;
     double max_area = 0;
     double min_area = 1;
+
+    //holds all rasters we perform tolerance checking on
+    std::vector< std::pair< boost::shared_ptr<raster>,double> > rasters;
+
+    //these are category based rasters, e.g., landcover, so use a fractional % to figure out if we should split on the tri.
+    std::vector< std::pair< boost::shared_ptr<raster> ,double> > category_rasters;
+
     po::options_description desc("Allowed options");
     desc.add_options()
             ("help", "This message")
@@ -37,6 +44,10 @@ int main(int argc, char *argv[])
                     "Order needs to match the order the tolerances are given in.")
             ("tolerance,t", po::value<std::vector<double>>(), "Tolerances, same units as the method"
                     " Must be give in the same order as the rasters.")
+
+            ("category-raster,R", po::value<std::vector<std::string>>(), "Optional landcover raster to conform mesh to.")
+            ("category-frac,T",  po::value<std::vector<double>>(), "Franctional percent of continous landcover required to not-split a triangle.")
+
             ("area,a", po::value<double>(&max_area), "Maximum area a triangle can be. Square unit.")
             ("min-area,m", po::value<double>(&min_area), "Minimum area a triangle can be. Square unit.")
             ("error-metric,M", po::value<std::vector<std::string>>(), "Error metric. One of: rmse, mean_tol.");
@@ -58,6 +69,13 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    if ( (vm.count("category-raster") && ! vm.count("category-frac")) ||
+         (!vm.count("category-raster") &&  vm.count("category-frac")) )
+    {
+        std::cout << "Both category rasters and fractions must be specified!" << std::endl;
+        exit(1);
+    }
+
     if(max_area <= 0)
     {
         std::cout << "Area must be positive" << std::endl;
@@ -70,19 +88,41 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    raster r;
-    if( vm.count("raster"))
+
+    if( vm.count("raster") && vm.count("tolerance"))
     {
         auto files = vm["raster"].as<std::vector<std::string>>();
+        auto tols = vm["tolerance"].as<std::vector<double>>();
 
-        r.open(files.at(0));
-
+        if(files.size() != tols.size())
+        {
+            std::cout << "Mismatched lengths in rasters and tolerances. Must be equale."<<std::endl;
+            exit(1);
+        }
+        for(int i = 0 ; i< tols.size();++i)
+        {
+            auto r = boost::make_shared<raster>();
+            r->open(files.at(i));
+            rasters.push_back(std::make_pair( r,tols.at(i) ));
+        }
     }
-    double tolerance=0;
-    if( vm.count("tolerance"))
+
+    if( vm.count("category-raster") && vm.count("category-frac"))
     {
-        auto tol = vm["tolerance"].as<std::vector<double>>();
-        tolerance = tol.at(0);
+        auto files = vm["category-raster"].as<std::vector<std::string>>();
+        auto tols = vm["category-frac"].as<std::vector<double>>();
+
+        if(files.size() != tols.size())
+        {
+            std::cout << "Mismatched lengths in category-raster and category-frac. Must be equale."<<std::endl;
+            exit(1);
+        }
+        for(int i = 0 ; i< tols.size();++i)
+        {
+            auto r = boost::make_shared<raster>();
+            r->open(files.at(i));
+            category_rasters.push_back(std::make_pair( r,tols.at(i) ));
+        }
     }
 
     CDT cdt;
@@ -120,11 +160,9 @@ int main(int argc, char *argv[])
         {
             std::cout << "Error on line " << i << std::endl;
             exit(1);
-
-        } // error
+        }
 
         Vertex_handle vh = cdt.insert(Point(x,y));
-//        std::cout << "x="<<x<<"\ty="<<y<<std::endl;
         vh->info()=i;
         vertex.push_back(vh);
     }
@@ -171,7 +209,7 @@ int main(int argc, char *argv[])
 
     std::cout << "Number of input PLGS vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the triangulation..." << std::endl;
-    CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,tolerance,r));
+    CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters));
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Number of triangles: " << cdt.number_of_faces() << std::endl;
 
