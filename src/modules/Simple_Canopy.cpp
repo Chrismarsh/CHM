@@ -20,8 +20,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     depends("vw_dir");
     depends("ilwr");
     depends("snowdepthavg");
-    //optional("snow_albedo"); //  From albedo module
-    depends("spack_albedo"); // From snowpack
+    depends("snow_albedo"); //
     //depends("air_pressure"); //TODO: add to met interp (hard coded at 915 mbar for now)
 
     provides("Snow_load");
@@ -30,8 +29,11 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     provides("rh_subcanopy");
     provides("vw_subcanopy");
     //provides("wdir_subcanopy");
+    provides("p_subcanopy");
     provides("p_rain_subcanopy");
     provides("p_snow_subcanopy");
+    provides("frac_precip_rain_subcanopy");
+    provides("frac_precip_snow_subcanopy");
     provides("iswr_subcanopy");
     provides("ilwr_subcanopy");
     //provides("diff_subcanopy");
@@ -61,14 +63,13 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     double p_rain       = elem->face_data("p_rain"); // rain (mm/timestep) above canopy
     double p_snow       = elem->face_data("p_snow"); // snow (mm/timestep) above canopy
     double snowdepthavg = elem->face_data("snowdepthavg");
-    //if(has_optional("spack_albedo"))
-    //{
-        double Albedo = elem->face_data("spack_albedo"); // Broad band snow albedo
-    //}
-    //else
-    //{
-        //double Albedo = elem->face_data("snow_albedo"); // Broad band snow albedo
-   // }
+    if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
+        snowdepthavg = 0;
+
+    double Albedo = elem->face_data("snow_albedo"); // Broad band snow albedo TODO: should be GROUND albedo (soil or snow), fracitional as well
+    if (Albedo == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
+        Albedo=0.1; // Assume no snow
+
     double air_pressure = 915; //elem->face_data("air_pressure"); //"Average surface pressure", "(kPa)" TODO: Get from face_data
     //double hru_evap; //     = elem->face_data("hru_evap"); // TODO: calculate this (potential evap) at canopy level here
 
@@ -147,12 +148,12 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     // Parameters used
 
-    // TODO:  Canopy parameters should come from config (data->///
+    // TODO:  Canopy parameters should come from mesh
     // Default values used for now
     double Alpha_c  = 0.1; // "canopy albedo" 0.05-0.2
     double B_canopy = 0.038; //TODO: What is this? Where does it come from?", NHRU, "[0.038]", "0.0", "0.2", "canopy enhancement parameter. Suggestions are Colorado - 0.23 and Alberta - 0.038", "()", &B_canopy);
     double Zref     = 1.5; //", "0.01", "100.0", "temperature measurement height", "(m)", &Zref);
-    double Zwind    = 10; //", "0.01", "100.0", "wind measurement height", "(m)", &Zwind);
+    double Zwind    = 50; //", "0.01", "100.0", "wind measurement height", "(m)", &Zwind); // TODO: Hardcoded wind speed height
     double Z0snow   = 0.01; //", "0.0001", "0.01", "snow roughness length", "(m)", &Z0snow);
     double Sbar     = 6.6; //", "0.0", "100.0", "maximum canopy snow interception load", "(kg/m^2)", &Sbar);
     double Zvent    = 0.75; //", "0.0", "1.0", "ventilation wind speed height (z/Ht)", "()", &Zvent);
@@ -165,7 +166,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
 
 
-    double SolAng = global_param->solar_el(); //TODO: check this is the right angle (account for slope of face?)
+    double SolAng = global_param->solar_el() * mio::Cst::to_rad; // degrees to radians
 
     // Initialize
     net_rain = 0.0;
@@ -195,7 +196,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     double Vf_ = Vf + (1.0 - Vf)*sin((Ht - Exposure)/Ht*M_PI_2); //TODO: Check we wan this M_PI_2		1.57079632679489661923	/* pi/2 */ in math.h
 
     // What is this doing??? // TODO: add slope in
-    if(SolAng > 0.001) {
+    if(SolAng > 0.001) { // radians
         k    = 1.081*SolAng*cos(SolAng)/sin(SolAng); // "extinction coefficient"
         Tauc = exp(-k*LAI_); // "short-wave transmissivity", "(W/m^2)"
     }
@@ -209,6 +210,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     // Incident long-wave at surface, "(W/m^2)"
     Qlisn = ilwr*Vf_ + (1.0 - Vf_)*PhysConsts::emiss_c*PhysConsts::sbc*pow(T1, 4.0) + B_canopy*Kstar_H;
+
     // Incident short-wave at surface, "(W/m^2)"
     Qsisn = iswr*Tauc;
 
@@ -269,6 +271,9 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
         Cc = 0.29 * log(LAI) + 0.55; //TODO: What are this hardcoded parameters?
         if(Cc <= 0.0)
             Cc = 0.0;
+        // Cc also should be less than 1! (right??) TODO: Check Cc should be less than 1
+        if(Cc > 1.0)
+            Cc = 1.0;
 
         if(p_snow > 0.0 && fabs(p_snow/LStar) < 50.0){ //TODO: hardcoded parameter(s)
             if (u_FHt <= 1.0)  // if wind speed at canopy top > 1 m/s //TODO: hardcoded parameter(s)
@@ -446,7 +451,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
         /*}*/
     } // if data->rain_load > 0.0
 
-// cumulative amounts....
+    // cumulative amounts....
 
     net_rain = direct_rain + drip_Cpy;
     net_p = net_rain + net_snow;
@@ -456,20 +461,20 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     data->cum_intcp_evap += intcp_evap;
     data->cum_Subl_Cpy += Subl_Cpy;
 
-
-    // TODO: Pass/save variables correctly
-
-
     // Output computed canopy states and fluxes downward to snowpack and upward to atmosphere
+    elem->set_face_data("Snow_load",data->Snow_load);
+    elem->set_face_data("rain_load",data->rain_load);
     elem->set_face_data("ta_subcanopy",ta);
     elem->set_face_data("rh_subcanopy",rh);
     elem->set_face_data("vw_subcanopy",vw); // TODO: need to handel wind speed scaling (CRITICAL)
     //elem->set_face_data("wdir_subcanopy",wdir_subcanopy); // not used
     elem->set_face_data("iswr_subcanopy",Qsisn); // (W/m^2)
-    elem->set_face_data("ilwr_subcanopy",Qsisn); // (W/m^2)
+    elem->set_face_data("ilwr_subcanopy",Qlisn); // (W/m^2)
     elem->set_face_data("p_rain_subcanopy",net_rain); // (mm/int)
     elem->set_face_data("p_snow_subcanopy",net_snow); // (mm/int)
-
+    elem->set_face_data("p_subcanopy",net_p); // Total precip (mm/int)
+    elem->set_face_data("frac_precip_rain",net_rain/net_p); // Fraction rain (-)
+    elem->set_face_data("frac_precip_snow",net_snow/net_p); // Fraction snow (-)
 
 }
 
@@ -503,11 +508,11 @@ void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
         // ClassCRHMCanopy
         d->rain_load = 0.0;
         d->Snow_load = 0.0;
-        d->cum_net_snow = 0.0; // "Cummulative Canopy unload ", "(mm)"
+        d->cum_net_snow = 0.0; // "Cumulative Canopy unload ", "(mm)"
         d->cum_net_rain = 0.0; // " direct_rain + drip", "(mm)"
         d->cum_Subl_Cpy = 0.0; //  "canopy snow sublimation", "(mm)"
         d->cum_intcp_evap = 0.0; // "HRU Evaporation from interception", "(mm)"
-        d->cum_SUnload_H2O = 0.0; // "Cummulative unloaded canopy snow as water", "(mm)"
+        d->cum_SUnload_H2O = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
 
     }
 }

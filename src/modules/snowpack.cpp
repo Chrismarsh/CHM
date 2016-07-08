@@ -4,13 +4,13 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
         : module_base(parallel::data)
 {
     depends("iswr");
+    depends("ilwr");
     depends("rh");
     depends("t");
     depends("vw");
     depends("vw_dir");
     depends("p");
     depends("frac_precip_rain");
-    depends("ilwr");
 
     optional("snow_albedo");
 
@@ -30,7 +30,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     provides("n_nodes");
     provides("n_elem");
     provides("snowdepthavg");
-    provides("spack_albedo");
+    provides("snow_albedo");
     provides("H");
     provides("E");
     provides("G");
@@ -202,7 +202,7 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     elem->set_face_data("dQ",surface_fluxes.dIntEnergy);
 //    if(!has_optional("snow_albedo"))
 //    {
-        elem->set_face_data("spack_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
+        elem->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
 //    }
 
 
