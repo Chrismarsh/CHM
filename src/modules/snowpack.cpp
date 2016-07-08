@@ -3,14 +3,13 @@
 Lehning_snowpack::Lehning_snowpack(config_file cfg)
         : module_base(parallel::data)
 {
-    depends("p_rain");
-    depends("p_snow");
     depends("iswr");
     depends("rh");
     depends("t");
     depends("vw");
     depends("vw_dir");
     depends("p");
+    depends("frac_precip_rain");
     depends("ilwr");
 
     optional("snow_albedo");
@@ -19,8 +18,8 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     optional("ta_subcanopy");
     optional("rh_subcanopy");
     optional("vw_subcanopy");
-    optional("p_rain_subcanopy"); //TODO: Snowpack needs the fraction rain/snow of given p
-    optional("p_snow_subcanopy");
+    optional("p_subcanopy");
+    optional("frac_precip_rain_subcanopy");
     optional("iswr_subcanopy");
     optional("ilwr_subcanopy");
 
@@ -63,8 +62,6 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     } else {
         Mdata.ta     =  elem->face_data("t")+mio::Cst::t_water_freezing_pt;
     }
-    //optional("p_rain_subcanopy");
-    //optional("p_snow_subcanopy");
 
     if(has_optional("rh_subcanopy")) {
         Mdata.rh     =  elem->face_data("rh_subcanopy")/100.;
@@ -124,8 +121,14 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     //double thresh_rain = 2 + mio::Cst::t_water_freezing_pt;
 
     // Define fraction rain and total precipitaiton (soild and liquid)
-    Mdata.psum_ph = elem->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
-    Mdata.psum = elem->face_data("p");
+    if(has_optional("p_subcanopy")) {
+        Mdata.psum_ph = elem->face_data("frac_precip_rain_subcanopy"); //  0 = snow, 1 = rain
+        Mdata.psum = elem->face_data("p_subcanopy");
+    } else {
+        Mdata.psum_ph = elem->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
+        Mdata.psum = elem->face_data("p");
+    }
+
 
 
 
