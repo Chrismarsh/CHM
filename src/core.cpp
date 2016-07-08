@@ -1353,8 +1353,7 @@ void core::run()
     size_t max_ts = _global->stations.at(0)->date_timeseries().size();
     bool done = false;
 
-    try
-    {
+
         while (!done)
         {
             //ensure all the stations are at the same timestep
@@ -1396,43 +1395,64 @@ void core::run()
 
             c.tic();
             size_t chunks = 0;
-            for (auto &itr : _chunked_modules)
+            try
             {
-                LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" <<
-                            (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
-
-                if (itr.at(0)->parallel_type() == module_base::parallel::data)
+                for (auto &itr : _chunked_modules)
                 {
-                    ompException oe;
-                    #pragma omp parallel for
-                    for (size_t i = 0; i < _mesh->size_faces(); i++)
+                    LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" <<
+                                (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
+
+                    if (itr.at(0)->parallel_type() == module_base::parallel::data)
                     {
-                        auto face = _mesh->face(i);
-                        if(point_mode.enable && face->_debug_name != _outputs[0].name )
-                            continue;
-                        oe.Run([&]
-                               {
-                                   //module calls
-                                   for (auto &jtr : itr)
+                        ompException oe;
+                        #pragma omp parallel for
+                        for (size_t i = 0; i < _mesh->size_faces(); i++)
+                        {
+                            auto face = _mesh->face(i);
+                            if (point_mode.enable && face->_debug_name != _outputs[0].name)
+                                continue;
+                            oe.Run([&]
                                    {
-                                        jtr->run(face, _global);
-                                   }
+                                       //module calls
+                                       for (auto &jtr : itr)
+                                       {
+                                           jtr->run(face, _global);
+                                       }
 
-                               });
-                    }
-                    oe.Rethrow();
+                                   });
+                        }
+                        oe.Rethrow();
 
-                } else
-                {
-                    //module calls for domain parallel
-                    for (auto &jtr : itr)
+                    } else
                     {
-                        jtr->run(_mesh, _global);
+                        //module calls for domain parallel
+                        for (auto &jtr : itr)
+                        {
+                            jtr->run(_mesh, _global);
+                        }
                     }
+
+                    chunks++;
+
                 }
-
-                chunks++;
-
+            }
+            catch (exception_base &e)
+            {
+                LOG_ERROR << "Exception at timestep: " << _global->posix_time();
+                //if we die in a module, try to dump our time series out so we can figur eout wtf went wrong
+                LOG_ERROR << "Exception has occured. Timeseries and meshes WILL BE INCOMPLETE!";
+                *_end_ts = _global->posix_time();
+                done = true;
+                LOG_ERROR << boost::diagnostic_information(e);
+//                for (auto &itr : _outputs)
+//                {
+//                    //save the full timeseries
+//                    if (itr.type == output_info::output_type::time_series)
+//                    {
+//                        itr.ts.to_file("ABORT_" + itr.fname);
+//                    }
+//                }
+//                throw;
             }
 
             //check that we actually need a mesh output.
@@ -1493,18 +1513,6 @@ void core::run()
                 }
 
             }
-
-            //save timestep to file
-//        std::stringstream ss;
-//        ss << "marmot" << current_ts << ".vtu";
-//        _mesh->write_vtu(ss.str());
-//
-//
-//        ss.str("");
-//        ss.clear();
-//        ss << "marmot" << current_ts << ".vtp";
-//        _mesh->write_vtp(ss.str());
-
 
 
             //get data from the face into the output timeseries
@@ -1578,22 +1586,8 @@ void core::run()
         }
         double elapsed = c.toc<s>();
         LOG_DEBUG << "Total runtime was " << elapsed << "s";
-    }
-    catch (exception_base &e)
-    {
-        LOG_ERROR << "Exception at timestep: " << _global->posix_time();
-        //if we die in a module, try to dump our time series out so we can figur eout wtf went wrong
-        LOG_ERROR << "Exception has occured, dumping timeseries. THESE WILL BE INCOMPLETE!";
-        for (auto &itr : _outputs)
-        {
-            //save the full timeseries
-            if (itr.type == output_info::output_type::time_series)
-            {
-                itr.ts.to_file("ABORT_" + itr.fname);
-            }
-        }
-        throw;
-    }
+
+
 
     try
     {
@@ -1616,6 +1610,7 @@ void core::run()
         //save the full timeseries
         if (itr.type == output_info::output_type::time_series)
         {
+            itr.ts.subset(*_start_ts,*_end_ts); // in the event of an exception, _end_ts will be reset to have the esception timestep so-as to no write massive amounts of nan values
             itr.ts.to_file(itr.fname);
         }
     }
