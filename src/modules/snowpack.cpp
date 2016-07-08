@@ -78,10 +78,10 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
         Mdata.vw     =  elem->face_data("vw");
     }
 
-    Mdata.dw     =  elem->face_data("vw_dir");
+    Mdata.dw     = elem->face_data("vw_dir");
     Mdata.vw_max = mio::IOUtils::nodata;//elem->face_data("vw");// TODO: fix md(MeteoData::VW_MAX);
 
-    Mdata.vw_drift =  Mdata.vw ;//mio::IOUtils::nodata;
+    Mdata.vw_drift = Mdata.vw ;//mio::IOUtils::nodata;
     Mdata.dw_drift = Mdata.dw;//0;
 
     Mdata.tss= mio::IOUtils::nodata; //Constants::undefined;;//
@@ -117,13 +117,13 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
         Mdata.ilwr     =  elem->face_data("ilwr");
     }
 
-    Mdata.ea  = SnLaws::AirEmissivity(elem->face_data("ilwr"), Mdata.ta, "default"); //atmospheric emissivity!
+    Mdata.ea  = SnLaws::AirEmissivity(Mdata.ilwr, Mdata.ta, "default"); //atmospheric emissivity!
     // Note this is used later throughout the code line 673 in Snowpack.cc, dealing with the emissivity of the snowpack! (might be a bug).
-    // Left the ea calculation here for now
+    // Left the ea calculation here for now - NIC
 
     double thresh_rain = 2 + mio::Cst::t_water_freezing_pt;
 
-    Mdata.psum_ph = (Mdata.ta>= thresh_rain) ? 1. : 0.;
+    Mdata.psum_ph = (Mdata.ta>= thresh_rain) ? 1. : 0.; // Fraction rain
 //    Mdata.psum_ph = elem->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
     Mdata.psum = elem->face_data("p");
 
