@@ -29,8 +29,8 @@
 * - Precip "p" [mm]
 *
 * Provides:
-* - Snow precip p_snow [m]
-* - Liquid precip p_rain [m]
+* - Snow precip p_snow [mm]
+* - Liquid precip p_rain [mm]
 * - Fractional rain frac_precip_rain [-]
 * - Fractional snow frac_precip_snow [-]
 */
