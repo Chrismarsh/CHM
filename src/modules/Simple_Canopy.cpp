@@ -7,8 +7,6 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     depends("p_rain");
     depends("p_snow");
     depends("iswr");
-    //depends("iswr_diffuse");
-    //depends("iswr_direct");
     depends("rh");
     depends("t");
     depends("vw"); // TODO: Should this be scaled up to reference height first? (in wind speed module)
@@ -60,20 +58,19 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     //double diff   = elem->face_data("iswr_diffuse"); // not used currently
     //double ir_h   = elem->face_data("iswr_direct"); // not used currently
     double ilwr         = elem->face_data("ilwr"); // LW in above canopy
-    double p_rain       = elem->face_data("p_rain")/1000.0; // rain (mm/timestep) above canopy
-    double p_snow       = elem->face_data("p_snow")/1000.0; // snow (mm/timestep) above canopy
+    double p_rain       = elem->face_data("p_rain"); // rain (mm/timestep) above canopy
+    double p_snow       = elem->face_data("p_snow"); // snow (mm/timestep) above canopy
     double snowdepthavg = elem->face_data("snowdepthavg");
     if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
         snowdepthavg = 0;
 
-    double Albedo = elem->face_data("snow_albedo"); // Broad band snow albedo TODO: should be GROUND albedo (soil or snow), fracitional as well
+    double Albedo = elem->face_data("snow_albedo"); // Broad band snow albedo TODO: should be GROUND albedo (soil or snow), fractional as well
     if (Albedo == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
         Albedo=0.1; // Assume no snow
 
     double air_pressure = 915; //elem->face_data("air_pressure"); //"Average surface pressure", "(kPa)" TODO: Get from face_data
     //double hru_evap; //     = elem->face_data("hru_evap"); // TODO: calculate this (potential evap) at canopy level here
 
-    // Do canopy stuff here
 
     // Options for canopy representation TODO: get from cfg
 
@@ -148,7 +145,6 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     // Parameters used
 
-    // TODO:  Canopy parameters should come from mesh
     // Default values used for now
     double Alpha_c  = 0.1; // "canopy albedo" 0.05-0.2
     double B_canopy = 0.038; //TODO: What is this? Where does it come from?", NHRU, "[0.038]", "0.0", "0.2", "canopy enhancement parameter. Suggestions are Colorado - 0.23 and Alberta - 0.038", "()", &B_canopy);
@@ -159,6 +155,8 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     double Zvent    = 0.75; //", "0.0", "1.0", "ventilation wind speed height (z/Ht)", "()", &Zvent);
     double unload_t = 1.0; //", "-10.0", "20.0", "if ice-bulb temp >= t : canopy snow is unloaded as snow", "(°C)", &unload_t);
     double unload_t_water = 4.0; //", "-10.0", "20.0", "if ice-bulb temp >= t: canopy snow is unloaded as water", "(°C)", &unload_t_water);
+
+    // TODO:  Canopy parameters should come from mesh
     double Ht       = data->CanopyHeight; //", NHRU, "[0.1, 0.25, 1.0]", "0.001", "100.0", "forest/vegetation height", "(m)", &Ht);
     double LAI      = data->LAI; //", NHRU, "[2.2]", "0.1", "20.0", "leaf-area-index", "()", &LAI);
     // TODO: I think this is ok, as LAI and CanopyHeight are NOT updated
@@ -473,8 +471,8 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     elem->set_face_data("p_rain_subcanopy",net_rain); // (mm/int)
     elem->set_face_data("p_snow_subcanopy",net_snow); // (mm/int)
     elem->set_face_data("p_subcanopy",net_p); // Total precip (mm/int)
-    elem->set_face_data("frac_precip_rain",net_rain/net_p); // Fraction rain (-)
-    elem->set_face_data("frac_precip_snow",net_snow/net_p); // Fraction snow (-)
+    elem->set_face_data("frac_precip_rain_subcanopy",net_rain/net_p); // Fraction rain (-)
+    elem->set_face_data("frac_precip_snow_subcanopy",net_snow/net_p); // Fraction snow (-)
 
 }
 
