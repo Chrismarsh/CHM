@@ -21,7 +21,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     depends("ilwr");
     depends("snowdepthavg");
     depends("snow_albedo"); //
-    //depends("air_pressure"); //TODO: add to met interp (hard coded at 915 mbar for now)
+    //depends("air_pressure"); // TODO: add to met interp (hard coded at 915 mbar for now)
 
     provides("Snow_load");
     provides("rain_load");
@@ -60,8 +60,8 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     //double diff   = elem->face_data("iswr_diffuse"); // not used currently
     //double ir_h   = elem->face_data("iswr_direct"); // not used currently
     double ilwr         = elem->face_data("ilwr"); // LW in above canopy
-    double p_rain       = elem->face_data("p_rain"); // rain (mm/timestep) above canopy
-    double p_snow       = elem->face_data("p_snow"); // snow (mm/timestep) above canopy
+    double p_rain       = elem->face_data("p_rain")/1000.0; // rain (mm/timestep) above canopy
+    double p_snow       = elem->face_data("p_snow")/1000.0; // snow (mm/timestep) above canopy
     double snowdepthavg = elem->face_data("snowdepthavg");
     if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
         snowdepthavg = 0;
