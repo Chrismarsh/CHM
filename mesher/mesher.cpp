@@ -274,7 +274,7 @@ int main(int argc, char *argv[])
             auto n1 = itr->neighbor(1); cdt.is_infinite(n1) ? NULL : n1;
             auto n2 = itr->neighbor(2); cdt.is_infinite(n2) ? NULL : n2;
 
-            neighfile << i <<  "  " << (n0 != NULL ? n0->id : -1) << "  " << (n1 != NULL ? n1->id : -1) <<"  "<<(n1 != NULL ? n1->id : -1) << std::endl;
+            neighfile << i <<  "  " << (n0 != NULL ? n0->id : -1) << "  " << (n1 != NULL ? n1->id : -1) <<"  "<< (n1 != NULL ? n1->id : -1) << std::endl;
             ++i;
         }
 

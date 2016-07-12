@@ -30,7 +30,7 @@
     "Marsh_shading_iswr",
 //    "iswr_from_obs",
     "Burridge_iswr",
-//    "slope_iswr",
+    "slope_iswr",
      "Liston_monthly_llra_ta",
      "kunkel_rh",
      "Thornton_p",
@@ -79,13 +79,13 @@
   },
   "meshes":
   {
-    "mesh":"meshes/granger30.mesh",
+    "mesh":"meshes/wolf_lidar1.mesh"
 //
     //map internal variables/parameters to the .mesh file's parameter section.
-    "parameters":
-    {
-      "file":"meshes/granger30_liston_curvature.mesh"
-    }
+//    "parameters":
+//    {
+//      "file":"meshes/granger30_liston_curvature.mesh"
+//    }
 
   },
 
