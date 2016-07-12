@@ -1,7 +1,7 @@
 #pragma once
 
 #include "filter_base.h"
-#include <math.h>
+#include "Atmosphere.h"
 
 
 /**

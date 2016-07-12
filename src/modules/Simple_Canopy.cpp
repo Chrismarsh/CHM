@@ -9,12 +9,8 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     depends("iswr");
     depends("rh");
     depends("t");
-    depends("vw"); // TODO: Should this be scaled up to reference height first? (in wind speed module)
-    // TODO: Move this wind speed check in the met interp
-    //if(data->CanopyHeight > Zwind){
-    //  CRHMException TExcept(string("'" + Name + " (Canopy)' Vegetation height greater than wind reference height, i.e. (data->CanopyHeight > Zwind)!").c_str(), WARNING);
-    //  LogError(TExcept);
-    //}
+    depends("vw"); // Wind speed at reference height Z_U_R [m/s]
+
     depends("vw_dir");
     depends("ilwr");
     depends("snowdepthavg");
@@ -61,16 +57,40 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     double p_rain       = elem->face_data("p_rain"); // rain (mm/timestep) above canopy
     double p_snow       = elem->face_data("p_snow"); // snow (mm/timestep) above canopy
     double snowdepthavg = elem->face_data("snowdepthavg");
-    if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
-        snowdepthavg = 0;
+    double Albedo       = elem->face_data("snow_albedo"); // Broad band snow albedo TODO: should be GROUND albedo (soil or snow), fractional as well
+    double air_pressure = 915; //elem->face_data("air_pressure"); //"Average surface pressure", "(kPa)" TODO: Get from face_data
 
-    double Albedo = elem->face_data("snow_albedo"); // Broad band snow albedo TODO: should be GROUND albedo (soil or snow), fractional as well
+    // Checks on boundary conditions
+
+    // Albedo
     if (Albedo == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
         Albedo=0.1; // Assume no snow
 
-    double air_pressure = 915; //elem->face_data("air_pressure"); //"Average surface pressure", "(kPa)" TODO: Get from face_data
-    //double hru_evap; //     = elem->face_data("hru_evap"); // TODO: calculate this (potential evap) at canopy level here
+    // Snow depth
+    if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
+        snowdepthavg = 0;
 
+    // TODO:  Canopy parameters should come from mesh
+    double Ht       = data->CanopyHeight; //", NHRU, "[0.1, 0.25, 1.0]", "0.001", "100.0", "forest/vegetation height", "(m)", &Ht);
+    double LAI      = data->LAI; //", NHRU, "[2.2]", "0.1", "20.0", "leaf-area-index", "()", &LAI);
+
+    // Scale Wind speed
+    if(Atmosphere::Z_U_R >= Ht)
+    { // Forcing wind speed height greater than top of canopy height
+        // Scale wind speed down to canopy top with logarithmic profile
+        vw = log_scale_wind(vw, Atmosphere::Z_U_R, Ht);
+
+        // Scale through canopy using exponential profile to middle of canopy (one layer canopy) TODO: Scale to middle of canopy (need truck space)
+        //vw = exp_scale_wind(vw);
+
+    } else
+    { // Forcing wind speed height less than than top of canopy height
+
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Forcing height lower than canopy height, currently can't handel this situation."));
+
+    }
+
+    // End Checks
 
     // Options for canopy representation TODO: get from cfg
 
@@ -140,7 +160,6 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     //double cum_intcp_evap; //", NHRU, "HRU Evaporation from interception", "(mm)", &cum_intcp_evap);
 
-
     double Kstar_H;
 
     // Parameters used
@@ -155,14 +174,6 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     double Zvent    = 0.75; //", "0.0", "1.0", "ventilation wind speed height (z/Ht)", "()", &Zvent);
     double unload_t = 1.0; //", "-10.0", "20.0", "if ice-bulb temp >= t : canopy snow is unloaded as snow", "(°C)", &unload_t);
     double unload_t_water = 4.0; //", "-10.0", "20.0", "if ice-bulb temp >= t: canopy snow is unloaded as water", "(°C)", &unload_t_water);
-
-    // TODO:  Canopy parameters should come from mesh
-    double Ht       = data->CanopyHeight; //", NHRU, "[0.1, 0.25, 1.0]", "0.001", "100.0", "forest/vegetation height", "(m)", &Ht);
-    double LAI      = data->LAI; //", NHRU, "[2.2]", "0.1", "20.0", "leaf-area-index", "()", &LAI);
-    // TODO: I think this is ok, as LAI and CanopyHeight are NOT updated
-
-
-
 
     double SolAng = global_param->solar_el() * mio::Cst::to_rad; // degrees to radians
 
@@ -207,26 +218,26 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     Kstar_H = iswr*(1.0 - Alpha_c - Tauc*(1.0 - Albedo)); // TODO: what is Kstar_H???
 
     // Incident long-wave at surface, "(W/m^2)"
-    Qlisn = ilwr*Vf_ + (1.0 - Vf_)*PhysConsts::emiss_c*PhysConsts::sbc*pow(T1, 4.0) + B_canopy*Kstar_H;
+    Qlisn = ilwr*Vf_ + (1.0 - Vf_)*Vegetation::emiss_c*PhysConst::sbc*pow(T1, 4.0) + B_canopy*Kstar_H;
 
     // Incident short-wave at surface, "(W/m^2)"
     Qsisn = iswr*Tauc;
 
 
-    double rho = air_pressure*1000/(PhysConsts::Rgas*T1); // density of Air (pressure kPa to Pa = *1000)
+    double rho = air_pressure*1000/(PhysConst::Rgas*T1); // density of Air (pressure kPa to Pa = *1000)
 
     double U1 = vw; // Wind speed (m/s) TODO: at height X?
 
     // Aerodynamic resistance of canopy
-    ra = (log(Zref/Z0snow)*log(Zwind/Z0snow))/pow(PhysConsts::kappa,2)/U1; // (s/m)
+    ra = (log(Zref/Z0snow)*log(Zwind/Z0snow))/pow(PhysConst::kappa,2)/U1; // (s/m)
 
-    double deltaX = 0.622*PhysConsts::Ls*Qs(air_pressure, T1)/(PhysConsts::Rgas*(pow(T1,2))); // Must be (kg K-1)
+    double deltaX = 0.622*PhysConst::Ls*Qs(air_pressure, T1)/(PhysConst::Rgas*(pow(T1,2))); // Must be (kg K-1)
 
     double q = (rh/100)*Qs(air_pressure, T1); // specific humidity (kg/kg)
 
     // snow surface temperature of snow in canopy TODO: Units of this don't work out (NIC)
-    Ts = T1 + (PhysConsts::emiss*(ilwr - PhysConsts::sbc*pow(T1, 4.0)) + PhysConsts::Ls*(q - Qs(air_pressure, T1))*rho/ra)/
-                  (4.0*PhysConsts::emiss*PhysConsts::sbc*pow(T1, 3.0) + (PhysConsts::Cp + PhysConsts::Ls*deltaX)*rho/ra);
+    Ts = T1 + (Snow::emiss*(ilwr - PhysConst::sbc*pow(T1, 4.0)) + PhysConst::Ls*(q - Qs(air_pressure, T1))*rho/ra)/
+                  (4.0*Snow::emiss*PhysConst::sbc*pow(T1, 3.0) + (PhysConst::Cp + PhysConst::Ls*deltaX)*rho/ra);
 
     Ts -= mio::Cst::t_water_freezing_pt; // K to C
 
@@ -235,7 +246,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
         Ts = 0.0;
 
     // reflected long-wave at surface (WHAT SURFACE???) Reflected?? equation is for emitted...
-    Qlosn = PhysConsts::emiss*PhysConsts::sbc*pow(Ts + mio::Cst::t_water_freezing_pt, 4.0);
+    Qlosn = Snow::emiss*PhysConst::sbc*pow(Ts + mio::Cst::t_water_freezing_pt, 4.0);
 
     // Net radiation for ground snowpack surface TODO: why use snowpack on ground albedo?
     Qnsn = Qlisn - Qlosn + Qsisn*(1.0 - Albedo);
@@ -314,21 +325,21 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
         double Es = 611.15 * exp(22.452*ta/(ta + 273.0));  // {sat pressure} TODO: Uses forcing air temp, right height??
 
-        double SvDens = Es*PhysConsts::M/(PhysConsts::R*(ta + 273.0)); // {sat density}
+        double SvDens = Es*PhysConst::M/(PhysConst::R*(ta + 273.0)); // {sat density}
 
         Lamb = 6.3e-4*(ta+273.0) + 0.0673;  // thermal conductivity of atmosphere
         Nr = 2.0 * Radius * uVent / KinVisc;  // Reynolds number
         Nu = 1.79 + 0.606 * sqrt(Nr); // Nusselt number
         SStar = M_PI * pow(Radius,2) * (1.0 - AlbedoIce) * iswr;  // SW to snow particle !!!! changed
         A1 = Lamb * (ta + 273) * Nu;
-        B1 = Hs * PhysConsts::M /(PhysConsts::R * (ta + 273.0))- 1.0;
+        B1 = Hs * PhysConst::M /(PhysConst::R * (ta + 273.0))- 1.0;
         J = B1/A1;
         Sigma2 = rh/100 - 1;
         D = 2.06e-5* pow((ta+273.0)/273.0, -1.75); // diffusivity of water vapour
         C1 = 1.0/(D*SvDens*Nu);
 
         Alpha = 5.0;
-        Mpm = 4.0/3.0 * M_PI * PhysConsts::DICE * pow(Radius,3) *(1.0 + 3.0/Alpha + 2.0/pow(Alpha,2));
+        Mpm = 4.0/3.0 * M_PI * PhysConst::DICE * pow(Radius,3) *(1.0 + 3.0/Alpha + 2.0/pow(Alpha,2));
 
 // sublimation rate of single 'ideal' ice sphere:
 

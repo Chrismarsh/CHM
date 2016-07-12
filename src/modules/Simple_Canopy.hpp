@@ -1,19 +1,19 @@
-//#pragma once
+#pragma once
 
 #include <boost/shared_ptr.hpp>
-
 #include "logger.hpp"
-//#include "triangulation.hpp"
 #include "module_base.hpp"
-//#include "TPSpline.hpp"
 #include <meteoio/MeteoIO.h>
-#include "PhysConsts.h"
+#include "Atmosphere.h"
+#include "PhysConst.h"
+#include "Vegetation.h"
+#include <string>
+
 /*
  * @Brief Solves energy and mass equations for canopy states using parameterizations based on LAI and canopy closure.
  *
  */
 
-#include <string>
 class Simple_Canopy : public module_base
 {
 public:
@@ -34,7 +34,6 @@ public:
     double Qs(double air_pressure, double ta);
 
     struct data : public face_info {
-        //boost::shared_ptr<Snowpack> sp;
 
         // parameters
         double LAI;
