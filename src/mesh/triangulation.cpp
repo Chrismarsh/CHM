@@ -247,10 +247,10 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
             items.push_back(jtr.second.get_value<int>());
         }
         auto face = _faces.at(i);
-        //-2 is now the no neighbour value
-        Face_handle face0 =  items[0] != -2 ?_faces.at( items[0] ) : Face_handle();
-        Face_handle face1 =  items[1] != -2 ?_faces.at( items[1] ) : Face_handle();
-        Face_handle face2 =  items[2] != -2 ?_faces.at( items[2] ) : Face_handle();
+        //-1 is now the no neighbour value
+        Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : Face_handle();
+        Face_handle face1 =  items[1] != -1 ?_faces.at( items[1] ) : Face_handle();
+        Face_handle face2 =  items[2] != -1 ?_faces.at( items[2] ) : Face_handle();
 
         face->set_neighbors(face0,face1,face2);
 

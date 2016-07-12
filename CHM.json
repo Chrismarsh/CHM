@@ -19,15 +19,15 @@
 
 //    "startdate":"20010501T000000",
 
-    "startdate":"20010501T000000",
-    "enddate":"20010502T000000"
+    "startdate":"20010501T100000",
+    "enddate":  "20010501T100000"
 //     "enddate":"20010613T000000"
   },
   "modules": //important these are [ ]
   [
     //met interp
      "Liston_wind",
-    "Marsh_shading_iswr",
+//    "Marsh_shading_iswr",
 //    "iswr_from_obs",
     "Burridge_iswr",
     "slope_iswr",
@@ -79,13 +79,18 @@
   },
   "meshes":
   {
-    "mesh":"meshes/wolf_lidar1.mesh"
+    "mesh":"meshes/wolf_lidar1.mesh",
 //
     //map internal variables/parameters to the .mesh file's parameter section.
-//    "parameters":
-//    {
+    "parameters":
+    {
 //      "file":"meshes/granger30_liston_curvature.mesh"
-//    }
+      "file":"meshes/wolf_lidar1.param"
+    },
+    "initial_conditions":
+    {
+      "file":"meshes/wolf_lidar1.ic"
+    }
 
   },
 
