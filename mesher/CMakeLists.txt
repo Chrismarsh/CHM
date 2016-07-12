@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 2.8)
 project(mesher)
 
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html

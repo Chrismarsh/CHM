@@ -47,6 +47,7 @@ double raster::getXY(double x, double y)
     return getpXpY(px,py);
 }
 
+
 std::pair<int,int> raster::xy_to_pxpy(double x, double y)
 {
 //    adfGeoTransform[0] /* top left x */
@@ -131,6 +132,9 @@ double raster::getpXpY(int px, int py)
     value = value == band->GetNoDataValue(NULL) ? nan("") : value;
     return value;
 }
+
+
+
 
 void raster::setBand(float *data, int xsize, int ysize)
 {
