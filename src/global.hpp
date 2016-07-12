@@ -10,12 +10,12 @@ namespace pt = boost::property_tree;
 #include "interpolation.h"
 #include "station.hpp"
 /**
- * Basin wide paramters such as transmissivity, solar elevation, solar aspec, etc.
+ * Basin wide parameters such as transmissivity, solar elevation, solar aspect, etc.
  * 
  **/
 class global
 {
-     //want to let core modify date time, etc without showing a public interface. 
+    //want to let core modify date time, etc without showing a public interface.
     //This is because global gets passed to all modules and a rogue module could do something dumb
     //const doesn't save us as we actually do want to modify things
     friend class core;
@@ -26,7 +26,7 @@ private:
     //solar azimuth in radians
     double _solar_az;
     
-    //aproximae lat and lon of the basin for solar radiation calculations
+    //approximate lat and lon of the basin for solar radiation calculations
     double _lat;
     double _lon;
     

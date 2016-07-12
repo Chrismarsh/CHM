@@ -131,7 +131,7 @@ void global::solar_el_az()
     double GMST0=fmod(L+180.,360.)/15.;
     double SIDTIME = GMST0 + UTH + Lon/15.;
 
-        //Replace RA with hour angle HA
+    //Replace RA with hour angle HA
     double HA = (SIDTIME*15. - RA);
 
     //convert to rectangular coordinate system
