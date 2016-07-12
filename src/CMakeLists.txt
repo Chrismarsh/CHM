@@ -42,7 +42,8 @@ set(MODULE_SRCS
 		modules/interp_met/Thornton_var_p.cpp
 		modules/interp_met/kunkel_rh.cpp
 		modules/interp_met/rh_from_obs.cpp
-                modules/interp_met/Longwave_from_obs.cpp
+		modules/interp_met/Longwave_from_obs.cpp
+		modules/Atmosphere.cpp
 
 		modules/point_mode.cpp
 
@@ -59,7 +60,6 @@ set(MODULE_SRCS
 		modules/snowpack.cpp
 		modules/Gray_inf.cpp
 		modules/Simple_Canopy.cpp
-		modules/PhysConsts.h
 		${SNOBAL_SRC}
 
 		modules/threshold_p_phase.cpp
@@ -116,6 +116,11 @@ set (HEADER_FILES
 		filters
         ${CMAKE_CURRENT_SOURCE_DIR}
 		CACHE INTERNAL "" FORCE
+		modules/Atmosphere.h
+		modules/PhysConst.h
+		modules/Snow.h
+		modules/Soil.h
+		modules/Vegetation.h
 		)
 
 
@@ -178,7 +183,7 @@ add_executable(
 	${FILTER_SRCS}
     ${MODULE_SRCS}
 	${LIBMAW_SRCS}
- )
+	)
 
 target_link_libraries(
 	CHM
