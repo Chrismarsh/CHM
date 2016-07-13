@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
     double max_area = 0;
     double min_area = 1;
 
+    std::string error_metric = "rmse"; //default of RMSE
     //holds all rasters we perform tolerance checking on
     std::vector< std::pair< boost::shared_ptr<raster>,double> > rasters;
 
@@ -50,7 +51,9 @@ int main(int argc, char *argv[])
 
             ("area,a", po::value<double>(&max_area), "Maximum area a triangle can be. Square unit.")
             ("min-area,m", po::value<double>(&min_area), "Minimum area a triangle can be. Square unit.")
-            ("error-metric,M", po::value<std::vector<std::string>>(), "Error metric. One of: rmse, mean_tol.");
+            ("error-metric,M", po::value<std::string>(&error_metric), "Error metric. One of: rmse, mean_tol, max_tol."
+                                                         "mean_tol compares the mean triangle vertex value to the mean raster value. "
+                                                        "max_tol mimics the ArcGIS TIN tolerance, and is the maximum difference between the triangle and any single raster cell.");
 
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
@@ -209,7 +212,7 @@ int main(int argc, char *argv[])
 
     std::cout << "Number of input PLGS vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the triangulation..." << std::endl;
-    CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters));
+    CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters,error_metric));
     std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Number of triangles: " << cdt.number_of_faces() << std::endl;
 

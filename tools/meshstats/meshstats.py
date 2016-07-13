@@ -9,9 +9,9 @@ import sys
 import csv
 
 def main():
-    mesher_output_dir = '../mesher/Fortress_2m_DEM1/'
-    # raster_file ='../mesher/wolf_lidar1/wolf_lidar1_projected.tif'
-    # shp_file='../mesher/wolf_lidar1/Export_Output.shp'
+    # mesher_output_dir = '/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/wolf_lidar1_1m_tol/'
+    raster_file ='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_projected.tif'
+    shp_file='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_1m_rmse.shp'
 
     #############
     if 'mesher_output_dir' in locals():
@@ -23,6 +23,7 @@ def main():
         exit(1)
     else:
         base_name =os.path.basename(os.path.normpath(raster_file))
+        base_shp_name =os.path.basename(os.path.normpath(shp_file))
 
     raster_ds = gdal.Open(raster_file)
     if raster_ds is None:
@@ -96,7 +97,7 @@ def main():
     mesh= None
 
     #
-    with open(base_name+'_stats.csv','w') as f:
+    with open(base_shp_name+'_stats.csv','w') as f:
         writer = csv.writer(f)
         writer.writerow(["rmse", "area", "angle"])
         max_len = max(len(rmse_value), len(area), len(angles))
