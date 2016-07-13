@@ -1,5 +1,6 @@
 #include "Atmosphere.h"
 
+// Logrithmic, following Anderson 1967? (DHSVM)  https://github.com/UW-Hydro/DHSVM/blob/master/CalcAerodynamic.c
 double log_scale_wind(double u, double Z_in, double Z_out)
 {
     const double Z0_SNOW  = Snow::Z0_SNOW; // Snow roughness (m)
@@ -22,3 +23,4 @@ double log_scale_wind(double u, double Z_in, double Z_out)
     u = u * Ftcr;
     return u;
 }
+

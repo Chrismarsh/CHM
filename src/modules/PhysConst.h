@@ -9,8 +9,9 @@ namespace PhysConst {
     const double sbc = mio::Cst::stefan_boltzmann; // 5.670373e-8 (W m-2 K-4)
     const double Rgas = mio::Cst::gaz_constant_dry_air; // (W m-2 K-4)
     const double kappa = 0.4; // Von Karman constant
-    const double Ls = mio::Cst::l_water_sublimation; // 2.838e6; // ((J kg-1)
+    const double Ls = mio::Cst::l_water_sublimation; // 2.838e6; // Latent heat of sublimation // ((J kg-1)
     const double Cp = mio::Cst::specific_heat_air; // 1004.67; // (J K-1), see Stull "Meteorology for scientists and engineers" p44
+    const double Ci = mio::Cst::specific_heat_ice; //  = 2100.0 (J K-1), at 0C
 
     // From PBSM Pomeroy et al. 1993
     const double M = 18.01; // M is the molecular weight of water (18.01 kg kmol-l);
