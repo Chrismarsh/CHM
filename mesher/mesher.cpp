@@ -227,9 +227,10 @@ int main(int argc, char *argv[])
 
     for(auto itr = cdt.finite_vertices_begin(); itr != cdt.finite_vertices_end(); ++itr)
     {
+
         itr->info() = mesh_vertex_i;
 
-        nodefile << mesh_vertex_i+1 << "   " << itr->point().x() << "   " << itr->point().y() << "   0" << std::endl;
+        nodefile << mesh_vertex_i << "   " << itr->point().x() << "   " << itr->point().y() << "   0" << std::endl;
         ++mesh_vertex_i;
     }
 

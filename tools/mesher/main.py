@@ -71,7 +71,10 @@ def main():
 
     # we want to reuse an already generated mesh, but we will need to clean up the shp file as gdal won't overwrite an existing one
     if reuse_mesh:
-        os.remove(base_name + '/' + base_name + '_USM.shp')
+        try:
+            os.remove(base_name + '/' + base_name + '_USM.shp')
+        except:
+            pass
 
     base_dir = base_name + '/'
 
@@ -412,8 +415,7 @@ def main():
                     ring.AddPoint(mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1])
                     ring.AddPoint(mesh['mesh']['vertex'][v1][0], mesh['mesh']['vertex'][v1][1])
                     ring.AddPoint(mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1])
-                    ring.AddPoint(mesh['mesh']['vertex'][v0][0],
-                                  mesh['mesh']['vertex'][v0][1])  # add again to complete the ring.
+                    ring.AddPoint(mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1])  # add again to complete the ring.
 
                     tpoly = ogr.Geometry(ogr.wkbPolygon)
                     tpoly.AddGeometry(ring)
@@ -431,7 +433,6 @@ def main():
                         ics[key].append(output)
 
                     layer.CreateFeature(feature)
-
                     i = i + 1
 
     print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
