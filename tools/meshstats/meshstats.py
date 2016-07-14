@@ -9,9 +9,10 @@ import sys
 import csv
 
 def main():
-    # mesher_output_dir = '/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/wolf_lidar1_1m_tol/'
-    raster_file ='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_projected.tif'
-    shp_file='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_1m_rmse.shp'
+    print 'Reading in files'
+    mesher_output_dir = '../mesher/wolf1m_fill/'
+    # raster_file ='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_projected.tif'
+    # shp_file='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_1m_rmse.shp'
 
     #############
     if 'mesher_output_dir' in locals():
@@ -31,6 +32,22 @@ def main():
         exit(1)
 
 
+    rb = raster_ds.GetRasterBand(1)
+    src_array = rb.ReadAsArray(0,0,raster_ds.RasterXSize-1,raster_ds.RasterYSize-1)
+    masked = np.ma.masked_where(src_array == rb.GetNoDataValue(),src_array )
+    c = masked.count()
+
+    src_array = None
+    masked = None
+    rb = None
+    if c == 0:
+        print "Only no data present in raster"
+        exit(1)
+
+
+    print "Number of raster cells = " + str(c)
+
+
     # driver = ogr.GetDriverByName('ESRI Shapefile')
     mesh = ogr.Open(shp_file, update=True)
     if mesh is None:
@@ -41,6 +58,8 @@ def main():
     layer = mesh.GetLayer()
     num_elem = layer.GetFeatureCount()
     print "Number of triangles = %d" % (num_elem)
+
+    print "# triangles = " + str( num_elem / float(c) * 100.) + '%'
 
     area = []
     angles = []

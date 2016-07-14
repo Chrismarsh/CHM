@@ -233,7 +233,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     if( this->number_of_faces() != num_elem)
     {
         BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Expected: " + std::to_string(nvertex_toread) + " elems, got: " + std::to_string(this->size_faces())));
+                "Expected: " + std::to_string(num_elem) + " elems, got: " + std::to_string(this->size_faces())));
     }
 
     LOG_DEBUG << "Building face neighbours";

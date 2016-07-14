@@ -213,8 +213,7 @@ int main(int argc, char *argv[])
     std::cout << "Number of input PLGS vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the triangulation..." << std::endl;
     CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters,error_metric));
-    std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
-    std::cout << "Number of triangles: " << cdt.number_of_faces() << std::endl;
+
 
     auto nodefilepath = path; //eg PLGSwolf_lidar1.1.node
     nodefilepath /= p.filename().replace_extension(".1.node");
@@ -237,31 +236,37 @@ int main(int argc, char *argv[])
 
     nodefile.close();
 
-    //niehgbour file
-    auto neighfilepath = path; //eg PLGSwolf_lidar1.1.neigh
-    neighfilepath /= p.filename().replace_extension(".1.neigh");
-    std::ofstream neighfile(neighfilepath.string());
-    neighfile << cdt.number_of_faces() << " 3" << std::endl;
 
-       //element file, defines the triangles
-    auto elefilepath = path; //eg "PLGSwolf_lidar1.1.ele"
-    elefilepath /= p.filename().replace_extension(".1.ele");
-    std::ofstream elemfile(elefilepath.string());
-    elemfile << cdt.number_of_faces() << " 3 0" << std::endl;
-
-    size_t i=1; //1 indexing
+    size_t elem_i=1; //1 indexing
 
     for(auto itr = cdt.finite_faces_begin(); itr != cdt.finite_faces_end(); itr++ )
     {
         if(itr->is_in_domain())
         {
-            itr->id = i;
-            ++i;
+            itr->id = elem_i;
+            ++elem_i;
         }
 
     }
 
-    i=1;
+    //i has total number of faces that are in domain
+    std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
+    std::cout << "Number of triangles: " << elem_i << std::endl;
+
+    //niehgbour file
+    auto neighfilepath = path; //eg PLGSwolf_lidar1.1.neigh
+    neighfilepath /= p.filename().replace_extension(".1.neigh");
+    std::ofstream neighfile(neighfilepath.string());
+    neighfile << elem_i-1 << " 3" << std::endl;
+
+       //element file, defines the triangles
+    auto elefilepath = path; //eg "PLGSwolf_lidar1.1.ele"
+    elefilepath /= p.filename().replace_extension(".1.ele");
+    std::ofstream elemfile(elefilepath.string());
+    elemfile << elem_i-1 << " 3 0" << std::endl;
+
+
+    int i=1;
 
     for(auto itr = cdt.finite_faces_begin(); itr != cdt.finite_faces_end(); itr++ )
     {
