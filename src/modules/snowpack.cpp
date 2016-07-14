@@ -3,8 +3,7 @@
 Lehning_snowpack::Lehning_snowpack(config_file cfg)
         : module_base(parallel::data)
 {
-    depends("p_rain");
-    depends("p_snow");
+    depends("frac_precip_rain");
     depends("iswr");
     depends("rh");
     depends("t");
