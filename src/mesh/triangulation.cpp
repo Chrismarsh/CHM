@@ -206,7 +206,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     size_t cid = 0;
     for (auto &itr : mesh.get_child("mesh.elem"))
     {
-        std::vector<size_t> items;
+        std::vector<int> items;
         //iterate over the vertex triples
         for(auto& jtr: itr.second)
         {
@@ -240,7 +240,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     i=0;
     for (auto &itr : mesh.get_child("mesh.neigh"))
     {
-        std::vector<size_t> items;
+        std::vector<int> items;
         //iterate over the vertex triples
         for(auto& jtr: itr.second)
         {
