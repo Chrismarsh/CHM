@@ -469,7 +469,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     // Output computed canopy states and fluxes downward to snowpack and upward to atmosphere
     elem->set_face_data("Snow_load",data->Snow_load);
     elem->set_face_data("rain_load",data->rain_load);
-    elem->set_face_data("cum_Subl_Cpy",data->cum_Subl_Cpy);
+    //elem->set_face_data("cum_Subl_Cpy",data->cum_Subl_Cpy);
     elem->set_face_data("ta_subcanopy",ta);
     elem->set_face_data("rh_subcanopy",rh);
     elem->set_face_data("vw_subcanopy",vw);
