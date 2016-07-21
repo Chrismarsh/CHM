@@ -612,12 +612,22 @@
                 //do numeric rasters
                 for(auto& itr : r)
                 {
-                    auto t = error_fn(fh,*(itr.first));
-                    q._tolerance.push_back(std::make_pair(t,itr.second));
+                    //if tolerance == -1, skip the tolerance tests because we want to make a uniform mesh.
+                    if(itr.second != -1)
+                    {
+                        auto t = error_fn(fh,*(itr.first));
+                        q._tolerance.push_back(std::make_pair(t,itr.second));
 
-                    current_badness = operator()(q);
-                    if (current_badness != CGAL::Mesh_2::NOT_BAD)
-                        return current_badness;
+                        current_badness = operator()(q);
+                        if (current_badness != CGAL::Mesh_2::NOT_BAD)
+                            return current_badness;
+                    }
+                    else
+                    {
+                        //fake it passing
+                        q._tolerance.push_back(std::make_pair(0,itr.second));
+                    }
+
                 }
 
                 for(auto& itr : category_rasters)
