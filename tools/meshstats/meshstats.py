@@ -9,9 +9,10 @@ import sys
 import csv
 
 def main():
-    mesher_output_dir = '../mesher/Fortress_2m_DEM1/'
-    # raster_file ='../mesher/wolf_lidar1/wolf_lidar1_projected.tif'
-    # shp_file='../mesher/wolf_lidar1/Export_Output.shp'
+    print 'Reading in files'
+    mesher_output_dir = '../mesher/wolf1m_fill/'
+    # raster_file ='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_projected.tif'
+    # shp_file='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_1m_rmse.shp'
 
     #############
     if 'mesher_output_dir' in locals():
@@ -23,11 +24,28 @@ def main():
         exit(1)
     else:
         base_name =os.path.basename(os.path.normpath(raster_file))
+        base_shp_name =os.path.basename(os.path.normpath(shp_file))
 
     raster_ds = gdal.Open(raster_file)
     if raster_ds is None:
         print 'Could not open %s' % (raster_ds)
         exit(1)
+
+
+    rb = raster_ds.GetRasterBand(1)
+    src_array = rb.ReadAsArray(0,0,raster_ds.RasterXSize-1,raster_ds.RasterYSize-1)
+    masked = np.ma.masked_where(src_array == rb.GetNoDataValue(),src_array )
+    c = masked.count()
+
+    src_array = None
+    masked = None
+    rb = None
+    if c == 0:
+        print "Only no data present in raster"
+        exit(1)
+
+
+    print "Number of raster cells = " + str(c)
 
 
     # driver = ogr.GetDriverByName('ESRI Shapefile')
@@ -40,6 +58,8 @@ def main():
     layer = mesh.GetLayer()
     num_elem = layer.GetFeatureCount()
     print "Number of triangles = %d" % (num_elem)
+
+    print "# triangles = " + str( num_elem / float(c) * 100.) + '%'
 
     area = []
     angles = []
@@ -96,7 +116,7 @@ def main():
     mesh= None
 
     #
-    with open(base_name+'_stats.csv','w') as f:
+    with open(base_shp_name+'_stats.csv','w') as f:
         writer = csv.writer(f)
         writer.writerow(["rmse", "area", "angle"])
         max_len = max(len(rmse_value), len(area), len(angles))
