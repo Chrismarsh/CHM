@@ -488,7 +488,6 @@ void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
     // TODO: Parallel call needed here?
     //#pragma omp parallel for
 
-    // TODO: only initialize for meshes that have canopy!
 
     // For each face
     for(size_t i=0;i<domain->size_faces();i++)
@@ -498,11 +497,39 @@ void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
 
         auto d = face->make_module_data<Simple_Canopy::data>(ID);
 
-        // Get canopy parameters for this face
-        // TODO: allow it to vary by face (from mesher)
-        // First check if any canopy exists at this site //TODO: canopy check, otherwise don't initalize
-        d->LAI          = cfg.get<double>("canopy.CanopyLeafAreaIndex");
-        d->CanopyHeight = cfg.get<double>("canopy.CanopyHeight");
+        // Check if Canopy exists at this face/triangle
+        double LC; // landcover type
+
+        //TODO: Why is LC set to zero? why is has_parameter("landcover") false?
+
+        LC = face->get_parameter("landcover");
+        if(face->has_parameter("landcover")) {
+            LC = face->get_parameter("landcover");
+            d->HasCanopy    = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".canopy");
+            if(d->HasCanopy) {
+                d->CanopyHeight = global_param->parameters.get<double>(
+                        "landcover." + std::to_string(LC) + ".CanopyHeight");
+                d->LAI = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
+
+
+                // ClassCRHMCanopy
+                d->rain_load = 0.0;
+                d->Snow_load = 0.0;
+                d->cum_net_snow = 0.0; // "Cumulative Canopy unload ", "(mm)"
+                d->cum_net_rain = 0.0; // " direct_rain + drip", "(mm)"
+                d->cum_Subl_Cpy = 0.0; //  "canopy snow sublimation", "(mm)"
+                d->cum_intcp_evap = 0.0; // "HRU Evaporation from interception", "(mm)"
+                d->cum_SUnload_H2O = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
+
+
+            }
+        } else {
+            // TODO: throw error here
+        }
+
+
+        //d->LAI          = cfg.get<double>("canopy.CanopyLeafAreaIndex");
+        //d->CanopyHeight = cfg.get<double>("canopy.CanopyHeight");
 
 
         // Initialize canopy state variables
@@ -510,14 +537,7 @@ void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
         // Snow in branches average bulk temperature
 
 
-        // ClassCRHMCanopy
-        d->rain_load = 0.0;
-        d->Snow_load = 0.0;
-        d->cum_net_snow = 0.0; // "Cumulative Canopy unload ", "(mm)"
-        d->cum_net_rain = 0.0; // " direct_rain + drip", "(mm)"
-        d->cum_Subl_Cpy = 0.0; //  "canopy snow sublimation", "(mm)"
-        d->cum_intcp_evap = 0.0; // "HRU Evaporation from interception", "(mm)"
-        d->cum_SUnload_H2O = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
+
 
     }
 }

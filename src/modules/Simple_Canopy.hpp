@@ -8,6 +8,7 @@
 #include "PhysConst.h"
 #include "Vegetation.h"
 #include <string>
+#include "face.hpp"
 
 /*
  * @Brief Solves energy and mass equations for canopy states using parameterizations based on LAI and canopy closure.
@@ -38,6 +39,7 @@ public:
         // parameters
         double LAI;
         double CanopyHeight;
+        bool HasCanopy;
 
         // model states
         double rain_load;
