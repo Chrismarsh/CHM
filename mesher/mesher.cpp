@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
     double max_area = 0;
     double min_area = 1;
 
+    std::string error_metric = "rmse"; //default of RMSE
     //holds all rasters we perform tolerance checking on
     std::vector< std::pair< boost::shared_ptr<raster>,double> > rasters;
 
@@ -50,7 +51,9 @@ int main(int argc, char *argv[])
 
             ("area,a", po::value<double>(&max_area), "Maximum area a triangle can be. Square unit.")
             ("min-area,m", po::value<double>(&min_area), "Minimum area a triangle can be. Square unit.")
-            ("error-metric,M", po::value<std::vector<std::string>>(), "Error metric. One of: rmse, mean_tol.");
+            ("error-metric,M", po::value<std::string>(&error_metric), "Error metric. One of: rmse, mean_tol, max_tol."
+                                                         "mean_tol compares the mean triangle vertex value to the mean raster value. "
+                                                        "max_tol mimics the ArcGIS TIN tolerance, and is the maximum difference between the triangle and any single raster cell.");
 
     po::variables_map vm;
     po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
@@ -209,9 +212,8 @@ int main(int argc, char *argv[])
 
     std::cout << "Number of input PLGS vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the triangulation..." << std::endl;
-    CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters));
-    std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
-    std::cout << "Number of triangles: " << cdt.number_of_faces() << std::endl;
+    CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters,error_metric));
+
 
     auto nodefilepath = path; //eg PLGSwolf_lidar1.1.node
     nodefilepath /= p.filename().replace_extension(".1.node");
@@ -225,40 +227,47 @@ int main(int argc, char *argv[])
 
     for(auto itr = cdt.finite_vertices_begin(); itr != cdt.finite_vertices_end(); ++itr)
     {
+
         itr->info() = mesh_vertex_i;
 
-        nodefile << mesh_vertex_i+1 << "   " << itr->point().x() << "   " << itr->point().y() << "   0" << std::endl;
+        nodefile << mesh_vertex_i << "   " << itr->point().x() << "   " << itr->point().y() << "   0" << std::endl;
         ++mesh_vertex_i;
     }
 
 
     nodefile.close();
 
-    //niehgbour file
-    auto neighfilepath = path; //eg PLGSwolf_lidar1.1.neigh
-    neighfilepath /= p.filename().replace_extension(".1.neigh");
-    std::ofstream neighfile(neighfilepath.string());
-    neighfile << cdt.number_of_faces() << " 3" << std::endl;
 
-       //element file, defines the triangles
-    auto elefilepath = path; //eg "PLGSwolf_lidar1.1.ele"
-    elefilepath /= p.filename().replace_extension(".1.ele");
-    std::ofstream elemfile(elefilepath.string());
-    elemfile << cdt.number_of_faces() << " 3 0" << std::endl;
-
-    size_t i=1; //1 indexing
+    size_t elem_i=1; //1 indexing
 
     for(auto itr = cdt.finite_faces_begin(); itr != cdt.finite_faces_end(); itr++ )
     {
         if(itr->is_in_domain())
         {
-            itr->id = i;
-            ++i;
+            itr->id = elem_i;
+            ++elem_i;
         }
 
     }
 
-    i=1;
+    //i has total number of faces that are in domain
+    std::cout << "Number of vertices: " << cdt.number_of_vertices() << std::endl;
+    std::cout << "Number of triangles: " << elem_i << std::endl;
+
+    //niehgbour file
+    auto neighfilepath = path; //eg PLGSwolf_lidar1.1.neigh
+    neighfilepath /= p.filename().replace_extension(".1.neigh");
+    std::ofstream neighfile(neighfilepath.string());
+    neighfile << elem_i-1 << " 3" << std::endl;
+
+       //element file, defines the triangles
+    auto elefilepath = path; //eg "PLGSwolf_lidar1.1.ele"
+    elefilepath /= p.filename().replace_extension(".1.ele");
+    std::ofstream elemfile(elefilepath.string());
+    elemfile << elem_i-1 << " 3 0" << std::endl;
+
+
+    int i=1;
 
     for(auto itr = cdt.finite_faces_begin(); itr != cdt.finite_faces_end(); itr++ )
     {
@@ -274,7 +283,7 @@ int main(int argc, char *argv[])
             auto n1 = itr->neighbor(1); cdt.is_infinite(n1) ? NULL : n1;
             auto n2 = itr->neighbor(2); cdt.is_infinite(n2) ? NULL : n2;
 
-            neighfile << i <<  "  " << (n0 != NULL ? n0->id : -1) << "  " << (n1 != NULL ? n1->id : -1) <<"  "<<(n1 != NULL ? n1->id : -1) << std::endl;
+            neighfile << i <<  "  " << (n0 != NULL ? n0->id : -1) << "  " << (n1 != NULL ? n1->id : -1) <<"  "<< (n1 != NULL ? n1->id : -1) << std::endl;
             ++i;
         }
 

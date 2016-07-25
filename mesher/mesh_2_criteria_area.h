@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <map>
 #include <boost/shared_ptr.hpp>
+#include <boost/function.hpp>
+#include <boost/bind.hpp>
 #include <vector>
 #include "triangle.h"
 
@@ -21,6 +23,7 @@
         Geom_traits traits;
         const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r;
         const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters;
+        const std::string& error_metric;
     public:
 
         mesh_2_criterion_area(const double aspect_bound = 0.125,
@@ -28,8 +31,9 @@
                               const double min_area = 1,
                               const std::vector< std::pair< boost::shared_ptr<raster>,double> >& rasters = std::vector< std::pair< boost::shared_ptr<raster>,double>> (),
                               const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters = std::vector< std::pair< boost::shared_ptr<raster>,double>>(),
+                              const std::string& error_metric = std::string(),
                               const Geom_traits &traits = Geom_traits())
-        : r(rasters),category_rasters(category_rasters)
+        : r(rasters),category_rasters(category_rasters),error_metric(error_metric)
 
         {
             this->max_area = max_area;
@@ -137,7 +141,10 @@
             const double min_area;
             const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r;
             const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters;
+            const std::string& error_metric;
             const Geom_traits &traits;
+
+            boost::function<double(const typename CDT::Face_handle&, const raster&)> error_fn;
         public:
 
             typedef typename CDT::Point Point_2;
@@ -147,14 +154,26 @@
                    const double min_area,
                    const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r,
                    const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters,
+                   const std::string& error_metric,
                    const Geom_traits &traits)
                     : B(aspect_bound), max_area(area_bound), min_area(min_area),
-                      r(r), category_rasters(category_rasters),traits(traits)
+                      r(r), category_rasters(category_rasters),error_metric(error_metric),traits(traits)
             {
 
+                if(error_metric == "rmse" || error_metric == "")
+                    error_fn = boost::bind(&Is_bad::rmse_tolerance,this,_1,_2);
+                else if(error_metric == "mean_tol")
+                    error_fn = boost::bind(&Is_bad::mean_tolerance,this,_1,_2);
+                else if(error_metric == "max_tol")
+                    error_fn = boost::bind(&Is_bad::max_diff,this,_1,_2);
+                else
+                {
+                    std::cout << "Unknown error function selected" << std::endl;
+                    exit(1);
+                }
             }
 
-            double elevation_tolerance(const typename CDT::Face_handle &fh, const raster& r) const
+            double rmse_tolerance(const typename CDT::Face_handle &fh, const raster &r) const
             {
                 triangle t;
                 vertex _v0;
@@ -234,7 +253,6 @@
                 double rmse = 0;
                 double n = 0;
 
-                std::map<int,int> lc;
                 for (int y = 0; y < t.rasterized_triangle->getDs()->GetRasterYSize(); y++)
                 {
                     for (int x = 0; x < t.rasterized_triangle->getDs()->GetRasterXSize(); x++)
@@ -262,7 +280,7 @@
                 return rmse;
 
             }
-            double categoryraster_isok(const typename CDT::Face_handle &fh,const raster& r) const
+            double categoryraster_isok(const typename CDT::Face_handle &fh, const raster& r) const
             {
                 triangle t;
                 vertex _v0;
@@ -324,7 +342,7 @@
                 return *std::max_element(percents.begin(),percents.end()); // the most dominate landcover
 
             }
-            double mean_elevation_diff(const typename CDT::Face_handle &fh,const raster & r) const
+            double mean_tolerance(const typename CDT::Face_handle &fh, const raster &r) const
             {
                 triangle t;
                 vertex v0;
@@ -406,6 +424,112 @@
                 return diff;
 
             }
+            double max_diff(const typename CDT::Face_handle &fh, const raster & r) const
+            {
+                triangle t;
+                vertex _v0;
+                vertex _v1;
+                vertex _v2;
+
+                _v0[0] = fh->vertex(0)->point().x();
+                _v0[1] = fh->vertex(0)->point().y();
+
+                _v1[0] = fh->vertex(1)->point().x();
+                _v1[1] = fh->vertex(1)->point().y();
+
+                _v2[0] = fh->vertex(2)->point().x();
+                _v2[1] = fh->vertex(2)->point().y();
+
+                t.make_rasterized(_v0, _v1, _v2, r);
+                if(t.is_nan)
+                    return 0; //bail
+
+                auto pxpy = t.rasterized_triangle->xy_to_pxpy(t.v0[0],t.v0[1]);
+                t.v0[0] = pxpy.first;
+                t.v0[1] = pxpy.second;
+
+                pxpy = t.rasterized_triangle->xy_to_pxpy(t.v1[0],t.v1[1]);
+                t.v1[0] = pxpy.first;
+                t.v1[1] = pxpy.second;
+
+
+                pxpy = t.rasterized_triangle->xy_to_pxpy(t.v2[0],t.v2[1]);
+                t.v2[0] = pxpy.first;
+                t.v2[1] = pxpy.second;
+
+
+                //Xs or Y s are collinear. This seems to happen if we've set a min triangle area less than the pixel resolution of our dem
+                //when this happens, all the points end up collinear in 1 axis, and anything that depends on this
+                if(  (t.v0[0] == 0 && t.v1[0] == 0 && t.v2[0] == 0) || (t.v0[1] == 0 && t.v1[1] == 0 && t.v2[1] == 0) )
+                {
+                    return 0; //bail out nothing we can do
+                }
+
+                //create the vectors veco0 and
+                double u1,u2,u3;
+                double v1,v2,v3;
+                double o1,o2,o3; //origin of tri
+
+                o1 = t.v0[0];
+                o2 = t.v0[1];
+                o3 = t.v0[2];
+
+                //if we have only nan z values, bail.
+                if(isnan(t.v0[2]) || isnan(t.v1[2]) || isnan(t.v2[2]))
+                {
+                    t.is_nan=true;
+                    return 0;
+                }
+
+                //following http://www.had2know.com/academics/equation-plane-through-3-points.html
+                //create the two vectors
+                u1 = t.v1[0] - o1;
+                u2 = t.v1[1] - o2;
+                u3 = t.v1[2] - o3;
+
+                v1 = t.v2[0] - o1;
+                v2 = t.v2[1] - o2;
+                v3 = t.v2[2] - o3;
+
+                //calculate the normal vector via cross product
+                double a, b, c;
+                a = u2 * v3 - v2 * u3;
+                b = v1 * u3 - u1 * v3;
+                c = u1 * v2 - v1 * u2;
+
+
+                //solve for d
+                double d =a*o1 + b*o2 + c*o3;
+
+                double max_diff = -1;
+                double n = 0;
+
+
+                for (int y = 0; y < t.rasterized_triangle->getDs()->GetRasterYSize(); y++)
+                {
+                    for (int x = 0; x < t.rasterized_triangle->getDs()->GetRasterXSize(); x++)
+                    {
+                        double value = t.rasterized_triangle->getpXpY(x, y);
+                        if (!isnan(value))
+                        {
+                            double z = -(a*x+b*y-d)/c; //plane eqn solved for z. allows us to predict z values via x,y coords
+                            double diff = fabs(z - value);
+
+                            if(diff > max_diff )
+                                max_diff = diff;
+
+                            n++;
+                        }
+                    }
+                }
+
+                //bail, somehow we have no raster cells under our triangle.
+                if (n == 0.)
+                    return 0;
+
+                return max_diff;
+
+            }
 
             CGAL::Mesh_2::Face_badness operator()(const Quality q) const
             {
@@ -483,15 +607,27 @@
                 if (current_badness != CGAL::Mesh_2::NOT_BAD)
                     return current_badness;
 
+
+
                 //do numeric rasters
                 for(auto& itr : r)
                 {
-                    auto t = elevation_tolerance(fh,*(itr.first));
-                    q._tolerance.push_back(std::make_pair(t,itr.second));
+                    //if tolerance == -1, skip the tolerance tests because we want to make a uniform mesh.
+                    if(itr.second != -1)
+                    {
+                        auto t = error_fn(fh,*(itr.first));
+                        q._tolerance.push_back(std::make_pair(t,itr.second));
 
-                    current_badness = operator()(q);
-                    if (current_badness != CGAL::Mesh_2::NOT_BAD)
-                        return current_badness;
+                        current_badness = operator()(q);
+                        if (current_badness != CGAL::Mesh_2::NOT_BAD)
+                            return current_badness;
+                    }
+                    else
+                    {
+                        //fake it passing
+                        q._tolerance.push_back(std::make_pair(0,itr.second));
+                    }
+
                 }
 
                 for(auto& itr : category_rasters)
@@ -509,6 +645,6 @@
 
         Is_bad is_bad_object() const
         {
-            return Is_bad(this->bound(), max_area, min_area, r, category_rasters, this->traits);
+            return Is_bad(this->bound(), max_area, min_area, r, category_rasters, error_metric,this->traits);
         }
     };

@@ -206,7 +206,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     size_t cid = 0;
     for (auto &itr : mesh.get_child("mesh.elem"))
     {
-        std::vector<size_t> items;
+        std::vector<int> items;
         //iterate over the vertex triples
         for(auto& jtr: itr.second)
         {
@@ -233,24 +233,24 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     if( this->number_of_faces() != num_elem)
     {
         BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Expected: " + std::to_string(nvertex_toread) + " elems, got: " + std::to_string(this->size_faces())));
+                "Expected: " + std::to_string(num_elem) + " elems, got: " + std::to_string(this->size_faces())));
     }
 
     LOG_DEBUG << "Building face neighbours";
     i=0;
     for (auto &itr : mesh.get_child("mesh.neigh"))
     {
-        std::vector<size_t> items;
+        std::vector<int> items;
         //iterate over the vertex triples
         for(auto& jtr: itr.second)
         {
             items.push_back(jtr.second.get_value<int>());
         }
         auto face = _faces.at(i);
-        //-2 is now the no neighbour value
-        Face_handle face0 =  items[0] != -2 ?_faces.at( items[0] ) : Face_handle();
-        Face_handle face1 =  items[1] != -2 ?_faces.at( items[1] ) : Face_handle();
-        Face_handle face2 =  items[2] != -2 ?_faces.at( items[2] ) : Face_handle();
+        //-1 is now the no neighbour value
+        Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : Face_handle();
+        Face_handle face1 =  items[1] != -1 ?_faces.at( items[1] ) : Face_handle();
+        Face_handle face2 =  items[2] != -1 ?_faces.at( items[2] ) : Face_handle();
 
         face->set_neighbors(face0,face1,face2);
 

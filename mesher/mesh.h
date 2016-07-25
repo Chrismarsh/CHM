@@ -21,7 +21,7 @@
         typedef typename Fb::Vertex_handle Vertex_handle;
         typedef typename Fb::Face_handle Face_handle;
 
-        size_t id;
+        int id;
 
         template<typename TDS2>
         struct Rebind_TDS
