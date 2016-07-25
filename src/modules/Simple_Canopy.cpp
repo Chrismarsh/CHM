@@ -503,8 +503,10 @@ void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
         //TODO: Why is LC set to zero? why is has_parameter("landcover") false?
 
         LC = face->get_parameter("landcover");
+        bool LCexists = face->has_parameter("landcover");
         if(face->has_parameter("landcover")) {
             LC = face->get_parameter("landcover");
+            std::string LC_string = std::to_string(LC);
             d->HasCanopy    = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".canopy");
             if(d->HasCanopy) {
                 d->CanopyHeight = global_param->parameters.get<double>(
