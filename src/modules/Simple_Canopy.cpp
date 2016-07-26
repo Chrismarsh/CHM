@@ -30,6 +30,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     provides("frac_precip_snow_subcanopy");
     provides("iswr_subcanopy");
     provides("ilwr_subcanopy");
+    provides("Ts_canopy");
     //provides("diff_subcanopy");
     //provides("ir_h_subcanopy");
 
@@ -70,7 +71,6 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
         snowdepthavg = 0;
 
-    // TODO:  Canopy parameters should come from mesh
     double Ht       = data->CanopyHeight; //", NHRU, "[0.1, 0.25, 1.0]", "0.001", "100.0", "forest/vegetation height", "(m)", &Ht);
     double LAI      = data->LAI; //", NHRU, "[2.2]", "0.1", "20.0", "leaf-area-index", "()", &LAI);
 
@@ -95,7 +95,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     // End Checks
 
-    // Options for canopy representation TODO: get from cfg
+
 
 
 
@@ -104,8 +104,6 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     // declared observations
 
     double Ts; //", NHRU, "snow surface temperature IN CANOPY", "(°C)", &Ts);
-
-    //double Qnsn; //", NHRU, "net all-wave at snow surface", "(W/m^2)", &Qnsn);
 
     double Qnsn_Var; //", NHRU, "net all-wave at snow surface", "(W/m^2*int)", &Qnsn_Var);
 
@@ -129,17 +127,9 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     double net_rain; //"", NHRU, " direct_rain + drip", "(mm/int)", &net_rain);
 
-    double cum_net_rain; //"", NHRU, " direct_rain + drip", "(mm)", &cum_net_rain);
-
     double Subl_Cpy; //"", NHRU, "canopy snow sublimation", "(mm/int)", &Subl_Cpy);
 
-    //double cum_Subl_Cpy; //"", NHRU, "canopy snow sublimation", "(mm)", &cum_Subl_Cpy);
-
     double Pevap; //"", NHRU, "used when ground is snow covered to calculate canopy evaporation (Priestley-Taylor)", "(mm)", &Pevap);
-
-    //double rain_load; //"", NHRU, "canopy rain load", "(mm)", &data->rain_load);
-
-    //double Snow_load; //"", NHRU, "canopy snow load (timetep start)", "(mm)", &Snow_load);
 
     double direct_snow; //\", NHRU, "snow 'direct' Thru", "(mm/int)", &direct_snow);
 
@@ -147,11 +137,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     double SUnload_H2O; //"", NHRU, "unloaded canopy snow as water", "(mm)", &SUnload_H2O);
 
-   // double cum_SUnload_H2O; //"", NHRU, "Cummulative unloaded canopy snow as water", "(mm)", &cum_SUnload_H2O);
-
     double net_snow; //"", NHRU, "hru_snow minus interception", "(mm/int)", &net_snow);
-
-    //double cum_net_snow; //"", NHRU, "Cummulative Canopy unload ", "(mm)", &cum_net_snow);
 
     double net_p; //"", NHRU, "total precipitation after interception", "(mm/int)", &net_p);
 
@@ -161,14 +147,12 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     double intcp_evap; //"", NHRU, "HRU Evaporation from interception", "(mm/int)", &intcp_evap);
 
-    //double cum_intcp_evap; //", NHRU, "HRU Evaporation from interception", "(mm)", &cum_intcp_evap);
-
     double Kstar_H;
 
     // Parameters used
 
     // Default values used for now
-    double Alpha_c          = Vegetation::alb_c; // "canopy albedo" 0.05-0.2
+    double Alpha_c          = Vegetation::alb_c; // "canopy albedo" 0.05-0.2 TODO: get from mesh parameter
     double B_canopy         = 0.038; //TODO: What is this? Where does it come from?", NHRU, "[0.038]", "0.0", "0.2", "canopy enhancement parameter. Suggestions are Colorado - 0.23 and Alberta - 0.038", "()", &B_canopy);
     double Zref             = 2; //", "0.01", "100.0", "temperature measurement height", "(m)", &Zref); TODO: Take from config
     double Zwind            = Atmosphere::Z_U_R; //", "0.01", "100.0", "wind measurement height", "(m)", &Zwind); // Set as defined above
@@ -244,11 +228,11 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
 
     Ts -= mio::Cst::t_water_freezing_pt; // K to C
 
-    // Check if Ts is above freezing or there is no snow TODO: don't understand logic here, why does it matter if there is snow on ground? negative snow depth?
-    if(Ts > 0.0 || snowdepthavg <= 0.0)
+    // Check if Ts is above freezing
+    if(Ts > 0.0 ) // || snowdepthavg <= 0.0 (removed dependece on snowdepthavg because it didn't make sense - NIC)
         Ts = 0.0;
 
-    // Emitted long-wave from snowpack in canopy (downwards and upwards?)
+    // Emitted long-wave from snowpack in canopy
     Qlosn = Snow::emiss*PhysConst::sbc*pow(Ts + mio::Cst::t_water_freezing_pt, 4.0);
 
     // Net radiation for ground snowpack surface
@@ -469,6 +453,7 @@ void Simple_Canopy::run(mesh_elem &elem, boost::shared_ptr <global> global_param
     // Output computed canopy states and fluxes downward to snowpack and upward to atmosphere
     elem->set_face_data("Snow_load",data->Snow_load);
     elem->set_face_data("rain_load",data->rain_load);
+    elem->set_face_data("Ts_canopy",Ts);
     //elem->set_face_data("cum_Subl_Cpy",data->cum_Subl_Cpy);
     elem->set_face_data("ta_subcanopy",ta);
     elem->set_face_data("rh_subcanopy",rh);
@@ -498,21 +483,13 @@ void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
         auto d = face->make_module_data<Simple_Canopy::data>(ID);
 
         // Check if Canopy exists at this face/triangle
-        double LC; // landcover type
-
-        //TODO: Why is LC set to zero? why is has_parameter("landcover") false?
-
-        //LC = face->get_parameter("landcover");
-        //bool LCexists = face->has_parameter("landcover");
         if(face->has_parameter("landcover")) {
-            LC = face->get_parameter("landcover");
-            //std::string LC_string = std::to_string(LC);
-            d->HasCanopy    = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".canopy");
+            int LC = face->get_parameter("landcover");
+            std::string LC_string = std::to_string(LC);
+            d->HasCanopy        = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".canopy");
             if(d->HasCanopy) {
-                d->CanopyHeight = global_param->parameters.get<double>(
-                        "landcover." + std::to_string(LC) + ".CanopyHeight");
-                d->LAI = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
-
+                d->CanopyHeight = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
+                d->LAI          = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
 
                 // ClassCRHMCanopy
                 d->rain_load = 0.0;
@@ -522,7 +499,6 @@ void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
                 d->cum_Subl_Cpy = 0.0; //  "canopy snow sublimation", "(mm)"
                 d->cum_intcp_evap = 0.0; // "HRU Evaporation from interception", "(mm)"
                 d->cum_SUnload_H2O = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
-
 
             }
         } else {
