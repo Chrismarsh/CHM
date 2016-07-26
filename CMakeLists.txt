@@ -63,6 +63,41 @@ macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
+# lovely CMake script to integrate git hashes
+# http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
+# Get the current working branch
+
+# Generate gitrevision.hh if Git is available
+# and the .git directory is present
+# this is the case when the software is checked out from a Git repo
+find_program(GIT_SCM git DOC "Git version control")
+mark_as_advanced(GIT_SCM)
+find_file(GITDIR NAMES .git PATHS ${CMAKE_SOURCE_DIR} NO_DEFAULT_PATH)
+execute_process(
+        COMMAND git rev-parse --abbrev-ref HEAD
+        WORKING_DIRECTORY ${GITDIR}
+        OUTPUT_VARIABLE GIT_BRANCH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the latest abbreviated commit hash of the working branch
+execute_process(
+        COMMAND git log -1 --format=%h
+        WORKING_DIRECTORY ${GITDIR}
+        OUTPUT_VARIABLE GIT_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+configure_file(
+        mesher/version.h.in
+        mesher/version.h
+)
+
+configure_file(
+        src/version.h.in
+        src/version.h
+)
+
 #Setup output paths
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH  ${CMAKE_SOURCE_DIR}/lib)

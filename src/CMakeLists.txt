@@ -112,6 +112,7 @@ set (HEADER_FILES
         utility
 		filters
         ${CMAKE_CURRENT_SOURCE_DIR}
+		${CMAKE_BINARY_DIR}/src # for clion generated files / out of source builds
 		CACHE INTERNAL "" FORCE
 		)
 

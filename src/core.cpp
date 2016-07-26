@@ -469,7 +469,7 @@ void core::config_global(const pt::ptree &value)
 
 core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
 {
-    std::string version = "CHM version 0.1";
+    std::string version = "CHM 0.1 " GIT_BRANCH "/" GIT_COMMIT_HASH;
 
     std::string config_file = "";
     std::string start;
@@ -477,7 +477,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     po::options_description desc("Allowed options.");
     desc.add_options()
             ("help", "This message")
-            ("version,v", "Program version")
+            ("version,v", "Version number")
             ("config-file,f", po::value<std::string>(&config_file),
              "Configuration file to use. Can be passed without --config-file [-f] as well ")
             ("config,c", po::value<std::vector<std::string>>(), "Specifies a configuration parameter."
