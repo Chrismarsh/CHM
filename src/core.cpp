@@ -233,7 +233,7 @@ void core::config_forcing(const pt::ptree &value)
 }
 void core::config_parameters(pt::ptree &value)
 {
-    LOG_DEBUG << "Found parameters section";
+    LOG_DEBUG << "Found parameter mapping section";
 
     //replace any references to external files with the file contents
     for(auto &itr : value)
@@ -817,10 +817,10 @@ void core::init(int argc, char **argv)
 
     try
     {
-        config_parameters(cfg.get_child("parameters"));
+        config_parameters(cfg.get_child("parameter_mapping"));
     } catch (pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "Optional section parameters not found";
+        LOG_DEBUG << "Optional section parameter mapping not found";
     }
 
 //#ifdef NOMATLAB

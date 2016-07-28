@@ -94,7 +94,7 @@
 
   },
 
-  "parameters":
+  "parameter_mapping":
   {
     "soil":"parameters/wolf_soil_param.json",
 
