@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "mesh.h"
+#include "version.h"
 
 #include "gdal_priv.h"
 #include "cpl_conv.h" // for CPLMalloc()
@@ -22,7 +23,7 @@ namespace po = boost::program_options;
 
 int main(int argc, char *argv[])
 {
-
+    std::string version = "mesher 0.1 " GIT_BRANCH "/" GIT_COMMIT_HASH ;
     std::string poly_file;
     double max_area = 0;
     double min_area = 1;
@@ -37,7 +38,7 @@ int main(int argc, char *argv[])
     po::options_description desc("Allowed options");
     desc.add_options()
             ("help", "This message")
-            ("version,v", "Program version")
+            ("version,v", "Version number")
             ("poly-file,p", po::value<std::string>(&poly_file),
              "PLGS file to use to bound triangulation. Same format as Triangle.")
             ("raster,r", po::value<std::vector<std::string>>(), "If tolerance checking is used,"
@@ -64,6 +65,12 @@ int main(int argc, char *argv[])
         std::cout << desc << std::endl;
         exit(1);
     }
+    if (vm.count("version"))
+    {
+        std::cout << version << std::endl;
+        exit(1);
+    }
+
 
     if ( (vm.count("raster") && ! vm.count("tolerance")) ||
             (!vm.count("raster") &&  vm.count("tolerance")) )
