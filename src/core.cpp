@@ -184,51 +184,107 @@ void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::
 void core::config_forcing(const pt::ptree &value)
 {
     LOG_DEBUG << "Found forcing section";
-    //loop over the list of forcing data
-    for (auto &itr : value)
-    {
-        std::string station_name = itr.first.data();
 
-        boost::shared_ptr<station> s = boost::make_shared<station>();
+    for(auto &itr : value) { // TODO: maybe remvoe for loop here (what happens if both file and direct forcing given??
 
-        s->ID(station_name);
-
-        double easting = itr.second.get<double>("easting");
-        s->x(easting);
-
-        double northing = itr.second.get<double>("northing");
-        s->y(northing);
-
-        double elevation = itr.second.get<double>("elevation");
-        s->z(elevation);
-
-        std::string file = itr.second.get<std::string>("file");
-        auto f = cwd_dir / file;
-        s->open(f.string());
-
-
-        try
+        // Test if given path to forcing file
+        if (itr.second.data().find(".json") != std::string::npos) // If we gave a file path
         {
-            auto filter_section = itr.second.get_child("filter");
+            auto dir =  itr.second.data();
 
-            for (auto &jtr: filter_section)
-            {
-                auto name = jtr.first.data();
+            LOG_DEBUG << "Found separate forcing config file " << dir;
 
-                auto filter = _filtfactory.get(name, jtr.second);
-                filter->process(s);
-                s->reset_itrs(); // reset all the internal iterators
-            }
+            pt::ptree forc = read_json(dir);
 
-        } catch (pt::ptree_bad_path &e)
-        {
-            //ignore
-        }
+            for(auto& sta : forc) {
+
+                std::string station_name = sta.first.data();
+
+                boost::shared_ptr <station> s = boost::make_shared<station>();
+
+                s->ID(station_name);
+
+                double easting = sta.second.get<double>("easting");
+                s->x(easting);
+
+                double northing = sta.second.get<double>("northing");
+                s->y(northing);
+
+                double elevation = sta.second.get<double>("elevation");
+                s->z(elevation);
+
+                std::string file = sta.second.get<std::string>("file");
+                auto f = cwd_dir / file;
+                s->open(f.string());
+
+                try {
+                    auto filter_section = sta.second.get_child("filter");
+
+                    for (auto &jtr: filter_section) {
+                        auto name = jtr.first.data();
+
+                        auto filter = _filtfactory.get(name, jtr.second);
+                        filter->process(s);
+                        s->reset_itrs(); // reset all the internal iterators
+                    }
+
+                } catch (pt::ptree_bad_path &e) {
+                    //ignore
+                }
+
+                LOG_DEBUG << "New station created " << *s;
+                _global->stations.push_back(s);
+
+            } // End each station in forcing.json file
+
+            LOG_DEBUG << "Temp done";
+        } else { // forcing info given directly in CHM.json config
+
+            //loop over the list of forcing data
+            for (auto &itr : value) {
+
+                std::string station_name = itr.first.data();
+
+                boost::shared_ptr <station> s = boost::make_shared<station>();
+
+                s->ID(station_name);
+
+                double easting = itr.second.get<double>("easting");
+                s->x(easting);
+
+                double northing = itr.second.get<double>("northing");
+                s->y(northing);
+
+                double elevation = itr.second.get<double>("elevation");
+                s->z(elevation);
+
+                std::string file = itr.second.get<std::string>("file");
+                auto f = cwd_dir / file;
+                s->open(f.string());
 
 
-        LOG_DEBUG << "New station created " << *s;
-        _global->stations.push_back(s);
+                try {
+                    auto filter_section = itr.second.get_child("filter");
 
+                    for (auto &jtr: filter_section) {
+                        auto name = jtr.first.data();
+
+                        auto filter = _filtfactory.get(name, jtr.second);
+                        filter->process(s);
+                        s->reset_itrs(); // reset all the internal iterators
+                    }
+
+                } catch (pt::ptree_bad_path &e) {
+                    //ignore
+                }
+
+
+                LOG_DEBUG << "New station created " << *s;
+                _global->stations.push_back(s);
+
+            } // End loop each station
+
+        } // End check forcing config style
     }
 }
 void core::config_parameters(pt::ptree &value)
