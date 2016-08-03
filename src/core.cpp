@@ -186,7 +186,7 @@ void core::config_forcing(const pt::ptree &value)
     LOG_DEBUG << "Found forcing section";
 
     for(auto &itr : value) { // TODO: maybe remvoe for loop here (what happens if both file and direct forcing given??
-        
+
         // Test if given path to forcing file
         if (itr.second.data().find(".json") != std::string::npos) // If we gave a file path
         {
