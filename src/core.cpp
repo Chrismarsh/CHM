@@ -181,9 +181,45 @@ void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::
     }
 }
 
-void core::config_forcing(const pt::ptree &value)
+void core::config_forcing(pt::ptree &value)
 {
     LOG_DEBUG << "Found forcing section";
+
+    //handle ALL the forcing files existing in a seperate json file.
+    //once inserted, we can handle like normal below
+    std::vector<std::string> to_remove;
+    for (auto &itr : value)
+    {
+        if (itr.second.data().find(".json") != std::string::npos)
+        {
+            auto dir = cwd_dir / itr.second.data();
+
+            auto cfg = read_json(dir.string());
+
+            for (auto &jtr : cfg)
+            {
+                //If an external file is provided, don't allow further sub json files. That is a rabbit hole that isn't worth dealing with.
+                if (jtr.second.data().find(".json") != std::string::npos)
+                {
+                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("An included forcing json file cannot contain json sub-files."));
+                }
+
+                std::string param_name = jtr.first.data();
+                //replace the string config name with that config file
+                value.put_child(param_name, jtr.second);
+            }
+            to_remove.push_back(itr.first.data()); // save to remove later so we don't invalidate the iterators
+        }
+
+
+    }
+
+    //remove the key that held the filename as it's not a legal station, and will mess up the loop below
+    for(auto& itr : to_remove)
+    {
+        value.erase(itr);
+    }
+
     //loop over the list of forcing data
     for (auto &itr : value)
     {
@@ -989,6 +1025,7 @@ void core::init(int argc, char **argv)
     timer c;
     LOG_DEBUG << "Running init() for each module";
     c.tic();
+
 
     for (auto& itr : _chunked_modules)
     {

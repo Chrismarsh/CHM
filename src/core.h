@@ -135,7 +135,7 @@ public:
     void config_options(const pt::ptree &value);
     void config_modules(const pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
     void config_meshes(const pt::ptree& value);
-    void config_forcing(const pt::ptree& value);
+    void config_forcing(pt::ptree& value);
     void config_module_overrides(const pt::ptree& value);
     void config_parameters(pt::ptree &value);
     void config_matlab(const pt::ptree& value);
