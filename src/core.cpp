@@ -460,6 +460,7 @@ void core::config_output(const pt::ptree &value)
 
             auto fname = itr.second.get<std::string>("base_name");
             auto f = cwd_dir / fname;
+            boost::filesystem::create_directories(f.parent_path());
             out.fname = f.string();
 
 
