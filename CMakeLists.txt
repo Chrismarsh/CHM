@@ -14,7 +14,7 @@ set (CHM_VERSION_MINOR 1)
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
 option(PV_FILTER "Build Paraview time filter"  OFF )
-option(test "Build all tests."  ON ) # Makes boolean 'test' available.
+option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 
 #meteoio plugins
@@ -50,7 +50,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
 
 ## Any custom boost path. Few of the hpc systems have out of date boost libs
-set(Boost_NO_SYSTEM_PATHS TRUE)
+set(Boost_NO_SYSTEM_PATHS FALSE)
 if (Boost_NO_SYSTEM_PATHS)
     set(BOOST_ROOT "/opt/boost/boost_1_61_0")
 #    set(BOOST_ROOT "/home/cbm038/boost_1_58_0")
