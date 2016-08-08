@@ -1031,7 +1031,12 @@ void core::init(int argc, char **argv)
     {
         for (auto &jtr : itr)
         {
-            jtr->init(_mesh,_global);
+            ompException oe;
+            oe.Run([&]
+                   {
+                       jtr->init(_mesh, _global);
+                   });
+            oe.Rethrow();
         }
 
     }
@@ -1465,7 +1470,12 @@ void core::run()
                         //module calls for domain parallel
                         for (auto &jtr : itr)
                         {
-                            jtr->run(_mesh, _global);
+                            ompException oe;
+                            oe.Run([&]
+                                   {
+                                       jtr->run(_mesh, _global);
+                                   });
+                            oe.Rethrow();
                         }
                     }
 
