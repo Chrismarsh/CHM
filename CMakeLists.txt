@@ -14,7 +14,7 @@ set (CHM_VERSION_MINOR 1)
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
 option(PV_FILTER "Build Paraview time filter"  OFF )
-option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
+option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 
 #meteoio plugins
