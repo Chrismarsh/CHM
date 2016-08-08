@@ -28,7 +28,7 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
 
     if (domain->face(0)->has_parameter("Liston curvature"))
     {
-        LOG_DEBUG << "Liston curvature available as paramter, using that.";
+        LOG_DEBUG << "Liston curvature available as parameter, using that.";
         return ;
     }
 
@@ -187,9 +187,6 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
 
 void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 {
-    //testing value
-
-
     double PI = 3.14159;
 
     std::vector< boost::tuple<double, double, double> > u;

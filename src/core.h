@@ -202,7 +202,8 @@ protected:
     
     //calculates the order modules are to be run in
     void _determine_module_dep();
-    
+
+    interp_alg _interpolation_method;
         
     //holds a unique list of all variables provided by all the met files;
     std::set<std::string> _provided_var_met_files;

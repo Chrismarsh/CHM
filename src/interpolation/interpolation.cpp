@@ -7,19 +7,23 @@ interpolation::interpolation(interp_alg ia, size_t size)
 
 void interpolation::init(interp_alg ia, size_t size)
 {
-    switch(ia)
+
+    if (ia == interp_alg::tpspline)
     {
-        case interp_alg::tpspline:
-//            if(size)
-//                base = boost::movelib::make_unique<thin_plate_spline>(size);
-//            else
-//                base = boost::movelib::make_unique<thin_plate_spline>();
-            if(size)
-                base = boost::make_shared<thin_plate_spline>(size);
-            else
-                base = boost::make_shared<thin_plate_spline>();
-        break;
-    };
+        if (size)
+            base = boost::make_shared<thin_plate_spline>(size);
+        else
+            base = boost::make_shared<thin_plate_spline>();
+    }
+    else if(ia == interp_alg::idw)
+    {
+        base = boost::make_shared<inv_dist>();
+    }
+    else
+    {
+        BOOST_THROW_EXCEPTION(interp_unknown_type() << errstr_info("Unknown interpolation type"));
+    }
+
 
     this->size = size;
     this->ia = ia;

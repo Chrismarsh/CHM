@@ -8,6 +8,7 @@ core::core()
     _start_ts = nullptr;
     _end_ts = nullptr;
     _per_triangle_timeseries = false;
+    _interpolation_method = interp_alg::tpspline;
 }
 
 core::~core()
@@ -46,6 +47,16 @@ void core::config_options(const pt::ptree &value)
         LOG_DEBUG << "Set ui to " << *u;
     }
 
+    boost::optional<std::string> ia = value.get_optional<std::string>("interpolant");
+    if(ia)
+    {
+        if( *ia == "spline")
+            _interpolation_method = interp_alg::tpspline;
+        else if (*ia == "idw")
+            _interpolation_method = interp_alg::idw;
+        else
+            LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
+    }
 
     // project name
     boost::optional<std::string> prj = value.get_optional<std::string>("prj_name");
@@ -935,7 +946,7 @@ void core::init(int argc, char **argv)
     }
 
     //set interpolation algorithm
-    _global->interp_algorithm = interp_alg::tpspline;
+    _global->interp_algorithm = _interpolation_method;// interp_alg::tpspline;
 
     //figure out what our timestepping is
     auto t0 = _global->stations.at(0)->date_timeseries().at(0);
