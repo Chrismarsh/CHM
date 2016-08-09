@@ -23,11 +23,11 @@
  * Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
 * Depends:
 * - Wind from met file "u" [m/s]
-* - Direction from met file 'ud' [degrees]
+* - Direction from met file 'vw_dir' [degrees]
 *
 * Provides:
 * - Wind "u" [m/s]
-* - Wind direction 'ud' [degrees]
+* - Wind direction 'vw_dir' [degrees]
 */
 class Liston_wind : public module_base
 {
