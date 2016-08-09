@@ -15,11 +15,12 @@
 /**
 * \addtogroup modules
 * @{
-* \class Wind
-* \brief Calculates Wind
+* \class Liston_wind
+* \brief Calculates wind speed and direction following Liston 2006
 *
-* Calculates wind in a terrible way
-*
+* Calculates windspeeds using a terrain curvature following Liston 2006.
+* Defaults to 300 m distance. Configurable using "distance".
+ * Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
 * Depends:
 * - Wind from met file "u" [m/s]
 * - Direction from met file 'ud' [degrees]
