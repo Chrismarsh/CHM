@@ -10,6 +10,8 @@ Liston_wind::Liston_wind(config_file cfg)
     provides("vw");
     provides("vw_dir");
 
+    distance = cfg.get<double>("distance",300);//300.0;
+
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
@@ -39,48 +41,6 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
     {
             auto face = domain->face(i);
 
-            std::set<Point_3> myPoints;
-            std::stack<Delaunay::Face_handle> neighbours;
-            std::vector<Delaunay::Face_handle> neighbours_to_uncolor;
-            int cur_depth = 0;
-            int max_depth = 10;
-
-            neighbours.push(face);
-
-            while (!neighbours.empty() && (cur_depth <= max_depth))
-            {
-                Delaunay::Face_handle nface = neighbours.top();
-                neighbours.pop();
-                //this triangle
-                //origin of fitting coord system = first input data point
-                myPoints.insert(nface->center());
-                for (int i = 0; i < 3; i++)
-                {
-                    myPoints.insert(nface->vertex(i)->point());
-                }
-
-                //add all of f's neighbours
-                for (int k = 0; k < 3; k++)
-                {
-                    auto n = nface->neighbor(k);
-//                    if (!domain->is_infinite(n) && !n->coloured)
-                    if (n!=nullptr && !n->coloured)
-                    {
-                        n->coloured = true;
-                        neighbours_to_uncolor.push_back(n);
-                        neighbours.push(n);
-                    }
-
-                }
-                cur_depth++;
-            }
-
-            for (auto it:neighbours_to_uncolor)
-            {
-                it->coloured = false;
-            }
-            neighbours_to_uncolor.clear();
-
             Point_3 me = face->center();
             Delaunay::Face_handle north;
             Delaunay::Face_handle south;
@@ -93,24 +53,13 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
             Delaunay::Face_handle southwest;
 
 
-            double distance = 100;//300.0;
+
 
 
             north = domain->locate_face(me.x(), me.y() + distance);
-            if (north == nullptr )// || domain->is_infinite(north))
-                north = face;
-
             south = domain->locate_face(me.x(), me.y() - distance);
-            if (south == nullptr)// || domain->is_infinite(south))
-                south = face;
-
             west = domain->locate_face(me.x() - distance, me.y());
-            if (west == nullptr)//  || domain->is_infinite(west))
-                west = face;
-
             east = domain->locate_face(me.x() + distance, me.y());
-            if (east == nullptr)//  || domain->is_infinite(east))
-                east = face;
 
             double z = face->get_z();
             double zw = west->get_z();
@@ -124,28 +73,16 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
             double zsw = 0.;
 
             northeast = domain->locate_face(me.x() + distance, me.y() + distance);
-            if (northeast == nullptr )//|| domain->is_infinite(northeast))
-                zne = (ze + zn) / 2.;
-            else
-                zne = northeast->get_z();
+            zne = northeast->get_z();
 
             northwest = domain->locate_face(me.x() - distance, me.y() + distance);
-            if (northwest == nullptr)// || domain->is_infinite(south))
-                znw = (zw + zn) / 2.;
-            else
-                znw = northwest->get_z();
+            znw = northwest->get_z();
 
             southeast = domain->locate_face(me.x() + distance, me.y() - distance);
-            if (southeast == nullptr)//|| domain->is_infinite(west))
-                zse = (ze + zs) / 2.;
-            else
-                zse = southeast->get_z();
+            zse = southeast->get_z();
 
             southwest = domain->locate_face(me.x() - distance, me.y() - distance);
-            if (southwest == nullptr)// || domain->is_infinite(east))
-                zsw = (zw + zs) / 2.;
-            else
-                zsw = southwest->get_z();
+            zsw = southwest->get_z();
 
             double curve = .25 * ((z - .5 * (zw + ze)) / (2 * distance) + (z - .5 * (zs + zn)) / (2 * distance) +
                                   (z - .5 * (zsw + zne)) / (2 * sqrt(2 * distance)) +

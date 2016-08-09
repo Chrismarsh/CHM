@@ -41,6 +41,7 @@ public:
         double curvature;
         interpolation interp;
     };
+    double distance;
 };
 
 /**

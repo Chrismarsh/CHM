@@ -26,13 +26,14 @@
 #include <set>
 #include <stack>
 #include <fstream>
+#include <utility>
 #define ARMA_DONT_USE_CXX11 //intel on linux breaks otherwise
 #include <armadillo>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
-//#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Projection_traits_xy_3.h>
 
@@ -54,6 +55,12 @@
 
 namespace pt = boost::property_tree;
 
+//required for the spatial searching
+#include <CGAL/Search_traits_2.h>
+#include <CGAL/Search_traits_adapter.h>
+#include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/property_map.h>
+#include <boost/iterator/zip_iterator.hpp>
 
 //http://www.paraview.org/Bug/print_bug_page.php?bug_id=14164
 //http://review.source.kitware.com/#/c/11956/
@@ -95,20 +102,23 @@ typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on 
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
 typedef face<Gt> Fb; //custom face class
-//typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds;
-//typedef CGAL::Delaunay_triangulation_2<Gt, Tds> Delaunay; //specify a delauany triangulation
-
-//typedef CGAL::Constrained_Delaunay_triangulation_2<Gt, Tds,CGAL::Exact_intersections_tag> Delaunay;
-//typedef CGAL::Triangulation_2<Gt,Tds> Delaunay;
 typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Delaunay;
 
 typedef Delaunay::Face_handle mesh_elem;
 typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
 
+//search tree typedefs
+typedef K::Point_2 Point_2;
+typedef boost::tuple<Point_2, Delaunay::Face_handle > Point_and_face;
+typedef CGAL::Search_traits_2<K>                       Traits_base;
+typedef CGAL::Search_traits_adapter<Point_and_face,
+		CGAL::Nth_of_tuple_property_map<0, Point_and_face>,
+		Traits_base>                                              Traits;
 
 
-//typedef CGAL::Monge_via_jet_fitting<K>  CGALMongeViaJet;
-//typedef CGALMongeViaJet::Monge_form CGALMongeForm;
+typedef CGAL::Orthogonal_k_neighbor_search<Traits>          K_neighbor_search;
+typedef K_neighbor_search::Tree                             Tree;
+typedef K_neighbor_search::Distance                         Distance;
 
 //fwd decl
 class segmented_AABB;
@@ -241,6 +251,9 @@ public:
 	void write_vtu(std::string fname);
 
     void write_vtp(std::string file_name);
+
+	//holds the spatial search tree
+	boost::shared_ptr<Tree> dD_tree;
 private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc

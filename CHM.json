@@ -12,7 +12,7 @@
     "interpolant":"idw",
     "notification_script":"./finished.sh",
     "per_triangle_timeseries":"false",
-    "ui":true,
+    "ui":false,
     "debug_level":"debug",
 
     "prj_name":"Granger creek",
@@ -79,7 +79,7 @@
   },
   "meshes":
   {
-    "mesh":"meshes/wolf_lidar1.mesh"
+    "mesh":"meshes/wolf1m_fill.mesh"
 //
 //    //map internal variables/parameters to the .mesh file's parameter section.
 //    "parameters":
@@ -198,7 +198,7 @@
     },
      "mesh":
      {
-       "base_name":"output/granger"
+       "base_name":"output/wolf1m_fill"
 //       "variables":["swe","t","rh"],
 //       "frequency":1 //every N timesteps
      }
