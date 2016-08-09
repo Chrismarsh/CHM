@@ -9,6 +9,7 @@
 //      "output":"UpperClearing",
 //      "forcing":"UpperClearing"
 //    },
+    "station_search_radius":5000,
     "interpolant":"idw",
     "notification_script":"./finished.sh",
     "per_triangle_timeseries":"false",
