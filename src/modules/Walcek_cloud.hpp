@@ -27,7 +27,7 @@ class Walcek_cloud : public module_base
 public:
     Walcek_cloud(config_file cfg);
     ~Walcek_cloud();
-    virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
+    virtual void run(mesh_elem& face, boost::shared_ptr<global> global_param);
 
 };
 

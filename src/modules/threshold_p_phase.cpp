@@ -21,24 +21,24 @@ threshold_p_phase::~threshold_p_phase()
 
 }
 
-void threshold_p_phase::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
+void threshold_p_phase::run(mesh_elem &face, boost::shared_ptr <global> global_param)
 {
-    double p = elem->face_data("p");
+    double p = face->face_data("p");
 
-    if( elem->face_data("t") >= t_thresh)
+    if( face->face_data("t") >= t_thresh)
     {
-        elem->set_face_data("frac_precip_rain", 1);
-        elem->set_face_data("frac_precip_snow", 0);
+        face->set_face_data("frac_precip_rain", 1);
+        face->set_face_data("frac_precip_snow", 0);
 
-        elem->set_face_data("p_rain", p);
-        elem->set_face_data("p_snow", 0 );
+        face->set_face_data("p_rain", p);
+        face->set_face_data("p_snow", 0 );
     } else
     {
-        elem->set_face_data("frac_precip_rain", 0);
-        elem->set_face_data("frac_precip_snow", 1);
+        face->set_face_data("frac_precip_rain", 0);
+        face->set_face_data("frac_precip_snow", 1);
 
-        elem->set_face_data("p_rain", 0);
-        elem->set_face_data("p_snow", p );
+        face->set_face_data("p_rain", 0);
+        face->set_face_data("p_snow", p );
     }
 
 

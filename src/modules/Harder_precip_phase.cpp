@@ -26,12 +26,12 @@ Harder_precip_phase::~Harder_precip_phase()
 {
 
 }
-void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Harder_precip_phase::run(mesh_elem& face, boost::shared_ptr<global> global_param)
 {
 
-    double Ta = elem->face_data("t")+273.15; //K
-    double T =  elem->face_data("t");
-    double RH = elem->face_data("rh");
+    double Ta = face->face_data("t")+273.15; //K
+    double T =  face->face_data("t");
+    double RH = face->face_data("rh");
     double ea = RH/100 * 0.611*exp( (17.3*T) / (237.3+T));
 
     // (A.6)
@@ -77,13 +77,13 @@ void Harder_precip_phase::run(mesh_elem& elem, boost::shared_ptr<global> global_
 
     frTi = std::trunc(100.0*frTi) / 100.0; //truncate to 2 decimal positions
 
-    elem->set_face_data("Ti",Ti);
-    elem->set_face_data("frac_precip_rain",frTi);
-    elem->set_face_data("frac_precip_snow",1-frTi);
+    face->set_face_data("Ti",Ti);
+    face->set_face_data("frac_precip_rain",frTi);
+    face->set_face_data("frac_precip_snow",1-frTi);
 
-    double p = elem->face_data("p");
+    double p = face->face_data("p");
 
-    elem->set_face_data("p_rain", p * frTi);
-    elem->set_face_data("p_snow", p * (1-frTi));
+    face->set_face_data("p_rain", p * frTi);
+    face->set_face_data("p_snow", p * (1-frTi));
 
 }

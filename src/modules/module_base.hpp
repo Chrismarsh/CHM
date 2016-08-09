@@ -89,10 +89,10 @@ public:
 
     /**
     * Needs to be implemented by each  data parallel module. This will be called and executed for each timestep
-    * \param elem The terrain element (triangle) to be worked upon for an element parallel domain
+    * \param face The terrain element (triangle) to be worked upon for an element parallel domain
     * \param global_param A pointer to the shared global paramter space with domain-wide paramters
     */
-    virtual void run(mesh_elem &elem, boost::shared_ptr<global> global_param)
+    virtual void run(mesh_elem &face, boost::shared_ptr<global> global_param)
     {
     };
 

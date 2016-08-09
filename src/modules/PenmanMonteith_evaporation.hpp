@@ -35,7 +35,7 @@ class PenmanMonteith_evaporation : public module_base
 public:
     PenmanMonteith_evaporation(config_file cfg);
     ~PenmanMonteith_evaporation();
-    virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
+    virtual void run(mesh_elem& face, boost::shared_ptr<global> global_param);
 
 
 };

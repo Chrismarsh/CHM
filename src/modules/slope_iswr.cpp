@@ -17,7 +17,7 @@ slope_iswr::slope_iswr(config_file cfg)
 
     assume_no_slope = cfg.get("no_slope",false);
 }
-void slope_iswr::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void slope_iswr::run(mesh_elem& face, boost::shared_ptr<global> global_param)
 {
     
 
@@ -42,7 +42,7 @@ void slope_iswr::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     }
     else
     {
-        Vector_3 n = elem->normal();
+        Vector_3 n = face->normal();
 
 
         N << n[0] << arma::endr
@@ -57,22 +57,22 @@ void slope_iswr::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     if(angle < 0.0 || E < 0.0523598776) //3deg -> rad
         angle = 0.0;
 
-    elem->set_face_data("solar_angle",angle);
+    face->set_face_data("solar_angle",angle);
 
     //if we have remote shadowing
     if(has_optional("shadow"))
     {
-        if(elem->face_data("shadow") == 1)
+        if(face->face_data("shadow") == 1)
         {
             angle = 0;
         }
     }
 
-    double swr =  angle * elem->face_data("iswr_direct");
-    double diff = elem->face_data("iswr_diffuse");
+    double swr =  angle * face->face_data("iswr_direct");
+    double diff = face->face_data("iswr_diffuse");
 
-    elem->set_face_data("iswr_direct",swr );
-    elem->set_face_data("iswr", swr + diff );
+    face->set_face_data("iswr_direct",swr );
+    face->set_face_data("iswr", swr + diff );
 
 }
 

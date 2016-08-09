@@ -41,6 +41,8 @@ public:
     public:
         double curvature;
         interpolation interp;
+        double corrected_theta;
+        double W;
     };
     double distance;
 };

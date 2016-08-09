@@ -111,6 +111,7 @@ void core::config_options(const pt::ptree &value)
         _notification_script = *notify_sh;
     }
 
+    _global->station_search_radius = value.get<double>("station_search_radius",1000);
 
 }
 
@@ -274,7 +275,7 @@ void core::config_forcing(pt::ptree &value)
 
 
         LOG_DEBUG << "New station created " << *s;
-        _global->stations.push_back(s);
+        _global->insert_station(s);
 
     }
 }
@@ -883,23 +884,23 @@ void core::init(int argc, char **argv)
         LOG_INFO << "Running in point mode";
 
         //remove everything but the one forcing
-        _global->stations.erase(std::remove_if(_global->stations.begin(),_global->stations.end(),
+        _global->_stations.erase(std::remove_if(_global->_stations.begin(),_global->_stations.end(),
                        [this](boost::shared_ptr<station> s){return s->ID() != point_mode.forcing;}),
-                                _global->stations.end());
+                                _global->_stations.end());
 
         _outputs.erase(std::remove_if(_outputs.begin(),_outputs.end(),
                                       [this](output_info o){return o.name  != point_mode.output;}),
                        _outputs.end());
 
-        LOG_DEBUG << _global->stations.size();
+        LOG_DEBUG << _global->_stations.size();
         LOG_DEBUG << _outputs.size();
-        if ( _global->stations.size() != 1 ||
+        if ( _global->_stations.size() != 1 ||
                 _outputs.size() !=1)
         {
             BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(">1 station or outputs in point mode"));
 
         }
-        for(auto s: _global->stations)
+        for(auto s: _global->_stations)
         {
             LOG_DEBUG << *s;
         }
@@ -923,26 +924,26 @@ void core::init(int argc, char **argv)
 
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
-    if (_global->stations.size() == 0)
+    if (_global->_stations.size() == 0)
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
 
     //ensure all the stations have the same start and end times
     // per-timestep agreeent happens during runtime.
-    auto start_time = _global->stations.at(0)->date_timeseries().at(0);
-    auto end_time = _global->stations.at(0)->date_timeseries().back();
+    auto start_time = _global->_stations.at(0)->date_timeseries().at(0);
+    auto end_time = _global->_stations.at(0)->date_timeseries().back();
 
 
     for (size_t i = 1; //on purpose to skip first station
-         i < _global->stations.size();
+         i < _global->_stations.size();
          i++)
     {
-        if (_global->stations.at(i)->date_timeseries().at(0) != start_time ||
-            _global->stations.at(i)->date_timeseries().back() != end_time)
+        if (_global->_stations.at(i)->date_timeseries().at(0) != start_time ||
+            _global->_stations.at(i)->date_timeseries().back() != end_time)
         {
             BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
                                   <<
-                                  errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->ID()));
+                                  errstr_info("Timestep mismatch at station: " + _global->_stations.at(i)->ID()));
         }
     }
 
@@ -950,8 +951,8 @@ void core::init(int argc, char **argv)
     _global->interp_algorithm = _interpolation_method;// interp_alg::tpspline;
 
     //figure out what our timestepping is
-    auto t0 = _global->stations.at(0)->date_timeseries().at(0);
-    auto t1 = _global->stations.at(0)->date_timeseries().at(1);
+    auto t0 = _global->_stations.at(0)->date_timeseries().at(0);
+    auto t1 = _global->_stations.at(0)->date_timeseries().at(1);
     auto dt = (t1 - t0);
     _global->_dt = dt.total_seconds();
     LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
@@ -974,7 +975,7 @@ void core::init(int argc, char **argv)
         BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
     }
 
-    for (auto &s : _global->stations)
+    for (auto &s : _global->_stations)
     {
         s->raw_timeseries()->subset(*_start_ts, *_end_ts);
         s->reset_itrs();
@@ -984,7 +985,7 @@ void core::init(int argc, char **argv)
 
 
     //setup output timeseries sinks
-    auto date = _global->stations.at(0)->date_timeseries();
+    auto date = _global->_stations.at(0)->date_timeseries();
 
     for (auto &itr : _outputs)
     {
@@ -1209,11 +1210,11 @@ void core::_determine_module_dep()
         }
 
 
-        LOG_DEBUG << "size " << _global->stations.size();
+        LOG_DEBUG << "size " << _global->_stations.size();
         //build a list of variables provided by the met files, culling duplicate variables from multiple stations.
-        for (size_t i = 0; i < _global->stations.size(); i++)
+        for (size_t i = 0; i < _global->_stations.size(); i++)
         {
-            auto vars = _global->stations.at(i)->list_variables();
+            auto vars = _global->_stations.at(i)->list_variables();
             _provided_var_met_files.insert(vars.begin(), vars.end());
         }
 
@@ -1404,7 +1405,7 @@ void core::run()
 
     double meantime = 0;
     size_t current_ts = 0;
-    size_t max_ts = _global->stations.at(0)->date_timeseries().size();
+    size_t max_ts = _global->_stations.at(0)->date_timeseries().size();
     bool done = false;
 
 
@@ -1412,27 +1413,27 @@ void core::run()
         {
             //ensure all the stations are at the same timestep
             boost::posix_time::ptime t;
-            t = _global->stations.at(0)->now().get_posix(); //get first stations time
+            t = _global->_stations.at(0)->now().get_posix(); //get first stations time
             for (size_t i = 1; //on purpose to skip first station
-                 i < _global->stations.size();
+                 i < _global->_stations.size();
                  i++)
             {
-                if (t != _global->stations.at(i)->now().get_posix())
+                if (t != _global->_stations.at(i)->now().get_posix())
                 {
                     std::stringstream expected;
-                    expected << _global->stations.at(0)->now().get_posix();
+                    expected << _global->_stations.at(0)->now().get_posix();
                     std::stringstream found;
-                    found << _global->stations.at(i)->now().get_posix();
+                    found << _global->_stations.at(i)->now().get_posix();
                     BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
                                           <<
-                                          errstr_info("Timestep mismatch at station: " + _global->stations.at(i)->ID()
+                                          errstr_info("Timestep mismatch at station: " + _global->_stations.at(i)->ID()
                                                       + "\nExpected: " + expected.str()
                                                       + "\nFound: " + found.str()
                                           ));
                 }
             }
 
-            _global->_current_date = _global->stations.at(0)->now().get_posix();
+            _global->_current_date = _global->_stations.at(0)->now().get_posix();
 
             _global->update();
 
@@ -1602,7 +1603,7 @@ void core::run()
             }
 
             //update all the stations internal iterators to point to the next time step
-            for (auto &itr : _global->stations)
+            for (auto &itr : _global->_stations)
             {
                 if (!itr->next()) //this met station has no more met data, so doesn't matter what, we need to end now.
                 {

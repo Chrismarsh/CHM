@@ -26,12 +26,12 @@ void Kunkel_monthlyTd_rh::init(mesh domain, boost::shared_ptr<global> global_par
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
     }
 }
-void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Kunkel_monthlyTd_rh::run(mesh_elem& face, boost::shared_ptr<global> global_param)
 {
-//    size_t ID = elem->_debug_ID;
+//    size_t ID = face->_debug_ID;
     // 1/km
     double lapse_rates[] = {
             0.41,
@@ -56,7 +56,7 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
-    for (auto& s : global_param->stations)
+    for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
     {
         if( is_nan(s->get("t")) || is_nan(s->get("rh")))
             continue;
@@ -70,7 +70,7 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
         double B = t < 273.15 ? Bi : Bw;
 
         double z = 0.;
-        double z0 = elem->get_z();
+        double z0 = face->get_z();
 //        double am = lapse;
         double Td_z = -lapse*C*(z-z0) / B + Tdz0;
 //        double Td_z = (-am*(z-z0)*(C+Tdz0)/B+Tdz0)/(1+am*(z-z0)*(C+Tdz0)/(B*C));
@@ -79,23 +79,23 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& elem, boost::shared_ptr<global> global_
 
    
 
-    auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double Tdz0 = elem->get_module_data<data>(ID)->interp(lowered_values, query);//C
+    auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+    double Tdz0 = face->get_module_data<data>(ID)->interp(lowered_values, query);//C
 
     //raise value back up to the face's elevation from sea level
-    double t = elem->face_data("t") + 273.15;
+    double t = face->face_data("t") + 273.15;
     double C = t < 273.15 ? Ci : Cw;
     double B = t < 273.15 ? Bi : Bw;
 
     double z0 = 0.;
-    double z = elem->get_z();
+    double z = face->get_z();
 //    double am = lapse;
     double Td_z = -lapse*C*(z-z0) / B + Tdz0;
 //    double Td_z = (-am*(z-z0)*(C+Tdz0)/B+Tdz0)/(1+am*(z-z0)*(C+Tdz0)/(B*C));
 
     double rh = mio::Atmosphere::DewPointtoRh(Td_z+273.15,t,false);
 
-    elem->set_face_data("rh",rh*100.0);
-    elem->set_face_data("Td_lapse_rate",lapse);
+    face->set_face_data("rh",rh*100.0);
+    face->set_face_data("Td_lapse_rate",lapse);
 
 }

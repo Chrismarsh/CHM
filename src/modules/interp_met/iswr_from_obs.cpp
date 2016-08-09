@@ -23,16 +23,16 @@ void iswr_from_obs::init(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
     }
 }
-void iswr_from_obs::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
+void iswr_from_obs::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 {
     //interpolate all the measured qsi
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
-    for (auto& s : global_param->stations)
+    for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
     {
         if( is_nan(s->get("Qsi")))
             continue;
@@ -41,8 +41,8 @@ void iswr_from_obs::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     }
 
 
-    auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double iswr_measured =elem->get_module_data<data>(ID)->interp(lowered_values, query);
+    auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+    double iswr_measured =face->get_module_data<data>(ID)->interp(lowered_values, query);
 
     double splitting_coef = 0.0;
 
@@ -80,9 +80,9 @@ void iswr_from_obs::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     double obs_dir = iswr_measured * splitting_coef;
     double obs_diff = iswr_measured * (1-splitting_coef);
 
-    elem->set_face_data("iswr_direct",obs_dir);
-    elem->set_face_data("iswr_diffuse",obs_diff);
-    elem->set_face_data("iswr",iswr_measured);
-    elem->set_face_data("atm_trans",iswr_measured/1375.);
+    face->set_face_data("iswr_direct",obs_dir);
+    face->set_face_data("iswr_diffuse",obs_diff);
+    face->set_face_data("iswr",iswr_measured);
+    face->set_face_data("atm_trans",iswr_measured/1375.);
 }
 

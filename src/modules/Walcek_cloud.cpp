@@ -16,7 +16,7 @@ Walcek_cloud::~Walcek_cloud()
 {
 
 };
-void Walcek_cloud::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Walcek_cloud::run(mesh_elem& face, boost::shared_ptr<global> global_param)
 {
     //Kunkel RH lapse rates
     // 1/km
@@ -39,17 +39,17 @@ void Walcek_cloud::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     double press_ratio = 0.7;
 
 
-    double Ta = elem->face_data("t");
-    double Rh = elem->face_data("rh");
+    double Ta = face->face_data("t");
+    double Rh = face->face_data("rh");
 
 //    double Td = mio::Atmosphere::RhtoDewPoint(Rh/100.0,Ta+273.15,false);
 //
 //
-//    double z = elem->get_z();
+//    double z = face->get_z();
 //    double dz = z - 3000.0;// assume 700mb is at 3000m
 //
-//    double Td_lapse_rate = elem->face_data("Td_lapse_rate");
-//    double T_lapse_rate = elem->face_data("t_lapse_rate");
+//    double Td_lapse_rate = face->face_data("Td_lapse_rate");
+//    double T_lapse_rate = face->face_data("t_lapse_rate");
 //
 //    double Td_700 = Td + Td_lapse_rate * dz;
 //    double Tair_700 = Ta + T_lapse_rate * dz;
@@ -57,7 +57,7 @@ void Walcek_cloud::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
 //    double rh_700 = mio::Atmosphere::DewPointtoRh(Td_700,Tair_700+273.15 ,false);
 
     double lapse = lapse_rates[global_param->month() - 1] / 1000.0; // -> 1/m
-    double rh_700 = Rh * exp(lapse*(3000.0-elem->get_z()));
+    double rh_700 = Rh * exp(lapse*(3000.0-face->get_z()));
 
     rh_700 /= 100.0;//factional
 
@@ -76,6 +76,6 @@ void Walcek_cloud::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     cloud_frac = std::min(cloud_frac,1.0);
 
 
-    elem->set_face_data("cloud_frac",cloud_frac);
+    face->set_face_data("cloud_frac",cloud_frac);
 
 }

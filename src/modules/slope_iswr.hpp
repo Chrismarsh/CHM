@@ -35,7 +35,7 @@ class slope_iswr : public module_base
     public:
         slope_iswr(config_file cfg);
         ~slope_iswr();
-        virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
+        virtual void run(mesh_elem& face, boost::shared_ptr<global> global_param);
 
 
         bool assume_no_slope;

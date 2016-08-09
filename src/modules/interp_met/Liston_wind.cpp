@@ -24,7 +24,7 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<lwinddata>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
         face->coloured = false;
     }
 
@@ -126,21 +126,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 {
     double PI = 3.14159;
 
-    std::vector< boost::tuple<double, double, double> > u;
-    std::vector< boost::tuple<double, double, double> > v;
-    for (auto& s : global_param->stations)
-    {
-        if( is_nan(s->get("u")) || is_nan(s->get("vw_dir")))
-            continue;
 
-        double W = s->get("u");
-
-        double theta = s->get("vw_dir") * 3.14159/180.;
-        double zonal_u = -W * sin(theta);
-        double zonal_v = -W * cos(theta);
-        u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u ) );
-        v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v ) );
-    }
 
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
@@ -149,56 +135,78 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto elem = domain->face(i);
-        auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-        double zonal_u = elem->get_module_data<lwinddata>(ID)->interp(u, query);
-        double zonal_v = elem->get_module_data<lwinddata>(ID)->interp(v, query);
+        auto face = domain->face(i);
 
-        double theta = 3.0 * PI * 0.5 - atan2(zonal_v , zonal_u);
+        std::vector<boost::tuple<double, double, double> > u;
+        std::vector<boost::tuple<double, double, double> > v;
+        for (auto &s : global_param->get_stations_in_radius(face->get_x(), face->get_y(),
+                                                            global_param->station_search_radius))
+        {
+            if (is_nan(s->get("u")) || is_nan(s->get("vw_dir")))
+                continue;
 
-        if (theta > 2*PI)
-            theta = theta - 2*PI;
+            double W = s->get("u");
+
+            double theta = s->get("vw_dir") * 3.14159 / 180.;
+            double zonal_u = -W * sin(theta);
+            double zonal_v = -W * cos(theta);
+            u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u));
+            v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v));
+        }
+
+
+        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+        double zonal_u = face->get_module_data<lwinddata>(ID)->interp(u, query);
+        double zonal_v = face->get_module_data<lwinddata>(ID)->interp(v, query);
+
+        double theta = 3.0 * PI * 0.5 - atan2(zonal_v, zonal_u);
+
+        if (theta > 2 * PI)
+            theta = theta - 2 * PI;
 
         //eqn 15
-        double omega_s = elem->slope() * cos(theta - elem->aspect());
+        double omega_s = face->slope() * cos(theta - face->aspect());
 
-        if( fabs(omega_s) > max_omega_s)
+        if (fabs(omega_s) > max_omega_s)
             max_omega_s = fabs(omega_s);
-    }
 
+
+        double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
+        double corrected_theta = 3.0 * PI * 0.5 - atan2(zonal_v, zonal_u);
+
+        if (corrected_theta > 2 * PI)
+            corrected_theta = corrected_theta - 2 * PI;
+
+        face->get_module_data<lwinddata>(ID)->corrected_theta = corrected_theta;
+        face->get_module_data<lwinddata>(ID)->W = W;
+    }
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto elem = domain->face(i);
-        auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-        double zonal_u = elem->get_module_data<lwinddata>(ID)->interp(u, query);
-        double zonal_v = elem->get_module_data<lwinddata>(ID)->interp(v, query);
+        auto face = domain->face(i);
 
-        double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
-        double corrected_theta = 3.0 * PI * 0.5 - atan2(zonal_v , zonal_u);
+        double corrected_theta= face->get_module_data<lwinddata>(ID)->corrected_theta;
+        double W= face->get_module_data<lwinddata>(ID)->W;
 
-        if (corrected_theta > 2*PI)
-            corrected_theta = corrected_theta - 2*PI;
-
-
-        double omega_s = elem->slope() * cos(corrected_theta - elem->aspect());
+        double omega_s = face->slope() * cos(corrected_theta - face->aspect());
 
         omega_s = omega_s / max_omega_s / 2.0;
 
-        double omega_c = elem->get_parameter("Liston curvature");//elem->get_module_data<lwinddata>(ID)->curvature;
+        double omega_c = face->get_parameter("Liston curvature");
 
         double ys = 0.5;
         double yc = 0.5;
 
         double Ww = 1 + ys * omega_s + yc * omega_c;
 
+
         W = W * Ww;
 
-        double theta_d = -0.5 * omega_s * sin(2 * (elem->aspect() - corrected_theta));
+        double theta_d = -0.5 * omega_s * sin(2 * (face->aspect() - corrected_theta));
         corrected_theta = theta_d + corrected_theta;
 
-        elem->set_face_data("vw", W);
-        elem->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
+        face->set_face_data("vw", W);
+        face->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
     }
 
 

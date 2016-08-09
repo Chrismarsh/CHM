@@ -45,21 +45,21 @@ void Gray_inf::init(mesh domain, boost::shared_ptr<global> global)
 
     }
 }
-void Gray_inf::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
+void Gray_inf::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 {
-    auto* d = elem->get_module_data<Gray_inf::data>(ID);
+    auto* d = face->get_module_data<Gray_inf::data>(ID);
 
-    auto id = elem->cell_id;
+    auto id = face->cell_id;
     double C = 2.;
     double S0 = 1;
-    double SI = elem->get_initial_condition("sm")/100.;
+    double SI = face->get_initial_condition("sm")/100.;
 
     double TI = 272.;
 
     double runoff = 0.;
     double inf = 0.;
 
-    double snowmelt = elem->face_data("snowmelt_int");
+    double snowmelt = face->face_data("snowmelt_int");
 
     double potential_inf = d->last_ts_potential_inf;
     double avail_storage = (d->max_storage - d->storage);
@@ -103,28 +103,28 @@ void Gray_inf::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     }
 
 
-    if( !is_nan(elem->get_initial_condition("sm")))
+    if( !is_nan(face->get_initial_condition("sm")))
     {
-        elem->set_face_data("total_excess",d->total_excess);
-        elem->set_face_data("total_inf",d->total_inf);
+        face->set_face_data("total_excess",d->total_excess);
+        face->set_face_data("total_inf",d->total_inf);
 
-        elem->set_face_data("runoff",runoff);
-        elem->set_face_data("inf",inf);
-        elem->set_face_data("potential_inf",potential_inf);
-        elem->set_face_data("soil_storage", d->storage);
-        elem->set_face_data("opportunity time",d->opportunity_time);
-        elem->set_face_data("available storage",avail_storage);
+        face->set_face_data("runoff",runoff);
+        face->set_face_data("inf",inf);
+        face->set_face_data("potential_inf",potential_inf);
+        face->set_face_data("soil_storage", d->storage);
+        face->set_face_data("opportunity time",d->opportunity_time);
+        face->set_face_data("available storage",avail_storage);
     }
     else
     {
-        elem->set_face_data("total_excess",nan(""));
-        elem->set_face_data("total_inf",nan(""));
-        elem->set_face_data("inf",nan(""));
-        elem->set_face_data("runoff",nan(""));
-        elem->set_face_data("potential_inf",nan(""));
-        elem->set_face_data("soil_storage", nan(""));
-        elem->set_face_data("opportunity time",nan(""));
-        elem->set_face_data("available storage",nan(""));
+        face->set_face_data("total_excess",nan(""));
+        face->set_face_data("total_inf",nan(""));
+        face->set_face_data("inf",nan(""));
+        face->set_face_data("runoff",nan(""));
+        face->set_face_data("potential_inf",nan(""));
+        face->set_face_data("soil_storage", nan(""));
+        face->set_face_data("opportunity time",nan(""));
+        face->set_face_data("available storage",nan(""));
     }
 
 }

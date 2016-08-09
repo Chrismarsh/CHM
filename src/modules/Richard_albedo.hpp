@@ -20,7 +20,7 @@ public:
 
     Richard_albedo(config_file cfg);
     ~Richard_albedo();
-    void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
+    void run(mesh_elem& face, boost::shared_ptr<global> global_param);
     void init(mesh domain, boost::shared_ptr<global> global);
 
 

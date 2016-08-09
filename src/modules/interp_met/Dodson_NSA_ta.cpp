@@ -19,10 +19,10 @@ void Dodson_NSA_ta::init(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
     }
 }
-void Dodson_NSA_ta::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
+void Dodson_NSA_ta::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 {
 
     double Po = 100000.0; //sea level pressure (Pa)
@@ -37,7 +37,7 @@ void Dodson_NSA_ta::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     std::vector< boost::tuple<double, double, double> > lowered_values;
 
 
-    for (auto& s : global_param->stations)
+    for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
     {
         if( is_nan(s->get("t")))
             continue;
@@ -55,11 +55,11 @@ void Dodson_NSA_ta::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), theta ) );
     }
 
-    auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
+    auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
 
     //interpolated virtual temp, now go back to station
-    double theta = elem->get_module_data<data>(ID)->interp(lowered_values, query);
-    double elev = elem->get_z();
+    double theta = face->get_module_data<data>(ID)->interp(lowered_values, query);
+    double elev = face->get_z();
     double Pz = Po * pow(Tb/(Tb+ (-lapse)*elev),(m*g)/((-lapse)*R));
     double ratio = (Po/Pz);
     double exp = R/(m*Cp);
@@ -67,6 +67,6 @@ void Dodson_NSA_ta::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     double Ta = ( theta/pow(ratio,exp) );
     Ta -= 273.15;
 
-    elem->set_face_data("t",Ta);
-    elem->set_face_data("t_lapse_rate",lapse);
+    face->set_face_data("t",Ta);
+    face->set_face_data("t_lapse_rate",lapse);
 }
