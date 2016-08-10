@@ -220,7 +220,7 @@ void snobal::run(mesh_elem &face, boost::shared_ptr <global> global_param)
     if(g->dead == 1)
     {
         sbal->init_snow();
-        g->dead = 0;
+
     }
 
     double swe1 = sbal->m_s;
@@ -279,6 +279,8 @@ void snobal::run(mesh_elem &face, boost::shared_ptr <global> global_param)
     sbal->input_rec1.T_g =sbal->input_rec2.T_g;
     sbal->input_rec1.ro =sbal->input_rec2.ro;
 
+    // reset flag
+//    g->dead = 0;
 }
 
 void snobal::run(mesh domain, boost::shared_ptr <global> global_param)

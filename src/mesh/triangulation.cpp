@@ -78,7 +78,7 @@ size_t triangulation::size_vertex()
 
 mesh_elem triangulation::locate_face(double x, double y)
 {
-
+    //http://doc.cgal.org/latest/Spatial_searching/index.html
     Point_2 query(x,y);
     K_neighbor_search search(*(dD_tree.get()), query, 1);
     auto it = search.begin();
@@ -444,15 +444,15 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     auto params = this->face(0)->parameters();
     for(auto& v: params)
     {
-        data[v] = vtkSmartPointer<vtkFloatArray>::New();
-        data[v]->SetName(v.c_str());
+        data["[param] " + v] = vtkSmartPointer<vtkFloatArray>::New();
+        data["[param] " + v]->SetName(("[param] " + v).c_str());
     }
 
     auto ics = this->face(0)->initial_conditions();
     for(auto& v: ics)
     {
-        data[v] = vtkSmartPointer<vtkFloatArray>::New();
-        data[v]->SetName(v.c_str());
+        data["[ic] " + v] = vtkSmartPointer<vtkFloatArray>::New();
+        data["[ic] " + v]->SetName(("[ic] " + v).c_str());
     }
 
 
@@ -529,7 +529,6 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             }
 
             data[v]->InsertTuple1(i,d);
-//            data[v]->InsertNextTuple1(d);
         }
         for(auto& v: params)
         {
@@ -538,8 +537,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             {
                 d = nan("");
             }
-            data[v]->InsertTuple1(i,d);
-//            data[v]->InsertNextTuple1(d);
+            data["[param] " +  v]->InsertTuple1(i,d);
         }
 
         for(auto& v: ics)
@@ -549,8 +547,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             {
                 d = nan("");
             }
-            data[v]->InsertTuple1(i,d);
-//            data[v]->InsertNextTuple1(d);
+            data["[ic] "+ v]->InsertTuple1(i,d);
         }
 
         data["Elevation"]->InsertTuple1(i,fit->get_z());

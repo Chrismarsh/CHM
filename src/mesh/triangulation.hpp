@@ -180,8 +180,8 @@ public:
     size_t size_vertex();
 
     /**
-    * Locates the triangle that the point x y lies on in 2 dimensions.
-    * \returns NULL if a containing triangle is not found, otherwise returns the triangle
+    * Locates the closest triangle (based on centers) that the point x y lies on in 2 dimensions.
+    * \returns The triangle
     */
     mesh_elem locate_face(double x, double y);
 
@@ -253,6 +253,8 @@ public:
     void write_vtp(std::string file_name);
 
 	//holds the spatial search tree
+	//http://doc.cgal.org/latest/Spatial_searching/index.html
+
 	boost::shared_ptr<Tree> dD_tree;
 private:
     size_t _num_faces; //number of faces
