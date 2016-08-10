@@ -31,7 +31,12 @@ void Sicart_ilwr::run(mesh_elem& face, boost::shared_ptr<global> global_param)
     double sigma = 5.67*pow(10.0,-8.0); //boltzman
 
     double Lin = 1.24*pow(e/T,1.0/7.0)*(1.0+0.44*RH-0.18*tau)*sigma*pow(T,4.0);
-    double svf = face->get_parameter("svf");
+
+    double svf = 1.; //default open view
+    if (face->has_parameter("svf") && !is_nan(face->get_parameter("svf")))
+    {
+        svf = face->get_parameter("svf");
+    }
     face->set_face_data("ilwr", svf*Lin);
 }
 

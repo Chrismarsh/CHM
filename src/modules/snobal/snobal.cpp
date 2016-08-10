@@ -153,7 +153,7 @@ snobal::~snobal()
 
 }
 
-void snobal::run(mesh_elem &face, boost::shared_ptr <global> global_param)
+void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 {
     //debugging
     auto id = face->_debug_ID;
