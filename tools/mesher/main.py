@@ -7,6 +7,7 @@ import numpy as np
 import scipy.stats.mstats as sp
 import sys
 import shutil
+import imp
 
 gdal.UseExceptions()  # Enable errors
 
@@ -21,11 +22,8 @@ def main():
     configfile = sys.argv[-1]
 
     # Load in configuration file as module
-    X = __import__(configfile)
-
-    # Assinge to local variables
-    # EPSG=X.EPSG
-
+    # X = __import__(configfile)
+    X = imp.load_source('',configfile)
 
     dem_filename = X.dem_filename
     max_area = X.max_area
@@ -56,6 +54,10 @@ def main():
 
     # path to triangle executable
     triangle_path = '../../bin/Debug/mesher'
+    if hasattr(X,'mesher_path'):
+        triangle_path = X.mesher_path
+
+
     ########################################################
 
     base_name = dem_filename[:dem_filename.rfind('.')]
