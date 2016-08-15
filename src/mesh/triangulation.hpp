@@ -95,7 +95,7 @@ namespace pt = boost::property_tree;
 #include "vertex.hpp"
 #include "face.hpp"
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel K;  //Exact_predicates_inexact_constructions_kernel
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef K::Point_3 Point_3;
 
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points

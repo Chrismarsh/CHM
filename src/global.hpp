@@ -15,6 +15,7 @@ namespace pt = boost::property_tree;
 #include <CGAL/algorithm.h>
 #include <CGAL/Fuzzy_sphere.h>
 #include <CGAL/Search_traits_2.h>
+#include <CGAL/Orthogonal_k_neighbor_search.h>
 
 
 
@@ -34,6 +35,8 @@ class global
 
     typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
     typedef CGAL::Kd_tree<Traits> Tree;
+
+    typedef CGAL::Orthogonal_k_neighbor_search<Traits> Neighbor_search;
 
      //want to let core modify date time, etc without showing a public interface. 
     //This is because global gets passed to all modules and a rogue module could do something dumb
@@ -62,7 +65,7 @@ private:
     
     var _variables;
 
-    Tree _dD_tree;
+    Tree _dD_tree; //spatial query tree
 
     //each station where observations are
     std::vector< boost::shared_ptr<station> > _stations;
@@ -107,6 +110,17 @@ public:
      * @return List stations that satisfy search criterion
      */
     std::vector< boost::shared_ptr<station> > get_stations_in_radius(double x, double y,double radius);
+
+    /**
+     * Returns the nearest station to x,y. Ignores elevation
+     * @param x
+     * @param y
+     * @param N Number neighbours to find
+     * @return
+     */
+    std::vector< boost::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
+
+
 
     std::vector< boost::shared_ptr<station> > stations();
 //    template<class T>
