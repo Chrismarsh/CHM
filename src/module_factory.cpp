@@ -59,6 +59,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new Gray_inf(config);
     else if (ID == "Longwave_from_obs")
         mod = new Longwave_from_obs(config);
+    else if (ID == "Dist_tlapse")
+        mod = new Dist_tlapse(config);
 
     if(mod == nullptr)
     {
