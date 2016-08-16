@@ -8,7 +8,7 @@ Dist_tlapse::Dist_tlapse(config_file cfg)
     provides("t_lapse_rate");
 
     depends_from_met("t");
-    depends_from_met("t_lapse_rate")
+    depends_from_met("t_lapse_rate");
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
@@ -33,9 +33,10 @@ void Dist_tlapse::run(mesh_elem& face, boost::shared_ptr<global> global_param)
     //lapse_rate=0.0047;
     
     // Find nearest station
-
-    // Get the lapse rate from that station
+    auto s_near = global_param->nearest_station(face->center().x(),face->center().y());
     
+    // Get the lapse rate from that station
+    double lapse_rate = s_near.at(0)->get("t_lapse_rate");
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
