@@ -58,25 +58,25 @@ void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_pa
     Mdata.date   =  mio::Date( global_param->year(), global_param->month(), global_param->day(),global_param->hour(),global_param->min(),-6 );
     // Optional inputs if there is a canopy or not
     if(has_optional("ta_subcanopy")) {
-        Mdata.ta     =  elem->face_data("ta_subcanopy")+mio::Cst::t_water_freezing_pt;
+        Mdata.ta     =  face->face_data("ta_subcanopy")+mio::Cst::t_water_freezing_pt;
     } else {
-        Mdata.ta     =  elem->face_data("t")+mio::Cst::t_water_freezing_pt;
+        Mdata.ta     =  face->face_data("t")+mio::Cst::t_water_freezing_pt;
     }
 
     if(has_optional("rh_subcanopy")) {
-        Mdata.rh     =  elem->face_data("rh_subcanopy")/100.;
+        Mdata.rh     =  face->face_data("rh_subcanopy")/100.;
     } else {
-        Mdata.rh     =  elem->face_data("rh")/100.;
+        Mdata.rh     =  face->face_data("rh")/100.;
     }
 
     if(has_optional("vw_subcanopy")) {
-        Mdata.vw     =  elem->face_data("vw_subcanopy");
+        Mdata.vw     =  face->face_data("vw_subcanopy");
     } else {
-        Mdata.vw     =  elem->face_data("vw");
+        Mdata.vw     =  face->face_data("vw");
     }
 
-    Mdata.dw     = elem->face_data("vw_dir");
-    Mdata.vw_max = mio::IOUtils::nodata;//elem->face_data("vw");// TODO: fix md(MeteoData::VW_MAX);
+    Mdata.dw     = face->face_data("vw_dir");
+    Mdata.vw_max = mio::IOUtils::nodata;//face->face_data("vw");// TODO: fix md(MeteoData::VW_MAX);
 
     Mdata.vw_drift = Mdata.vw ;//mio::IOUtils::nodata;
     Mdata.dw_drift = Mdata.dw;//0;
@@ -84,9 +84,9 @@ void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_pa
 
 
     if(has_optional("iswr_subcanopy")) {
-        Mdata.iswr     =  elem->face_data("iswr_subcanopy");
+        Mdata.iswr     =  face->face_data("iswr_subcanopy");
     } else {
-        Mdata.iswr     =  elem->face_data("iswr");
+        Mdata.iswr     =  face->face_data("iswr");
     }
 
     // If  Snowpack, "SW_MODE" : "BOTH"  then rswr and iswr needs to be definined.
@@ -109,9 +109,9 @@ void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_pa
 
 
     if(has_optional("ilwr_subcanopy")) {
-        Mdata.ilwr     =  elem->face_data("ilwr_subcanopy");
+        Mdata.ilwr     =  face->face_data("ilwr_subcanopy");
     } else {
-        Mdata.ilwr     =  elem->face_data("ilwr");
+        Mdata.ilwr     =  face->face_data("ilwr");
     }
 
     Mdata.ea  = SnLaws::AirEmissivity(Mdata.ilwr, Mdata.ta, "default"); //atmospheric emissivity!
@@ -122,11 +122,11 @@ void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_pa
 
     // Define fraction rain and total precipitaiton (soild and liquid)
     if(has_optional("p_subcanopy")) {
-        Mdata.psum_ph = elem->face_data("frac_precip_rain_subcanopy"); //  0 = snow, 1 = rain
-        Mdata.psum = elem->face_data("p_subcanopy");
+        Mdata.psum_ph = face->face_data("frac_precip_rain_subcanopy"); //  0 = snow, 1 = rain
+        Mdata.psum = face->face_data("p_subcanopy");
     } else {
-        Mdata.psum_ph = elem->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
-        Mdata.psum = elem->face_data("p");
+        Mdata.psum_ph = face->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
+        Mdata.psum = face->face_data("p");
     }
 
 
@@ -184,12 +184,12 @@ void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_pa
 
 
 
-    elem->set_face_data("swe",data->Xdata->swe);
-    elem->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
-    elem->set_face_data("T_s",Mdata.tss-mio::Cst::t_water_freezing_pt);
-    elem->set_face_data("T_s_0",Mdata.tss-mio::Cst::t_water_freezing_pt);
-    elem->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
-    elem->set_face_data("n_elem",data->Xdata->getNumberOfElements());
+    face->set_face_data("swe",data->Xdata->swe);
+    face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
+    face->set_face_data("T_s",Mdata.tss-mio::Cst::t_water_freezing_pt);
+    face->set_face_data("T_s_0",Mdata.tss-mio::Cst::t_water_freezing_pt);
+    face->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
+    face->set_face_data("n_elem",data->Xdata->getNumberOfElements());
     face->set_face_data("H",surface_fluxes.qs);
     face->set_face_data("E",surface_fluxes.ql);
 
@@ -201,7 +201,7 @@ void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_pa
     face->set_face_data("dQ",surface_fluxes.dIntEnergy);
 //    if(!has_optional("snow_albedo"))
 //    {
-        elem->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
+    face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
 //    }
 
 
