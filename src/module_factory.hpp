@@ -35,6 +35,7 @@ namespace pt = boost::property_tree;
 #include "threshold_p_phase.hpp"
 #include "Gray_inf.hpp"
 #include "Longwave_from_obs.hpp"
+#include "Dist_tlapse.hpp"
 
 class module_factory
 {
