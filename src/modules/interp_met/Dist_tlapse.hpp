@@ -13,36 +13,19 @@
 /**
 * \addtogroup modules
 * @{
-* \class Liston_monthly_llra_ta
-* \brief Constant monthly linear lapse rate adjustment
+* \class Dist_tlapse
+* \brief Distributed lapse rate from forcing file, changes per timestep
 *
-* Constant monthly linear lapse rate adjustment for air temperature.
-*
-* Month | Lapse rate (degC/m)
-* ------|----------------
-* Jan | 0.0044
-* Feb | 0.0059
-* Mar | 0.0071
-* Apr | 0.0078
-* May | 0.0081
-* Jun | 0.0082
-* Jul | 0.0081
-* Aug | 0.0081
-* Sep | 0.0077
-* Oct | 0.0068
-* Nov | 0.0055
-* Dec | 0.0047
+* 
 *
 * Depends:
-* - None
+* - Air temperature "t" [degC]
+* - Lapse rate "t_lapse_rate" [degC/m]
 *
 * Provides:
 * - Air temperature "t" [degC]
-* - Air temperatue "Liston_monthly_llra_ta" [degC]
+* - Lapse rate "t_lapse_rate" [degC/m]
 *
-* Reference:
-* > Liston, Glen E., and Kelly Elder. 2006. A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of hydrometeorology 7: 217-234
-
 */
 class Dist_tlapse : public module_base
 {
