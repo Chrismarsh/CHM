@@ -18,10 +18,10 @@ void Thornton_p::init(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
     }
 }
-void Thornton_p::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void Thornton_p::run(mesh_elem& face, boost::shared_ptr<global> global_param)
 {
     //km^-1
     double monthly_factors[] = {0.35, 0.35, 0.35, 0.30, 0.25, 0.20, 0.20, 0.20, 0.20, 0.25, 0.30, 0.35};
@@ -31,7 +31,7 @@ void Thornton_p::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     }
     std::vector< boost::tuple<double, double, double> > ppt;
     std::vector< boost::tuple<double, double, double> > staion_z;
-    for (auto& s : global_param->stations)
+    for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
     {
         if( is_nan(s->get("p")))
             continue;
@@ -41,10 +41,10 @@ void Thornton_p::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     }
 
 
-    auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double p0 = elem->get_module_data<data>(ID)->interp(ppt, query);
-    double z0 = elem->get_module_data<data>(ID)->interp(staion_z,query);
-    double z = elem->get_z();
+    auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+    double p0 = face->get_module_data<data>(ID)->interp(ppt, query);
+    double z0 = face->get_module_data<data>(ID)->interp(staion_z,query);
+    double z = face->get_z();
 
     int month = global_param->month()-1;
     double lapse = monthly_factors[month];
@@ -52,7 +52,7 @@ void Thornton_p::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     double P = p0*( (1+lapse*(z-z0))/(1-lapse*(z-z0)));
     P = std::max(0.0,P);
 
-    elem->set_face_data("p", P);
+    face->set_face_data("p", P);
 
 
 }

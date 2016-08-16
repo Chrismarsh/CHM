@@ -62,53 +62,53 @@ point_mode::~point_mode()
 
 }
 
-void point_mode::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
+void point_mode::run(mesh_elem &face, boost::shared_ptr <global> global_param)
 {
     // at this point, if the user has provided more than 1 station, they've been stripped out.
     // we can safetly take the 1st (and only) station.
 
     if(t)
     {
-        double st = global_param->stations.at(0)->get("t");
-        elem->set_face_data("t",st);
+        double st = global_param->stations().at(0)->get("t");
+        face->set_face_data("t",st);
     }
 
     if(rh)
     {
-        double srh = global_param->stations.at(0)->get("rh");
-        elem->set_face_data("rh", srh);
+        double srh = global_param->stations().at(0)->get("rh");
+        face->set_face_data("rh", srh);
     }
     if(vw)
     {
-        double su = global_param->stations.at(0)->get("u");
+        double su = global_param->stations().at(0)->get("u");
 
         //make sure we don't have zero windpseeds
         //su = std::max(su,0.5);
-        elem->set_face_data("vw",su);
-        //elem->set_face_data("vw_dir",global_param->stations.at(0)->get("vw_dir")); //TODO: real wind direction
+        face->set_face_data("vw",su);
+        //face->set_face_data("vw_dir",global_param->stations().at(0)->get("vw_dir")); //TODO: real wind direction
     }
 
     if(vw_dir)
     {
-        double sdir = global_param->stations.at(0)->get("vw_dir");
-        elem->set_face_data("vw_dir",sdir);
+        double sdir = global_param->stations().at(0)->get("vw_dir");
+        face->set_face_data("vw_dir",sdir);
     }
 
     if(p)
     {
-        double sp = global_param->stations.at(0)->get("p");
-        elem->set_face_data("p", sp);
+        double sp = global_param->stations().at(0)->get("p");
+        face->set_face_data("p", sp);
     }
     if(ilwr)
     {
-        double silwr = global_param->stations.at(0)->get("Qli");
-        elem->set_face_data("ilwr", silwr);
+        double silwr = global_param->stations().at(0)->get("Qli");
+        face->set_face_data("ilwr", silwr);
 
     }
     if(iswr)
     {
-        double iswr = global_param->stations.at(0)->get("Qsi");
-        elem->set_face_data("iswr", iswr);
+        double iswr = global_param->stations().at(0)->get("Qsi");
+        face->set_face_data("iswr", iswr);
 
     }
 }

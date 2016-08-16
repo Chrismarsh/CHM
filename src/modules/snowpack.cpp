@@ -46,10 +46,10 @@ Lehning_snowpack::~Lehning_snowpack()
 
 }
 
-void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
+void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_param)
 {
 
-    auto data = elem->get_module_data<Lehning_snowpack::data>(ID);
+    auto data = face->get_module_data<Lehning_snowpack::data>(ID);
 
     /**
      * Builds this timestep's meteo data
@@ -97,8 +97,8 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     {
         //measured albedo in snowpack will be fed from an albedo model
         //in the config 'both' will enable this
-        Mdata.mAlbedo   =  elem->face_data("snow_albedo");
-        Mdata.rswr      =  elem->face_data("snow_albedo") * elem->face_data("iswr");
+        Mdata.mAlbedo   =  face->face_data("snow_albedo");
+        Mdata.rswr      =  face->face_data("snow_albedo") * face->face_data("iswr");
 
     }
     else
@@ -149,8 +149,8 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
 
 //    Mdata.hs = mio::IOUtils::nodata;
 
-    Mdata.diff      = elem->face_data("iswr_diffuse");
-    Mdata.dir_h     = elem->face_data("iswr_direct");
+    Mdata.diff      = face->face_data("iswr_diffuse");
+    Mdata.dir_h     = face->face_data("iswr_direct");
     Mdata.elev      = global_param->solar_el()*mio::Cst::to_rad;
 
 //    Mdata.tss_a12h = Constants::undefined;
@@ -178,7 +178,7 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     }catch(std::exception& e)
     {
         LOG_DEBUG << e.what();
-        auto details = "("+std::to_string(elem->center().x()) + "," + std::to_string(elem->center().y())+","+std::to_string(elem->center().z())+")";
+        auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+")";
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snowpack died. Triangle center = "+details));
     }
 
@@ -190,16 +190,15 @@ void Lehning_snowpack::run(mesh_elem &elem, boost::shared_ptr <global> global_pa
     elem->set_face_data("T_s_0",Mdata.tss-mio::Cst::t_water_freezing_pt);
     elem->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
     elem->set_face_data("n_elem",data->Xdata->getNumberOfElements());
+    face->set_face_data("H",surface_fluxes.qs);
+    face->set_face_data("E",surface_fluxes.ql);
 
-    elem->set_face_data("H",surface_fluxes.qs);
-    elem->set_face_data("E",surface_fluxes.ql);
 
+    face->set_face_data("G",surface_fluxes.qg0 == -999 ? 0 : surface_fluxes.qg0); //qg0 is the correct ground heatflux to match snowpack output. qg is just uninit
 
-    elem->set_face_data("G",surface_fluxes.qg0 == -999 ? 0 : surface_fluxes.qg0); //qg0 is the correct ground heatflux to match snowpack output. qg is just uninit
-
-    elem->set_face_data("ilwr_out",surface_fluxes.lw_out);
-    elem->set_face_data("iswr_out",surface_fluxes.sw_out);
-    elem->set_face_data("dQ",surface_fluxes.dIntEnergy);
+    face->set_face_data("ilwr_out",surface_fluxes.lw_out);
+    face->set_face_data("iswr_out",surface_fluxes.sw_out);
+    face->set_face_data("dQ",surface_fluxes.dIntEnergy);
 //    if(!has_optional("snow_albedo"))
 //    {
         elem->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);

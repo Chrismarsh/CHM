@@ -20,11 +20,11 @@ void rh_from_obs::init(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->stations.size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
     }
 }
 
-void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+void rh_from_obs::run(mesh_elem& face, boost::shared_ptr<global> global_param)
 {
     //generate lapse rates
     std::vector<double> sea;
@@ -38,7 +38,7 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     //otherwise, just used the stored lapse rate
     if(last_update != global_param->posix_time() )
     {
-        for (auto& s : global_param->stations)
+        for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
         {
             if( is_nan(s->get("t")) || is_nan(s->get("rh")))
                 continue;
@@ -62,7 +62,7 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     }
 
     std::vector< boost::tuple<double, double, double> > lowered_values;
-    for (auto& s : global_param->stations)
+    for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
     {
         if( is_nan(s->get("t")) || is_nan(s->get("rh")))
             continue;
@@ -78,19 +78,19 @@ void rh_from_obs::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
     }
 
 
-    auto query = boost::make_tuple(elem->get_x(), elem->get_y(), elem->get_z());
-    double ea = elem->get_module_data<data>(ID)->interp(lowered_values, query);
+    auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+    double ea = face->get_module_data<data>(ID)->interp(lowered_values, query);
 
     //raise it back up
-    ea = ea + lapse*( elem->get_z() - 0.0);
+    ea = ea + lapse*( face->get_z() - 0.0);
 
-    double es = mio::Atmosphere::waterSaturationPressure(elem->face_data("t")+273.15);
+    double es = mio::Atmosphere::waterSaturationPressure(face->face_data("t")+273.15);
     double rh = ea/es*100.0;
 
     rh = std::min(rh,100.0);
     rh = std::max(10.0,rh);
 
-    elem->set_face_data("rh",rh);
+    face->set_face_data("rh",rh);
 
 
 }

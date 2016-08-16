@@ -9,10 +9,11 @@
 //      "output":"UpperClearing",
 //      "forcing":"UpperClearing"
 //    },
-
+    "station_search_radius":5000,
+    "interpolant":"idw",
     "notification_script":"./finished.sh",
     "per_triangle_timeseries":"false",
-    "ui":true,
+    "ui":false,
     "debug_level":"debug",
 
     "prj_name":"Granger creek",
@@ -79,22 +80,22 @@
   },
   "meshes":
   {
-    "mesh":"meshes/wolf_lidar1.mesh",
+    "mesh":"meshes/wolf1m_fill.mesh"
 //
-    //map internal variables/parameters to the .mesh file's parameter section.
-    "parameters":
-    {
-//      "file":"meshes/granger30_liston_curvature.mesh"
-      "file":"meshes/wolf_lidar1.param"
-    },
-    "initial_conditions":
-    {
-      "file":"meshes/wolf_lidar1.ic"
-    }
+//    //map internal variables/parameters to the .mesh file's parameter section.
+//    "parameters":
+//    {
+////      "file":"meshes/granger30_liston_curvature.mesh"
+//      "file":"meshes/wolf_lidar1.param"
+//    },
+//    "initial_conditions":
+//    {
+//      "file":"meshes/wolf_lidar1.ic"
+//    }
 
   },
 
-  "parameters":
+  "parameter_mapping":
   {
     "soil":"parameters/wolf_soil_param.json",
 
@@ -198,7 +199,7 @@
     },
      "mesh":
      {
-       "base_name":"output/granger"
+       "base_name":"output/wolf1m_fill"
 //       "variables":["swe","t","rh"],
 //       "frequency":1 //every N timesteps
      }
@@ -211,26 +212,8 @@
   },
   "forcing":
   {
-      "buckbrush":
-       {
-         "file":"bb_1999-2002", // hm_oct2010 hm_oct2_4_2010 hm_sep_15_2006
-         "easting": 489216.601,
-         "northing": 6709533.168,
-         "elevation": 1305
-       },
-     "alpine":
-     {
-       "file":"alp_1999-2002",  //fr_sep_15_2006
-       "easting": 489879.341,
-       "northing":  6714611.183,
-       "elevation": 1559
-      // "filter":
-      // {
-      //   "macdonald_undercatch":
-      //   {
-      //     "variable":"p"
-      //   }
-      },
+    // key name of external forcing files can be named anything
+     "external_forcing":"forcing_test.json",
       "forest":
       {
         "file":"for_1999-2002",  //fr_sep_15_2006

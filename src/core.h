@@ -54,7 +54,7 @@ namespace po = boost::program_options;
 #include "ui.h"
 #include "interpolation.h"
 #include "readjson.hpp"
-
+#include "version.h"
 struct vertex{
     std::string name;
 };
@@ -135,7 +135,7 @@ public:
     void config_options(const pt::ptree &value);
     void config_modules(const pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
     void config_meshes(const pt::ptree& value);
-    void config_forcing(const pt::ptree& value);
+    void config_forcing(pt::ptree& value);
     void config_module_overrides(const pt::ptree& value);
     void config_parameters(pt::ptree &value);
     void config_matlab(const pt::ptree& value);
@@ -202,7 +202,8 @@ protected:
     
     //calculates the order modules are to be run in
     void _determine_module_dep();
-    
+
+    interp_alg _interpolation_method;
         
     //holds a unique list of all variables provided by all the met files;
     std::set<std::string> _provided_var_met_files;

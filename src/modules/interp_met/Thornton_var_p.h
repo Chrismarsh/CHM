@@ -29,7 +29,7 @@ class Thornton_var_p : public module_base
 public:
     Thornton_var_p(config_file cfg);
     ~Thornton_var_p();
-    void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
+    void run(mesh_elem& face, boost::shared_ptr<global> global_param);
     virtual void init(mesh domain, boost::shared_ptr<global> global_param);
     struct data : public face_info
     {

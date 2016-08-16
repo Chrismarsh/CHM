@@ -78,39 +78,22 @@ size_t triangulation::size_vertex()
 
 mesh_elem triangulation::locate_face(double x, double y)
 {
-    //TODO: fix locate_face to return the correct value
-//
-//    int i =0;
-//    for(auto itr = faces_begin(); itr < faces_end(); itr++)
+    //http://doc.cgal.org/latest/Spatial_searching/index.html
+    Point_2 query(x,y);
+    K_neighbor_search search(*(dD_tree.get()), query, 1);
+    auto it = search.begin();
+    return boost::get<1>(it->first);
+
+//    for (size_t i = 0; i < size_faces(); i++)
 //    {
-//        if(itr->contains(x,y))
-//            return itr;
-//        LOG_DEBUG << i++;
+//        auto f = face(i);
+//
+//        if(f->contains(x,y))
+//            return f;
 //    }
+//
+//    return nullptr;
 
-    for (size_t i = 0; i < size_faces(); i++)
-    {
-        auto f = face(i);
-
-        if(f->contains(x,y))
-            return f;
-    }
-
-    return nullptr;
-
-//
-//    Point_3 p(x, y, 0);
-//
-//    Delaunay::Locate_type lt0;
-//    int li;
-//
-//    mesh_elem m = this->locate(p, lt0, li);
-//
-//
-//    if (lt0 != Delaunay::FACE)
-//        return NULL;
-//    else
-//        return m;
 }
 
 #ifdef NOMATLAB
@@ -202,6 +185,9 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     //set our mesh dimensions
     this->set_dimension(2);
 
+    //vectors to hold the center of a face, and a pointer to that face to generate the spatial search tree
+    std::vector<Point_2> center_points;
+
     i = 0;
     size_t cid = 0;
     for (auto &itr : mesh.get_child("mesh.elem"))
@@ -223,8 +209,15 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         face->_debug_name= std::to_string(i);
         _faces.push_back(face);
 
+        Point_2 pt2(face->center().x(),face->center().y());
+
+        center_points.push_back(pt2);
     }
 
+    //make the search tree
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
+                                 boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
+    );
 
     _num_faces = this->number_of_faces();
 
@@ -451,15 +444,15 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     auto params = this->face(0)->parameters();
     for(auto& v: params)
     {
-        data[v] = vtkSmartPointer<vtkFloatArray>::New();
-        data[v]->SetName(v.c_str());
+        data["[param] " + v] = vtkSmartPointer<vtkFloatArray>::New();
+        data["[param] " + v]->SetName(("[param] " + v).c_str());
     }
 
     auto ics = this->face(0)->initial_conditions();
     for(auto& v: ics)
     {
-        data[v] = vtkSmartPointer<vtkFloatArray>::New();
-        data[v]->SetName(v.c_str());
+        data["[ic] " + v] = vtkSmartPointer<vtkFloatArray>::New();
+        data["[ic] " + v]->SetName(("[ic] " + v).c_str());
     }
 
 
@@ -536,7 +529,6 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             }
 
             data[v]->InsertTuple1(i,d);
-//            data[v]->InsertNextTuple1(d);
         }
         for(auto& v: params)
         {
@@ -545,8 +537,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             {
                 d = nan("");
             }
-            data[v]->InsertTuple1(i,d);
-//            data[v]->InsertNextTuple1(d);
+            data["[param] " +  v]->InsertTuple1(i,d);
         }
 
         for(auto& v: ics)
@@ -556,8 +547,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             {
                 d = nan("");
             }
-            data[v]->InsertTuple1(i,d);
-//            data[v]->InsertNextTuple1(d);
+            data["[ic] "+ v]->InsertTuple1(i,d);
         }
 
         data["Elevation"]->InsertTuple1(i,fit->get_z());

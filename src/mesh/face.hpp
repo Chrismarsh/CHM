@@ -277,7 +277,7 @@ double face<Gt, Fb>::get_parameter(std::string key)
 template < class Gt, class Fb >
 bool face<Gt, Fb>::has_initial_condition(std::string key)
 {
-    return _initial_conditions.find( key ) != _parameters.end();
+    return _initial_conditions.find( key ) != _initial_conditions.end();
 }
 
 template < class Gt, class Fb >

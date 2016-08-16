@@ -19,16 +19,16 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
- void PenmanMonteith_evaporation::run(mesh_elem& elem, boost::shared_ptr<global> global_param)
+ void PenmanMonteith_evaporation::run(mesh_elem& face, boost::shared_ptr<global> global_param)
 {
 
     double albedo = 0.23; //grass and crops
-    double qsi = elem->face_data("Qsi");
-    double Lin = elem->face_data("Lin");
-    double es = elem->face_data("es")/1000.0;
-    double ea = elem->face_data("ea")/1000.0;
-    double T = elem->face_data("t");
-    double u = elem->face_data("u");
+    double qsi = face->face_data("Qsi");
+    double Lin = face->face_data("Lin");
+    double es = face->face_data("es")/1000.0;
+    double ea = face->face_data("ea")/1000.0;
+    double T = face->face_data("t");
+    double u = face->face_data("u");
 
 
     double grass_emissivity = 0.9;
@@ -64,7 +64,7 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
 
     double E = (delta*(Qn-G)/latent_heat + (rho*cp*(es-ea)/ra))/(delta + psy_const * (1+rc/ra));
 
-    elem->set_face_data("ET", E);
+    face->set_face_data("ET", E);
 
 
 }

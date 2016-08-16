@@ -32,7 +32,7 @@ class Longwave_from_obs : public module_base
 public:
     Longwave_from_obs(config_file cfg);
     ~Longwave_from_obs();
-    virtual void run(mesh_elem& elem, boost::shared_ptr<global> global_param);
+    virtual void run(mesh_elem& face, boost::shared_ptr<global> global_param);
     virtual void init(mesh domain, boost::shared_ptr<global> global_param);
     struct data : public face_info
     {

@@ -21,7 +21,7 @@ public:
 
     ~Lehning_snowpack();
 
-    virtual void run(mesh_elem &elem, boost::shared_ptr <global> global_param);
+    virtual void run(mesh_elem &face, boost::shared_ptr <global> global_param);
 
     virtual void init(mesh domain, boost::shared_ptr <global> global_param);
 

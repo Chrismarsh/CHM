@@ -34,7 +34,9 @@ find_package(Boost
         filesystem
         REQUIRED)
 
-include_directories(${GDAL_INCLUDE_DIR}
+include_directories(
+        ${CMAKE_BINARY_DIR}/mesher # for clion generated files / out of source builds
+        ${GDAL_INCLUDE_DIR}
         ${Boost_INCLUDE_DIR}
         )
 

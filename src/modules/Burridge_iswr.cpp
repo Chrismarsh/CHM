@@ -18,18 +18,18 @@ Burridge_iswr::~Burridge_iswr()
 
 }
 
-void Burridge_iswr::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
+void Burridge_iswr::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 {
     double cosZ = cos( (90.0-global_param->solar_el()) *mio::Cst::to_rad);
 
-//    double aspect_south0 = elem->aspect() * mio::Cst::to_deg;
+//    double aspect_south0 = face->aspect() * mio::Cst::to_deg;
 //    if (aspect_south0 >= 180.0)
 //        aspect_south0 -=  180.0;
 //    else
 //        aspect_south0 += 180.0;
 //    aspect_south0 *= mio::Cst::to_rad;
 //
-//    double slope = elem->slope();
+//    double slope = face->slope();
 //    double sun_az = global_param->solar_az(); //* mio::Cst::to_rad;
 //    if (sun_az >= 180.0)
 //        sun_az -=  180.0;
@@ -50,7 +50,7 @@ void Burridge_iswr::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
 //        cosZ=0.0;
 
     double S = 1375.0;
-    double cf = elem->face_data("cloud_frac");
+    double cf = face->face_data("cloud_frac");
 
     double dir = S  * (0.6+0.2*cosZ)*(1.0-cf);
     double diff = S * (0.3+0.1*cosZ)*(cf);
@@ -64,8 +64,8 @@ void Burridge_iswr::run(mesh_elem &elem, boost::shared_ptr<global> global_param)
     if(dir <0)
         dir = 0.0;
 
-    elem->set_face_data("iswr_diffuse",diff);
-    elem->set_face_data("iswr_direct",dir);
-    elem->set_face_data("iswr",dir+diff);
-    elem->set_face_data("atm_trans", (dir+diff) / 1375.);
+    face->set_face_data("iswr_diffuse",diff);
+    face->set_face_data("iswr_direct",dir);
+    face->set_face_data("iswr",dir+diff);
+    face->set_face_data("atm_trans", (dir+diff) / 1375.);
 }

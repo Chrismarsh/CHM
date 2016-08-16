@@ -153,10 +153,10 @@ snobal::~snobal()
 
 }
 
-void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
+void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 {
     //debugging
-    auto id = elem->_debug_ID;
+    auto id = face->_debug_ID;
 
     bool run=false;
 
@@ -167,24 +167,24 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
 
 
     //get the previous timesteps data out of the global store.
-    snodata* g = elem->get_module_data<snodata>(ID);
+    snodata* g = face->get_module_data<snodata>(ID);
     auto* sbal = &(g->data);
 
     sbal->_debug_id = id;
 
-    sbal->P_a = mio::Atmosphere::stdAirPressure( elem->get_z());
+    sbal->P_a = mio::Atmosphere::stdAirPressure( face->get_z());
 
-    double albedo = elem->face_data("snow_albedo");
-    double ilwr = elem->face_data("ilwr");
-    double rh = elem->face_data("rh");
-    double t = elem->face_data("t");
+    double albedo = face->face_data("snow_albedo");
+    double ilwr = face->face_data("ilwr");
+    double rh = face->face_data("rh");
+    double t = face->face_data("t");
     double ea = mio::Atmosphere::waterSaturationPressure(t+273.15)  * rh/100.;
 
-    sbal->input_rec2.S_n = (1-albedo) * elem->face_data("iswr");
+    sbal->input_rec2.S_n = (1-albedo) * face->face_data("iswr");
     sbal->input_rec2.I_lw = ilwr;
     sbal->input_rec2.T_a = t+FREEZE;
     sbal->input_rec2.e_a = ea;
-    sbal->input_rec2.u = elem->face_data("vw");
+    sbal->input_rec2.u = face->face_data("vw");
     sbal->input_rec2.T_g = -4+FREEZE; //TODO: FIx this with a gflux estimate
     sbal->input_rec2.ro = 0.;
 
@@ -200,13 +200,13 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     }
 
 
-    double p = elem->face_data("p");
+    double p = face->face_data("p");
 
     if(p > 0)
     {
         sbal->precip_now = 1;
         sbal->m_pp = p;
-        sbal->percent_snow = elem->face_data("frac_precip_snow");
+        sbal->percent_snow = face->face_data("frac_precip_snow");
         sbal->rho_snow = 100.; //http://ccc.atmos.colostate.edu/pdfs/SnowDensity_BAMS.pdf
         sbal->T_pp = t+FREEZE;
         sbal->stop_no_snow=0;
@@ -220,7 +220,7 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     if(g->dead == 1)
     {
         sbal->init_snow();
-        g->dead = 0;
+
     }
 
     double swe1 = sbal->m_s;
@@ -236,7 +236,7 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     {
         g->dead=1;
         LOG_DEBUG << boost::diagnostic_information(e);
-        auto details = "("+std::to_string(elem->center().x()) + "," + std::to_string(elem->center().y())+","+std::to_string(elem->center().z())+")";
+        auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+")";
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snobal died. Triangle center = "+details));
     }
 
@@ -247,29 +247,29 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     g->sum_runoff += sbal->ro_predict;
     g->sum_melt += swe_diff;
 
-    elem->set_face_data("dead",g->dead);
+    face->set_face_data("dead",g->dead);
 
-    elem->set_face_data("swe",sbal->m_s);
+    face->set_face_data("swe",sbal->m_s);
 
-    elem->set_face_data("R_n",sbal->R_n);
-    elem->set_face_data("H",sbal->H);
-    elem->set_face_data("E",sbal->L_v_E);
-    elem->set_face_data("G",sbal->G);
-    elem->set_face_data("M",sbal->M);
-    elem->set_face_data("dQ",sbal->delta_Q);
-    elem->set_face_data("cc",sbal->cc_s);
-    elem->set_face_data("T_s",sbal->T_s);
-    elem->set_face_data("T_s_0",sbal->T_s_0);
-    elem->set_face_data("iswr_net",sbal->S_n);
-    elem->set_face_data("isothermal",sbal->isothermal);
-    elem->set_face_data("ilwr_out", sbal->R_n - sbal->S_n - sbal->I_lw);
-//    elem->set_face_data("snowmelt_int",sbal->ro_predict);
+    face->set_face_data("R_n",sbal->R_n);
+    face->set_face_data("H",sbal->H);
+    face->set_face_data("E",sbal->L_v_E);
+    face->set_face_data("G",sbal->G);
+    face->set_face_data("M",sbal->M);
+    face->set_face_data("dQ",sbal->delta_Q);
+    face->set_face_data("cc",sbal->cc_s);
+    face->set_face_data("T_s",sbal->T_s);
+    face->set_face_data("T_s_0",sbal->T_s_0);
+    face->set_face_data("iswr_net",sbal->S_n);
+    face->set_face_data("isothermal",sbal->isothermal);
+    face->set_face_data("ilwr_out", sbal->R_n - sbal->S_n - sbal->I_lw);
+//    face->set_face_data("snowmelt_int",sbal->ro_predict);
 
-    elem->set_face_data("snowmelt_int",swe_diff);
-    elem->set_face_data("sum_melt",g->sum_melt);
-    elem->set_face_data("sum_snowpack_runoff",g->sum_runoff);
+    face->set_face_data("snowmelt_int",swe_diff);
+    face->set_face_data("sum_melt",g->sum_melt);
+    face->set_face_data("sum_snowpack_runoff",g->sum_runoff);
 
-    elem->set_face_data("snow_depth",sbal->z_s);
+    face->set_face_data("snow_depth",sbal->z_s);
 
     sbal->input_rec1.S_n =sbal->input_rec2.S_n;
     sbal->input_rec1.I_lw =sbal->input_rec2.I_lw;
@@ -279,6 +279,8 @@ void snobal::run(mesh_elem &elem, boost::shared_ptr <global> global_param)
     sbal->input_rec1.T_g =sbal->input_rec2.T_g;
     sbal->input_rec1.ro =sbal->input_rec2.ro;
 
+    // reset flag
+//    g->dead = 0;
 }
 
 void snobal::run(mesh domain, boost::shared_ptr <global> global_param)
