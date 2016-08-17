@@ -1,5 +1,3 @@
-#!/home/nwayand/custom/anaconda3/bin/python
-
 import os
 import numpy as np
 import wget
@@ -11,7 +9,7 @@ import time
 #######  load user configurable paramters here    #######
 # Check user defined configuraiton file 
 if len(sys.argv) == 1:
-    sys.error('Download_HRDPS_GRIB2.py requires one argument [configuration file] (i.e. Download_HRDPS_GRIB2.py download_config.py')
+    sys.error('Download_HRDPS_GRIB2.py requires one argument [configuration file] (i.e. python Download_HRDPS_GRIB2.py download_config.py')
 
 # Get name of configuration file/module
 configfile = sys.argv[-1]
@@ -29,7 +27,7 @@ os.chdir(download_dir)
 
 # REMOVE ALL previous files
 print('Removing ALL previous grib2 files')
-files = os.listdir()
+files = os.listdir(download_dir)
 for file in files:
     os.remove(file)
 

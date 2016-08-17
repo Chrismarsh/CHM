@@ -1,5 +1,3 @@
-#!/home/nwayand/custom/anaconda2/bin/python
-
 import xarray as xr
 import os
 import imp
@@ -85,7 +83,8 @@ def load_GEM_4d_var(PresLevs,UA_files,var_name,var_name_new,preprocess):
 #######  load user configurable paramters here    #######
 # Check user defined configuraiton file
 if len(sys.argv) == 1:
-    sys.error('GRIB2_to_CHM_forcing.py requires one argument [configuration file] (i.e. GRIB2_to_CHM_forcing.py forcing_config.py')
+    sys.error('GRIB2_to_CHM_forcing.py requires one argument [configuration file] (i.e. python GRIB2_to_CHM_forcing.py forcing_config.py')
+
 
 # Get name of configuration file/module
 configfile = sys.argv[-1]
