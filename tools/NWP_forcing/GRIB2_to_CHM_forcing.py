@@ -18,8 +18,8 @@ def add_datetime_dataset(ds_in,local_time_offset):
         DT = re.split(' ',init_time)
         D = re.split('/',DT[0])
         HHMM = re.split(':',DT[1].replace("(","").replace(")",""))
-        T_init = datetime.datetime(int(D[2]),int(D[0]),int(D[1]),int(HHMM[0])+1-local_time_offset,int(HHMM[1])) # +1 is because we start on forecast houor 1 (disregard hour 00 as it is just initial conditions... and no precip values)
-        TimeS = pd.date_range(T_init, periods=len(ds_in.forecast_hour),freq='H')
+        T_init = datetime.datetime(int(D[2]),int(D[0]),int(D[1]),int(HHMM[0])+1,int(HHMM[1])) # +1 is because we start on forecast houor 1 (disregard hour 00 as it is just initial conditions... and no precip values)
+        TimeS = pd.date_range(T_init+datetime.timedelta(hours=local_time_offset), periods=len(ds_in.forecast_hour),freq='H')
         ds_in['forecast_hour'] = TimeS
 	ds_in.rename({'forecast_hour':'time'},inplace=True)
         return ds_in
@@ -31,8 +31,8 @@ def add_datetime_dataarray(dr_in,local_time_offset):
         DT = re.split(' ',init_time)
         D = re.split('/',DT[0])
         HHMM = re.split(':',DT[1].replace("(","").replace(")",""))
-        T_init = datetime.datetime(int(D[2]),int(D[0]),int(D[1]),int(HHMM[0])+1-local_time_offset,int(HHMM[1])) # +1 is because we start on forecast houor 1 (disregard hour 00 as it is just initial conditions... and no precip values)
-        TimeS = pd.date_range(T_init, periods=len(dr_in.forecast_hour),freq='H')
+        T_init = datetime.datetime(int(D[2]),int(D[0]),int(D[1]),int(HHMM[0])+1,int(HHMM[1])) # +1 is because we start on forecast houor 1 (disregard hour 00 as it is just initial conditions... and no precip values)
+        TimeS = pd.date_range(T_init+datetime.timedelta(hours=local_time_offset), periods=len(dr_in.forecast_hour),freq='H')
         dr_in['forecast_hour'] = TimeS
 	dr_in = dr_in.rename({'forecast_hour':'time'})
         return dr_in
