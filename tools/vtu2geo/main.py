@@ -2,6 +2,8 @@ import vtk
 import sys
 from osgeo import gdal,ogr,osr
 import glob
+import imp
+import sys
 
 # Print iterations progress
 # http://stackoverflow.com/a/34325723/410074
@@ -25,20 +27,29 @@ def printProgress(iteration, total, prefix='', suffix='', decimals=2, barLength=
 
 def main():
     gdal.UseExceptions()  # Enable errors
-    base = "granger"
-    # input_path = '/Users/chris/Documents/PhD/code/CHM/output_no_slope_30m/'
-    input_path = '/home/chris/Documents/PhD/research/emergence/output/output_slope_1m/'
-    # output_path = '/home/chris/Documents/PhD/code/CHM/output_tif/'
-    EPSG=26908 #wolf 8N
+    
+    #####  load user configurable paramters here    #######
+    # Check user defined configuraiton file
+    if len(sys.argv) == 1:
+        sys.error('main.py requires one argument [configuration file] (i.e. python main.py vtu2geo.py')
 
-    variables = ['total_inf','total_excess']  #set to None to dump all variables
-    parameters = ['Aspect'] # paramters are one offs we want to extract from the vtu files
-    pixel_size = 10 # (m)
+    # Get name of configuration file/module
+    configfile = sys.argv[-1]
+
+    # Load in configuration file as module
+    X = imp.load_source('',configfile)
+
+    # Grab variables
+    base = X.base
+    input_path = X.input_path
+    EPSG = X.EPSG
+    variables = X.variables
+    parameters = X.parameters
+    pixel_size = X.pixel_size
+
     #####
-
     reader = vtk.vtkXMLUnstructuredGridReader()
     files =  glob.glob(input_path + base+'*.vtu')
-
 
     iter=1
     for path in files:
