@@ -229,7 +229,7 @@ void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
         if(! sbal->do_data_tstep() )
         {
             g->dead=1;
-            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
+//            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
         }
 //        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died TEST ALWAYS THROWS"));
     }catch(module_error& e)
