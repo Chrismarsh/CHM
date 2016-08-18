@@ -50,7 +50,6 @@ def main():
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
     files =  glob.glob(input_path + base+'*.vtu')
-    print files
 
     iter=1
     for path in files:
