@@ -128,7 +128,7 @@ namespace snobalMacros
 
 #define AH        1.0    /* ratio sensible/momentum phi func	*/
 #define AV        1.0    /* ratio latent/momentum phi func	*/
-#define ITMAX        50    /* max # iterations allowed		*/
+#define ITMAX      200  //50    /* max # iterations allowed		*/
 #define PAESCHKE    7.35    /* Paeschke's const (eq. 5.3)		*/
 //#define THRESH        1.e-1    /* convergence threshold	 1e-5 is orign	*/
 const double THRESH = 1.e-1;
