@@ -31,7 +31,8 @@ def main():
     #####  load user configurable paramters here    #######
     # Check user defined configuraiton file
     if len(sys.argv) == 1:
-        sys.error('main.py requires one argument [configuration file] (i.e. python main.py vtu2geo.py')
+        print('ERROR: main.py requires one argument [configuration file] (i.e. python main.py vtu2geo.py)')
+        return
 
     # Get name of configuration file/module
     configfile = sys.argv[-1]
