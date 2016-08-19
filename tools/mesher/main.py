@@ -16,7 +16,8 @@ def main():
     #######  load user configurable paramters here    #######
     # Check user defined configuraiton file
     if len(sys.argv) == 1:
-        sys.error('main.py requires one argument [configuration file] (i.e. main.py Bow')
+        print('ERROR: main.py requires one argument [configuration file] (i.e. main.py Bow)')
+	return
 
     # Get name of configuration file/module
     configfile = sys.argv[-1]
