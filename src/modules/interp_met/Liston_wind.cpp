@@ -146,6 +146,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
                 continue;
 
             double W = s->get("u");
+            W = std::max(W, 0.1);
 
             double theta = s->get("vw_dir") * 3.14159 / 180.;
             double zonal_u = -W * sin(theta);
