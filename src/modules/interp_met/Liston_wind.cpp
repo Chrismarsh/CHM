@@ -206,6 +206,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         double theta_d = -0.5 * omega_s * sin(2 * (face->aspect() - corrected_theta));
         corrected_theta = theta_d + corrected_theta;
 
+        W = std::max(W,0.1);
         face->set_face_data("vw", W);
         face->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
     }
