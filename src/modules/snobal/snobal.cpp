@@ -220,24 +220,19 @@ void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
     if(g->dead == 1)
     {
         sbal->init_snow();
-
+        g->dead = 0;
     }
 
     double swe1 = sbal->m_s;
     try
     {
-        if(! sbal->do_data_tstep() )
-        {
-            g->dead=1;
-            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died"));
-        }
-//        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("snobal died TEST ALWAYS THROWS"));
+        sbal->do_data_tstep();
     }catch(module_error& e)
     {
         g->dead=1;
         LOG_DEBUG << boost::diagnostic_information(e);
         auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+")";
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snobal died. Triangle center = "+details));
+//        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snobal died. Triangle center = "+details));
     }
 
 

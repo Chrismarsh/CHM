@@ -36,6 +36,7 @@ namespace pt = boost::property_tree;
 #include "Gray_inf.hpp"
 #include "Longwave_from_obs.hpp"
 #include "Simple_Canopy.hpp"
+#include "Dist_tlapse.hpp"
 
 class module_factory
 {

@@ -83,9 +83,8 @@ void point_mode::run(mesh_elem &face, boost::shared_ptr <global> global_param)
         double su = global_param->stations().at(0)->get("u");
 
         //make sure we don't have zero windpseeds
-        //su = std::max(su,0.5);
+        su = std::max(su,0.1);
         face->set_face_data("vw",su);
-        //face->set_face_data("vw_dir",global_param->stations().at(0)->get("vw_dir")); //TODO: real wind direction
     }
 
     if(vw_dir)

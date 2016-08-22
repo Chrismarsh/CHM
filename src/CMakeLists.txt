@@ -44,6 +44,8 @@ set(MODULE_SRCS
 		modules/interp_met/rh_from_obs.cpp
 		modules/interp_met/Longwave_from_obs.cpp
 		modules/Atmosphere.cpp
+                modules/interp_met/Longwave_from_obs.cpp
+		modules/interp_met/Dist_tlapse.cpp
 
 		modules/point_mode.cpp
 
