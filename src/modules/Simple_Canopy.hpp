@@ -39,7 +39,7 @@ public:
         // parameters
         double LAI;
         double CanopyHeight;
-        bool HasCanopy;
+        int canopyType;
 
         // model states
         double rain_load;
