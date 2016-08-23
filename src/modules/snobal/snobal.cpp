@@ -3,14 +3,22 @@
 snobal::snobal(config_file cfg)
         : module_base(parallel::data)
 {
-    depends("p_rain");
-    depends("p_snow");
+    depends("frac_precip_snow");
     depends("iswr");
     depends("rh");
     depends("t");
     depends("vw");
     depends("p");
     depends("ilwr");
+
+    // Optional subcanopy variables if a canopy module is included (used if exist)
+    optional("frac_precip_rain_subcanopy");
+    optional("iswr_subcanopy");
+    optional("rh_subcanopy");
+    optional("ta_subcanopy");
+    optional("vw_subcanopy");
+    optional("p_subcanopy");
+    optional("ilwr_subcanopy");
 
     depends("snow_albedo");
 
@@ -31,7 +39,7 @@ snobal::snobal(config_file cfg)
     provides("ilwr_out");
     provides("sum_snowpack_runoff");
     provides("sum_melt");
-    provides("snow_depth");
+    provides("snowdepthavg");
 
 
 }
@@ -175,16 +183,50 @@ void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
     sbal->P_a = mio::Atmosphere::stdAirPressure( face->get_z());
 
     double albedo = face->face_data("snow_albedo");
-    double ilwr = face->face_data("ilwr");
-    double rh = face->face_data("rh");
-    double t = face->face_data("t");
+
+    // Optional inputs if there is a canopy or not
+    double ilwr;
+    if(has_optional("ilwr_subcanopy")) {
+        ilwr = face->face_data("ilwr_subcanopy");
+    } else {
+        ilwr = face->face_data("ilwr");
+    }
+
+    // Optional inputs if there is a canopy or not
+    double rh;
+    if(has_optional("rh_subcanopy")) {
+        rh = face->face_data("rh_subcanopy");
+    } else {
+        rh = face->face_data("rh");
+    }
+
+    // Optional inputs if there is a canopy or not
+    double t;
+    if(has_optional("ta_subcanopy")) {
+        t = face->face_data("ta_subcanopy");
+    } else {
+        t = face->face_data("t");
+    }
+
     double ea = mio::Atmosphere::waterSaturationPressure(t+273.15)  * rh/100.;
 
-    sbal->input_rec2.S_n = (1-albedo) * face->face_data("iswr");
+    // Optional inputs if there is a canopy or not
+    if(has_optional("iswr_subcanopy")) {
+        sbal->input_rec2.S_n = (1-albedo) * face->face_data("iswr_subcanopy");
+    } else {
+        sbal->input_rec2.S_n = (1-albedo) * face->face_data("iswr");
+    }
     sbal->input_rec2.I_lw = ilwr;
     sbal->input_rec2.T_a = t+FREEZE;
     sbal->input_rec2.e_a = ea;
-    sbal->input_rec2.u = face->face_data("vw");
+
+    // Optional inputs if there is a canopy or not
+    if(has_optional("vw_subcanopy")) {
+        sbal->input_rec2.u = face->face_data("vw");
+    } else {
+        sbal->input_rec2.u = face->face_data("vw");
+    }
+
     sbal->input_rec2.T_g = -4+FREEZE; //TODO: FIx this with a gflux estimate
     sbal->input_rec2.ro = 0.;
 
@@ -199,14 +241,26 @@ void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
         sbal->input_rec1.ro =  sbal->input_rec2.ro;
     }
 
+    // Optional inputs if there is a canopy or not
+    double p;
+    if(has_optional("p_subcanopy")) {
+        p = face->face_data("p_subcanopy");
+    } else {
+        p = face->face_data("p");
+    }
 
-    double p = face->face_data("p");
 
     if(p > 0)
     {
         sbal->precip_now = 1;
         sbal->m_pp = p;
-        sbal->percent_snow = face->face_data("frac_precip_snow");
+
+        // Optional inputs if there is a canopy or not
+        if(has_optional("frac_precip_rain_subcanopy")) {
+            sbal->percent_snow = face->face_data("frac_precip_rain_subcanopy");
+        } else {
+            sbal->percent_snow = face->face_data("frac_precip_snow");
+        }
         sbal->rho_snow = 100.; //http://ccc.atmos.colostate.edu/pdfs/SnowDensity_BAMS.pdf
         sbal->T_pp = t+FREEZE;
         sbal->stop_no_snow=0;
@@ -264,7 +318,7 @@ void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
     face->set_face_data("sum_melt",g->sum_melt);
     face->set_face_data("sum_snowpack_runoff",g->sum_runoff);
 
-    face->set_face_data("snow_depth",sbal->z_s);
+    face->set_face_data("snowdepthavg",sbal->z_s);
 
     sbal->input_rec1.S_n =sbal->input_rec2.S_n;
     sbal->input_rec1.I_lw =sbal->input_rec2.I_lw;
