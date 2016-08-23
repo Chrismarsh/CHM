@@ -8,7 +8,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     depends("p_snow");
     depends("iswr");
     depends("iswr_diffuse");
-    depends("iswr_direct");
+    //depends("iswr_direct");
     depends("rh");
     depends("t");
     depends("vw"); // Wind speed at reference height Z_U_R [m/s]
@@ -54,9 +54,8 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     double vw           = face->face_data("vw");
     double wdir         = face->face_data("vw_dir");
     double iswr         = face->face_data("iswr"); // SW in above canopy
-    //double diff   = face->face_data("iswr_diffuse"); // not used currently
     //double ir_h   = face->face_data("iswr_direct"); // not used currently
-    double Qdfo         = face->face_data("iswr_diffuse"); // "clear-sky diffuse", "(W/m^2)" TODO: Chris,  is the correct variable to grab? (CHM rad code hard to understand)
+    double Qdfo         = face->face_data("iswr_diffuse"); // "clear-sky diffuse", "(W/m^2)"
     double ilwr         = face->face_data("ilwr"); // LW in above canopy
     double p_rain       = face->face_data("p_rain"); // rain (mm/timestep) above canopy
     double p_snow       = face->face_data("p_snow"); // snow (mm/timestep) above canopy
