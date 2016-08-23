@@ -6,6 +6,7 @@
 #include <vector>
 #include <ctime>
 #include <algorithm>
+#include <sstream>
 
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 

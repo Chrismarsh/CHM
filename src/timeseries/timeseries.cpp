@@ -403,10 +403,34 @@ void timeseries::open(std::string path)
         
     }
 
-   
-
     delete[] headerItems;
 
+    //we can only check date-time consistency if we have more than 1 datetime
+    if (_date_vec.size() > 1)
+    {
+        auto dt = _date_vec.at(1) - _date_vec.at(0);
+
+        for (int i = 1; i < _date_vec.size(); ++i)
+        {
+            //using our calculated timestep, check what we think out timestep should be
+            auto pred_ts = _date_vec.at(i - 1) + dt;
+            auto &actual_ts = _date_vec.at(i);
+            if (pred_ts != actual_ts)
+            {
+                //streams will pretty-print the boost time nicely
+                std::stringstream expected_ts;
+                expected_ts << pred_ts;
+                std::stringstream act_ts;
+                act_ts << actual_ts;
+
+                BOOST_THROW_EXCEPTION(forcing_lookup_error()
+                                              << errstr_info("On line " + std::to_string(i + 1) +
+                                                             " the timestep is inconsistent with dt. Expected "
+                                                             + expected_ts.str() + " got " + act_ts.str())
+                                              << boost::errinfo_file_name(path));
+            }
+        }
+    }
 }
 
 int timeseries::get_timeseries_length()

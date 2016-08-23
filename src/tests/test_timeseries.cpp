@@ -229,3 +229,7 @@ TEST_F(TimeseriesTest, ToFile)
     ASSERT_EQ(0, itr->sec());
 }
 
+TEST_F(TimeseriesTest, MissingTimeStep)
+{
+    ASSERT_ANY_THROW(s0.open("missing_timestep.txt"));
+}
