@@ -25,6 +25,8 @@ public:
     bool ilwr ;
     bool iswr ;
     bool vw_dir ;
+    bool iswr_diffuse ;
+    bool iswr_direct ;
 };
 
 
