@@ -119,11 +119,6 @@ set (HEADER_FILES
         ${CMAKE_CURRENT_SOURCE_DIR}
 		${CMAKE_BINARY_DIR}/src # for clion generated files / out of source builds
 		CACHE INTERNAL "" FORCE
-		modules/Atmosphere.h
-		modules/PhysConst.h
-		modules/Snow.h
-		modules/Soil.h
-		modules/Vegetation.h
 		)
 
 

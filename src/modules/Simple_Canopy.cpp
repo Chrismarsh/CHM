@@ -165,13 +165,12 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     double unload_t         = 1.0; //", "-10.0", "20.0", "if ice-bulb temp >= t : canopy snow is unloaded as snow", "(°C)", &unload_t);
     double unload_t_water   = 4.0; //", "-10.0", "20.0", "if ice-bulb temp >= t: canopy snow is unloaded as water", "(°C)", &unload_t_water);
     double SolAng           = global_param->solar_el() * mio::Cst::to_rad; // degrees to radians (assumed horizontal)
-    double cosxs            = cos(face->slope()+SolAng); // TODO: Chris, need help here checking this math
+    double cosxs            = face->face_data("solar_angle"); // "cosine of the angle of incidence on the slope", "()"
     double cosxsflat        = cos(SolAng); // "cosine of the angle of incidence on the horizontal"
-    double Surrounding_Ht   = data->CanopyHeight; //""[0.1, 0.25, 1.0]", "0.001", "100.0", "surrounding canopy height", "()", &Surrounding_Ht); TODO: Best guese here?
-    double Gap_diameter     = 100; // "[100]", "10", "1000", "representative gap diameter", "(m)", &Gap_diameter); TODO: hardcode gap diamter, need to get from lidar
+    double Surrounding_Ht   = data->CanopyHeight; //""[0.1, 0.25, 1.0]", "0.001", "100.0", "surrounding canopy height", "()", &Surrounding_Ht);
+    double Gap_diameter     = 100; // "[100]", "10", "1000", "representative gap diameter", "(m)", &Gap_diameter); TODO: hardcod gap diamter, need to get from lidar
     double Ht               = data->CanopyHeight; //", NHRU, "[0.1, 0.25, 1.0]", "0.001", "100.0", "forest/vegetation height", "(m)", &Ht);
     double LAI              = data->LAI; //", NHRU, "[2.2]", "0.1", "20.0", "leaf-area-index", "()", &LAI);
-
 
     // Initialize
     net_rain = 0.0;
@@ -225,8 +224,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
             // Rescaleing Vf ???
             double Vf_ = Vf + (1.0 - Vf) * sin((Ht - Exposure) / Ht * M_PI_2); // Where does equation come from?
 
-            // TODO: Chris, does this conflict with other modules that handel slope and SW?
-            // TODO: need to calc cosxs and cosxsflat from CHM modules, or refactor
             // Below code is the "updated" CRHM version (changed from Canopy)
             if (SolAng > 0.001 && cosxs > 0.001 && cosxsflat > 0.001) {
                 k = 1.081 * SolAng * cos(SolAng) / sin(SolAng); // "extinction coefficient"
@@ -239,17 +236,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
                 k = 0.0; // "extinction coefficient"
                 Tauc = 0.0; // "short-wave transmissivity", "(W/m^2)"
             }
-
-            // Orig code (before above change)
-            /*if(SolAng > 0.001) { // radians
-                k    = 1.081*SolAng*cos(SolAng)/sin(SolAng); // "extinction coefficient"
-                Tauc = exp(-k*LAI_); // "short-wave transmissivity", "(W/m^2)"
-            }
-            else {
-                k    = 0.0; // "extinction coefficient"
-                Tauc = 0.0; // "short-wave transmissivity", "(W/m^2)"
-            }*/
-
 
             Kstar_H = iswr * (1.0 - Alpha_c - Tauc * (1.0 - Albedo)); //  what is Kstar_H???
 
@@ -327,7 +313,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
                                                (1.0 - Tau_b_gap) * Vegetation::emiss_c * PhysConst::sbc *
                                                pow(T1, 4.0f)) + B_canopy * Kd);
 
-        Qsisn = cosxs * Qdfo * Tau_b_gap + Vgap * (iswr - Qdfo) + (1.0 - Vgap) * Tau_d * (iswr - Qdfo); // TODO: Use diffuse and direct CHM calcs (not Qdfo)
+        Qsisn = cosxs * Qdfo * Tau_b_gap + Vgap * (iswr - Qdfo) + (1.0 - Vgap) * Tau_d * (iswr - Qdfo);
         if (Qsisn < 0.0)
             Qsisn = 0.0;
 
