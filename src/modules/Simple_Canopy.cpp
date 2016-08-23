@@ -60,20 +60,20 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     double p_rain       = face->face_data("p_rain"); // rain (mm/timestep) above canopy
     double p_snow       = face->face_data("p_snow"); // snow (mm/timestep) above canopy
     double snowdepthavg = face->face_data("snowdepthavg");
-    double Albedo       = face->face_data("snow_albedo"); // Broad band snow albedo TODO: should be GROUND albedo (soil or snow), fractional as well
+    double Albedo       = face->face_data("snow_albedo"); // Broad band snow albedo
     double air_pressure = 915; //face->face_data("air_pressure"); //"Average surface pressure", "(kPa)" TODO: Get from face_data
 
     // Checks on boundary conditions
 
     // Albedo
-    if (Albedo == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
+    if (Albedo == -9999) // If it is not defined TODO: current hack, should be required to be initialized in mesher
         Albedo=0.1; // Assume no snow
 
     // Snow depth
-    if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be initialized in mesher
+    if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be required to be initialized in mesher
         snowdepthavg = 0;
 
-    /* Unsure what simple_canopy wind needs, read papers then code below. For now just give it wind at Z_U_R
+    /* CRHM Canopy scales wind to mid canopy for calcs. TODO: add wind scalling down to surface basd on veg height, LAI, etc. (do in separte module)
     // Scale Wind speed
     if(Atmosphere::Z_U_R >= Ht)
     { // Forcing wind speed height greater than top of canopy height
@@ -81,7 +81,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
         double vw_canopy = log_scale_wind(vw, Atmosphere::Z_U_R, Ht); // Wind speed at canopy top
         double Z_vw = Ht; // Update current height of vw
 
-        // Scale through canopy using exponential profile to middle of canopy (one layer canopy) TODO: Scale to middle of canopy (need truck space)
+        // Scale through canopy using exponential profile to middle of canopy (one layer canopy)
         //vw_canopy = exp_scale_wind(vw);
 
     } else
@@ -148,13 +148,13 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
     double Kstar_H;
 
-    double Kd; // TODO: ???
+    double Kd; // Not defined in CRHM
 
 
     // Parameters used
 
     // Default values used for now
-    double Alpha_c          = Vegetation::alb_c; // "canopy albedo" 0.05-0.2 TODO: get from mesh parameter
+    double Alpha_c          = Vegetation::alb_c; // "canopy albedo" 0.05-0.2 TODO: get from mesh parameter when available
     double B_canopy         = 0.038; //TODO: What is this? Where does it come from?", NHRU, "[0.038]", "0.0", "0.2", "canopy enhancement parameter. Suggestions are Colorado - 0.23 and Alberta - 0.038", "()", &B_canopy);
     double Zref             = 2; //", "0.01", "100.0", "temperature measurement height", "(m)", &Zref); TODO: Take from config
     double Zwind            = Atmosphere::Z_U_R; //", "0.01", "100.0", "wind measurement height", "(m)", &Zwind); // Set as defined above
@@ -167,7 +167,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     double cosxs            = face->face_data("solar_angle"); // "cosine of the angle of incidence on the slope", "()"
     double cosxsflat        = cos(SolAng); // "cosine of the angle of incidence on the horizontal"
     double Surrounding_Ht   = data->CanopyHeight; //""[0.1, 0.25, 1.0]", "0.001", "100.0", "surrounding canopy height", "()", &Surrounding_Ht);
-    double Gap_diameter     = 100; // "[100]", "10", "1000", "representative gap diameter", "(m)", &Gap_diameter); TODO: hardcod gap diamter, need to get from lidar
+    double Gap_diameter     = 100; // "[100]", "10", "1000", "representative gap diameter", "(m)", &Gap_diameter); TODO: hardcod gap diamter, need to get from lidar if available
     double Ht               = data->CanopyHeight; //", NHRU, "[0.1, 0.25, 1.0]", "0.001", "100.0", "forest/vegetation height", "(m)", &Ht);
     double LAI              = data->LAI; //", NHRU, "[2.2]", "0.1", "20.0", "leaf-area-index", "()", &LAI);
 
@@ -195,7 +195,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
     double q = (rh/100)*Qs(air_pressure, T1); // specific humidity (kg/kg)
 
-    // snow surface temperature of snow in canopy TODO: Check units
+    // snow surface temperature of snow in canopy
     Ts = T1 + (Snow::emiss*(ilwr - PhysConst::sbc*pow(T1, 4.0)) + PhysConst::Ls*(q - Qs(air_pressure, T1))*rho/ra)/
               (4.0*Snow::emiss*PhysConst::sbc*pow(T1, 3.0) + (PhysConst::Cp + PhysConst::Ls*deltaX)*rho/ra);
 
@@ -271,7 +271,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
         if (Exposure < 0.0)
             Exposure = 0.0;
 
-        double LAI_ = LAI * Exposure / Surrounding_Ht; // TODO: Not used in CRHM orig code, is this a bug???
+        double LAI_ = LAI * Exposure / Surrounding_Ht; // Not used in CRHM orig code, is this a bug???
 
         // terrain view factor (equivalent to 1-Vf), where Vf is the sky view factory. // Where does this equation come from?
         double Vf = 0.45 - 0.29 * log(LAI);
@@ -347,7 +347,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
                 // calculate intercepted snowload
 
-                // Calculate wind speed at canopy top // TODO: use U1 instead of vw here?
+                // Calculate wind speed at canopy top //  use U1 instead of vw here?
                 if (Ht - 2.0 / 3.0 * Zwind > 1.0) // Find source of equations
                     u_FHt = vw * log((Ht - 2.0 / 3.0 * Zwind) / 0.123 * Zwind) /
                             log((Zwind - 2.0 / 3.0 * Zwind) / 0.123 * Zwind);
@@ -358,16 +358,16 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
                 // calculate horizontal canopy-coverage (Cc):
 
-                Cc = 0.29 * log(LAI) + 0.55; //TODO: Where do hard coded param comes from?
+                Cc = 0.29 * log(LAI) + 0.55; // Where do hard coded param comes from?
                 if (Cc <= 0.0) {
                     Cc = 0.0;
                 } else if (Cc > 1.0) {
                     Cc = 1.0;
                 }
 
-                if (p_snow > 0.0 && fabs(p_snow / LStar) < 50.0) { //TODO: Where do hard coded param comes from?
+                if (p_snow > 0.0 && fabs(p_snow / LStar) < 50.0) { // Where do hard coded param comes from?
                     if (u_FHt <=
-                        1.0)  // if wind speed at canopy top > 1 m/s //TODO: Where do hard coded param comes from?
+                        1.0)  // if wind speed at canopy top > 1 m/s // Where do hard coded param comes from?
                         I1 = (LStar - data->Snow_load) * (1.0 - exp(-Cc * p_snow / LStar));
                     else
                         I1 = (LStar - data->Snow_load) * (1.0 - exp(-p_snow / LStar));
@@ -457,7 +457,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
                 //Subl_Cpy = -data->Snow_load*Vi*Hs*Global::Interval*24*3600/Hs; // make W/m2 (original in CRHM)
                 Subl_Cpy = -data->Snow_load * Vi * PhysConst::Ls * global_param->dt() /
                            PhysConst::Ls; // make W/m2 TODO: check Interval is same as dt() (in seconds
-                // TODO: Hs/HS = 1 !!!
+                // TODO: Hs/HS = 1 !!! (in CRHM, kept here for conistency...)
 
                 if (Subl_Cpy > data->Snow_load) {
                     Subl_Cpy = data->Snow_load;
@@ -533,8 +533,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
                 else{ */// use Priestley-Taylor when snowcover IN CANOPY
                 //double Q = iswr*86400/Global::Freq/1e6/lambda(ta); // convert w/m2 to mm/m^2/int (original CRHM)
                 double temp_Global_Freq = global_param->dt() / 86400; // time steps per day (following CRHM convention)
-                double Q = iswr * 86400 / temp_Global_Freq / 1e6 /
-                           lambda(ta); // convert w/m2 to mm/m^2/int TODO: Units don't make sense here (missing density of water??)
+                double Q = iswr * 86400 / temp_Global_Freq / 1e6 / lambda(ta); // convert w/m2 to mm/m^2/int TODO: Units don't make sense here (missing density of water??)
 
                 if (iswr > 0.0)
                     Pevap = 1.26 * delta(ta) * Q / (delta(ta) + gamma(air_pressure, ta));
@@ -595,7 +594,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
 void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
 {
-    // TODO: Chris, is this Parallel call needed here?
     #pragma omp parallel for
 
     // For each face
@@ -655,7 +653,7 @@ double Simple_Canopy::Qs(double air_pressure, double T1) {
      */
     T1 = T1 - mio::Cst::t_water_freezing_pt; // K to C
     double es = 611.213*exp(22.4422*T1/(272.186+T1)); // Pa
-    return(0.622 * ( es / (air_pressure - es) )); // kg/kg TODO: Check Qs calc
+    return(0.622 * ( es / (air_pressure - es) )); // kg/kg
 }
 
 
