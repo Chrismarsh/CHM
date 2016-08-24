@@ -10,7 +10,7 @@
 
 
 #include <meteoio/MeteoIO.h>
-#include "Atmosphere.h"
+#include <constants/Atmosphere.h>
 #include <snowpack/libsnowpack.h>
 
 #include <string>

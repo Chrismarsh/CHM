@@ -4,9 +4,9 @@
 #include "logger.hpp"
 #include "module_base.hpp"
 #include <meteoio/MeteoIO.h>
-#include "Atmosphere.h"
-#include "PhysConst.h"
-#include "Vegetation.h"
+#include <constants/Atmosphere.h>
+#include <constants/PhysConst.h>
+#include <constants/Vegetation.h>
 #include <string>
 #include "face.hpp"
 
