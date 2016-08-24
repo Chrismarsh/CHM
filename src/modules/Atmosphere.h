@@ -11,8 +11,8 @@ namespace Atmosphere {
 
     const double KinVisc = 1.88e-5;     // kinematic viscosity of air (Sask. avg. value) (units ????)
 
+    double log_scale_wind(double u, double Z_in, double Z_out);
 
 }
 
-double log_scale_wind(double u, double Z_in, double Z_out);
 
