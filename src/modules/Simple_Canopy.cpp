@@ -19,7 +19,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     depends("snow_albedo"); //
     //depends("air_pressure"); // TODO: add to met interp (hard coded at 915 mbar for now)
 
-    provides("Snow_load");
+    provides("snow_load");
     provides("rain_load");
     provides("ta_subcanopy");
     provides("rh_subcanopy");
@@ -32,7 +32,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     provides("frac_precip_snow_subcanopy");
     provides("iswr_subcanopy");
     provides("ilwr_subcanopy");
-    provides("Ts_canopy");
+    provides("ts_canopy");
     //provides("diff_subcanopy");
     //provides("ir_h_subcanopy");
 
@@ -557,9 +557,9 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
 
     // Output computed canopy states and fluxes downward to snowpack and upward to atmosphere
-    face->set_face_data("Snow_load",data->Snow_load);
+    face->set_face_data("snow_load",data->Snow_load);
     face->set_face_data("rain_load",data->rain_load);
-    face->set_face_data("Ts_canopy",Ts);
+    face->set_face_data("ts_canopy",Ts);
     //face->set_face_data("cum_Subl_Cpy",data->cum_Subl_Cpy);
     face->set_face_data("ta_subcanopy",ta);
     face->set_face_data("rh_subcanopy",rh);
