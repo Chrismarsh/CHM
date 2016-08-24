@@ -23,7 +23,7 @@ void scale_wind_speed::process(boost::shared_ptr<station> station)
         double Z_U            = cfg.get<double>("Z_U"); // Get measurement height [m]
         double Z_U_R          = Atmosphere::Z_U_R; // Reference wind speed height [m] = 50.0 m
 
-        double u_new          = log_scale_wind(u, Z_U, Z_U_R);
+        double u_new          = Atmosphere::log_scale_wind(u, Z_U, Z_U_R);
 
         station->now().set(var,u_new);
     }while(station->next());
