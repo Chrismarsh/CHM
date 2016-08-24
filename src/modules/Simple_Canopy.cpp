@@ -73,33 +73,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     if (is_nan(snowdepthavg)) // If it is not defined TODO: current hack, should be required to be initialized in mesher
         snowdepthavg = 0;
 
-    /* CRHM Canopy scales wind to mid canopy for calcs. TODO: add wind scalling down to surface basd on veg height, LAI, etc. (do in separte module)
-    // Scale Wind speed
-    if(Atmosphere::Z_U_R >= Ht)
-    { // Forcing wind speed height greater than top of canopy height
-        // Scale wind speed down to canopy top with logarithmic profile
-        double vw_canopy = log_scale_wind(vw, Atmosphere::Z_U_R, Ht); // Wind speed at canopy top
-        double Z_vw = Ht; // Update current height of vw
-
-        // Scale through canopy using exponential profile to middle of canopy (one layer canopy)
-        //vw_canopy = exp_scale_wind(vw);
-
-    } else
-    { // Forcing wind speed height less than than top of canopy height
-
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Forcing height lower than canopy height, currently can't handel this situation."));
-
-    }
-     */
-
-    // End Checks
-
-
-
-
-
-    //ClassCRHMCanopy::run(void)
-
     // declared observations
 
     double Ts; //", NHRU, "snow surface temperature IN CANOPY", "(°C)", &Ts);
@@ -412,7 +385,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
                 C1 = 1.0 / (D * SvDens * Nu);
 
                 Alpha = 5.0;
-                Mpm = 4.0 / 3.0 * M_PI * PhysConst::row_ice * pow(Snow::Radius, 3) *
+                Mpm = 4.0 / 3.0 * M_PI * PhysConst::rho_ice * pow(Snow::Radius, 3) *
                       (1.0 + 3.0 / Alpha + 2.0 / pow(Alpha, 2));
 
                 // sublimation rate of single 'ideal' ice sphere:

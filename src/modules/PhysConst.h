@@ -14,7 +14,7 @@ namespace PhysConst {
     // From PBSM Pomeroy et al. 1993
     const double M = 18.01; // M is the molecular weight of water (18.01 kg kmol-l);
     const double R = mio::Cst::gaz_constant; // R is the universal gas constant (8313 J mol-1 K-1); FYI: unit error in Pomeroy et al. 1993
-    const double row_ice = 917;     //{density of ice (kg/m3)} 
+    const double rho_ice = 917;     //{density of ice (kg/m3)} 
 
 
     // From CRHM_constants in common.h
