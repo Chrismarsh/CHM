@@ -1,9 +1,7 @@
 #include <math.h>
 #include <Snow.h>
 
-#ifndef CHMPRJ_ATMOSPHERE_H
-#define CHMPRJ_ATMOSPHERE_H
-
+#pragma once
 
 namespace Atmosphere {
     /********* Atmosphere ************/

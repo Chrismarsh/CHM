@@ -2,8 +2,7 @@
 // Created by nicway on 12/07/16.
 //
 
-#ifndef CHMPRJ_SNOW_H
-#define CHMPRJ_SNOW_H
+#pragma once
 
 namespace Snow {
     /********* Snow ************/

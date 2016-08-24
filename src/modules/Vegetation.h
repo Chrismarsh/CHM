@@ -1,6 +1,5 @@
 
-#ifndef CHMPRJ_VEGETATION_H
-#define CHMPRJ_VEGETATION_H
+#pragma once
 
 namespace Vegetation {
     /********* Vegetation ************/

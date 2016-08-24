@@ -1,8 +1,6 @@
 #include <meteoio/MeteoIO.h>
 
-#ifndef CHMPRJ_PHYSCONST_H
-#define CHMPRJ_PHYSCONST_H
-
+#pragma once
 
 namespace PhysConst {
     /********* Physical Constants ************/
