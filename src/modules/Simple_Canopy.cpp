@@ -66,11 +66,11 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     // Checks on boundary conditions
 
     // Albedo
-    if (Albedo == -9999) // If it is not defined TODO: current hack, should be required to be initialized in mesher
+    if (is_nan(Albedo)) // If it is not defined TODO: current hack, should be required to be initialized in mesher
         Albedo=0.1; // Assume no snow
 
     // Snow depth
-    if (snowdepthavg == -9999) // If it is not defined TODO: current hack, should be required to be initialized in mesher
+    if (is_nan(snowdepthavg)) // If it is not defined TODO: current hack, should be required to be initialized in mesher
         snowdepthavg = 0;
 
     /* CRHM Canopy scales wind to mid canopy for calcs. TODO: add wind scalling down to surface basd on veg height, LAI, etc. (do in separte module)
@@ -412,7 +412,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
                 C1 = 1.0 / (D * SvDens * Nu);
 
                 Alpha = 5.0;
-                Mpm = 4.0 / 3.0 * M_PI * PhysConst::DICE * pow(Snow::Radius, 3) *
+                Mpm = 4.0 / 3.0 * M_PI * PhysConst::row_ice * pow(Snow::Radius, 3) *
                       (1.0 + 3.0 / Alpha + 2.0 / pow(Alpha, 2));
 
                 // sublimation rate of single 'ideal' ice sphere:

@@ -14,4 +14,3 @@ namespace Snow {
 
 }
 
-#endif //CHMPRJ_SNOW_H

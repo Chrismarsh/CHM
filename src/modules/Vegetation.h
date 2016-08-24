@@ -1,4 +1,3 @@
-
 #pragma once
 
 namespace Vegetation {
@@ -9,4 +8,3 @@ namespace Vegetation {
     const double Fract      = 0.37;     // fractal dimension of intercepted snow TODO: take from vege look up table
 }
 
-#endif //CHMPRJ_VEGETATION_H

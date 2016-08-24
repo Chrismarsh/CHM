@@ -16,4 +16,3 @@ namespace Atmosphere {
 
 double log_scale_wind(double u, double Z_in, double Z_out);
 
-#endif //CHMPRJ_ATMOSPHERE_H
