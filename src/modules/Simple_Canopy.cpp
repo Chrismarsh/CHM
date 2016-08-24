@@ -451,7 +451,12 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
         }
             // Clearing or Gap
         case 1:  // clearing
-        case 2:  // gap
+        {
+            net_snow = p_snow;
+            net_rain = p_rain;
+            break;
+        }
+	case 2:  // gap
         {
             net_snow = p_snow;
             net_rain = p_rain;
@@ -534,6 +539,10 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
     // Clearing or Gap
     case 1:  // clearing
+        {
+            // Do nothing
+            break;
+        }
     case 2:  // gap
         {
             // Do nothing

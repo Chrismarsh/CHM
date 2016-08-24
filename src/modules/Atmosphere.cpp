@@ -1,5 +1,8 @@
 #include "Atmosphere.h"
 
+namespace Atmosphere
+{
+
 // Logrithmic, following Anderson 1967? (DHSVM)  https://github.com/UW-Hydro/DHSVM/blob/master/CalcAerodynamic.c
 double log_scale_wind(double u, double Z_in, double Z_out)
 {
@@ -24,3 +27,4 @@ double log_scale_wind(double u, double Z_in, double Z_out)
     return u;
 }
 
+}
