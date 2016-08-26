@@ -131,6 +131,12 @@ int main(int argc, char *argv[])
         {
             auto r = boost::make_shared<raster>();
             r->open(files.at(i));
+
+            if(tols.at(i) > 1)
+            {
+                std::cout << "Fractional percentage required for category-frac!"<<std::endl;
+                exit(1);
+            }
             category_rasters.push_back(std::make_pair( r,tols.at(i) ));
         }
     }

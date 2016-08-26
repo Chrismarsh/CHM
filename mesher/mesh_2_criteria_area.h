@@ -641,6 +641,8 @@
                 }
                 return operator()(q);
             }
+
+
         };
 
         Is_bad is_bad_object() const
