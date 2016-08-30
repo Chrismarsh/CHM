@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
     std::string poly_file;
     double max_area = 0;
     double min_area = 1;
+    bool is_geographic = false;
 
     std::string error_metric = "rmse"; //default of RMSE
     //holds all rasters we perform tolerance checking on
@@ -39,6 +40,7 @@ int main(int argc, char *argv[])
     desc.add_options()
             ("help", "This message")
             ("version,v", "Version number")
+            ("is-geographic,g", po::value<bool>(&is_geographic),"Set to true if the input data are in geographic (lat/long) format.")
             ("poly-file,p", po::value<std::string>(&poly_file),
              "PLGS file to use to bound triangulation. Same format as Triangle.")
             ("raster,r", po::value<std::vector<std::string>>(), "If tolerance checking is used,"
@@ -225,7 +227,7 @@ int main(int argc, char *argv[])
 
     std::cout << "Number of input PLGS vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the triangulation..." << std::endl;
-    CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters,error_metric));
+    CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters,error_metric,is_geographic));
 
 
     auto nodefilepath = path; //eg PLGSwolf_lidar1.1.node

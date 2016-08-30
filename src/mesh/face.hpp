@@ -669,18 +669,25 @@ double face<Gt, Fb>::get_area()
 {
     if(_area == -1)
     {
+        // supports geographic
+        if(has_parameter("area"))
+        {
+            _area = get_parameter("area");
+        }
+        else
+        {
+            auto x1 = this->vertex(0)->point().x();
+            auto y1 = this->vertex(0)->point().y();
 
-        auto x1 = this->vertex(0)->point().x();
-        auto y1 = this->vertex(0)->point().y();
+            auto x2 = this->vertex(1)->point().x();
+            auto y2 = this->vertex(1)->point().y();
 
-        auto x2 = this->vertex(1)->point().x();
-        auto y2 = this->vertex(1)->point().y();
-
-        auto x3 = this->vertex(2)->point().x();
-        auto y3 = this->vertex(2)->point().y();
+            auto x3 = this->vertex(2)->point().x();
+            auto y3 = this->vertex(2)->point().y();
 
 //        auto lol= CGAL::area(this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point());
-        _area = 0.5 * fabs( x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2) );
+            _area = 0.5 * fabs( x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2) );
+        }
     }
 
 

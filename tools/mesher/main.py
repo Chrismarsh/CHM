@@ -17,7 +17,7 @@ def main():
     # Check user defined configuraiton file
     if len(sys.argv) == 1:
         print('ERROR: main.py requires one argument [configuration file] (i.e. main.py Bow)')
-	return
+        return
 
     # Get name of configuration file/module
     configfile = sys.argv[-1]
@@ -67,7 +67,7 @@ def main():
     if os.path.isdir(base_name) and not reuse_mesh:
         shutil.rmtree(base_name, ignore_errors=True)
 
-    # these have to be seperate ifs for the logic to work correctly
+    # these have to be separate ifs for the logic to work correctly
     if not reuse_mesh:
         # make new output dir
         os.mkdir(base_name)
@@ -237,6 +237,13 @@ def main():
 
         f.write('0\n')
 
+    # create the spatial reference from the raster dataset
+    wkt = src_ds.GetProjection()
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(wkt)
+
+    is_geographic = srs.IsGeographic()
+
     if not reuse_mesh:
         execstr = '%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s ' % \
                   (triangle_path,
@@ -247,6 +254,9 @@ def main():
                    min_area,
                    errormetric
                    )
+
+        if is_geographic:
+            execstr += ' --is-geographic true'
 
         for key, data in parameter_files.iteritems():
             if 'tolerance'in data:
@@ -327,17 +337,13 @@ def main():
     output_usm = driver.CreateDataSource(base_dir +
                                          base_name + '_USM.shp')
 
-    # create the spatial reference from the raster dataset
-    wkt = src_ds.GetProjection()
-    srs = osr.SpatialReference()
-    srs.ImportFromWkt(wkt)
 
-    is_geographic = srs.IsGeographic()
 
     # create the layer
     layer = output_usm.CreateLayer(base_name, srs, ogr.wkbPolygon)
 
     layer.CreateField(ogr.FieldDefn("triangle", ogr.OFTInteger))  # holds the triangle id.
+    layer.CreateField(ogr.FieldDefn("area", ogr.OFTReal))
 
     for key, value in parameter_files.iteritems():
         layer.CreateField(ogr.FieldDefn(key, ogr.OFTReal))
@@ -359,6 +365,8 @@ def main():
     ics = {}
     for key, data in parameter_files.iteritems():
         params[key] = []
+
+    params['area']=[]
 
     for key, data in initial_conditions.iteritems():
         ics[key] = []
@@ -426,6 +434,19 @@ def main():
                     feature = ogr.Feature(layer.GetLayerDefn())
                     feature.SetField('triangle', int(items[0]) - 1)
                     feature.SetGeometry(tpoly)
+
+
+                    if is_geographic:
+                        wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+                        srs_out =  osr.SpatialReference()
+                        srs_out.ImportFromWkt(wkt_out)
+
+                        transform = osr.CoordinateTransformation(srs, srs_out)
+                        p = tpoly.Clone()
+                        p.Transform(transform)
+                        area = p.GetArea()
+                        feature.SetField('area', area)
+                        params['area'].append(area)
 
                     # get the value under each triangle from each paramter file
                     for key, data in parameter_files.iteritems():
