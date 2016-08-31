@@ -188,6 +188,29 @@ def main():
     subprocess.check_call(['gdal_polygonize.py %s -b 1 -mask %s -f "ESRI Shapefile" %s' % (tmp_raster, tmp_raster,
                                                                                            base_dir +
                                                                                            plgs_shp)], shell=True)
+    driver = ogr.GetDriverByName('ESRI Shapefile')
+    dataSource = driver.Open( base_dir + plgs_shp, 1)
+
+    #find the largest polygon and keep it
+    layer = dataSource.GetLayer()
+    max_area = -1
+    max_feature_ID = None
+    for feature in layer:
+        geom = feature.GetGeometryRef()
+        area = geom.GetArea()
+        # print 'FID = ' + str(feature.GetFID()) + ' area = ' + str(area)
+        if area > max_area:
+            max_feature_ID = feature.GetFID()
+            max_area = area
+
+    feats = np.arange(0,layer.GetFeatureCount())
+    for f in feats:
+        if f != max_feature_ID:
+            layer.DeleteFeature(f)
+    layer.SyncToDisk()
+    dataSource.ExecuteSQL("REPACK " + layer.GetName())
+    dataSource.Destroy()
+
 
     print 'Converting polygon to linestring'
     exec_string = 'ogr2ogr -overwrite %s %s  -nlt LINESTRING' % (base_dir + 'line_' + plgs_shp, base_dir +
@@ -213,15 +236,26 @@ def main():
     for features in plgs['features']:
         if features['geometry']['type'] == 'LineString':
             l = len(features['geometry']['coordinates'])
-        # elif features['geometry']['type'] == 'MultiLineString':
-        #     coords = []
-        #     for lines in features['geometry']['coordinates']:
-        #         for l in lines:
-        #             coords.append(l)
-        #
-        #     features['geometry']['type'] = 'LineString'
-        #     features['geometry']['coordinates'] = coords
-        #     l = len(coords)
+        elif features['geometry']['type'] == 'MultiLineString':
+            coords = []
+
+            idx_ml = 0
+            len_ml = -1
+            j=0
+            #find the largest of the multi lines, ignore holes!
+            for lines in features['geometry']['coordinates']:
+                l = len(lines)
+                if l > len_ml:
+                    len_ml = l
+                    idx_ml = j
+                j+=1
+
+            for l in features['geometry']['coordinates'][idx_ml]:
+                coords.append(l)
+
+            features['geometry']['type'] = 'LineString'
+            features['geometry']['coordinates'] = coords
+            l = len(coords)
 
         if l > cmax:
             cmax = l
