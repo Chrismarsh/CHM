@@ -193,16 +193,17 @@ def main():
 
     #find the largest polygon and keep it
     layer = dataSource.GetLayer()
-    max_area = -1
+    max_geom_area = -1
     max_feature_ID = None
     for feature in layer:
         geom = feature.GetGeometryRef()
         area = geom.GetArea()
-        # print 'FID = ' + str(feature.GetFID()) + ' area = ' + str(area)
-        if area > max_area:
+        #print 'FID = ' + str(feature.GetFID()) + ' area = ' + str(area)
+        if area > max_geom_area:
             max_feature_ID = feature.GetFID()
-            max_area = area
+            max_geom_area = area
 
+    print 'Using FID = ' + str(max_feature_ID) + " as the largest continous area."
     feats = np.arange(0,layer.GetFeatureCount())
     for f in feats:
         if f != max_feature_ID:
@@ -277,7 +278,7 @@ def main():
         f.write(header)
         vert = 1
         for c in coords:
-            f.write('%d %f %f\n' % (vert, c[0], c[1]))
+            f.write('%d %17.11f %17.11f\n' % (vert, c[0], c[1]))
             vert = vert + 1
 
         f.write('\n')
