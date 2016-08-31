@@ -205,14 +205,35 @@ def main():
     with open(base_dir + poly_plgs) as f:
         plgs = json.load(f)
 
-    os.remove(base_dir + poly_plgs)
+    # look through all the features and find the biggest
+    idx = -1
+    i = 0
+    cmax = -1
+    l=0
+    for features in plgs['features']:
+        if features['geometry']['type'] == 'LineString':
+            l = len(features['geometry']['coordinates'])
+        # elif features['geometry']['type'] == 'MultiLineString':
+        #     coords = []
+        #     for lines in features['geometry']['coordinates']:
+        #         for l in lines:
+        #             coords.append(l)
+        #
+        #     features['geometry']['type'] = 'LineString'
+        #     features['geometry']['coordinates'] = coords
+        #     l = len(coords)
 
-    # assuming just the first feature is what we want. Need to add in more to support rivers and lakes
-    if plgs['features'][0]['geometry']['type'] != 'LineString':
+        if l > cmax:
+            cmax = l
+            idx = i
+        i+=1
+
+    # assuming just the biggest feature is what we want. Need to add in more to support rivers and lakes
+    if plgs['features'][idx]['geometry']['type'] != 'LineString':
         print('Not linestring')
         exit(1)
 
-    coords = plgs['features'][0]['geometry']['coordinates']
+    coords = plgs['features'][idx]['geometry']['coordinates']
 
     # Create the PLGS to constrain the triangulation
     poly_file = 'PLGS' + base_name + '.poly'
