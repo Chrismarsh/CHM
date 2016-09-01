@@ -6,7 +6,7 @@ point_mode::point_mode(config_file cfg)
 
      t      = cfg.get<bool>("provide.t",true);
      rh     = cfg.get<bool>("provide.rh",true);
-     vw     = cfg.get<bool>("provide.u",true);
+     u      = cfg.get<bool>("provide.u",true);
      p      = cfg.get<bool>("provide.p",true);
      ilwr   = cfg.get<bool>("provide.ilwr",true);
      iswr   = cfg.get<bool>("provide.iswr",true);
@@ -27,10 +27,10 @@ point_mode::point_mode(config_file cfg)
         provides("rh");
     }
 
-    if(vw)
+    if(u)
     {
         depends_from_met("u");
-        provides("vw");
+        provides("u");
     }
 
     if(vw_dir)
@@ -92,13 +92,13 @@ void point_mode::run(mesh_elem &face, boost::shared_ptr <global> global_param)
         double srh = global_param->stations().at(0)->get("rh");
         face->set_face_data("rh", srh);
     }
-    if(vw)
+    if(u)
     {
         double su = global_param->stations().at(0)->get("u");
 
         //make sure we don't have zero windpseeds
         su = std::max(su,0.1);
-        face->set_face_data("vw",su);
+        face->set_face_data("u",su);
     }
 
     if(vw_dir)

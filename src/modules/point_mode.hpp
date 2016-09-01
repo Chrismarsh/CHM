@@ -20,7 +20,7 @@ public:
 
     bool t ;
     bool rh ;
-    bool vw ;
+    bool u ;
     bool p ;
     bool ilwr ;
     bool iswr ;

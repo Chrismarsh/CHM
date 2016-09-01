@@ -16,14 +16,13 @@
          "scale_wind_speed":
          {
            "variable":"u",
-           "Z_U":5.85, // [m]
-           "Z_U_R":50  // [m]
+           "Z_R":50  // [m]
          }
        }
  *
  * Depends:
- * - u [m/s]
- * - Z_U [m] - Height of wind speed measurement/model layer
+ * - U_F [m/s]
+ * - Z_F [m] - Height of wind speed measurement/model layer
  *
  */
 class scale_wind_speed : public filter_base

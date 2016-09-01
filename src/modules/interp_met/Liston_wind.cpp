@@ -4,10 +4,10 @@ Liston_wind::Liston_wind(config_file cfg)
         :module_base(parallel::domain)
 
 {
-    depends_from_met("u");
+    depends("U_R");
     depends_from_met("vw_dir");
 
-    provides("vw");
+    provides("U_R");
     provides("vw_dir");
 
     distance = cfg.get<double>("distance",300);//300.0;
@@ -31,7 +31,7 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
     if (domain->face(0)->has_parameter("Liston curvature"))
     {
         LOG_DEBUG << "Liston curvature available as parameter, using that.";
-        return ;
+        return;
     }
 
     double curmax = -9999.0;
@@ -142,10 +142,10 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         for (auto &s : global_param->get_stations_in_radius(face->get_x(), face->get_y(),
                                                             global_param->station_search_radius))
         {
-            if (is_nan(s->get("u")) || is_nan(s->get("vw_dir")))
+            if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
                 continue;
 
-            double W = s->get("u");
+            double W = s->get("U_R");
             W = std::max(W, 0.1);
 
             double theta = s->get("vw_dir") * 3.14159 / 180.;
@@ -207,7 +207,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
         corrected_theta = theta_d + corrected_theta;
 
         W = std::max(W,0.1);
-        face->set_face_data("vw", W);
+        face->set_face_data("U_R", W);
         face->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
     }
 

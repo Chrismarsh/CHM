@@ -7,7 +7,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     depends("ilwr");
     depends("rh");
     depends("t");
-    depends("vw");
+    depends("U_2m_above_srf");
     depends("vw_dir");
     depends("p");
     depends("frac_precip_rain");
@@ -17,7 +17,6 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     // Optional subcanopy variables if a canopy module is included (used if exist)
     optional("ta_subcanopy");
     optional("rh_subcanopy");
-    optional("vw_subcanopy");
     optional("p_subcanopy");
     optional("frac_precip_rain_subcanopy");
     optional("iswr_subcanopy");
@@ -69,14 +68,11 @@ void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_pa
         Mdata.rh     =  face->face_data("rh")/100.;
     }
 
-    if(has_optional("vw_subcanopy")) {
-        Mdata.vw     =  face->face_data("vw_subcanopy");
-    } else {
-        Mdata.vw     =  face->face_data("vw");
-    }
+
+    Mdata.vw     =  face->face_data("U_2m_above_srf");
 
     Mdata.dw     = face->face_data("vw_dir");
-    Mdata.vw_max = mio::IOUtils::nodata;//face->face_data("vw");// TODO: fix md(MeteoData::VW_MAX);
+    Mdata.vw_max = mio::IOUtils::nodata;// TODO: fix md(MeteoData::VW_MAX);
 
     Mdata.vw_drift = Mdata.vw ;//mio::IOUtils::nodata;
     Mdata.dw_drift = Mdata.dw;//0;

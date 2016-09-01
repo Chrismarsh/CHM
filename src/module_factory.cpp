@@ -63,6 +63,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new Simple_Canopy(config);
     else if (ID == "Dist_tlapse")
         mod = new Dist_tlapse(config);
+    else if (ID == "scale_wind_vert")
+        mod = new scale_wind_vert(config);
 
     if(mod == nullptr)
     {

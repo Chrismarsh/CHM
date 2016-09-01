@@ -11,7 +11,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     //depends("iswr_direct");
     depends("rh");
     depends("t");
-    depends("vw"); // Wind speed at reference height Z_U_R [m/s]
+    depends("U_R"); // Wind speed at 2m above surface (ground or snow) [m/s]
 
     depends("vw_dir");
     depends("ilwr");
@@ -51,7 +51,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     // Get meteorological data for current face
     double ta           = face->face_data("t");
     double rh           = face->face_data("rh");
-    double vw           = face->face_data("vw");
+    double U_R          = face->face_data("U_R");
     double wdir         = face->face_data("vw_dir");
     double iswr         = face->face_data("iswr"); // SW in above canopy
     //double ir_h   = face->face_data("iswr_direct"); // not used currently
@@ -159,7 +159,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
     double rho = air_pressure*1000/(PhysConst::Rgas*T1); // density of Air (pressure kPa to Pa = *1000)
 
-    double U1 = vw; // Wind speed (m/s) at height Z_vw [m] (top of canopy)
+    double U1 = U_R; // Wind speed (m/s) at height Z_vw [m] (top of canopy)
 
     // Aerodynamic resistance of canopy
     ra = (log(Zref/Z0snow)*log(Zwind/Z0snow))/pow(PhysConst::kappa,2)/U1; // (s/m)
@@ -320,9 +320,9 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
                 // calculate intercepted snowload
 
-                // Calculate wind speed at canopy top //  use U1 instead of vw here?
+                // Calculate wind speed at canopy top //  use U1 instead of U_R here?
                 if (Ht - 2.0 / 3.0 * Zwind > 1.0) // Find source of equations
-                    u_FHt = vw * log((Ht - 2.0 / 3.0 * Zwind) / 0.123 * Zwind) /
+                    u_FHt = U_R * log((Ht - 2.0 / 3.0 * Zwind) / 0.123 * Zwind) /
                             log((Zwind - 2.0 / 3.0 * Zwind) / 0.123 * Zwind);
                 else
                     u_FHt = 0.0;
@@ -563,7 +563,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     //face->set_face_data("cum_Subl_Cpy",data->cum_Subl_Cpy);
     face->set_face_data("ta_subcanopy",ta);
     face->set_face_data("rh_subcanopy",rh);
-    face->set_face_data("vw_subcanopy",vw);
     face->set_face_data("iswr_subcanopy",Qsisn); // (W/m^2)
     face->set_face_data("ilwr_subcanopy",Qlisn); // (W/m^2)
     face->set_face_data("p_rain_subcanopy",net_rain); // (mm/int)
