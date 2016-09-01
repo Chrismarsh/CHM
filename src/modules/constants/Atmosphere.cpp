@@ -12,7 +12,7 @@ double log_scale_wind(double u, double Z_in, double Z_out)
     // Calc factor
 
     // Logarithmic wind profile assumption
-    // Assuming no canopy between Z_in and Z_out
+    // Assuming no canopy between Z_in and Z_out, and a snow depth of zero
 
     if (Z_in > Z_out) { // If reference height is higher than measured height
         Ftcr = log((Z_out + Z0_SNOW) / Z0_SNOW) / log(Z_in / Z0_SNOW);

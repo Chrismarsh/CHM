@@ -7,7 +7,7 @@ snobal::snobal(config_file cfg)
     depends("iswr");
     depends("rh");
     depends("t");
-    depends("vw");
+    depends("U_2m_above_srf");
     depends("p");
     depends("ilwr");
 
@@ -16,7 +16,6 @@ snobal::snobal(config_file cfg)
     optional("iswr_subcanopy");
     optional("rh_subcanopy");
     optional("ta_subcanopy");
-    optional("vw_subcanopy");
     optional("p_subcanopy");
     optional("ilwr_subcanopy");
 
@@ -221,11 +220,7 @@ void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
     sbal->input_rec2.e_a = ea;
 
     // Optional inputs if there is a canopy or not
-    if(has_optional("vw_subcanopy")) {
-        sbal->input_rec2.u = face->face_data("vw");
-    } else {
-        sbal->input_rec2.u = face->face_data("vw");
-    }
+    sbal->input_rec2.u = face->face_data("U_2m_above_srf");
 
     sbal->input_rec2.T_g = -4+FREEZE; //TODO: FIx this with a gflux estimate
     sbal->input_rec2.ro = 0.;
