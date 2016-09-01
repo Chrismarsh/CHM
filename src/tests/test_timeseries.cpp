@@ -40,6 +40,20 @@ TEST_F(TimeseriesTest, NoExistFileOpens)
 {
     ASSERT_ANY_THROW(s0.open("file_that_doesnt_exist.txt"));
 }
+TEST_F(TimeseriesTest, init_new_variable)
+{
+    timeseries s;
+    s.open("test_met_data.txt");
+
+    s.init_new_variable("new_var");
+
+    ASSERT_DOUBLE_EQ(-9999,s.at("new_var",0));
+    s.at("new_var",0) = 42.314159;
+    ASSERT_DOUBLE_EQ(42.314159,s.at("new_var",0));
+
+    auto itr = s1.begin();
+    ASSERT_DOUBLE_EQ(-8.1, itr->get("t"));
+}
 
 TEST_F(TimeseriesTest, Advance)
 {

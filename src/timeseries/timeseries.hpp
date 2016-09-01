@@ -97,7 +97,12 @@ public:
     * \param datetime A complete datetime vector
     */
     void init(std::set<std::string> variables, date_vec datetime);
-    
+
+    /**
+     * Adds a new variable and initializes to -9999 to an already initialized timeseries
+     * @param variable
+     */
+    void init_new_variable(std::string variable);
 
     /**
     * Returns an iterator at the start of the observations. This iterator may then be used to access a given variable.
