@@ -22,10 +22,18 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     auto srs = OGRSpatialReference(wkt);
 
     //memory shape file
-    auto driver = GetGDALDriverManager()->GetDriverByName("Memory");
-    auto shp = driver->Create("",0,0,0,GDT_Unknown,NULL);
+//    auto driver = GetGDALDriverManager()->GetDriverByName("Memory");
+//    auto shp = driver->Create("",0,0,0,GDT_Unknown,NULL);
 
-    auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
+//    if(!shp)
+//    {
+//        std::cout << "yikes" << std::endl;
+//    }
+//    auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
+//    if(!layer)
+//    {
+//        std::cout << "yikes" << std::endl;
+//    }
 
 //    OGRSpatialReferenceRLinearRing* ring = (OGRLinearRing*) OGRGeometryFactory().createGeometry(wkbLinearRing);
     OGRLinearRing ring;
@@ -37,9 +45,9 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     OGRPolygon poly;
     poly.addRing(&ring);
 
-    auto feature = OGRFeature::CreateFeature( layer->GetLayerDefn());
-    feature->SetGeometry(&poly);
-    layer->CreateFeature(feature);
+//    auto feature = OGRFeature::CreateFeature( layer->GetLayerDefn());
+//    feature->SetGeometry(&poly);
+//    layer->CreateFeature(feature);
 
     //we need to rasterize our triangle into a small raster
 
@@ -87,6 +95,11 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
 
     auto mem_drv = GetGDALDriverManager()->GetDriverByName("MEM");
     auto rvds = mem_drv->Create("",xsize,ysize,1,GDT_Float32,NULL);
+
+    if(!rvds)
+    {
+        std::cout << "Yikes!" << std::endl;
+    }
     rvds->SetGeoTransform(new_gt);
 
     char *pszSRS_WKT = NULL;
@@ -95,30 +108,38 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     CPLFree(pszSRS_WKT);
 
     int nBandCount = 1;
-    int *panBandList = (int *) malloc(sizeof(int) * nBandCount);
-    panBandList[0] = 1; //raster band to use
+//    int *panBandList = (int *) malloc(sizeof(int) * nBandCount);
+//    panBandList[0] = 1; //raster band to use
+    std::vector<int> bandlist;
+    bandlist.push_back(1);
+
     int nLayerCount = 1;
-    double* burnValue =  new double;
-    *burnValue = 1;
+//    double* burnValue =  new double;
+//    *burnValue = 1;
 
-    OGRLayerH *pahLayers = (OGRLayerH *) malloc(sizeof(OGRLayerH) * nLayerCount);
-    pahLayers[0] = layer;
+    double burnValue = 1;
+//    OGRLayerH *pahLayers = (OGRLayerH *) malloc(sizeof(OGRLayerH) * nLayerCount);
+//    pahLayers[0] = layer;
+    std::vector<OGRPolygon*> geoms;
+    geoms.push_back(&poly);
 
-    char **options = NULL;
+    char **options = nullptr;
     options = CSLSetNameValue(options, "ALL_TOUCHED", "TRUE");
-    CPLErr err = GDALRasterizeLayers(rvds, nBandCount, panBandList, nLayerCount, pahLayers, NULL, NULL, burnValue, options, NULL,
-                                     NULL);
+//    CPLErr err = GDALRasterizeLayers(rvds, nBandCount, panBandList, nLayerCount, pahLayers, NULL, NULL, burnValue, options, NULL,
+//                                     NULL);
+//    CPLErr err = GDALRasterizeLayers(rvds, nBandCount, &band, nLayerCount, (OGRLayerH*)&layer, NULL, NULL, &burnValue, options, NULL,
+//                                     NULL);
+
+    CPLErr err = GDALRasterizeGeometries(rvds, 1, &bandlist[0], 1, (OGRGeometryH*)&geoms[0], NULL, NULL, &burnValue, options, NULL, NULL);
 
 //    GDALClose(rvds);
 //    rvds = (GDALDataset*) GDALOpen("rtri.tiff",GA_Update);
 //    exit(1);
-    delete burnValue;
-    CPLFree(*options);
-    CPLFree(options);
-//    delete *options;
-//    delete options;
-    free(panBandList);
-    free(pahLayers);
+//    delete burnValue;
+    CSLDestroy(options);
+
+//    free(panBandList);
+//    free(pahLayers);
 
 
 
@@ -144,8 +165,9 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
 
 
     delete[] dem;
-    OGRFeature::DestroyFeature(feature);
-    GDALClose(shp);
+//    OGRFeature::DestroyFeature(feature);
+//    GDALClose(shp);
+//    GDALClose(rvds);
 
     int px;
     int py;
