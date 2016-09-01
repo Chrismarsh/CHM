@@ -17,6 +17,7 @@ scale_wind_vert::scale_wind_vert(config_file cfg)
 scale_wind_vert::~scale_wind_vert()
 {
 
+
 }
 
 void scale_wind_vert::run(mesh_elem &face, boost::shared_ptr <global> global_param) {
@@ -25,6 +26,8 @@ void scale_wind_vert::run(mesh_elem &face, boost::shared_ptr <global> global_par
 
     // Get meteorological data for current face
     double U_R           = face->face_data("U_R"); // Wind speed at reference height Z_R (m/s)
+    if (U_R < 0)
+        LOG_DEBUG << "U_R less than zero! U_R = " << U_R;
 
     // Get height info
     double Z_R            = Atmosphere::Z_U_R; // Reference wind speed height [m] = 50.0 m
