@@ -2,6 +2,14 @@
 // Created by chris on 04/07/16.
 //
 
+#include <csetjmp>
+#include <csignal>
+jmp_buf env;
+void on_sigabrt (int signum)
+{
+    longjmp (env, 1);
+}
+
 #include "triangle.h"
 
 triangle::triangle()
@@ -21,21 +29,6 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     auto wkt = r.getDs()->GetProjectionRef();
     auto srs = OGRSpatialReference(wkt);
 
-    //memory shape file
-//    auto driver = GetGDALDriverManager()->GetDriverByName("Memory");
-//    auto shp = driver->Create("",0,0,0,GDT_Unknown,NULL);
-
-//    if(!shp)
-//    {
-//        std::cout << "yikes" << std::endl;
-//    }
-//    auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
-//    if(!layer)
-//    {
-//        std::cout << "yikes" << std::endl;
-//    }
-
-//    OGRSpatialReferenceRLinearRing* ring = (OGRLinearRing*) OGRGeometryFactory().createGeometry(wkbLinearRing);
     OGRLinearRing ring;
     ring.addPoint(v0[0],v0[1]);
     ring.addPoint(v1[0],v1[1]);
@@ -44,6 +37,11 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
 
     OGRPolygon poly;
     poly.addRing(&ring);
+
+    //memory shape file
+//    auto driver = GetGDALDriverManager()->GetDriverByName("Memory");
+//    auto shp = driver->Create("",0,0,0,GDT_Unknown,NULL);
+//    auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
 
 //    auto feature = OGRFeature::CreateFeature( layer->GetLayerDefn());
 //    feature->SetGeometry(&poly);
@@ -129,8 +127,26 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
 //                                     NULL);
 //    CPLErr err = GDALRasterizeLayers(rvds, nBandCount, &band, nLayerCount, (OGRLayerH*)&layer, NULL, NULL, &burnValue, options, NULL,
 //                                     NULL);
+//    CPLErr err = GDALRasterizeGeometries(rvds, 1, &bandlist[0], 1, (OGRGeometryH*)&geoms[0], NULL, NULL, &burnValue, options, NULL, NULL);
 
-    CPLErr err = GDALRasterizeGeometries(rvds, 1, &bandlist[0], 1, (OGRGeometryH*)&geoms[0], NULL, NULL, &burnValue, options, NULL, NULL);
+    if (setjmp (env) == 0) {
+        signal(SIGABRT, &on_sigabrt);
+        CPLErr err = GDALRasterizeGeometries(rvds, 1, &bandlist[0], 1, (OGRGeometryH*)&geoms[0], NULL, NULL, &burnValue, options, NULL, NULL);
+    }
+    else {
+        std::cout << "aborted\n";
+
+        auto driver = GetGDALDriverManager()->GetDriverByName("ESRI Shapefile");
+        auto shp = driver->Create("broken_tri.shp",0,0,0,GDT_Unknown,NULL);
+        auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
+
+        auto feature = OGRFeature::CreateFeature( layer->GetLayerDefn());
+        feature->SetGeometry(&poly);
+        layer->CreateFeature(feature);
+
+        std::cout << "bye bye " << std::endl;
+        exit(1);
+    }
 
 //    GDALClose(rvds);
 //    rvds = (GDALDataset*) GDALOpen("rtri.tiff",GA_Update);
