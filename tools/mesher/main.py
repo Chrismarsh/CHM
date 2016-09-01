@@ -17,7 +17,7 @@ def main():
     # Check user defined configuraiton file
     if len(sys.argv) == 1:
         print('ERROR: main.py requires one argument [configuration file] (i.e. main.py Bow)')
-	return
+        return
 
     # Get name of configuration file/module
     configfile = sys.argv[-1]
@@ -67,7 +67,7 @@ def main():
     if os.path.isdir(base_name) and not reuse_mesh:
         shutil.rmtree(base_name, ignore_errors=True)
 
-    # these have to be seperate ifs for the logic to work correctly
+    # these have to be separate ifs for the logic to work correctly
     if not reuse_mesh:
         # make new output dir
         os.mkdir(base_name)
@@ -188,6 +188,30 @@ def main():
     subprocess.check_call(['gdal_polygonize.py %s -b 1 -mask %s -f "ESRI Shapefile" %s' % (tmp_raster, tmp_raster,
                                                                                            base_dir +
                                                                                            plgs_shp)], shell=True)
+    driver = ogr.GetDriverByName('ESRI Shapefile')
+    dataSource = driver.Open( base_dir + plgs_shp, 1)
+
+    #find the largest polygon and keep it
+    layer = dataSource.GetLayer()
+    max_geom_area = -1
+    max_feature_ID = None
+    for feature in layer:
+        geom = feature.GetGeometryRef()
+        area = geom.GetArea()
+        #print 'FID = ' + str(feature.GetFID()) + ' area = ' + str(area)
+        if area > max_geom_area:
+            max_feature_ID = feature.GetFID()
+            max_geom_area = area
+
+    print 'Using FID = ' + str(max_feature_ID) + " as the largest continous area."
+    feats = np.arange(0,layer.GetFeatureCount())
+    for f in feats:
+        if f != max_feature_ID:
+            layer.DeleteFeature(f)
+    layer.SyncToDisk()
+    dataSource.ExecuteSQL("REPACK " + layer.GetName())
+    dataSource.Destroy()
+
 
     print 'Converting polygon to linestring'
     exec_string = 'ogr2ogr -overwrite %s %s  -nlt LINESTRING' % (base_dir + 'line_' + plgs_shp, base_dir +
@@ -205,14 +229,46 @@ def main():
     with open(base_dir + poly_plgs) as f:
         plgs = json.load(f)
 
-    os.remove(base_dir + poly_plgs)
+    # look through all the features and find the biggest
+    idx = -1
+    i = 0
+    cmax = -1
+    l=0
+    for features in plgs['features']:
+        if features['geometry']['type'] == 'LineString':
+            l = len(features['geometry']['coordinates'])
+        elif features['geometry']['type'] == 'MultiLineString':
+            coords = []
 
-    # assuming just the first feature is what we want. Need to add in more to support rivers and lakes
-    if plgs['features'][0]['geometry']['type'] != 'LineString':
+            idx_ml = 0
+            len_ml = -1
+            j=0
+            #find the largest of the multi lines, ignore holes!
+            for lines in features['geometry']['coordinates']:
+                l = len(lines)
+                if l > len_ml:
+                    len_ml = l
+                    idx_ml = j
+                j+=1
+
+            for l in features['geometry']['coordinates'][idx_ml]:
+                coords.append(l)
+
+            features['geometry']['type'] = 'LineString'
+            features['geometry']['coordinates'] = coords
+            l = len(coords)
+
+        if l > cmax:
+            cmax = l
+            idx = i
+        i+=1
+
+    # assuming just the biggest feature is what we want. Need to add in more to support rivers and lakes
+    if plgs['features'][idx]['geometry']['type'] != 'LineString':
         print('Not linestring')
         exit(1)
 
-    coords = plgs['features'][0]['geometry']['coordinates']
+    coords = plgs['features'][idx]['geometry']['coordinates']
 
     # Create the PLGS to constrain the triangulation
     poly_file = 'PLGS' + base_name + '.poly'
@@ -222,7 +278,7 @@ def main():
         f.write(header)
         vert = 1
         for c in coords:
-            f.write('%d %f %f\n' % (vert, c[0], c[1]))
+            f.write('%d %17.11f %17.11f\n' % (vert, c[0], c[1]))
             vert = vert + 1
 
         f.write('\n')
@@ -237,6 +293,13 @@ def main():
 
         f.write('0\n')
 
+    # create the spatial reference from the raster dataset
+    wkt = src_ds.GetProjection()
+    srs = osr.SpatialReference()
+    srs.ImportFromWkt(wkt)
+
+    is_geographic = srs.IsGeographic()
+
     if not reuse_mesh:
         execstr = '%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s ' % \
                   (triangle_path,
@@ -247,6 +310,9 @@ def main():
                    min_area,
                    errormetric
                    )
+
+        if is_geographic:
+            execstr += ' --is-geographic true'
 
         for key, data in parameter_files.iteritems():
             if 'tolerance'in data:
@@ -327,17 +393,13 @@ def main():
     output_usm = driver.CreateDataSource(base_dir +
                                          base_name + '_USM.shp')
 
-    # create the spatial reference from the raster dataset
-    wkt = src_ds.GetProjection()
-    srs = osr.SpatialReference()
-    srs.ImportFromWkt(wkt)
 
-    is_geographic = srs.IsGeographic()
 
     # create the layer
     layer = output_usm.CreateLayer(base_name, srs, ogr.wkbPolygon)
 
     layer.CreateField(ogr.FieldDefn("triangle", ogr.OFTInteger))  # holds the triangle id.
+    layer.CreateField(ogr.FieldDefn("area", ogr.OFTReal))
 
     for key, value in parameter_files.iteritems():
         layer.CreateField(ogr.FieldDefn(key, ogr.OFTReal))
@@ -359,6 +421,8 @@ def main():
     ics = {}
     for key, data in parameter_files.iteritems():
         params[key] = []
+
+    params['area']=[]
 
     for key, data in initial_conditions.iteritems():
         ics[key] = []
@@ -426,6 +490,19 @@ def main():
                     feature = ogr.Feature(layer.GetLayerDefn())
                     feature.SetField('triangle', int(items[0]) - 1)
                     feature.SetGeometry(tpoly)
+
+
+                    if is_geographic:
+                        wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+                        srs_out =  osr.SpatialReference()
+                        srs_out.ImportFromWkt(wkt_out)
+
+                        transform = osr.CoordinateTransformation(srs, srs_out)
+                        p = tpoly.Clone()
+                        p.Transform(transform)
+                        area = p.GetArea()
+                        feature.SetField('area', area)
+                        params['area'].append(area)
 
                     # get the value under each triangle from each paramter file
                     for key, data in parameter_files.iteritems():
