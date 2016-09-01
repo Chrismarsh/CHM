@@ -24,6 +24,9 @@
         const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r;
         const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters;
         const std::string& error_metric;
+        const bool is_geographic;
+
+        OGRCoordinateTransformation* prj_trans;
     public:
 
         mesh_2_criterion_area(const double aspect_bound = 0.125,
@@ -32,8 +35,9 @@
                               const std::vector< std::pair< boost::shared_ptr<raster>,double> >& rasters = std::vector< std::pair< boost::shared_ptr<raster>,double>> (),
                               const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters = std::vector< std::pair< boost::shared_ptr<raster>,double>>(),
                               const std::string& error_metric = std::string(),
+                              const bool is_geographic = false,
                               const Geom_traits &traits = Geom_traits())
-        : r(rasters),category_rasters(category_rasters),error_metric(error_metric)
+        : r(rasters),category_rasters(category_rasters),error_metric(error_metric),is_geographic(is_geographic)
 
         {
             this->max_area = max_area;
@@ -41,6 +45,18 @@
             B = aspect_bound;
             this->traits=traits;
 
+            if(is_geographic)
+            {
+                auto wkt = r.at(0).first->getDs()->GetProjectionRef();
+                auto srs = OGRSpatialReference(wkt);
+
+                std::string wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+
+                auto  srs_out = OGRSpatialReference(wkt_out.c_str());
+
+                prj_trans = OGRCreateCoordinateTransformation( &srs,
+                                                               &srs_out );
+            }
         }
 
         inline
@@ -142,6 +158,8 @@
             const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r;
             const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters;
             const std::string& error_metric;
+            const bool is_geographic;
+            OGRCoordinateTransformation* prj_trans;
             const Geom_traits &traits;
 
             boost::function<double(const typename CDT::Face_handle&, const raster&)> error_fn;
@@ -155,9 +173,11 @@
                    const std::vector< std::pair< boost::shared_ptr<raster>,double> >& r,
                    const std::vector< std::pair< boost::shared_ptr<raster>,double> >& category_rasters,
                    const std::string& error_metric,
-                   const Geom_traits &traits)
+                   const bool is_geographic=false,
+                   OGRCoordinateTransformation* prj_trans=nullptr,
+                   const Geom_traits &traits = Geom_traits() )
                     : B(aspect_bound), max_area(area_bound), min_area(min_area),
-                      r(r), category_rasters(category_rasters),error_metric(error_metric),traits(traits)
+                      r(r), category_rasters(category_rasters),error_metric(error_metric),is_geographic(is_geographic),prj_trans(prj_trans),traits(traits)
             {
 
                 if(error_metric == "rmse" || error_metric == "")
@@ -582,7 +602,71 @@
                 double b = CGAL::to_double(squared_distance(pc, pa));
                 double c = CGAL::to_double(squared_distance(pa, pb));
 
-                double area = CGAL::to_double(area_2(pa, pb, pc));
+                //input rasters are in lat/long (ie., geographic) so we must compute the area differently.
+                double area = 0;
+                if(is_geographic)
+                {
+//                    auto wkt = r.at(0).first->getDs()->GetProjectionRef();
+//                    auto srs = OGRSpatialReference(wkt);
+
+                    //memory shape file
+//                    auto driver = GetGDALDriverManager()->GetDriverByName("Memory");
+//                    auto shp = driver->Create("",0,0,0,GDT_Unknown,NULL);
+
+//                    auto driver = GetGDALDriverManager()->GetDriverByName("ESRI Shapefile");
+//                    auto shp = driver->Create("tri.shp",0,0,0,GDT_Unknown,NULL);
+
+
+//                    auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
+
+                    vertex v0;
+                    vertex v1;
+                    vertex v2;
+
+                    v0[0] = fh->vertex(0)->point().x();
+                    v0[1] = fh->vertex(0)->point().y();
+
+                    v1[0] = fh->vertex(1)->point().x();
+                    v1[1] = fh->vertex(1)->point().y();
+
+                    v2[0] = fh->vertex(2)->point().x();
+                    v2[1] = fh->vertex(2)->point().y();
+
+                    OGRLinearRing ring;
+                    ring.addPoint(v0[0],v0[1]);
+                    ring.addPoint(v1[0],v1[1]);
+                    ring.addPoint(v2[0],v2[1]);
+                    ring.addPoint(v0[0],v0[1]); //close it
+
+                    OGRPolygon poly;
+                    poly.addRing(&ring);
+
+//                    auto feature = OGRFeature::CreateFeature( layer->GetLayerDefn());
+//                    feature->SetGeometry(&poly);
+//                    layer->CreateFeature(feature);
+
+
+//                    std::string wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+//
+//                    auto  srs_out = OGRSpatialReference(wkt_out.c_str());
+//
+//                    auto poCT = OGRCreateCoordinateTransformation( &srs,
+//                                                                   &srs_out );
+
+
+//                    auto poly_prj = poly.clone();
+                    poly.transform(prj_trans);
+
+                    area = poly.get_Area();
+
+//                    GDALClose( shp );
+
+                }
+                else
+                {
+                   area = CGAL::to_double(area_2(pa, pb, pc));
+                }
+
 
                 // area = 4 * area^2(triangle)
                 double area2 = 2 * CGAL::to_double(area_2(pa, pb, pc));
@@ -641,10 +725,12 @@
                 }
                 return operator()(q);
             }
+
+
         };
 
         Is_bad is_bad_object() const
         {
-            return Is_bad(this->bound(), max_area, min_area, r, category_rasters, error_metric,this->traits);
+            return Is_bad(this->bound(), max_area, min_area, r, category_rasters, error_metric, is_geographic, prj_trans,this->traits);
         }
     };

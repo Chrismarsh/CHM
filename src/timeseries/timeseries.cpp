@@ -7,6 +7,19 @@ void timeseries::push_back(double data, std::string variable)
     _variables[variable].push_back(data);
 
 }
+
+void timeseries::init_new_variable(std::string variable)
+{
+    size_t size = _date_vec.size();
+    if (size == 0)
+    {
+        BOOST_THROW_EXCEPTION(forcing_error()
+                                      << errstr_info("Adding variable to uninitialized timeseries"));
+    }
+
+    _variables[variable].assign(size,-9999.0);
+}
+
 void timeseries::init(std::set<std::string> variables, date_vec datetime)
 {
     size_t size = datetime.size();
