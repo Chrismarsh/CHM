@@ -27,6 +27,9 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -O3")
 
+#-fsanitize=address
+#add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON)
+
 find_package(GDAL REQUIRED)
 find_package(Boost
         COMPONENTS
