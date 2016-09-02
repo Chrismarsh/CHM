@@ -124,7 +124,9 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
         this->is_nan = true;
         return;
 
-        //testing code to write out the triangle that is causing issues.
+//        std::cout << "disaster!" << std::endl;
+
+//        //testing code to write out the triangle that is causing issues.
 //        auto driver = GetGDALDriverManager()->GetDriverByName("ESRI Shapefile");
 //        auto shp = driver->Create("broken_tri.shp",0,0,0,GDT_Unknown,NULL);
 //        auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
@@ -134,15 +136,18 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
 //        layer->CreateFeature(feature);
 //        GDALClose(shp);
 //
-
-           //might be able to continue with a smaller domain, but unlikely.
-//        auto rvds = mem_drv->Create("",--xsize,--ysize,1,GDT_Float32,NULL);
-//        rvds->SetGeoTransform(new_gt);
+//
+//        auto drv = GetGDALDriverManager()->GetDriverByName("GTiff");
+//        auto rvds = drv->Create("rtri.tiff",xsize,ysize,1,GDT_Float32,NULL);
 //
 //        char *pszSRS_WKT = NULL;
 //        srs.exportToWkt(&pszSRS_WKT);
 //        rvds->SetProjection(pszSRS_WKT);
 //        CPLFree(pszSRS_WKT);
+//
+//        GDALClose(rvds);
+
+//        exit(1);
 //
 //        CPLErr err = GDALRasterizeGeometries(rvds, 1, &bandlist[0], 1, (OGRGeometryH*)&geoms[0], NULL, NULL, &burnValue, options, NULL, NULL);
 
