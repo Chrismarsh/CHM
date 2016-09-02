@@ -23,6 +23,8 @@ namespace po = boost::program_options;
 
 int main(int argc, char *argv[])
 {
+    GDALAllRegister();
+
     std::string version = "mesher 0.1 " GIT_BRANCH "/" GIT_COMMIT_HASH ;
     std::string poly_file;
     double max_area = 0;
