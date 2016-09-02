@@ -35,6 +35,8 @@ private:
     GDALDataset* ds;
     GDALRasterBand* band;
     float* mask;
+    float* data;
+
 
 
 };

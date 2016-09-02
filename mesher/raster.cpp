@@ -6,6 +6,7 @@
 
 void raster::open(std::string path)
 {
+    ds = nullptr;
     ds = (GDALDataset *) GDALOpen( path.c_str(), GA_ReadOnly);
     if(!ds)
     {
@@ -22,8 +23,8 @@ void raster::open(std::string path)
 
 raster::raster()
 {
-    GDALAllRegister();
     mask = nullptr;
+    data = nullptr;
     ds = nullptr;
     band = nullptr;
     gt = nullptr;
@@ -34,6 +35,7 @@ raster::~raster()
     if(gt) delete[] gt;
     if(mask) delete[] mask;
     if(ds) GDALClose(ds);
+    if(data) delete[] data;
 
 }
 
@@ -115,9 +117,14 @@ double raster::getpXpY(int px, int py)
 {
     float pafScanline; //needs to be float because GDT_Float32
 
-    GDALRasterIO(band, GF_Read, px, py, 1, 1,
-                 &pafScanline, 1, 1, GDT_Float32,
-                 0, 0);
+//    GDALRasterIO(band, GF_Read, px, py, 1, 1,
+//                 &pafScanline, 1, 1, GDT_Float32,
+//                 0, 0);
+
+    int width = ds->GetRasterXSize();
+    auto idx = px + py * width;
+    pafScanline = data[idx];
+
     double value = pafScanline; //cast up
     if(mask)
     {
@@ -146,7 +153,6 @@ void raster::setBand(float *data, int xsize, int ysize)
         exit(1);
     }
 
-//    double z = getpXpY(0,0);
-//    std::cout << z << std::endl;
+    this->data = data;
 }
 
