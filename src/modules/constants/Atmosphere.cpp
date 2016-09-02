@@ -3,28 +3,23 @@
 namespace Atmosphere
 {
 
-// Logrithmic, following Anderson 1967? (DHSVM)  https://github.com/UW-Hydro/DHSVM/blob/master/CalcAerodynamic.c
-double log_scale_wind(double u, double Z_in, double Z_out)
-{
-    const double Z0_SNOW  = Snow::Z0_SNOW; // Snow roughness (m)
-    double Ftcr; // Multiplicative factor
+    // Logrithmic, assuming no snow cover and no canopy bewteen Z_in and Z_out
+    // Because filter is before runtime, we do not know what the snowdepth will be, thus this
+    // introduces some error latter when wind is scaled down taking into account the snowdepth.
+    double log_scale_wind(double u, double Z_in, double Z_out, double snowdepthavg)
+    {
+        const double Z0_SNOW  = Snow::Z0_SNOW; // Snow roughness (m)
 
-    // Calc factor
-
-    // Logarithmic wind profile assumption
-    // Assuming no canopy between Z_in and Z_out, and a snow depth of zero
-
-    if (Z_in > Z_out) { // If reference height is higher than measured height
-        Ftcr = log((Z_out + Z0_SNOW) / Z0_SNOW) / log(Z_in / Z0_SNOW);
-    } else { // If measured height is higher than reference height
-        // Flip inputs, and then take 1 over Fct to get correct scaling both ways
-        Ftcr = log((Z_in + Z0_SNOW) / Z0_SNOW) / log(Z_out / Z0_SNOW);
-        Ftcr = 1 / Ftcr;
+        u = u * log((Z_out - (snowdepthavg + Z0_SNOW)) / Z0_SNOW) / log((Z_in - (snowdepthavg + Z0_SNOW)) / Z0_SNOW);
+        return u;
     }
 
-    // Calc new Wind speed
-    u = u * Ftcr;
-    return u;
-}
+    // Exponential following Inoue (1963)
+    double exp_scale_wind(double u, double Z_in, double Z_out, const double alpha)
+    {
+
+        u = u * exp(alpha*(Z_out/Z_in-1));
+        return u;
+    }
 
 }
