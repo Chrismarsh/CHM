@@ -25,6 +25,7 @@ triangulation::triangulation()
 #endif
     _num_faces = 0;
     _vtk_unstructuredGrid = nullptr;
+    _is_geographic = false;
 }
 
 #ifdef MATLAB
@@ -66,6 +67,10 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
+bool triangulation::is_geographic()
+{
+    return _is_geographic;
+}
 size_t triangulation::size_faces()
 {
     return _num_faces;
@@ -76,23 +81,18 @@ size_t triangulation::size_vertex()
     return _num_vertex;
 }
 
+mesh_elem triangulation::locate_face(Point_2 query)
+{
+    K_neighbor_search search(*(dD_tree.get()), query, 1);
+    auto it = search.begin();
+    return boost::get<1>(it->first);
+}
 mesh_elem triangulation::locate_face(double x, double y)
 {
     //http://doc.cgal.org/latest/Spatial_searching/index.html
     Point_2 query(x,y);
-    K_neighbor_search search(*(dD_tree.get()), query, 1);
-    auto it = search.begin();
-    return boost::get<1>(it->first);
 
-//    for (size_t i = 0; i < size_faces(); i++)
-//    {
-//        auto f = face(i);
-//
-//        if(f->contains(x,y))
-//            return f;
-//    }
-//
-//    return nullptr;
+    return locate_face(query);
 
 }
 
@@ -152,6 +152,9 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 
     //paraview struggles with lat/long as it doesn't seem to have the accuracy. So we need to scale up lat-long.
     int is_geographic = mesh.get<int>("mesh.is_geographic");
+    if( is_geographic == 1)
+        _is_geographic = true;
+
     double scale = is_geographic == 1 ? 100000. : 1.;
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
@@ -584,7 +587,7 @@ void triangulation::write_vtu(std::string file_name)
     vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
     writer->SetFileName(file_name.c_str());
 #if VTK_MAJOR_VERSION <= 5
-    writer->SetInput(unstructuredGrid);
+    writer->SetInput(_vtk_unstructuredGrid);
 #else
     writer->SetInputData(_vtk_unstructuredGrid);
 #endif
@@ -597,53 +600,62 @@ void triangulation::write_vtp(std::string file_name)
     //this now needs to be called from outside these functions
 //    update_vtk_data();
 
-    vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
-    geometryFilter->SetInputData(_vtk_unstructuredGrid);
-    geometryFilter->Update();
-    geometryFilter->GetOutput()->GetPointData()->SetScalars(_vtk_unstructuredGrid->GetCellData()->GetScalars());
-
-
-    vtkSmartPointer<vtkTransform> flattener = vtkSmartPointer<vtkTransform>::New();
-    flattener->Scale(1.0,1.0,0.0);
-    flattener->Update();
-
-    vtkSmartPointer<vtkTransformFilter> filt = vtkSmartPointer<vtkTransformFilter>::New();
-    filt->SetInputData(geometryFilter->GetOutput());
-    filt->SetTransform(flattener);
-    filt->Update();
-
-    double* bounds = _vtk_unstructuredGrid->GetBounds();
-
-
-    // Create a grid of points to interpolate over
-    vtkSmartPointer<vtkPlaneSource> gridPoints = vtkSmartPointer<vtkPlaneSource>::New();
-
-    size_t dx = 300; //(meters)
-    size_t dy = 300;
-
-    double distx = bounds[1] - bounds[0];
-    double disty = bounds[3] - bounds[2];
-
-    size_t gridSizeX = ceil(distx/dx);
-    size_t gridSizeY = ceil(disty/dy);
-
-    gridPoints->SetResolution(gridSizeX, gridSizeY); //number of cells, NOT! cell size.
-    gridPoints->SetOrigin(bounds[0],  bounds[2], 0);
-    gridPoints->SetPoint1(bounds[1],  bounds[2], 0);
-    gridPoints->SetPoint2(bounds[0], bounds[3], 0);
-    gridPoints->Update();
-
-
-    // Perform the interpolation
-    vtkSmartPointer<vtkProbeFilter> probeFilter =  vtkSmartPointer<vtkProbeFilter>::New();
-    probeFilter->SetSourceData(filt->GetOutput());
-    probeFilter->SetInputData(gridPoints->GetOutput());
-    probeFilter->Update();
-
-    vtkSmartPointer<vtkXMLPolyDataWriter> gridWriter =  vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-    gridWriter->SetFileName ( file_name.c_str());
-    gridWriter->SetInputData(probeFilter->GetOutput());
-    gridWriter->Write();
+//    vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
+//    geometryFilter->SetInputData(_vtk_unstructuredGrid);
+//    geometryFilter->Update();
+//    geometryFilter->GetOutput()->GetPointData()->SetScalars(_vtk_unstructuredGrid->GetCellData()->GetScalars());
+//
+//
+//    vtkSmartPointer<vtkTransform> flattener = vtkSmartPointer<vtkTransform>::New();
+//    flattener->Scale(1.0,1.0,0.0);
+//    flattener->Update();
+//
+//    vtkSmartPointer<vtkTransformFilter> filt = vtkSmartPointer<vtkTransformFilter>::New();
+//    filt->SetInputData(geometryFilter->GetOutput());
+//    filt->SetTransform(flattener);
+//    filt->Update();
+//
+//    double* bounds = _vtk_unstructuredGrid->GetBounds();
+//
+//
+//    // Create a grid of points to interpolate over
+//    vtkSmartPointer<vtkPlaneSource> gridPoints = vtkSmartPointer<vtkPlaneSource>::New();
+//
+//    size_t dx = 300; //(meters)
+//    size_t dy = 300;
+//
+//    double distx = bounds[1] - bounds[0];
+//    double disty = bounds[3] - bounds[2];
+//
+//    size_t gridSizeX = ceil(distx/dx);
+//    size_t gridSizeY = ceil(disty/dy);
+//
+//    gridPoints->SetResolution(gridSizeX, gridSizeY); //number of cells, NOT! cell size.
+//    gridPoints->SetOrigin(bounds[0],  bounds[2], 0);
+//    gridPoints->SetPoint1(bounds[1],  bounds[2], 0);
+//    gridPoints->SetPoint2(bounds[0], bounds[3], 0);
+//    gridPoints->Update();
+//
+//
+//    // Perform the interpolation
+//    vtkSmartPointer<vtkProbeFilter> probeFilter =  vtkSmartPointer<vtkProbeFilter>::New();
+//    probeFilter->SetSourceData(filt->GetOutput());
+//#if VTK_MAJOR_VERSION <= 5
+//    probeFilter->SetInput(gridPoints->GetOutput());
+//#else
+//    probeFilter->SetInputConnection(gridPoints->GetOutputPort());
+//#endif
+//    probeFilter->Update();
+//
+//    vtkSmartPointer<vtkXMLPolyDataWriter> gridWriter =  vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+//    gridWriter->SetFileName ( file_name.c_str());
+//#if VTK_MAJOR_VERSION <= 5
+//    gridWriter->SetInput(probeFilter->GetOutput());
+//#else
+//    probeFilter->SetInputConnection(probeFilter->GetOutputPort());
+//#endif
+//
+//    gridWriter->Write();
 
 }
 

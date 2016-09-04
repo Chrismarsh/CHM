@@ -55,6 +55,8 @@ namespace po = boost::program_options;
 #include "interpolation.h"
 #include "readjson.hpp"
 #include "version.h"
+#include "math/distance.hpp"
+
 struct vertex{
     std::string name;
 };

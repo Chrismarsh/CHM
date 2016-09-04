@@ -3,6 +3,7 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
+#include "math/distance.hpp"
 #include <cstdlib>
 #include <string>
 

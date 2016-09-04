@@ -59,6 +59,8 @@ namespace pt = boost::property_tree;
 #include <CGAL/Search_traits_2.h>
 #include <CGAL/Search_traits_adapter.h>
 #include <CGAL/Orthogonal_k_neighbor_search.h>
+
+#include <CGAL/Euclidean_distance.h>
 #include <CGAL/property_map.h>
 #include <boost/iterator/zip_iterator.hpp>
 
@@ -94,6 +96,9 @@ namespace pt = boost::property_tree;
 
 #include "vertex.hpp"
 #include "face.hpp"
+
+#include "math/distance.hpp"
+
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef K::Point_3 Point_3;
@@ -185,6 +190,8 @@ public:
     */
     mesh_elem locate_face(double x, double y);
 
+	mesh_elem locate_face(Point_2 query);
+
     /**
     * Returns the finite face at index i. A given index will always return the same face.
     * \param i Index
@@ -252,6 +259,8 @@ public:
 
     void write_vtp(std::string file_name);
 
+	bool is_geographic();
+
 	//holds the spatial search tree
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
 
@@ -260,7 +269,7 @@ private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
-
+	bool _is_geographic;
 	//holds the vtk ugrid if we are outputing to vtk formats
 	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
 

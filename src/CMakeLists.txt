@@ -100,8 +100,10 @@ set(CHM_SRCS
 
 		interpolation/interpolation.cpp
 		${METEOIO_SRCS}
+		math/distance.cpp
+
 		CACHE INTERNAL "" FORCE
-		)
+        )
 
 
 set (HEADER_FILES
@@ -202,7 +204,7 @@ if (test)
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-			)
+            math/distance.cpp)
 
 
 	set( GTEST_LINK
