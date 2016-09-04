@@ -10,7 +10,7 @@ import csv
 
 def main():
     print 'Reading in files'
-    mesher_output_dir = '../mesher/wolf1m_fill/'
+    mesher_output_dir = '../mesher/wolf_creek1m/'
     # raster_file ='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_projected.tif'
     # shp_file='/Users/chris/Documents/PhD/research/CHM/paper1/figures/meshes/granger/1mtol/wolf_lidar1_1m_rmse.shp'
 

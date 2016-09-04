@@ -41,7 +41,7 @@ set(MODULE_SRCS
 		modules/interp_met/Thornton_var_p.cpp
 		modules/interp_met/kunkel_rh.cpp
 		modules/interp_met/rh_from_obs.cpp
-                modules/interp_met/Longwave_from_obs.cpp
+		modules/interp_met/Longwave_from_obs.cpp
 		modules/interp_met/Dist_tlapse.cpp
 
 		modules/point_mode.cpp
@@ -95,8 +95,10 @@ set(CHM_SRCS
 
 		interpolation/interpolation.cpp
 		${METEOIO_SRCS}
+		math/distance.cpp
+
 		CACHE INTERNAL "" FORCE
-		)
+        )
 
 
 set (HEADER_FILES
@@ -197,7 +199,7 @@ if (test)
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-			)
+            math/distance.cpp)
 
 
 	set( GTEST_LINK

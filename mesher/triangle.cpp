@@ -122,9 +122,11 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     else {
         //all kinds of problems at this point, bail out
         this->is_nan = true;
+        //        std::cout << "disaster!" << std::endl;
+        exit(1);
         return;
 
-//        std::cout << "disaster!" << std::endl;
+
 
 //        //testing code to write out the triangle that is causing issues.
 //        auto driver = GetGDALDriverManager()->GetDriverByName("ESRI Shapefile");

@@ -9,6 +9,7 @@ namespace pt = boost::property_tree;
 
 #include "interpolation.h"
 #include "station.hpp"
+#include "math/distance.hpp"
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Kd_tree.h>
@@ -18,7 +19,7 @@ namespace pt = boost::property_tree;
 #include <CGAL/Orthogonal_k_neighbor_search.h>
 
 
-
+#include <CGAL/Euclidean_distance.h>
 
 /**
  * Basin wide paramters such as transmissivity, solar elevation, solar aspec, etc.
@@ -26,6 +27,12 @@ namespace pt = boost::property_tree;
  **/
 class global
 {
+
+    struct Distance
+    {
+
+    };
+
     typedef CGAL::Simple_cartesian<double> Kernel;
     typedef boost::tuple<Kernel::Point_2, boost::shared_ptr<station> >  Point_and_station;
     typedef CGAL::Search_traits_2<Kernel> Traits_base;
