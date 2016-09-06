@@ -2,11 +2,19 @@
 // Created by chris on 04/07/16.
 //
 
+#include <csetjmp>
+#include <csignal>
+jmp_buf env;
+void on_sigabrt (int signum)
+{
+    longjmp (env, 1);
+}
+
 #include "triangle.h"
 
 triangle::triangle()
 {
-    GDALAllRegister();
+
     is_nan = false;
 }
 
@@ -21,13 +29,6 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     auto wkt = r.getDs()->GetProjectionRef();
     auto srs = OGRSpatialReference(wkt);
 
-    //memory shape file
-    auto driver = GetGDALDriverManager()->GetDriverByName("Memory");
-    auto shp = driver->Create("",0,0,0,GDT_Unknown,NULL);
-
-    auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
-
-//    OGRSpatialReferenceRLinearRing* ring = (OGRLinearRing*) OGRGeometryFactory().createGeometry(wkbLinearRing);
     OGRLinearRing ring;
     ring.addPoint(v0[0],v0[1]);
     ring.addPoint(v1[0],v1[1]);
@@ -37,9 +38,14 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     OGRPolygon poly;
     poly.addRing(&ring);
 
-    auto feature = OGRFeature::CreateFeature( layer->GetLayerDefn());
-    feature->SetGeometry(&poly);
-    layer->CreateFeature(feature);
+    //memory shape file
+//    auto driver = GetGDALDriverManager()->GetDriverByName("Memory");
+//    auto shp = driver->Create("",0,0,0,GDT_Unknown,NULL);
+//    auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
+
+//    auto feature = OGRFeature::CreateFeature( layer->GetLayerDefn());
+//    feature->SetGeometry(&poly);
+//    layer->CreateFeature(feature);
 
     //we need to rasterize our triangle into a small raster
 
@@ -87,55 +93,84 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
 
     auto mem_drv = GetGDALDriverManager()->GetDriverByName("MEM");
     auto rvds = mem_drv->Create("",xsize,ysize,1,GDT_Float32,NULL);
+
+    if(!rvds)
+    {
+        std::cout << "Yikes!" << std::endl;
+    }
     rvds->SetGeoTransform(new_gt);
 
-    char *pszSRS_WKT = NULL;
-    srs.exportToWkt(&pszSRS_WKT);
-    rvds->SetProjection(pszSRS_WKT);
-    CPLFree(pszSRS_WKT);
 
-    int nBandCount = 1;
-    int *panBandList = (int *) malloc(sizeof(int) * nBandCount);
-    panBandList[0] = 1; //raster band to use
-    int nLayerCount = 1;
-    double* burnValue =  new double;
-    *burnValue = 1;
+    rvds->SetProjection(wkt);
 
-    OGRLayerH *pahLayers = (OGRLayerH *) malloc(sizeof(OGRLayerH) * nLayerCount);
-    pahLayers[0] = layer;
+    std::vector<int> bandlist;
+    bandlist.push_back(1);
 
-    char **options = NULL;
+    double burnValue = 1;
+
+    std::vector<OGRPolygon*> geoms;
+    geoms.push_back(&poly);
+
+    char **options = nullptr;
     options = CSLSetNameValue(options, "ALL_TOUCHED", "TRUE");
-    CPLErr err = GDALRasterizeLayers(rvds, nBandCount, panBandList, nLayerCount, pahLayers, NULL, NULL, burnValue, options, NULL,
-                                     NULL);
 
-//    GDALClose(rvds);
-//    rvds = (GDALDataset*) GDALOpen("rtri.tiff",GA_Update);
-//    exit(1);
-    delete burnValue;
-    CPLFree(*options);
-    CPLFree(options);
-//    delete *options;
-//    delete options;
-    free(panBandList);
-    free(pahLayers);
+    //in som very rare, and still not totally sure why cases, this will fail with SIGABRT. So catch it, mark the triangle as isnan, and try to continue
+    if (setjmp (env) == 0) {
+        signal(SIGABRT, &on_sigabrt);
+        CPLErr err = GDALRasterizeGeometries(rvds, 1, &bandlist[0], 1, (OGRGeometryH*)&geoms[0], NULL, NULL, &burnValue, options, NULL, NULL);
+    }
+    else {
+        //all kinds of problems at this point, bail out
+        this->is_nan = true;
+        //        std::cout << "disaster!" << std::endl;
+        exit(1);
+        return;
 
 
+
+//        //testing code to write out the triangle that is causing issues.
+//        auto driver = GetGDALDriverManager()->GetDriverByName("ESRI Shapefile");
+//        auto shp = driver->Create("broken_tri.shp",0,0,0,GDT_Unknown,NULL);
+//        auto layer = shp->CreateLayer("poly",&srs,wkbPolygon,NULL);
+//
+//        auto feature = OGRFeature::CreateFeature( layer->GetLayerDefn());
+//        feature->SetGeometry(&poly);
+//        layer->CreateFeature(feature);
+//        GDALClose(shp);
+//
+//
+//        auto drv = GetGDALDriverManager()->GetDriverByName("GTiff");
+//        auto rvds = drv->Create("rtri.tiff",xsize,ysize,1,GDT_Float32,NULL);
+//
+//        char *pszSRS_WKT = NULL;
+//        srs.exportToWkt(&pszSRS_WKT);
+//        rvds->SetProjection(pszSRS_WKT);
+//        CPLFree(pszSRS_WKT);
+//
+//        GDALClose(rvds);
+
+//        exit(1);
+//
+//        CPLErr err = GDALRasterizeGeometries(rvds, 1, &bandlist[0], 1, (OGRGeometryH*)&geoms[0], NULL, NULL, &burnValue, options, NULL, NULL);
+
+
+    }
+
+    CSLDestroy(options);
 
     rasterized_triangle = boost::make_shared<raster>();
-    rasterized_triangle->setDs(rvds);
+    rasterized_triangle->setDs(rvds); //rvds owned now
 
-    float* mask = new float[xsize*ysize];
+    float* mask = new float[xsize*ysize]; //mask will be owned
     //copy the mask into the float array for the mask
     rasterized_triangle->getBand()->RasterIO(GF_Read, 0, 0, xsize, ysize,
                  mask, xsize, ysize, GDT_Float32,
                  0, 0);
 
-
     rasterized_triangle->setMask(mask);
 
     //overwrite the band data (that has the mask) to be the dem data
-    float* dem = new float[xsize*ysize];
+    float* dem = new float[xsize*ysize]; // triangle owns this now
 
     r.getBand()->RasterIO(GF_Read, x1, y1, xsize, ysize,
                                              dem, xsize, ysize, GDT_Float32,
@@ -143,12 +178,6 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     rasterized_triangle->setBand(dem,xsize,ysize);
 
 
-    delete[] dem;
-    OGRFeature::DestroyFeature(feature);
-    GDALClose(shp);
-
-    int px;
-    int py;
     double pz;
 
     // because of how the rasterization works we MIGHT have a cell that lies out side of our actual dem domain.

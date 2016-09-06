@@ -9,7 +9,7 @@
 //      "output":"UpperClearing",
 //      "forcing":"UpperClearing"
 //    },
-    "station_search_radius":5000,
+    "station_search_radius":100000,
     "interpolant":"idw",
     "notification_script":"./finished.sh",
     "per_triangle_timeseries":"false",
@@ -64,7 +64,7 @@
 
     "slope_iswr":
     {
-      "no_slope":true
+      "no_slope":false
     },
     "snowpack":"snowpack.json",
     "Richard_albedo":
@@ -80,8 +80,8 @@
   },
   "meshes":
   {
-    "mesh":"meshes/wolf1m_fill.mesh"
-//
+//    "mesh":"meshes/wolf1m_fill.mesh"
+    "mesh":"meshes/fortress1.mesh"
 //    //map internal variables/parameters to the .mesh file's parameter section.
 //    "parameters":
 //    {
@@ -199,7 +199,7 @@
     },
      "mesh":
      {
-       "base_name":"output/wolf1m_fill"
+       "base_name":"output/fortress1"
 //       "variables":["swe","t","rh"],
 //       "frequency":1 //every N timesteps
      }

@@ -316,6 +316,27 @@ void core::config_meshes(const pt::ptree &value)
 
     pt::ptree mesh = read_json(mesh_path);
 
+    //we need to check if we've read in a geographic (lat/long) mesh or a UTM mesh. We then need to swap in the right distance and point_bearing functions
+    //so the modules and future code can blindly use them without worrying about these things
+
+    bool is_geographic = (bool)mesh.get<int>("mesh.is_geographic");
+
+    if(is_geographic)
+    {
+        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_latlong,_1,_2,_3);
+        math::gis::distance = boost::bind<double>(& math::gis::distance_latlong,_1,_2);
+
+//        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
+//        math::gis::distance = &math::gis::distance_latlong;
+    } else
+    {
+        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_UTM,_1,_2,_3);
+        math::gis::distance = boost::bind<double>(& math::gis::distance_UTM,_1,_2);
+
+//        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
+//        math::gis::distance = &math::gis::distance_UTM;
+    }
+
     //see if we have additional parameter files to load
     try
     {
@@ -385,6 +406,8 @@ void core::config_meshes(const pt::ptree &value)
         face->center();
         face->normal();
     }
+
+
 
 }
 
@@ -482,6 +505,7 @@ void core::config_output(const pt::ptree &value)
 
             out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
 
+
             // can do all non-vtu formats with vtu2geo tool, which is also faster. So move towards removing all this
             //functionality
 
@@ -492,8 +516,6 @@ void core::config_output(const pt::ptree &value)
 //                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
 //                if (jtr.second.data() == "vtp")
 //                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtp);
-//                if (jtr.second.data() == "ascii")
-//                    out.mesh_output_formats.push_back(output_info::mesh_outputs::ascii);
 //            }
 
         } else
@@ -807,7 +829,7 @@ void core::init(int argc, char **argv)
      * The rest may be optional, and will override the defaults.
      */
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
-    config_meshes(cfg.get_child("meshes"));
+    config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
     config_forcing(cfg.get_child("forcing"));
 
     /*
@@ -1619,7 +1641,7 @@ void core::run()
             current_ts++;
 
             double mt = meantime / current_ts;
-            double ms = true;
+            bool ms = true;
             if (mt > 1000)
             {
                 mt /= 1000.;

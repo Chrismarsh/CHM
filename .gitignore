@@ -18,6 +18,7 @@ modules.pdf
 /CMakeFiles/*
 /cppcheck/*
 /doc/
+/forcing/
 /nbproject/
 /tests/CMakeFiles
 /tests/gtest/CMakeFiles/

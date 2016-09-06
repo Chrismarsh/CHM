@@ -44,18 +44,27 @@
             this->min_area = min_area;
             B = aspect_bound;
             this->traits=traits;
+            prj_trans = nullptr;
 
             if(is_geographic)
             {
-                auto wkt = r.at(0).first->getDs()->GetProjectionRef();
-                auto srs = OGRSpatialReference(wkt);
+                char* wkt = const_cast<char*>(r.at(0).first->getDs()->GetProjectionRef());
+                OGRSpatialReference srs;
+                srs.importFromWkt(&wkt);
 
-                std::string wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
-
-                auto  srs_out = OGRSpatialReference(wkt_out.c_str());
+                const char* out_wkt = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+                char* out_wkt2 = const_cast<char*>(out_wkt); // omg
+                OGRSpatialReference  srs_out;
+                srs_out.importFromWkt(&out_wkt2);
 
                 prj_trans = OGRCreateCoordinateTransformation( &srs,
                                                                &srs_out );
+
+                if(!prj_trans)
+                {
+                    std::cout << "Unable to create geographic transform" << std::endl;
+                    exit(1);
+                }
             }
         }
 
@@ -177,9 +186,14 @@
                    OGRCoordinateTransformation* prj_trans=nullptr,
                    const Geom_traits &traits = Geom_traits() )
                     : B(aspect_bound), max_area(area_bound), min_area(min_area),
-                      r(r), category_rasters(category_rasters),error_metric(error_metric),is_geographic(is_geographic),prj_trans(prj_trans),traits(traits)
+                      r(r), category_rasters(category_rasters),error_metric(error_metric),is_geographic(is_geographic),traits(traits)
             {
-
+                prj_trans = prj_trans;
+                if(!prj_trans && is_geographic)
+                {
+                    std::cout << "NULL prj_trans for geographic data!" << std::endl;
+                    exit(1);
+                }
                 if(error_metric == "rmse" || error_metric == "")
                     error_fn = boost::bind(&Is_bad::rmse_tolerance,this,_1,_2);
                 else if(error_metric == "mean_tol")
@@ -606,8 +620,11 @@
                 double area = 0;
                 if(is_geographic)
                 {
-//                    auto wkt = r.at(0).first->getDs()->GetProjectionRef();
-//                    auto srs = OGRSpatialReference(wkt);
+                    const char* wkt = r.at(0).first->getDs()->GetProjectionRef();
+                    char* srs_wkt = const_cast<char*>(wkt);
+                    OGRSpatialReference srs;
+                    srs.importFromWkt(&srs_wkt);
+
 
                     //memory shape file
 //                    auto driver = GetGDALDriverManager()->GetDriverByName("Memory");
@@ -646,16 +663,19 @@
 //                    layer->CreateFeature(feature);
 
 
-//                    std::string wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
-//
-//                    auto  srs_out = OGRSpatialReference(wkt_out.c_str());
-//
-//                    auto poCT = OGRCreateCoordinateTransformation( &srs,
-//                                                                   &srs_out );
+                    const char* wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+                    char* out_wkt = const_cast<char*>(wkt_out);
+                    OGRSpatialReference  srs_out;
+                    srs_out.importFromWkt(&out_wkt);
+
+                    auto poCT = OGRCreateCoordinateTransformation( &srs,
+                                                                   &srs_out );
 
 
 //                    auto poly_prj = poly.clone();
-                    poly.transform(prj_trans);
+
+//                    poly.transform(prj_trans);
+                    poly.transform(poCT);
 
                     area = poly.get_Area();
 
