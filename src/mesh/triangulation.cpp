@@ -234,6 +234,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 
     LOG_DEBUG << "Building face neighbours";
     i=0;
+    int nelem = mesh.get<int>("mesh.nelem"); // what we are expecting to see, 0 indexed
     for (auto &itr : mesh.get_child("mesh.neigh"))
     {
         std::vector<int> items;
@@ -242,7 +243,16 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         {
             items.push_back(jtr.second.get_value<int>());
         }
+
         auto face = _faces.at(i);
+
+        if(    items[0] > nelem
+            || items[1] > nelem
+            || items[2] > nelem)
+        {
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                    "Face " + std::to_string(i) + " has out of bound neighbours."));
+        }
         //-1 is now the no neighbour value
         Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : Face_handle();
         Face_handle face1 =  items[1] != -1 ?_faces.at( items[1] ) : Face_handle();

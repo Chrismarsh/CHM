@@ -189,7 +189,7 @@
                     : B(aspect_bound), max_area(area_bound), min_area(min_area),
                       r(r), category_rasters(category_rasters),error_metric(error_metric),is_geographic(is_geographic),traits(traits)
             {
-                prj_trans = prj_trans;
+                this->prj_trans = prj_trans;
                 if(!prj_trans && is_geographic)
                 {
                     std::cout << "NULL prj_trans for geographic data!" << std::endl;
