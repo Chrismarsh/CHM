@@ -4,7 +4,7 @@ Liston_wind::Liston_wind(config_file cfg)
         :module_base(parallel::domain)
 
 {
-    depends("U_R");
+    depends_from_met("U_R");
     depends_from_met("vw_dir");
 
     provides("U_R");

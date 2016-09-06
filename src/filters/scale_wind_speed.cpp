@@ -27,5 +27,6 @@ void scale_wind_speed::process(boost::shared_ptr<station> station)
         double U_R          = Atmosphere::log_scale_wind(U_F, Z_F, Z_R, 0); // Assume 0 snow depth
 
         station->now().set("U_R",U_R);
+
     }while(station->next());
 }
