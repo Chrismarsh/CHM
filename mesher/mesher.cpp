@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
     nodefile.close();
 
 
-    size_t elem_i=1; //1 indexing
+    int elem_i=1; //1 indexing
 
     for(auto itr = cdt.finite_faces_begin(); itr != cdt.finite_faces_end(); itr++ )
     {
@@ -275,9 +275,9 @@ int main(int argc, char *argv[])
     auto neighfilepath = path; //eg PLGSwolf_lidar1.1.neigh
     neighfilepath /= p.filename().replace_extension(".1.neigh");
     std::ofstream neighfile(neighfilepath.string());
-    neighfile << elem_i-1 << " 3" << std::endl;
+    neighfile << elem_i-1 << " 3" << std::endl; //elem_i is 1 indexing, convert to 0
 
-       //element file, defines the triangles
+    //element file, defines the triangles
     auto elefilepath = path; //eg "PLGSwolf_lidar1.1.ele"
     elefilepath /= p.filename().replace_extension(".1.ele");
     std::ofstream elemfile(elefilepath.string());
@@ -296,12 +296,12 @@ int main(int argc, char *argv[])
 
             elemfile << i << "    " << v0 << "    " << v1 << "    "<< v2 << std::endl;
 
-            auto n0 = itr->neighbor(0); cdt.is_infinite(n0) ? NULL : n0; //only want finite nieghbours
-            auto n1 = itr->neighbor(1); cdt.is_infinite(n1) ? NULL : n1;
-            auto n2 = itr->neighbor(2); cdt.is_infinite(n2) ? NULL : n2;
+            auto n0 = itr->neighbor(0);
+            auto n1 = itr->neighbor(1);
+            auto n2 = itr->neighbor(2);
 
-            neighfile << i <<  "  " << (n0 != NULL ? n0->id : -1) << "  " << (n1 != NULL ? n1->id : -1) <<"  "<< (n1 != NULL ? n1->id : -1) << std::endl;
-            ++i;
+            neighfile << i <<  "  " << n0->id << "  " << n1->id  <<"  "<< n1->id << std::endl;
+          ++i;
         }
 
     }

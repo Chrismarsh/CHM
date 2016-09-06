@@ -190,7 +190,7 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     this->v0[1] = v0[1];
     this->v0[2] = pz;
 
-    if(isnan(pz))
+    if(std::isnan(pz))
     {
         is_nan_v[0]=1;
     }
@@ -200,7 +200,7 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     this->v1[0] = v1[0];
     this->v1[1] = v1[1];
     this->v1[2] = pz;
-    if(isnan(pz))
+    if(std::isnan(pz))
     {
         is_nan_v[1]=1;
     }
@@ -210,7 +210,7 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     this->v2[0] = v2[0];
     this->v2[1] = v2[1];
     this->v2[2] = pz;
-    if(isnan(pz))
+    if(std::isnan(pz))
     {
         is_nan_v[2]=1;
     }
