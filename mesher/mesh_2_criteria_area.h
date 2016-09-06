@@ -10,6 +10,7 @@
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
 #include <vector>
+#include <cmath>
 #include "triangle.h"
 
     template<class CDT>

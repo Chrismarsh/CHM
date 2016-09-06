@@ -8,6 +8,8 @@
 #include <gdal_alg.h>
 #include <ogrsf_frmts.h>
 
+#include <cmath>
+
 #include "raster.h"
 
 typedef double vertex[3];
