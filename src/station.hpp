@@ -33,7 +33,7 @@ public:
         \param y UTM coord
         \param elevation station elevation
         */
-    station(std::string ID, size_t x, size_t y, double elevation);
+    station(std::string ID, double x, double y, double elevation);
 
     /**
     * Default destructor
@@ -64,27 +64,27 @@ public:
     * Returns the x UTM coordinate of the station
     * \return UTM coordinate
     */
-    size_t x();
+    double x();
 
     /**
     * Returns the y UTM coordinate of the station
     * \return UTM coordinate
     */
-    size_t y();
+    double y();
 
 
     /**
     * Sets the X coordinate
     * \param x UTM coordinate
     */
-    void x(size_t x);
+    void x(double x);
 
 
     /**
     * Sets the Y coordinate
     * \param y UTM coordinate
     */
-    void y(size_t y);
+    void y(double y);
 
 
     /**
@@ -160,8 +160,8 @@ private:
         std::string _ID;
         timeseries * _obs;
         timeseries::iterator _itr;
-        size_t _x;
-        size_t _y;
+        double _x;
+        double _y;
         double _z;
    
 };

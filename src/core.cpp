@@ -323,18 +323,18 @@ void core::config_meshes(const pt::ptree &value)
 
     if(is_geographic)
     {
-        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_latlong,_1,_2,_3);
-        math::gis::distance = boost::bind<double>(& math::gis::distance_latlong,_1,_2);
+//        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_latlong,_1,_2,_3);
+//        math::gis::distance = boost::bind<double>(& math::gis::distance_latlong,_1,_2);
 
-//        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
-//        math::gis::distance = &math::gis::distance_latlong;
+        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
+        math::gis::distance = &math::gis::distance_latlong;
     } else
     {
-        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_UTM,_1,_2,_3);
-        math::gis::distance = boost::bind<double>(& math::gis::distance_UTM,_1,_2);
+//        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_UTM,_1,_2,_3);
+//        math::gis::distance = boost::bind<double>(& math::gis::distance_UTM,_1,_2);
 
-//        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
-//        math::gis::distance = &math::gis::distance_UTM;
+        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
+        math::gis::distance = &math::gis::distance_UTM;
     }
 
     //see if we have additional parameter files to load

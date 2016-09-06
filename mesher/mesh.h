@@ -32,7 +32,7 @@
 
         Delaunay_mesh_face_base_info_2() : Fb()
         {
-
+            id = 0;
         }
 
         Delaunay_mesh_face_base_info_2(Vertex_handle v0,
@@ -40,7 +40,7 @@
                                        Vertex_handle v2)
                 : Fb(v0, v1, v2)
         {
-
+            id = 0;
         }
 
 
@@ -52,7 +52,7 @@
                                        Face_handle n2)
                 : Fb(v0, v1, v2, n0, n1, n2)
         {
-
+            id = 0;
         }
 
 

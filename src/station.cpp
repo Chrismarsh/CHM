@@ -15,7 +15,7 @@ station::station()
 
 }
 
-station::station(std::string ID, size_t x, size_t y, double elevation)
+station::station(std::string ID, double x, double y, double elevation)
 {
     _ID = ID;
     _x = x;
@@ -88,22 +88,22 @@ bool station::next()
         return true;
 }
 
-size_t station::x()
+double station::x()
 {
     return _x;
 }
 
-size_t station::y()
+double station::y()
 {
     return _y;
 }
 
-void station::x(size_t x)
+void station::x(double x)
 {
     _x = x;
 }
 
-void station::y(size_t y)
+void station::y(double y)
 {
     _y = y;
 }
