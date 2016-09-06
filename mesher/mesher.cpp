@@ -296,9 +296,9 @@ int main(int argc, char *argv[])
 
             elemfile << i << "    " << v0 << "    " << v1 << "    "<< v2 << std::endl;
 
-            auto n0 = itr->neighbor(0);// cdt.is_infinite(n0) ? NULL : n0; //only want finite nieghbours
-            auto n1 = itr->neighbor(1);// cdt.is_infinite(n1) ? NULL : n1;
-            auto n2 = itr->neighbor(2); //cdt.is_infinite(n2) ? NULL : n2;
+            auto n0 = itr->neighbor(0);
+            auto n1 = itr->neighbor(1);
+            auto n2 = itr->neighbor(2);
 
             neighfile << i <<  "  " << n0->id << "  " << n1->id  <<"  "<< n1->id << std::endl;
           ++i;

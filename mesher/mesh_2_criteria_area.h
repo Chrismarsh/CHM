@@ -259,7 +259,7 @@
                 o3 = t.v0[2];
 
                 //if we have only nan z values, bail.
-                if(isnan(t.v0[2]) || isnan(t.v1[2]) || isnan(t.v2[2]))
+                if(std::isnan(t.v0[2]) || std::isnan(t.v1[2]) || std::isnan(t.v2[2]))
                 {
                     t.is_nan=true;
                     return 0;
@@ -293,7 +293,7 @@
                     for (int x = 0; x < t.rasterized_triangle->getDs()->GetRasterXSize(); x++)
                     {
                         double value = t.rasterized_triangle->getpXpY(x, y);
-                        if (!isnan(value))
+                        if (!std::isnan(value))
                         {
                             double z = -(a*x+b*y-d)/c; //plane eqn solved for z. allows us to predict z values via x,y coords
                             double diff = z - value;
@@ -349,7 +349,7 @@
                     for (int x = 0; x < t.rasterized_triangle->getDs()->GetRasterXSize(); x++)
                     {
                         double value = t.rasterized_triangle->getpXpY(x, y);
-                        if (!isnan(value))
+                        if (!std::isnan(value))
                         {
                             int key = (int)value;
                             if(lc.find(key) != lc.end())
@@ -403,19 +403,19 @@
                 double tri_count = 0;
 
                 // Check if elevations of vertex is not-nan
-                if (!isnan(t.v0[2]))
+                if (!std::isnan(t.v0[2]))
                 {
                     triangle_z_mean += t.v0[2];
                     ++tri_count;
                 }
 
-                if (!isnan(t.v1[2]))
+                if (!std::isnan(t.v1[2]))
                 {
                     triangle_z_mean += t.v1[2];
                     ++tri_count;
                 }
 
-                if (!isnan(t.v2[2]))
+                if (!std::isnan(t.v2[2]))
                 {
                     triangle_z_mean += t.v2[2];
                     ++tri_count;
@@ -438,7 +438,7 @@
                     for (int j = 0; j < t.rasterized_triangle->getDs()->GetRasterXSize(); j++)
                     {
                         double value = t.rasterized_triangle->getpXpY(j, i);
-                        if (!isnan(value))
+                        if (!std::isnan(value))
                         {
                             sum += value;
                             ++count;
@@ -510,7 +510,7 @@
                 o3 = t.v0[2];
 
                 //if we have only nan z values, bail.
-                if(isnan(t.v0[2]) || isnan(t.v1[2]) || isnan(t.v2[2]))
+                if(std::isnan(t.v0[2]) || std::isnan(t.v1[2]) || std::isnan(t.v2[2]))
                 {
                     t.is_nan=true;
                     return 0;
@@ -545,7 +545,7 @@
                     for (int x = 0; x < t.rasterized_triangle->getDs()->GetRasterXSize(); x++)
                     {
                         double value = t.rasterized_triangle->getpXpY(x, y);
-                        if (!isnan(value))
+                        if (!std::isnan(value))
                         {
                             double z = -(a*x+b*y-d)/c; //plane eqn solved for z. allows us to predict z values via x,y coords
                             double diff = fabs(z - value);
