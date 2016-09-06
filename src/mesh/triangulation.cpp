@@ -155,7 +155,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     if( is_geographic == 1)
         _is_geographic = true;
 
-    double scale = is_geographic == 1 ? 100000. : 1.;
+
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
     {
@@ -165,7 +165,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         {
             items.push_back(jtr.second.get_value<double>());
         }
-        Point_3 pt( items[0]*scale, items[1]*scale, items[2]);
+        Point_3 pt( items[0], items[1], items[2]);
 
         Vertex_handle Vh = this->create_vertex();
         Vh->set_point(pt);
@@ -417,6 +417,8 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
     triangles->Allocate(this->_num_vertex);
 
+    double scale = is_geographic() == true ? 100000. : 1.;
+
     for (size_t i = 0; i < this->size_faces(); i++)
     {
         Delaunay::Face_handle fit = this->face(i);
@@ -428,9 +430,9 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         tri->GetPointIds()->SetId(1, fit->vertex(1)->get_id());
         tri->GetPointIds()->SetId(2, fit->vertex(2)->get_id());
 
-        points->SetPoint(fit->vertex(0)->get_id(), face(i)->vertex(0)->point().x(), face(i)->vertex(0)->point().y(), face(i)->vertex(0)->point().z());
-        points->SetPoint(fit->vertex(1)->get_id(), face(i)->vertex(1)->point().x(), face(i)->vertex(1)->point().y(), face(i)->vertex(1)->point().z());
-        points->SetPoint(fit->vertex(2)->get_id(), face(i)->vertex(2)->point().x(), face(i)->vertex(2)->point().y(), face(i)->vertex(2)->point().z());
+        points->SetPoint(fit->vertex(0)->get_id(), face(i)->vertex(0)->point().x()*scale, face(i)->vertex(0)->point().y()*scale, face(i)->vertex(0)->point().z());
+        points->SetPoint(fit->vertex(1)->get_id(), face(i)->vertex(1)->point().x()*scale, face(i)->vertex(1)->point().y()*scale, face(i)->vertex(1)->point().z());
+        points->SetPoint(fit->vertex(2)->get_id(), face(i)->vertex(2)->point().x()*scale, face(i)->vertex(2)->point().y()*scale, face(i)->vertex(2)->point().z());
 
         triangles->InsertNextCell(tri);
     }
