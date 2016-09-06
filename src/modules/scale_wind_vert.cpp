@@ -4,9 +4,9 @@ scale_wind_vert::scale_wind_vert(config_file cfg)
         :module_base(parallel::data)
 
 {
-    //depends("U_R"); // implicit depends on the filter scale_wind_speed
+    depends("U_R"); // implicit depends on the filter scale_wind_speed
 
-    provides("U_R");
+    //provides("U_R");
     provides("U_CanTop");
     provides("U_CanMid");
     provides("U_2m_above_srf");
@@ -22,7 +22,6 @@ scale_wind_vert::~scale_wind_vert()
 
 void scale_wind_vert::run(mesh_elem &face, boost::shared_ptr <global> global_param) {
 
-    // TODO: Add option if the filter::scale_wind_speed was not used
 
     // Get meteorological data for current face
     double U_R           = face->face_data("U_R"); // Wind speed at reference height Z_R (m/s)
@@ -72,12 +71,15 @@ void scale_wind_vert::run(mesh_elem &face, boost::shared_ptr <global> global_par
         face->set_face_data("U_CanMid",U_CanMid);
     // No Canopy exists
     } else {
-        U_2m_above_srf = Atmosphere::log_scale_wind(U_R, Z_R, Z_2m_above_srf,snowdepthavg); // (U_start,Height_start,Height_end)
+        U_2m_above_srf = Atmosphere::log_scale_wind(U_R, Z_R, Z_2m_above_srf, snowdepthavg); // (U_start,Height_start,Height_end)
+        face->set_face_data("U_CanTop",-999.0);
+        face->set_face_data("U_CanMid",-999.0);
     }
 
     // Save computed wind speeds
-    face->set_face_data("U_R",U_R);
+    //face->set_face_data("U_R",U_R);
     face->set_face_data("U_2m_above_srf",U_2m_above_srf);
+
 
 }
 

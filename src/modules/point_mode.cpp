@@ -97,7 +97,7 @@ void point_mode::run(mesh_elem &face, boost::shared_ptr <global> global_param)
     {
         double su = global_param->stations().at(0)->get("U_R");
 
-        //make sure we don't have zero windpseeds
+        //make sure we don't have zero wind speeds
         su = std::max(su,0.1);
         face->set_face_data("U_R",su);
     }
