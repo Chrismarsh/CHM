@@ -7,6 +7,7 @@
 #include "logger.hpp"
 #include "face.hpp"
 #include <string>
+#include <math.h>
 
 /**
  * \addtogroup modules
@@ -28,5 +29,5 @@ public:
 
     virtual void run(mesh_elem &face, boost::shared_ptr<global> global_param);
 
-    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    //virtual void init(mesh domain, boost::shared_ptr<global> global_param);
 };
