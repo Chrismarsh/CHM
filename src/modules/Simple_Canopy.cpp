@@ -8,12 +8,9 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     depends("p_snow");
     depends("iswr");
     depends("iswr_diffuse");
-    //depends("iswr_direct");
     depends("rh");
     depends("t");
-    depends("U_R"); // Wind speed at 2m above surface (ground or snow) [m/s]
-
-    depends("vw_dir");
+    depends("U_R");
     depends("ilwr");
     depends("snowdepthavg");
     depends("snow_albedo"); //
@@ -24,7 +21,6 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     provides("ta_subcanopy");
     provides("rh_subcanopy");
     provides("vw_subcanopy");
-    //provides("wdir_subcanopy");
     provides("p_subcanopy");
     provides("p_rain_subcanopy");
     provides("p_snow_subcanopy");
@@ -33,8 +29,6 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     provides("iswr_subcanopy");
     provides("ilwr_subcanopy");
     provides("ts_canopy");
-    //provides("diff_subcanopy");
-    //provides("ir_h_subcanopy");
 
 }
 
@@ -52,9 +46,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     double ta           = face->face_data("t");
     double rh           = face->face_data("rh");
     double U_R          = face->face_data("U_R");
-    double wdir         = face->face_data("vw_dir");
     double iswr         = face->face_data("iswr"); // SW in above canopy
-    //double ir_h   = face->face_data("iswr_direct"); // not used currently
     double Qdfo         = face->face_data("iswr_diffuse"); // "clear-sky diffuse", "(W/m^2)"
     double ilwr         = face->face_data("ilwr"); // LW in above canopy
     double p_rain       = face->face_data("p_rain"); // rain (mm/timestep) above canopy
@@ -77,13 +69,9 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
     double Ts; //", NHRU, "snow surface temperature IN CANOPY", "(°C)", &Ts);
 
-    double Qnsn_Var; //", NHRU, "net all-wave at snow surface", "(W/m^2*int)", &Qnsn_Var);
-
     double Qsisn; //", NHRU, "incident short-wave at surface", "(W/m^2)", &Qsisn); Includes canopy impacts
 
     double Qlisn; //", NHRU, "incident long-wave at surface", "(W/m^2)", &Qlisn);
-
-    //double Qlosn; //", NHRU, "reflected long-wave at surface", "(W/m^2)", &Qlosn); // Not used here
 
     // declared variables
 
@@ -217,12 +205,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
             // Incident short-wave at surface, "(W/m^2)"
             Qsisn = iswr * Tauc;
 
-            // Emitted long-wave from snowpack in canopy // Not used here
-            //Qlosn = Snow::emiss * PhysConst::sbc * pow(Ts + mio::Cst::t_water_freezing_pt, 4.0);
-
-            // Net radiation for ground snowpack surface
-            //Qnsn = Qlisn - Qlosn + Qsisn*(1.0 - Albedo); // Not used here
-
             break;
         }
     case 1:  // 1 = clearing
@@ -233,8 +215,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
         Qsisn = iswr;
 
-        // Emitted long-wave from snowpack in canopy // Not used here
-        //Qlosn = Snow::emiss * PhysConst::sbc * pow(Ts + mio::Cst::t_water_freezing_pt, 4.0);
 
         break;
     }
@@ -288,11 +268,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
         Qsisn = cosxs * Qdfo * Tau_b_gap + Vgap * (iswr - Qdfo) + (1.0 - Vgap) * Tau_d * (iswr - Qdfo);
         if (Qsisn < 0.0)
             Qsisn = 0.0;
-
-        //Qlosn = Snow::emiss * PhysConst::sbc * pow(Ts + mio::Cst::t_water_freezing_pt, 4.0f); // Not used here
-
-        // Net radiation for ground snowpack surface
-        //Qnsn = Qlisn - Qlosn + Qsisn*(1.0 - Albedo); // Not used here
 
         break;
     }
@@ -526,8 +501,8 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
                     intcp_evap = data->rain_load; // check
                     data->rain_load = 0.0;
                 }
-                /*}*/
-            } // if data->rain_load > 0.0
+
+            }
 
             // cumulative amounts (canopy)
             net_rain = direct_rain + drip_Cpy;
@@ -560,7 +535,6 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     face->set_face_data("snow_load",data->Snow_load);
     face->set_face_data("rain_load",data->rain_load);
     face->set_face_data("ts_canopy",Ts);
-    //face->set_face_data("cum_Subl_Cpy",data->cum_Subl_Cpy);
     face->set_face_data("ta_subcanopy",ta);
     face->set_face_data("rh_subcanopy",rh);
     face->set_face_data("iswr_subcanopy",Qsisn); // (W/m^2)
