@@ -61,6 +61,7 @@ void scale_wind_vert::run(mesh_elem &face, boost::shared_ptr <global> global_par
     if (Z_CanTop>0.0) {
         // Get Canopy/Surface info
 
+        int LC                = face->get_parameter("landcover");
         //asume we have LAI, otherwise it will cleanly bail if we don't
         double LAI            = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
         const double alpha    = LAI; // attenuation coefficient introduced by Inoue (1963) and increases with canopy density
