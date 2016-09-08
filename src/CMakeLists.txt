@@ -43,8 +43,7 @@ set(MODULE_SRCS
 		modules/interp_met/kunkel_rh.cpp
 		modules/interp_met/rh_from_obs.cpp
 		modules/interp_met/Longwave_from_obs.cpp
-		modules/constants/Atmosphere.cpp
-                modules/interp_met/Longwave_from_obs.cpp
+        modules/interp_met/Longwave_from_obs.cpp
 		modules/interp_met/Dist_tlapse.cpp
 
 		modules/point_mode.cpp
@@ -80,6 +79,8 @@ set(CHM_SRCS
 		station.cpp
 		variable_map.cpp
 
+		constants/Atmosphere.cpp
+
 		ui/ui.cpp
 		ui/ncstream.cpp
 
@@ -110,6 +111,7 @@ set (HEADER_FILES
         mesh
 		ui
         modules
+
         modules/interp_met
 		modules/snobal
         libmaw
