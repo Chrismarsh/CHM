@@ -232,10 +232,25 @@ void core::config_forcing(pt::ptree &value)
         value.erase(itr);
     }
 
+    // first, read all the station metadata, but don't actually read the station data yet
+
+    std::vector< std::pair<std::string, pt::ptree> > forcings;
+
+    LOG_DEBUG << "Reading meta data from config";
     //loop over the list of forcing data
     for (auto &itr : value)
     {
         std::string station_name = itr.first.data();
+        forcings.push_back( make_pair(station_name, value.get_child(station_name) ));
+    }
+
+    LOG_DEBUG << "Reading forcing files";
+    tbb::concurrent_vector<   boost::shared_ptr<station> > stations;
+    for(size_t i =0; i < forcings.size(); ++i)
+    {
+        auto& itr = forcings.at(i);
+
+        std::string station_name = itr.first;//.data();
 
         boost::shared_ptr<station> s = boost::make_shared<station>();
 
@@ -273,11 +288,12 @@ void core::config_forcing(pt::ptree &value)
             //ignore
         }
 
-
-        LOG_DEBUG << "New station created " << *s;
-        _global->insert_station(s);
-
+        stations.push_back(s);
     }
+
+    _global->insert_stations(stations);
+    LOG_DEBUG << "Finished reading stations";
+
 }
 void core::config_parameters(pt::ptree &value)
 {
@@ -997,12 +1013,15 @@ void core::init(int argc, char **argv)
         BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
     }
 
-    for (auto &s : _global->_stations)
+    LOG_DEBUG << "Subsetting station statations";
+    //for (auto &s : _global->_stations)
+#pragma omp for
+    for(size_t i = 0; i < _global->_stations.size(); ++i)
     {
-        s->raw_timeseries()->subset(*_start_ts, *_end_ts);
-        s->reset_itrs();
+        _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
+        _global->_stations.at(i)->reset_itrs();
 
-        LOG_DEBUG << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
+       // LOG_DEBUG << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
     }
 
 

@@ -45,6 +45,11 @@ double interpolation::operator()(std::vector< boost::tuple<double,double,double>
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Interpolation sample point length = 0."));
     }
 
+    if (sample_points.size() > 15 && ia == interp_alg::tpspline)
+    {
+        LOG_WARNING << "More than 15 sample points is likely to cause slow downs";
+    }
+
     if(sample_points.size() != this->size || this->size == 0)
     {
 
