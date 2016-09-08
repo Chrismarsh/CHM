@@ -238,14 +238,15 @@ void core::config_forcing(pt::ptree &value)
 
     if (nstations != forcings.size())
     {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Somethign has gone wrong in forcing file read."));
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Something has gone wrong in forcing file read."));
     }
 
     _global->_stations.resize(nstations);
 
     tbb::concurrent_vector<  boost::shared_ptr<station> > pstations;
 
-#pragma omp parallel for
+//#pragma omp parallel for
+    //TODO: this dead locks, not sure why
     for(size_t i =0; i < nstations; ++i)
     {
         auto& itr = forcings.at(i);
@@ -278,7 +279,7 @@ void core::config_forcing(pt::ptree &value)
             {
                 auto name = jtr.first.data();
 
-                auto filter = _filtfactory.get(name, jtr.second);
+                boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
                 filter->process(s);
                 s->reset_itrs(); // reset all the internal iterators
             }
