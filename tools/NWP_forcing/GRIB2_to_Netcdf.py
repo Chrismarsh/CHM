@@ -9,9 +9,13 @@ import json
 import time
 import utm
 import threading
+# Hack to force datetimes to display in GMT/UTC (numpy 1.11.1 has fixed this but other dependent modules (pynio) can't handel numpy 1.11.1)
+os.environ['TZ'] = 'GMT'
+time.tzset()
+
 start_time = time.time()
 
-def add_datetime_dataset(ds_in,local_time_offset):
+def add_datetime_dataset(ds_in):
 	import re
         # Replace dummey time variable with datetime64
         init_time = ds_in.RH_P0_L103_GST0.attrs['initial_time']
@@ -19,12 +23,12 @@ def add_datetime_dataset(ds_in,local_time_offset):
         D = re.split('/',DT[0])
         HHMM = re.split(':',DT[1].replace("(","").replace(")",""))
         T_init = datetime.datetime(int(D[2]),int(D[0]),int(D[1]),int(HHMM[0])+1,int(HHMM[1])) # +1 is because we start on forecast houor 1 (disregard hour 00 as it is just initial conditions... and no precip values)
-        TimeS = pd.date_range(T_init+datetime.timedelta(hours=local_time_offset), periods=len(ds_in.forecast_hour),freq='H')
+        TimeS = pd.date_range(T_init, periods=len(ds_in.forecast_hour),freq='H')
         ds_in['forecast_hour'] = TimeS
 	ds_in.rename({'forecast_hour':'time'},inplace=True)
         return ds_in
 
-def add_datetime_dataarray(dr_in,local_time_offset):
+def add_datetime_dataarray(dr_in):
         import re
         # Replace dummey time variable with datetime64
         init_time = dr_in.initial_time
@@ -32,7 +36,7 @@ def add_datetime_dataarray(dr_in,local_time_offset):
         D = re.split('/',DT[0])
         HHMM = re.split(':',DT[1].replace("(","").replace(")",""))
         T_init = datetime.datetime(int(D[2]),int(D[0]),int(D[1]),int(HHMM[0])+1,int(HHMM[1])) # +1 is because we start on forecast houor 1 (disregard hour 00 as it is just initial conditions... and no precip values)
-        TimeS = pd.date_range(T_init+datetime.timedelta(hours=local_time_offset), periods=len(dr_in.forecast_hour),freq='H')
+        TimeS = pd.date_range(T_init, periods=len(dr_in.forecast_hour),freq='H')
         dr_in['forecast_hour'] = TimeS
 	dr_in = dr_in.rename({'forecast_hour':'time'})
         return dr_in
@@ -95,10 +99,8 @@ X = imp.load_source('',configfile)
 # Assinge to local variables
 download_dir = X.download_dir
 output_dir   = X.output_dir
-local_time_offset = X.local_time_offset
-lat_r = X.lat_r
-lon_r = X.lon_r
-export_netcdf = X.export_netcdf
+var_dic = X.var_dic
+export_netcdf = True
 
 # Move to input
 os.chdir(download_dir)
@@ -122,18 +124,18 @@ srf_files = [x for x in all_files if not 'HGT_ISBL' in x and not 'TMP_ISBL' in x
 print('Loading Surface variables')
 #ds = xr.open_mfdataset(srf_files,concat_dim='time',engine='pynio',lock=threading.Lock())
 ds = xr.open_mfdataset(srf_files,concat_dim='forecast_hour',engine='pynio',preprocess=lambda x: preprocess(x))
-ds = add_datetime_dataset(ds,local_time_offset)
+ds = add_datetime_dataset(ds)
 
 # Load upper atmosphere variables
 print('Loading upper air Temperature')
 ds_UA_T   = load_GEM_4d_var(PresLevs,UA_TMP,'TMP_P0_L100_GST0','TMP_',preprocess)
-ds_UA_T   = add_datetime_dataarray(ds_UA_T,local_time_offset)
+ds_UA_T   = add_datetime_dataarray(ds_UA_T)
 
 print('Loading upper air height at pressurelevels')
 ds_UA_HGT = load_GEM_4d_var(PresLevs,UA_HGT,'HGT_P0_L100_GST0','HGT_',preprocess)
 # Convert Geopotential height to geometric height (http://www.pdas.com/geopot.pdf)
 #ds_UA_HGT = ds_UA_HGT* 6371*1000 / (6371*1000/()-ds_UA_HGT)
-ds_UA_HGT = add_datetime_dataarray(ds_UA_HGT,local_time_offset)
+ds_UA_HGT = add_datetime_dataarray(ds_UA_HGT)
 
 # Merge together
 ds_UA = xr.merge([ds_UA_T,ds_UA_HGT])
@@ -161,7 +163,6 @@ dt_s = 1*60*60 # seconds (hard coded for now)
 
 print 'Renaming variables to CHM syntax'
 # Change names
-var_dic = {'time':'datetime','TMP_P0_L103_GST0':'t','RH_P0_L103_GST0':'rh','WDIR_P0_L103_GST0':'vw_dir','WIND_P0_L103_GST0':'u','DLWRF_P8_L1_GST0_acc':'Qli','DSWRF_P8_L1_GST0_acc':'Qsi','PRATE_P0_L1_GST0':'p','PRES_P0_L1_GST0':'press'}
 ds.rename(var_dic,inplace=True)
 
 print 'Converting units to CHM units'
@@ -192,55 +193,18 @@ ds['Qli'] = xr.concat([ds.Qli[0,:,:]*0-9999,Qli_wm2],dim='datetime').transpose('
 # Move to output dir
 os.chdir(output_dir)
 
-# REMOVE ALL previous files
-print('Deleting previous forcing files and config file!')
-files = os.listdir(output_dir)
-for file in files:
-    os.remove(file)
-
-# Export to netcdf (optional)
+# Export to netcdf
+nc_file_out = 'GEM_2_5km_west_'+str(ds.datetime[0].values)+'.nc'
 if export_netcdf:
     print('Writing netcdf file')
-    ds.to_netcdf('GEM_2_5km_west.nc',engine='netcdf4')
+    ds.to_netcdf(nc_file_out,engine='netcdf4')
 
-# Extract grid cells we want to export
-print 'Extracting cells within lat/long box'
-ds = ds.where((ds.gridlat_0>lat_r[0]) & (ds.gridlat_0<lat_r[1]) & (ds.gridlon_0>lon_r[0]) & (ds.gridlon_0<lon_r[1]), drop=True)
+# Move to input
+#os.chdir(download_dir)
 
-# Get small dataset of lat and long
-grid = ds[['gridlat_0', 'gridlon_0','HGT_P0_L1_GST0']]
-
-# Initalize dictionary of metadata
-meta = {}
-
-# Loop through each point within our lat long box
-for i in range(ds.coords['xgrid_0'].size):
-    for j in range(ds.coords['ygrid_0'].size):
-	sub_grid = grid.isel(xgrid_0=i, ygrid_0=j)
-        # Is this test needed here???
-	if ((sub_grid.gridlat_0>lat_r[0]) & (sub_grid.gridlat_0<lat_r[1]) & (sub_grid.gridlon_0>lon_r[0]) & (sub_grid.gridlon_0<lon_r[1])):	
-            # Select point
-	    sub_ds = ds.isel(xgrid_0=i, ygrid_0=j)
-            # Convert to dataframe
-	    df = sub_ds.to_dataframe()
-	    # Drop unwanted vars/coords 
-            df.drop(['HGT_P0_L1_GST0','xgrid_0','ygrid_0','gridlat_0','gridlon_0'], axis=1, inplace=True)
-	    # Write to ascii CHM format
- 	    df.to_csv('point_'+str(i)+'_'+str(j)+'.chm',sep='\t',date_format='%Y%m%dT%H%M%S')
-	    # Build dicting.json',cnary of point metadata
-	    utmcoords = utm.from_latlon(sub_grid.gridlat_0,sub_grid.gridlon_0, 11)
-	    meta['point_'+str(i)+'_'+str(j)] = {'file':output_dir+'/point_'+str(i)+'_'+str(j)+'.chm',
-		"easting":utmcoords[0],
-		"northing":utmcoords[1],
-		"elevation":sub_grid.HGT_P0_L1_GST0.values[0]}
-
-# Write out json file with metadata for these points
-print("Writing out CHM forcing json file")
-with open('GEM_forcing.json', 'w') as outfile:
-    json.dump(meta, outfile,indent=4, sort_keys=True)
-
-print("--- %s minutes ---" % ((time.time() - start_time)/60))
-
-
-print 'finished!'
+# Remove grib2 files
+#print('Cleaning up grib2 files')
+#files = os.listdir(download_dir)
+#for file in files:
+#    os.remove(file)
 
