@@ -6,6 +6,7 @@ scale_wind_vert::scale_wind_vert(config_file cfg)
 {
     depends("U_R");
 
+    optional("snowdepthavg");
     //provides("U_CanTop"); // Possible output, but commented out for speed
     //provides("U_CanMid");
     provides("U_2m_above_srf");
@@ -27,19 +28,27 @@ void scale_wind_vert::run(mesh_elem &face, boost::shared_ptr <global> global_par
 
     // Get height info
     double Z_R            = Atmosphere::Z_U_R; // Reference wind speed height [m] = 50.0 m
-    int LC                = face->get_parameter("landcover");
-    double Z_CanTop       = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
+
+    double Z_CanTop       = 0;
+
+    if(face->has_parameter("landcover") )
+    {
+        int LC                = face->get_parameter("landcover");
+        Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
+    }
     double Z_CanBot       = Z_CanTop/2.0; //global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".TrunkHeight"); // TODO: HARDCODED until we get from obs
     //double Z_CanMid       = (Z_CanTop+Z_CanBot)/2.0; // Mid height of canopy
-    double snowdepthavg   = face->face_data("snowdepthavg");
+    double snowdepthavg   = 0;
+    if(has_optional("snowdepthavg"))
+        snowdepthavg = face->face_data("snowdepthavg");
+
     // Snow depth check
     if (std::isnan(snowdepthavg)) // If it is not defined
         snowdepthavg = 0.0;
+
     double Z_2m_above_srf = snowdepthavg + 2.0; // (m)
 
-    // Get Canopy/Surface info
-    double LAI            = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
-    const double alpha    = LAI; // attenuation coefficient introduced by Inoue (1963) and increases with canopy density
+
 
     // Initialize stuff
     double U_2m_above_srf; // Wind speed 2 meters above the surface (ground or snow)
@@ -50,6 +59,13 @@ void scale_wind_vert::run(mesh_elem &face, boost::shared_ptr <global> global_par
 
     // If a Canopy exists
     if (Z_CanTop>0.0) {
+        // Get Canopy/Surface info
+
+        //asume we have LAI, otherwise it will cleanly bail if we don't
+        double LAI            = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
+        const double alpha    = LAI; // attenuation coefficient introduced by Inoue (1963) and increases with canopy density
+
+
         // Scale Z_R to Z_CanTop
         double U_CanTop = Atmosphere::log_scale_wind(U_R, Z_R, Z_CanTop, snowdepthavg);
 
