@@ -196,10 +196,11 @@ void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::
 void core::config_forcing(pt::ptree &value)
 {
     LOG_DEBUG << "Found forcing section";
+    LOG_DEBUG << "Reading meta data from config";
+    std::vector< std::pair<std::string, pt::ptree> > forcings;
 
-    //handle ALL the forcing files existing in a seperate json file.
-    //once inserted, we can handle like normal below
-    std::vector<std::string> to_remove;
+    size_t nstations=0;
+    timer c; c.tic();
     for (auto &itr : value)
     {
         if (itr.second.data().find(".json") != std::string::npos)
@@ -216,37 +217,34 @@ void core::config_forcing(pt::ptree &value)
                     BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("An included forcing json file cannot contain json sub-files."));
                 }
 
-                std::string param_name = jtr.first.data();
-                //replace the string config name with that config file
-                value.put_child(param_name, jtr.second);
+                std::string station_name = jtr.first.data();
+                forcings.push_back( make_pair(station_name, cfg.get_child(station_name) ));
+                ++nstations;
             }
-            to_remove.push_back(itr.first.data()); // save to remove later so we don't invalidate the iterators
         }
-
-
+        else
+        {
+            std::string station_name = itr.first.data();
+            forcings.push_back( make_pair(station_name, value.get_child(station_name) ));
+            ++nstations;
+        }
     }
 
-    //remove the key that held the filename as it's not a legal station, and will mess up the loop below
-    for(auto& itr : to_remove)
+    LOG_DEBUG << "Found # stations = " <<  nstations;
+    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+
+    LOG_DEBUG << "Reading forcing file data";
+    c.tic();
+
+    if (nstations != forcings.size())
     {
-        value.erase(itr);
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Somethign has gone wrong in forcing file read."));
     }
 
-    // first, read all the station metadata, but don't actually read the station data yet
+    _global->_stations.resize(nstations);
 
-    std::vector< std::pair<std::string, pt::ptree> > forcings;
-
-    LOG_DEBUG << "Reading meta data from config";
-    //loop over the list of forcing data
-    for (auto &itr : value)
-    {
-        std::string station_name = itr.first.data();
-        forcings.push_back( make_pair(station_name, value.get_child(station_name) ));
-    }
-
-    LOG_DEBUG << "Reading forcing files";
-    tbb::concurrent_vector<   boost::shared_ptr<station> > stations;
-    for(size_t i =0; i < forcings.size(); ++i)
+#pragma omp parallel for
+    for(size_t i =0; i < nstations; ++i)
     {
         auto& itr = forcings.at(i);
 
@@ -288,10 +286,22 @@ void core::config_forcing(pt::ptree &value)
             //ignore
         }
 
-        stations.push_back(s);
+
+        _global->_stations.at(i) = s;
     }
 
-    _global->insert_stations(stations);
+    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+    LOG_DEBUG << "Building dD spatial search tree";
+    c.tic();
+
+    //do a few things behind _global's back for efficiency.
+    for(size_t i =0; i < nstations; ++i)
+    {
+        auto s = _global->_stations.at(i);
+        _global->_dD_tree.insert(boost::make_tuple(global::Kernel::Point_2(s->x(), s->y()), s));
+    }
+    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+
     LOG_DEBUG << "Finished reading stations";
 
 }

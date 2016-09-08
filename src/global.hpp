@@ -76,14 +76,15 @@ private:
     var _variables;
 
     Tree _dD_tree; //spatial query tree
-
     //each station where observations are
     std::vector< boost::shared_ptr<station> > _stations;
+
 
 //   tbb::concurrent_vector< boost::shared_ptr<station> > _stations;
 
 protected:
     int _dt; //seconds
+
 
 public:
 

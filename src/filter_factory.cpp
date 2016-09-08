@@ -7,7 +7,7 @@
 
 filter_base* filter_factory::get(std::string ID, pt::ptree config)
 {
-    LOG_DEBUG << "Filter ID=" << ID;
+    LOG_VERBOSE << "Filter ID=" << ID;
 
     filter_base* filter = nullptr;
 

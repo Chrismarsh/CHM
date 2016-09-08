@@ -34,3 +34,4 @@ Doxyfile
 err.xml
 /tools/meshstats/*
 !/tools/meshstats/meshstats.py
+/src/version.h
