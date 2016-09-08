@@ -4,13 +4,16 @@ point_mode::point_mode(config_file cfg)
         : module_base(parallel::data)
 {
 
-     t = cfg.get<bool>("provide.t",true);
-     rh = cfg.get<bool>("provide.rh",true);
-     vw = cfg.get<bool>("provide.u",true);
-     p = cfg.get<bool>("provide.p",true);
-     ilwr = cfg.get<bool>("provide.ilwr",true);
-     iswr = cfg.get<bool>("provide.iswr",true);
+     t      = cfg.get<bool>("provide.t",true);
+     rh     = cfg.get<bool>("provide.rh",true);
+     U_R    = cfg.get<bool>("provide.U_R",true);
+     p      = cfg.get<bool>("provide.p",true);
+     ilwr   = cfg.get<bool>("provide.ilwr",true);
+     iswr   = cfg.get<bool>("provide.iswr",true);
      vw_dir = cfg.get<bool>("provide.vw_dir",true);
+     iswr_diffuse    = cfg.get<bool>("provide.iswr_diffuse ",true);
+     iswr_direct     = cfg.get<bool>("provide.iswr_direct ",true);
+
 
     if(t)
     {
@@ -24,10 +27,10 @@ point_mode::point_mode(config_file cfg)
         provides("rh");
     }
 
-    if(vw)
+    if(U_R)
     {
-        depends_from_met("u");
-        provides("vw");
+        depends_from_met("U_R");
+        provides("U_R");
     }
 
     if(vw_dir)
@@ -54,6 +57,17 @@ point_mode::point_mode(config_file cfg)
         provides("iswr");
     }
 
+    if(iswr_diffuse)
+    {
+        depends_from_met("iswr_diffuse");
+        provides("iswr_diffuse");
+    }
+
+    if(iswr_direct)
+    {
+        depends_from_met("iswr_direct");
+        provides("iswr_direct");
+    }
 
 }
 
@@ -78,13 +92,14 @@ void point_mode::run(mesh_elem &face, boost::shared_ptr <global> global_param)
         double srh = global_param->stations().at(0)->get("rh");
         face->set_face_data("rh", srh);
     }
-    if(vw)
+    //TODO: add option if has u (no filter applied)
+    if(U_R)
     {
-        double su = global_param->stations().at(0)->get("u");
+        double su = global_param->stations().at(0)->get("U_R");
 
-        //make sure we don't have zero windpseeds
+        //make sure we don't have zero wind speeds
         su = std::max(su,0.1);
-        face->set_face_data("vw",su);
+        face->set_face_data("U_R",su);
     }
 
     if(vw_dir)
@@ -110,5 +125,18 @@ void point_mode::run(mesh_elem &face, boost::shared_ptr <global> global_param)
         face->set_face_data("iswr", iswr);
 
     }
+    if(iswr_diffuse)
+    {
+        double iswr_diffuse = global_param->stations().at(0)->get("iswr_diffuse");
+        face->set_face_data("iswr_diffuse", iswr_diffuse);
+
+    }
+    if(iswr_direct)
+    {
+        double iswr_direct = global_param->stations().at(0)->get("iswr_direct");
+        face->set_face_data("iswr_direct", iswr_direct);
+
+    }
+
 }
 

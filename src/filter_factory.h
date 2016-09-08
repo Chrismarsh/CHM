@@ -8,6 +8,7 @@
 namespace pt = boost::property_tree;
 
 #include "macdonald_undercatch.h"
+#include "scale_wind_speed.h"
 class filter_factory
 {
 public:

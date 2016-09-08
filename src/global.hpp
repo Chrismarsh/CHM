@@ -25,7 +25,7 @@ namespace pt = boost::property_tree;
 #include <CGAL/Euclidean_distance.h>
 
 /**
- * Basin wide paramters such as transmissivity, solar elevation, solar aspec, etc.
+ * Basin wide parameters such as transmissivity, solar elevation, solar aspect, etc.
  * 
  **/
 class global
@@ -59,7 +59,7 @@ private:
     //solar azimuth in radians
     double _solar_az;
     
-    //aproximae lat and lon of the basin for solar radiation calculations
+    //approximate lat and lon of the basin for solar radiation calculations
     double _lat;
     double _lon;
     

@@ -21,6 +21,7 @@ ENDFOREACH(f)
 
 set(FILTER_SRCS
 		filters/macdonald_undercatch.cpp
+		filters/scale_wind_speed.cpp
 
 		CACHE INTERNAL "" FORCE
 		)
@@ -42,6 +43,8 @@ set(MODULE_SRCS
 		modules/interp_met/kunkel_rh.cpp
 		modules/interp_met/rh_from_obs.cpp
 		modules/interp_met/Longwave_from_obs.cpp
+		modules/constants/Atmosphere.cpp
+                modules/interp_met/Longwave_from_obs.cpp
 		modules/interp_met/Dist_tlapse.cpp
 
 		modules/point_mode.cpp
@@ -58,6 +61,8 @@ set(MODULE_SRCS
 		modules/Richard_albedo.cpp
 		modules/snowpack.cpp
 		modules/Gray_inf.cpp
+		modules/Simple_Canopy.cpp
+		modules/scale_wind_vert.cpp
 		${SNOBAL_SRC}
 
 		modules/threshold_p_phase.cpp
@@ -179,7 +184,7 @@ add_executable(
 	${FILTER_SRCS}
     ${MODULE_SRCS}
 	${LIBMAW_SRCS}
- )
+	)
 
 target_link_libraries(
 	CHM

@@ -114,6 +114,7 @@ class CurrentMeteo {
 		double psi_s;    ///< Stability correction for scalar heat fluxes
 		double iswr;     ///< Incoming SHORTWAVE radiation (W m-2)
 		double rswr;     ///< Reflected SHORTWAVE radiation (W m-2) divide this value by the ALBEDO to get iswr
+	    double ilwr;     ///< Incomding LONGWAVE radiation (W m-2)
 		double mAlbedo;  ///< Measured snow albedo
 		double diff;     ///< Diffuse radiation from the sky (W m-2)
 		double dir_h;    ///< Horizontal direct radiation from the sky (W m-2)

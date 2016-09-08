@@ -109,7 +109,7 @@ void global::solar_el_az()
     //find the longitude of the sun
     double lon = v + w;
 
-        //compute the ecliptic rectangular coordinates
+    //compute the ecliptic rectangular coordinates
     double xeclip = r*cos(lon*(M_PI/180.));
     double yeclip = r*sin(lon*(M_PI/180.));
     double zeclip = 0.0;
@@ -119,7 +119,7 @@ void global::solar_el_az()
     double yequat = yeclip*cos(oblecl*(M_PI/180.))+zeclip*sin(oblecl*(M_PI/180.));
     double zequat = yeclip*sin(23.4406*(M_PI/180.))+zeclip*cos(oblecl*(M_PI/180.));
 
-        //convert equatorial rectangular coordinates to RA and Decl:
+    //convert equatorial rectangular coordinates to RA and Decl:
     r = sqrt(xequat*xequat + yequat*yequat + zequat*zequat)-(Alt/149598000.0); //roll up the altitude correction
     double RA = atan2(yequat,xequat)*(180./M_PI);
     double delta = asin(zequat/r)*(180./M_PI);
@@ -131,7 +131,7 @@ void global::solar_el_az()
     double GMST0=fmod(L+180.,360.)/15.;
     double SIDTIME = GMST0 + UTH + Lon/15.;
 
-        //Replace RA with hour angle HA
+    //Replace RA with hour angle HA
     double HA = (SIDTIME*15. - RA);
 
     //convert to rectangular coordinate system
