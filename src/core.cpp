@@ -243,12 +243,14 @@ void core::config_forcing(pt::ptree &value)
 
     _global->_stations.resize(nstations);
 
+    tbb::concurrent_vector<  boost::shared_ptr<station> > pstations;
+
 #pragma omp parallel for
     for(size_t i =0; i < nstations; ++i)
     {
         auto& itr = forcings.at(i);
 
-        std::string station_name = itr.first;//.data();
+        std::string station_name = itr.first;//.data(); n
 
         boost::shared_ptr<station> s = boost::make_shared<station>();
 
@@ -286,8 +288,9 @@ void core::config_forcing(pt::ptree &value)
             //ignore
         }
 
+        pstations.push_back(s);
 
-        _global->_stations.at(i) = s;
+
     }
 
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
@@ -297,7 +300,8 @@ void core::config_forcing(pt::ptree &value)
     //do a few things behind _global's back for efficiency.
     for(size_t i =0; i < nstations; ++i)
     {
-        auto s = _global->_stations.at(i);
+        auto s = pstations.at(i);
+        _global->_stations.at(i) = s;
         _global->_dD_tree.insert(boost::make_tuple(global::Kernel::Point_2(s->x(), s->y()), s));
     }
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
