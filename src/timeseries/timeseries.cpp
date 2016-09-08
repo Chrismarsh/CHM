@@ -241,7 +241,7 @@ void timeseries::open(std::string path)
             << boost::errinfo_errno(errno)
             << boost::errinfo_file_name(path));
 
-    LOG_DEBUG << "Parsing file " + path;
+    LOG_VERBOSE << "Parsing file " + path;
     bool done = false;
     token.set_regex("[^,\\r\\n\\s]+"); //anything but whitespace or ,
     //read in the file, skip any blank lines at the top of the file

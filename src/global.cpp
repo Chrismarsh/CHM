@@ -170,6 +170,21 @@ void global::insert_station(boost::shared_ptr<station> s)
     _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
 //    _dD_NN_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
 }
+
+void global::insert_stations(tbb::concurrent_vector< boost::shared_ptr<station> >& stations)
+{
+    _stations.resize( stations.size() );
+#pragma omp for
+    for(size_t i = 0; i< stations.size(); ++i)
+    {
+        boost::shared_ptr<station> s (stations.at(i));
+        _stations.at(i) = s;
+        _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
+    }
+
+//    _dD_NN_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
+}
+
 std::vector< boost::shared_ptr<station> > global::get_stations_in_radius(double x, double y, double radius )
 {
     // define exact circular range query  (fuzziness=0)
@@ -204,7 +219,7 @@ std::vector< boost::shared_ptr<station> > global::nearest_station(double x, doub
 
 }
 
-std::vector< boost::shared_ptr<station> > global::stations()
+std::vector< boost::shared_ptr<station> >global::stations()
 {
     return _stations;
 }

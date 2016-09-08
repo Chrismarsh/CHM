@@ -1,11 +1,14 @@
 #pragma once
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+
 
 #include <string>
-
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/property_tree/ptree.hpp>
 namespace pt = boost::property_tree;
+
+
+#include <tbb/concurrent_vector.h>
 
 #include "interpolation.h"
 #include "station.hpp"
@@ -77,6 +80,8 @@ private:
     //each station where observations are
     std::vector< boost::shared_ptr<station> > _stations;
 
+//   tbb::concurrent_vector< boost::shared_ptr<station> > _stations;
+
 protected:
     int _dt; //seconds
 
@@ -108,6 +113,12 @@ public:
      * @param s
      */
     void insert_station(boost::shared_ptr<station> s);
+
+    /**
+ * Inserts new stations for a vector of stations
+ * @param s
+ */
+    void insert_stations(tbb::concurrent_vector< boost::shared_ptr<station> >& stations);
 
     /**
      * Returns a set of stations within the search radius (meters) centered on the point x,y
