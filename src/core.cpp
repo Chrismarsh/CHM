@@ -111,7 +111,37 @@ void core::config_options(const pt::ptree &value)
         _notification_script = *notify_sh;
     }
 
-    _global->station_search_radius = value.get<double>("station_search_radius",1000);
+    auto radius = value.get_optional<double>("station_search_radius");
+    auto N = value.get_optional<double>("station_N_nearest");
+
+    if( radius && N)
+    {
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Cannot have both station_search_radius and station_N_nearest set."));
+    }
+
+    if(radius)
+    {
+        _global->station_search_radius = *radius;
+        _global->get_stations = boost::bind( &global::get_stations_in_radius,_global,_1,_2, *radius);
+    }
+    else
+    {
+        int n = 5;
+        if(N)
+        {
+            if( N < 2)
+            {
+                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >=2"));
+            }
+            n = *N;
+        } else{
+            LOG_WARNING << "Using N=5 nearest stations as default.";
+        }
+
+        _global->N = n;
+        _global->get_stations = boost::bind( &global::nearest_station,_global,_1,_2, n);
+    }
+
 
 }
 
@@ -563,6 +593,8 @@ void core::config_global(const pt::ptree &value)
     LOG_DEBUG << "Found global section";
 
     _global->_utc_offset = value.get<double>("UTC_offset");
+
+
 
 }
 

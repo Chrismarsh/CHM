@@ -33,6 +33,7 @@
 #include <boost/tuple/tuple.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/bind.hpp>
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 

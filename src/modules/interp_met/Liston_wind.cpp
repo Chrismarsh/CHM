@@ -24,7 +24,7 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<lwinddata>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
         face->coloured = false;
     }
 
@@ -135,8 +135,7 @@ void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
 
         std::vector<boost::tuple<double, double, double> > u;
         std::vector<boost::tuple<double, double, double> > v;
-        for (auto &s : global_param->get_stations_in_radius(face->get_x(), face->get_y(),
-                                                            global_param->station_search_radius))
+        for (auto &s : global_param->get_stations(face->get_x(), face->get_y()))
         {
             if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
                 continue;

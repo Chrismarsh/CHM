@@ -19,7 +19,7 @@ void Dodson_NSA_ta::init(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
 void Dodson_NSA_ta::run(mesh_elem &face, boost::shared_ptr<global> global_param)
@@ -37,7 +37,7 @@ void Dodson_NSA_ta::run(mesh_elem &face, boost::shared_ptr<global> global_param)
     std::vector< boost::tuple<double, double, double> > lowered_values;
 
 
-    for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
+    for (auto& s : global_param->get_stations( face->get_x(), face->get_y()))
     {
         if( is_nan(s->get("t")))
             continue;

@@ -5,6 +5,8 @@
 #include <string>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/function.hpp>
+
 namespace pt = boost::property_tree;
 
 
@@ -62,7 +64,14 @@ private:
     int _dt; //seconds
     bool _is_geographic;
 
+
+    //if radius selection for stations is chosen this holds that
+    double radius;
+    double N; // meters, radius for station search
+
 public:
+
+    boost::function< std::vector< boost::shared_ptr<station> > ( double, double) > get_stations;
 
     //approximate UTC offset
     int _utc_offset;

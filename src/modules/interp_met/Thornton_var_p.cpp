@@ -27,7 +27,7 @@ void Thornton_var_p::init(mesh domain, boost::shared_ptr<global> global_param)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius).size());
+        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
 void Thornton_var_p::run(mesh_elem& face, boost::shared_ptr<global> global_param)
@@ -46,7 +46,7 @@ void Thornton_var_p::run(mesh_elem& face, boost::shared_ptr<global> global_param
     //otherwise, just used the stored lapse rate
     if(last_update != global_param->posix_time() )
     {
-        for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
+        for (auto& s : global_param->get_stations( face->get_x(), face->get_y()))
         {
             if( is_nan(s->get("p")))
                 continue;
@@ -97,7 +97,7 @@ void Thornton_var_p::run(mesh_elem& face, boost::shared_ptr<global> global_param
     //now do the full interpolation
     std::vector< boost::tuple<double, double, double> > ppt;
     std::vector< boost::tuple<double, double, double> > station_z;
-    for (auto& s : global_param->get_stations_in_radius( face->get_x(), face->get_y(), global_param->station_search_radius))
+    for (auto& s : global_param->get_stations( face->get_x(), face->get_y()))
     {
         if( is_nan(s->get("t")))
             continue;
