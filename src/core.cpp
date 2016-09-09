@@ -398,6 +398,7 @@ void core::config_meshes(const pt::ptree &value)
         math::gis::distance = &math::gis::distance_UTM;
     }
 
+    bool triarea_found = false;
     //see if we have additional parameter files to load
     try
     {
@@ -414,6 +415,10 @@ void core::config_meshes(const pt::ptree &value)
                 //use put to ensure there are no duplciate parameters...
                 std::string key = ktr.first.data();
                 mesh.put_child( "parameters." + key ,ktr.second);
+
+                if( key == "area")
+                    triarea_found = true;
+
                 LOG_DEBUG << "Inserted parameter " << ktr.first.data() << " into the config tree.";
             }
 
@@ -423,6 +428,10 @@ void core::config_meshes(const pt::ptree &value)
     catch(pt::ptree_bad_path &e)
     {
         LOG_DEBUG << "No addtional parameters found in mesh section.";
+    }
+    if(is_geographic && !triarea_found)
+    {
+        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
     }
 
     try

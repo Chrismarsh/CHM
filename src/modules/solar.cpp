@@ -5,8 +5,6 @@ solar::solar(config_file cfg)
 {
     provides("solar_el");
     provides("solar_az");
-
-
 }
 solar::~solar()
 {

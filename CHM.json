@@ -28,30 +28,30 @@
   },
   "modules": //important these are [ ]
   [
-    //met interp
-    "solar",
-     "Liston_wind",
-    "scale_wind_vert",
-//    "Marsh_shading_iswr",
-//    "iswr_from_obs",
-    "Burridge_iswr",
-    "slope_iswr",
-     "Liston_monthly_llra_ta",
-     "kunkel_rh",
-     "Thornton_p",
-//    "point_mode",
-
-    //met process
-    "Walcek_cloud",
-     "Sicart_ilwr",
-    "Harder_precip_phase",
-//     "threshold_p_phase",
-
-    //processes
-    "snobal",
-    "Gray_inf",
-//    "snowpack"
-     "Richard_albedo"
+//    //met interp
+    "solar"
+//     "Liston_wind",
+//    "scale_wind_vert",
+////    "Marsh_shading_iswr",
+////    "iswr_from_obs",
+//    "Burridge_iswr",
+//    "slope_iswr",
+//     "Liston_monthly_llra_ta",
+//     "kunkel_rh",
+//     "Thornton_p",
+////    "point_mode",
+//
+//    //met process
+//    "Walcek_cloud",
+//     "Sicart_ilwr",
+//    "Harder_precip_phase",
+////     "threshold_p_phase",
+//
+//    //processes
+//    "snobal",
+//    "Gray_inf",
+////    "snowpack"
+//     "Richard_albedo"
 
   ],
 
@@ -86,12 +86,12 @@
   "meshes":
   {
 //    "mesh":"meshes/wolf1m_fill.mesh"
-    "mesh":"meshes/wolf_lidar1.mesh",
+    "mesh":"meshes/GEM_west_srtm.mesh",
 //    //map internal variables/parameters to the .mesh file's parameter section.
     "parameters":
     {
 //      "file":"meshes/granger30_liston_curvature.mesh"
-      "file":"meshes/wolf_lidar1.param"
+      "file":"meshes/GEM_west_srtm.param"
     }
 //    "initial_conditions":
 //    {
