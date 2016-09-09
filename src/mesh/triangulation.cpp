@@ -26,6 +26,7 @@ triangulation::triangulation()
     _num_faces = 0;
     _vtk_unstructuredGrid = nullptr;
     _is_geographic = false;
+    _UTM_zone = 0;
 }
 
 #ifdef MATLAB
@@ -67,6 +68,10 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
+int triangulation::UTM_zone()
+{
+    return _UTM_zone;
+}
 bool triangulation::is_geographic()
 {
     return _is_geographic;
@@ -155,6 +160,10 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     if( is_geographic == 1)
         _is_geographic = true;
 
+    if(!_is_geographic)
+    {
+        _UTM_zone = mesh.get<int>("mesh.UTM_zone");
+    }
 
 
     for (auto &itr : mesh.get_child("mesh.vertex"))

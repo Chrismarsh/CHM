@@ -259,7 +259,17 @@ public:
 
     void write_vtp(std::string file_name);
 
+	/**
+	 * Returns true if this is a geogrphic mesh
+	 * @return
+	 */
 	bool is_geographic();
+
+	/**
+	 * If this is a UTM mesh, returns the UTM zone number used to generate the mesh. Negative in southern hemisphere
+	 * @return
+	 */
+	int UTM_zone();
 
 	//holds the spatial search tree
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
@@ -270,6 +280,7 @@ private:
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
+	int _UTM_zone;
 	//holds the vtk ugrid if we are outputing to vtk formats
 	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
 

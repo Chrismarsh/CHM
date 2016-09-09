@@ -103,8 +103,6 @@ def main():
 
     # #######
 
-
-
     gt = src_ds.GetGeoTransform()
     # x,y origin
     xmin = gt[0]
@@ -415,6 +413,10 @@ def main():
     triangles_to_fix = []
     mesh['mesh']['elem'] = []
     mesh['mesh']['is_geographic'] = is_geographic
+
+    #need to save the UTM coordinates so-as to be able to generate lat/long of points if needed later (e.g., CHM)
+    if(not is_geographic):
+        mesh['mesh']['UTM_zone'] = srs.GetUTMZone()  #negative in southern hemisphere
 
     # holds paratmers and initial conditions for CHM
     params = {}

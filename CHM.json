@@ -9,7 +9,7 @@
 //      "output":"UpperClearing",
 //      "forcing":"UpperClearing"
 //    },
-    "station_search_radius":100000,
+//    "station_search_radius":100000,
     "station_N_nearest":13,
     "interpolant":"idw",
     "notification_script":"./finished.sh",
@@ -29,7 +29,9 @@
   "modules": //important these are [ ]
   [
     //met interp
+    "solar",
      "Liston_wind",
+    "scale_wind_vert",
 //    "Marsh_shading_iswr",
 //    "iswr_from_obs",
     "Burridge_iswr",
@@ -59,7 +61,8 @@
   // will remove the dependency on B from A.
   "remove_depency":
   {
-    "Richard_albedo":"snobal"
+    "Richard_albedo":"snobal",
+    "scale_wind_vert":"snobal"
   },
   "config":
   {
@@ -83,13 +86,13 @@
   "meshes":
   {
 //    "mesh":"meshes/wolf1m_fill.mesh"
-    "mesh":"meshes/fortress1.mesh"
+    "mesh":"meshes/wolf_lidar1.mesh",
 //    //map internal variables/parameters to the .mesh file's parameter section.
-//    "parameters":
-//    {
-////      "file":"meshes/granger30_liston_curvature.mesh"
-//      "file":"meshes/wolf_lidar1.param"
-//    },
+    "parameters":
+    {
+//      "file":"meshes/granger30_liston_curvature.mesh"
+      "file":"meshes/wolf_lidar1.param"
+    }
 //    "initial_conditions":
 //    {
 //      "file":"meshes/wolf_lidar1.ic"
@@ -219,13 +222,13 @@
         "file":"for_1999-2002",  //fr_sep_15_2006
         "easting": 502601.621,
         "northing":   6717779.327 ,
-        "elevation": 739
-        // "filter":
-        // {
-        //   "macdonald_undercatch":
-        //   {
-        //     "variable":"p"
-        //   }
+        "elevation": 739,
+        "filter": {
+          "scale_wind_speed": {
+            "Z_F": 10,
+            "variable": "u"
+          }
+        }
       }
 
     

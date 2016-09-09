@@ -129,11 +129,11 @@ void core::config_options(const pt::ptree &value)
         int n = 5;
         if(N)
         {
-            if( N < 2)
-            {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >=2"));
-            }
             n = *N;
+            if( n < 2)
+            {
+                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >=2. N = " + std::to_string(n)));
+            }
         } else{
             LOG_WARNING << "Using N=5 nearest stations as default.";
         }

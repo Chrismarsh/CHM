@@ -130,7 +130,9 @@ void solar::init(mesh domain, boost::shared_ptr<global> global_param)
 
         OGRSpatialReference monUtm;
         monUtm.SetWellKnownGeogCS("WGS84");
-        monUtm.SetUTM(29, true);
+
+        int UTM = domain->UTM_zone();
+        monUtm.SetUTM( abs(UTM) , UTM > 0); //UTM > 0 => northern hemisphere. SetUTM takes 2nd arg = true for Northern hemisphere
 
         OGRSpatialReference monGeo;
         monGeo.SetWellKnownGeogCS("WGS84");
