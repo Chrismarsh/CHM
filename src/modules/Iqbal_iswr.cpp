@@ -11,6 +11,7 @@ Iqbal_iswr::Iqbal_iswr(config_file cfg)
     depends("t");
     depends("rh");
     depends("cloud_frac");
+    depends("solar_el");
 
     provides("iswr");
     provides("iswr_direct");
@@ -27,7 +28,7 @@ void Iqbal_iswr::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 {
     double pressure = mio::Atmosphere::stdAirPressure(face->get_z());//101325.0;
     double altitude = face->get_z();
-    double sun_elevation = global_param->solar_el();
+    double sun_elevation = face->face_data("solar_el");
     sun_elevation = sun_elevation < 0? 0. : sun_elevation;
 
     if (sun_elevation < 3)

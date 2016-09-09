@@ -351,7 +351,7 @@ void core::config_meshes(const pt::ptree &value)
     //so the modules and future code can blindly use them without worrying about these things
 
     bool is_geographic = (bool)mesh.get<int>("mesh.is_geographic");
-
+    _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
     if(is_geographic)
     {
 //        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_latlong,_1,_2,_3);
@@ -562,9 +562,6 @@ void core::config_global(const pt::ptree &value)
 {
     LOG_DEBUG << "Found global section";
 
-    _global->_lat = value.get<double>("latitude");
-
-    _global->_lon = value.get<double>("longitude");
     _global->_utc_offset = value.get<double>("UTC_offset");
 
 }
@@ -1223,7 +1220,22 @@ void core::_determine_module_dep()
                         edge e;
                         e.variable = *i;
 
-                        boost::add_edge(itr.first->IDnum, module.first->IDnum, e, g);
+                        //check if we need to ignore this edge as a result of user specific overrdige
+                        //this will avoid a cycle is this exists.
+                        bool ignore = false;
+                        for (auto o : _overrides)
+                        {
+                            if (o.first == module.first->ID &&
+                                o.second == itr.first->ID)
+                            {
+                                ignore = true;
+                                LOG_WARNING << "Skipped adding edge between " << o.first << " and " << o.second <<
+                                            " for var=" << *i << " because of user override" << std::endl;
+                            }
+                        }
+
+                        if (!ignore)
+                            boost::add_edge(itr.first->IDnum, module.first->IDnum, e, g);
 
                         //output_graph << itr.first->IDnum << "->" << module.first->IDnum << " [label=\"" << *i << "\"];" << std::endl;
                         //curr_mod_depends[*i]++; //ref count our variable
@@ -1306,7 +1318,48 @@ void core::_determine_module_dep()
     gvpr.close();
 
     std::deque<int> topo_order;
-    boost::topological_sort(g, std::front_inserter(topo_order));
+    try
+    {
+        boost::topological_sort(g, std::front_inserter(topo_order));
+    }
+    catch(...)
+    {
+
+        std::ostringstream ssdot;
+        boost::write_graphviz(ssdot, g, boost::make_label_writer(boost::get(&vertex::name, g)),
+                              make_edge_writer(boost::get(&edge::variable, g)));
+        std::string dot(ssdot.str());
+        size_t pos = dot.find("\n");
+
+        if (pos == std::string::npos)
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info("Unable to generate dot file"));
+        pos++;
+
+//    Insert the following to make the chart go right to left, landscape
+//    rankdir=LR;
+//    {
+//        node [shape=plaintext, fontsize=16];
+//        "Module execution order"->"";
+//    }
+        dot.insert(pos,
+                   "rankdir=LR;\n{\n\tnode [shape=plaintext, fontsize=16];\n\t\"Module execution order\"->\"\";\n}\nsplines=polyline;\n");
+
+        std::ofstream file;
+        file.open("modules.dot.tmp");
+        file << dot;
+        file.close();
+
+        //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
+        std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp");
+        std::system("dot -Tpdf modules.dot -o modules.pdf");
+        std::remove("modules.dot.tmp");
+        std::remove("filter.gvpr");
+
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Module graph must be a DAG. Please review modules.pdf to determine where the cycle occured."));
+
+    }
+
+
 
 
     std::ostringstream ssdot;
@@ -1491,7 +1544,6 @@ void core::run()
 
             _global->_current_date = _global->_stations.at(0)->now().get_posix();
 
-            _global->update();
 
             if (!_enable_ui)
             {

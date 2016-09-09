@@ -15,29 +15,9 @@ Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
 
 void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param)
 {
-    double A = global_param->solar_az();
-    double E = global_param->solar_el();
 
-    if (global_param->solar_el() < 5)
-    {
-        #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
-        {
-            auto face = domain->face(i);
-            face->set_face_data("z_prime", 0); //unshadowed
-            face->set_face_data("shadow", 0);
-        }
-        return;
-    }
-    //euler rotation matrix K
-    arma::mat K;
-    // eqns(6) & (7) in Montero
-    double z0 = M_PI - A * M_PI / 180.0;
-    double q0 = M_PI / 2.0 - E * M_PI / 180.0;
 
-    K << cos(z0) << sin(z0) << 0 << arma::endr
-            << -cos(q0) * sin(z0) << cos(q0) * cos(z0) << sin(q0) << arma::endr
-            << sin(q0) * sin(z0) << -cos(z0) * sin(q0) << cos(q0) << arma::endr;
+
 
 
     //compute the rotation of each vertex
@@ -49,6 +29,26 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
         auto vert = domain->vertex(i);
+
+
+        double A =  vert->face()->face_data("solar_az");
+        double E = vert->face()->face_data("solar_el");
+
+        if (E < 5)
+            continue;
+
+
+        //euler rotation matrix K
+        arma::mat K;
+        // eqns(6) & (7) in Montero
+        double z0 = M_PI - A * M_PI / 180.0;
+        double q0 = M_PI / 2.0 - E * M_PI / 180.0;
+
+        K << cos(z0) << sin(z0) << 0 << arma::endr
+          << -cos(q0) * sin(z0) << cos(q0) * cos(z0) << sin(q0) << arma::endr
+          << sin(q0) * sin(z0) << -cos(z0) * sin(q0) << cos(q0) << arma::endr;
+
+
         vertex_data* vf = vert->make_module_data<vertex_data>(ID);
 
         arma::vec coord(3);
@@ -66,12 +66,20 @@ void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param
         vert->set_point(vf->prj_vertex); //modify the underlying triangulation to reflect the rotated vertices
     }
 
+
     auto BBR = domain->AABB(x_AABB,y_AABB);
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
+        double E = domain->face(i)->face_data("solar_el");
+        if (E < 5)
+        {
+            face->set_face_data("z_prime", 0); //unshadowed
+            face->set_face_data("shadow", 0);
+            continue;
+        }
 
         for (size_t j = 0; j < BBR->n_rows; j++)
         {

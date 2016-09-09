@@ -147,7 +147,7 @@ void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_pa
 
     Mdata.diff      = face->face_data("iswr_diffuse");
     Mdata.dir_h     = face->face_data("iswr_direct");
-    Mdata.elev      = global_param->solar_el()*mio::Cst::to_rad;
+    Mdata.elev      = face->face_data("solar_el")*mio::Cst::to_rad;
 
 //    Mdata.tss_a12h = Constants::undefined;
 //    Mdata.tss_a24h = Constants::undefined;

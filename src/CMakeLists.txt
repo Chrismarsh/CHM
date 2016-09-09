@@ -66,8 +66,10 @@ set(MODULE_SRCS
 
 		modules/threshold_p_phase.cpp
 		${SNOWPACK_SRCS}
-		CACHE INTERNAL "" FORCE
-		)
+
+		modules/solar.cpp
+
+		CACHE INTERNAL "" FORCE)
 
 
 set(CHM_SRCS
@@ -137,7 +139,7 @@ set (EXT_HEADER_FILES
         ${CGAL_INCLUDE_DIRS}
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
 		${CURSES_INCLUDE_DIR}
-
+		${GDAL_INCLUDE_DIR}
 		CACHE INTERNAL "" FORCE
     )
 
@@ -152,7 +154,7 @@ set( LIB_FILES
         ${VTK_LIBRARIES}
         ${LAPACK_LIBRARIES}
 		${CURSES_LIBRARIES}
-
+		${GDAL_LIBRARY}
 		CACHE INTERNAL "" FORCE
 )
 

@@ -124,7 +124,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
     double Zvent            = 0.75; //", "0.0", "1.0", "ventilation wind speed height (z/Ht)", "()", &Zvent);
     double unload_t         = 1.0; //", "-10.0", "20.0", "if ice-bulb temp >= t : canopy snow is unloaded as snow", "(°C)", &unload_t);
     double unload_t_water   = 4.0; //", "-10.0", "20.0", "if ice-bulb temp >= t: canopy snow is unloaded as water", "(°C)", &unload_t_water);
-    double SolAng           = global_param->solar_el() * mio::Cst::to_rad; // degrees to radians (assumed horizontal)
+    double SolAng           = face->face_data("solar_el") * mio::Cst::to_rad; // degrees to radians (assumed horizontal)
     double cosxs            = face->face_data("solar_angle"); // "cosine of the angle of incidence on the slope", "()"
     double cosxsflat        = cos(SolAng); // "cosine of the angle of incidence on the horizontal"
     double Surrounding_Ht   = data->CanopyHeight; //""[0.1, 0.25, 1.0]", "0.001", "100.0", "surrounding canopy height", "()", &Surrounding_Ht);
@@ -560,7 +560,8 @@ void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
         auto d = face->make_module_data<Simple_Canopy::data>(ID);
 
         // Check if Canopy exists at this face/triangle
-        if(face->has_parameter("landcover")) {
+        if(face->has_parameter("landcover"))
+        {
             int LC = face->get_parameter("landcover");
 
             // Get Canopy type (CRHM canop classifcation: Canopy, Clearing, or Gap)

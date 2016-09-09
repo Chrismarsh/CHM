@@ -54,40 +54,19 @@ class global
     friend class core;
     
 private:
-    //solar elevation in radians
-    double _solar_el;
-    //solar azimuth in radians
-    double _solar_az;
-    
-    //approximate lat and lon of the basin for solar radiation calculations
-    double _lat;
-    double _lon;
-    
-    //approximate UTC offset
-    int _utc_offset;
-    
     boost::posix_time::ptime _current_date;
-    
-    void solar_el_az();
-    
-    //updates the internal variables 
-    void update();
-    
     var _variables;
-
     Tree _dD_tree; //spatial query tree
     //each station where observations are
     std::vector< boost::shared_ptr<station> > _stations;
-
-
-//   tbb::concurrent_vector< boost::shared_ptr<station> > _stations;
-
-protected:
     int _dt; //seconds
-
+    bool _is_geographic;
 
 public:
 
+    //approximate UTC offset
+    int _utc_offset;
+    bool is_geographic();
     global();
     int year();
     int day();
@@ -102,8 +81,7 @@ public:
     int dt();
     boost::posix_time::ptime posix_time();
     uint64_t posix_time_int();
-    double solar_el();
-    double solar_az();
+
 
     double station_search_radius;
     bool first_time_step;
@@ -138,7 +116,6 @@ public:
      * @return
      */
     std::vector< boost::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
-
 
 
     std::vector< boost::shared_ptr<station> > stations();

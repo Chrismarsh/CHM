@@ -6,6 +6,7 @@ iswr_from_obs::iswr_from_obs(config_file cfg)
         : module_base(parallel::data)
 {
     depends_from_met("Qsi");
+    depends("solar_el");
 
     provides("iswr_direct");
     provides("iswr_diffuse");
@@ -46,7 +47,7 @@ void iswr_from_obs::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 
     double splitting_coef = 0.0;
 
-    double elevation = global_param->solar_el();
+    double elevation = face->face_data("solar_el");
     double iswr_modeled = 1375.0; //top of atmosphere
     double elevation_threshold = 3.0;
 

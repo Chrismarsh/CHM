@@ -38,6 +38,7 @@ namespace pt = boost::property_tree;
 #include "Simple_Canopy.hpp"
 #include "Dist_tlapse.hpp"
 #include "scale_wind_vert.hpp"
+#include "solar.hpp"
 
 class module_factory
 {

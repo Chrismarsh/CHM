@@ -6,7 +6,7 @@ Burridge_iswr::Burridge_iswr(config_file cfg)
 {
 
     depends("cloud_frac");
-
+    depends("solar_el");
     provides("iswr");
     provides("iswr_diffuse");
     provides("iswr_direct");
@@ -20,7 +20,8 @@ Burridge_iswr::~Burridge_iswr()
 
 void Burridge_iswr::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 {
-    double cosZ = cos( (90.0-global_param->solar_el()) *mio::Cst::to_rad);
+    double solar_el = face->face_data("solar_el");
+    double cosZ = cos( (90.0-solar_el) *mio::Cst::to_rad);
 
 //    double aspect_south0 = face->aspect() * mio::Cst::to_deg;
 //    if (aspect_south0 >= 180.0)

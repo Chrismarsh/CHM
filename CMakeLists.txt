@@ -192,6 +192,7 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
+find_package(GDAL REQUIRED)
 
 #find_package(MeteoIO REQUIRED)
 #find_package(Libsnowpack REQUIRED)

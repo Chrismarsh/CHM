@@ -65,6 +65,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new Dist_tlapse(config);
     else if (ID == "scale_wind_vert")
         mod = new scale_wind_vert(config);
+    else if (ID == "solar")
+        mod = new solar(config);
 
     if(mod == nullptr)
     {

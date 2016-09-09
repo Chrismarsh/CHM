@@ -7,6 +7,10 @@ slope_iswr::slope_iswr(config_file cfg)
     depends("iswr_diffuse");
     depends("iswr_direct");
 
+    depends("solar_el");
+    depends("solar_az");
+
+
     provides("iswr");
     provides("iswr_direct");
     provides("solar_angle");
@@ -21,8 +25,8 @@ void slope_iswr::run(mesh_elem& face, boost::shared_ptr<global> global_param)
 {
     
 
-    double A = global_param->solar_az() * mio::Cst::to_rad;
-    double E = global_param->solar_el() * mio::Cst::to_rad;
+    double A = face->face_data("solar_az") * mio::Cst::to_rad;
+    double E = face->face_data("solar_el") * mio::Cst::to_rad;
     
     //radiation data
     //solar vector
