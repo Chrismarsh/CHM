@@ -1693,7 +1693,7 @@ void core::run()
                                 {
                                     #pragma omp task
                                     {
-                                        std::string base_name = itr.fname + std::to_string(current_ts);
+                                        std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
 
                                         if (jtr == output_info::mesh_outputs::vtu  )
                                         {

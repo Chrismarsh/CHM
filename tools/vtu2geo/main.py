@@ -4,6 +4,7 @@ from osgeo import gdal,ogr,osr
 import glob
 import imp
 import sys
+import xml.etree.ElementTree as ET
 
 # Print iterations progress
 # http://stackoverflow.com/a/34325723/410074
@@ -48,13 +49,20 @@ def main():
     parameters = X.parameters
     pixel_size = X.pixel_size
 
+    is_geographic = False
+    if hasattr(X,'is_geographic'):
+        is_geographic = X.is_geographic
+
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
-    files =  glob.glob(input_path + base+'*.vtu')
+    pvd = ET.parse(input_path)
+    pvd = pvd.findall(".//*[@file]")
 
     iter=1
-    for path in files:
-        printProgress(iter,len(files))
+    for vtu in pvd:
+
+        path = input_path[:input_path.rfind('/')+1] + vtu.get('file')
+        printProgress(iter,len(pvd))
         reader.SetFileName(path)
         reader.Update()
 
@@ -68,9 +76,34 @@ def main():
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(EPSG)
 
+        srsin = osr.SpatialReference()
+        srsin.ImportFromEPSG(EPSG)
+        #output conic equal area for geotiff if we have geographic input
+        srsout = osr.SpatialReference()
+        srsout.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
+                             "GEOGCS[\"GCS_North_American_1983\",         "
+                             "DATUM[\"North_American_Datum_1983\",            "
+                             " SPHEROID[\"GRS_1980\",6378137,298.257222101]],         "
+                             "PRIMEM[\"Greenwich\",0],        "
+                             " UNIT[\"Degree\",0.017453292519943295]],     "
+                             "PROJECTION[\"Albers_Conic_Equal_Area\"],     "
+                             "PARAMETER[\"False_Easting\",0],    "
+                             " PARAMETER[\"False_Northing\",0],     "
+                             "PARAMETER[\"longitude_of_center\",-96],     "
+                             "PARAMETER[\"Standard_Parallel_1\",20],     "
+                             "PARAMETER[\"Standard_Parallel_2\",60],     "
+                             "PARAMETER[\"latitude_of_center\",40],     "
+                             "UNIT[\"Meter\",1],     "
+                             "AUTHORITY[\"EPSG\",\"102008\"]]")
+        trans = osr.CoordinateTransformation(srsin,srsout)
+
+        if is_geographic:
+            srs = srsout
+
         layer = output_usm.CreateLayer('poly', srs, ogr.wkbPolygon)
 
         cd = mesh.GetCellData()
+
 
 
         for i in range(0,cd.GetNumberOfArrays()):
@@ -84,10 +117,19 @@ def main():
             v2 = mesh.GetCell(i).GetPointId(2)
 
             ring = ogr.Geometry(ogr.wkbLinearRing)
-            ring.AddPoint( mesh.GetPoint(v0)[0], mesh.GetPoint(v0)[1] )
-            ring.AddPoint (mesh.GetPoint(v1)[0], mesh.GetPoint(v1)[1] )
-            ring.AddPoint( mesh.GetPoint(v2)[0], mesh.GetPoint(v2)[1] )
-            ring.AddPoint( mesh.GetPoint(v0)[0], mesh.GetPoint(v0)[1] ) # add again to complete the ring.
+            if is_geographic:
+                scale = 100000.  #undo the scaling that CHM does for the paraview output
+                ring.AddPoint( mesh.GetPoint(v0)[0] / scale, mesh.GetPoint(v0)[1] / scale)
+                ring.AddPoint (mesh.GetPoint(v1)[0]/ scale, mesh.GetPoint(v1)[1]/ scale )
+                ring.AddPoint( mesh.GetPoint(v2)[0]/ scale, mesh.GetPoint(v2)[1]/ scale )
+                ring.AddPoint( mesh.GetPoint(v0)[0]/ scale, mesh.GetPoint(v0)[1]/ scale ) # add again to complete the ring.
+
+                ring.Transform(trans)
+            else:
+                ring.AddPoint( mesh.GetPoint(v0)[0], mesh.GetPoint(v0)[1] )
+                ring.AddPoint (mesh.GetPoint(v1)[0], mesh.GetPoint(v1)[1] )
+                ring.AddPoint( mesh.GetPoint(v2)[0], mesh.GetPoint(v2)[1] )
+                ring.AddPoint( mesh.GetPoint(v0)[0], mesh.GetPoint(v0)[1] ) # add again to complete the ring.
 
             tpoly = ogr.Geometry(ogr.wkbPolygon)
             tpoly.AddGeometry(ring)
@@ -125,6 +167,7 @@ def main():
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             # target_ds.SetProjection(srs)
             band = target_ds.GetRasterBand(1)
+            target_ds.SetProjection(srs.ExportToWkt())
             band.SetNoDataValue(NoData_value)
 
             # Rasterize
@@ -135,6 +178,7 @@ def main():
                 target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p + '.tif', x_res, y_res, 1,
                                                                  gdal.GDT_Float32)
                 target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+                target_ds.SetProjection(srs.ExportToWkt())
                 band = target_ds.GetRasterBand(1)
                 band.SetNoDataValue(NoData_value)
 
