@@ -1395,6 +1395,7 @@ void core::_determine_module_dep()
         std::system("dot -Tpdf modules.dot -o modules.pdf");
         std::remove("modules.dot.tmp");
         std::remove("filter.gvpr");
+        std::remove("modules.dot");
 
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Module graph must be a DAG. Please review modules.pdf to determine where the cycle occured."));
 

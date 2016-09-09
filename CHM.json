@@ -29,29 +29,29 @@
   "modules": //important these are [ ]
   [
 //    //met interp
-    "solar"
-//     "Liston_wind",
-//    "scale_wind_vert",
-////    "Marsh_shading_iswr",
-////    "iswr_from_obs",
-//    "Burridge_iswr",
-//    "slope_iswr",
-//     "Liston_monthly_llra_ta",
-//     "kunkel_rh",
-//     "Thornton_p",
-////    "point_mode",
-//
-//    //met process
-//    "Walcek_cloud",
-//     "Sicart_ilwr",
-//    "Harder_precip_phase",
-////     "threshold_p_phase",
-//
-//    //processes
-//    "snobal",
-//    "Gray_inf",
-////    "snowpack"
-//     "Richard_albedo"
+    "solar",
+     "Liston_wind",
+    "scale_wind_vert",
+//    "Marsh_shading_iswr",
+//    "iswr_from_obs",
+    "Burridge_iswr",
+    "slope_iswr",
+     "Liston_monthly_llra_ta",
+     "kunkel_rh",
+     "Thornton_p",
+//    "point_mode",
+
+    //met process
+    "Walcek_cloud",
+     "Sicart_ilwr",
+    "Harder_precip_phase",
+//     "threshold_p_phase",
+
+    //processes
+    "snobal",
+    "Gray_inf",
+//    "snowpack"
+     "Richard_albedo"
 
   ],
 
