@@ -1,9 +1,11 @@
 #pragma once
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+//#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Triangulation_ds_face_base_2.h>
 #include <CGAL/Kernel/global_functions.h>
 #include <CGAL/Triangle_2.h>
+
 //#include <CGAL/Triangulation_face_base_2.h>
 //#include <CGAL/Constrained_Delaunay_triangulation_face_base_2.h>
 #include <set>
@@ -234,7 +236,10 @@ public:
     double get_initial_condition(std::string key);
     std::vector<std::string>  initial_conditions();
     bool has_initial_condition(std::string key);
+
+    bool _is_geographic;
 private:
+
 
     double _slope;
     double _azimuth;
@@ -336,6 +341,8 @@ face<Gt, Fb>::face()
 
     _area = -1.;
 
+    _is_geographic = false;
+
 
 }
 
@@ -351,7 +358,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _center = NULL;
     _normal = NULL;
     _area = -1.;
-
+    _is_geographic = false;
 }
 
 template < class Gt, class Fb >
@@ -369,7 +376,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _center = NULL;
     _normal = NULL;
     _area = -1.;
-
+    _is_geographic = false;
 
 }
 
@@ -391,7 +398,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _center = NULL;
     _normal = NULL;
     _area = -1.;
-
+    _is_geographic = false;
 }
 
 template < class Gt, class Fb>
@@ -462,7 +469,30 @@ template < class Gt, class Fb>
 Vector_3 face<Gt, Fb>::normal()
 {
     if(!_normal)
-        _normal = boost::make_shared<Vector_3>(CGAL::unit_normal(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
+    {
+        if(_is_geographic)
+        {
+            CGAL::Point_3<K> v0(this->vertex(0)->point()[0]*100000., this->vertex(0)->point()[1]*100000.,this->vertex(0)->point()[2]);
+            CGAL::Point_3<K> v1(this->vertex(1)->point()[0]*100000., this->vertex(1)->point()[1]*100000.,this->vertex(1)->point()[2]);
+            CGAL::Point_3<K> v2(this->vertex(2)->point()[0]*100000., this->vertex(2)->point()[1]*100000.,this->vertex(2)->point()[2]);
+
+            _normal = boost::make_shared<Vector_3>(CGAL::unit_normal(v0, v1, v2));
+
+        }
+         else
+            _normal = boost::make_shared<Vector_3>(CGAL::unit_normal(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
+    }
+
+//    CGAL::Point_3<K> v0(this->vertex(0)->point()[0]*100000., this->vertex(0)->point()[1]*100000.,this->vertex(0)->point()[2]);
+//    CGAL::Point_3<K> v1(this->vertex(1)->point()[0]*100000., this->vertex(1)->point()[1]*100000.,this->vertex(1)->point()[2]);
+//    CGAL::Point_3<K> v2(this->vertex(2)->point()[0]*100000., this->vertex(2)->point()[1]*100000.,this->vertex(2)->point()[2]);
+
+//    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v0_noscale(this->vertex(0)->point()[0], this->vertex(0)->point()[1],this->vertex(0)->point()[2]);
+//    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v1_noscale(this->vertex(1)->point()[0], this->vertex(1)->point()[1],this->vertex(1)->point()[2]);
+//    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v2_noscale(this->vertex(2)->point()[0], this->vertex(2)->point()[1],this->vertex(2)->point()[2]);
+//
+//    CGAL::Exact_predicates_exact_constructions_kernel::Vector_3 un1 = CGAL::unit_normal(v0_noscale, v1_noscale, v2_noscale);
+//    Vector_3 un2 = CGAL::unit_normal(v0, v1, v2);
     return *_normal;
 }
 

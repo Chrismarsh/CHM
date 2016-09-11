@@ -271,6 +271,7 @@ public:
 	 */
 	int UTM_zone();
 
+	std::string wkt();
 	//holds the spatial search tree
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
 
@@ -281,6 +282,7 @@ private:
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
 	int _UTM_zone;
+	std::string _srs_wkt;
 	//holds the vtk ugrid if we are outputing to vtk formats
 	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
 

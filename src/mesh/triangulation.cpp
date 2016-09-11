@@ -68,6 +68,10 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
+std::string triangulation::wkt()
+{
+    return _srs_wkt;
+}
 int triangulation::UTM_zone()
 {
     return _UTM_zone;
@@ -158,13 +162,17 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     //paraview struggles with lat/long as it doesn't seem to have the accuracy. So we need to scale up lat-long.
     int is_geographic = mesh.get<int>("mesh.is_geographic");
     if( is_geographic == 1)
+    {
         _is_geographic = true;
+    }
+        
 
     if(!_is_geographic)
     {
         _UTM_zone = mesh.get<int>("mesh.UTM_zone");
     }
 
+//    _srs_wkt = mesh.get<std::string>("mesh.srs_wkt");
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
     {
@@ -216,7 +224,10 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 
         auto face = this->create_face(vert1,vert2,vert3);
         face->cell_id = cid++;
-
+        if( is_geographic == 1)
+        {
+            face->_is_geographic = true;
+        }
         face->_debug_ID= --i; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
         face->_debug_name= std::to_string(i);
         _faces.push_back(face);
@@ -427,6 +438,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     triangles->Allocate(this->_num_vertex);
 
     double scale = is_geographic() == true ? 100000. : 1.;
+    scale=1;
 
     for (size_t i = 0; i < this->size_faces(); i++)
     {

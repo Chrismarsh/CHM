@@ -5,7 +5,9 @@
 #include "module_base.hpp"
 #include <meteoio/MeteoIO.h>
 
-
+/**
+ * Dodson, R. and Marks, D.: Daily air temperature interpolated at high spatial resolution over a large mountainous region, Clim. Res., 8(Myers 1994), 1–20, doi:10.3354/cr008001, 1997.
+ */
 class Dodson_NSA_ta : public module_base
 {
 public:
