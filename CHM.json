@@ -84,13 +84,13 @@
     }
   },
   "meshes": {
-    "mesh": "meshes/bow_srtm_small.mesh",
+    "mesh": "meshes/GEM_west_srtm.mesh",
     //    "mesh":"meshes/GEM_west_srtm.mesh",
     //    //map internal variables/parameters to the .mesh file's parameter section.
         "parameters":
         {
     //      "file":"meshes/granger30_liston_curvature.mesh"
-          "file":"meshes/bow_srtm_small.param"
+          "file":"meshes/GEM_west_srtm.param"
   }
 //    "initial_conditions":
 //    {

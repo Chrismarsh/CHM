@@ -165,7 +165,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     {
         _is_geographic = true;
     }
-        
+
 
     if(!_is_geographic)
     {
@@ -438,7 +438,6 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     triangles->Allocate(this->_num_vertex);
 
     double scale = is_geographic() == true ? 100000. : 1.;
-    scale=1;
 
     for (size_t i = 0; i < this->size_faces(); i++)
     {
