@@ -2,6 +2,7 @@
 
 #include "interp_base.hpp"
 #include "inv_dist.hpp"
+#include "nearest.hpp"
 #include "TPSpline.hpp"
 
 #include <vector>
@@ -15,7 +16,8 @@
 enum interp_alg
 {
     tpspline,
-    idw
+    idw,
+    nearest_sta
 };
 
 class interpolation

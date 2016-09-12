@@ -54,6 +54,8 @@ void core::config_options(const pt::ptree &value)
             _interpolation_method = interp_alg::tpspline;
         else if (*ia == "idw")
             _interpolation_method = interp_alg::idw;
+        else if (*ia == "nearest")
+            _interpolation_method = interp_alg::nearest_sta;
         else
             LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
     }
@@ -114,7 +116,7 @@ void core::config_options(const pt::ptree &value)
     auto radius = value.get_optional<double>("station_search_radius");
     auto N = value.get_optional<double>("station_N_nearest");
 
-    if( radius && N)
+    if(radius && N)
     {
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Cannot have both station_search_radius and station_N_nearest set."));
     }
@@ -130,7 +132,7 @@ void core::config_options(const pt::ptree &value)
         if(N)
         {
             n = *N;
-            if( n < 2)
+            if( (n < 2) & (*ia != "nearest")) // ALlow less than 2 if nearest interp is used
             {
                 BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >=2. N = " + std::to_string(n)));
             }
