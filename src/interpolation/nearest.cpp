@@ -20,6 +20,6 @@ double nearest::operator()(std::vector< boost::tuple<double,double,double> >& sa
     }
 
     z0 = sample_points.at(0).get<2>();
-    return z0
+    return z0;
 
 }
