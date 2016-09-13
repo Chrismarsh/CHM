@@ -271,7 +271,8 @@ public:
 	 */
 	int UTM_zone();
 
-	std::string wkt();
+
+	std::string proj4();
 	//holds the spatial search tree
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
 

@@ -275,6 +275,17 @@ void core::config_forcing(pt::ptree &value)
 
     tbb::concurrent_vector<  boost::shared_ptr<station> > pstations;
 
+    OGRSpatialReference insrs;
+    insrs.SetWellKnownGeogCS("WGS84");
+
+    OGRSpatialReference outsrs;
+    outsrs.importFromProj4(_mesh->proj4().c_str());
+
+    OGRCoordinateTransformation* coordTrans =  nullptr;
+
+    if(!_mesh->is_geographic())
+        coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
+
 //#pragma omp parallel for
     //TODO: this dead locks, not sure why
     for(size_t i =0; i < nstations; ++i)
@@ -288,9 +299,24 @@ void core::config_forcing(pt::ptree &value)
         s->ID(station_name);
 
         double easting = itr.second.get<double>("easting");
-        s->x(easting);
-
         double northing = itr.second.get<double>("northing");
+
+        if( (northing > 90 || northing < -90) ||
+                (easting > 180 || easting < -180) )
+        {
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " coordinate is invalid."));
+        }
+
+        //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
+        if(!_mesh->is_geographic())
+        {
+            if(!coordTrans->Transform(1, &easting, &northing))
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + station_name + ": unable to convert coordinates to mesh format."));
+            }
+        }
+
+        s->x(easting);
         s->y(northing);
 
         double elevation = itr.second.get<double>("elevation");
@@ -323,6 +349,8 @@ void core::config_forcing(pt::ptree &value)
 
 
     }
+
+    delete coordTrans;
 
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
     LOG_DEBUG << "Building dD spatial search tree";
@@ -530,6 +558,32 @@ void core::config_output(const pt::ptree &value)
 
             out.easting = itr.second.get<double>("easting");
             out.northing = itr.second.get<double>("northing");
+
+            if( (out.northing > 90 || out.northing < -90) ||
+                (out.easting > 180 || out.easting < -180) )
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output " + out.name + " coordinate is invalid."));
+            }
+
+            //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
+            if(!_mesh->is_geographic())
+            {
+
+                OGRSpatialReference insrs;
+                insrs.SetWellKnownGeogCS("WGS84");
+
+                OGRSpatialReference outsrs;
+                insrs.importFromProj4(_mesh->proj4().c_str());
+
+                OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
+
+                if(!coordTrans->Transform(1, &out.easting, &out.northing))
+                {
+                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output=" + out.name + ": unable to convert coordinates to mesh format."));
+                }
+
+                delete coordTrans;
+            }
 
             out.face = _mesh->locate_face(out.easting, out.northing);
 

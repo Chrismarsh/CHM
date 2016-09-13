@@ -472,6 +472,13 @@ Vector_3 face<Gt, Fb>::normal()
     {
         if(_is_geographic)
         {
+
+//            OGRSpatialReference monUtm;
+//
+//            OGRSpatialReference monGeo;
+//            monGeo.SetWellKnownGeogCS("WGS84");
+
+
             CGAL::Point_3<K> v0(this->vertex(0)->point()[0]*100000., this->vertex(0)->point()[1]*100000.,this->vertex(0)->point()[2]);
             CGAL::Point_3<K> v1(this->vertex(1)->point()[0]*100000., this->vertex(1)->point()[1]*100000.,this->vertex(1)->point()[2]);
             CGAL::Point_3<K> v2(this->vertex(2)->point()[0]*100000., this->vertex(2)->point()[1]*100000.,this->vertex(2)->point()[2]);
@@ -487,7 +494,7 @@ Vector_3 face<Gt, Fb>::normal()
 //    CGAL::Point_3<K> v1(this->vertex(1)->point()[0]*100000., this->vertex(1)->point()[1]*100000.,this->vertex(1)->point()[2]);
 //    CGAL::Point_3<K> v2(this->vertex(2)->point()[0]*100000., this->vertex(2)->point()[1]*100000.,this->vertex(2)->point()[2]);
 
-//    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v0_noscale(this->vertex(0)->point()[0], this->vertex(0)->point()[1],this->vertex(0)->point()[2]);
+//    CGAL::Point_3<CGAL::Exact_prediDocuments/PhD/code/CHM/cates_exact_constructions_kernel > v0_noscale(this->vertex(0)->point()[0], this->vertex(0)->point()[1],this->vertex(0)->point()[2]);
 //    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v1_noscale(this->vertex(1)->point()[0], this->vertex(1)->point()[1],this->vertex(1)->point()[2]);
 //    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v2_noscale(this->vertex(2)->point()[0], this->vertex(2)->point()[1],this->vertex(2)->point()[2]);
 //

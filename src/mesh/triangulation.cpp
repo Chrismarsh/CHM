@@ -68,7 +68,7 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
-std::string triangulation::wkt()
+std::string triangulation::proj4()
 {
     return _srs_wkt;
 }
@@ -172,7 +172,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         _UTM_zone = mesh.get<int>("mesh.UTM_zone");
     }
 
-//    _srs_wkt = mesh.get<std::string>("mesh.srs_wkt");
+    _srs_wkt = mesh.get<std::string>("mesh.proj4");
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
     {
