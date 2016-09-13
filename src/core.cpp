@@ -542,6 +542,10 @@ void core::config_output(const pt::ptree &value)
 {
     LOG_DEBUG << "Found output section";
     size_t ID = 0;
+    auto pts_dir = "points";
+    auto msh_dir = "meshes";
+    auto pts_path;
+    auto msh_path;
     //loop over the list of matlab options
     for (auto &itr : value)
     {
@@ -555,10 +559,8 @@ void core::config_output(const pt::ptree &value)
             boost::filesystem::create_directories(o_path.parent_path());
 
             // Create empty folders /points/ and /meshes/
-            auto pts_dir = "points";
-            auto msh_dir = "meshes";
-            auto pts_path = o_path / pts_dir;
-            auto msh_path = o_path / msh_dir;
+            pts_path = o_path / pts_dir;
+            msh_path = o_path / msh_dir;
             boost::filesystem::create_directories(pts_path.parent_path());
             boost::filesystem::create_directories(msh_path.parent_path());
 
