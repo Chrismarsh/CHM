@@ -237,8 +237,8 @@ protected:
         output_info()
         {
             fname = "";
-            northing = 0;
-            easting = 0;
+            latitude = 0;
+            longitude = 0;
             face = nullptr;
             name = "";
         }
@@ -257,8 +257,8 @@ protected:
         std::string name;
         std::vector<mesh_outputs> mesh_output_formats;
         std::string fname;
-        double northing;
-        double easting;
+        double latitude;
+        double longitude;
         std::set<std::string> variables;
         mesh_elem face;
         timeseries ts;
