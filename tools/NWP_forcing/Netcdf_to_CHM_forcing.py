@@ -29,7 +29,7 @@ X = imp.load_source('',configfile)
 
 # Assinge to local variables
 netcdf_dir = X.netcdf_dir
-output_dir   = X.output_dir
+ascii_dir   = X.ascii_dir
 Forcing_config_file = X.Forcing_config_file
 lat_r = X.lat_r
 lon_r = X.lon_r
@@ -67,8 +67,10 @@ ds = xr.open_mfdataset(all_files,concat_dim='datetime',engine='netcdf4',preproce
 # Adjust to local time zone (i.e. from UTC to MST, local_time_offset should = -7)
 ds['datetime'] = pd.to_datetime(ds.datetime.values) + datetime.timedelta(hours=local_time_offset)
 
-# Move to output dir
-os.chdir(output_dir)
+# Move to ascii dir
+if not os.path.isdir(ascii_dir):
+    os.mkdir(ascii_dir)
+os.chdir(ascii_dir)
 
 # Extract grid cells we want to export
 print 'Extracting cells within lat/long box'
@@ -104,9 +106,9 @@ for i in range(ds.coords['xgrid_0'].size):
             else:
 		print 'Unknown coords = ' + coordsystem
 
-	    meta['point_'+str(i)+'_'+str(j)] = {'file':output_dir+'/point_'+str(i)+'_'+str(j)+'.chm',
-		"easting":coords[0],
-		"northing":coords[1],
+	    meta['point_'+str(i)+'_'+str(j)] = {'file':ascii_dir+'/point_'+str(i)+'_'+str(j)+'.chm',
+		"longitude":coords[0],
+		"latitude":coords[1],
 		"elevation":sub_grid.HGT_P0_L1_GST0.values[0],
 		"filter": {
         	"scale_wind_speed": {
