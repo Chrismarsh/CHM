@@ -544,8 +544,8 @@ void core::config_output(const pt::ptree &value)
     size_t ID = 0;
     auto pts_dir = "points";
     auto msh_dir = "meshes";
-    std::string pts_path;
-    std::string msh_path;
+    boost::filesystem::path pts_path;
+    boost::filesystem::path msh_path;
     //loop over the list of matlab options
     for (auto &itr : value)
     {
