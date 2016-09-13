@@ -24,7 +24,7 @@ Iqbal_iswr::~Iqbal_iswr()
 
 }
 
-void Iqbal_iswr::run(mesh_elem &face, boost::shared_ptr<global> global_param)
+void Iqbal_iswr::run(mesh_elem &face)
 {
     double pressure = mio::Atmosphere::stdAirPressure(face->get_z());//101325.0;
     double altitude = face->get_z();

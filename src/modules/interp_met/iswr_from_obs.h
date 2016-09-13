@@ -28,8 +28,8 @@ class iswr_from_obs : public module_base
 public:
     iswr_from_obs(config_file cfg);
     ~iswr_from_obs();
-    void run(mesh_elem &face, boost::shared_ptr<global> global_param);
-    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    void run(mesh_elem &face);
+    virtual void init(mesh domain);
     struct data : public face_info
     {
         interpolation interp;

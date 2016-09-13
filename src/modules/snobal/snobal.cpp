@@ -43,9 +43,9 @@ snobal::snobal(config_file cfg)
 
 }
 
-void snobal::init(mesh domain, boost::shared_ptr<global> global)
+void snobal::init(mesh domain)
 {
-    //store all of snobals global variables from this timestep to be used as ICs for the next timestep
+    //store all of snobals global_param variables from this timestep to be used as ICs for the next timestep
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -105,14 +105,14 @@ void snobal::init(mesh domain, boost::shared_ptr<global> global)
 
         //init the step_info struct
         sbal->tstep_info[DATA_TSTEP].level = DATA_TSTEP;
-        sbal->tstep_info[DATA_TSTEP].time_step = global->dt(); //3600; // 1hr TODO: fix hard code snobal timesteps
+        sbal->tstep_info[DATA_TSTEP].time_step = global_param->dt(); //3600; // 1hr TODO: fix hard code snobal timesteps
         sbal->tstep_info[DATA_TSTEP].intervals = 0;
         sbal->tstep_info[DATA_TSTEP].threshold = 60;
         sbal->tstep_info[DATA_TSTEP].output = 0;
 
 
         sbal->tstep_info[NORMAL_TSTEP].level = NORMAL_TSTEP;
-        sbal->tstep_info[NORMAL_TSTEP].time_step = global->dt();//3600;
+        sbal->tstep_info[NORMAL_TSTEP].time_step = global_param->dt();//3600;
         sbal->tstep_info[NORMAL_TSTEP].intervals = sbal->tstep_info[DATA_TSTEP].time_step /
                                                              sbal->tstep_info[NORMAL_TSTEP].time_step;;
         sbal->tstep_info[NORMAL_TSTEP].threshold = 60;
@@ -120,7 +120,7 @@ void snobal::init(mesh domain, boost::shared_ptr<global> global)
 
 
         sbal->tstep_info[MEDIUM_TSTEP].level = MEDIUM_TSTEP;
-        sbal->tstep_info[MEDIUM_TSTEP].time_step = global->dt()/4; //3600. / 4.; //15min
+        sbal->tstep_info[MEDIUM_TSTEP].time_step = global_param->dt()/4; //3600. / 4.; //15min
         sbal->tstep_info[MEDIUM_TSTEP].intervals = sbal->tstep_info[NORMAL_TSTEP].time_step /
                                                              sbal->tstep_info[MEDIUM_TSTEP].time_step;
         sbal->tstep_info[MEDIUM_TSTEP].threshold = 10;
@@ -128,7 +128,7 @@ void snobal::init(mesh domain, boost::shared_ptr<global> global)
 
 
         sbal->tstep_info[SMALL_TSTEP].level = SMALL_TSTEP;
-        sbal->tstep_info[SMALL_TSTEP].time_step = global->dt()/ 60;//3600. / 60.;
+        sbal->tstep_info[SMALL_TSTEP].time_step = global_param->dt()/ 60;//3600. / 60.;
         sbal->tstep_info[SMALL_TSTEP].intervals = sbal->tstep_info[MEDIUM_TSTEP].time_step /
                                                             sbal->tstep_info[SMALL_TSTEP].time_step;
         sbal->tstep_info[SMALL_TSTEP].threshold = 1;
@@ -160,8 +160,14 @@ snobal::~snobal()
 
 }
 
-void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
+void snobal::run(mesh_elem &face)
 {
+    if(is_water(face))
+    {
+        set_all_nan_on_skip(face);
+        return;
+    }
+
     //debugging
     auto id = face->_debug_ID;
 
@@ -173,7 +179,7 @@ void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
     auto month = global_param->month();
 
 
-    //get the previous timesteps data out of the global store.
+    //get the previous timesteps data out of the global_param store.
     snodata* g = face->get_module_data<snodata>(ID);
     auto* sbal = &(g->data);
 
@@ -327,7 +333,7 @@ void snobal::run(mesh_elem &face, boost::shared_ptr<global> global_param)
 //    g->dead = 0;
 }
 
-void snobal::run(mesh domain, boost::shared_ptr <global> global_param)
+void snobal::run(mesh domain)
 {
 
 }

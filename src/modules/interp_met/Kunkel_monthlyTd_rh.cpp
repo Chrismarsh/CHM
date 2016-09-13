@@ -19,7 +19,7 @@ Kunkel_monthlyTd_rh::~Kunkel_monthlyTd_rh()
 {
 
 }
-void Kunkel_monthlyTd_rh::init(mesh domain, boost::shared_ptr<global> global_param)
+void Kunkel_monthlyTd_rh::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -29,7 +29,7 @@ void Kunkel_monthlyTd_rh::init(mesh domain, boost::shared_ptr<global> global_par
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void Kunkel_monthlyTd_rh::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void Kunkel_monthlyTd_rh::run(mesh_elem& face)
 {
 //    size_t ID = face->_debug_ID;
     // 1/km

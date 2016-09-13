@@ -16,7 +16,7 @@ Liston_wind::Liston_wind(config_file cfg)
 }
 
 //Calculates the curvature required
-void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
+void Liston_wind::init(mesh domain)
 {
 
     #pragma omp parallel for
@@ -118,7 +118,7 @@ void Liston_wind::init(mesh domain, boost::shared_ptr<global> global_param)
 }
 
 
-void Liston_wind::run(mesh domain, boost::shared_ptr<global> global_param)
+void Liston_wind::run(mesh domain)
 {
     double PI = 3.14159;
 

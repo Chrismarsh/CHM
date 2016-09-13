@@ -45,9 +45,13 @@ Lehning_snowpack::~Lehning_snowpack()
 
 }
 
-void Lehning_snowpack::run(mesh_elem &face, boost::shared_ptr <global> global_param)
+void Lehning_snowpack::run(mesh_elem &face)
 {
-
+    if(is_water(face))
+    {
+        set_all_nan_on_skip(face);
+        return;
+    }
     auto data = face->get_module_data<Lehning_snowpack::data>(ID);
 
     /**

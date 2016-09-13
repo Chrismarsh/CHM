@@ -21,7 +21,7 @@ threshold_p_phase::~threshold_p_phase()
 
 }
 
-void threshold_p_phase::run(mesh_elem &face, boost::shared_ptr <global> global_param)
+void threshold_p_phase::run(mesh_elem &face)
 {
     double p = face->face_data("p");
 

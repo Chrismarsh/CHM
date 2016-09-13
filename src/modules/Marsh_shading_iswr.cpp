@@ -13,13 +13,8 @@ Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
 
 }
 
-void Marsh_shading_iswr::run(mesh domain, boost::shared_ptr<global> global_param)
+void Marsh_shading_iswr::run(mesh domain)
 {
-
-
-
-
-
     //compute the rotation of each vertex
 
     //    tbb::concurrent_vector<triangulation::Face_handle> rot_faces;

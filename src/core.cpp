@@ -233,6 +233,10 @@ void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::
         boost::shared_ptr<module_base> m(_mfactory.get(module, cfg));
         //internal tracking of module initialization order
         m->IDnum = modnum;
+
+        //assign the internal global param pointer to our global
+        m->global_param = _global;
+
         modnum++;
         _modules.push_back(
                 std::make_pair(m, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
@@ -1227,7 +1231,7 @@ void core::init(int argc, char **argv)
             ompException oe;
             oe.Run([&]
                    {
-                       jtr->init(_mesh, _global);
+                       jtr->init(_mesh);
                    });
             oe.Rethrow();
         }
@@ -1707,7 +1711,7 @@ void core::run()
                                        //module calls
                                        for (auto &jtr : itr)
                                        {
-                                           jtr->run(face, _global);
+                                           jtr->run(face);
                                        }
 
                                    });
@@ -1722,7 +1726,7 @@ void core::run()
                             ompException oe;
                             oe.Run([&]
                                    {
-                                       jtr->run(_mesh, _global);
+                                       jtr->run(_mesh);
                                    });
                             oe.Rethrow();
                         }

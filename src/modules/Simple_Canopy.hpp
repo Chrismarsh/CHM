@@ -22,7 +22,7 @@ public:
 
     ~Simple_Canopy();
 
-    virtual void run(mesh_elem &elem, boost::shared_ptr <global> global_param);
+    virtual void run(mesh_elem &elem);
 
     virtual void init(mesh domain, boost::shared_ptr <global> global_param);
 

@@ -24,11 +24,11 @@ public:
 
     ~snobal();
 
-    virtual void run(mesh_elem &face, boost::shared_ptr <global> global_param);
+    virtual void run(mesh_elem &face);
 
-    virtual void run(mesh domain, boost::shared_ptr <global> global_param);
+    virtual void run(mesh domain);
 
-    virtual void init(mesh domain, boost::shared_ptr<global> global);
+    virtual void init(mesh domain);
 
 };
 
