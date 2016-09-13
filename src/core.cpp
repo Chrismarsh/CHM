@@ -578,7 +578,7 @@ void core::config_output(const pt::ptree &value)
     {
         output_info out;
         std::string out_type = itr.first.data();
-        if (out_type == "Output_dir")
+        if (out_type == "output_dir")
         {
             // Get dir for output (create if doesn't exist)
             auto output_dir = itr.second.get<std::string>("path");
@@ -592,7 +592,7 @@ void core::config_output(const pt::ptree &value)
             boost::filesystem::create_directories(msh_path);
 
         }
-        else if ((out_type != "mesh") && (out_type != "Output_dir"))  // anything else *should* be a time series*......
+        else if ((out_type != "mesh") && (out_type != "output_dir"))  // anything else *should* be a time series*......
         {
             out.type = output_info::time_series;
             out.name = out_type;
