@@ -82,15 +82,20 @@ def main():
     base_dir = base_name + '/'
 
     # figure out what srs out input is in, we will reproject everything to this
+    # if hasattr(X, 'EPSG'):
+    #     EPSG = X.EPSG
+    # else:
+    #     src_ds = gdal.Open(dem_filename)
+    #     wkt = src_ds.GetProjection()
+    #     srs = osr.SpatialReference()
+    #     srs.ImportFromWkt(wkt)
+    #     EPSG = int(srs.GetAttrValue("AUTHORITY", 1))
 
-    if hasattr(X, 'EPSG'):
-        EPSG = X.EPSG
-    else:
-        src_ds = gdal.Open(dem_filename)
-        wkt = src_ds.GetProjection()
-        srs = osr.SpatialReference()
-        srs.ImportFromWkt(wkt)
-        EPSG = int(srs.GetAttrValue("AUTHORITY", 1))
+    src_ds = gdal.Open(dem_filename)
+    wkt = src_ds.GetProjection()
+    if wkt == '':
+        print "Input DEM must have spatial reference information."
+        exit(1)
 
     wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
     srs_out =  osr.SpatialReference()
@@ -103,8 +108,6 @@ def main():
 
     subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs \"%s\"' % (
         dem_filename, base_dir + base_name + '_projected.tif', srs_out.ExportToProj4())], shell=True)
-
-
 
     src_ds = gdal.Open(base_dir + base_name + '_projected.tif')
 
@@ -131,7 +134,7 @@ def main():
     xmax = xmin + pixel_width * src_ds.RasterXSize
     ymin = ymax + pixel_height * src_ds.RasterYSize  # pixel_height is negative
 
-    exec_str = 'gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d" -te %f %f %f %f  -tr %f %f -r '
+    exec_str = 'gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "%s" -te %f %f %f %f  -tr %f %f -r '
 
     for key, data in parameter_files.iteritems():
         if parameter_files[key]['method'] == 'mode':
@@ -141,12 +144,12 @@ def main():
 
         # force all the paramter files to have the same extent as the input DEM
         subprocess.check_call([estr % (
-                data['file'], base_dir + data['file'] + '_projected.tif', EPSG, xmin, ymin, xmax, ymax, pixel_width,
+                data['file'], base_dir + data['file'] + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
                 pixel_height)], shell=True)
-        parameter_files[key]['filename'] = base_dir + data[
-            'file'] + '_projected.tif'  # save the file name if needed for mesher
+
+        parameter_files[key]['filename'] = base_dir + data['file'] + '_projected.tif'  # save the file name if needed for mesher
         parameter_files[key]['file'] = gdal.Open(base_dir + data['file'] + '_projected.tif')
-        # os.remove(data['file']+'_projected.tif')
+
         if parameter_files[key]['file'] is None:
             print 'Error: Unable to open raster for: %s' % key
             exit(1)
@@ -159,11 +162,12 @@ def main():
 
         # force all the initial condition files to have the same extent as the input DEM
         subprocess.check_call([estr % (
-                data['file'], base_dir + data['file'] + '_projected.tif', EPSG, xmin, ymin, xmax, ymax, pixel_width,
+                data['file'], base_dir + data['file'] + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
                 pixel_height)], shell=True)
+
         initial_conditions[key]['filename'] = base_dir + data['file'] + '_projected.tif'
         initial_conditions[key]['file'] = gdal.Open(base_dir + data['file'] + '_projected.tif')
-        # os.remove(data['file']+'_projected.tif')
+
         if initial_conditions[key]['file'] is None:
             print 'Error: Unable to open raster for: %s' % key
             exit(1)
