@@ -90,6 +90,7 @@ set(CHM_SRCS
 
 		interpolation/inv_dist.cpp
 		interpolation/TPSpline.cpp
+		interpolation/nearest.cpp
 
 		timeseries/timestep.cpp
 		timeseries/timeseries.cpp

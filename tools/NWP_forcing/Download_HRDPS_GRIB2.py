@@ -21,8 +21,11 @@ X = imp.load_source('',configfile)
 download_dir = X.download_dir
 Init_H = X.Init_H
 Variable = X.Variable
+domain = X.domain 
 
-# Move to input
+# Move to input if exists (make if not)
+if not os.path.isdir(download_dir):
+    os.mkdir(download_dir)
 os.chdir(download_dir)
 
 # REMOVE ALL previous files
@@ -41,7 +44,7 @@ Forc_H   = np.arange(1,49)
 sep      = '/'
 office     = 'CMC'
 system     = 'hrdps'
-domain     = 'west'
+#domain     = 'west'
 projection = 'ps2.5km'
 Phhh       = 'P'
 mm         = '-00'
