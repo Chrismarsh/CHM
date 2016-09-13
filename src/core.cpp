@@ -609,7 +609,7 @@ void core::config_output(const pt::ptree &value)
                 insrs.SetWellKnownGeogCS("WGS84");
 
                 OGRSpatialReference outsrs;
-                insrs.importFromProj4(_mesh->proj4().c_str());
+                outsrs.importFromProj4(_mesh->proj4().c_str());
 
                 OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
