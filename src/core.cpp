@@ -48,14 +48,24 @@ void core::config_options(const pt::ptree &value)
     }
 
     boost::optional<std::string> ia = value.get_optional<std::string>("interpolant");
-    if(ia)
+    if (ia)
     {
-        if( *ia == "spline")
+        if( *ia == "spline") 
+	{
             _interpolation_method = interp_alg::tpspline;
+	}
         else if (*ia == "idw")
-            _interpolation_method = interp_alg::idw;
-        else
-            LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
+	{
+	    _interpolation_method = interp_alg::idw;
+        }
+	else if (*ia == "nearest")
+        {
+            _interpolation_method = interp_alg::nearest_sta;
+        }
+	else
+        {
+	    LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
+  	}
     }
 
     // project name
@@ -114,7 +124,7 @@ void core::config_options(const pt::ptree &value)
     auto radius = value.get_optional<double>("station_search_radius");
     auto N = value.get_optional<double>("station_N_nearest");
 
-    if( radius && N)
+    if(radius && N)
     {
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Cannot have both station_search_radius and station_N_nearest set."));
     }
@@ -126,16 +136,22 @@ void core::config_options(const pt::ptree &value)
     }
     else
     {
-        int n = 5;
-        if(N)
+	int n; // Number of stations to interp
+        if(N) // If user specified N in config
         {
             n = *N;
-            if( n < 2)
+            if( (n < 2) && (*ia != "nearest")) // Required more than 1 station if using spline or idw
             {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >=2. N = " + std::to_string(n)));
+                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
             }
-        } else{
-            LOG_WARNING << "Using N=5 nearest stations as default.";
+        } else{ // N not specified used defaults
+	    if (*ia == "nearest") {
+                n = 1;
+            	LOG_WARNING << "Using N=1 nearest stations as default.";
+	    } else {
+		n = 5;
+		LOG_WARNING << "Using N=5 nearest stations as default.";
+	    }
         }
 
         _global->N = n;
@@ -298,11 +314,22 @@ void core::config_forcing(pt::ptree &value)
 
         s->ID(station_name);
 
-        double easting = itr.second.get<double>("easting");
-        double northing = itr.second.get<double>("northing");
+        double longitude=0;
+        double latitude=0;
+        try
+        {
+            longitude = itr.second.get<double>("longitude");
+            latitude = itr.second.get<double>("latitude");
+        }catch(boost::property_tree::ptree_bad_path& e)
+        {
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " missing lat/long coordinate."));
 
-        if( (northing > 90 || northing < -90) ||
-                (easting > 180 || easting < -180) )
+        }
+
+
+
+        if( (latitude > 90 || latitude < -90) ||
+                (longitude > 180 || longitude < -180) )
         {
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " coordinate is invalid."));
         }
@@ -310,14 +337,14 @@ void core::config_forcing(pt::ptree &value)
         //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
         if(!_mesh->is_geographic())
         {
-            if(!coordTrans->Transform(1, &easting, &northing))
+            if(!coordTrans->Transform(1, &longitude, &latitude))
             {
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + station_name + ": unable to convert coordinates to mesh format."));
             }
         }
 
-        s->x(easting);
-        s->y(northing);
+        s->x(longitude);
+        s->y(latitude);
 
         double elevation = itr.second.get<double>("elevation");
         s->z(elevation);
@@ -574,11 +601,11 @@ void core::config_output(const pt::ptree &value)
             auto f = pts_path / fname;
             out.fname = f.string();
 
-            out.easting = itr.second.get<double>("easting");
-            out.northing = itr.second.get<double>("northing");
+            out.longitude = itr.second.get<double>("longitude");
+            out.latitude = itr.second.get<double>("latitude");
 
-            if( (out.northing > 90 || out.northing < -90) ||
-                (out.easting > 180 || out.easting < -180) )
+            if( (out.latitude > 90 || out.latitude < -90) ||
+                (out.longitude > 180 || out.longitude < -180) )
             {
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output " + out.name + " coordinate is invalid."));
             }
@@ -595,7 +622,7 @@ void core::config_output(const pt::ptree &value)
 
                 OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
-                if(!coordTrans->Transform(1, &out.easting, &out.northing))
+                if(!coordTrans->Transform(1, &out.longitude, &out.latitude))
                 {
                     BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output=" + out.name + ": unable to convert coordinates to mesh format."));
                 }
@@ -603,7 +630,7 @@ void core::config_output(const pt::ptree &value)
                 delete coordTrans;
             }
 
-            out.face = _mesh->locate_face(out.easting, out.northing);
+            out.face = _mesh->locate_face(out.longitude, out.latitude);
 
 
             if (out.face == NULL)
@@ -611,7 +638,7 @@ void core::config_output(const pt::ptree &value)
                 BOOST_THROW_EXCEPTION(config_error() <<
                                       errstr_info(
                                               "Requested an output point that is not in the triangulation domain. Pt:"
-                                              + std::to_string(out.easting) + "," + std::to_string(out.northing)));
+                                              + std::to_string(out.longitude) + "," + std::to_string(out.latitude)));
             }
 
             LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
