@@ -547,13 +547,29 @@ void core::config_output(const pt::ptree &value)
     {
         output_info out;
         std::string out_type = itr.first.data();
-        if (out_type != "mesh")  // anything else *should* be a time series*......
+        if (out_type == "Output_dir")
+        {
+            // Get dir for output (create if doesn't exist)
+            auto output_dir = itr.second.get<std::string>("path");
+            auto o_path = cwd_dir / output_dir;
+            boost::filesystem::create_directories(o_path.parent_path());
+
+            // Create empty folders /points/ and /meshes/
+            auto pts_dir = "points"
+            auto msh_dir = "meshes"
+            auto pts_path = o_path / pts_dir;
+            auto msh_path = o_path / msh_dir;
+            boost::filesystem::create_directories(pts_path.parent_path());
+            boost::filesystem::create_directories(msh_path.parent_path());
+
+        }
+        else if ((out_type != "mesh") && (out_type != "Output_dir"))  // anything else *should* be a time series*......
         {
             out.type = output_info::time_series;
             out.name = out_type;
 
             auto fname = itr.second.get<std::string>("file");
-            auto f = cwd_dir / fname;
+            auto f = pts_path / fname;
             out.fname = f.string();
 
             out.easting = itr.second.get<double>("easting");
@@ -607,7 +623,7 @@ void core::config_output(const pt::ptree &value)
             out.type = output_info::mesh;
 
             auto fname = itr.second.get<std::string>("base_name");
-            auto f = cwd_dir / fname;
+            auto f = msh_path / fname;
             boost::filesystem::create_directories(f.parent_path());
             out.fname = f.string();
 
