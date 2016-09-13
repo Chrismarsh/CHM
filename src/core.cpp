@@ -555,8 +555,8 @@ void core::config_output(const pt::ptree &value)
             boost::filesystem::create_directories(o_path.parent_path());
 
             // Create empty folders /points/ and /meshes/
-            auto pts_dir = "points"
-            auto msh_dir = "meshes"
+            auto pts_dir = "points";
+            auto msh_dir = "meshes";
             auto pts_path = o_path / pts_dir;
             auto msh_path = o_path / msh_dir;
             boost::filesystem::create_directories(pts_path.parent_path());
