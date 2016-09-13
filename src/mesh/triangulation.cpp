@@ -72,10 +72,7 @@ std::string triangulation::proj4()
 {
     return _srs_wkt;
 }
-int triangulation::UTM_zone()
-{
-    return _UTM_zone;
-}
+
 bool triangulation::is_geographic()
 {
     return _is_geographic;
@@ -165,14 +162,12 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     {
         _is_geographic = true;
     }
+    _srs_wkt = mesh.get<std::string>("mesh.proj4","");
 
-
-    if(!_is_geographic)
+    if(_srs_wkt == "")
     {
-        _UTM_zone = mesh.get<int>("mesh.UTM_zone");
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info("proj4 field in .mesh file is empty!"));
     }
-
-    _srs_wkt = mesh.get<std::string>("mesh.proj4");
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
     {
