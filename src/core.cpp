@@ -556,13 +556,13 @@ void core::config_output(const pt::ptree &value)
             // Get dir for output (create if doesn't exist)
             auto output_dir = itr.second.get<std::string>("path");
             auto o_path = cwd_dir / output_dir;
-            boost::filesystem::create_directories(o_path.parent_path());
+            boost::filesystem::create_directories(o_path);
 
             // Create empty folders /points/ and /meshes/
             pts_path = o_path / pts_dir;
             msh_path = o_path / msh_dir;
-            boost::filesystem::create_directories(pts_path.parent_path());
-            boost::filesystem::create_directories(msh_path.parent_path());
+            boost::filesystem::create_directories(pts_path);
+            boost::filesystem::create_directories(msh_path);
 
         }
         else if ((out_type != "mesh") && (out_type != "Output_dir"))  // anything else *should* be a time series*......
@@ -626,7 +626,7 @@ void core::config_output(const pt::ptree &value)
 
             auto fname = itr.second.get<std::string>("base_name");
             auto f = msh_path / fname;
-            boost::filesystem::create_directories(f.parent_path());
+            boost::filesystem::create_directories(f);
             out.fname = f.string();
 
 
