@@ -98,11 +98,11 @@ def main():
 
 
     # ensures we are in UTM and fills the nodata with -9999. tif default no data is a pain to compare against and is often giving the wrong answer.
-    subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d"' % (
-        dem_filename, base_dir + base_name + '_projected.tif', EPSG)], shell=True)
+    # subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d"' % (
+    #     dem_filename, base_dir + base_name + '_projected.tif', EPSG)], shell=True)
 
-    # subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs \"%s\"' % (
-    #     dem_filename, base_dir + base_name + '_projected.tif', srs_out.ExportToProj4())], shell=True)
+    subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs \"%s\"' % (
+        dem_filename, base_dir + base_name + '_projected.tif', srs_out.ExportToProj4())], shell=True)
 
 
 
@@ -427,7 +427,7 @@ def main():
 
     #need to save the UTM coordinates so-as to be able to generate lat/long of points if needed later (e.g., CHM)
     if(not is_geographic):
-        mesh['mesh']['srs_wkt']  = srs.ExportToWkt()
+        mesh['mesh']['proj4']  = srs.ExportToProj4()
         mesh['mesh']['UTM_zone'] = srs.GetUTMZone()  #negative in southern hemisphere
 
     # holds paratmers and initial conditions for CHM
