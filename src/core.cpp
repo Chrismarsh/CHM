@@ -136,22 +136,27 @@ void core::config_options(const pt::ptree &value)
     }
     else
     {
-	int n; // Number of stations to interp
+	    int n = 0 ; // Number of stations to interp
         if(N) // If user specified N in config
         {
             n = *N;
-            if( (n < 2) && (*ia != "nearest")) // Required more than 1 station if using spline or idw
+        }
+        else
+        { // N not specified used defaults
+            if (*ia == "nearest")
             {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
-            }
-        } else{ // N not specified used defaults
-	    if (*ia == "nearest") {
                 n = 1;
-            	LOG_WARNING << "Using N=1 nearest stations as default.";
-	    } else {
-		n = 5;
-		LOG_WARNING << "Using N=5 nearest stations as default.";
-	    }
+                LOG_WARNING << "Using N=1 nearest stations as default.";
+            } else
+            {
+                n = 5;
+                LOG_WARNING << "Using N=5 nearest stations as default.";
+            }
+        }
+
+        if( (n < 2) && (*ia != "nearest")) // Required more than 1 station if using spline or idw
+        {
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
         }
 
         _global->N = n;
