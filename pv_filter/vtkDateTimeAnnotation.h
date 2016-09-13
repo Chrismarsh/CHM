@@ -42,6 +42,11 @@ public:
   vtkSetStringMacro(Format);
   vtkGetStringMacro(Format);
 
+    // Description:
+    // Apply a translation to the time
+    vtkSetMacro(UTCOffset, int);
+    vtkGetMacro(UTCOffset, int);
+
   // Description:
   // Apply a translation to the time
   vtkSetMacro(Shift, double);
@@ -73,6 +78,7 @@ protected:
                                  vtkInformationVector *outputVector);
 
   char  *Format;
+  int UTCOffset;
   double Shift;
   double Scale;
   int    ConvertFromGregorian;

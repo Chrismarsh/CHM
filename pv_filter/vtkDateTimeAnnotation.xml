@@ -32,6 +32,11 @@
         </Documentation>
       </StringVectorProperty>
 
+      <IntVectorProperty name="UTCOffset"
+                            command="SetUTCOffset"
+                            number_of_elements="1"
+                            default_values="0">
+      </IntVectorProperty>
       <!--<IntVectorProperty-->
          <!--name="ConvertFromGregorian"-->
          <!--command="SetConvertFromGregorian"-->

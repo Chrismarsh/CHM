@@ -29,7 +29,7 @@ vtkDateTimeAnnotation::vtkDateTimeAnnotation()
   this->Format = 0;
   this->Shift  = 0.0;
   this->Scale  = 1.0;
-
+  this->UTCOffset = 0;
   this->SetFormat("Time: %04i/%02i/%02i %02i:%02i:%02i");  // YYYY/MM/DD HH:MM:SS
 }
 
@@ -37,6 +37,7 @@ vtkDateTimeAnnotation::vtkDateTimeAnnotation()
 vtkDateTimeAnnotation::~vtkDateTimeAnnotation()
 {
   this->SetFormat(0);
+  this->UTCOffset = 0;
 }
 
 //----------------------------------------------------------------------------
@@ -107,8 +108,9 @@ int vtkDateTimeAnnotation::RequestData(
 
 
   const ptime epoch = boost::posix_time::from_time_t(0);
-  ptime datetime = epoch + seconds(static_cast<long>(time));
+  boost::posix_time::time_duration UTC_offset = boost::posix_time::hours(UTCOffset);
 
+  ptime datetime = epoch + seconds(static_cast<long>(time)) + UTC_offset;
 
   std::tm tm = boost::posix_time::to_tm(datetime);
   int year =  tm.tm_year + 1900; //convert from epoch
