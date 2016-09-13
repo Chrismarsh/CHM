@@ -48,14 +48,24 @@ void core::config_options(const pt::ptree &value)
     }
 
     boost::optional<std::string> ia = value.get_optional<std::string>("interpolant");
-    if(ia)
+    if (ia)
     {
-        if( *ia == "spline")
+        if( *ia == "spline") 
+	{
             _interpolation_method = interp_alg::tpspline;
+	}
         else if (*ia == "idw")
-            _interpolation_method = interp_alg::idw;
-        else
-            LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
+	{
+	    _interpolation_method = interp_alg::idw;
+        }
+	else if (*ia == "nearest")
+        {
+            _interpolation_method = interp_alg::nearest_sta;
+        }
+	else
+        {
+	    LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
+  	}
     }
 
     // project name
@@ -114,7 +124,7 @@ void core::config_options(const pt::ptree &value)
     auto radius = value.get_optional<double>("station_search_radius");
     auto N = value.get_optional<double>("station_N_nearest");
 
-    if( radius && N)
+    if(radius && N)
     {
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Cannot have both station_search_radius and station_N_nearest set."));
     }
@@ -126,16 +136,22 @@ void core::config_options(const pt::ptree &value)
     }
     else
     {
-        int n = 5;
-        if(N)
+	int n; // Number of stations to interp
+        if(N) // If user specified N in config
         {
             n = *N;
-            if( n < 2)
+            if( (n < 2) && (*ia != "nearest")) // Required more than 1 station if using spline or idw
             {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >=2. N = " + std::to_string(n)));
+                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
             }
-        } else{
-            LOG_WARNING << "Using N=5 nearest stations as default.";
+        } else{ // N not specified used defaults
+	    if (*ia == "nearest") {
+                n = 1;
+            	LOG_WARNING << "Using N=1 nearest stations as default.";
+	    } else {
+		n = 5;
+		LOG_WARNING << "Using N=5 nearest stations as default.";
+	    }
         }
 
         _global->N = n;

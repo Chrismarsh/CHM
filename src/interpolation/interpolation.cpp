@@ -19,6 +19,10 @@ void interpolation::init(interp_alg ia, size_t size)
     {
         base = boost::make_shared<inv_dist>();
     }
+    else if(ia == interp_alg::nearest_sta)
+    {
+        base = boost::make_shared<nearest>();
+    }
     else
     {
         BOOST_THROW_EXCEPTION(interp_unknown_type() << errstr_info("Unknown interpolation type"));
