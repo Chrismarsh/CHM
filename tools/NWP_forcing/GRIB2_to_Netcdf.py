@@ -63,7 +63,7 @@ def load_GEM_4d_var(PresLevs,UA_files,var_name,var_name_new,preprocess):
         ds_UA = xr.Dataset()
         for cP in PresLevs:
                 # Get all time step files for this pressure level
-                cfiles = [x for x in UA_files if cP in x]
+                cfiles = [x for x in UA_files if '_'+cP in x] # Underscore needed to exclude patterns in date
                 #print(cfiles)
                 # Load and conact by time
                 #ds_t = xr.open_mfdataset(cfiles,concat_dim='time',engine='pynio',lock=threading.Lock())
@@ -98,10 +98,9 @@ X = imp.load_source('',configfile)
 
 # Assinge to local variables
 download_dir = X.download_dir
-output_dir   = X.output_dir
+netcdf_dir   = X.netcdf_dir
 var_dic = X.var_dic
-export_netcdf = True
-
+domain =X.domain
 # Move to input
 os.chdir(download_dir)
 
@@ -190,21 +189,13 @@ Qli_wm2 = ds.Qli.diff(dim='datetime')/dt_s # j/m2 to j/(s*m2)
 # First value is unknown (downside of saving as accum...) so we set it to -9999
 ds['Qli'] = xr.concat([ds.Qli[0,:,:]*0-9999,Qli_wm2],dim='datetime').transpose('datetime','ygrid_0','xgrid_0')
 
-# Move to output dir
-os.chdir(output_dir)
+# Move to netcdf dir
+if not os.path.isdir(netcdf_dir):
+    os.mkdir(netcdf_dir)
+os.chdir(netcdf_dir)
 
 # Export to netcdf
-nc_file_out = 'GEM_2_5km_west_'+str(ds.datetime[0].values)+'.nc'
-if export_netcdf:
-    print('Writing netcdf file')
-    ds.to_netcdf(nc_file_out,engine='netcdf4')
-
-# Move to input
-#os.chdir(download_dir)
-
-# Remove grib2 files
-#print('Cleaning up grib2 files')
-#files = os.listdir(download_dir)
-#for file in files:
-#    os.remove(file)
+nc_file_out = 'GEM_2_5km_'+domain+'_'+str(ds.datetime[0].values)+'.nc'
+print('Writing netcdf file')
+ds.to_netcdf(nc_file_out,engine='netcdf4')
 
