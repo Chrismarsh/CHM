@@ -582,26 +582,26 @@ void core::config_output(const pt::ptree &value)
     auto msh_dir = "meshes";
     boost::filesystem::path pts_path;
     boost::filesystem::path msh_path;
+
+    auto output_dir = value.get<std::string>("output_dir","output");
+    auto o_path = cwd_dir / output_dir;
+    boost::filesystem::create_directories(o_path);
+
+    // Create empty folders /points/ and /meshes/
+    pts_path = o_path / pts_dir;
+    msh_path = o_path / msh_dir;
+    boost::filesystem::create_directories(pts_path);
+    boost::filesystem::create_directories(msh_path);
+
     //loop over the list of matlab options
     for (auto &itr : value)
     {
         output_info out;
         std::string out_type = itr.first.data();
-        if (out_type == "output_dir")
-        {
-            // Get dir for output (create if doesn't exist)
-            auto output_dir = itr.second.data();
-            auto o_path = cwd_dir / output_dir;
-            boost::filesystem::create_directories(o_path);
+        if (out_type == "output_dir") //skip this
+            continue;
 
-            // Create empty folders /points/ and /meshes/
-            pts_path = o_path / pts_dir;
-            msh_path = o_path / msh_dir;
-            boost::filesystem::create_directories(pts_path);
-            boost::filesystem::create_directories(msh_path);
-
-        }
-	else if ((out_type != "mesh") && (out_type != "output_dir"))  // anything else *should* be a time series*......
+	    if ((out_type != "mesh"))  // anything else *should* be a time series*......
         {
             out.type = output_info::time_series;
             out.name = out_type;
@@ -1910,20 +1910,24 @@ void core::run()
 
 
 
-    try
+
+    std::string base_name="";
+
+    for (auto &itr : _outputs)
     {
-        std::string base_name = _cfg.get<std::string>("output.mesh.base_name");
+        if (itr.type == output_info::output_type::mesh)
+        {
+
 
 #if (BOOST_VERSION / 100 % 1000) < 56
-        pt::write_xml(base_name + ".pvd",
-                      pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
+            pt::write_xml(base_name + ".pvd",
+                          pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
 #else
-        pt::write_xml(base_name + ".pvd",
-                      pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+            pt::write_xml(itr.fname + ".pvd",
+                          pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+            break;
 #endif
-    } catch (pt::ptree_bad_path &e)
-    {
-        //no mesh section, just ignore. XML file won't be written
+        }
     }
 
     for (auto &itr : _outputs)

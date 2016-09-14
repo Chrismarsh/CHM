@@ -68,13 +68,6 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
-bool triangulation::is_out_of_bounds(double longitude, double latitude)
-{
-    if( longitude > _x_max || longitude < _x_min || latitude > _y_max || latitude < _y_min)
-        return true;
-
-    return false;
-};
 
 std::string triangulation::proj4()
 {
