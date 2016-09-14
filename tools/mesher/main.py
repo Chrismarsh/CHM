@@ -532,12 +532,7 @@ def main():
 
                     layer.CreateFeature(feature)
                     i = i + 1
-    x_min, x_max, y_min, y_max = layer.GetExtent()
-    mesh['extent']={}
-    mesh['extent']['x_min'] = x_min
-    mesh['extent']['x_max'] = x_max
-    mesh['extent']['y_min'] = y_min
-    mesh['extent']['y_max'] = y_max
+
 
     print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
 

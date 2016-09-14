@@ -99,7 +99,8 @@ mesh_elem triangulation::locate_face(Point_2 query)
 {
     K_neighbor_search search(*(dD_tree.get()), query, 1);
     auto it = search.begin();
-    return boost::get<1>(it->first);
+    return  boost::get<1>(it->first);
+
 }
 mesh_elem triangulation::locate_face(double x, double y)
 {
@@ -172,10 +173,6 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     }
     _srs_wkt = mesh.get<std::string>("mesh.proj4","");
 
-    _x_min = mesh.get<double>("extent.x_min");
-    _x_max = mesh.get<double>("extent.x_max");
-    _y_min = mesh.get<double>("extent.y_min");
-    _y_max = mesh.get<double>("extent.y_max");
 
     if(_srs_wkt == "")
     {

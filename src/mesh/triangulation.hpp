@@ -265,14 +265,6 @@ public:
 	 */
 	bool is_geographic();
 
-	/**
-	 * Checks if a given point lies outside of the domain
-	 * @param longitude
-	 * @param latitude
-	 * @return
-	 */
-	bool is_out_of_bounds(double longitude, double latitude);
-
     /**
      * Returns the proj4 description of the projection used
      * @return
@@ -295,10 +287,6 @@ private:
 	//holds the vectors we use to create the vtu file
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 
-	double _x_min;
-	double _x_max;
-	double _y_min;
-	double _y_max;
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles

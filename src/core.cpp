@@ -621,13 +621,19 @@ void core::config_output(const pt::ptree &value)
                 delete coordTrans;
             }
 
-            if( _mesh->is_out_of_bounds(out.longitude,out.latitude))
+
+            out.face = _mesh->locate_face(out.longitude, out.latitude);
+
+            //locate_face finds us the closest triangle to our query point, but that point may actually be outside the domain
+            //so check if the face we found actually contains our query point
+            bool contains = out.face->contains(out.longitude,out.latitude);
+
+            if( !contains)
                 BOOST_THROW_EXCEPTION(config_error() <<
                                                      errstr_info(
                                                              "Requested an output point that is not in the triangulation domain. Pt:"
                                                              + std::to_string(out.longitude) + "," + std::to_string(out.latitude) + " name: " + out.name));
 
-            out.face = _mesh->locate_face(out.longitude, out.latitude);
 
             LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
 
