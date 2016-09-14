@@ -590,7 +590,7 @@ void core::config_output(const pt::ptree &value)
         if (out_type == "output_dir")
         {
             // Get dir for output (create if doesn't exist)
-            auto output_dir = itr.second.get<std::string>("path");
+            auto output_dir = itr.second.data();
             auto o_path = cwd_dir / output_dir;
             boost::filesystem::create_directories(o_path);
 
