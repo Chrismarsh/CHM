@@ -551,7 +551,7 @@ void Simple_Canopy::run(mesh_elem &face)
 
 }
 
-void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
+void Simple_Canopy::init(mesh domain)
 {
     #pragma omp parallel for
 

@@ -207,7 +207,7 @@ void Lehning_snowpack::run(mesh_elem &face)
 
 }
 
-void Lehning_snowpack::init(mesh domain, boost::shared_ptr <global> global_param)
+void Lehning_snowpack::init(mesh domain)
 {
     for(size_t i=0;i<domain->size_faces();i++)
     {
