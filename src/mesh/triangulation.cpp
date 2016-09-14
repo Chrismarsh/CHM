@@ -68,6 +68,14 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
+bool triangulation::is_out_of_bounds(double longitude, double latitude)
+{
+    if( longitude > _x_max || longitude < _x_min || latitude > _y_max || latitude < _y_min)
+        return true;
+
+    return false;
+};
+
 std::string triangulation::proj4()
 {
     return _srs_wkt;
@@ -163,6 +171,11 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         _is_geographic = true;
     }
     _srs_wkt = mesh.get<std::string>("mesh.proj4","");
+
+    _x_min = mesh.get<double>("extent.x_min");
+    _x_max = mesh.get<double>("extent.x_max");
+    _y_min = mesh.get<double>("extent.y_min");
+    _y_max = mesh.get<double>("extent.y_max");
 
     if(_srs_wkt == "")
     {
