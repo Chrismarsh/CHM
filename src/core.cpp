@@ -136,22 +136,27 @@ void core::config_options(const pt::ptree &value)
     }
     else
     {
-	int n; // Number of stations to interp
+	    int n = 0 ; // Number of stations to interp
         if(N) // If user specified N in config
         {
             n = *N;
-            if( (n < 2) && (*ia != "nearest")) // Required more than 1 station if using spline or idw
+        }
+        else
+        { // N not specified used defaults
+            if (*ia == "nearest")
             {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
-            }
-        } else{ // N not specified used defaults
-	    if (*ia == "nearest") {
                 n = 1;
-            	LOG_WARNING << "Using N=1 nearest stations as default.";
-	    } else {
-		n = 5;
-		LOG_WARNING << "Using N=5 nearest stations as default.";
-	    }
+                LOG_WARNING << "Using N=1 nearest stations as default.";
+            } else
+            {
+                n = 5;
+                LOG_WARNING << "Using N=5 nearest stations as default.";
+            }
+        }
+
+        if( (n < 2) && (*ia != "nearest")) // Required more than 1 station if using spline or idw
+        {
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
         }
 
         _global->N = n;
@@ -228,6 +233,10 @@ void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::
         boost::shared_ptr<module_base> m(_mfactory.get(module, cfg));
         //internal tracking of module initialization order
         m->IDnum = modnum;
+
+        //assign the internal global param pointer to our global
+        m->global_param = _global;
+
         modnum++;
         _modules.push_back(
                 std::make_pair(m, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
@@ -618,7 +627,7 @@ void core::config_output(const pt::ptree &value)
                 insrs.SetWellKnownGeogCS("WGS84");
 
                 OGRSpatialReference outsrs;
-                insrs.importFromProj4(_mesh->proj4().c_str());
+                outsrs.importFromProj4(_mesh->proj4().c_str());
 
                 OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
@@ -1240,7 +1249,7 @@ void core::init(int argc, char **argv)
             ompException oe;
             oe.Run([&]
                    {
-                       jtr->init(_mesh, _global);
+                       jtr->init(_mesh);
                    });
             oe.Rethrow();
         }
@@ -1720,7 +1729,7 @@ void core::run()
                                        //module calls
                                        for (auto &jtr : itr)
                                        {
-                                           jtr->run(face, _global);
+                                           jtr->run(face);
                                        }
 
                                    });
@@ -1735,7 +1744,7 @@ void core::run()
                             ompException oe;
                             oe.Run([&]
                                    {
-                                       jtr->run(_mesh, _global);
+                                       jtr->run(_mesh);
                                    });
                             oe.Rethrow();
                         }

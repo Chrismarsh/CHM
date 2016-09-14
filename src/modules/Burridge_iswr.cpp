@@ -18,7 +18,7 @@ Burridge_iswr::~Burridge_iswr()
 
 }
 
-void Burridge_iswr::run(mesh_elem &face, boost::shared_ptr<global> global_param)
+void Burridge_iswr::run(mesh_elem &face)
 {
     double solar_el = face->face_data("solar_el");
     double cosZ = cos( (90.0-solar_el) *mio::Cst::to_rad);

@@ -23,7 +23,7 @@ Gray_inf::~Gray_inf()
 
 }
 
-void Gray_inf::init(mesh domain, boost::shared_ptr<global> global)
+void Gray_inf::init(mesh domain)
 {
     //store all of snobals global variables from this timestep to be used as ICs for the next timestep
 #pragma omp parallel for
@@ -45,8 +45,15 @@ void Gray_inf::init(mesh domain, boost::shared_ptr<global> global)
 
     }
 }
-void Gray_inf::run(mesh_elem &face, boost::shared_ptr<global> global_param)
+void Gray_inf::run(mesh_elem &face)
 {
+    if(is_water(face))
+    {
+        set_all_nan_on_skip(face);
+        return;
+    }
+
+
     auto* d = face->get_module_data<Gray_inf::data>(ID);
 
     auto id = face->cell_id;
@@ -117,14 +124,7 @@ void Gray_inf::run(mesh_elem &face, boost::shared_ptr<global> global_param)
     }
     else
     {
-        face->set_face_data("total_excess",nan(""));
-        face->set_face_data("total_inf",nan(""));
-        face->set_face_data("inf",nan(""));
-        face->set_face_data("runoff",nan(""));
-        face->set_face_data("potential_inf",nan(""));
-        face->set_face_data("soil_storage", nan(""));
-        face->set_face_data("opportunity time",nan(""));
-        face->set_face_data("available storage",nan(""));
+        set_all_nan_on_skip(face);
     }
 
 }

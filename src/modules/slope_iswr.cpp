@@ -21,7 +21,7 @@ slope_iswr::slope_iswr(config_file cfg)
 
     assume_no_slope = cfg.get("no_slope",false);
 }
-void slope_iswr::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void slope_iswr::run(mesh_elem& face)
 {
     
 

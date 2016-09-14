@@ -26,7 +26,7 @@ Harder_precip_phase::~Harder_precip_phase()
 {
 
 }
-void Harder_precip_phase::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void Harder_precip_phase::run(mesh_elem& face)
 {
 
     double Ta = face->face_data("t")+273.15; //K

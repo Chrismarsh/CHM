@@ -16,7 +16,7 @@ Walcek_cloud::~Walcek_cloud()
 {
 
 };
-void Walcek_cloud::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void Walcek_cloud::run(mesh_elem& face)
 {
     //Kunkel RH lapse rates
     // 1/km

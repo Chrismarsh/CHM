@@ -76,7 +76,7 @@ point_mode::~point_mode()
 
 }
 
-void point_mode::run(mesh_elem &face, boost::shared_ptr <global> global_param)
+void point_mode::run(mesh_elem &face)
 {
     // at this point, if the user has provided more than 1 station, they've been stripped out.
     // we can safetly take the 1st (and only) station.

@@ -35,8 +35,8 @@ class Liston_wind : public module_base
 public:
     Liston_wind(config_file cfg);
     ~Liston_wind();
-    virtual void run(mesh domain, boost::shared_ptr<global> global_param);
-    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    virtual void run(mesh domain);
+    virtual void init(mesh domain);
     class lwinddata : public face_info
     {
     public:

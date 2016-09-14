@@ -19,8 +19,13 @@ Richard_albedo::~Richard_albedo()
 
 
 
-void Richard_albedo::run(mesh_elem &face, boost::shared_ptr<global> global_param)
+void Richard_albedo::run(mesh_elem &face)
 {
+    if(is_water(face))
+    {
+        set_all_nan_on_skip(face);
+        return;
+    }
     double albedo = face->get_module_data<Richard_albedo::data>(ID)->albedo;
 
     double swe = face->face_data("swe");
@@ -68,7 +73,7 @@ void Richard_albedo::run(mesh_elem &face, boost::shared_ptr<global> global_param
     face->get_module_data<Richard_albedo::data>(ID)->albedo = albedo;
 }
 
-void Richard_albedo::init(mesh domain, boost::shared_ptr<global> global)
+void Richard_albedo::init(mesh domain)
 {
 
     //these

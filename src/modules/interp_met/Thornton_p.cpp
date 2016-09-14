@@ -11,7 +11,7 @@ Thornton_p::Thornton_p(config_file cfg)
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
-void Thornton_p::init(mesh domain, boost::shared_ptr<global> global_param)
+void Thornton_p::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -21,7 +21,7 @@ void Thornton_p::init(mesh domain, boost::shared_ptr<global> global_param)
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void Thornton_p::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void Thornton_p::run(mesh_elem& face)
 {
     //km^-1
     double monthly_factors[] = {0.35, 0.35, 0.35, 0.30, 0.25, 0.20, 0.20, 0.20, 0.20, 0.25, 0.30, 0.35};

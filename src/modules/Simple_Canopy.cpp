@@ -37,9 +37,13 @@ Simple_Canopy::~Simple_Canopy()
 
 }
 
-void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param)
+void Simple_Canopy::run(mesh_elem &face)
 {
-
+    if(is_water(face))
+    {
+        set_all_nan_on_skip(face);
+        return;
+    }
     auto data = face->get_module_data<Simple_Canopy::data>(ID);
 
     // Get meteorological data for current face
@@ -547,7 +551,7 @@ void Simple_Canopy::run(mesh_elem &face, boost::shared_ptr <global> global_param
 
 }
 
-void Simple_Canopy::init(mesh domain, boost::shared_ptr <global> global_param)
+void Simple_Canopy::init(mesh domain)
 {
     #pragma omp parallel for
 

@@ -13,7 +13,7 @@ rh_from_obs::~rh_from_obs()
 {
 
 }
-void rh_from_obs::init(mesh domain, boost::shared_ptr<global> global_param)
+void rh_from_obs::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -24,7 +24,7 @@ void rh_from_obs::init(mesh domain, boost::shared_ptr<global> global_param)
     }
 }
 
-void rh_from_obs::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void rh_from_obs::run(mesh_elem& face)
 {
     //generate lapse rates
     std::vector<double> sea;

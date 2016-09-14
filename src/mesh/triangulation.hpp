@@ -265,17 +265,14 @@ public:
 	 */
 	bool is_geographic();
 
-	/**
-	 * If this is a UTM mesh, returns the UTM zone number used to generate the mesh. Negative in southern hemisphere
-	 * @return
-	 */
-	int UTM_zone();
-
-
+    /**
+     * Returns the proj4 description of the projection used
+     * @return
+     */
 	std::string proj4();
+
 	//holds the spatial search tree
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
-
 	boost::shared_ptr<Tree> dD_tree;
 private:
     size_t _num_faces; //number of faces
