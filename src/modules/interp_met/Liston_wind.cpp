@@ -52,10 +52,10 @@ void Liston_wind::init(mesh domain)
             Delaunay::Face_handle southeast;
             Delaunay::Face_handle southwest;
 
-            north = domain->locate_face( math::gis::point_from_bearing(me,0,distance) ) ; // me.x(), me.y() + distance
-            south = domain->locate_face( math::gis::point_from_bearing(me,180,distance) ); //me.x(), me.y() - distance
-            west = domain->locate_face(  math::gis::point_from_bearing(me,270,distance) ); //me.x() - distance, me.y()
-            east = domain->locate_face(  math::gis::point_from_bearing(me,90,distance)  ); //me.x() + distance, me.y()
+            north = domain->find_closest_face( math::gis::point_from_bearing(me,0,distance) ) ; // me.x(), me.y() + distance
+            south = domain->find_closest_face( math::gis::point_from_bearing(me,180,distance) ); //me.x(), me.y() - distance
+            west = domain->find_closest_face(  math::gis::point_from_bearing(me,270,distance) ); //me.x() - distance, me.y()
+            east = domain->find_closest_face(  math::gis::point_from_bearing(me,90,distance)  ); //me.x() + distance, me.y()
 
             double z = face->get_z();
             double zw = west->get_z();
@@ -68,16 +68,16 @@ void Liston_wind::init(mesh domain)
             double zse = 0.;
             double zsw = 0.;
 
-            northeast = domain->locate_face(math::gis::point_from_bearing(me,45,distance)); //me.x() + distance, me.y() + distance
+            northeast = domain->find_closest_face(math::gis::point_from_bearing(me,45,distance)); //me.x() + distance, me.y() + distance
             zne = northeast->get_z();
 
-            northwest = domain->locate_face(math::gis::point_from_bearing(me,315,distance)); //me.x() - distance, me.y() + distance
+            northwest = domain->find_closest_face(math::gis::point_from_bearing(me,315,distance)); //me.x() - distance, me.y() + distance
             znw = northwest->get_z();
 
-            southeast = domain->locate_face(math::gis::point_from_bearing(me,135,distance)); //me.x() + distance, me.y() - distance
+            southeast = domain->find_closest_face(math::gis::point_from_bearing(me,135,distance)); //me.x() + distance, me.y() - distance
             zse = southeast->get_z();
 
-            southwest = domain->locate_face(math::gis::point_from_bearing(me,225,distance)); //me.x() - distance, me.y() - distance
+            southwest = domain->find_closest_face(math::gis::point_from_bearing(me,225,distance)); //me.x() - distance, me.y() - distance
             zsw = southwest->get_z();
 
             double curve = .25 * ((z - .5 * (zw + ze)) / (2 * distance) + (z - .5 * (zs + zn)) / (2 * distance) +
