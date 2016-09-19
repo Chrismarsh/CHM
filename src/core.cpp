@@ -47,26 +47,25 @@ void core::config_options(const pt::ptree &value)
         LOG_DEBUG << "Set ui to " << *u;
     }
 
-    boost::optional<std::string> ia = value.get_optional<std::string>("interpolant");
-    if (ia)
+    std::string ia = value.get<std::string>("interpolant","spline");
+
+    if( ia == "spline")
     {
-        if( *ia == "spline") 
-	{
-            _interpolation_method = interp_alg::tpspline;
-	}
-        else if (*ia == "idw")
-	{
-	    _interpolation_method = interp_alg::idw;
-        }
-	else if (*ia == "nearest")
-        {
-            _interpolation_method = interp_alg::nearest_sta;
-        }
-	else
-        {
-	    LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
-  	}
+        _interpolation_method = interp_alg::tpspline;
     }
+    else if (ia == "idw")
+    {
+        _interpolation_method = interp_alg::idw;
+    }
+    else if (ia == "nearest")
+    {
+        _interpolation_method = interp_alg::nearest_sta;
+    }
+    else
+    {
+        LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
+    }
+
 
     // project name
     boost::optional<std::string> prj = value.get_optional<std::string>("prj_name");
