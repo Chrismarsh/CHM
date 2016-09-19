@@ -99,6 +99,10 @@ void core::config_options(const pt::ptree &value)
         _per_triangle_timeseries = *per_triangle_storage;
         LOG_DEBUG << "per triangle timer series storage: " << _per_triangle_timeseries;
     }
+    else
+    {
+        _per_triangle_timeseries = false;
+    }
 
     // point mode options
     try
