@@ -297,7 +297,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
                     "Face " + std::to_string(i) + " has out of bound neighbours."));
         }
         //-1 is now the no neighbour value
-        Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : nullptr;//Face_handle()
+        Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : nullptr; //Face_handle()
         Face_handle face1 =  items[1] != -1 ?_faces.at( items[1] ) : nullptr;
         Face_handle face2 =  items[2] != -1 ?_faces.at( items[2] ) : nullptr;
 
