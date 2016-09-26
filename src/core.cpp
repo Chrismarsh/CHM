@@ -146,7 +146,7 @@ void core::config_options(const pt::ptree &value)
         }
         else
         { // N not specified used defaults
-            if (*ia == "nearest")
+            if (ia == "nearest")
             {
                 n = 1;
                 LOG_WARNING << "Using N=1 nearest stations as default.";
@@ -157,7 +157,7 @@ void core::config_options(const pt::ptree &value)
             }
         }
 
-        if( (n < 2) && (*ia != "nearest")) // Required more than 1 station if using spline or idw
+        if( (n < 2) && (ia != "nearest")) // Required more than 1 station if using spline or idw
         {
             BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
         }
