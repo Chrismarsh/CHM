@@ -100,16 +100,37 @@ mesh_elem triangulation::locate_face(Point_2 query)
 {
     mesh_elem face = find_closest_face(query);
 
+    //check if the closest is what we wanted
     if(face->contains(query.x(),query.y()))
         return face;
 
+    //Likely one of the three neighbours
     for(int i = 0; i < 3; ++i)
     {
         auto n = face->neighbor(i);
+
         if(n != nullptr && n->contains(query.x(),query.y()))
             return n;
     }
 
+    //cover off the edge case where we are on a face opposite a vertex, so not a true neighbour
+    for(int i = 0; i < 3; ++i)
+    {
+        auto n = face->neighbor(i);
+
+        if(n != nullptr)
+        {
+            //check all 3 neighbours of n
+            for(int j=0; j < 3;j++)
+            {
+                auto nn = n->neighbor(j);
+                if(nn != nullptr && nn->contains(query.x(),query.y()))
+                    return nn;
+            }
+        }
+    }
+
+    //we tried....
     return nullptr;
 }
 
