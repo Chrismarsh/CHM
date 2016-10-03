@@ -234,7 +234,7 @@ public:
 
     bool is_nan(double variable)
     {
-        return variable == -9999. || isnan(variable);
+        return variable == -9999. || std::isnan(variable);
     }
 
     bool is_water(mesh_elem face)
