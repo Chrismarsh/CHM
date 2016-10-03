@@ -12,7 +12,7 @@ Dodson_NSA_ta::~Dodson_NSA_ta()
 {
 
 }
-void Dodson_NSA_ta::init(mesh domain, boost::shared_ptr<global> global_param)
+void Dodson_NSA_ta::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -22,7 +22,7 @@ void Dodson_NSA_ta::init(mesh domain, boost::shared_ptr<global> global_param)
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void Dodson_NSA_ta::run(mesh_elem &face, boost::shared_ptr<global> global_param)
+void Dodson_NSA_ta::run(mesh_elem &face)
 {
 
     double Po = 100000.0; //sea level pressure (Pa)

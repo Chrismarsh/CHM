@@ -30,7 +30,7 @@ public:
 
     ~threshold_p_phase();
 
-    virtual void run(mesh_elem &face, boost::shared_ptr <global> global_param);
+    virtual void run(mesh_elem &face);
 
 private:
 

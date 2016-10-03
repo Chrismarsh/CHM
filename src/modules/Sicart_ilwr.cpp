@@ -14,7 +14,7 @@ Sicart_ilwr::Sicart_ilwr(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-void Sicart_ilwr::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void Sicart_ilwr::run(mesh_elem& face)
 {
     double T = face->face_data("t")+273.15; //C->K
     double tau = face->face_data("atm_trans");

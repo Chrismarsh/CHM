@@ -28,6 +28,6 @@ public:
 
     solar(config_file cfg);
     ~solar();
-    void run(mesh_elem &face, boost::shared_ptr <global> global_param);
-    void init(mesh domain, boost::shared_ptr<global> global_param);
+    void run(mesh_elem &face);
+    void init(mesh domain);
 };

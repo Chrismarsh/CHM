@@ -3,7 +3,9 @@
 #include "module_base.hpp"
 #include "logger.hpp"
 #include "exception.hpp"
+
 #include <string>
+#include <boost/shared_ptr.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 namespace pt = boost::property_tree;

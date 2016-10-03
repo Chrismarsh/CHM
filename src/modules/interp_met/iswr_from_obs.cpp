@@ -17,7 +17,7 @@ iswr_from_obs::~iswr_from_obs()
 {
 
 }
-void iswr_from_obs::init(mesh domain, boost::shared_ptr<global> global_param)
+void iswr_from_obs::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -27,7 +27,7 @@ void iswr_from_obs::init(mesh domain, boost::shared_ptr<global> global_param)
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void iswr_from_obs::run(mesh_elem &face, boost::shared_ptr<global> global_param)
+void iswr_from_obs::run(mesh_elem &face)
 {
     //interpolate all the measured qsi
 

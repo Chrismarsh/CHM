@@ -15,7 +15,7 @@ public:
 
     ~point_mode();
 
-    virtual void run(mesh_elem &face, boost::shared_ptr <global> global_param);
+    virtual void run(mesh_elem &face);
 
 
     bool t ;

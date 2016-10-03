@@ -16,7 +16,7 @@ Liston_monthly_llra_ta::~Liston_monthly_llra_ta()
 {
 
 }
-void Liston_monthly_llra_ta::init(mesh domain, boost::shared_ptr<global> global_param)
+void Liston_monthly_llra_ta::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -26,7 +26,7 @@ void Liston_monthly_llra_ta::init(mesh domain, boost::shared_ptr<global> global_
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void Liston_monthly_llra_ta::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void Liston_monthly_llra_ta::run(mesh_elem& face)
 {
 
     double lapse_rate = -9999;

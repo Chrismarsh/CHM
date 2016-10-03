@@ -35,3 +35,5 @@ err.xml
 /tools/meshstats/*
 !/tools/meshstats/meshstats.py
 /src/version.h
+/modules.dot
+/CMake_fedora/*

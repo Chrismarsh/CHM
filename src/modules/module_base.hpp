@@ -60,6 +60,11 @@ public:
     int IDnum;
 
     /**
+     * Global parameter store
+     */
+    boost::shared_ptr<global> global_param;
+
+    /**
     * Default constructor
     */
     module_base(){};
@@ -75,6 +80,7 @@ public:
         _optional = boost::make_shared<std::vector<std::string> >();
         IDnum = 0;
         _parallel_type = type;
+        global_param = nullptr;
 
         //nothing
     };
@@ -92,7 +98,7 @@ public:
     * \param face The terrain element (triangle) to be worked upon for an element parallel domain
     * \param global_param A pointer to the shared global paramter space with domain-wide paramters
     */
-    virtual void run(mesh_elem &face, boost::shared_ptr<global> global_param)
+    virtual void run(mesh_elem &face)
     {
     };
 
@@ -101,7 +107,7 @@ public:
      * \param domain The entier terrain mesh
      * \param global_parama A pointer to the shared global paramter space with domain-wide paramters
      */
-    virtual void run(mesh domain, boost::shared_ptr<global> global_param)
+    virtual void run(mesh domain)
     {
     };
 
@@ -109,7 +115,7 @@ public:
      * Optional function to run after the dependency constructor call, but before the run function is called. Used to perform any initalization.
      * \param domain The entire terrain mesh
      */
-    virtual void init(mesh domain, boost::shared_ptr<global> global)
+    virtual void init(mesh domain)
     {
 
     };
@@ -206,6 +212,18 @@ public:
 
 
     }
+
+    /**
+     * If you want to skip evaluating this current face, call this to set all provides outputs to nan
+     * E.g., called if the is_water, is_glacier, etc is true
+     */
+    void set_all_nan_on_skip(mesh_elem& face)
+    {
+        for(auto& itr: *_provides)
+        {
+            face->set_face_data(itr,-9999.);
+        }
+    }
     /**
      * Set that an optional variable was found
      */
@@ -216,7 +234,31 @@ public:
 
     bool is_nan(double variable)
     {
-        return variable == -9999.;
+        return variable == -9999. || isnan(variable);
+    }
+
+    bool is_water(mesh_elem face)
+    {
+        bool is = false;
+
+        if(face->has_parameter("landcover"))
+        {
+            int LC = face->get_parameter("landcover");
+            is = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".is_water",false);
+        }
+        return is;
+    }
+
+    bool is_glacier(mesh_elem face)
+    {
+        bool is = false;
+
+        if(face->has_parameter("landcover"))
+        {
+            int LC = face->get_parameter("landcover");
+            is = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".is_glacier",false);
+        }
+        return is;
     }
 
 protected:
@@ -225,6 +267,8 @@ protected:
     boost::shared_ptr<std::vector<std::string> > _depends;
     boost::shared_ptr<std::vector<std::string> > _depends_from_met;
     boost::shared_ptr<std::vector<std::string> > _optional;
+
+
 
     //lists the options that were found
     std::map<std::string,bool> _optional_found;

@@ -32,8 +32,8 @@ class Dist_tlapse : public module_base
 public:
     Dist_tlapse(config_file cfg);
     ~Dist_tlapse();
-    virtual void run(mesh_elem& face, boost::shared_ptr<global> global_param);
-    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    virtual void run(mesh_elem& face);
+    virtual void init(mesh domain);
     struct data : public face_info
     {
         interpolation interp;

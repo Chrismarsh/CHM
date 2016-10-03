@@ -185,12 +185,33 @@ public:
     size_t size_vertex();
 
     /**
-    * Locates the closest triangle (based on centers) that the point x y lies on in 2 dimensions.
-    * \returns The triangle
-    */
-    mesh_elem locate_face(double x, double y);
+     * Locates the closest triangle (based on centers) that the point x y lies on in 2 dimensions.
+     * This will always return a triangle, even if the query point is outside of the domain.
+     * The triangle found does not nessessairly contain the point specified if another triangle's center is closer.
+     * @param x x coordinate of query point
+     * @param y y coordinate of query point
+     * @return
+     */
+    mesh_elem find_closest_face(double x, double y);
 
-	mesh_elem locate_face(Point_2 query);
+    /**
+     * Locates the closest triangle (based on centers) that the point x y lies on in 2 dimensions.
+     * This will always return a triangle, even if the query point is outside of the domain
+     * The triangle found does not nessessairly contain the point specified if another triangle's center is closer.
+     * @param query Query point
+     * @return
+     */
+	mesh_elem find_closest_face(Point_2 query);
+
+    /**
+     * Lcoates the triangle that contains the query point. Guaranteed that if a triangle is found, the point lies inside the triangle.
+     *
+     * @param x
+     * @param y
+     * @return triangle if found, otherwise nullptr
+     */
+    mesh_elem locate_face(double x, double y);
+    mesh_elem locate_face(Point_2 query);
 
     /**
     * Returns the finite face at index i. A given index will always return the same face.
@@ -265,17 +286,14 @@ public:
 	 */
 	bool is_geographic();
 
-	/**
-	 * If this is a UTM mesh, returns the UTM zone number used to generate the mesh. Negative in southern hemisphere
-	 * @return
-	 */
-	int UTM_zone();
-
-
+    /**
+     * Returns the proj4 description of the projection used
+     * @return
+     */
 	std::string proj4();
+
 	//holds the spatial search tree
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
-
 	boost::shared_ptr<Tree> dD_tree;
 private:
     size_t _num_faces; //number of faces

@@ -300,7 +300,7 @@ int main(int argc, char *argv[])
             auto n1 = itr->neighbor(1);
             auto n2 = itr->neighbor(2);
 
-            neighfile << i <<  "  " << n0->id << "  " << n1->id  <<"  "<< n1->id << std::endl;
+            neighfile << i <<  "  " << n0->id << "  " << n1->id  <<"  "<< n2->id << std::endl;
           ++i;
         }
 

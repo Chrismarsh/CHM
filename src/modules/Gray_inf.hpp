@@ -15,8 +15,8 @@ public:
 
     ~Gray_inf();
 
-    void run(mesh_elem &face, boost::shared_ptr <global> global_param);
-    void init(mesh domain, boost::shared_ptr<global> global);
+    void run(mesh_elem &face);
+    void init(mesh domain);
 
     class data : public face_info
     {

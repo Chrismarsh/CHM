@@ -36,8 +36,8 @@ class Kunkel_monthlyTd_rh : public module_base
 public:
     Kunkel_monthlyTd_rh(config_file cfg);
     ~Kunkel_monthlyTd_rh();
-    virtual void run(mesh_elem& face, boost::shared_ptr<global> global_param);
-    virtual void init(mesh domain, boost::shared_ptr<global> global_param);
+    virtual void run(mesh_elem& face);
+    virtual void init(mesh domain);
     struct data : public face_info
     {
         interpolation interp;

@@ -533,6 +533,7 @@ def main():
                     layer.CreateFeature(feature)
                     i = i + 1
 
+
     print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
 
     # I think this check for the next section can be removed

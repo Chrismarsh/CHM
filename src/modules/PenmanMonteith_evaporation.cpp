@@ -19,7 +19,7 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
- void PenmanMonteith_evaporation::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+ void PenmanMonteith_evaporation::run(mesh_elem& face)
 {
 
     double albedo = 0.23; //grass and crops

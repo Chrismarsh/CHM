@@ -17,7 +17,7 @@ const_llra_ta::~const_llra_ta()
 
 }
 
-void const_llra_ta::init(mesh domain, boost::shared_ptr<global> global_param)
+void const_llra_ta::init(mesh domain)
 {
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -27,7 +27,7 @@ void const_llra_ta::init(mesh domain, boost::shared_ptr<global> global_param)
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void const_llra_ta::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void const_llra_ta::run(mesh_elem& face)
 {
 
     double lapse_rate = 0.0065;

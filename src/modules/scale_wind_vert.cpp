@@ -20,7 +20,7 @@ scale_wind_vert::~scale_wind_vert()
 
 }
 
-void scale_wind_vert::run(mesh_elem &face, boost::shared_ptr <global> global_param) {
+void scale_wind_vert::run(mesh_elem &face) {
 
 
     // Get meteorological data for current face

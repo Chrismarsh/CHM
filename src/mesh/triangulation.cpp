@@ -68,14 +68,12 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
+
 std::string triangulation::proj4()
 {
     return _srs_wkt;
 }
-int triangulation::UTM_zone()
-{
-    return _UTM_zone;
-}
+
 bool triangulation::is_geographic()
 {
     return _is_geographic;
@@ -90,18 +88,65 @@ size_t triangulation::size_vertex()
     return _num_vertex;
 }
 
+mesh_elem triangulation::locate_face(double x, double y)
+{
+    Point_2 query(x,y);
+    return locate_face(query);
+
+
+
+}
 mesh_elem triangulation::locate_face(Point_2 query)
+{
+    mesh_elem face = find_closest_face(query);
+
+    //check if the closest is what we wanted
+    if(face->contains(query.x(),query.y()))
+        return face;
+
+    //Likely one of the three neighbours
+    for(int i = 0; i < 3; ++i)
+    {
+        auto n = face->neighbor(i);
+
+        if(n != nullptr && n->contains(query.x(),query.y()))
+            return n;
+    }
+
+    //cover off the edge case where we are on a face opposite a vertex, so not a true neighbour
+    for(int i = 0; i < 3; ++i)
+    {
+        auto n = face->neighbor(i);
+
+        if(n != nullptr)
+        {
+            //check all 3 neighbours of n
+            for(int j=0; j < 3;j++)
+            {
+                auto nn = n->neighbor(j);
+                if(nn != nullptr && nn->contains(query.x(),query.y()))
+                    return nn;
+            }
+        }
+    }
+
+    //we tried....
+    return nullptr;
+}
+
+mesh_elem triangulation::find_closest_face(Point_2 query)
 {
     K_neighbor_search search(*(dD_tree.get()), query, 1);
     auto it = search.begin();
-    return boost::get<1>(it->first);
+    return  boost::get<1>(it->first);
+
 }
-mesh_elem triangulation::locate_face(double x, double y)
+mesh_elem triangulation::find_closest_face(double x, double y)
 {
     //http://doc.cgal.org/latest/Spatial_searching/index.html
     Point_2 query(x,y);
 
-    return locate_face(query);
+    return find_closest_face(query);
 
 }
 
@@ -165,14 +210,13 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     {
         _is_geographic = true;
     }
+    _srs_wkt = mesh.get<std::string>("mesh.proj4","");
 
 
-    if(!_is_geographic)
+    if(_srs_wkt == "")
     {
-        _UTM_zone = mesh.get<int>("mesh.UTM_zone");
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info("proj4 field in .mesh file is empty!"));
     }
-
-    _srs_wkt = mesh.get<std::string>("mesh.proj4");
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
     {
@@ -274,9 +318,9 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
                     "Face " + std::to_string(i) + " has out of bound neighbours."));
         }
         //-1 is now the no neighbour value
-        Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : Face_handle();
-        Face_handle face1 =  items[1] != -1 ?_faces.at( items[1] ) : Face_handle();
-        Face_handle face2 =  items[2] != -1 ?_faces.at( items[2] ) : Face_handle();
+        Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : nullptr; //Face_handle()
+        Face_handle face1 =  items[1] != -1 ?_faces.at( items[1] ) : nullptr;
+        Face_handle face2 =  items[2] != -1 ?_faces.at( items[2] ) : nullptr;
 
         face->set_neighbors(face0,face1,face2);
 
@@ -349,7 +393,7 @@ Delaunay::Face_handle triangulation::face(size_t i)
 
 void triangulation::timeseries_to_file(double x, double y, std::string fname)
 {
-    mesh_elem m = this->locate_face(x, y);
+    mesh_elem m = this->find_closest_face(x, y);
     timeseries_to_file(m, fname);
 }
 

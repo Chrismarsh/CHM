@@ -47,26 +47,25 @@ void core::config_options(const pt::ptree &value)
         LOG_DEBUG << "Set ui to " << *u;
     }
 
-    boost::optional<std::string> ia = value.get_optional<std::string>("interpolant");
-    if (ia)
+    std::string ia = value.get<std::string>("interpolant","spline");
+
+    if( ia == "spline")
     {
-        if( *ia == "spline") 
-	{
-            _interpolation_method = interp_alg::tpspline;
-	}
-        else if (*ia == "idw")
-	{
-	    _interpolation_method = interp_alg::idw;
-        }
-	else if (*ia == "nearest")
-        {
-            _interpolation_method = interp_alg::nearest_sta;
-        }
-	else
-        {
-	    LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
-  	}
+        _interpolation_method = interp_alg::tpspline;
     }
+    else if (ia == "idw")
+    {
+        _interpolation_method = interp_alg::idw;
+    }
+    else if (ia == "nearest")
+    {
+        _interpolation_method = interp_alg::nearest_sta;
+    }
+    else
+    {
+        LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
+    }
+
 
     // project name
     boost::optional<std::string> prj = value.get_optional<std::string>("prj_name");
@@ -99,6 +98,10 @@ void core::config_options(const pt::ptree &value)
     {
         _per_triangle_timeseries = *per_triangle_storage;
         LOG_DEBUG << "per triangle timer series storage: " << _per_triangle_timeseries;
+    }
+    else
+    {
+        _per_triangle_timeseries = false;
     }
 
     // point mode options
@@ -136,22 +139,27 @@ void core::config_options(const pt::ptree &value)
     }
     else
     {
-	int n; // Number of stations to interp
+	    int n = 0 ; // Number of stations to interp
         if(N) // If user specified N in config
         {
             n = *N;
-            if( (n < 2) && (*ia != "nearest")) // Required more than 1 station if using spline or idw
+        }
+        else
+        { // N not specified used defaults
+            if (ia == "nearest")
             {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
-            }
-        } else{ // N not specified used defaults
-	    if (*ia == "nearest") {
                 n = 1;
-            	LOG_WARNING << "Using N=1 nearest stations as default.";
-	    } else {
-		n = 5;
-		LOG_WARNING << "Using N=5 nearest stations as default.";
-	    }
+                LOG_WARNING << "Using N=1 nearest stations as default.";
+            } else
+            {
+                n = 5;
+                LOG_WARNING << "Using N=5 nearest stations as default.";
+            }
+        }
+
+        if( (n < 2) && (ia != "nearest")) // Required more than 1 station if using spline or idw
+        {
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
         }
 
         _global->N = n;
@@ -228,6 +236,10 @@ void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::
         boost::shared_ptr<module_base> m(_mfactory.get(module, cfg));
         //internal tracking of module initialization order
         m->IDnum = modnum;
+
+        //assign the internal global param pointer to our global
+        m->global_param = _global;
+
         modnum++;
         _modules.push_back(
                 std::make_pair(m, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
@@ -573,26 +585,26 @@ void core::config_output(const pt::ptree &value)
     auto msh_dir = "meshes";
     boost::filesystem::path pts_path;
     boost::filesystem::path msh_path;
+
+    auto output_dir = value.get<std::string>("output_dir","output");
+    auto o_path = cwd_dir / output_dir;
+    boost::filesystem::create_directories(o_path);
+
+    // Create empty folders /points/ and /meshes/
+    pts_path = o_path / pts_dir;
+    msh_path = o_path / msh_dir;
+    boost::filesystem::create_directories(pts_path);
+    boost::filesystem::create_directories(msh_path);
+
     //loop over the list of matlab options
     for (auto &itr : value)
     {
         output_info out;
         std::string out_type = itr.first.data();
-        if (out_type == "output_dir")
-        {
-            // Get dir for output (create if doesn't exist)
-            auto output_dir = itr.second.get<std::string>("path");
-            auto o_path = cwd_dir / output_dir;
-            boost::filesystem::create_directories(o_path);
+        if (out_type == "output_dir") //skip this
+            continue;
 
-            // Create empty folders /points/ and /meshes/
-            pts_path = o_path / pts_dir;
-            msh_path = o_path / msh_dir;
-            boost::filesystem::create_directories(pts_path);
-            boost::filesystem::create_directories(msh_path);
-
-        }
-	else if ((out_type != "mesh") && (out_type != "output_dir"))  // anything else *should* be a time series*......
+	    if ((out_type != "mesh"))  // anything else *should* be a time series*......
         {
             out.type = output_info::time_series;
             out.name = out_type;
@@ -618,7 +630,7 @@ void core::config_output(const pt::ptree &value)
                 insrs.SetWellKnownGeogCS("WGS84");
 
                 OGRSpatialReference outsrs;
-                insrs.importFromProj4(_mesh->proj4().c_str());
+                outsrs.importFromProj4(_mesh->proj4().c_str());
 
                 OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
@@ -630,16 +642,16 @@ void core::config_output(const pt::ptree &value)
                 delete coordTrans;
             }
 
+
             out.face = _mesh->locate_face(out.longitude, out.latitude);
 
 
-            if (out.face == NULL)
-            {
+            if(out.face == nullptr)
                 BOOST_THROW_EXCEPTION(config_error() <<
-                                      errstr_info(
-                                              "Requested an output point that is not in the triangulation domain. Pt:"
-                                              + std::to_string(out.longitude) + "," + std::to_string(out.latitude)));
-            }
+                                                     errstr_info(
+                                                             "Requested an output point that is not in the triangulation domain. Pt:"
+                                                             + std::to_string(out.longitude) + "," + std::to_string(out.latitude) + " name: " + out.name));
+
 
             LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
 
@@ -1240,7 +1252,7 @@ void core::init(int argc, char **argv)
             ompException oe;
             oe.Run([&]
                    {
-                       jtr->init(_mesh, _global);
+                       jtr->init(_mesh);
                    });
             oe.Rethrow();
         }
@@ -1720,7 +1732,7 @@ void core::run()
                                        //module calls
                                        for (auto &jtr : itr)
                                        {
-                                           jtr->run(face, _global);
+                                           jtr->run(face);
                                        }
 
                                    });
@@ -1735,7 +1747,7 @@ void core::run()
                             ompException oe;
                             oe.Run([&]
                                    {
-                                       jtr->run(_mesh, _global);
+                                       jtr->run(_mesh);
                                    });
                             oe.Rethrow();
                         }
@@ -1898,20 +1910,24 @@ void core::run()
 
 
 
-    try
+
+    std::string base_name="";
+
+    for (auto &itr : _outputs)
     {
-        std::string base_name = _cfg.get<std::string>("output.mesh.base_name");
+        if (itr.type == output_info::output_type::mesh)
+        {
+
 
 #if (BOOST_VERSION / 100 % 1000) < 56
-        pt::write_xml(base_name + ".pvd",
-                      pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
+            pt::write_xml(base_name + ".pvd",
+                          pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
 #else
-        pt::write_xml(base_name + ".pvd",
-                      pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+            pt::write_xml(itr.fname + ".pvd",
+                          pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+            break;
 #endif
-    } catch (pt::ptree_bad_path &e)
-    {
-        //no mesh section, just ignore. XML file won't be written
+        }
     }
 
     for (auto &itr : _outputs)

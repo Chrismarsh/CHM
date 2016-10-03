@@ -14,7 +14,7 @@ kunkel_rh::~kunkel_rh()
 {
 
 }
-void kunkel_rh::init(mesh domain, boost::shared_ptr<global> global_param)
+void kunkel_rh::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -24,7 +24,7 @@ void kunkel_rh::init(mesh domain, boost::shared_ptr<global> global_param)
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void kunkel_rh::run(mesh_elem &face, boost::shared_ptr <global> global_param)
+void kunkel_rh::run(mesh_elem &face)
 {
     // 1/km
     double lapse_rates[] =

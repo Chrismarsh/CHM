@@ -10,7 +10,7 @@ solar::~solar()
 {
 
 }
-void solar::run(mesh_elem &face, boost::shared_ptr <global> global_param)
+void solar::run(mesh_elem &face)
 {
     double Lon = 0;
     double Lat = 0;
@@ -121,7 +121,7 @@ void solar::run(mesh_elem &face, boost::shared_ptr <global> global_param)
     face->set_face_data("solar_el",El);
 
 }
-void solar::init(mesh domain, boost::shared_ptr<global> global_param)
+void solar::init(mesh domain)
 {
     if(!domain->is_geographic())
     {
