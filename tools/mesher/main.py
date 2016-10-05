@@ -47,7 +47,9 @@ def main():
     if hasattr(X, 'max_tolerance'):
         max_tolerance = X.max_tolerance
 
-    errormetric = X.errormetric
+    errormetric='rmse'
+    if hasattr(X,'errormetric'):
+        errormetric = X.errormetric
 
     reuse_mesh = False
     if hasattr(X, 'reuse_mesh'):
@@ -64,7 +66,8 @@ def main():
 
     ########################################################
 
-    base_name = dem_filename[:dem_filename.rfind('.')]
+    base_name = os.path.basename(dem_filename)
+    base_name = os.path.splitext(base_name)[0]
 
     # Delete previous dir (if exists)
     if os.path.isdir(base_name) and not reuse_mesh:
@@ -145,13 +148,18 @@ def main():
         else:
             estr = exec_str + 'cubicspline'
 
+        #we need to handle a path being passed in
+        output_param_fname = os.path.basename(data['file'])
+        output_param_fname = os.path.splitext(output_param_fname)[0]
+
+
         # force all the paramter files to have the same extent as the input DEM
         subprocess.check_call([estr % (
-                data['file'], base_dir + data['file'] + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
+                data['file'], base_dir + output_param_fname + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
                 pixel_height)], shell=True)
 
-        parameter_files[key]['filename'] = base_dir + data['file'] + '_projected.tif'  # save the file name if needed for mesher
-        parameter_files[key]['file'] = gdal.Open(base_dir + data['file'] + '_projected.tif')
+        parameter_files[key]['filename'] = base_dir + output_param_fname + '_projected.tif'  # save the file name if needed for mesher
+        parameter_files[key]['file'] = gdal.Open(base_dir + output_param_fname + '_projected.tif')
 
         if parameter_files[key]['file'] is None:
             print 'Error: Unable to open raster for: %s' % key
@@ -163,13 +171,17 @@ def main():
         else:
             estr = exec_str + 'cubicspline'
 
+        #we need to handle a path being passed in
+        output_ic_fname = os.path.basename(data['file'])
+        output_ic_fname = os.path.splitext(output_ic_fname)[0]
+
         # force all the initial condition files to have the same extent as the input DEM
         subprocess.check_call([estr % (
-                data['file'], base_dir + data['file'] + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
+                data['file'], base_dir + output_ic_fname + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
                 pixel_height)], shell=True)
 
-        initial_conditions[key]['filename'] = base_dir + data['file'] + '_projected.tif'
-        initial_conditions[key]['file'] = gdal.Open(base_dir + data['file'] + '_projected.tif')
+        initial_conditions[key]['filename'] = base_dir + output_ic_fname + '_projected.tif'
+        initial_conditions[key]['file'] = gdal.Open(base_dir + output_ic_fname + '_projected.tif')
 
         if initial_conditions[key]['file'] is None:
             print 'Error: Unable to open raster for: %s' % key
