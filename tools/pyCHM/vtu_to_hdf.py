@@ -30,7 +30,7 @@ tri_file = hdf_dir + '/' + 'triangle_info.npy'
 vfunc.save_triangle_info(vtu_files[0],tri_file)
 
 # Save multple variables
-all_vars = ['t','p']
+all_vars = ['swe']
 vfunc.vtu_to_hdf(all_vars,vtu_files,time_stamp,hdf_dir)
 
 
