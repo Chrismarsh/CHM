@@ -64,28 +64,36 @@ def main():
     if hasattr(X,'verbose'):
         verbose = X.verbose
 
+    user_output_dir = ''
+    if hasattr(X,'user_output_dir'):
+        user_output_dir = X.user_output_dir
+        if user_output_dir[-1] is not os.path.sep:
+            user_output_dir += os.path.sep
+
     ########################################################
 
     base_name = os.path.basename(dem_filename)
     base_name = os.path.splitext(base_name)[0]
 
+    base_dir = user_output_dir + base_name + os.path.sep
+
     # Delete previous dir (if exists)
-    if os.path.isdir(base_name) and not reuse_mesh:
-        shutil.rmtree(base_name, ignore_errors=True)
+    if os.path.isdir(base_dir) and not reuse_mesh:
+        shutil.rmtree(base_dir, ignore_errors=True)
 
     # these have to be separate ifs for the logic to work correctly
     if not reuse_mesh:
         # make new output dir
-        os.mkdir(base_name)
+        os.makedirs(base_dir)
 
     # we want to reuse an already generated mesh, but we will need to clean up the shp file as gdal won't overwrite an existing one
     if reuse_mesh:
         try:
-            os.remove(base_name + '/' + base_name + '_USM.shp')
+            os.remove(base_dir + base_name + '_USM.shp')
         except:
             pass
 
-    base_dir = base_name + '/'
+
 
     # figure out what srs out input is in, we will reproject everything to this
     # if hasattr(X, 'EPSG'):
@@ -557,15 +565,15 @@ def main():
 
     output_usm = None  # close the file
     print 'Saving mesh to file ' + base_name + '.mesh'
-    with open(base_name + '.mesh', 'w') as outfile:
+    with open(user_output_dir+base_name + '.mesh', 'w') as outfile:
         json.dump(mesh, outfile, indent=4)
 
     print 'Saving parameters to file ' + base_name + '.param'
-    with open(base_name + '.param', 'w') as outfile:
+    with open(user_output_dir+base_name + '.param', 'w') as outfile:
         json.dump(params, outfile, indent=4)
 
     print 'Saving initial conditions  to file ' + base_name + '.ic'
-    with open(base_name + '.ic', 'w') as outfile:
+    with open(user_output_dir+base_name + '.ic', 'w') as outfile:
         json.dump(ics, outfile, indent=4)
     print 'Done'
 
