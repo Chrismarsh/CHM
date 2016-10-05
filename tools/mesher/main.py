@@ -58,6 +58,9 @@ def main():
     if hasattr(X,'mesher_path'):
         triangle_path = X.mesher_path
 
+    verbose = False
+    if hasattr(X,'verbose'):
+        verbose = X.verbose
 
     ########################################################
 
@@ -434,7 +437,7 @@ def main():
         mesh['mesh']['proj4']  = srs.ExportToProj4()
         mesh['mesh']['UTM_zone'] = srs.GetUTMZone()  #negative in southern hemisphere
 
-    # holds paratmers and initial conditions for CHM
+    # holds parameters and initial conditions for CHM
     params = {}
     ics = {}
     for key, data in parameter_files.iteritems():
@@ -471,7 +474,8 @@ def main():
                         # print 'found v0'
                         if len(tmp) != 0:
                             mesh['mesh']['vertex'][v0][2] = float(np.mean(tmp))
-                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v0])
+                            if verbose:
+                                print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v0])
                             invalid_nodes = [x for x in invalid_nodes if x != v0]  # remove from out invalid nodes list.
 
                     if v1 in invalid_nodes:
@@ -481,7 +485,8 @@ def main():
                         # print 'found v1'
                         if len(tmp) != 0:
                             mesh['mesh']['vertex'][v1][2] = float(np.mean(tmp))
-                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v1])
+                            if verbose:
+                                print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v1])
                             invalid_nodes = [x for x in invalid_nodes if x != v1]  # remove from out invalid nodes list.
 
                     if v2 in invalid_nodes:
@@ -491,7 +496,8 @@ def main():
                         tmp = [x for x in [z_v1, z_v0] if x != dem.GetNoDataValue()]
                         if len(tmp) != 0:
                             mesh['mesh']['vertex'][v2][2] = float(np.mean(tmp))
-                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v2])
+                            if verbose:
+                                print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v2])
                             invalid_nodes = [x for x in invalid_nodes if x != v2]  # remove from out invalid nodes list.
 
                     mesh['mesh']['elem'].append([v0, v1, v2])
@@ -536,46 +542,6 @@ def main():
 
     print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
 
-    # I think this check for the next section can be removed
-    #     if len(triangles_to_fix) != 0:
-    #         print 'Error! There are %d triangles with no data' % len(triangles_to_fix)
-    #         exit(-1)
-    i = 1
-
-    # I think this section can be removed
-    # for t in triangles_to_fix:
-    #     f = layer.GetFeature( t['elem'])
-    #
-    #     values = []
-    #     #get each neighbour index to the problem triangle
-    #     n0 = mesh['mesh']['neigh'][t['elem']][0]
-    #     n1 = mesh['mesh']['neigh'][t['elem']][1]
-    #     n2 = mesh['mesh']['neigh'][t['elem']][2]
-    #
-    #     neigh = [x for x in n0,n1,n2 if x != -2]
-    #     feat = [layer.GetFeature( n ).GetField( t['key'] ) for n in neigh]
-    #     nv = np.array(feat)
-    #
-    #     masked = np.ma.masked_where(
-    #         nv == t['nodata'], nv)
-    #
-    #     output = rb.GetNoDataValue()# -9999
-    #     if t['method'] == 'mode':
-    #         output = sp.mode(masked.flatten())[0][0]
-    #     elif t['method'] == 'mean':
-    #         if masked.count() > 0:
-    #             output = float(masked.mean())  #if it's entirely masked, then we get nan and a warning printed to stdout. would like to avoid showing this warning.
-    #         # else:
-    #         #     output = 0
-    #
-    #     else:
-    #         print 'Error: unknown data aggregation method %s' % data['method']
-    #
-    #     print '[ %d / %d ] Changed nodata value to %f for triangle id: %d' % (i,len(triangles_to_fix),output,t['elem'])
-    #     mesh['parameters'][t['key']][t['elem']] = output
-    #     f.SetField( t['key'], output)
-    #     layer.SetFeature(f)
-    #     i=i+1
 
     output_usm = None  # close the file
     print 'Saving mesh to file ' + base_name + '.mesh'
@@ -697,9 +663,9 @@ def extract_point(raster, mx, my):
         z = [x for x in z if x != rb.GetNoDataValue()]
 
         if len(z) == 0:
-            print 'Warning: The point (%f,%f) and its 8-neighbours lies outside of the DEM domain' % (mx, my)
+            #print 'Warning: The point (%f,%f) and its 8-neighbours lies outside of the DEM domain' % (mx, my)
             return rb.GetNoDataValue()
-            # exit(1)
+
 
         mz = float(np.mean(z))
     return mz
