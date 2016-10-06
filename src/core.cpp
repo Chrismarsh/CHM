@@ -339,7 +339,6 @@ void core::config_forcing(pt::ptree &value)
         }
 
 
-
         if( (latitude > 90 || latitude < -90) ||
                 (longitude > 180 || longitude < -180) )
         {
@@ -375,6 +374,7 @@ void core::config_forcing(pt::ptree &value)
                 auto name = jtr.first.data();
 
                 boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
+
                 filter->process(s);
                 s->reset_itrs(); // reset all the internal iterators
             }

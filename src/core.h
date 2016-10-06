@@ -1,5 +1,7 @@
 #pragma once
 
+#define BOOST_SPIRIT_THREADSAFE
+
 //std includes
 #include <string>
 #include <sstream>
