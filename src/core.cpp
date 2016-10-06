@@ -842,15 +842,19 @@ void core::init(int argc, char **argv)
     logging::core::get()->add_sink(_cout_log_sink);
 
 
+
+    auto log_start_time = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
+    std::string log_name = "CHM_" + log_start_time + ".log";
+
     _log_sink = boost::make_shared<text_sink>();
     text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
-    boost::shared_ptr<std::ofstream> pStream2(new std::ofstream("CHM.log"));
+    boost::shared_ptr<std::ofstream> pStream2(new std::ofstream(log_name));
 
     if (!pStream2->is_open())
     {
         BOOST_THROW_EXCEPTION(file_write_error()
                               << boost::errinfo_errno(errno)
-                              << boost::errinfo_file_name("CHM.log")
+                              << boost::errinfo_file_name(log_name)
         );
     }
 
@@ -874,7 +878,8 @@ void core::init(int argc, char **argv)
 
     logging::core::get()->add_sink(_log_sink);
 
-    LOG_DEBUG << "Logger initialized. Writing to cout and CHM.log";
+    LOG_DEBUG << "Logger initialized. Writing to cout and " + log_name;
+
 
 #ifdef NOMATLAB
     _engine = boost::make_shared<maw::matlab_engine>();
