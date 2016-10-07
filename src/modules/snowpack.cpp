@@ -129,7 +129,7 @@ void Lehning_snowpack::run(mesh_elem &face)
         Mdata.psum = face->face_data("p");
     }
 
-    Mdata.psum_ph = mio::IOUtils::nodata;
+
 
 
     //setup a single ground temp measurement
