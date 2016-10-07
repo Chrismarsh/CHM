@@ -183,9 +183,6 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
 
-
-    face->set_face_data("swe",data->Xdata->swe);
-
     if(data->Xdata->swe > 0)
     {
         face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
@@ -210,6 +207,8 @@ void Lehning_snowpack::run(mesh_elem &face)
         set_all_nan_on_skip(face);
     }
 
+    //always write out 0 swe regardless of amount of swee
+    face->set_face_data("swe",data->Xdata->swe);
 
 
 
