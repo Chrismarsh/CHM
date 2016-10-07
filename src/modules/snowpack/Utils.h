@@ -34,6 +34,9 @@
 #include <cstring>
 #include <vector>
 
+#include <boost/format.hpp>
+#include "logger.hpp"
+
 #ifdef _MSC_VER
 //Microsoft still does NOT support C99...
 //This replacement is not fully compatible, so

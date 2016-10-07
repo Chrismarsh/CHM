@@ -48,9 +48,9 @@
 //     "threshold_p_phase",
 
     //processes
-    "snobal",
-    "Gray_inf",
-//    "snowpack"
+//    "snobal",
+//    "Gray_inf",
+    "snowpack",
      "Richard_albedo"
 
   ],
@@ -61,8 +61,8 @@
   // will remove the dependency on B from A.
   "remove_depency":
   {
-    "Richard_albedo":"snobal",
-    "scale_wind_vert":"snobal"
+    "Richard_albedo":"snowpack",
+    "scale_wind_vert":"snowpack"
   },
   "config":
   {
@@ -84,14 +84,15 @@
     }
   },
   "meshes": {
-    "mesh": "meshes/yt.mesh", //GEM_west_srtm
+    "mesh":"meshes/wolf_lidar1.mesh"
+//    "mesh": "meshes/yt.mesh", //GEM_west_srtm
     //    "mesh":"meshes/GEM_west_srtm.mesh",
     //    //map internal variables/parameters to the .mesh file's parameter section.
-        "parameters":
-        {
-    //      "file":"meshes/granger30_liston_curvature.mesh"
-          "file":"meshes/yt.param"
-  }
+//        "parameters":
+//        {
+//    //      "file":"meshes/granger30_liston_curvature.mesh"
+//          "file":"meshes/yt.param"
+//  }
 //    "initial_conditions":
 //    {
 //      "file":"meshes/wolf_lidar1.ic"
@@ -180,27 +181,27 @@
   },
   "output":
   {
-    "northface":
-    {
-      "easting": 489857.879,
-      "northing": 6712108.525,
-      "file": "granger_northface.txt",
-      "type": "timeseries"
-    },
-    "southface":
-    {
-      "easting": 489881.078,
-      "northing": 6712491.738,
-      "file": "granger_southface.txt",
-      "type": "timeseries"
-    },
-    "middle":
-    {
-      "easting": 489864.752,
-      "northing": 6712277.792,
-      "file": "granger_middle.txt",
-      "type": "timeseries"
-    },
+//    "northface":
+//    {
+//      "easting": 489857.879,
+//      "northing": 6712108.525,
+//      "file": "granger_northface.txt",
+//      "type": "timeseries"
+//    },
+//    "southface":
+//    {
+//      "easting": 489881.078,
+//      "northing": 6712491.738,
+//      "file": "granger_southface.txt",
+//      "type": "timeseries"
+//    },
+//    "middle":
+//    {
+//      "easting": 489864.752,
+//      "northing": 6712277.792,
+//      "file": "granger_middle.txt",
+//      "type": "timeseries"
+//    },
      "mesh":
      {
        "base_name":"output/test"
@@ -215,20 +216,20 @@
   "forcing":
   {
     // key name of external forcing files can be named anything
-     "external_forcing":"forcing_test.json",
-      "forest":
-      {
-        "file":"for_1999-2002",  //fr_sep_15_2006
-        "easting": 502601.621,
-        "northing":   6717779.327 ,
-        "elevation": 739,
-        "filter": {
-          "scale_wind_speed": {
-            "Z_F": 10,
-            "variable": "u"
-          }
-        }
-      }
+     "external_forcing":"forcing_test.json"
+//      "forest":
+//      {
+//        "file":"for_1999-2002",  //fr_sep_15_2006
+//        "easting": 502601.621,
+//        "northing":   6717779.327 ,
+//        "elevation": 739,
+//        "filter": {
+//          "scale_wind_speed": {
+//            "Z_F": 10,
+//            "variable": "u"
+//          }
+//        }
+//      }
 
     
   }  

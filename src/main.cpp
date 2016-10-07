@@ -1,5 +1,8 @@
 #include <iostream>
 #include <string>
+
+#define BOOST_SPIRIT_THREADSAFE
+
 #include "core.h"
 
 
