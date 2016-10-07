@@ -1703,6 +1703,7 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 	PhaseChange phasechange(cfg);
 
 	try {
+
 		//since precipitation phase is a little less intuitive than other, measured parameters, make sure it is provided
 		if (Mdata.psum_ph==IOUtils::nodata)
 			throw NoAvailableDataException("Missing precipitation phase", AT);

@@ -107,7 +107,7 @@ void Liston_wind::init(mesh domain)
         //with very coarse meshes, with very few total triangles,
         // there are edge cases where curmax=0 and makes curvature NAN. Just set it to 0, no curvature, and don't do silly speedup/down
         c->curvature = isnan(value) ? 0 : value;
-        
+
         face->set_parameter("Liston curvature",  c->curvature);
     }
 
