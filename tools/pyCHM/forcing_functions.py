@@ -16,6 +16,7 @@ def pad_forcing_to_common_length(agg_dt,input_dir,output_dir):
     date_min = datetime.datetime(3000,1,1)
     date_max = datetime.datetime(1000,1,1)
     for cf in in_files:
+        print(cf)
         # load it in
         c_df = pd.read_csv(cf,sep='\t',parse_dates=True) 
         c_df.set_index('datetime',inplace=True)
