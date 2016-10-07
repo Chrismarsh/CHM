@@ -2,8 +2,8 @@
   "buckbrush":
   {
     "file":"bb_1999-2002", // hm_oct2010 hm_oct2_4_2010 hm_sep_15_2006
-    "easting": 489216.601,
-    "northing": 6709533.168,
+    "latitude": 60.52163,
+    "longitude": -135.197151,
     "elevation": 1305,
     "filter": {
       "scale_wind_speed": {
@@ -15,8 +15,8 @@
   "alpine":
   {
     "file":"alp_1999-2002",  //fr_sep_15_2006
-    "easting": 489879.341,
-    "northing":  6714611.183,
+    "latitude": 60.567267,
+    "longitude":  -135.184652,
     "elevation": 1559,
     "filter": {
       "scale_wind_speed": {

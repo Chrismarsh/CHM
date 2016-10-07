@@ -63,7 +63,7 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 	int msg_ok = 0;
 
 	// Initialize argptr to point to the first argument after the format string
-	va_start(argptr, format);
+//	va_start(argptr, format);
 
 	//compute time stamp
 	string currentdate;
@@ -74,40 +74,61 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 	} else {
 		currentdate = date_in.toString(Date::ISO);
 	}
+	//http://stackoverflow.com/a/20503077/410074
+	int len;
+	char * orig_msg;
+
+	/* Compute length of original message */
+	va_start(argptr, format);
+	len = vsnprintf(NULL, 0, format, argptr);
+	va_end(argptr);
+
+	/* Allocate space for original message */
+	orig_msg = (char *)calloc(len+1, sizeof(char));
+
+	/* Write original message to string */
+	va_start(argptr, format);
+	vsnprintf(orig_msg, len+1, format, argptr);
+	va_end(argptr);
+
 
 	//print message
 	//printf("¬"); //if we need multiline output, use a special char as bloc delimiter
 	if (strcmp(msg_type, "err") == 0) {
-		fprintf(stdout, "[E] [%s] [%s:%d] ", currentdate.c_str(), theFile, theLine);
+		LOG_ERROR << boost::str(boost::format("[E] [%s] [%s:%d] ") % currentdate.c_str() % theFile % theLine) << "\n" << orig_msg;
 		msg_ok=1;
 	}
 	if (strcmp(msg_type, "wrn") == 0) {
-		fprintf(stdout, "[W] [%s] [%s:%d] ", currentdate.c_str(), theFile, theLine);
+		LOG_WARNING << boost::str(boost::format("[W] [%s] [%s:%d] ") % currentdate.c_str() % theFile % theLine)<< "\n" << orig_msg;
 		msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg+") == 0) {
-		fprintf(stdout, "[I] [%s] [%s:%d] ", currentdate.c_str(), theFile, theLine);
+		LOG_DEBUG << boost::str(boost::format("[I] [%s] [%s:%d] ") % currentdate.c_str() % theFile % theLine)<< "\n" << orig_msg;
 		msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg-") == 0) {
-		fprintf(stdout, "[i] []                 ");
+		LOG_DEBUG << "[i] []                 "<< "\n" << orig_msg;
 		msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg") == 0) {
-		fprintf(stdout, "[i] [%s] ---> ", currentdate.c_str());
+		LOG_DEBUG << boost::str(boost::format("[i] [%s] ---> ") % currentdate.c_str())<< "\n" << orig_msg;
 		msg_ok=1;
 	}
 
-	if (msg_ok) {
-		vfprintf(stdout, format, argptr);
-	} else {
-		fprintf(stdout, "[W] [%s] [%s:%d] Message type '%s' unknown!", currentdate.c_str(), theFile, theLine, msg_type);
-	}
 
-	fprintf(stdout, "\n");
+
+
+//	if (msg_ok) {
+//		vfprintf(stdout, format, argptr);
+//	} else {
+//		fprintf(stdout, "[W] [%s] [%s:%d] Message type '%s' unknown!", currentdate.c_str(), theFile, theLine, msg_type);
+//	}
+
+	//fprintf(stdout, "\n");
+
 
 	// Clear ptr
-	va_end(argptr);
+//	va_end(argptr);
 }
 
 /**

@@ -2,7 +2,14 @@
 
 pt::ptree read_json(const std::string& path)
 {
+
+    // the imbue appears to fix some oddness in how the json parser parses the str.
+    // http://stackoverflow.com/q/35275314/410074
+    // putting it here fixed a segfault very deep in the json parse
+
     std::ifstream in(path);
+    in.imbue(std::locale());
+
     std::stringstream json_file;
     if (in.is_open())
     {
@@ -24,7 +31,7 @@ pt::ptree read_json(const std::string& path)
     auto stripped = stripComments(json_file.str(), whitespace);
 //    auto json_file_stripped = std::stringstream(stripped);
     std::stringstream json_file_stripped (stripped);
-
+    json_file_stripped.imbue(std::locale());
     pt::ptree config;
     try
     {

@@ -47,7 +47,9 @@ def main():
     if hasattr(X, 'max_tolerance'):
         max_tolerance = X.max_tolerance
 
-    errormetric = X.errormetric
+    errormetric='rmse'
+    if hasattr(X,'errormetric'):
+        errormetric = X.errormetric
 
     reuse_mesh = False
     if hasattr(X, 'reuse_mesh'):
@@ -58,28 +60,40 @@ def main():
     if hasattr(X,'mesher_path'):
         triangle_path = X.mesher_path
 
+    verbose = False
+    if hasattr(X,'verbose'):
+        verbose = X.verbose
+
+    user_output_dir = ''
+    if hasattr(X,'user_output_dir'):
+        user_output_dir = X.user_output_dir
+        if user_output_dir[-1] is not os.path.sep:
+            user_output_dir += os.path.sep
 
     ########################################################
 
-    base_name = dem_filename[:dem_filename.rfind('.')]
+    base_name = os.path.basename(dem_filename)
+    base_name = os.path.splitext(base_name)[0]
+
+    base_dir = user_output_dir + base_name + os.path.sep
 
     # Delete previous dir (if exists)
-    if os.path.isdir(base_name) and not reuse_mesh:
-        shutil.rmtree(base_name, ignore_errors=True)
+    if os.path.isdir(base_dir) and not reuse_mesh:
+        shutil.rmtree(base_dir, ignore_errors=True)
 
     # these have to be separate ifs for the logic to work correctly
     if not reuse_mesh:
         # make new output dir
-        os.mkdir(base_name)
+        os.makedirs(base_dir)
 
     # we want to reuse an already generated mesh, but we will need to clean up the shp file as gdal won't overwrite an existing one
     if reuse_mesh:
         try:
-            os.remove(base_name + '/' + base_name + '_USM.shp')
+            os.remove(base_dir + base_name + '_USM.shp')
         except:
             pass
 
-    base_dir = base_name + '/'
+
 
     # figure out what srs out input is in, we will reproject everything to this
     # if hasattr(X, 'EPSG'):
@@ -142,13 +156,18 @@ def main():
         else:
             estr = exec_str + 'cubicspline'
 
+        #we need to handle a path being passed in
+        output_param_fname = os.path.basename(data['file'])
+        output_param_fname = os.path.splitext(output_param_fname)[0]
+
+
         # force all the paramter files to have the same extent as the input DEM
         subprocess.check_call([estr % (
-                data['file'], base_dir + data['file'] + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
+                data['file'], base_dir + output_param_fname + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
                 pixel_height)], shell=True)
 
-        parameter_files[key]['filename'] = base_dir + data['file'] + '_projected.tif'  # save the file name if needed for mesher
-        parameter_files[key]['file'] = gdal.Open(base_dir + data['file'] + '_projected.tif')
+        parameter_files[key]['filename'] = base_dir + output_param_fname + '_projected.tif'  # save the file name if needed for mesher
+        parameter_files[key]['file'] = gdal.Open(base_dir + output_param_fname + '_projected.tif')
 
         if parameter_files[key]['file'] is None:
             print 'Error: Unable to open raster for: %s' % key
@@ -160,13 +179,17 @@ def main():
         else:
             estr = exec_str + 'cubicspline'
 
+        #we need to handle a path being passed in
+        output_ic_fname = os.path.basename(data['file'])
+        output_ic_fname = os.path.splitext(output_ic_fname)[0]
+
         # force all the initial condition files to have the same extent as the input DEM
         subprocess.check_call([estr % (
-                data['file'], base_dir + data['file'] + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
+                data['file'], base_dir + output_ic_fname + '_projected.tif', srs_out.ExportToProj4(), xmin, ymin, xmax, ymax, pixel_width,
                 pixel_height)], shell=True)
 
-        initial_conditions[key]['filename'] = base_dir + data['file'] + '_projected.tif'
-        initial_conditions[key]['file'] = gdal.Open(base_dir + data['file'] + '_projected.tif')
+        initial_conditions[key]['filename'] = base_dir + output_ic_fname + '_projected.tif'
+        initial_conditions[key]['file'] = gdal.Open(base_dir + output_ic_fname + '_projected.tif')
 
         if initial_conditions[key]['file'] is None:
             print 'Error: Unable to open raster for: %s' % key
@@ -434,7 +457,7 @@ def main():
         mesh['mesh']['proj4']  = srs.ExportToProj4()
         mesh['mesh']['UTM_zone'] = srs.GetUTMZone()  #negative in southern hemisphere
 
-    # holds paratmers and initial conditions for CHM
+    # holds parameters and initial conditions for CHM
     params = {}
     ics = {}
     for key, data in parameter_files.iteritems():
@@ -471,7 +494,8 @@ def main():
                         # print 'found v0'
                         if len(tmp) != 0:
                             mesh['mesh']['vertex'][v0][2] = float(np.mean(tmp))
-                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v0])
+                            if verbose:
+                                print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v0])
                             invalid_nodes = [x for x in invalid_nodes if x != v0]  # remove from out invalid nodes list.
 
                     if v1 in invalid_nodes:
@@ -481,7 +505,8 @@ def main():
                         # print 'found v1'
                         if len(tmp) != 0:
                             mesh['mesh']['vertex'][v1][2] = float(np.mean(tmp))
-                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v1])
+                            if verbose:
+                                print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v1])
                             invalid_nodes = [x for x in invalid_nodes if x != v1]  # remove from out invalid nodes list.
 
                     if v2 in invalid_nodes:
@@ -491,7 +516,8 @@ def main():
                         tmp = [x for x in [z_v1, z_v0] if x != dem.GetNoDataValue()]
                         if len(tmp) != 0:
                             mesh['mesh']['vertex'][v2][2] = float(np.mean(tmp))
-                            print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v2])
+                            if verbose:
+                                print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v2])
                             invalid_nodes = [x for x in invalid_nodes if x != v2]  # remove from out invalid nodes list.
 
                     mesh['mesh']['elem'].append([v0, v1, v2])
@@ -536,58 +562,18 @@ def main():
 
     print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
 
-    # I think this check for the next section can be removed
-    #     if len(triangles_to_fix) != 0:
-    #         print 'Error! There are %d triangles with no data' % len(triangles_to_fix)
-    #         exit(-1)
-    i = 1
-
-    # I think this section can be removed
-    # for t in triangles_to_fix:
-    #     f = layer.GetFeature( t['elem'])
-    #
-    #     values = []
-    #     #get each neighbour index to the problem triangle
-    #     n0 = mesh['mesh']['neigh'][t['elem']][0]
-    #     n1 = mesh['mesh']['neigh'][t['elem']][1]
-    #     n2 = mesh['mesh']['neigh'][t['elem']][2]
-    #
-    #     neigh = [x for x in n0,n1,n2 if x != -2]
-    #     feat = [layer.GetFeature( n ).GetField( t['key'] ) for n in neigh]
-    #     nv = np.array(feat)
-    #
-    #     masked = np.ma.masked_where(
-    #         nv == t['nodata'], nv)
-    #
-    #     output = rb.GetNoDataValue()# -9999
-    #     if t['method'] == 'mode':
-    #         output = sp.mode(masked.flatten())[0][0]
-    #     elif t['method'] == 'mean':
-    #         if masked.count() > 0:
-    #             output = float(masked.mean())  #if it's entirely masked, then we get nan and a warning printed to stdout. would like to avoid showing this warning.
-    #         # else:
-    #         #     output = 0
-    #
-    #     else:
-    #         print 'Error: unknown data aggregation method %s' % data['method']
-    #
-    #     print '[ %d / %d ] Changed nodata value to %f for triangle id: %d' % (i,len(triangles_to_fix),output,t['elem'])
-    #     mesh['parameters'][t['key']][t['elem']] = output
-    #     f.SetField( t['key'], output)
-    #     layer.SetFeature(f)
-    #     i=i+1
 
     output_usm = None  # close the file
     print 'Saving mesh to file ' + base_name + '.mesh'
-    with open(base_name + '.mesh', 'w') as outfile:
+    with open(user_output_dir+base_name + '.mesh', 'w') as outfile:
         json.dump(mesh, outfile, indent=4)
 
     print 'Saving parameters to file ' + base_name + '.param'
-    with open(base_name + '.param', 'w') as outfile:
+    with open(user_output_dir+base_name + '.param', 'w') as outfile:
         json.dump(params, outfile, indent=4)
 
     print 'Saving initial conditions  to file ' + base_name + '.ic'
-    with open(base_name + '.ic', 'w') as outfile:
+    with open(user_output_dir+base_name + '.ic', 'w') as outfile:
         json.dump(ics, outfile, indent=4)
     print 'Done'
 
@@ -697,9 +683,9 @@ def extract_point(raster, mx, my):
         z = [x for x in z if x != rb.GetNoDataValue()]
 
         if len(z) == 0:
-            print 'Warning: The point (%f,%f) and its 8-neighbours lies outside of the DEM domain' % (mx, my)
+            #print 'Warning: The point (%f,%f) and its 8-neighbours lies outside of the DEM domain' % (mx, my)
             return rb.GetNoDataValue()
-            # exit(1)
+
 
         mz = float(np.mean(z))
     return mz
