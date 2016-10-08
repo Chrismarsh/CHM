@@ -73,7 +73,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
 
-    Mdata.vw     =  //face->face_data("U_2m_above_srf");
+    Mdata.vw     =  face->face_data("U_2m_above_srf");
 
     Mdata.dw     = face->face_data("vw_dir");
     Mdata.vw_max = mio::IOUtils::nodata;// TODO: fix md(MeteoData::VW_MAX);
