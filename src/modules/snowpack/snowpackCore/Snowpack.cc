@@ -794,7 +794,8 @@ double Snowpack::getModelAlbedo(const double& pAlbedo, const SnowStation& Xdata,
 		}
 	} else {
 		prn_msg(__FILE__, __LINE__, "err", Mdata.date, "sw_mode = %s not implemented yet!", sw_mode.c_str());
-		exit(EXIT_FAILURE);
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snowpack fatal exception"));
+//		exit(EXIT_FAILURE);
 	}
 	
 	return pAlbedo; //we do not have a measured labedo -> use parametrized
@@ -848,7 +849,8 @@ void Snowpack::compTemperatureProfile(SnowStation& Xdata, CurrentMeteo& Mdata, B
 		I0 = 0.;
 	if (I0 < 0.) {
 		prn_msg(__FILE__, __LINE__, "err", Mdata.date, " iswr:%lf  rswr:%lf  Albedo:%lf", Mdata.iswr, Mdata.rswr, Xdata.Albedo);
-		exit(EXIT_FAILURE);
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snowpack fatal exception"));
+//		exit(EXIT_FAILURE);
 	}
 
 	// ABSORPTION OF SOLAR RADIATION WITHIN THE SNOWPACK

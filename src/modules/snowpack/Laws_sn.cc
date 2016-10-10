@@ -1016,7 +1016,8 @@ double SnLaws::newSnowDensityPara(const std::string& i_hn_model,
 		prn_msg(__FILE__, __LINE__, "err", Date(),
 		        "New snow density parameterization '%s' not available",
 		        i_hn_model.c_str());
-		exit(EXIT_FAILURE);
+		BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snowpack fatal exception"));
+//		exit(EXIT_FAILURE);
 	}
 
 	return(MIN(max_hn_density, MAX(min_hn_density, rho_hn)));

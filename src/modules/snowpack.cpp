@@ -98,7 +98,7 @@ void Lehning_snowpack::run(mesh_elem &face)
         //measured albedo in snowpack will be fed from an albedo model
         //in the config 'both' will enable this
         Mdata.mAlbedo   =  face->face_data("snow_albedo");
-        Mdata.rswr      =  face->face_data("snow_albedo") * face->face_data("iswr");
+        Mdata.rswr      =  face->face_data("snow_albedo") * Mdata.iswr;
 
     }
     else
