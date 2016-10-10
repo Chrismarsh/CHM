@@ -186,8 +186,8 @@ void Lehning_snowpack::run(mesh_elem &face)
     if(data->Xdata->swe > 0)
     {
         face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
-        face->set_face_data("T_s",Mdata.tss-mio::Cst::t_water_freezing_pt);
-        face->set_face_data("T_s_0",Mdata.tss-mio::Cst::t_water_freezing_pt);
+        face->set_face_data("T_s",Mdata.tss); //-mio::Cst::t_water_freezing_pt
+        face->set_face_data("T_s_0",Mdata.tss);
         face->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
         face->set_face_data("n_elem",data->Xdata->getNumberOfElements());
         face->set_face_data("H",surface_fluxes.qs);
