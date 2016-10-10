@@ -73,7 +73,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
 
-    Mdata.vw     =  //face->face_data("U_2m_above_srf");
+    Mdata.vw     =  face->face_data("U_2m_above_srf");
 
     Mdata.dw     = face->face_data("vw_dir");
     Mdata.vw_max = mio::IOUtils::nodata;// TODO: fix md(MeteoData::VW_MAX);
@@ -183,26 +183,33 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
 
+    if(data->Xdata->swe > 0)
+    {
+        face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
+        face->set_face_data("T_s",Mdata.tss-mio::Cst::t_water_freezing_pt);
+        face->set_face_data("T_s_0",Mdata.tss-mio::Cst::t_water_freezing_pt);
+        face->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
+        face->set_face_data("n_elem",data->Xdata->getNumberOfElements());
+        face->set_face_data("H",surface_fluxes.qs);
+        face->set_face_data("E",surface_fluxes.ql);
 
-    face->set_face_data("swe",data->Xdata->swe);
-    face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
-    face->set_face_data("T_s",Mdata.tss-mio::Cst::t_water_freezing_pt);
-    face->set_face_data("T_s_0",Mdata.tss-mio::Cst::t_water_freezing_pt);
-    face->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
-    face->set_face_data("n_elem",data->Xdata->getNumberOfElements());
-    face->set_face_data("H",surface_fluxes.qs);
-    face->set_face_data("E",surface_fluxes.ql);
 
+        face->set_face_data("G",surface_fluxes.qg0 == -999 ? 0 : surface_fluxes.qg0); //qg0 is the correct ground heatflux to match snowpack output. qg is just uninit
 
-    face->set_face_data("G",surface_fluxes.qg0 == -999 ? 0 : surface_fluxes.qg0); //qg0 is the correct ground heatflux to match snowpack output. qg is just uninit
-
-    face->set_face_data("ilwr_out",surface_fluxes.lw_out);
-    face->set_face_data("iswr_out",surface_fluxes.sw_out);
-    face->set_face_data("dQ",surface_fluxes.dIntEnergy);
+        face->set_face_data("ilwr_out",surface_fluxes.lw_out);
+        face->set_face_data("iswr_out",surface_fluxes.sw_out);
+        face->set_face_data("dQ",surface_fluxes.dIntEnergy);
 //    if(!has_optional("snow_albedo"))
 //    {
-    face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
-//    }
+        face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
+        //    }
+    } else{
+        set_all_nan_on_skip(face);
+    }
+
+    //always write out 0 swe regardless of amount of swee
+    face->set_face_data("swe",data->Xdata->swe);
+
 
 
 }
