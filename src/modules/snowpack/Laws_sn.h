@@ -33,6 +33,8 @@
 #include <snowpack/snowpackCore/Snowpack.h> //some constants are necessary
 #include <snowpack/snowpackCore/Metamorphism.h>
 
+#include "exception.hpp"
+
 class SnLaws {
 
 	public:

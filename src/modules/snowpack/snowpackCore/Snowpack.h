@@ -43,6 +43,8 @@
 #include <sstream>
 #include <errno.h>
 
+#include "exception.hpp"
+
 /// @brief The number of element incidences
 #define N_OF_INCIDENCES 2
 
