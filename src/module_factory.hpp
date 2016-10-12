@@ -41,6 +41,10 @@ namespace pt = boost::property_tree;
 #include "Dist_tlapse.hpp"
 #include "scale_wind_vert.hpp"
 #include "solar.hpp"
+#include "rh_no_lapse.hpp"
+#include "t_no_lapse.hpp"
+#include "p_no_lapse.hpp"
+#include "lw_no_lapse.hpp"
 
 class module_factory
 {
