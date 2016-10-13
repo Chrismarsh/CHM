@@ -11,8 +11,8 @@ point_mode::point_mode(config_file cfg)
      ilwr   = cfg.get<bool>("provide.ilwr",true);
      iswr   = cfg.get<bool>("provide.iswr",true);
      vw_dir = cfg.get<bool>("provide.vw_dir",true);
-     iswr_diffuse    = cfg.get<bool>("provide.iswr_diffuse ",true);
-     iswr_direct     = cfg.get<bool>("provide.iswr_direct ",true);
+     iswr_diffuse    = cfg.get<bool>("provide.iswr_diffuse",true);
+     iswr_direct     = cfg.get<bool>("provide.iswr_direct",true);
 
 
     if(t)
