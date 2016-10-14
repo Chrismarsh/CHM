@@ -11,17 +11,17 @@ p_no_lapse::p_no_lapse(config_file cfg)
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
-void p_no_lapse::init(mesh domain, boost::shared_ptr<global> global_param)
+void p_no_lapse::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
+        auto d = face->make_module_data<p_no_lapse::data>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void p_no_lapse::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void p_no_lapse::run(mesh_elem& face)
 {
 
     std::vector< boost::tuple<double, double, double> > ppt;
