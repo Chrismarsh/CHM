@@ -14,17 +14,17 @@ rh_no_lapse::~rh_no_lapse()
 {
 
 }
-void rh_no_lapse::init(mesh domain, boost::shared_ptr<global> global_param)
+void rh_no_lapse::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
+        auto d = face->make_module_data<rh_no_lapse::data>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }
 }
-void rh_no_lapse::run(mesh_elem &face, boost::shared_ptr <global> global_param)
+void rh_no_lapse::run(mesh_elem &face)
 {
 
     std::vector<boost::tuple<double, double, double> > lowered_values;
