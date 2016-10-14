@@ -75,6 +75,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new p_no_lapse(config);
     else if (ID == "lw_no_lapse")
         mod = new lw_no_lapse(config);
+    else if (ID == "uniform_wind")
+	mod = new uniform_wind(config);
 
     if(mod == nullptr)
     {

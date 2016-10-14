@@ -45,6 +45,7 @@ namespace pt = boost::property_tree;
 #include "t_no_lapse.hpp"
 #include "p_no_lapse.hpp"
 #include "lw_no_lapse.hpp"
+#include "uniform_wind.hpp"
 
 class module_factory
 {
