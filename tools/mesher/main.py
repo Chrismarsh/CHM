@@ -56,7 +56,7 @@ def main():
         reuse_mesh = X.reuse_mesh
 
     # path to triangle executable
-    triangle_path = '../../bin/mesher'
+    triangle_path = '../../bin/Debug/mesher'
     if hasattr(X,'mesher_path'):
         triangle_path = X.mesher_path
 

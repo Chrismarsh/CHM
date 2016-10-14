@@ -665,7 +665,7 @@ void core::config_output(const pt::ptree &value)
 
             auto fname = itr.second.get<std::string>("base_name");
             auto f = msh_path / fname;
-            boost::filesystem::create_directories(f);
+            boost::filesystem::create_directories(f.parent_path());
             out.fname = f.string();
 
 
