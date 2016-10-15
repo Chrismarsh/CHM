@@ -16,16 +16,16 @@ lw_no_lapse::~lw_no_lapse()
 {
 
 }
-void lw_no_lapse::init(mesh domain, boost::shared_ptr<global> global_param)
+void lw_no_lapse::init(mesh domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
+        auto d = face->make_module_data<lw_no_lapse::data>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
     }}
-void lw_no_lapse::run(mesh_elem& face, boost::shared_ptr<global> global_param)
+void lw_no_lapse::run(mesh_elem& face)
 {
 
     // Use no lapse rate
@@ -49,7 +49,5 @@ void lw_no_lapse::run(mesh_elem& face, boost::shared_ptr<global> global_param)
     value =  value + lapse_rate * (0.0 - face->get_z());
 
     face->set_face_data("ilwr",value);
-
-    //face->set_face_data("lw_lapse_rate",lapse_rate);
 
 }
