@@ -31,27 +31,27 @@
 //    //met interp
     "solar",
      "Liston_wind",
-    "scale_wind_vert",
+    "scale_wind_vert"
 //    "Marsh_shading_iswr",
 //    "iswr_from_obs",
-    "Burridge_iswr",
-    "slope_iswr",
-     "Liston_monthly_llra_ta",
-     "kunkel_rh",
-     "Thornton_p",
+//    "Burridge_iswr",
+//    "slope_iswr",
+//     "Liston_monthly_llra_ta",
+//     "kunkel_rh",
+//     "Thornton_p",
 //    "point_mode",
 
     //met process
-    "Walcek_cloud",
-     "Sicart_ilwr",
-    "Harder_precip_phase",
+//    "Walcek_cloud",
+//     "Sicart_ilwr",
+//    "Harder_precip_phase",
 //     "threshold_p_phase",
 
     //processes
 //    "snobal",
 //    "Gray_inf",
-    "snowpack",
-     "Richard_albedo"
+//    "snowpack",
+//     "Richard_albedo"
 
   ],
 
@@ -66,7 +66,13 @@
   },
   "config":
   {
-
+    "solar":
+    {
+      "svf":
+      {
+        "compute":false
+      }
+    },
     "slope_iswr":
     {
       "no_slope":false
@@ -84,15 +90,15 @@
     }
   },
   "meshes": {
-    "mesh":"meshes/wolf_lidar1.mesh"
+    "mesh":"meshes/marmot_1m.mesh",
 //    "mesh": "meshes/yt.mesh", //GEM_west_srtm
     //    "mesh":"meshes/GEM_west_srtm.mesh",
     //    //map internal variables/parameters to the .mesh file's parameter section.
-//        "parameters":
-//        {
-//    //      "file":"meshes/granger30_liston_curvature.mesh"
-//          "file":"meshes/yt.param"
-//  }
+        "parameters":
+        {
+    //      "file":"meshes/granger30_liston_curvature.mesh"
+          "file":"meshes/marmot_1m.param"
+  }
 //    "initial_conditions":
 //    {
 //      "file":"meshes/wolf_lidar1.ic"
@@ -100,88 +106,15 @@
 
   },
 
-  "parameter_mapping":
-  {
-    "soil":"parameters/wolf_soil_param.json",
-
-    "landcover":
-    {
-      "12":
-      {
-        "desc":"shadow"
-      },
-      "20":
-      {
-        "desc":"lake",
-        "is_water":true
-      },
-      "31":
-      {
-        "desc":"snow ice"
-      },
-      "32":
-      {
-        "desc":"rock"
-      },
-
-      "33":
-      {
-        "desc":"exposed"
-      },
-      "51":
-      {
-        "desc":"shrub tall"
-      },
-      "52":
-      {
-        "desc":"shrub low"
-      },
-      "81":
-      {
-        "desc":"wetland-treed"
-      },
-      "82":
-      {
-        "desc":"wetland-shrub"
-      },
-      "83":
-      {
-        "desc":"wetland-herb"
-      },
-      "100":
-      {
-        "desc":"herb"
-      },
-      "211":
-      {
-        "desc":"coniferous dense"
-      },
-      "212":
-      {
-        "desc":"coniferous open"
-      },
-      "213":
-      {
-        "desc":"Coniferous Sparse"
-      },
-      "221":
-      {
-        "desc":"Broadleaf Dense"
-      },
-      "222":
-      {
-        "desc":"Broadleaf Open"
-      },
-      "232":
-      {
-        "desc":"Mixedwood Open"
-      }
-
-    }
-  },
+//  "parameter_mapping":
+//  {
+//    "soil":"parameters/wolf_soil_param.json",
+//      "landcover":"GlobCover.json"
+//
+//  },
   "output":
   {
-//    "northface":
+    //    "northface":
 //    {
 //      "easting": 489857.879,
 //      "northing": 6712108.525,
@@ -204,7 +137,7 @@
 //    },
      "mesh":
      {
-       "base_name":"output/test"
+       "base_name":"marmot"
 //       "variables":["swe","t","rh"],
 //       "frequency":1 //every N timesteps
      }

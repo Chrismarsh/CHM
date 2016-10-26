@@ -28,12 +28,6 @@ int main (int argc, char *argv[])
 
         return -1;
     }
-//    catch(...)
-//    {
-//        LOG_ERROR << "wtf";
-//    }
-
-
 
 	return 0;
 }

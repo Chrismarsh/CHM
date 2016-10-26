@@ -476,7 +476,6 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     points->SetNumberOfPoints(this->_num_vertex);
-    //   points->Allocate(this->_num_vertex);
 
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
     triangles->Allocate(this->_num_vertex);
@@ -506,12 +505,8 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
 
 
-
     //assume that all the faces have the same number of variables and the same types of variables
     //by this point this should be a fair assumption
-
-//    Delaunay::Finite_faces_iterator f = this->face(0); //this->finite_faces_begin();
-
 
     auto variables = output_variables.size() == 0 ? this->face(0)->variables() : output_variables;
     for(auto& v: variables)
@@ -533,7 +528,13 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data["[ic] " + v] = vtkSmartPointer<vtkFloatArray>::New();
         data["[ic] " + v]->SetName(("[ic] " + v).c_str());
     }
-
+    auto vec = this->face(0)->vectors();
+    for(auto& v: vec)
+    {
+        vectors[v] = vtkSmartPointer<vtkFloatArray>::New();
+        vectors[v]->SetName(v.c_str());
+        vectors[v]->SetNumberOfComponents(3);
+    }
 
     //handle elevation/aspect/slope
     data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
@@ -558,42 +559,10 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         this->init_vtkUnstructured_Grid(output_variables);
     }
 
-
-
-//    auto test = vtkSmartPointer<vtkFloatArray>::New();
-//    test->SetName("TEST");
-//    test->SetNumberOfComponents(3);
-
-//    data["Mean Curvature"] = vtkSmartPointer<vtkFloatArray>::New();
-//    data["Mean Curvature"]->SetName("Mean Curvature");
-//
-//    data["Gauss Curvature"] = vtkSmartPointer<vtkFloatArray>::New();
-//    data["Gauss Curvature"]->SetName("Gauss Curvature");
-
-//    data["Liston Curvature"] = vtkSmartPointer<vtkFloatArray>::New();
-//    data["Liston Curvature"]->SetName("Liston Curvature");
-
-//    CGALMongeForm monge_form;
-//    CGALMongeViaJet monge_fit;
-
-//        int degree = 1;
-//
-//        std::vector<Point_3> pts;
-//        pts.assign(myPoints.begin(),myPoints.end());
-//        //LOG_DEBUG << pts.size();
-//        monge_form = monge_fit(pts.begin() , pts.end(), 2,2);
-//
-//        double k1 = monge_form.principal_curvatures ( 0 );
-//        double k2 = monge_form.principal_curvatures ( 1 );
-//        curve =  0.5*(k1+k2);
-//        data["Mean Curvature"]->InsertNextTuple1(curve);
-////        curve =  (k1*k2);
-////        data["Gauss Curvature"]->InsertNextTuple1(curve);
-//
-
     auto variables = output_variables.size() == 0 ? this->face(0)->variables() : output_variables;
     auto params = this->face(0)->parameters();
     auto ics = this->face(0)->initial_conditions();
+    auto vecs = this->face(0)->vectors();
 
     for (size_t i = 0; i < this->size_faces(); i++)
     {
@@ -629,31 +598,31 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["[ic] "+ v]->InsertTuple1(i,d);
         }
 
+        for(auto& v: vecs)
+        {
+            Vector_3 d = fit->face_vector(v);
+
+            vectors[v]->InsertTuple3(i,d.x(),d.y(),d.z());
+        }
+
         data["Elevation"]->InsertTuple1(i,fit->get_z());
         data["Slope"]->InsertTuple1(i,fit->slope());
         data["Aspect"]->InsertTuple1(i,fit->aspect());
         data["Area"]->InsertTuple1(i,fit->get_area());
 
-//        data["Elevation"]->InsertNextTuple1(fit->get_z());
-//        data["Slope"]->InsertNextTuple1(fit->slope());
-//        data["Aspect"]->InsertNextTuple1(fit->aspect());
-//        data["Area"]->InsertNextTuple1(fit->get_area());
-
-        //TODO: remove this hard coded test & add ability to do this for any
-//        auto dir =*data["VW_dir"]->GetTuple(ii);
-//        auto mag = *data["VW"]->GetTuple(ii);
-//        test->InsertNextTuple3( -mag * sin(dir * 3.14159/180.0), -mag*cos(dir* 3.14159/180.0),fit->slope() * cos(fit->slope()*3.14159/180.0));
-//        ii++;
     }
 
-    //    _vtk_unstructuredGrid->GetPointData()->SetVectors(test);
+    for(auto& m : vectors)
+    {
+        _vtk_unstructuredGrid->GetCellData()->SetVectors(m.second);
+    }
+
 
     for(auto& m : data)
     {
         _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
     }
 
-//    return _vtk_unstructuredGrid;
 }
 void triangulation::write_vtu(std::string file_name)
 {

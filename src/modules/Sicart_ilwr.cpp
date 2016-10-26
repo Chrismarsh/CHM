@@ -14,6 +14,10 @@ Sicart_ilwr::Sicart_ilwr(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
+void Sicart_ilwr::init(mesh domain)
+{
+
+}
 void Sicart_ilwr::run(mesh_elem& face)
 {
     double T = face->face_data("t")+273.15; //C->K
