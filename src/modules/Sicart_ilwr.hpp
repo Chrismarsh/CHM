@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <armadillo>
+#include "math/distance.hpp"
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <meteoio/MeteoIO.h>
@@ -33,6 +34,7 @@ public:
     Sicart_ilwr(config_file cfg);
     ~Sicart_ilwr();
     virtual void run(mesh_elem& face);
+    void init(mesh domain);
 
 
 };

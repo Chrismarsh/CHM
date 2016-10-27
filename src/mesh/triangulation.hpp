@@ -102,7 +102,7 @@ namespace pt = boost::property_tree;
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef K::Point_3 Point_3;
-
+typedef K::Vector_3 Vector_3;
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
@@ -307,6 +307,7 @@ private:
 
 	//holds the vectors we use to create the vtu file
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
+	std::map<std::string, vtkSmartPointer<vtkFloatArray> > vectors;
 
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed

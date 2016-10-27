@@ -127,6 +127,15 @@ public:
     */
     void set_face_data(const std::string& variable, double data);
 
+    /**
+     * Sets the vector for the given variable.
+     * Does not support timeseries output.
+     * There are no checks on inter-module vector guarantees like normal variables
+     * Proceed with caution
+     * @param variable
+     * @param v
+     */
+    void set_face_vector(const std::string& variable, Vector_3 v);
 
     /**
     * Returns the face data
@@ -134,6 +143,14 @@ public:
     * \return  this timesteps value for the given variable
     */
     double face_data(const std::string& variable);
+
+    /**
+     * Returns the face vector for a specified variable
+     * @param variable
+     * @return
+     */
+    Vector_3 face_vector(const std::string& variable);
+
 
     /**
      * Removes the face data associated with a given ID. Throws if ID not found.
@@ -234,7 +251,19 @@ public:
 
     void set_initial_condition(std::string key,double value);
     double get_initial_condition(std::string key);
-    std::vector<std::string>  initial_conditions();
+
+    /**
+     * Returns a vector of names of all intial conditions
+     * @return
+     */
+    std::vector<std::string> initial_conditions();
+
+    /**
+     * Returns a vector of all the names of all the vector data
+     * @return
+     */
+    std::vector<std::string> vectors() ;
+
     bool has_initial_condition(std::string key);
 
     bool _is_geographic;
@@ -255,6 +284,8 @@ private:
     std::map<std::string,face_info* > _module_face_data;
     std::map<std::string,double> _parameters;
     std::map<std::string,double> _initial_conditions;
+    std::map<std::string,Vector_3> _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
+
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
 
@@ -319,6 +350,16 @@ std::vector<std::string>  face<Gt, Fb>::initial_conditions()
     return ics;
 };
 
+template < class Gt, class Fb >
+std::vector<std::string>  face<Gt, Fb>::vectors()
+{
+    std::vector<std::string> vecs;
+    for(auto& itr : _module_face_vectors)
+    {
+        vecs.push_back(itr.first);
+    }
+    return vecs;
+};
 
 template < class Gt, class Fb >
 face<Gt, Fb>::~face()
@@ -575,6 +616,19 @@ double face<Gt, Fb>::face_data(const std::string& variable)
 }
 
 template < class Gt, class Fb>
+Vector_3 face<Gt, Fb>::face_vector(const std::string& variable)
+{
+    auto res = _module_face_vectors.find(variable);
+    if(res == _module_face_vectors.end())
+    {
+        return Vector_3(nan(""),nan(""),nan(""));
+    }
+//        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
+
+    return _module_face_vectors[variable];
+};
+
+template < class Gt, class Fb>
 void face<Gt, Fb>::init_time_series(std::set<std::string> variables, timeseries::date_vec datetime)
 {
     _data->init(variables, datetime);
@@ -681,6 +735,12 @@ T* face<Gt, Fb>::get_module_data(std::string module)
 
 
 }
+template < class Gt, class Fb>
+void face<Gt, Fb>::set_face_vector(const std::string& variable, Vector_3 v)
+{
+    _module_face_vectors[variable] = v;
+};
+
 template < class Gt, class Fb>
 void face<Gt, Fb>::remove_face_data(std::string module)
 {

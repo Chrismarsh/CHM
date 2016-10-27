@@ -67,6 +67,16 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new scale_wind_vert(config);
     else if (ID == "solar")
         mod = new solar(config);
+    else if (ID == "rh_no_lapse")
+        mod = new rh_no_lapse(config);
+    else if (ID == "t_no_lapse")
+        mod = new t_no_lapse(config);
+    else if (ID == "p_no_lapse")
+        mod = new p_no_lapse(config);
+    else if (ID == "lw_no_lapse")
+        mod = new lw_no_lapse(config);
+    else if (ID == "uniform_wind")
+	mod = new uniform_wind(config);
 
     if(mod == nullptr)
     {

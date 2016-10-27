@@ -19,13 +19,13 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
 endif()
 
 #reset these back
-#if (CMAKE_BUILD_TYPE MATCHES Debug)
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
-#else()
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
-#endif()
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
+endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -O3")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -g -O3")
 
 #-fsanitize=address
 #add_definitions(-DCGAL_DISABLE_ROUNDING_MATH_CHECK=ON)

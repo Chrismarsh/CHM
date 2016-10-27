@@ -7,6 +7,8 @@ scale_wind_vert::scale_wind_vert(config_file cfg)
     depends("U_R");
 
     optional("snowdepthavg");
+    optional("vw_dir");
+
     //provides("U_CanTop"); // Possible output, but commented out for speed
     //provides("U_CanMid");
     provides("U_2m_above_srf");
@@ -99,6 +101,19 @@ void scale_wind_vert::run(mesh_elem &face) {
     // Save computed wind speeds
     //face->set_face_data("U_R",U_R);
     face->set_face_data("U_2m_above_srf",U_2m_above_srf);
+
+
+    //TODO: remove this hard coded test & add ability to do this for any
+    double phi = 0;
+    if(has_optional("vw_dir"))
+    {
+        phi = face->face_data("vw_dir");
+    }
+    double theta=0;
+    double mag = U_2m_above_srf;
+
+    Vector_3 v(mag*cos(phi * 3.14159/180.0), -mag*sin(phi * 3.14159/180.0), 0);
+    face->set_face_vector("2m_sufrace_wind",v);
 
 
 }

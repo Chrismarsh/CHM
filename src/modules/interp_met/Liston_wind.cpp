@@ -208,6 +208,7 @@ void Liston_wind::run(mesh domain)
         W = std::max(W,0.1);
         face->set_face_data("U_R", W);
         face->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
+
     }
 
 
