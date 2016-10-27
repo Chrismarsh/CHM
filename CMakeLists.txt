@@ -98,10 +98,6 @@ configure_file(
         src/version.h
 )
 
-#Setup output paths
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
-set(LIBRARY_OUTPUT_PATH  ${CMAKE_SOURCE_DIR}/lib)
-
 
 #Setup CXX flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall ")
@@ -115,6 +111,9 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
 endif()
 
 
+#Setup output paths
+
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
