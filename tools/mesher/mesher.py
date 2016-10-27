@@ -23,7 +23,6 @@ def main():
     configfile = sys.argv[-1]
 
     # Load in configuration file as module
-    # X = __import__(configfile)
     X = imp.load_source('',configfile)
 
     dem_filename = X.dem_filename
@@ -56,7 +55,7 @@ def main():
         reuse_mesh = X.reuse_mesh
 
     # path to triangle executable
-    triangle_path = '../../bin/mesher'
+    triangle_path = '../../bin/Release/mesher'
     if hasattr(X,'mesher_path'):
         triangle_path = X.mesher_path
 
