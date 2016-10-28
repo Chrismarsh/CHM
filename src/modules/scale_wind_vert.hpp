@@ -5,7 +5,6 @@
 #include "module_base.hpp"
 #include <boost/shared_ptr.hpp>
 #include "logger.hpp"
-#include "face.hpp"
 #include <string>
 #include <math.h>
 

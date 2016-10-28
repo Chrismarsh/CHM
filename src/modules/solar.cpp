@@ -194,9 +194,7 @@ void solar::init(mesh domain)
                     if (z_diff > 0)
                     {
                         double dist = math::gis::distance(f->center(), me);
-
                         phi = std::max(atan(z_diff / dist), phi);
-
                     }
                 }
 

@@ -68,7 +68,6 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
-
 std::string triangulation::proj4()
 {
     return _srs_wkt;
@@ -92,10 +91,8 @@ mesh_elem triangulation::locate_face(double x, double y)
 {
     Point_2 query(x,y);
     return locate_face(query);
-
-
-
 }
+
 mesh_elem triangulation::locate_face(Point_2 query)
 {
     mesh_elem face = find_closest_face(query);
@@ -134,14 +131,14 @@ mesh_elem triangulation::locate_face(Point_2 query)
     return nullptr;
 }
 
-mesh_elem triangulation::find_closest_face(Point_2 query)
+mesh_elem triangulation::find_closest_face(Point_2 query) const
 {
     K_neighbor_search search(*(dD_tree.get()), query, 1);
     auto it = search.begin();
     return  boost::get<1>(it->first);
 
 }
-mesh_elem triangulation::find_closest_face(double x, double y)
+mesh_elem triangulation::find_closest_face(double x, double y) const
 {
     //http://doc.cgal.org/latest/Spatial_searching/index.html
     Point_2 query(x,y);
@@ -274,6 +271,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         }
         face->_debug_ID= --i; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
         face->_debug_name= std::to_string(i);
+        face->_domain = this;
         _faces.push_back(face);
 
         Point_2 pt2(face->center().x(),face->center().y());
