@@ -41,7 +41,7 @@ void solar::run(mesh_elem &face)
     double hour = tm.tm_hour; // 0 = midnight, ok
     double min = tm.tm_min; // 0, ok
     double sec = tm.tm_sec; // [0,60] in c++11, ok http://en.cppreference.com/w/cpp/chrono/c/tm
-    double Alt = 0.; //TODO: fix this?
+    double Alt = face->center().z();//0.; //TODO: fix this?
 
     if (month <= 2.0)
     {

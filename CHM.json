@@ -22,28 +22,28 @@
 
 //    "startdate":"20010501T000000",
 
-    "startdate":"20010501T080000",
-    "enddate":  "20010501T080000"
+    "startdate":"20010501T070000",
+    "enddate":  "20010501T180000"
 //     "enddate":"20010613T000000"
   },
   "modules": //important these are [ ]
   [
 //    //met interp
     "solar",
-    "fast_shadow",
+//    "fast_shadow",
      "Liston_wind",
-    "scale_wind_vert"
-//    "Marsh_shading_iswr",
+    "scale_wind_vert",
+    "Marsh_shading_iswr",
 //    "iswr_from_obs",
-//    "Burridge_iswr",
-//    "slope_iswr",
-//     "Liston_monthly_llra_ta",
-//     "kunkel_rh",
+    "Burridge_iswr",
+    "slope_iswr",
+     "Liston_monthly_llra_ta",
+     "kunkel_rh",
 //     "Thornton_p",
 //    "point_mode",
 
     //met process
-//    "Walcek_cloud",
+    "Walcek_cloud"
 //     "Sicart_ilwr",
 //    "Harder_precip_phase",
 //     "threshold_p_phase",
@@ -73,6 +73,10 @@
       {
         "compute":false
       }
+    },
+    "fast_shadow":
+    {
+      "steps":100
     },
     "slope_iswr":
     {
@@ -138,7 +142,7 @@
 //    },
      "mesh":
      {
-       "base_name":"marmot"
+       "base_name":"marmot_marsh"
 //       "variables":["swe","t","rh"],
 //       "frequency":1 //every N timesteps
      }

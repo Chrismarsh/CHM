@@ -4,6 +4,9 @@
 Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
         :module_base(parallel::domain)
 {
+    depends("solar_az");
+    depends("solar_el");
+
     provides("shadow");
     provides("z_prime");
 
@@ -24,8 +27,7 @@ void Marsh_shading_iswr::run(mesh domain)
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
         auto vert = domain->vertex(i);
-
-
+        auto lol = vert->face();
         double A =  vert->face()->face_data("solar_az");
         double E = vert->face()->face_data("solar_el");
 

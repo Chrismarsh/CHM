@@ -272,6 +272,12 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         face->_debug_ID= --i; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
         face->_debug_name= std::to_string(i);
         face->_domain = this;
+
+        vert1->set_face(face);
+        vert2->set_face(face);
+        vert3->set_face(face);
+
+
         _faces.push_back(face);
 
         Point_2 pt2(face->center().x(),face->center().y());
