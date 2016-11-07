@@ -74,6 +74,7 @@ set(MODULE_SRCS
 
 		modules/solar.cpp
 		modules/fast_shadow.cpp
+        modules/deform_mesh.cpp
 
 		CACHE INTERNAL "" FORCE)
 
@@ -215,7 +216,7 @@ if (test)
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-            math/distance.cpp)
+            math/distance.cpp modules/deform_mesh.cpp)
 
 
 	set( GTEST_LINK

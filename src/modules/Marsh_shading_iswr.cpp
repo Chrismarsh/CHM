@@ -61,8 +61,8 @@ void Marsh_shading_iswr::run(mesh domain)
         vf->org_vertex = vert->point();
 
         vert->set_point(vf->prj_vertex); //modify the underlying triangulation to reflect the rotated vertices
-    }
 
+    }
 
     auto BBR = domain->AABB(x_AABB,y_AABB);
 

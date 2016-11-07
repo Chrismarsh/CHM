@@ -33,7 +33,8 @@
 //    "fast_shadow",
      "Liston_wind",
     "scale_wind_vert",
-    "Marsh_shading_iswr",
+    "deform_mesh",
+//    "Marsh_shading_iswr",
 //    "iswr_from_obs",
     "Burridge_iswr",
     "slope_iswr",
@@ -142,7 +143,7 @@
 //    },
      "mesh":
      {
-       "base_name":"marmot_marsh"
+       "base_name":"marmot_deform"
 //       "variables":["swe","t","rh"],
 //       "frequency":1 //every N timesteps
      }

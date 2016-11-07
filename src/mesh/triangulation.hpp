@@ -580,12 +580,27 @@ public:
 	//holds the spatial search tree
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
 	boost::shared_ptr<Tree> dD_tree;
+
+    bool _terrain_deformed;
+
+    /**
+     * Minimium z elevation in mesh
+     * @return
+     */
+    double min_z();
+
+    /**
+     * Maximum elevation in mesh
+     * @return
+     */
+    double max_z();
 private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
 	int _UTM_zone;
+
 	std::string _srs_wkt;
 	//holds the vtk ugrid if we are outputing to vtk formats
 	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
@@ -594,6 +609,9 @@ private:
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > vectors;
 
+    // min and max elevations
+    double _min_z;
+    double _max_z;
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles

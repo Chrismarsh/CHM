@@ -27,6 +27,9 @@ triangulation::triangulation()
     _vtk_unstructuredGrid = nullptr;
     _is_geographic = false;
     _UTM_zone = 0;
+    _terrain_deformed=false;
+    _min_z =  999999;
+    _max_z = -999999;
 }
 
 #ifdef MATLAB
@@ -224,6 +227,9 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
             items.push_back(jtr.second.get_value<double>());
         }
         Point_3 pt( items[0], items[1], items[2]);
+
+        _max_z = std::max(_max_z,items[2]);
+        _min_z = std::min(_min_z,items[2]);
 
         Vertex_handle Vh = this->create_vertex();
         Vh->set_point(pt);
@@ -558,7 +564,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 {
     //if we haven't inited yet, do so.
-    if(!_vtk_unstructuredGrid)
+    if(!_vtk_unstructuredGrid || _terrain_deformed)
     {
         this->init_vtkUnstructured_Grid(output_variables);
     }
@@ -708,13 +714,24 @@ void triangulation::write_vtp(std::string file_name)
 
 }
 
- boost::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
- {
-    boost::shared_ptr<segmented_AABB> AABB = boost::make_shared<segmented_AABB>();
-    AABB->make(this,rows,cols);
-    return AABB;
-     
- }
+
+double triangulation::max_z()
+{
+    return _max_z;
+}
+
+double triangulation::min_z()
+{
+    return _min_z;
+}
+
+boost::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
+{
+boost::shared_ptr<segmented_AABB> AABB = boost::make_shared<segmented_AABB>();
+AABB->make(this,rows,cols);
+return AABB;
+
+}
 
 
 void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)

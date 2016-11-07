@@ -79,6 +79,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
 	    mod = new uniform_wind(config);
     else if (ID == "fast_shadow")
         mod = new fast_shadow(config);
+    else if (ID == "deform_mesh")
+        mod = new deform_mesh(config);
 
     if(mod == nullptr)
     {
