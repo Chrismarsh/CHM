@@ -43,13 +43,13 @@ set(MODULE_SRCS
 		modules/interp_met/kunkel_rh.cpp
 		modules/interp_met/rh_from_obs.cpp
 		modules/interp_met/Longwave_from_obs.cpp
-                modules/interp_met/Longwave_from_obs.cpp
+		modules/interp_met/Longwave_from_obs.cpp
 		modules/interp_met/Dist_tlapse.cpp
 		modules/interp_met/rh_no_lapse.cpp
 		modules/interp_met/t_no_lapse.cpp
 		modules/interp_met/p_no_lapse.cpp
 		modules/interp_met/lw_no_lapse.cpp
-                modules/interp_met/uniform_wind.cpp
+		modules/interp_met/uniform_wind.cpp
 
 		modules/point_mode.cpp
 
@@ -73,6 +73,8 @@ set(MODULE_SRCS
 		${SNOWPACK_SRCS}
 
 		modules/solar.cpp
+		modules/fast_shadow.cpp
+        modules/deform_mesh.cpp
 
 		CACHE INTERNAL "" FORCE)
 
@@ -214,7 +216,7 @@ if (test)
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-            math/distance.cpp)
+            math/distance.cpp modules/deform_mesh.cpp)
 
 
 	set( GTEST_LINK

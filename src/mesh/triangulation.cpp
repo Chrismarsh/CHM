@@ -27,6 +27,9 @@ triangulation::triangulation()
     _vtk_unstructuredGrid = nullptr;
     _is_geographic = false;
     _UTM_zone = 0;
+    _terrain_deformed=false;
+    _min_z =  999999;
+    _max_z = -999999;
 }
 
 #ifdef MATLAB
@@ -68,7 +71,6 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
-
 std::string triangulation::proj4()
 {
     return _srs_wkt;
@@ -92,10 +94,8 @@ mesh_elem triangulation::locate_face(double x, double y)
 {
     Point_2 query(x,y);
     return locate_face(query);
-
-
-
 }
+
 mesh_elem triangulation::locate_face(Point_2 query)
 {
     mesh_elem face = find_closest_face(query);
@@ -134,14 +134,14 @@ mesh_elem triangulation::locate_face(Point_2 query)
     return nullptr;
 }
 
-mesh_elem triangulation::find_closest_face(Point_2 query)
+mesh_elem triangulation::find_closest_face(Point_2 query) const
 {
     K_neighbor_search search(*(dD_tree.get()), query, 1);
     auto it = search.begin();
     return  boost::get<1>(it->first);
 
 }
-mesh_elem triangulation::find_closest_face(double x, double y)
+mesh_elem triangulation::find_closest_face(double x, double y) const
 {
     //http://doc.cgal.org/latest/Spatial_searching/index.html
     Point_2 query(x,y);
@@ -228,6 +228,9 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         }
         Point_3 pt( items[0], items[1], items[2]);
 
+        _max_z = std::max(_max_z,items[2]);
+        _min_z = std::min(_min_z,items[2]);
+
         Vertex_handle Vh = this->create_vertex();
         Vh->set_point(pt);
         Vh->set_id(i);
@@ -274,6 +277,13 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         }
         face->_debug_ID= --i; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
         face->_debug_name= std::to_string(i);
+        face->_domain = this;
+
+        vert1->set_face(face);
+        vert2->set_face(face);
+        vert3->set_face(face);
+
+
         _faces.push_back(face);
 
         Point_2 pt2(face->center().x(),face->center().y());
@@ -554,7 +564,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 {
     //if we haven't inited yet, do so.
-    if(!_vtk_unstructuredGrid)
+    if(!_vtk_unstructuredGrid || _terrain_deformed)
     {
         this->init_vtkUnstructured_Grid(output_variables);
     }
@@ -704,13 +714,24 @@ void triangulation::write_vtp(std::string file_name)
 
 }
 
- boost::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
- {
-    boost::shared_ptr<segmented_AABB> AABB = boost::make_shared<segmented_AABB>();
-    AABB->make(this,rows,cols);
-    return AABB;
-     
- }
+
+double triangulation::max_z()
+{
+    return _max_z;
+}
+
+double triangulation::min_z()
+{
+    return _min_z;
+}
+
+boost::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
+{
+boost::shared_ptr<segmented_AABB> AABB = boost::make_shared<segmented_AABB>();
+AABB->make(this,rows,cols);
+return AABB;
+
+}
 
 
 void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
