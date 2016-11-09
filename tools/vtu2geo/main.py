@@ -3,8 +3,12 @@ import sys
 from osgeo import gdal,ogr,osr
 import glob
 import imp
+import os
 import sys
 import xml.etree.ElementTree as ET
+import subprocess
+import numpy as np
+gdal.UseExceptions()  # Enable errors
 
 # Print iterations progress
 # http://stackoverflow.com/a/34325723/410074
@@ -47,7 +51,12 @@ def main():
     EPSG = X.EPSG
     variables = X.variables
     parameters = X.parameters
-    pixel_size = X.pixel_size
+
+    # Check if we want to constrain output to a example geotif
+    constrain_flag = False
+    if hasattr(X,'constrain_tif_file'):
+	constrain_tif_file = X.constrain_tif_file
+        constrain_flag = True
 
     is_geographic = False
     if hasattr(X,'is_geographic'):
@@ -57,6 +66,36 @@ def main():
     reader = vtk.vtkXMLUnstructuredGridReader()
     pvd = ET.parse(input_path)
     pvd = pvd.findall(".//*[@file]")
+
+    # Get info for constrained output extent/resolution if selected
+    if(constrain_flag):
+ 	ex_ds = gdal.Open(constrain_tif_file)
+        gt = ex_ds.GetGeoTransform()
+        pixel_width = np.abs(gt[1])
+        pixel_height = np.abs(gt[5])
+        #o_xmin, o_xmax, o_ymin, o_ymax = layer.GetExtent()
+	## Define output info
+	# Extent (CRHO domain)
+	o_xmin = -1374651.2329267
+	o_xmax = -1225383.09324314
+	o_ymin = 1381800.81154171
+	o_ymax = 1537266.50438795
+        if pixel_width==pixel_height:
+		pixel_size=pixel_width # If the same
+	else:
+		pixel_size=np.mean([pixel_width,pixel_height])	# If different use mean
+	print "Overwriting output_pixel size with constrain_tif_file pixel size"
+        ex_ds = None
+	# Create shape file from example tif
+        shape_file = constrain_tif_file.split('.ti')[0]+'.shp'
+        # Remove previous shapefile if exists
+	try:
+    		os.remove(shape_file)
+	except OSError:
+    		pass
+	subprocess.check_call(['gdaltindex \"%s\" \"%s\"' % (shape_file,constrain_tif_file)], shell=True)
+    else:
+	pixel_size = X.pixel_size	
 
     iter=1
     for vtu in pvd:
@@ -156,7 +195,7 @@ def main():
 
 
         x_min, x_max, y_min, y_max = layer.GetExtent()
-
+        print x_min, x_max, y_min, y_max 
 
         NoData_value = -9999
         x_res = int((x_max - x_min) / pixel_size)
@@ -173,7 +212,13 @@ def main():
             # Rasterize
             gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE',"ATTRIBUTE="+var])
 
-        if parameters is not None:
+	    # Optional clip file
+	    if(constrain_flag):
+		# Clip new raster by above shape file
+                #subprocess.check_call(['gdalwarp -srcnodata -9999 -dstnodata -9999 -cutline \"%s\" -crop_to_cutline \"%s\" \"%s\"' % (shape_file,path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
+                subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f \"%s\" \"%s\"' % (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
+        
+	if parameters is not None:
             for p in parameters:
                 target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p + '.tif', x_res, y_res, 1,
                                                                  gdal.GDT_Float32)
