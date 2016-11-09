@@ -87,13 +87,13 @@ def main():
 	print "Overwriting output_pixel size with constrain_tif_file pixel size"
         ex_ds = None
 	# Create shape file from example tif
-        shape_file = constrain_tif_file.split('.ti')[0]+'.shp'
+        #shape_file = constrain_tif_file.split('.ti')[0]+'.shp'
         # Remove previous shapefile if exists
-	try:
-    		os.remove(shape_file)
-	except OSError:
-    		pass
-	subprocess.check_call(['gdaltindex \"%s\" \"%s\"' % (shape_file,constrain_tif_file)], shell=True)
+	#try:
+    	#	os.remove(shape_file)
+	#except OSError:
+    	#	pass
+	#subprocess.check_call(['gdaltindex \"%s\" \"%s\"' % (shape_file,constrain_tif_file)], shell=True)
     else:
 	pixel_size = X.pixel_size	
 
