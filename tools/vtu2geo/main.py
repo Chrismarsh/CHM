@@ -48,7 +48,7 @@ def main():
     # Grab variables
     base = X.base
     input_path = X.input_path
-    EPSG = X.EPSG
+    # EPSG = X.EPSG
     variables = X.variables
     parameters = X.parameters
 
@@ -112,11 +112,25 @@ def main():
         # output_usm = driver.CreateDataSource('lol.shp')
         output_usm = driver.CreateDataSource('out')
 
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(EPSG)
+        # srsin.ImportFromEPSG(EPSG)
 
         srsin = osr.SpatialReference()
-        srsin.ImportFromEPSG(EPSG)
+        srsin.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
+                             "GEOGCS[\"GCS_North_American_1983\",         "
+                             "DATUM[\"North_American_Datum_1983\",            "
+                             " SPHEROID[\"GRS_1980\",6378137,298.257222101]],         "
+                             "PRIMEM[\"Greenwich\",0],        "
+                             " UNIT[\"Degree\",0.017453292519943295]],     "
+                             "PROJECTION[\"Albers_Conic_Equal_Area\"],     "
+                             "PARAMETER[\"False_Easting\",0],    "
+                             " PARAMETER[\"False_Northing\",0],     "
+                             "PARAMETER[\"longitude_of_center\",-96],     "
+                             "PARAMETER[\"Standard_Parallel_1\",20],     "
+                             "PARAMETER[\"Standard_Parallel_2\",60],     "
+                             "PARAMETER[\"latitude_of_center\",40],     "
+                             "UNIT[\"Meter\",1],     "
+                             "AUTHORITY[\"EPSG\",\"102008\"]]")
+
         #output conic equal area for geotiff if we have geographic input
         srsout = osr.SpatialReference()
         srsout.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
@@ -136,13 +150,9 @@ def main():
                              "AUTHORITY[\"EPSG\",\"102008\"]]")
         trans = osr.CoordinateTransformation(srsin,srsout)
 
-        if is_geographic:
-            srs = srsout
-
-        layer = output_usm.CreateLayer('poly', srs, ogr.wkbPolygon)
+        layer = output_usm.CreateLayer('poly', srsout, ogr.wkbPolygon)
 
         cd = mesh.GetCellData()
-
 
 
         for i in range(0,cd.GetNumberOfArrays()):
@@ -206,11 +216,13 @@ def main():
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             # target_ds.SetProjection(srs)
             band = target_ds.GetRasterBand(1)
-            target_ds.SetProjection(srs.ExportToWkt())
+
             band.SetNoDataValue(NoData_value)
 
             # Rasterize
             gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE',"ATTRIBUTE="+var])
+            target_ds.SetProjection(srsout.ExportToWkt())
+            target_ds = None
 
 	    # Optional clip file
 	    if(constrain_flag):
@@ -223,17 +235,17 @@ def main():
                 target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p + '.tif', x_res, y_res, 1,
                                                                  gdal.GDT_Float32)
                 target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-                target_ds.SetProjection(srs.ExportToWkt())
+                target_ds.SetProjection(srsout.ExportToWkt())
                 band = target_ds.GetRasterBand(1)
                 band.SetNoDataValue(NoData_value)
 
                 # Rasterize
-                gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],
-                                    options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
+                gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
+                target_ds = None
+
             parameters = None
 
         iter += 1
-# output_usm = None
 
 if __name__ == "__main__":
 
