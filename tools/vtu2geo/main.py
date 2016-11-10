@@ -179,7 +179,7 @@ def main():
         y_res = int((y_max - y_min) / pixel_size)
 
         for var in variables:
-            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4]+'_'+var+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
+            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4]+'_'+ var.replace(" ","_")+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             # target_ds.SetProjection(srs)
             band = target_ds.GetRasterBand(1)
@@ -193,8 +193,7 @@ def main():
 
 
         for p in parameters:
-            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p + '.tif', x_res, y_res, 1,
-                                                             gdal.GDT_Float32)
+            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             target_ds.SetProjection(srsout.ExportToWkt())
             band = target_ds.GetRasterBand(1)
@@ -203,6 +202,13 @@ def main():
             # Rasterize
             gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
             target_ds = None
+
+        #we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
+        parameters = None
+
+        #no parameters and no variables, just exit at this point
+        if not variables and parameters is None:
+            break
 
 
         iter += 1
