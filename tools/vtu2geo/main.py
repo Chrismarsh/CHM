@@ -45,8 +45,14 @@ def main():
     base = X.base
     input_path = X.input_path
     # EPSG = X.EPSG
+
+
     variables = X.variables
-    parameters = X.parameters
+
+    parameters = []
+    if hasattr(X,'parameters'):
+        parameters = X.parameters
+
     pixel_size = X.pixel_size
 
     is_geographic = False
@@ -156,10 +162,10 @@ def main():
                 data = cd.GetArray(v).GetTuple(i)
                 feature.SetField(str(v), float(data[0]))
 
-            if parameters is not None:
-                for p in parameters:
-                    data = cd.GetArray(p).GetTuple(i)
-                    feature.SetField(str(p), float(data[0]))
+
+            for p in parameters:
+                data = cd.GetArray(p).GetTuple(i)
+                feature.SetField(str(p), float(data[0]))
 
 
             layer.CreateFeature(feature)
@@ -185,20 +191,19 @@ def main():
             target_ds.SetProjection(srsout.ExportToWkt())
             target_ds = None
 
-        if parameters is not None:
-            for p in parameters:
-                target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p + '.tif', x_res, y_res, 1,
-                                                                 gdal.GDT_Float32)
-                target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-                target_ds.SetProjection(srsout.ExportToWkt())
-                band = target_ds.GetRasterBand(1)
-                band.SetNoDataValue(NoData_value)
 
-                # Rasterize
-                gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
-                target_ds = None
+        for p in parameters:
+            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p + '.tif', x_res, y_res, 1,
+                                                             gdal.GDT_Float32)
+            target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+            target_ds.SetProjection(srsout.ExportToWkt())
+            band = target_ds.GetRasterBand(1)
+            band.SetNoDataValue(NoData_value)
 
-            parameters = None
+            # Rasterize
+            gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
+            target_ds = None
+
 
         iter += 1
 
