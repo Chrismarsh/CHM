@@ -222,12 +222,10 @@ def main():
             # Rasterize
             gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE',"ATTRIBUTE="+var])
             target_ds.SetProjection(srsout.ExportToWkt())
-            target_ds = None
+	    target_ds = None
 
 	    # Optional clip file
 	    if(constrain_flag):
-		# Clip new raster by above shape file
-                #subprocess.check_call(['gdalwarp -srcnodata -9999 -dstnodata -9999 -cutline \"%s\" -crop_to_cutline \"%s\" \"%s\"' % (shape_file,path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
                 subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f \"%s\" \"%s\"' % (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
         
 	if parameters is not None:
