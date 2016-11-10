@@ -42,11 +42,7 @@ def main():
     X = imp.load_source('',configfile)
 
     # Grab variables
-    base = X.base
     input_path = X.input_path
-    # EPSG = X.EPSG
-
-
     variables = X.variables
 
     parameters = []
