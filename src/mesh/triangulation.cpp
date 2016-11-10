@@ -14,6 +14,7 @@
 // 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+#include <vtkStringArray.h>
 #include "triangulation.hpp"
 
 triangulation::triangulation()
@@ -490,6 +491,11 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
     triangles->Allocate(this->_num_vertex);
 
+    vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
+    proj4->SetNumberOfComponents(1);
+    proj4->SetName("proj4");
+    proj4->InsertNextValue("lol");
+
     double scale = is_geographic() == true ? 100000. : 1.;
 
     for (size_t i = 0; i < this->size_faces(); i++)
@@ -513,7 +519,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     _vtk_unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
     _vtk_unstructuredGrid->SetPoints(points);
     _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
-
+    _vtk_unstructuredGrid->GetFieldData()->AddArray(proj4);
 
     //assume that all the faces have the same number of variables and the same types of variables
     //by this point this should be a fair assumption
