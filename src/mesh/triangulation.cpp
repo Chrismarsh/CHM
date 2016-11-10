@@ -494,7 +494,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
     proj4->SetNumberOfComponents(1);
     proj4->SetName("proj4");
-    proj4->InsertNextValue("lol");
+    proj4->InsertNextValue(_srs_wkt);
 
     double scale = is_geographic() == true ? 100000. : 1.;
 
@@ -520,6 +520,10 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     _vtk_unstructuredGrid->SetPoints(points);
     _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
     _vtk_unstructuredGrid->GetFieldData()->AddArray(proj4);
+
+//    vtkSmartPointer<vtkStringArray> test = vtkStringArray::SafeDownCast(_vtk_unstructuredGrid->GetFieldData()->GetAbstractArray("proj4"));
+//    LOG_DEBUG << test->GetValue(0) ;
+
 
     //assume that all the faces have the same number of variables and the same types of variables
     //by this point this should be a fair assumption
