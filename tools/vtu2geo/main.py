@@ -216,7 +216,7 @@ def main():
         y_res = int((y_max - y_min) / pixel_size)
 
         for var in variables:
-            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4]+'_'+var+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
+            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4]+'_'+ var.replace(" ","_")+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             # target_ds.SetProjection(srs)
             band = target_ds.GetRasterBand(1)
@@ -233,8 +233,7 @@ def main():
                 subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f \"%s\" \"%s\"' % (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
 
         for p in parameters:
-            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p + '.tif', x_res, y_res, 1,
-                                                             gdal.GDT_Float32)
+            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             target_ds.SetProjection(srsout.ExportToWkt())
             band = target_ds.GetRasterBand(1)
@@ -246,8 +245,14 @@ def main():
 
             # Optional clip file
             if(constrain_flag):
-                subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f \"%s\" \"%s\"' % (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, path[:-4]+'_'+p+'.tif',path[:-4]+'_'+p+'_clipped.tif')], shell=True)
+                subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f \"%s\" \"%s\"' % (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax,path[:-4] + '_' + p.replace(" ","_") + '.tif',path[:-4] + '_' + p.replace(" ","_") + '_clipped.tif')], shell=True)
 	    
+        #we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
+        parameters = None
+
+        #no parameters and no variables, just exit at this point
+        if not variables and parameters is None:
+            break
 
         iter += 1
 
