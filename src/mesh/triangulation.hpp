@@ -339,8 +339,23 @@ public:
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
     size_t cell_id;
-    void set_parameter(std::string key,double value);
+
+
+    /**
+     * Gets the face parameter value. E.g., landcover type
+     * @param key
+     * @return
+     */
     double get_parameter(std::string key);
+
+    /**
+     * Sets the parameter on the face to the given value. Parameter doesn't have to exist. Do not use to store model output.
+     * @param key
+     * @param value
+     */
+    void set_parameter(std::string key, double value);
+
+
     std::vector<std::string>  parameters();
     bool has_parameter(std::string key);
 
@@ -740,15 +755,15 @@ bool face<Gt, Fb>::has_parameter(std::string key)
 }
 
 template < class Gt, class Fb >
-void face<Gt, Fb>::set_parameter(std::string key, double value)
-{
-    _parameters[key] = value;
-}
-
-template < class Gt, class Fb >
 double face<Gt, Fb>::get_parameter(std::string key)
 {
     return _parameters[key];
+};
+
+template < class Gt, class Fb >
+void face<Gt, Fb>::set_parameter(std::string key, double value)
+{
+    _parameters[key] = value;
 };
 
 template < class Gt, class Fb >

@@ -81,6 +81,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
         mod = new fast_shadow(config);
     else if (ID == "deform_mesh")
         mod = new deform_mesh(config);
+    else if (ID == "crop_rotation")
+        mod = new crop_rotation(config);
 
     if(mod == nullptr)
     {
