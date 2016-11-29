@@ -209,6 +209,15 @@ void Liston_wind::run(mesh domain)
         face->set_face_data("U_R", W);
         face->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
 
+
+        if(corrected_theta >=0 && corrected_theta < 90)
+            corrected_theta = fabs(corrected_theta-90);
+        else
+            corrected_theta = fabs(450-corrected_theta);
+
+        Vector_3 v(cos(corrected_theta * 3.14159/180.0), -sin(corrected_theta * 3.14159/180.0), 0);
+        face->set_face_vector("wind_direction",v);
+
     }
 
 
