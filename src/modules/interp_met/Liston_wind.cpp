@@ -9,7 +9,7 @@ Liston_wind::Liston_wind(config_file cfg)
 
     provides("U_R");
     provides("vw_dir");
-
+    provides("vw_dir_divergence");
     distance = cfg.get<double>("distance",300);//300.0;
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -126,11 +126,8 @@ void Liston_wind::run(mesh domain)
 {
     double PI = 3.14159;
 
-
-
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
-
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -148,19 +145,24 @@ void Liston_wind::run(mesh domain)
             W = std::max(W, 0.1);
 
             double theta = s->get("vw_dir") * 3.14159 / 180.;
+            double phi = math::gis::bearing_to_polar(s->get("vw_dir") );
+
             double zonal_u = -W * sin(theta);
             double zonal_v = -W * cos(theta);
+//            double zonal_u = -W * sin(phi); //negate as it needs to be the direction the wind is *going*
+//            double zonal_v = -W * cos(phi);
+
             u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u));
             v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v));
         }
-
+//http://mst.nerc.ac.uk/wind_vect_convs.html
 
         auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
         double zonal_u = face->get_module_data<lwinddata>(ID)->interp(u, query);
         double zonal_v = face->get_module_data<lwinddata>(ID)->interp(v, query);
 
         double theta = 3.0 * PI * 0.5 - atan2(zonal_v, zonal_u);
-
+//        double theta = atan2(-zonal_v, -zonal_u);
         if (theta > 2 * PI)
             theta = theta - 2 * PI;
 
@@ -170,14 +172,9 @@ void Liston_wind::run(mesh domain)
         if (fabs(omega_s) > max_omega_s)
             max_omega_s = fabs(omega_s);
 
-
         double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
-        double corrected_theta = 3.0 * PI * 0.5 - atan2(zonal_v, zonal_u);
 
-        if (corrected_theta > 2 * PI)
-            corrected_theta = corrected_theta - 2 * PI;
-
-        face->get_module_data<lwinddata>(ID)->corrected_theta = corrected_theta;
+        face->get_module_data<lwinddata>(ID)->corrected_theta = theta;
         face->get_module_data<lwinddata>(ID)->W = W;
     }
     #pragma omp parallel for
@@ -185,12 +182,15 @@ void Liston_wind::run(mesh domain)
     {
         auto face = domain->face(i);
 
-        double corrected_theta= face->get_module_data<lwinddata>(ID)->corrected_theta;
+        double theta= face->get_module_data<lwinddata>(ID)->corrected_theta;
         double W= face->get_module_data<lwinddata>(ID)->W;
 
-        double omega_s = face->slope() * cos(corrected_theta - face->aspect());
+        //what liston calls 'wind slope'
+        double omega_s = face->slope() * cos(theta - face->aspect());
 
+        //scale between [-0.5,0.5]
         omega_s = omega_s / max_omega_s / 2.0;
+
 
         double omega_c = face->get_parameter("Liston curvature");
 
@@ -198,25 +198,43 @@ void Liston_wind::run(mesh domain)
         double yc = 0.5;
 
         double Ww = 1 + ys * omega_s + yc * omega_c;
-
-
         W = W * Ww;
 
-        double theta_d = -0.5 * omega_s * sin(2 * (face->aspect() - corrected_theta));
-        corrected_theta = theta_d + corrected_theta;
+        double aspect = face->aspect();
+        double dirdiff = 0;
+
+        double d2r = M_PI/180.0;
+
+
+        //Ryan terain divergence
+        // follow LIston's micromet implimentation to handle 0-360
+        if (aspect > 270.0*d2r &&  theta < 90.0*d2r)
+            dirdiff = aspect - theta - 360.0*d2r;
+        else if (aspect < 90.0*d2r && theta > 270.0*d2r)
+            dirdiff = aspect - theta + 360.0*d2r;
+        else
+            dirdiff = aspect - theta;
+
+        if (std::abs(dirdiff) < 90.0*d2r)
+        {
+            theta = theta - 0.5 * std::min(omega_s, 45.0*d2r) * sin((2.0 * dirdiff));
+            if (theta > 2*M_PI)
+                theta = theta - 2*M_PI;
+            else if (theta < 0.0)
+                theta = theta + 2*M_PI;
+
+        }
 
         W = std::max(W,0.1);
         face->set_face_data("U_R", W);
-        face->set_face_data("vw_dir", corrected_theta * 180.0 / 3.14159);
+        face->set_face_data("vw_dir", theta * 180.0 / 3.14159);
 
 
-        if(corrected_theta >=0 && corrected_theta < 90)
-            corrected_theta = fabs(corrected_theta-90);
-        else
-            corrected_theta = fabs(450-corrected_theta);
+        Vector_2 v = math::gis::bearing_to_cartesian(theta* 180.0 / 3.14159);
+        Vector_3 v3(-v.x(),-v.y(), 0); //negate as direction it's blowing instead of where it is from!!
 
-        Vector_3 v(cos(corrected_theta * 3.14159/180.0), -sin(corrected_theta * 3.14159/180.0), 0);
-        face->set_face_vector("wind_direction",v);
+        face->set_face_data("vw_dir_divergence",dirdiff* 180.0 / 3.14159);
+        face->set_face_vector("wind_direction",v3);
 
     }
 

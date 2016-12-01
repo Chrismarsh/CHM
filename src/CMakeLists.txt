@@ -75,8 +75,10 @@ set(MODULE_SRCS
 		modules/solar.cpp
 		modules/fast_shadow.cpp
         modules/deform_mesh.cpp
+		modules/crop_rotation.cpp
+		modules/dbsm.cpp
 
-		CACHE INTERNAL "" FORCE)
+		CACHE INTERNAL "" FORCE )
 
 
 set(CHM_SRCS
@@ -111,10 +113,10 @@ set(CHM_SRCS
 
 		interpolation/interpolation.cpp
 		${METEOIO_SRCS}
-		math/distance.cpp
+        math/coordinates.cpp
 
 		CACHE INTERNAL "" FORCE
-        )
+		)
 
 
 set (HEADER_FILES
@@ -216,7 +218,7 @@ if (test)
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-            math/distance.cpp modules/deform_mesh.cpp)
+            math/coordinates.cpp modules/deform_mesh.cpp modules/dbsm.cpp)
 
 
 	set( GTEST_LINK

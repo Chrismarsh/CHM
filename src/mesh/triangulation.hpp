@@ -96,7 +96,7 @@ namespace pt = boost::property_tree;
 #include "vertex.hpp"
 //#include "face.hpp"
 #include "timeseries.hpp"
-#include "math/distance.hpp"
+#include "math/coordinates.hpp"
 
 /**
 * \struct face_info
@@ -120,6 +120,7 @@ typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef K::Triangle_3 Triangle_3;
 typedef K::Point_3 Point_3;
 typedef K::Vector_3 Vector_3;
+typedef K::Vector_2 Vector_2;
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
@@ -905,16 +906,9 @@ double face<Gt, Fb>::aspect()
     {
         if(!_normal)
             this->normal();
-        //convert normal to spherical
-//        double r = sqrt(_normal[0] * _normal[0] + _normal[1] * _normal[1] + _normal[2] * _normal[2]);
-//        double theta = acos(_normal[2] / r);
 
-        //y=north
-        double phi = atan2((*_normal)[1], (*_normal)[0]); // + M_PI /*-3.14159/2*/; //south == 0
-        _azimuth = phi - M_PI / 2.0; //set north = 0
+        _azimuth = math::gis::cartesian_to_bearing(Vector_2((*_normal)[0],(*_normal)[1])) * M_PI/180.; //need in radians
 
-        if (_azimuth < 0.0)
-            _azimuth += 2.0 * M_PI;
     }
 
     return _azimuth;

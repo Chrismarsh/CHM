@@ -1,4 +1,4 @@
-#include "distance.hpp"
+#include "coordinates.hpp"
 
 namespace math
 {
@@ -90,5 +90,34 @@ namespace math
         boost::function<Point_2(Point_3 src, double bearing, double distance)> point_from_bearing;
 
 
+        double bearing_to_polar(double bearing)
+        {
+            double h = 450. - bearing;
+            if (h > 360.)
+                h = h-360.;
+
+            return h * M_PI/180.;
+
+        }
+
+        Vector_2 polar_to_cartesian(double theta)
+        {
+            Vector_2 v(cos(theta ), sin(theta ));
+            return v;
+        }
+
+        Vector_2 bearing_to_cartesian(double bearing)
+        {
+            return polar_to_cartesian(bearing_to_polar(bearing));
+        }
+
+        double cartesian_to_bearing(Vector_2 cart)
+        {
+            double phi = atan2(cart.y(), cart.x());
+            phi =  M_PI/2.0 - phi;
+            if (phi < 0.0)
+                phi += 2.0 * M_PI;
+            return phi * 180.0/M_PI;
+        }
     }
 }

@@ -658,13 +658,14 @@ void triangulation::write_vtu(std::string file_name)
 #endif
     writer->Write();
 
+//    write_vtp(file_name);
 }
 
 void triangulation::write_vtp(std::string file_name)
 {
     //this now needs to be called from outside these functions
 //    update_vtk_data();
-
+//
 //    vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
 //    geometryFilter->SetInputData(_vtk_unstructuredGrid);
 //    geometryFilter->Update();
@@ -676,7 +677,7 @@ void triangulation::write_vtp(std::string file_name)
 //    flattener->Update();
 //
 //    vtkSmartPointer<vtkTransformFilter> filt = vtkSmartPointer<vtkTransformFilter>::New();
-//    filt->SetInputData(geometryFilter->GetOutput());
+//    filt->SetInputConnection(geometryFilter->GetOutputPort());
 //    filt->SetTransform(flattener);
 //    filt->Update();
 //
@@ -686,8 +687,8 @@ void triangulation::write_vtp(std::string file_name)
 //    // Create a grid of points to interpolate over
 //    vtkSmartPointer<vtkPlaneSource> gridPoints = vtkSmartPointer<vtkPlaneSource>::New();
 //
-//    size_t dx = 300; //(meters)
-//    size_t dy = 300;
+//    size_t dx = 10; //(meters)
+//    size_t dy = 10;
 //
 //    double distx = bounds[1] - bounds[0];
 //    double disty = bounds[3] - bounds[2];
