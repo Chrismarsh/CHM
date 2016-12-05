@@ -191,7 +191,7 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(GDAL REQUIRED)
+find_package(GDAL 2.1 REQUIRED)
 
 find_package (Threads REQUIRED)
 
@@ -201,7 +201,7 @@ find_package(GSL REQUIRED)
 
 find_package(Curses REQUIRED)
 
-find_package(Sundials REQUIRED)
+#find_package(Sundials REQUIRED)
 
 #if we are building the plugin we need to compile against paraview (which brings in VTK)
 #otherwise use just VTK. You cannot link against both at the same time
