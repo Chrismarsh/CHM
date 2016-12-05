@@ -105,7 +105,12 @@ def main():
     #     srs.ImportFromWkt(wkt)
     #     EPSG = int(srs.GetAttrValue("AUTHORITY", 1))
 
-    src_ds = gdal.Open(dem_filename)
+    try:
+        src_ds = gdal.Open(dem_filename)
+    except:
+        print 'Unable to open file ' + dem_filename
+        exit(1)
+
     wkt = src_ds.GetProjection()
     if wkt == '':
         print "Input DEM must have spatial reference information."
@@ -593,11 +598,17 @@ def main():
                     # get the value under each triangle from each paramter file
                     for key, data in parameter_files.iteritems():
                         output = rasterize_elem(data, feature, key)
+
+                        if 'classifier' in data:
+                            output = data['classifier'](output)
                         params[key].append(output)
                         vtu_cells['[param] ' + key].InsertNextTuple1(output)
 
                     for key, data in initial_conditions.iteritems():
                         output = rasterize_elem(data, feature, key)
+                        if 'classifier' in data:
+                            output = data['classifier'](output)
+
                         ics[key].append(output)
                         vtu_cells['[ic] ' + key].InsertNextTuple1(output)
 
