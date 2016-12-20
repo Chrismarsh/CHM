@@ -27,7 +27,8 @@
 #include <stack>
 #include <fstream>
 #include <utility>
-#define ARMA_DONT_USE_CXX11 //intel on linux breaks otherwise
+//#define ARMA_DONT_USE_CXX11 //intel on linux breaks otherwise
+//#define ARMA_64BIT_WORD
 #include <armadillo>
 
 #include <boost/lexical_cast.hpp>
@@ -196,6 +197,33 @@ public:
      * @return
      */
     const Face_handle find_closest_face(double azmimuth, double distance);
+
+    /**
+     * Returns the ith edge's length. Refering to the docs here
+     * http://doc.cgal.org/latest/Triangulation_2/classCGAL_1_1Triangulation__2.html
+     * edgth_length(i) returns the length of the edge shared with neighbour(i),
+     * opposite vertex(i)
+     * @param i
+     * @return
+     */
+    double edge_length(int i);
+
+    /**
+     * Returns a 2D vector that defines the edge i.
+     * The Edge(i) is edge common to faces f and f.neighbor(i). It is also the edge joining the vertices vertex(cw(i)) and vertex(ccw(i)) of f.
+     * 0-3, ccw
+     * @param i
+     * @return
+     */
+    Vector_2 edge(int i);
+
+    /**
+     * Returns the 2D unit normal to a triangle edge i faceing outward.
+     * Edge i corresponds to the same edge as edge_length.
+     * @param i
+     * @return
+     */
+    Vector_2 edge_unit_normal(int i);
 
     /**
     * Checks if a point x,y is within the face
@@ -913,6 +941,49 @@ double face<Gt, Fb>::aspect()
 
     return _azimuth;
 }
+
+template < class Gt, class Fb>
+Vector_2 face<Gt, Fb>::edge_unit_normal(int i)
+{
+    auto e = edge(i);
+    auto e1 = edge( (i+1) % 3);
+
+    //use this method to get the vector going in the right dir
+//    http://gamedev.stackexchange.com/a/26952
+
+    //one of the normals is defined as
+    Vector_2 n(e.y(),-e.x());
+
+    //dot normal with e1
+    double D = e1.x()*n.x()+e1.y()*n.y();
+
+    //if positive, negate to point the proper dir
+    if(D > 0)
+        n = -n;
+
+    return n/CGAL::sqrt(n.squared_length());
+
+};
+
+template < class Gt, class Fb>
+Vector_2 face<Gt, Fb>::edge(int i)
+{
+    auto a = this->vertex(_domain->ccw(i))->point();
+    auto b = this->vertex(_domain->cw(i))->point();
+
+    auto v = b-a;
+
+    return Vector_2(v.x(),v.y());//,v.z());
+
+};
+
+template < class Gt, class Fb>
+double face<Gt, Fb>::edge_length(int i)
+{
+    auto e = edge(i);
+
+    return CGAL::sqrt(e.squared_length());
+};
 
 template < class Gt, class Fb>
 double face<Gt, Fb>::slope()
