@@ -286,7 +286,7 @@ void snobal::run(mesh_elem &face)
     {
         g->dead=1;
         LOG_DEBUG << boost::diagnostic_information(e);
-        auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+")";
+        auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+") ID = " + std::to_string(face->cell_id);
 //        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snobal died. Triangle center = "+details));
     }
 
