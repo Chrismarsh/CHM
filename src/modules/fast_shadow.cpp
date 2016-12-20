@@ -25,10 +25,7 @@ fast_shadow::~fast_shadow()
 
 void fast_shadow::run(mesh_elem& face)
 {
-//#pragma omp parallel for
-//    for (size_t i = 0; i < domain->size_faces(); i++)
-//    {
-//        auto face = domain->face(i);
+        //currentl degrees
         double solar_az = face->face_data("solar_az") ;
         double solar_el = face->face_data("solar_el") ;
 
@@ -49,8 +46,6 @@ void fast_shadow::run(mesh_elem& face)
 
             auto f = face->find_closest_face(solar_az*M_PI / 180., distance);
 
-//            auto f = domain->find_closest_face(math::gis::point_from_bearing(me, solar_az * 180./M_PI, distance));
-
             double z_diff = f->center().z() - me.z() ;
             if (z_diff > 0)
             {
@@ -63,6 +58,6 @@ void fast_shadow::run(mesh_elem& face)
         {
             face->set_face_data("shadow", 1);
         }
-//    }
+
 }
 
