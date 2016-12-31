@@ -13,65 +13,23 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-//#include <cvode/cvode.h>             /* prototypes for CVODE fcts., consts. */
-//#include <nvector/nvector_serial.h>  /* serial N_Vector types, fcts., macros */
-//#include <cvode/cvode_dense.h>       /* prototype for CVDense */
-//#include <sundials/sundials_dense.h> /* definitions DlsMat DENSE_ELEM */
-//#include <sundials/sundials_types.h> /* definition of type realtype */
-
-/* User-defined vector and matrix accessor macros: Ith, IJth */
-
-/* These macros are defined in order to write code which exactly matches
-   the mathematical problem description given above.
-
-   Ith(v,i) references the ith component of the vector v, where i is in
-   the range [1..NEQ] and NEQ is defined below. The Ith macro is defined
-   using the N_VIth macro in nvector.h. N_VIth numbers the components of
-   a vector starting from 0.
-
-   IJth(A,i,j) references the (i,j)th element of the dense matrix A, where
-   i and j are in the range [1..NEQ]. The IJth macro is defined using the
-   DENSE_ELEM macro in dense.h. DENSE_ELEM numbers rows and columns of a
-   dense matrix starting from 0. */
-
-#define Ith(v,i)    NV_Ith_S(v,i-1)       /* Ith numbers components 1..NEQ */
-#define IJth(A,i,j) DENSE_ELEM(A,i-1,j-1) /* IJth numbers rows,cols 1..NEQ */
-
-/* Problem Constants */
-
-#define NEQ   1                /* number of equations  */
-#define Y1    RCONST(0.75)      /* initial y components */
-
-
-
-#define RTOL  RCONST(1.0e-6)   /* scalar relative tolerance            */
-#define ATOL1 RCONST(1.0e-4)   /* vector absolute tolerance components */
-#define ATOL2 RCONST(1.0e-4)
-
-
-#define T0    RCONST(0.0)      /* initial time           */
-#define T1    RCONST(global_param->dt())      /* first output time      */
-
-#define TMULT RCONST(1.0)     /* output time factor     */
-#define NOUT  1          /* number of output times */
-
-
-
 /**
 * \addtogroup modules
 * @{
-* DBSM blowing snow
+* Lehning_blowing_snow blowing snow impliments the blowing snow model in Alpine3D as described
+ * in Lehning, et al. 2008
+ * Lehning, M., Löwe, H., Ryser, M., & Raderschall, N. (2008). Inhomogeneous precipitation distribution and snow transport in steep terrain. Water Resources Research, 44(7), 1–19. http://doi.org/10.1029/2007WR006545
 * Depends:
 * -
 *
 * Provides:
 * -
 */
-class dbsm : public module_base
+class Lehning_blowing_snow : public module_base
 {
 public:
-    dbsm(config_file cfg);
-    ~dbsm();
+    Lehning_blowing_snow(config_file cfg);
+    ~Lehning_blowing_snow();
     void run(mesh domain);
     void init(mesh domain);
 

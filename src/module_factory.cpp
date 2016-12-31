@@ -85,6 +85,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
             mod = new deform_mesh(config);
         else if (ID == "crop_rotation")
             mod = new crop_rotation(config);
+        else if (ID == "Lehning_blowing_snow")
+            mod = new Lehning_blowing_snow(config);
     }
     catch(module_error& e)
     {

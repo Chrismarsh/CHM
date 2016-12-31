@@ -76,6 +76,7 @@ set(MODULE_SRCS
 		modules/fast_shadow.cpp
         modules/deform_mesh.cpp
 		modules/crop_rotation.cpp
+		modules/Lehning_blowing_snow.cpp
 
 		CACHE INTERNAL "" FORCE )
 
