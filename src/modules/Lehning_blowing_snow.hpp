@@ -3,16 +3,20 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
-#include <cstdlib>
-#include <string>
+
 #include "math/coordinates.hpp"
+
 #include <constants/PhysConst.h>
+#include "constants/Atmosphere.h"
 
 #include <cmath>
 #include <armadillo>
-#define _USE_MATH_DEFINES
-#include <math.h>
-
+#include <cstdlib>
+#include <string>
+//#define _USE_MATH_DEFINES
+//#include <math.h>
+#include <boost/math/tools/roots.hpp>
+#include "math/coordinates.hpp"
 /**
 * \addtogroup modules
 * @{
