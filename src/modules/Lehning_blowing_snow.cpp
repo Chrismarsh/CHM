@@ -46,15 +46,15 @@ void Lehning_blowing_snow::init(mesh domain)
 void Lehning_blowing_snow::run(mesh domain)
 {
     //hardcode at the moment
-    double nLayer = 1;
-    double susp_depth = 4; //5m as per pomeroy
+    double nLayer = 5;
+    double susp_depth = 5; //5m as per pomeroy
 
 
     //needed for linear system offsets
     size_t ntri = domain->number_of_faces();
 
-//    arma::sp_mat C(ntri , ntri * nLayer ) ;
-    arma::mat C(ntri * nLayer , ntri * nLayer, arma::fill::zeros) ;
+    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
+//    arma::mat C(ntri * nLayer , ntri * nLayer, arma::fill::zeros) ;
     arma::vec b(ntri * nLayer , arma::fill::zeros);
     arma::vec x(ntri * nLayer , arma::fill::zeros);
     double z0 = 0.01; //m
@@ -227,35 +227,36 @@ void Lehning_blowing_snow::run(mesh domain)
             }
 
             //lateral
+            size_t idx = ntri*z + face->cell_id;
 
             if (face_neigh[0])
             {
-                C(i+ntri*z, ntri * z + face->cell_id) +=  -1. * alpha[0] - .5000000000 * A[0] * udotm[0];
+                C(idx, idx) +=  -1. * alpha[0] - .5000000000 * A[0] * udotm[0];
 
                 auto neigh = face->neighbor(0);
-                C(i*z, ntri * z + neigh->cell_id) += alpha[0] - .5000000000 * A[0] * udotm[0];
+                C(idx, ntri * z + neigh->cell_id) += alpha[0] - .5000000000 * A[0] * udotm[0];
 
             }
             if (face_neigh[1])
             {
-                C(i*z, ntri * z + face->cell_id) +=  -1. * alpha[1] - .5000000000 * A[1] * udotm[1];
+                C(idx, idx) +=  -1. * alpha[1] - .5000000000 * A[1] * udotm[1];
 
                 auto neigh = face->neighbor(1);
-                C(i*z, ntri * z + neigh->cell_id) +=alpha[1] - .5000000000 * A[1] * udotm[1];
+                C(idx, ntri * z + neigh->cell_id) +=alpha[1] - .5000000000 * A[1] * udotm[1];
             }
             if (face_neigh[2])
             {
-                C(i*z, ntri * z + face->cell_id) +=  -1. * alpha[2] - .5000000000 * A[2] * udotm[2];
+                C(idx, idx) +=  -1. * alpha[2] - .5000000000 * A[2] * udotm[2];
 
                 auto neigh = face->neighbor(2);
-                C(i*z, ntri * z + neigh->cell_id) += alpha[2] - .5000000000 * A[2] * udotm[2];
+                C(idx, ntri * z + neigh->cell_id) += alpha[2] - .5000000000 * A[2] * udotm[2];
             }
 
             //top
             if (nLayer == 1)
             {
 
-                C(i*z, ntri * z + face->cell_id) += -1.*alpha[3]+1.*A[4]*K[4]/(.5000000000*hs+.5)-1.*K[4];
+                C(idx, ntri * z + face->cell_id) += -1.*alpha[3]+1.*A[4]*K[4]/(.5000000000*hs+.5)-1.*K[4];
 
                 b(ntri * z + face->cell_id) = 1.*A[4]*K[4]*c_salt/(.5000000000*hs+.5);//-1.*K[4]*c_salt;
                 //top face
@@ -267,41 +268,38 @@ void Lehning_blowing_snow::run(mesh domain)
                 if (z == 0)
                 {
                     //bottom face
-                    C(i, ntri * z + face->cell_id) += -1.*alpha[3]+1.*A[4]*K[4]/(.5000000000*hs+.5)-1.*K[4];
-                    b(ntri * z + face->cell_id) =
-                            1.*A[4]*K[4]*c_salt/(.5000000000*hs+.5);
+                    C(idx,idx) += -1.*alpha[3]+1.*A[4]*K[4]/(.5000000000*hs+.5)-1.*K[4];
+                    b(ntri * z + face->cell_id) = 1.*A[4]*K[4]*c_salt/(.5000000000*hs+.5);//-1.*K[4]*c_salt;
 
                     //top face
-                    C(i, ntri * z + face->cell_id) += -1. * alpha[3] - .5000000000 * A[3] * udotm[3];
-                    C(i, ntri * (z + 1) + face->cell_id) = (alpha[3] - .5000000000 * A[3] * udotm[3]);
+                    C(idx, ntri * z + face->cell_id) += -1. * alpha[3] - .5000000000 * A[3] * udotm[3];
+                    C(idx, ntri * (z + 1) + face->cell_id) = (alpha[3] - .5000000000 * A[3] * udotm[3]);
                 } else if (z == nLayer - 1)// top z layer
                 {
                     //top is neumann b.c, del c = 0
                     //only bottom
-                    C(i, ntri * z + face->cell_id) +=
+                    C(idx, ntri * z + face->cell_id) +=
                             -1. * alpha[3] - 1. * alpha[4] - .5000000000 * A[3] * udotm[3] -
                             .5000000000 * A[4] * udotm[4];
-                    C(i, ntri * (z - 1) + face->cell_id) = (alpha[4] - .5000000000 * A[4] * udotm[4]);
+                    C(idx, ntri * (z - 1) + face->cell_id) = (alpha[4] - .5000000000 * A[4] * udotm[4]);
 
-                    //                C(i, ntri * z + face->cell_id) += -1.*alpha[3]-1.*alpha[4]-.5000000000*A[3]*udotm[3]-.5000000000*A[4]*udotm[3];
-                    //                C(i, ntri * (z-1) + face->cell_id) =  alpha[4]-.5000000000*A[4]*udotm[3];
                 } else // internal cell
                 {
-                    C(i, ntri * z + face->cell_id) +=
+                    C(idx, idx) +=
                             -1. * alpha[3] - 1. * alpha[4] - .5000000000 * A[3] * udotm[3] -
                             .5000000000 * A[4] * udotm[4];
 
                     //top
-                    C(i, ntri * (z + 1) + face->cell_id) = (alpha[3] - .5000000000 * A[3] * udotm[3]);
+                    C(idx, ntri * (z + 1) + face->cell_id) = (alpha[3] - .5000000000 * A[3] * udotm[3]);
 
                     //bottom
-                    C(i, ntri * (z - 1) + face->cell_id) = (alpha[4] - .5000000000 * A[4] * udotm[4]);
+                    C(idx, ntri * (z - 1) + face->cell_id) = (alpha[4] - .5000000000 * A[4] * udotm[4]);
                 }
             }
         }
     }
-    x = arma::solve(C,b);
-
+//    x = arma::solve(C,b);
+    x = arma::spsolve(C,b);
 
 //    LOG_DEBUG << "Cond: " << arma::cond(C);
 //    arma::mat L, U, P;
