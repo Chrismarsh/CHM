@@ -8,6 +8,7 @@ snow_slide::snow_slide(config_file cfg)
 
     provides("swe");
     provides("snowdepthavg");
+    provides("minDepth");
 
 }
 
@@ -18,6 +19,10 @@ snow_slide::~snow_slide()
 
 void snow_slide::run(mesh domain)
 {
+
+    // Sort faces by elevation + snowdepth
+    
+
 
     // Loop through each face, from highest to lowest triangle
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -42,7 +47,7 @@ void snow_slide::run(mesh domain)
 	    face->set_face_data("snowdepthavg",snowdepthavg); 
 	    face->set_face_data("swe",swe);
 	    // testing states
-	    //face->set_face_data("minDepth",minDepth);
+	    face->set_face_data("minDepth",minDepth);
 
     }
 }
