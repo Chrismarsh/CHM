@@ -12,7 +12,7 @@ set (CHM_VERSION_MINOR 1)
 
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(USE_OMP "Enable OpenMP"  OFF )
+option(USE_OMP "Enable OpenMP"  ON )
 option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
@@ -46,6 +46,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 #some machines need to be told where odd system libraries are, so put them here
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
+
 #for meton
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
 
@@ -173,7 +174,15 @@ if(MATLAB)
     find_package(Matlab REQUIRED)
 endif()
 
-find_package(Armadillo REQUIRED)  #at least v3
+#turn off blas and lapack so we can use viennaCL
+add_definitions(-DARMA_DONT_USE_BLAS)
+add_definitions(-DARMA_DONT_USE_LAPACK)
+add_definitions(-DVIENNACL_WITH_ARMADILLO=1)
+if(OPENMP_FOUND)
+    add_definitions(-DVIENNACL_WITH_OPENMP)
+endif()
+find_package(Armadillo REQUIRED)
+find_package(ViennaCL REQUIRED)
 
 find_package(Boost
              1.60.0

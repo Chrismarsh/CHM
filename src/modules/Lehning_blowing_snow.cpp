@@ -30,7 +30,6 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("l2");
     provides("u_z");
 
-    provides("is_upwind");
     provides("Qsusp");
 
 }
@@ -47,9 +46,9 @@ void Lehning_blowing_snow::init(mesh domain)
 void Lehning_blowing_snow::run(mesh domain)
 {
     //hardcode at the moment
-    double nLayer = 1;
+    double nLayer = 5;
     double susp_depth = 5; //5m as per pomeroy
-
+    double v_edge_height = susp_depth / nLayer; //height of each vertical prism
 
     //needed for linear system offsets
     size_t ntri = domain->number_of_faces();
@@ -58,13 +57,13 @@ void Lehning_blowing_snow::run(mesh domain)
 //    arma::mat C(ntri * nLayer , ntri * nLayer, arma::fill::zeros) ;
     arma::vec b(ntri * nLayer , arma::fill::zeros);
     arma::vec x(ntri * nLayer , arma::fill::zeros);
+
     double z0 = 0.01; //m
 
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
 
-        double T = face->face_data("t");
         double phi =face->face_data("vw_dir");
         double u2 = face->face_data("U_2m_above_srf");
 
@@ -101,28 +100,10 @@ void Lehning_blowing_snow::run(mesh domain)
         m[4].fill(0);
         m[4](2) = -1;
 
-//        if (i == 3050)//301
-//        {
-//            Vector_3 v0(m[0](0),m[0](1),m[0](2));
-//            Vector_3 v1(m[1](0),m[1](1),m[1](2));
-//            Vector_3 v2(m[2](0),m[2](1),m[2](2));
-//
-//            face->set_face_vector("m0",v0);
-//            face->set_face_vector("m1",v1);
-//            face->set_face_vector("m2",v2);
-//        } else{
-//            Vector_3 v0(nan(""),nan(""),nan(""));
-//            Vector_3 v1(nan(""),nan(""),nan(""));
-//            Vector_3 v2(nan(""),nan(""),nan(""));
-//
-//            face->set_face_vector("m0",v0);
-//            face->set_face_vector("m1",v1);
-//            face->set_face_vector("m2",v2);
-//        }
         //face areas
         double A[5];
         for (int j = 0; j < 3; ++j)
-            A[j] = face->edge_length(j); //assuming 1m height
+            A[j] = face->edge_length(j) * v_edge_height;
 
         //top, bottom
         A[3] = A[4] = face->get_area();
@@ -133,16 +114,14 @@ void Lehning_blowing_snow::run(mesh domain)
                          (pow(log(2. / z0), 2.) * 9.81);
         face->set_face_data("hs", hs);
 
-
         double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
         face->set_face_data("ustar", ustar);
-
 
         // iterate over the vertical layers, each 1m in height
         for (int z = 0; z < nLayer; ++z)
         {
             //height in the suspension layer
-            double cz = z + hs+0.5; //cell center height
+            double cz = z + hs+ v_edge_height/2.; //cell center height
 
             //eddy diffusivity (m^2/s)
             double K[5];
@@ -196,9 +175,9 @@ void Lehning_blowing_snow::run(mesh domain)
 
 
             //top
-            alpha[3] = A[3] * K[3] / (susp_depth / nLayer);
+            alpha[3] = A[3] * K[3] / v_edge_height;
             //bottom
-            alpha[4] = A[4] * K[4] / (susp_depth / nLayer);
+            alpha[4] = A[4] * K[4] / v_edge_height;
 
             face->set_face_data("K0", K[0]);
             face->set_face_data("K1", K[1]);
@@ -213,9 +192,9 @@ void Lehning_blowing_snow::run(mesh domain)
             double nzr = 0.8; // kg/m^3
 
 //            double c_salt = 0.;
-//            if (i == 0 )//|| i==  301
+//            if (i == 3975 )//|| i==  13065
 //                c_salt = .80;
-            double c_salt = nzr*exp(-1.55*(1./pow(0.05628*ustar,.544)-1./pow(cz,.544)));
+            double c_salt = nzr *exp(-1.55*(1./pow(0.05628*ustar,.544)-1./pow(cz,.544)));
 
             face->set_face_data("csalt", c_salt);
 
@@ -248,8 +227,8 @@ void Lehning_blowing_snow::run(mesh domain)
                 if (face_neigh[f])
                 {
                     auto nidx = ntri * z + face->neighbor(f)->cell_id;
-                    //we're upwind of neigh
-                    if(udotm[f] < 0 )
+
+                    if(udotm[f] > 0 )
                     {
                         C(idx,idx) += -A[f]*udotm[f]-alpha[f];
                         C(idx, nidx) += alpha[f];
@@ -258,25 +237,24 @@ void Lehning_blowing_snow::run(mesh domain)
                         C(idx,idx) += -alpha[f];
                         C(idx, nidx)+= -A[f]*udotm[f]+alpha[f];
                     }
-//
-//                C(idx, idx) +=  alpha[0]-.5000000000*A[0]*udotm[0];
-//                C(idx, nidx) += -1.*alpha[0]-.5000000000*A[0]*udotm[0];
+
                 }
                 else
                 {
-                    C(idx, idx) += alpha[0]-.5000000000*A[0]*udotm[0];
+                    C(idx, idx) += -A[f]*udotm[f]+alpha[f];
+//                    C(idx, idx) += alpha[f]-.5000000000*A[f]*udotm[f];
                 }
             }
 
 
 
-            //top
+            // 1 layer special case
             if (nLayer == 1)
             {
 
-                C(idx, idx) += A[4]*K[4]+alpha[3]; //A[4]*K[4];
+                C(idx, idx) += -A[4]*K[4]+alpha[3]; // A[4]*K[4]+alpha[3];
 
-                b(idx) += A[4]*K[4]*c_salt;
+                b(idx) += -A[4]*K[4]*c_salt; // A[4]*K[4]*c_salt;
                 //top
                 //0
             } else
@@ -286,34 +264,31 @@ void Lehning_blowing_snow::run(mesh domain)
                 if (z == 0)
                 {
                     //bottom face
-                    C(idx,idx) += A[4]*K[4];
-                    b(ntri * z + face->cell_id) += A[4]*K[4]*c_salt;
+                    C(idx,idx) += -A[4]*K[4];
+                    b(ntri * z + face->cell_id) += -A[4]*K[4]*c_salt;
 
                     //top face
-                    C(idx, ntri * z + face->cell_id) += -1. * alpha[3] - .5000000000 * A[3] * udotm[3];
-                    C(idx, ntri * (z + 1) + face->cell_id) = (alpha[3] - .5000000000 * A[3] * udotm[3]);
+                    C(idx, ntri * z + face->cell_id) +=  -alpha[3];
+                    C(idx, ntri * (z + 1) + face->cell_id) =  alpha[3];
 
 
                 } else if (z == nLayer - 1)// top z layer
                 {
-                    //top is neumann b.c, del c = 0
-                    //only bottom
-                    C(idx, ntri * z + face->cell_id) +=
-                            -1. * alpha[3] - 1. * alpha[4] - .5000000000 * A[3] * udotm[3] -
-                            .5000000000 * A[4] * udotm[4];
-                    C(idx, ntri * (z - 1) + face->cell_id) = (alpha[4] - .5000000000 * A[4] * udotm[4]);
+                    //top
+                    C(idx, ntri * z + face->cell_id) += -alpha[3]-alpha[4];
+
+                    //bottom
+                    C(idx, ntri * (z - 1) + face->cell_id) = alpha[4];
 
                 } else // internal cell
                 {
-                    C(idx, idx) +=
-                            -1. * alpha[3] - 1. * alpha[4] - .5000000000 * A[3] * udotm[3] -
-                            .5000000000 * A[4] * udotm[4];
+                    C(idx, idx) += -alpha[3]-alpha[4];
 
                     //top
-                    C(idx, ntri * (z + 1) + face->cell_id) = (alpha[3] - .5000000000 * A[3] * udotm[3]);
+                    C(idx, ntri * (z + 1) + face->cell_id) =alpha[3];
 
                     //bottom
-                    C(idx, ntri * (z - 1) + face->cell_id) = (alpha[4] - .5000000000 * A[4] * udotm[4]);
+                    C(idx, ntri * (z - 1) + face->cell_id) = alpha[4];
                 }
             }
         }
@@ -323,10 +298,12 @@ void Lehning_blowing_snow::run(mesh domain)
 //    C.save("C.dat", arma::raw_ascii);
 //    b.save("b.dat", arma::raw_ascii);
 //    LOG_DEBUG << "done";
+    LOG_DEBUG << "solving";
 
 //    x = arma::solve(C,b);
-    x = arma::spsolve(C,b);
+//    x = arma::spsolve(C,b);
 
+      x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
 //    LOG_DEBUG << "Cond: " << arma::cond(C);
 //    arma::mat L, U, P;
 //    arma::lu(L, U, P, C);
@@ -346,7 +323,7 @@ void Lehning_blowing_snow::run(mesh domain)
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
-            face->set_face_data("c"+std::to_string(z), c <0?0:c);
+            face->set_face_data("c"+std::to_string(z), c ); //<0?0:c
         }
 
 

@@ -10,6 +10,12 @@
 #include "constants/Atmosphere.h"
 
 #include <cmath>
+
+
+#include <viennacl/linalg/cg.hpp>
+#include <viennacl/linalg/bicgstab.hpp>
+
+
 #include <armadillo>
 #include <cstdlib>
 #include <string>
