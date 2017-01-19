@@ -24,7 +24,7 @@
 
     "startdate":"19991001T000000",
 //    "enddate":  "20010501T090000"
-     "enddate":"19991001T233000"
+     "enddate":"19991001T000000"
   },
   "modules": //important these are [ ]
   [
@@ -42,7 +42,7 @@
      "kunkel_rh",
 //     "Thornton_p",
 //    "point_mode",
-    "dbsm"
+    "Lehning_blowing_snow"
 //    "crop_rotation"
     //met process
 //    "Walcek_cloud"
@@ -101,7 +101,9 @@
 //    "mesh":"meshes/wolf1m_fill.mesh"
 //    "mesh":"meshes/rosetown.mesh",
     "mesh":"meshes/marmot_1m.mesh"
-//    "mesh": "meshes/yt.mesh", //GEM_west_srtm
+//    "mesh":"meshes/uniform.mesh"
+//    "mesh":"meshes/for_lid_clip1.tif_config_tol=2_area=10000_veg=0.0.mesh"
+//    "mesh": "meshes/for_clip1.mesh"//GEM_west_srtm
 //    "mesh":"meshes/GEM_west_srtm.mesh",
     //    //map internal variables/parameters to the .mesh file's parameter section.
 //        "parameters":
