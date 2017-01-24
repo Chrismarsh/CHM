@@ -21,7 +21,7 @@ public:
 
     struct data : public face_info
     {
-        double minDepth;
+        double maxDepth;
     };
 
 };
