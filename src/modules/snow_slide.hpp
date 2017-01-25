@@ -22,6 +22,8 @@ public:
     struct data : public face_info
     {
         double maxDepth;
+        double snowdepthavg_copy;
+        double swe_copy;
     };
 
 };
