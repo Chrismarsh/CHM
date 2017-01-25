@@ -24,6 +24,8 @@ public:
         double maxDepth;
         double snowdepthavg_copy;
         double swe_copy;
+        double delta_snowdepthavg;
+        double delta_swe;
     };
 
 };
