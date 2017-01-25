@@ -6,8 +6,8 @@ snow_slide::snow_slide(config_file cfg)
     depends("snowdepthavg");
     depends("swe");
 
-    provides("swe");
-    provides("snowdepthavg");
+    provides("delta_swe");
+    provides("delta_snowdepthavg");
     provides("maxDepth");
 
 }
@@ -19,6 +19,10 @@ snow_slide::~snow_slide()
 
 void snow_slide::run(mesh domain)
 {
+
+    // Make a copy of snowdepth and swe. This is modified during this time step but not saved. Only mass transport terms
+    // are provided/exported to snowpack model, which does updates to the snow state variables.
+    mesh domain_copy = domain;
 
     // Make a vector of pairs (elevation + snowdepth, pointer to face)
     std::vector< std::pair<double, mesh_elem> > sorted_z;
@@ -49,13 +53,12 @@ void snow_slide::run(mesh domain)
 	// Check if face snowdepth have exceeded maxDepth
         if (snowdepthavg >  maxDepth) {
 		LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
-                // Calc weights for routing snow
-		
+                
 		double z_s = face->center().z() + snowdepthavg; // Current face elevation + snowdepth
-                //LOG_DEBUG << "current height " << z_s;
 		std::vector<double> w = {0,0,0}; // Weights for each face neighbor to route snow to
                 double w_dem = 0; // Denomenator for weights (sum of all elev diffs)
                 
+                // Calc weights for routing snow
                 for(int i = 0; i < 3; ++i) {
 		    auto n = face->neighbor(i);
     
@@ -64,25 +67,26 @@ void snow_slide::run(mesh domain)
                         // Calc weighting based on height diff 
                         // (std::max insures that if one neighbor is higher, its weight will be zero)
 			w[i] = std::max(0.0, z_s -  (n->center().z()+n->face_data("snowdepthavg")) );
-                        //LOG_DEBUG << "weight of " << i << " is " << w[i];
                         w_dem += w[i]; // Store weight denominator 
 		    }
 		}
-                // Divide by sum height differences to create weights that sum to unityi
-                //LOG_DEBUG << "weight is " << w_dem;
+                // Divide by sum height differences to create weights that sum to unity
                 if(w_dem != 0) { // prevent divide by zero
                 std::transform(w.begin(), w.end(), w.begin(),
                    [w_dem](double cw) { return cw/w_dem; });
                 }
-                //LOG_DEBUG << "weights are " << w[0] << " " << w[1] << " "<< w[2] << " ";	
 		
 		// Route snow to each neighbor based on weights
-                // TODO: Include vegetation heigh in roughting calcs
+                // TODO: Include vegetation height in roughting calcs
 		for(int i = 0; i < 3; ++i) {
                     auto n = face->neighbor(i);
                     if(n != nullptr) {
+                        // Update copy of snowdepth
                         n->set_face_data("snowdepthavg",n->face_data("snowdepthavg")+snowdepthavg*w[i]);
                         n->set_face_data("swe",n->face_data("swe")+swe*w[i]);
+                        // Update mass transport
+                        n->set_face_data("delta_snowdepthavg",n->face_data("delta_snowdepthavg")+snowdepthavg*w[i]);
+                        n->set_face_data("delta_swe",n->face_data("delta_swe")+swe*w[i]);
                     }
 		}
                 // Remove snow from initial face (TODO: should we only remove above maxDepth??)
@@ -94,6 +98,8 @@ void snow_slide::run(mesh domain)
 	// Do nothing if threshold maxDepth not exceded 
         // testing states
         face->set_face_data("maxDepth",maxDepth);
+
+        // TODO: add mass balance check sum of delta_swe should be 0!
 
     }
 }
