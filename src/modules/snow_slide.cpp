@@ -41,8 +41,6 @@ void snow_slide::run(mesh domain)
         return b.first < a.first;
     });
 
-    // TODO: TESTING remove
-    double mass_bal = 0;    
 
     // Loop through each face, from highest to lowest triangle surface
     for (size_t i = 0; i < sorted_z.size(); i++)
@@ -95,7 +93,6 @@ void snow_slide::run(mesh domain)
                         // Update mass transport of neighbor
                         n_data->delta_snowdepthavg += snowdepthavg*w[i];
                         n_data->delta_swe += swe*w[i];
-                        mass_bal += swe*w[i];
                     }
 		}
                 // Remove snow from initial face (TODO: should we only remove above maxDepth??)
@@ -104,7 +101,6 @@ void snow_slide::run(mesh domain)
                 // Update mass transport
                 data->delta_snowdepthavg -= snowdepthavg;
                 data->delta_swe -= swe;
-                mass_bal -= swe; 
         } 
 
         // Save state variables at end of time step
@@ -115,6 +111,11 @@ void snow_slide::run(mesh domain)
     } // End of each face
 
     // Mass balance check
+    double mass_bal = 0;
+    for (size_t i = 0; i < domain->size_faces(); i++) {
+        auto face = domain->face(i);
+        mass_bal += face->face_data("delta_swe");
+    }
     LOG_DEBUG << "Mass balance = " << mass_bal; 
 }
 
