@@ -22,7 +22,7 @@ void snow_slide::run(mesh domain)
 
     // Make a vector of pairs (elevation + snowdepth, pointer to face)
     std::vector< std::pair<double, mesh_elem> > sorted_z;
-    for(int i = 0; i  <domain->size_faces(); i++)
+    for(size_t i = 0; i  <domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         sorted_z.push_back( std::make_pair( face->center().z() + face->face_data("snowdepthavg"), face) );
@@ -47,26 +47,34 @@ void snow_slide::run(mesh domain)
 	double swe = face->face_data("swe");
 
 	// Check if face snowdepth have exceeded maxDepth
-        if (snowdepthavg > maxDepth) {
+        if (snowdepthavg >  maxDepth) {
 		LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
                 // Calc weights for routing snow
 		
 		double z_s = face->center().z() + snowdepthavg; // Current face elevation + snowdepth
+                //LOG_DEBUG << "current height " << z_s;
 		std::vector<double> w = {0,0,0}; // Weights for each face neighbor to route snow to
                 double w_dem = 0; // Denomenator for weights (sum of all elev diffs)
+                
                 for(int i = 0; i < 3; ++i) {
 		    auto n = face->neighbor(i);
     
 		    // If not null (edge case) check is less than lowFace
     		    if(n != nullptr) {
-			w[i] = z_s -  (n->center().z()+n->face_data("snowdepthavg")); // Calc weighting based on height diff
+                        // Calc weighting based on height diff 
+                        // (std::max insures that if one neighbor is higher, its weight will be zero)
+			w[i] = std::max(0.0, z_s -  (n->center().z()+n->face_data("snowdepthavg")) );
+                        //LOG_DEBUG << "weight of " << i << " is " << w[i];
                         w_dem += w[i]; // Store weight denominator 
 		    }
 		}
-                // Divide by sum height differences to create weights that sum to unity
+                // Divide by sum height differences to create weights that sum to unityi
+                //LOG_DEBUG << "weight is " << w_dem;
+                if(w_dem != 0) { // prevent divide by zero
                 std::transform(w.begin(), w.end(), w.begin(),
                    [w_dem](double cw) { return cw/w_dem; });
-	
+                }
+                //LOG_DEBUG << "weights are " << w[0] << " " << w[1] << " "<< w[2] << " ";	
 		
 		// Route snow to each neighbor based on weights
                 // TODO: Include vegetation heigh in roughting calcs
