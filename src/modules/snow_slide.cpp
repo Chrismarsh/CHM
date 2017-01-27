@@ -43,65 +43,66 @@ void snow_slide::run(mesh domain)
 
 
     // Loop through each face, from highest to lowest triangle surface
-    for (size_t i = 0; i < sorted_z.size(); i++)
-    {
+    for (size_t i = 0; i < sorted_z.size(); i++) {
     	auto face = sorted_z[i].second; // Get pointer to face
+        double cen_area = face->face_data("area"); // Area of center triangle
+        auto data = face->get_module_data<snow_slide::data>(ID); // Get stored data for face
 
-	auto data = face->get_module_data<snow_slide::data>(ID); // Get stored data for face
+        // Loop through each face, from highest to lowest triangle
+        double maxDepth = data->maxDepth;
+        double snowdepthavg = data->snowdepthavg_copy;
+        double swe = data->swe_copy;
 
-	// Loop through each face, from highest to lowest triangle
-	double maxDepth = data->maxDepth;
-	double snowdepthavg = data->snowdepthavg_copy; //face->face_data("snowdepthavg");
-	double swe = data->swe_copy; //face->face_data("swe");
+        // Check if face snowdepth have exceeded maxDepth
+        if (snowdepthavg > maxDepth) {
+            //LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
 
-	// Check if face snowdepth have exceeded maxDepth
-        if (snowdepthavg >  0.3 ) { //maxDepth) {
-		LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
-                
-		double z_s = face->center().z() + snowdepthavg; // Current face elevation + snowdepth
-		std::vector<double> w = {0,0,0}; // Weights for each face neighbor to route snow to
-                double w_dem = 0; // Denomenator for weights (sum of all elev diffs)
-                
-                // Calc weights for routing snow
-                for(int i = 0; i < 3; ++i) {
-		    auto n = face->neighbor(i); // Pointer to neighbor face
+            double z_s = face->center().z() + snowdepthavg; // Current face elevation + snowdepth
+            std::vector<double> w = {0,0,0}; // Weights for each face neighbor to route snow to
+            double w_dem = 0; // Denomenator for weights (sum of all elev diffs)
 
-		    // If not null (edge case) check is less than lowFace
-    		    if(n != nullptr) {
-                        auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
-                        // Calc weighting based on height diff 
-                        // (std::max insures that if one neighbor is higher, its weight will be zero)
-			w[i] = std::max(0.0, z_s -  (n->center().z()+n_data->snowdepthavg_copy) );
-                        w_dem += w[i]; // Store weight denominator 
-		    }
-		}
-                // Divide by sum height differences to create weights that sum to unity
-                if(w_dem != 0) { // prevent divide by zero
-                std::transform(w.begin(), w.end(), w.begin(),
-                   [w_dem](double cw) { return cw/w_dem; });
+            // Calc weights for routing snow
+            for(int i = 0; i < 3; ++i) {
+                auto n = face->neighbor(i); // Pointer to neighbor face
+
+                // If not null (edge case) check is less than lowFace
+                if(n != nullptr) {
+                    auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
+                    // Calc weighting based on height diff
+                    // (std::max insures that if one neighbor is higher, its weight will be zero)
+                    w[i] = std::max(0.0, z_s -  (n->center().z()+n_data->snowdepthavg_copy) );
+                    w_dem += w[i]; // Store weight denominator
                 }
-		
-		// Route snow to each neighbor based on weights
-                // TODO: Include vegetation height in roughting calcs
-		for(int i = 0; i < 3; ++i) {
-                    auto n = face->neighbor(i);
-                    if(n != nullptr) {
-                        auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
-                        // Update copy of snowdepth and swe of neighbor
-                        n_data->snowdepthavg_copy += snowdepthavg*w[i];
-                        n_data->swe_copy += swe*w[i];
-                        // Update mass transport of neighbor
-                        n_data->delta_snowdepthavg += snowdepthavg*w[i];
-                        n_data->delta_swe += swe*w[i];
-                    }
-		}
-                // Remove snow from initial face (TODO: should we only remove above maxDepth??)
-                data->snowdepthavg_copy = 0; // data refers to current/center cell
-                data->swe_copy = 0;
-                // Update mass transport
-                data->delta_snowdepthavg -= snowdepthavg;
-                data->delta_swe -= swe;
-        } 
+            }
+            // Divide by sum height differences to create weights that sum to unity
+            if(w_dem != 0) { // prevent divide by zero
+            std::transform(w.begin(), w.end(), w.begin(),
+               [w_dem](double cw) { return cw/w_dem; });
+            }
+
+            // Route snow to each neighbor based on weights
+            // TODO: Include vegetation height in routing calcs
+            for(int i = 0; i < 3; ++i) {
+                auto n = face->neighbor(i);
+                if(n != nullptr) {
+                    auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
+
+                    // Update copy of snowdepth and swe of neighbor
+                    n_data->snowdepthavg_copy += snowdepthavg*w[i]; // (m)
+                    n_data->swe_copy += swe*w[i]; // (m)
+
+                    // Update mass transport of neighbor
+                    n_data->delta_snowdepthavg += snowdepthavg*w[i]* cen_area; // Fraction of snowdepth (m) * center triangle area (m^2) = volune of snow depth (m^3)
+                    n_data->delta_swe += swe*w[i] * cen_area; // (m) * (m^2) = (m^3) of swe
+                }
+            }
+            // Remove snow from initial face (TODO: should we only remove above maxDepth??)
+            data->snowdepthavg_copy = 0; // data refers to current/center cell
+            data->swe_copy = 0;
+            // Update mass transport
+            data->delta_snowdepthavg -= snowdepthavg * cen_area;
+            data->delta_swe -= swe * cen_area;
+        }
 
         // Save state variables at end of time step
         face->set_face_data("maxDepth",maxDepth);
@@ -110,20 +111,18 @@ void snow_slide::run(mesh domain)
 
     } // End of each face
 
-    // Mass balance check
-    double mass_bal = 0;
-    for (size_t i = 0; i < domain->size_faces(); i++) {
-        auto face = domain->face(i);
-        mass_bal += face->face_data("delta_swe");
-    }
-    LOG_DEBUG << "Mass balance = " << mass_bal; 
+    // Mass balance check (Note: because of the way delta values are stored, they should NOT sum to zero over the domain)
+    //double mass_bal = 0;
+    //for (size_t i = 0; i < domain->size_faces(); i++) {
+    //    auto face = domain->face(i);
+    //    mass_bal += face->face_data("delta_swe");
+    //}
+    //LOG_DEBUG << "Mass balance = " << mass_bal; 
 }
 
 void snow_slide::init(mesh domain)
 {
-    // Snow Slide paramters
-    //double S_m = 25; // Minimum slope angle  (Degrees)
-   
+    // Initilaze for each triangle
     for(size_t i=0;i<domain->size_faces();i++)
     {
         auto face = domain->face(i);

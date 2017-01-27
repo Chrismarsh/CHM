@@ -322,6 +322,10 @@ public:
     double z_0;            /* roughness length */
 
 
+/*  avalanche info for the current DATA timestep */
+    double delta_snowdepthavg;
+    double delta_swe;
+
 /*   precipitation info for the current DATA timestep    */
 
     int precip_now;

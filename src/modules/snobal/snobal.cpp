@@ -21,6 +21,10 @@ snobal::snobal(config_file cfg)
 
     depends("snow_albedo");
 
+    // Optional avalanche variables
+    optional("delta_snowdepthavg");
+    optional("delta_swe");
+
     provides("swe");
     provides("snowmelt_int");
     provides("R_n");
@@ -271,6 +275,28 @@ void snobal::run(mesh_elem &face)
         sbal->precip_now = 0;
         sbal->stop_no_snow=0;
     }
+
+    // If snow avalanche variables are available
+    bool snow_slide = false;
+    if(has_optional("delta_snowdepthavg")) {
+        sbal->delta_snowdepthavg = face->face_data("delta_snowdepthavg");
+    }
+    if(has_optional("delta_swe")) {
+        sbal->delta_swe = face->face_data("delta_swe");
+        snow_slide = true;
+    }
+
+    // Redistribute snow (if snow_slide is used)
+    if(snow_slide) {
+        // _adj_snow(depth change (m), swe change (kg/m^2))
+        // Convert change in volume and mass back to depth and mass per area, respectivly.
+        // Assumes snow depth is uniform across triangle
+        double area = face->face_data("area"); // area of current triangle (m^2)
+        double d_depth = sbal->delta_snowdepthavg / area; // m^3 / m^2 = m
+        double d_mass  = sbal->delta_swe / area * 1000; // m^3 / m^2 * 1000 kg/m^3 = kg/m^2
+        sbal->_adj_snow(d_depth,d_mass);
+    }
+
 
     if(g->dead == 1)
     {
