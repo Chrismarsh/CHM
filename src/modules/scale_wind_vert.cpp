@@ -1,3 +1,4 @@
+
 #include "scale_wind_vert.hpp"
 
 scale_wind_vert::scale_wind_vert(config_file cfg)
@@ -49,10 +50,16 @@ void scale_wind_vert::run(mesh_elem &face) {
 
     double Z_2m_above_srf = snowdepthavg + 2.0; // (m)
 
-
-
     // Initialize stuff
     double U_2m_above_srf; // Wind speed 2 meters above the surface (ground or snow)
+
+    // Check if snowdepth is above U_R (avalanche gone crazy case)
+    // This is outside of log_scale_wind()'s range, so make assumption that wind is constant above U_R
+    if(Z_2m_above_srf >= Z_R) {
+        face->set_face_data("U_2m_above_srf",U_R);
+        return;    
+    }
+
 
     /////
     // Call wind speed scaling functions to specific heights
@@ -63,29 +70,32 @@ void scale_wind_vert::run(mesh_elem &face) {
         // Get Canopy/Surface info
 
         int LC                = face->get_parameter("landcover");
-        //asume we have LAI, otherwise it will cleanly bail if we don't
+        //assume we have LAI, otherwise it will cleanly bail if we don't
         double LAI            = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
         const double alpha    = LAI; // attenuation coefficient introduced by Inoue (1963) and increases with canopy density
 
+        // If snowdepth is below the Canopy Top
+        if(snowdepthavg < Z_CanTop) {
+            // Scale Z_R to Z_CanTop
+            double U_CanTop = Atmosphere::log_scale_wind(U_R, Z_R, Z_CanTop, snowdepthavg);
 
-        // Scale Z_R to Z_CanTop
-        double U_CanTop = Atmosphere::log_scale_wind(U_R, Z_R, Z_CanTop, snowdepthavg);
+            // Scale Z_CanTop to Z_CanBot
+            double U_CanBot = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_CanBot, alpha);
 
-        // Scale Z_CanTop to Z_CanBot
-        double U_CanBot = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_CanBot, alpha);
+            // Scale Z_CanTop to Z_CanMid
+            //double U_CanMid = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_CanMid, alpha);
 
-        // Scale Z_CanTop to Z_CanMid
-        //double U_CanMid = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_CanMid, alpha);
+            // Scale Z_CanBot to Z_2m_above_srf
+            if (Z_2m_above_srf < Z_CanBot) // snow depth +2 below canopy bottom
+                U_2m_above_srf = Atmosphere::log_scale_wind(U_CanBot, Z_CanBot, Z_2m_above_srf,
+                                                            snowdepthavg); // (U_start,Height_start,Height_end)
+            else // snow depth +2 above canopy bottom
+                U_2m_above_srf = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_2m_above_srf, alpha);
+        } else {
+            // Scale Z_R to snowdepth (which is above canopy height)
+            U_2m_above_srf = Atmosphere::log_scale_wind(U_R, Z_R, Z_2m_above_srf, snowdepthavg);
+        }
 
-        // Scale Z_CanBot to Z_2m_above_srf
-        if (Z_2m_above_srf < Z_CanBot) // snow depth +2 below canopy bottom
-            U_2m_above_srf = Atmosphere::log_scale_wind(U_CanBot, Z_CanBot, Z_2m_above_srf, snowdepthavg); // (U_start,Height_start,Height_end)
-        else // snow depth +2 above canopy bottom
-            U_2m_above_srf = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_2m_above_srf, alpha);
-
-        // Save computed wind speeds (in case canopy exists)
-        //face->set_face_data("U_CanTop",U_CanTop);
-        //face->set_face_data("U_CanMid",U_CanMid);
     // No Canopy exists
     } else {
         U_2m_above_srf = Atmosphere::log_scale_wind(U_R, Z_R, Z_2m_above_srf, snowdepthavg); // (U_start,Height_start,Height_end)
