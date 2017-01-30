@@ -22,16 +22,16 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("K");
 
     provides("Qsusp");
-    provides("susp_dep");
+    provides("drift");
 }
 
 void Lehning_blowing_snow::init(mesh domain)
 {
-//domain    for (size_t i = 0; i < domain->size_faces(); i++)
-//    {
-//        auto face = domain->face(i);
-//        face->set_face_data("sum_q_t",0);
-//    }
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        face->set_face_data("drift",0);
+    }
 }
 
 void Lehning_blowing_snow::run(mesh domain)
@@ -171,21 +171,24 @@ void Lehning_blowing_snow::run(mesh domain)
 
         if( ustar > u_star_t)
         {
-            Qsalt = 0.68 * rho_f * u_star_th / (9.81 *ustar) *( ustar*ustar - u_star_th*u_star_th);
+            Qsalt = 0.68 * rho_f * u_star_th / (g *ustar) *( ustar*ustar - u_star_th*u_star_th);
             c_salt = Qsalt / std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0)); // back out the concentration from flux
+            c_salt = c_salt / hs; // ---> kg/ m^3
+
+            if(Qsalt < 0) // this apparently happens and bad things happen bc of it
+            {
+                Qsalt = 0;
+                c_salt = 0;
+            }
+
+//            if (i != 1579 )
+//            {
+//                Qsalt = 0;
+//                c_salt = 0.;
+//            }
 
         }
 
-
-//        if (i == 1579 )//|| i==  13065
-//        {
-//            Qsalt = 0.8/std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0));
-//            c_salt = .80;
-//        } else{
-//            Qsalt = 0;
-//            c_salt = 0.;
-//        }
-//            double c_salt = nzr *exp(-1.55*(1./pow(0.05628*ustar,.544)-1./pow(cz,.544)));
         face->set_face_data("csalt", c_salt);
         face->set_face_data("Qsalt", Qsalt);
 
@@ -335,7 +338,7 @@ void Lehning_blowing_snow::run(mesh domain)
             double cz = z + hs+ v_edge_height/2.; //cell center height
 
             double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0)); //compute new U_z at this height in the suspension layer
-            Qsusp += c * u_z * v_edge_height;
+            Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
             face->set_face_data("c"+std::to_string(z), c ); //<0?0:c
         }
@@ -418,9 +421,11 @@ void Lehning_blowing_snow::run(mesh domain)
                         .5000000000*E[j]*face->face_data("Qsalt")*udotm[j]+.5000000000*E[j]*face->face_data("Qsusp")*udotm[j];
             }
         }
-        qdep = -qdep/ 1000. * global_param->dt();
-        face->set_face_data("Qdep",qdep);
+        qdep = qdep * global_param->dt() / 1000. / face->get_area();  // 1000 kg/m^3 -> density of water
 
+
+        face->set_face_data("Qdep",qdep);
+        face->set_face_data("drift", face->face_data("drift") + qdep);
     }
 }
 
