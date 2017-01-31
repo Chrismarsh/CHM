@@ -118,10 +118,8 @@ void Lehning_blowing_snow::run(mesh domain)
         double hs = z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
                          (pow(log(2. / z0), 2.) * 9.81);
         d->hs = hs;
-//        face->set_face_data("hs", hs);
 
         double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
-//        face->set_face_data("ustar", ustar);
 
         // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
         // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
