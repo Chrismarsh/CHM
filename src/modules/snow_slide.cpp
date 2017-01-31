@@ -45,7 +45,7 @@ void snow_slide::run(mesh domain)
     // Loop through each face, from highest to lowest triangle surface
     for (size_t i = 0; i < sorted_z.size(); i++) {
     	auto face = sorted_z[i].second; // Get pointer to face
-        double cen_area = face->face_data("area"); // Area of center triangle
+        double cen_area = face->get_area(); // Area of center triangle
         auto data = face->get_module_data<snow_slide::data>(ID); // Get stored data for face
 
         // Loop through each face, from highest to lowest triangle
@@ -54,8 +54,8 @@ void snow_slide::run(mesh domain)
         double swe = data->swe_copy;
 
         // Check if face snowdepth have exceeded maxDepth
-        if (snowdepthavg > maxDepth) {
-            //LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
+        if (snowdepthavg > 0.3 ) { //maxDepth) {
+            LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
 
             double z_s = face->center().z() + snowdepthavg; // Current face elevation + snowdepth
             std::vector<double> w = {0,0,0}; // Weights for each face neighbor to route snow to

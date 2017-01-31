@@ -99,8 +99,6 @@ void scale_wind_vert::run(mesh_elem &face) {
     // No Canopy exists
     } else {
         U_2m_above_srf = Atmosphere::log_scale_wind(U_R, Z_R, Z_2m_above_srf, snowdepthavg); // (U_start,Height_start,Height_end)
-        //face->set_face_data("U_CanTop",NAN);
-        //face->set_face_data("U_CanMid",NAN);
     }
 
     // Check that U_2m_above_srf is not too small for turbulent parameterizations (should move check there)
@@ -108,10 +106,7 @@ void scale_wind_vert::run(mesh_elem &face) {
         U_2m_above_srf=0.1;
 
     // Save computed wind speeds
-    //face->set_face_data("U_R",U_R);
     face->set_face_data("U_2m_above_srf",U_2m_above_srf);
-
-
 }
 
 //void scale_wind_vert::init(mesh domain, boost::shared_ptr <global> global_param) {
