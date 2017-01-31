@@ -13,12 +13,12 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("c3");
     provides("c4");
 
-    provides("ustar");
+//    provides("ustar");
     provides("csalt");
     provides("Qsalt");
     provides("Qdep");
     provides("Qsusp");
-    provides("drift");
+    provides("sum_Qdep");
 }
 
 void Lehning_blowing_snow::init(mesh domain)
@@ -28,6 +28,7 @@ void Lehning_blowing_snow::init(mesh domain)
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40;
 
+#pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
@@ -95,7 +96,7 @@ void Lehning_blowing_snow::run(mesh domain)
     arma::vec x(ntri * nLayer , arma::fill::zeros);
 
     double z0 = 0.01; //m
-
+#pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
@@ -120,7 +121,7 @@ void Lehning_blowing_snow::run(mesh domain)
 //        face->set_face_data("hs", hs);
 
         double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
-        face->set_face_data("ustar", ustar);
+//        face->set_face_data("ustar", ustar);
 
         // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
         // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
@@ -309,7 +310,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
     LOG_DEBUG << "done";
 
-
+#pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
@@ -331,6 +332,7 @@ void Lehning_blowing_snow::run(mesh domain)
         face->set_face_data("Qsusp",Qsusp);
     }
 
+#pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
@@ -382,7 +384,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
 
         face->set_face_data("Qdep",qdep);
-        face->set_face_data("drift", face->face_data("drift") + qdep);
+        face->set_face_data("sum_Qdep", face->face_data("sum_Qdep") + qdep);
     }
 }
 
