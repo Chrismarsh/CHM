@@ -80,7 +80,7 @@ void Lehning_blowing_snow::init(mesh domain)
 
 
 
-        face->set_face_data("drift",0);
+        face->set_face_data("sum_Qdep",0);
     }
 }
 
