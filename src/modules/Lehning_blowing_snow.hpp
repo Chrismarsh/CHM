@@ -43,6 +43,28 @@ public:
     void run(mesh domain);
     void init(mesh domain);
 
+    double nLayer;
+    double susp_depth;
+    double v_edge_height;
+
+    double l__max; // vertical mixing length (m)
+
+    class data : public face_info
+    {
+    public:
+        //edge unit normals
+        arma::vec m[5];
+
+        //prism areas
+        double A[5];
+
+        //face neighbours
+        bool face_neigh[3];
+
+        //saltation height
+        double hs;
+    };
+
 };
 
 /**
