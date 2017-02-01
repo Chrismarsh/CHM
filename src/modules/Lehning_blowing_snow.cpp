@@ -99,7 +99,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
     //we need to hold 1 matrix per thread so we get thread safety
     std::vector<arma::sp_mat> sp_C;
-    for(int i = 0; i < omp_get_num_threads(); i++ )
+    for(int i = 0; i < omp_get_max_threads(); i++ )
     {
         sp_C.push_back(arma::sp_mat(ntri * nLayer, ntri * nLayer ) );
     }
@@ -323,7 +323,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
     LOG_DEBUG << "solving";
     arma::sp_mat result(ntri * nLayer, ntri * nLayer );
-    for(int i = 0; i < omp_get_num_threads(); i++ )
+    for(int i = 0; i < omp_get_max_threads(); i++ )
     {
         result += sp_C.at(i);
     }
