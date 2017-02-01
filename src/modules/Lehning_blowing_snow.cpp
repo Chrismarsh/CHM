@@ -13,6 +13,12 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("c3");
     provides("c4");
 
+    provides("hs");
+    provides("ustar");
+
+
+    provides("u_hs");
+
 //    provides("ustar");
     provides("csalt");
     provides("Qsalt");
@@ -91,7 +97,14 @@ void Lehning_blowing_snow::run(mesh domain)
     //needed for linear system offsets
     size_t ntri = domain->number_of_faces();
 
-    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
+    //we need to hold 1 matrix per thread so we get thread safety
+    std::vector<arma::sp_mat> sp_C;
+    for(int i = 0; i < omp_get_num_threads(); i++ )
+    {
+        sp_C.push_back(arma::sp_mat(ntri * nLayer, ntri * nLayer ) );
+    }
+
+//    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
     arma::vec b(ntri * nLayer , arma::fill::zeros);
     arma::vec x(ntri * nLayer , arma::fill::zeros);
 
@@ -99,6 +112,8 @@ void Lehning_blowing_snow::run(mesh domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
+        auto& C = sp_C.at(omp_get_thread_num());
+
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
 
@@ -176,11 +191,15 @@ void Lehning_blowing_snow::run(mesh domain)
         double _d = 0.48e-3; //d in paper
         double u_star_t = thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold
 
+        face->set_face_data("ustar",ustar);
         if( ustar > u_star_t)
         {
             Qsalt = 0.68 * rho_f * u_star_th / (g *ustar) *( ustar*ustar - u_star_th*u_star_th);
             c_salt = Qsalt / std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0)); // back out the concentration from flux
             c_salt = c_salt / hs; // ---> kg/ m^3
+
+            face->set_face_data("u_hs",std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0)));
+            face->set_face_data("hs",hs);
 
             if(Qsalt < 0) // this apparently happens and bad things happen bc of it
             {
@@ -303,8 +322,14 @@ void Lehning_blowing_snow::run(mesh domain)
     }
 
     LOG_DEBUG << "solving";
+    arma::sp_mat result(ntri * nLayer, ntri * nLayer );
+    for(int i = 0; i < omp_get_num_threads(); i++ )
+    {
+        result += sp_C.at(i);
+    }
 
-    x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
+
+    x = viennacl::linalg::solve(result, b, viennacl::linalg::bicgstab_tag());
 
     LOG_DEBUG << "done";
 

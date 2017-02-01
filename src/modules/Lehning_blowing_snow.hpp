@@ -10,11 +10,22 @@
 #include "constants/Atmosphere.h"
 
 #include <cmath>
-
+#include <vector>
 
 #include <viennacl/linalg/cg.hpp>
 #include <viennacl/linalg/bicgstab.hpp>
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
+// we need to define these and have them return constant values under a no-omp situation
+//int omp_get_num_threads() {return 1;}
+//int omp_get_thread_num() {return 0;}
+
+#define omp_get_num_threads() 1
+#define  omp_get_thread_num() 0
+
+#endif
 
 #include <armadillo>
 #include <cstdlib>
