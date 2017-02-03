@@ -44,31 +44,32 @@ void Lehning_blowing_snow::init(mesh domain)
 
         auto d = face->make_module_data<data>(ID);
 
+        auto& m = d->m;
         //edge unit normals
-        d->m[0].set_size(3);
-        d->m[0](0) = face->edge_unit_normal(0).x();
-        d->m[0](1) = face->edge_unit_normal(0).y();
-        d->m[0](2) = 0;
+        m[0].set_size(3);
+        m[0](0) = face->edge_unit_normal(0).x();
+        m[0](1) = face->edge_unit_normal(0).y();
+        m[0](2) = 0;
 
-        d->m[1].set_size(3);
-        d->m[1](0) = face->edge_unit_normal(1).x();
-        d->m[1](1) = face->edge_unit_normal(1).y();
-        d->m[1](2) = 0;
+        m[1].set_size(3);
+        m[1](0) = face->edge_unit_normal(1).x();
+        m[1](1) = face->edge_unit_normal(1).y();
+        m[1](2) = 0;
 
-        d->m[2].set_size(3);
-        d->m[2](0) = face->edge_unit_normal(2).x();
-        d->m[2](1) = face->edge_unit_normal(2).y();
-        d->m[2](2) = 0;
+        m[2].set_size(3);
+        m[2](0) = face->edge_unit_normal(2).x();
+        m[2](1) = face->edge_unit_normal(2).y();
+        m[2](2) = 0;
 
         //top
-        d->m[3].set_size(3);
-        d->m[3].fill(0);
-        d->m[3](2) = 1;
+        m[3].set_size(3);
+        m[3].fill(0);
+        m[3](2) = 1;
 
         //bottom
-        d->m[4].set_size(3);
-        d->m[4].fill(0);
-        d->m[4](2) = -1;
+        m[4].set_size(3);
+        m[4].fill(0);
+        m[4](2) = -1;
 
         //face areas
         for (int j = 0; j < 3; ++j)
@@ -101,24 +102,30 @@ void Lehning_blowing_snow::run(mesh domain)
     size_t ntri = domain->number_of_faces();
 
     //we need to hold 1 matrix per thread so we get thread safety
-    std::vector<arma::sp_mat> sp_C;
-    for(int i = 0; i < omp_get_max_threads(); i++ )
-    {
-        sp_C.push_back(arma::sp_mat(ntri * nLayer, ntri * nLayer ) );
-    }
+//    std::vector<arma::sp_mat> sp_C;
+//    for(int i = 0; i < omp_get_max_threads(); i++ )
+//    {
+//        sp_C.push_back(arma::sp_mat(ntri * nLayer, ntri * nLayer ) );
+//    }
+
+    arma::umat loc(2,0);
+    arma::vec C;
 
 //    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
     arma::vec b(ntri * nLayer , arma::fill::zeros);
     arma::vec x(ntri * nLayer , arma::fill::zeros);
 
     double z0 = 0.01; //m
+
+    double k=0;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto& C = sp_C.at(omp_get_thread_num());
+//        auto& C = sp_C.at(omp_get_thread_num());
 
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
+        auto& m = d->m;
 
         //get wind from the face
         double phi = face->face_data("vw_dir");
@@ -140,8 +147,6 @@ void Lehning_blowing_snow::run(mesh domain)
 
         hs = 0.08436*pow(ustar,1.27);
         d->hs = hs;
-
-
 
         // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
         // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
@@ -261,7 +266,7 @@ void Lehning_blowing_snow::run(mesh domain)
             double udotm[5];
             for (int j = 0; j < 5; ++j)
             {
-                udotm[j] = arma::dot(uvw, d->m[j]);
+                udotm[j] = arma::dot(uvw, m[j]);
             }
 
             //lateral
@@ -275,11 +280,20 @@ void Lehning_blowing_snow::run(mesh domain)
 
                     if(udotm[f] > 0 )
                     {
-                        C(idx,idx) += -d->A[f]*udotm[f]-alpha[f];
-                        C(idx, nidx) += alpha[f];
+                        loc(i,0) = idx;
+                        loc(i,1) = idx;
+
+                        C(i) += -d->A[f]*udotm[f]-alpha[f];
+                        C(i) += alpha[f];
                     } else
                     {
-                        C(idx,idx) += -alpha[f];
+                        loc.append
+                        loc(i,0) = idx;
+                        loc(i,1) = idx;
+                        C(i) += -alpha[f];
+
+                        loc(i,0) = idx;
+                        loc(i,1) = nidx;
                         C(idx, nidx)+= -d->A[f]*udotm[f]+alpha[f];
                     }
 
@@ -376,6 +390,7 @@ void Lehning_blowing_snow::run(mesh domain)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
+        auto& m = d->m;
 
         double u2 = face->face_data("U_2m_above_srf");
         double phi = face->face_data("vw_dir");
@@ -397,7 +412,7 @@ void Lehning_blowing_snow::run(mesh domain)
             auto neigh = face->neighbor(j);
 
             //just unit vectors as qsusp/qsalt flux has magnitude
-            udotm[j] = arma::dot(uvw, d->m[j]);
+            udotm[j] = arma::dot(uvw, m[j]);
 
             E[j] = face->edge_length(j);
         }
