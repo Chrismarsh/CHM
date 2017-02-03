@@ -391,7 +391,8 @@ def main():
     if vtk.vtkVersion.GetVTKMajorVersion() > 5:
         vtuwriter.SetInputData(vtu)
     else:
-        vtuwriter.SetInputConnection(vtu)
+        vtuwriter.SetInput(vtu)
+
 
     vtu_points = vtk.vtkPoints()
     vtu_triangles = vtk.vtkCellArray()
