@@ -22,9 +22,11 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
 //    provides("ustar");
     provides("csalt");
     provides("Qsalt");
-    provides("Qsalt_conc");
+    provides("Qsalt_pbsm");
+    provides("csalt_pbsm");
     provides("Qdep");
     provides("Qsusp");
+    provides("ustar_t");
     provides("sum_Qdep");
 }
 
@@ -130,12 +132,16 @@ void Lehning_blowing_snow::run(mesh domain)
         uvw(1) = v.y(); //U_y
         uvw(2) = 0;
 
+        double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
+
         //depth of saltation layer
         double hs = z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
                          (pow(log(2. / z0), 2.) * 9.81);
+
+        hs = 0.08436*pow(ustar,1.27);
         d->hs = hs;
 
-        double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
+
 
         // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
         // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
@@ -181,7 +187,7 @@ void Lehning_blowing_snow::run(mesh domain)
         //saltation concentration
         double tau_t_f = 0.2; // m/s
         double rho_f = 1.225; // air density, fix for T dependenc
-        double u_star_th = pow(tau_t_f/rho_f,0.5); //threshold friction velocity
+        double u_star_t = pow(tau_t_f/rho_f,0.5); //threshold friction velocity
         double Qsalt = 0;
         double c_salt = 0;
 
@@ -190,16 +196,21 @@ void Lehning_blowing_snow::run(mesh domain)
         double thresh_A = .18;
         double g = 9.81;
         double _d = 0.48e-3; //d in paper
-        double u_star_t = thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
+        double u_star_saltation = thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
+
 
         face->set_face_data("ustar",ustar);
-        if( ustar > u_star_t)
+        if( ustar > u_star_saltation)
         {
-//            Qsalt = 0.68 * rho_f * u_star_th / (g *ustar) *( ustar*ustar - u_star_th*u_star_th);
+            double Qsalt_pbsm = 0.68 * rho_f * u_star_t / (g *ustar) *( ustar*ustar - u_star_t*u_star_t);
+            double csalt_pbsm = Qsalt_pbsm / std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. / hs;
+            face->set_face_data("Qsalt_pbsm", Qsalt_pbsm);
+            face->set_face_data("csalt_pbsm", csalt_pbsm);
+
 
             //Pomeroy 1990
-            c_salt = rho_f / (3.29 * ustar) * (1 - (u_star_th*u_star_th) / (ustar * ustar));
-            Qsalt =  c_salt *std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0)) * hs; //integrate over the depth of the saltation layer
+            c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
+            Qsalt =  c_salt *std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. * hs; //integrate over the depth of the saltation layer
 
 
             face->set_face_data("u_hs",std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0)));
@@ -221,7 +232,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
         face->set_face_data("csalt", c_salt);
         face->set_face_data("Qsalt", Qsalt);
-//        face->set_face_data("Qsalt_conc", );
+
 
         // iterate over the vertical layers, each 1m in height
         for (int z = 0; z < nLayer; ++z)
@@ -408,7 +419,11 @@ void Lehning_blowing_snow::run(mesh domain)
                         .5000000000*E[j]*face->face_data("Qsalt")*udotm[j]+.5000000000*E[j]*face->face_data("Qsusp")*udotm[j];
             }
         }
-        qdep = -qdep * global_param->dt() / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+        if(fabs(qdep) < 0.001)
+            qdep = 0;
+
+
+        qdep = qdep * global_param->dt() / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
 
 
         face->set_face_data("Qdep",qdep);
