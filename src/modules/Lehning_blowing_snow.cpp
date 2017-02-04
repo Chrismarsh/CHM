@@ -108,12 +108,11 @@ void Lehning_blowing_snow::run(mesh domain)
 //        sp_C.push_back(arma::sp_mat(ntri * nLayer, ntri * nLayer ) );
 //    }
 
-    arma::umat loc(2,0);
-    arma::vec C;
+    std::vector< std::map< unsigned int, double> > C(ntri * nLayer);
 
 //    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
-    arma::vec b(ntri * nLayer , arma::fill::zeros);
-    arma::vec x(ntri * nLayer , arma::fill::zeros);
+    viennacl::vector<double> b(ntri * nLayer ); b.clear();
+    viennacl::vector<double> x(ntri * nLayer );
 
     double z0 = 0.01; //m
 
@@ -280,27 +279,18 @@ void Lehning_blowing_snow::run(mesh domain)
 
                     if(udotm[f] > 0 )
                     {
-                        loc(i,0) = idx;
-                        loc(i,1) = idx;
-
-                        C(i) += -d->A[f]*udotm[f]-alpha[f];
-                        C(i) += alpha[f];
+                        C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
+                        C[idx][idx] += alpha[f];
                     } else
                     {
-                        loc.append
-                        loc(i,0) = idx;
-                        loc(i,1) = idx;
-                        C(i) += -alpha[f];
-
-                        loc(i,0) = idx;
-                        loc(i,1) = nidx;
-                        C(idx, nidx)+= -d->A[f]*udotm[f]+alpha[f];
+                        C[idx][idx] += -alpha[f];
+                        C[idx][nidx]+= -d->A[f]*udotm[f]+alpha[f];
                     }
 
                 }
                 else
                 {
-                    C(idx, idx) += -d->A[f]*udotm[f]+alpha[f];
+                    C[idx][idx] += -d->A[f]*udotm[f]+alpha[f];
                 }
             }
 
@@ -309,7 +299,7 @@ void Lehning_blowing_snow::run(mesh domain)
             if (nLayer == 1)
             {
 
-                C(idx, idx) += -d->A[4]*K[4]+alpha[3];
+                C[idx][idx] += -d->A[4]*K[4]+alpha[3];
 
                 b(idx) += -d->A[4]*K[4]*c_salt;
                 //top
@@ -321,42 +311,44 @@ void Lehning_blowing_snow::run(mesh domain)
                 if (z == 0)
                 {
                     //bottom face
-                    C(idx,idx) += -d->A[4]*K[4];
+                    C[idx][idx] += -d->A[4]*K[4];
                     b(ntri * z + face->cell_id) += -d->A[4]*K[4]*c_salt;
 
                     //top face
-                    C(idx, ntri * z + face->cell_id) +=  -alpha[3];
-                    C(idx, ntri * (z + 1) + face->cell_id) =  alpha[3];
+                    C[idx][ntri * z + face->cell_id] +=  -alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] =  alpha[3];
 
 
                 } else if (z == nLayer - 1)// top z layer
                 {
                     //top
-                    C(idx, ntri * z + face->cell_id) += -alpha[3]-alpha[4];
+                    C[idx][ntri * z + face->cell_id] += -alpha[3]-alpha[4];
 
                     //bottom
-                    C(idx, ntri * (z - 1) + face->cell_id) = alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] = alpha[4];
 
                 } else // internal cell
                 {
-                    C(idx, idx) += -alpha[3]-alpha[4];
+                    C[idx][idx] += -alpha[3]-alpha[4];
 
                     //top
-                    C(idx, ntri * (z + 1) + face->cell_id) =alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] =alpha[3];
 
                     //bottom
-                    C(idx, ntri * (z - 1) + face->cell_id) = alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] = alpha[4];
                 }
             }
         }
     }
 
+    viennacl::compressed_matrix<double>  result(ntri * nLayer, ntri * nLayer);
+    viennacl::copy(C,result);
     LOG_DEBUG << "solving";
-    arma::sp_mat result(ntri * nLayer, ntri * nLayer );
-    for(int i = 0; i < omp_get_max_threads(); i++ )
-    {
-        result += sp_C.at(i);
-    }
+//    arma::sp_mat result(ntri * nLayer, ntri * nLayer );
+//    for(int i = 0; i < omp_get_max_threads(); i++ )
+//    {
+//        result += sp_C.at(i);
+//    }
 
 
     x = viennacl::linalg::solve(result, b, viennacl::linalg::bicgstab_tag());
