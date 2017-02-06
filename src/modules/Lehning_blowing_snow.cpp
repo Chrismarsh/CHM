@@ -127,8 +127,8 @@ void Lehning_blowing_snow::run(mesh domain)
         auto& m = d->m;
 
         //get wind from the face
-        double phi = face->face_data("vw_dir");
-        double u2 = face->face_data("U_2m_above_srf");
+        double phi = M_PI;//face->face_data("vw_dir");
+        double u2 = 10;//face->face_data("U_2m_above_srf");
 
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
 
@@ -225,15 +225,14 @@ void Lehning_blowing_snow::run(mesh domain)
                 Qsalt = 0;
                 c_salt = 0;
             }
-
-//            if (i != 1579 )
-//            {
-//                Qsalt = 0;
-//                c_salt = 0.;
-//            }
-
         }
 
+        c_salt = 0;
+        if (i == 12125 )
+        {
+            Qsalt = 0;
+            c_salt = 0.8;
+        }
         face->set_face_data("csalt", c_salt);
         face->set_face_data("Qsalt", Qsalt);
 
@@ -268,39 +267,94 @@ void Lehning_blowing_snow::run(mesh domain)
                 udotm[j] = arma::dot(uvw, m[j]);
             }
 
+            //I'm unclear as to what the map inits the double value to.  I assume undef'd like always, so this is called
+            //to ensure that they are inited to zero so we can call the += operator w/o issue below.
+            auto init_C = [&](std::vector< std::map< unsigned int, double> >& C, unsigned int i, unsigned int j){
+                if( C[i].find(j) == C[i].end() )
+                    C[i][j] = 0;
+            };
+
             //lateral
             size_t idx = ntri*z + face->cell_id;
-
             for(int f = 0; f < 3; f++)
             {
-                if (d->face_neigh[f])
+                auto nidx = ntri * z + face->neighbor(f)->cell_id;
+                if(udotm[f] > 0)
                 {
-                    auto nidx = ntri * z + face->neighbor(f)->cell_id;
-
-                    if(udotm[f] > 0 )
+                    if (d->face_neigh[f])
                     {
+                        init_C(C,idx,idx);
+
                         C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
                         C[idx][idx] += alpha[f];
-                    } else
+                    }
+                    else
                     {
+                        init_C(C,idx,idx);
+
+                        C[idx][idx] += -d->A[f]*udotm[f];
+                    }
+                } else
+                {
+                    if (d->face_neigh[f])
+                    {
+                        init_C(C,idx,idx);
+                        init_C(C,idx,nidx);
+
                         C[idx][idx] += -alpha[f];
                         C[idx][nidx]+= -d->A[f]*udotm[f]+alpha[f];
                     }
+                    else
+                    {
+                        init_C(C,idx,idx);;
 
+//                        C[idx][idx] += -d->A[f]*udotm[f]+alpha[f];
+                        C[idx][idx] += -d->A[f]*udotm[f];
+                    }
                 }
-                else
-                {
-                    C[idx][idx] += -d->A[f]*udotm[f]+alpha[f];
-                }
+
             }
+
+
+
+//            for(int f = 0; f < 3; f++)
+//            {
+//
+//
+//                if (d->face_neigh[f])
+//                {
+//                    auto nidx = ntri * z + face->neighbor(f)->cell_id;
+//                    if(udotm[f] > 0 )
+//                    {
+//                        if( C[idx].find(idx) == C[idx].end() )
+//                            C[idx][idx] = 0;
+//
+//                        C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
+//                        C[idx][idx] += alpha[f];
+//                    } else
+//                    {
+//                        if( C[idx].find(nidx) == C[idx].end() )
+//                            C[idx][nidx] = 0;
+//
+//                        C[idx][idx] += -alpha[f];
+//                        C[idx][nidx]+= -d->A[f]*udotm[f]+alpha[f];
+//                    }
+//
+//                }
+//                else
+//                {
+//                    if( C[idx].find(idx) == C[idx].end() )
+//                        C[idx][idx] = 0;
+//
+//                    C[idx][idx] += -d->A[f]*udotm[f]+alpha[f];
+//                }
+//            }
 
 
             // 1 layer special case
             if (nLayer == 1)
             {
-
                 C[idx][idx] += -d->A[4]*K[4]+alpha[3];
-
                 b(idx) += -d->A[4]*K[4]*c_salt;
                 //top
                 //0
@@ -314,6 +368,8 @@ void Lehning_blowing_snow::run(mesh domain)
                     C[idx][idx] += -d->A[4]*K[4];
                     b(ntri * z + face->cell_id) += -d->A[4]*K[4]*c_salt;
 
+                    init_C(C,idx,ntri * z + face->cell_id);
+                    init_C(C,idx,ntri * (z + 1) + face->cell_id);
                     //top face
                     C[idx][ntri * z + face->cell_id] +=  -alpha[3];
                     C[idx][ntri * (z + 1) + face->cell_id] =  alpha[3];
@@ -321,6 +377,8 @@ void Lehning_blowing_snow::run(mesh domain)
 
                 } else if (z == nLayer - 1)// top z layer
                 {
+                    init_C(C,idx,ntri * z + face->cell_id);
+                    init_C(C,idx,ntri * (z - 1) + face->cell_id);
                     //top
                     C[idx][ntri * z + face->cell_id] += -alpha[3]-alpha[4];
 
@@ -330,6 +388,9 @@ void Lehning_blowing_snow::run(mesh domain)
                 } else // internal cell
                 {
                     C[idx][idx] += -alpha[3]-alpha[4];
+
+                    init_C(C,idx,ntri * (z + 1) + face->cell_id);
+                    init_C(C,idx,ntri * (z - 1) + face->cell_id);
 
                     //top
                     C[idx][ntri * (z + 1) + face->cell_id] =alpha[3];
