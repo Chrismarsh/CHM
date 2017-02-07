@@ -3,6 +3,7 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
+#include "interpolation.h"
 
 #include "math/coordinates.hpp"
 
@@ -20,9 +21,6 @@
 #include <omp.h>
 #else
 // we need to define these and have them return constant values under a no-omp situation
-//int omp_get_num_threads() {return 1;}
-//int omp_get_thread_num() {return 0;}
-
 #define omp_get_max_threads() 1
 #define omp_get_thread_num() 0
 
@@ -34,7 +32,7 @@
 //#define _USE_MATH_DEFINES
 //#include <math.h>
 #include <boost/math/tools/roots.hpp>
-#include "math/coordinates.hpp"
+
 /**
 * \addtogroup modules
 * @{

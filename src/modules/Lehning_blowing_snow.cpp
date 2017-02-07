@@ -111,8 +111,12 @@ void Lehning_blowing_snow::run(mesh domain)
     std::vector< std::map< unsigned int, double> > C(ntri * nLayer);
 
 //    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
-    viennacl::vector<double> b(ntri * nLayer ); b.clear();
-    viennacl::vector<double> x(ntri * nLayer );
+//    arma::vec b(ntri * nLayer );
+//    arma::vec x(ntri * nLayer );
+
+    std::vector<double> b(ntri * nLayer ,0.0);
+//    b.clear();
+
 
     double z0 = 0.01; //m
 
@@ -127,8 +131,8 @@ void Lehning_blowing_snow::run(mesh domain)
         auto& m = d->m;
 
         //get wind from the face
-        double phi = M_PI;//face->face_data("vw_dir");
-        double u2 = 10;//face->face_data("U_2m_above_srf");
+        double phi = face->face_data("vw_dir");
+        double u2 = face->face_data("U_2m_above_srf");
 
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
 
@@ -214,6 +218,8 @@ void Lehning_blowing_snow::run(mesh domain)
 
             //Pomeroy 1990
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
+//            c_salt = csalt_pbsm;
+
             Qsalt =  c_salt *std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. * hs; //integrate over the depth of the saltation layer
 
 
@@ -227,12 +233,12 @@ void Lehning_blowing_snow::run(mesh domain)
             }
         }
 
-        c_salt = 0;
-        if (i == 12125 )
-        {
-            Qsalt = 0;
-            c_salt = 0.8;
-        }
+//        c_salt = 0;
+//        if (i == 12125 )
+//        {
+//            Qsalt = 0;
+//            c_salt = 0.8;
+//        }
         face->set_face_data("csalt", c_salt);
         face->set_face_data("Qsalt", Qsalt);
 
@@ -278,38 +284,38 @@ void Lehning_blowing_snow::run(mesh domain)
             size_t idx = ntri*z + face->cell_id;
             for(int f = 0; f < 3; f++)
             {
-                auto nidx = ntri * z + face->neighbor(f)->cell_id;
+
                 if(udotm[f] > 0)
                 {
                     if (d->face_neigh[f])
                     {
-                        init_C(C,idx,idx);
+//                        init_C(C,idx,idx);
 
-                        C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
-                        C[idx][idx] += alpha[f];
+                       C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
+                       C[idx][idx] += alpha[f];
                     }
                     else
                     {
-                        init_C(C,idx,idx);
+//                        init_C(C,idx,idx);
 
-                        C[idx][idx] += -d->A[f]*udotm[f];
+                       C[idx][idx] += -d->A[f]*udotm[f];
                     }
                 } else
                 {
                     if (d->face_neigh[f])
                     {
-                        init_C(C,idx,idx);
-                        init_C(C,idx,nidx);
+//                        init_C(C,idx,idx);
+//                        init_C(C,idx,nidx);
+                        auto nidx = ntri * z + face->neighbor(f)->cell_id;
 
                         C[idx][idx] += -alpha[f];
                         C[idx][nidx]+= -d->A[f]*udotm[f]+alpha[f];
                     }
                     else
                     {
-                        init_C(C,idx,idx);;
+//                        init_C(C,idx,idx);;
 
-//                        C[idx][idx] += -d->A[f]*udotm[f]+alpha[f];
-                        C[idx][idx] += -d->A[f]*udotm[f];
+                       C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
                     }
                 }
 
@@ -327,26 +333,26 @@ void Lehning_blowing_snow::run(mesh domain)
 //                    if(udotm[f] > 0 )
 //                    {
 //                        if( C[idx].find(idx) == C[idx].end() )
-//                            C[idx][idx] = 0;
+//                           C[idx][idx] = 0;
 //
-//                        C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
-//                        C[idx][idx] += alpha[f];
+//                       C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
+//                       C[idx][idx] += alpha[f];
 //                    } else
 //                    {
 //                        if( C[idx].find(nidx) == C[idx].end() )
-//                            C[idx][nidx] = 0;
+//                           C[idx][nidx] = 0;
 //
-//                        C[idx][idx] += -alpha[f];
-//                        C[idx][nidx]+= -d->A[f]*udotm[f]+alpha[f];
+//                       C[idx][idx] += -alpha[f];
+//                       C[idx][nidx]+= -d->A[f]*udotm[f]+alpha[f];
 //                    }
 //
 //                }
 //                else
 //                {
 //                    if( C[idx].find(idx) == C[idx].end() )
-//                        C[idx][idx] = 0;
+//                       C[idx][idx] = 0;
 //
-//                    C[idx][idx] += -d->A[f]*udotm[f]+alpha[f];
+//                   C[idx][idx] += -d->A[f]*udotm[f]+alpha[f];
 //                }
 //            }
 
@@ -354,8 +360,8 @@ void Lehning_blowing_snow::run(mesh domain)
             // 1 layer special case
             if (nLayer == 1)
             {
-                C[idx][idx] += -d->A[4]*K[4]+alpha[3];
-                b(idx) += -d->A[4]*K[4]*c_salt;
+               C[idx][idx] += -d->A[4]*K[4]+alpha[3];
+                b[idx] += -d->A[4]*K[4]*c_salt;
                 //top
                 //0
             } else
@@ -365,11 +371,11 @@ void Lehning_blowing_snow::run(mesh domain)
                 if (z == 0)
                 {
                     //bottom face
-                    C[idx][idx] += -d->A[4]*K[4];
-                    b(ntri * z + face->cell_id) += -d->A[4]*K[4]*c_salt;
+                   C[idx][idx] += -d->A[4]*K[4];
+                    b[ntri * z + face->cell_id] += -d->A[4]*K[4]*c_salt;
 
-                    init_C(C,idx,ntri * z + face->cell_id);
-                    init_C(C,idx,ntri * (z + 1) + face->cell_id);
+//                    init_C(C,idx,ntri * z + face->cell_id);
+//                    init_C(C,idx,ntri * (z + 1) + face->cell_id);
                     //top face
                     C[idx][ntri * z + face->cell_id] +=  -alpha[3];
                     C[idx][ntri * (z + 1) + face->cell_id] =  alpha[3];
@@ -377,8 +383,8 @@ void Lehning_blowing_snow::run(mesh domain)
 
                 } else if (z == nLayer - 1)// top z layer
                 {
-                    init_C(C,idx,ntri * z + face->cell_id);
-                    init_C(C,idx,ntri * (z - 1) + face->cell_id);
+//                    init_C(C,idx,ntri * z + face->cell_id);
+//                    init_C(C,idx,ntri * (z - 1) + face->cell_id);
                     //top
                     C[idx][ntri * z + face->cell_id] += -alpha[3]-alpha[4];
 
@@ -387,13 +393,13 @@ void Lehning_blowing_snow::run(mesh domain)
 
                 } else // internal cell
                 {
-                    C[idx][idx] += -alpha[3]-alpha[4];
+                   C[idx][idx] += -alpha[3]-alpha[4];
 
-                    init_C(C,idx,ntri * (z + 1) + face->cell_id);
-                    init_C(C,idx,ntri * (z - 1) + face->cell_id);
+//                    init_C(C,idx,ntri * (z + 1) + face->cell_id);
+//                    init_C(C,idx,ntri * (z - 1) + face->cell_id);
 
                     //top
-                    C[idx][ntri * (z + 1) + face->cell_id] =alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id]=alpha[3];
 
                     //bottom
                     C[idx][ntri * (z - 1) + face->cell_id] = alpha[4];
@@ -402,8 +408,11 @@ void Lehning_blowing_snow::run(mesh domain)
         }
     }
 
-    viennacl::compressed_matrix<double>  result(ntri * nLayer, ntri * nLayer);
-    viennacl::copy(C,result);
+    viennacl::compressed_matrix<double>  vl_C(ntri * nLayer, ntri * nLayer);
+    viennacl::copy(C,vl_C);
+    viennacl::vector<double> rhs;
+    viennacl::copy(b,rhs);
+
     LOG_DEBUG << "solving";
 //    arma::sp_mat result(ntri * nLayer, ntri * nLayer );
 //    for(int i = 0; i < omp_get_max_threads(); i++ )
@@ -411,8 +420,15 @@ void Lehning_blowing_snow::run(mesh domain)
 //        result += sp_C.at(i);
 //    }
 
+    // configuration of preconditioner:
+//    viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
+//    chow_patel_ilu_config.sweeps(3);       // three nonlinear sweeps
+//    chow_patel_ilu_config.jacobi_iters(2); // two Jacobi iterations per triangular 'solve' Rx=r
+//// create and compute preconditioner:
+//    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<double> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
 
-    x = viennacl::linalg::solve(result, b, viennacl::linalg::bicgstab_tag());
+//    std::vector<double> x(ntri * nLayer ,0.0);
+    viennacl::vector<double> x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::bicgstab_tag());
 
     LOG_DEBUG << "done";
 
@@ -470,29 +486,49 @@ void Lehning_blowing_snow::run(mesh domain)
             E[j] = face->edge_length(j);
         }
 
-        double qdep = 0;
+        interpolation interp(interp_alg::tpspline);
+
+        std::vector< boost::tuple<double, double, double> > vec_qs;
+        std::vector< boost::tuple<double, double, double> > vec_qt;
+
+
+        //build up the interpreted values
         for(int j = 0; j < 3; j++)
         {
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
-
-
-                qdep += .5000000000*E[j]*udotm[j]*face->face_data("Qsalt")+.5000000000*E[j]*udotm[j]*face->face_data("Qsusp")+
-                        .5000000000*E[j]*neigh->face_data("Qsalt")*udotm[j]+.5000000000*E[j]*neigh->face_data("Qsusp")*udotm[j];
-            }
-            else
-            {
-                qdep += .5000000000*E[j]*udotm[j]*face->face_data("Qsalt")+.5000000000*E[j]*udotm[j]*face->face_data("Qsusp")+
-                        .5000000000*E[j]*face->face_data("Qsalt")*udotm[j]+.5000000000*E[j]*face->face_data("Qsusp")*udotm[j];
+                vec_qs.push_back( boost::make_tuple(neigh->center().x(),neigh->center().y(), neigh->face_data("Qsalt")));
+                vec_qt.push_back( boost::make_tuple(neigh->center().x(),neigh->center().y(), neigh->face_data("Qsusp")));
             }
         }
-        if(fabs(qdep) < 0.001)
-            qdep = 0;
 
 
-        qdep = qdep * global_param->dt() / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+        double qdep = 0;
+        for(int j = 0; j < 3; j++)
+        {
+//            if (d->face_neigh[j])
+//            {
+//                auto neigh = face->neighbor(j);
+                auto emp = face->edge_midpoint(j);
+                auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
 
+                double qs  = interp(vec_qs, query);
+                double qt  = interp(vec_qt, query);
+
+                qdep += E[j]*udotm[j]*(qs+qt);
+//            }
+//            else
+//            {
+//                //use the linear average if we
+//                qdep += .5000000000*E[j]*udotm[j]*face->face_data("Qsalt")+.5000000000*E[j]*udotm[j]*face->face_data("Qsusp")+
+//                        .5000000000*E[j]*face->face_data("Qsalt")*udotm[j]+.5000000000*E[j]*face->face_data("Qsusp")*udotm[j];
+//            }
+        }
+
+
+
+        qdep = -qdep * global_param->dt() / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
 
         face->set_face_data("Qdep",qdep);
         face->set_face_data("sum_Qdep", face->face_data("sum_Qdep") + qdep);

@@ -120,6 +120,7 @@ typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
 typedef K::Triangle_3 Triangle_3;
 typedef K::Point_3 Point_3;
+typedef K::Point_2 Point_2;
 typedef K::Vector_3 Vector_3;
 typedef K::Vector_2 Vector_2;
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points
@@ -216,6 +217,20 @@ public:
      * @return
      */
     Vector_2 edge(int i);
+
+    /**
+     * Returns the midpoint (x,y) of edge i
+     * @param i
+     * @return
+     */
+    Point_2 edge_midpoint(int i);
+
+    /**
+     * Returns the verticies a and b that make up edge i
+     * @param i
+     * @return
+     */
+    std::pair<Point_2,Point_2> edge_vertexes(int i);
 
     /**
      * Returns the 2D unit normal to a triangle edge i faceing outward.
@@ -975,6 +990,21 @@ Vector_2 face<Gt, Fb>::edge(int i)
 
     return Vector_2(v.x(),v.y());//,v.z());
 
+};
+template < class Gt, class Fb>
+std::pair<Point_2,Point_2> face<Gt, Fb>::edge_vertexes(int i)
+{
+    auto a = this->vertex(_domain->ccw(i))->point();
+    auto b = this->vertex(_domain->cw(i))->point();
+    return std::make_pair(a,b);
+};
+template < class Gt, class Fb>
+Point_2 face<Gt, Fb>::edge_midpoint(int i)
+{
+    auto a = this->vertex(_domain->ccw(i))->point();
+    auto b = this->vertex(_domain->cw(i))->point();
+    Point_2 midpoint( (a.x()+b.x())/2.0 , (a.y() + b.y()) / 2.0);
+    return midpoint;
 };
 
 template < class Gt, class Fb>
