@@ -179,9 +179,25 @@ add_definitions(-DARMA_DONT_USE_BLAS)
 add_definitions(-DARMA_DONT_USE_LAPACK)
 add_definitions(-DVIENNACL_WITH_ARMADILLO=1)
 if(OPENMP_FOUND)
+    message(STATUS "Enabling ViennaCL with OpenCL")
     add_definitions(-DVIENNACL_WITH_OPENMP)
 endif()
+
+find_package(OpenCL)
+if(OpenCL_FOUND)
+    message(STATUS "Enabling ViennaCL with OpenCL")
+    add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
+    add_definitions(-DVIENNACL_WITH_OPENCL)
+        if(APPLE)
+             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
+        endif()
+else()
+    add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
+endif()
+
 find_package(Armadillo REQUIRED)
+
+
 find_package(ViennaCL REQUIRED)
 
 find_package(Boost

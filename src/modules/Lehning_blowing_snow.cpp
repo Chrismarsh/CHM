@@ -107,16 +107,16 @@ void Lehning_blowing_snow::run(mesh domain)
 //    {
 //        sp_C.push_back(arma::sp_mat(ntri * nLayer, ntri * nLayer ) );
 //    }
-//
-    std::vector< std::map< unsigned int, double> > C(ntri * nLayer);
+
+    //vcl_scalar_type is defined in the main CMakeLists.txt file.
+    // Some GPUs do not have double precision so the run will fail is the wrong precision is used
+    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
 
 //    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
 //    arma::vec b(ntri * nLayer );
 //    arma::vec x(ntri * nLayer );
 
-    std::vector<double> b(ntri * nLayer , 0.0);
-//    b.clear();
-
+    std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
 
     double z0 = 0.01; //m
 
@@ -265,7 +265,7 @@ void Lehning_blowing_snow::run(mesh domain)
             double scale = u_z / length;
 
             uvw *= scale;
-            uvw(2) = 0.5; //negative = up, positive down
+            uvw(2) = 0;// 0.5; //negative = up, positive down
 
             //holds wind dot face normal
             double udotm[5];
