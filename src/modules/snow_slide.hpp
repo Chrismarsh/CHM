@@ -21,11 +21,11 @@ public:
 
     struct data : public face_info
     {
-        double maxDepth;
-        double snowdepthavg_copy;
-        double swe_copy;
-        double delta_snowdepthavg;
-        double delta_swe;
+        double maxDepth; // m
+        double snowdepthavg_copy; // m
+        double swe_copy; // m (Note: swe units outside of snowslide are still mm)
+        double delta_snowdepthavg; // m^3
+        double delta_swe; // m^3
     };
 
 };
