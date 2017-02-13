@@ -385,7 +385,14 @@ def main():
     output_vtk = base_dir + base_name + '.vtu'
     vtuwriter = vtk.vtkXMLUnstructuredGridWriter()
     vtuwriter.SetFileName(output_vtk)
-    vtuwriter.SetInputData(vtu)
+
+    #check what version of vtk we are using so we can avoid the api conflict
+    #http://www.vtk.org/Wiki/VTK/VTK_6_Migration/Replacement_of_SetInput#Replacement_of_SetInput.28.29_with_SetInputData.28.29_and_SetInputConnection.28.29
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        vtuwriter.SetInputData(vtu)
+    else:
+        vtuwriter.SetInput(vtu)
+
 
     vtu_points = vtk.vtkPoints()
     vtu_triangles = vtk.vtkCellArray()
