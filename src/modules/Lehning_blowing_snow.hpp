@@ -13,7 +13,6 @@
 #include <cmath>
 #include <vector>
 
-#include <viennacl/linalg/cg.hpp>
 #include <viennacl/linalg/bicgstab.hpp>
 #include <viennacl/ell_matrix.hpp>
 

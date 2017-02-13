@@ -265,7 +265,9 @@ void Lehning_blowing_snow::run(mesh domain)
             double scale = u_z / length;
 
             uvw *= scale;
-            uvw(2) = 0;// 0.5; //negative = up, positive down
+//            uvw(2) = 0.01;
+//            if(z!=0)
+            uvw(2) = -0.5;// 0.5; //negative = down
 
             //holds wind dot face normal
             double udotm[5];
@@ -273,13 +275,13 @@ void Lehning_blowing_snow::run(mesh domain)
             {
                 udotm[j] = arma::dot(uvw, m[j]);
             }
-
             //lateral
             size_t idx = ntri*z + face->cell_id;
 
             //I'm unclear as to what the map inits the double value to.  I assume undef'd like always, so this is called
             //to ensure that they are inited to zero so we can call the += operator w/o issue below. Only needs to be done for the diagonal elements
             //as the rest are straight assignments and not +=
+
             if( C[idx].find(idx) == C[idx].end() )
                 C[idx][idx] = 0.0;
 
@@ -319,19 +321,31 @@ void Lehning_blowing_snow::run(mesh domain)
             //this formulation includes the 3D advection term
             if(z == 0)
             {
-                //bottom face
-                C[idx][idx] += -d->A[4]*K[4];
-                b[ntri * z + face->cell_id] = -d->A[4]*K[4]*c_salt;
+
+                //bottom face, no advection
+//                C[idx][idx] += -d->A[4]*K[4];
+//                b[idx] = -d->A[4]*K[4]*c_salt;
 
                 if(udotm[3] > 0)
                 {
                     C[idx][idx] += (-d->A[3]*udotm[3]-alpha[3]) ;
-                    C[idx][ntri * (z + 1) + face->cell_id] = alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
                 }
                 else
                 {
                     C[idx][idx] += -alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] = -d->A[3]*udotm[3]+alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
+                }
+
+                if(udotm[4] > 0)
+                {
+                    C[idx][idx] += -d->A[4]*K[4]-d->A[4]*udotm[4];
+                    b[idx] = -d->A[4]*K[4]*c_salt;
+                }
+                else
+                {
+                    C[idx][idx] += -d->A[4]*K[4];
+                    b[idx] += (d->A[4]*K[4]+d->A[4]*udotm[4])*c_salt;
                 }
 
             } else if (z == nLayer - 1)// top z layer
@@ -348,39 +362,45 @@ void Lehning_blowing_snow::run(mesh domain)
                 if(udotm[4] > 0)
                 {
                     C[idx][idx] += -d->A[4]*udotm[4]-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] = alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
                 }
                 else
                 {
                     C[idx][idx] += -alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] = -d->A[4]*udotm[4]+alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
                 }
             }
             else
             {
+//                C[idx][idx] += -1.*alpha[3]-1.*alpha[4]-.5000000000*d->A[3]*udotm[3]-.5000000000*d->A[4]*udotm[4];
+//                C[idx][ntri * (z + 1) + face->cell_id] += alpha[3]-.5000000000*d->A[3]*udotm[3];
+//                C[idx][ntri * (z - 1) + face->cell_id] += alpha[4]-.5000000000*d->A[4]*udotm[4];
+
                 if(udotm[3] > 0)
                 {
                     C[idx][idx] += -d->A[3]*udotm[3]-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] = alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
                 }
                 else
                 {
                     C[idx][idx] += -alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] = -d->A[3]*udotm[3]+alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
                 }
 
                 if(udotm[4] > 0)
                 {
                     C[idx][idx] += -d->A[4]*udotm[4]-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] = alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
                 }
                 else
                 {
                     C[idx][idx] += -alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] = -d->A[4]*udotm[4]+alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
                 }
             }
 
+
+            //This section has the vertical case for diffusion only.
 
 //            // 1 layer special case
 //            if (nLayer == 1)
@@ -431,6 +451,19 @@ void Lehning_blowing_snow::run(mesh domain)
         }
     }
 
+    LOG_DEBUG << "slow debug part";
+    int lol = 0;
+    for(auto itr : C)
+    {
+        for(auto jtr: itr)
+        {
+            if(std::isnan(jtr.second))
+            {
+                LOG_DEBUG << "row = " << lol << "  value=" << jtr.second;
+            }
+        }
+        ++lol;
+    }
     //setup the compressed matrix on the compute device, in available
 //    viennacl::compressed_matrix<double>  vl_C(ntri * nLayer, ntri * nLayer);
 //    viennacl::copy(C,vl_C);
