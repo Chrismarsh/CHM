@@ -16,7 +16,7 @@ public:
 
     virtual void run(mesh domain);
 
-    virtual void init(mesh domain);
+    virtual void init(mesh domain, config_file cfg);
 
 
     struct data : public face_info
