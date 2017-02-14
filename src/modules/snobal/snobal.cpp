@@ -12,7 +12,7 @@ snobal::snobal(config_file cfg)
     depends("ilwr");
 
     // Optional subcanopy variables if a canopy module is included (used if exist)
-    optional("frac_precip_rain_subcanopy");
+    optional("frac_precip_snow_subcanopy");
     optional("iswr_subcanopy");
     optional("rh_subcanopy");
     optional("ta_subcanopy");
@@ -254,15 +254,14 @@ void snobal::run(mesh_elem &face)
         p = face->face_data("p");
     }
 
-
     if(p > 0)
     {
         sbal->precip_now = 1;
         sbal->m_pp = p;
 
         // Optional inputs if there is a canopy or not
-        if(has_optional("frac_precip_rain_subcanopy")) {
-            sbal->percent_snow = face->face_data("frac_precip_rain_subcanopy");
+        if(has_optional("frac_precip_snow_subcanopy")) {
+            sbal->percent_snow = face->face_data("frac_precip_snow_subcanopy");
         } else {
             sbal->percent_snow = face->face_data("frac_precip_snow");
         }
