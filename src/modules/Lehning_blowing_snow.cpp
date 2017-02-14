@@ -265,9 +265,9 @@ void Lehning_blowing_snow::run(mesh domain)
             double scale = u_z / length;
 
             uvw *= scale;
-//            uvw(2) = 0.01;
-//            if(z!=0)
-            uvw(2) = -0.5;// 0.5; //negative = down
+            uvw(2) = 0;//0.01;
+            if(z!=0)
+                uvw(2) = -0.5;// 0.5; //negative = down
 
             //holds wind dot face normal
             double udotm[5];
@@ -321,33 +321,46 @@ void Lehning_blowing_snow::run(mesh domain)
             //this formulation includes the 3D advection term
             if(z == 0)
             {
+                //low vertical winds
+//                if(uvw(2) < 0.1)
+//                {
+                    //bottom face, no advection
+                    C[idx][idx] += -d->A[4] * K[4];
+                    b[idx] = -d->A[4] * K[4] * c_salt;
 
-                //bottom face, no advection
-//                C[idx][idx] += -d->A[4]*K[4];
-//                b[idx] = -d->A[4]*K[4]*c_salt;
-
-                if(udotm[3] > 0)
-                {
-                    C[idx][idx] += (-d->A[3]*udotm[3]-alpha[3]) ;
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
-                }
-                else
-                {
-                    C[idx][idx] += -alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
-                }
-
-                if(udotm[4] > 0)
-                {
-                    C[idx][idx] += -d->A[4]*K[4]-d->A[4]*udotm[4];
-                    b[idx] = -d->A[4]*K[4]*c_salt;
-                }
-                else
-                {
-                    C[idx][idx] += -d->A[4]*K[4];
-                    b[idx] += (d->A[4]*K[4]+d->A[4]*udotm[4])*c_salt;
-                }
-
+                    if (udotm[3] > 0)
+                    {
+                        C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
+                        C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+                    } else
+                    {
+                        C[idx][idx] += -alpha[3];
+                        C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
+                    }
+//                }
+//                else
+//                {
+//
+//                    if (udotm[3] > 0)
+//                    {
+//                        C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
+//                        C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+//                    } else
+//                    {
+//                        C[idx][idx] += -alpha[3];
+//                        C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
+//                    }
+//
+//                    if (udotm[4] > 0)
+//                    {
+//                        C[idx][idx] += -d->A[4] * K[4] - d->A[4] * udotm[4];
+//                        b[idx] = -d->A[4] * K[4] * c_salt;
+//                    } else
+//                    {
+//                        C[idx][idx] += -d->A[4] * K[4];
+//                        b[idx] += (d->A[4] * K[4] + d->A[4] * udotm[4]) * c_salt;
+//                    }
+//                }
             } else if (z == nLayer - 1)// top z layer
             {
                 if(udotm[3] > 0)
