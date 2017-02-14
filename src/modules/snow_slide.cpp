@@ -137,7 +137,7 @@ void snow_slide::run(mesh domain)
 
 }
 
-void snow_slide::init(mesh domain, config_file cfg)
+void snow_slide::init(mesh domain)
 {
     // Get Parameters that control maxDepth function
     double avalache_mult = cfg.get("avalache_mult",3178.4);
