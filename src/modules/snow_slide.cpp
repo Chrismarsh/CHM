@@ -62,30 +62,57 @@ void snow_slide::run(mesh domain)
             double z_s = face->center().z() + snowdepthavg; // Current face elevation + snowdepth
             std::vector<double> w = {0, 0, 0}; // Weights for each face neighbor to route snow to
             double w_dem = 0; // Denomenator for weights (sum of all elev diffs)
+            bool edge_flag = false; // Flag for determiing if current cell is an edge (handel routing differently)
 
             // Calc weights for routing snow
+            // Possible Cases:
+            //      1) edge cell, then edge_flag is true, and snow is dumpped off mesh
+            //      2) non-edge cell, w_dem is greater than 0 -> there is atleast one lower neighbor, route so to it/them
+            //      3) non-edge cell, w_dem = 0, "sink" case. Don't route any snow.
             for (int i = 0; i < 3; ++i) {
                 auto n = face->neighbor(i); // Pointer to neighbor face
 
-                // If not null (edge case) check is less than lowFace
+                // Check if not-null (null indicates edge cell)
                 if (n != nullptr) {
                     auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
                     // Calc weighting based on height diff
                     // (std::max insures that if one neighbor is higher, its weight will be zero)
                     w[i] = std::max(0.0, z_s - (n->center().z() + n_data->snowdepthavg_copy));
                     w_dem += w[i]; // Store weight denominator
+                } else { // It is an edge cell, set flag
+                    edge_flag = true;
                 }
             }
-            // Check for case where all weights are zero (edge cell with higher neighbors)
-            if(w_dem==0) {
-                continue; // Don't do anything to this cell or neighbors
+
+            // Case 1) Edge cell
+            if(edge_flag) {
+                // Special case: dump snow out of domain (loosing mass) by just removing from current edge cell.
+                // Don't route and exit loop.
+
+                // Remove snow from initial face
+                data->snowdepthavg_copy = maxDepth;
+                data->swe_copy = swe * maxDepth / snowdepthavg;
+                // Update mass transport (m^3)
+                data->delta_snowdepthavg -= del_depth * cen_area;
+                data->delta_swe -= del_swe * cen_area;
+
+                // Save state variables
+                face->set_face_data("delta_snowdepthavg", data->delta_snowdepthavg);
+                face->set_face_data("delta_swe", data->delta_swe);
             }
-            // Divide by sum height differences to create weights that sum to unity
-            if (w_dem != 0) { // prevent divide by zero
+
+            // Case 2) Non-Edge cell, but w_dem=0, "sink" cell. Don't route snow.
+            if(w_dem==0) {
+                continue; // Restart to next loop.
+            }
+
+            // Must be Case 3), Divide by sum height differences to create weights that sum to unity
+            if (w_dem != 0) {
                 std::transform(w.begin(), w.end(), w.begin(),
                                [w_dem](double cw) { return cw / w_dem; });
             }
 
+            // Case 3), Non-Edge cell, w_dem>0, route snow to down slope neighbor(s).
             double out_mass = 0; // Mass balance check
             // Route snow to each neighbor based on weights
             for (int j = 0; j < 3; ++j) {
