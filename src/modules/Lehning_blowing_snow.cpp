@@ -42,7 +42,7 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
 
 void Lehning_blowing_snow::init(mesh domain)
 {
-    nLayer = 5;
+    nLayer = 25;
     susp_depth = 5; //5m as per pomeroy
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40;
@@ -155,11 +155,17 @@ void Lehning_blowing_snow::run(mesh domain)
         double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
 
         //depth of saltation layer
-        double hs = z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
-                         (pow(log(2. / z0), 2.) * 9.81);
+        double hs = 0;
 
+        //lehning
+//        z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
+//                         (pow(log(2. / z0), 2.) * 9.81);
+
+        //pomeroy
         hs = 0.08436*pow(ustar,1.27);
         d->hs = hs;
+        face->set_face_data("hs",hs);
+        face->set_face_data("ustar",ustar);
 
         // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
         // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
@@ -178,12 +184,12 @@ void Lehning_blowing_snow::run(mesh domain)
 //        for (int a = 0; a < 3; ++a)
 //        {
 //            auto neigh = face->neighbor(a);
-//            alpha[a] = A[a];
-//
+//            alpha[a] = d->A[a];
+//            double l=40;
 //            //if we have a neighbour, use the distance
 //            if (neigh != nullptr)
 //            {
-//                l__max = math::gis::distance(face->center(), neigh->center());
+//                l = math::gis::distance(face->center(), neigh->center());
 //
 //                alpha[a] /= math::gis::distance(face->center(), neigh->center());
 //
@@ -191,14 +197,13 @@ void Lehning_blowing_snow::run(mesh domain)
 //            { //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
 //                alpha[a] /= 2.0 * math::gis::distance(face->center(), face->vertex(0)->point());
 //
-//                face_neigh[a] = false;
 //            }
 //
 //            //no horizontal diffusion .....
 ////            double l = PhysConst::kappa * (cz + z0) * l__max /
 ////                       (PhysConst::kappa * cz + PhysConst::kappa * z0 + l__max);
 //
-//            K[a] = 0;//std::max(ustar * l, PhysConst::kappa * 2. * ustar);
+//            K[a] = std::max(ustar * l, PhysConst::kappa * 2. * ustar);
 //            alpha[a] *= K[a];
 //        }
 
@@ -217,23 +222,14 @@ void Lehning_blowing_snow::run(mesh domain)
         double u_star_saltation = thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
 
 
-        face->set_face_data("ustar",ustar);
         if( ustar > u_star_saltation)
         {
-//            double Qsalt_pbsm = 0.68 * rho_f * u_star_t / (g *ustar) *( ustar*ustar - u_star_t*u_star_t);
-//            double csalt_pbsm = Qsalt_pbsm / std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. / hs;
-//            face->set_face_data("Qsalt_pbsm", Qsalt_pbsm);
-//            face->set_face_data("csalt_pbsm", csalt_pbsm);
-
-
             //Pomeroy 1990
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
 
             Qsalt =  c_salt *std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. * hs; //integrate over the depth of the saltation layer
 
-
             face->set_face_data("u_hs",std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0)));
-            face->set_face_data("hs",hs);
 
             if(Qsalt < 0) // this apparently happens and bad things happen bc of it
             {
@@ -253,7 +249,7 @@ void Lehning_blowing_snow::run(mesh domain)
         face->set_face_data("Qsalt", Qsalt);
 
 
-        // iterate over the vertical layers, each 1m in height
+        // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
         {
             //height in the suspension layer
@@ -267,17 +263,13 @@ void Lehning_blowing_snow::run(mesh domain)
             //bottom
             alpha[4] = d->A[4] * K[4] / v_edge_height;
 
-
-
             //compute new U_z at this height in the suspension layer
-            double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0));
+            double u_z = std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0));
             double length = arma::norm(uvw, 2);
             double scale = u_z / length;
 
             uvw *= scale;
-            uvw(2) = -0.5;
-            if(z == 0)
-                uvw(2) = -0.1;//negative = down
+            uvw(2) = -0.5; //settling velocity
 
             //holds wind dot face normal
             double udotm[5];
@@ -295,9 +287,10 @@ void Lehning_blowing_snow::run(mesh domain)
             if( C[idx].find(idx) == C[idx].end() )
                 C[idx][idx] = 0.0;
 
+            auto lol = &C[idx];
+
             for(int f = 0; f < 3; f++)
             {
-
                 if(udotm[f] > 0)
                 {
                     if (d->face_neigh[f])
@@ -318,6 +311,13 @@ void Lehning_blowing_snow::run(mesh domain)
 
                         C[idx][idx] += -alpha[f];
                         C[idx][nidx] = -d->A[f]*udotm[f]+alpha[f];
+
+                        if( nidx == 23740)
+                        {
+
+                            LOG_DEBUG << "found";
+                        }
+
                     }
                     else
                     {
@@ -328,54 +328,52 @@ void Lehning_blowing_snow::run(mesh domain)
             }
 
             //vertical layers
-//            this formulation includes the 3D advection term
+            //this formulation includes the 3D advection term
+            if( z != nLayer -1 &&
+                    C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
+                C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
+
+
+            if(z!=0 &&
+                    C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
+                C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
+
             if(z == 0)
             {
 
-                //center differencing
-//                C[idx][idx] += -d->A[4]*K[4]-2*alpha[3];
-//                b[idx] = -d->A[4]*K[4]*c_salt;
-//                C[idx][ntri * (z + 1) + face->cell_id) +=2*alpha[3];
-
-                //low vertical winds
-//                if(uvw(2) < 0.1)
-//                {
-                    //bottom face, no advectiono
-                    C[idx][idx] += -d->A[4] * K[4];
-                    b[idx] = -d->A[4] * K[4] * c_salt+0.0;
-//                }
-//                else
-//                {
-
-                if( C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
-                    C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
+                //bottom face, no advectiono
+//                C[idx][idx] += -d->A[4] * K[4];
+//                b[idx] = -d->A[4] * K[4] * c_salt+0.0;
 
                 if (udotm[3] > 0)
-                    {
-                        C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
-                        C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
-                    } else
-                    {
-                        C[idx][idx] += -alpha[3];
-                        C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
-                    }
-//
-//                    if (udotm[4] > 0)
-//                    {
-//                        C[idx][idx] += -d->A[4] * K[4] - d->A[4] * udotm[4];
-//                        b[idx] = -d->A[4] * K[4] * c_salt;
-//                    } else
-//                    {
-//                        C[idx][idx] += -d->A[4] * K[4];
-//                        b[idx] += (d->A[4] * K[4] + d->A[4] * udotm[4]) * c_salt;
-//                    }
-//                }
+                {
+                    C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
+                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+                } else
+                {
+                    C[idx][idx] += -alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
+                }
+
+
+                // just the smallest little bit of advection to keep it stable :(
+                auto uvw_0 = uvw;
+                uvw_0(2) = -0.1;
+
+                auto udotm_0 =  arma::dot(uvw_0, m[4]);
+
+                if (udotm[4] > 0)
+                {
+                    C[idx][idx] += -d->A[4] * K[4] - d->A[4] * udotm_0;
+                    b[idx] = -d->A[4] * K[4] * c_salt;
+                } else
+                {
+                    C[idx][idx] += -d->A[4] * K[4];
+                    b[idx] += (d->A[4] * K[4] + d->A[4] * udotm_0 ) * c_salt;
+                }
+
             } else if (z == nLayer - 1)// top z layer
             {
-                //center differencing
-//                C[idx][idx] += -1.*alpha[3]-1.*alpha[4]-.5000000000*d->A[3]*udotm[3]+.5000000000*d->A[4]*udotm[4];
-//                C[idx][ntri * (z - 1) + face->cell_id) += alpha[4]+.5000000000*d->A[4]*udotm[4];
-//
                 if(udotm[3] > 0)
                 {
                     C[idx][idx] += -d->A[3]*udotm[3]-alpha[3] ;
@@ -384,8 +382,7 @@ void Lehning_blowing_snow::run(mesh domain)
                 {
                     C[idx][idx] += -alpha[3];
                 }
-                if( C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
-                    C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
+
 
                 if(udotm[4] > 0)
                 {
@@ -400,16 +397,6 @@ void Lehning_blowing_snow::run(mesh domain)
             }
             else
             {
-                //center differencing
-//                C[idx][idx] += -1.*alpha[3]-1.*alpha[4]-.5000000000*d->A[3]*udotm[3]-.5000000000*d->A[4]*udotm[4];
-//                C[idx][ntri * (z + 1) + face->cell_id) += alpha[3]-.5000000000*d->A[3]*udotm[3];
-//                C[idx][ntri * (z - 1) + face->cell_id) += alpha[4]-.5000000000*d->A[4]*udotm[4];
-
-                if( C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
-                    C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
-
-                if( C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
-                    C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
                 if(udotm[3] > 0)
                 {
                     C[idx][idx] += -d->A[3]*udotm[3]-alpha[3];
@@ -477,19 +464,6 @@ void Lehning_blowing_snow::run(mesh domain)
         } // end z iter
     } //end face iter
 
-//    LOG_DEBUG << "slow debug part";
-//    int lol = 0;
-//    for(auto itr : C)
-//    {
-//        for(auto jtr: itr)
-//        {
-//            if(std::isnan(jtr.second))
-//            {
-//                LOG_DEBUG << "row = " << lol << "  value=" << jtr.second;
-//            }
-//        }
-//        ++lol;
-//    }
 
 //        arma::sp_mat result(ntri * nLayer, ntri * nLayer );
 //    for(int i = 0; i < omp_get_max_threads(); i++ )
@@ -514,13 +488,11 @@ void Lehning_blowing_snow::run(mesh domain)
 
     LOG_DEBUG << "solving";
     //docs say 'This will use appropriate ViennaCL objects internally.'  http://viennacl.sourceforge.net/doc/iterative_8cpp-example.html
-    auto x = viennacl::linalg::solve(C, b, viennacl::linalg::gmres_tag());
+    auto x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
 //    auto x = viennacl::linalg::solve(result, b, viennacl::linalg::bicgstab_tag());
 
 //   auto x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::gmres_tag(),chow_patel_ilu);
 
-
-    LOG_DEBUG << "done";
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
