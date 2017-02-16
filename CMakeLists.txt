@@ -13,7 +13,7 @@ set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
-option(PV_FILTER "Build Paraview time filter"  OFF )
+option(PV_FILTER "Build Paraview time filter"  ON )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 
@@ -44,7 +44,7 @@ SET(DATA_QA OFF CACHE BOOL "Data Quality Assurance outputs ON or OFF")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 #some machines need to be told where odd system libraries are, so put them here
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
 #for meton
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
@@ -191,10 +191,7 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(GDAL REQUIRED)
-
-#find_package(MeteoIO REQUIRED)
-#find_package(Libsnowpack REQUIRED)
+find_package(GDAL 2.1 REQUIRED)
 
 find_package (Threads REQUIRED)
 
@@ -203,6 +200,8 @@ find_package(TBB REQUIRED)
 find_package(GSL REQUIRED)
 
 find_package(Curses REQUIRED)
+
+#find_package(Sundials REQUIRED)
 
 #if we are building the plugin we need to compile against paraview (which brings in VTK)
 #otherwise use just VTK. You cannot link against both at the same time

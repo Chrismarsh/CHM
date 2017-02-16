@@ -14,7 +14,7 @@ namespace pt = boost::property_tree;
 
 #include "interpolation.h"
 #include "station.hpp"
-#include "math/distance.hpp"
+#include "math/coordinates.hpp"
 
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Kd_tree.h>

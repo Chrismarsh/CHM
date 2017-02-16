@@ -602,7 +602,9 @@ void core::config_output(const pt::ptree &value)
         output_info out;
         std::string out_type = itr.first.data();
         if (out_type == "output_dir") //skip this
+        {
             continue;
+        }
 
 	    if ((out_type != "mesh"))  // anything else *should* be a time series*......
         {
@@ -1765,20 +1767,12 @@ void core::run()
             catch (exception_base &e)
             {
                 LOG_ERROR << "Exception at timestep: " << _global->posix_time();
-                //if we die in a module, try to dump our time series out so we can figur eout wtf went wrong
+                //if we die in a module, try to dump our time series out so we can figure out wtf went wrong
                 LOG_ERROR << "Exception has occured. Timeseries and meshes WILL BE INCOMPLETE!";
                 *_end_ts = _global->posix_time();
                 done = true;
                 LOG_ERROR << boost::diagnostic_information(e);
-//                for (auto &itr : _outputs)
-//                {
-//                    //save the full timeseries
-//                    if (itr.type == output_info::output_type::time_series)
-//                    {
-//                        itr.ts.to_file("ABORT_" + itr.fname);
-//                    }
-//                }
-//                throw;
+
             }
 
             //check that we actually need a mesh output.

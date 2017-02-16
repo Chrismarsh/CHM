@@ -9,7 +9,7 @@ Richard_albedo::Richard_albedo(config_file cfg)
     depends("p_snow");
 
     provides("snow_albedo");
-    provides("melting albedo");
+    provides("melting_albedo");
 
 }
 Richard_albedo::~Richard_albedo()
@@ -48,12 +48,12 @@ void Richard_albedo::run(mesh_elem &face)
         if (face->face_data("T_s_0") >= 273.)  //melting snow, T_s_0???
         {
             albedo = (albedo - amin) * exp(-dt/a2) + amin;
-            face->set_face_data("melting albedo",1);
+            face->set_face_data("melting_albedo",1);
         }
         else
         {
             albedo = albedo - dt/a1; // cold snow decay
-            face->set_face_data("melting albedo",0);
+            face->set_face_data("melting_albedo",0);
         }
 
         double psnow = face->face_data("p_snow");
@@ -64,7 +64,7 @@ void Richard_albedo::run(mesh_elem &face)
     }
     else
     {
-        face->set_face_data("melting albedo",0);
+        face->set_face_data("melting_albedo",0);
         albedo = albedo_bare;
     }
 

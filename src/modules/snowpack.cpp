@@ -178,7 +178,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     }catch(std::exception& e)
     {
         LOG_DEBUG << e.what();
-        auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+")";
+        auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+") ID = " + std::to_string(face->cell_id);
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snowpack died. Triangle center = "+details));
     }
 

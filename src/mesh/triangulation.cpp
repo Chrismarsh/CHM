@@ -14,6 +14,7 @@
 // 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+#include <vtkStringArray.h>
 #include "triangulation.hpp"
 
 triangulation::triangulation()
@@ -490,6 +491,11 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
     triangles->Allocate(this->_num_vertex);
 
+    vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
+    proj4->SetNumberOfComponents(1);
+    proj4->SetName("proj4");
+    proj4->InsertNextValue(_srs_wkt);
+
     double scale = is_geographic() == true ? 100000. : 1.;
 
     for (size_t i = 0; i < this->size_faces(); i++)
@@ -513,6 +519,10 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     _vtk_unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
     _vtk_unstructuredGrid->SetPoints(points);
     _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
+    _vtk_unstructuredGrid->GetFieldData()->AddArray(proj4);
+
+//    vtkSmartPointer<vtkStringArray> test = vtkStringArray::SafeDownCast(_vtk_unstructuredGrid->GetFieldData()->GetAbstractArray("proj4"));
+//    LOG_DEBUG << test->GetValue(0) ;
 
 
     //assume that all the faces have the same number of variables and the same types of variables
@@ -648,13 +658,14 @@ void triangulation::write_vtu(std::string file_name)
 #endif
     writer->Write();
 
+//    write_vtp(file_name);
 }
 
 void triangulation::write_vtp(std::string file_name)
 {
     //this now needs to be called from outside these functions
 //    update_vtk_data();
-
+//
 //    vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
 //    geometryFilter->SetInputData(_vtk_unstructuredGrid);
 //    geometryFilter->Update();
@@ -666,7 +677,7 @@ void triangulation::write_vtp(std::string file_name)
 //    flattener->Update();
 //
 //    vtkSmartPointer<vtkTransformFilter> filt = vtkSmartPointer<vtkTransformFilter>::New();
-//    filt->SetInputData(geometryFilter->GetOutput());
+//    filt->SetInputConnection(geometryFilter->GetOutputPort());
 //    filt->SetTransform(flattener);
 //    filt->Update();
 //
@@ -676,8 +687,8 @@ void triangulation::write_vtp(std::string file_name)
 //    // Create a grid of points to interpolate over
 //    vtkSmartPointer<vtkPlaneSource> gridPoints = vtkSmartPointer<vtkPlaneSource>::New();
 //
-//    size_t dx = 300; //(meters)
-//    size_t dy = 300;
+//    size_t dx = 10; //(meters)
+//    size_t dy = 10;
 //
 //    double distx = bounds[1] - bounds[0];
 //    double disty = bounds[3] - bounds[2];

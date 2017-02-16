@@ -1,5 +1,6 @@
 import vtk
 from osgeo import gdal,ogr,osr
+import math
 import imp
 import sys
 import xml.etree.ElementTree as ET
@@ -49,7 +50,7 @@ def main():
     parameters = []
     if hasattr(X,'parameters'):
         parameters = X.parameters
-    
+
     # Check if we want to constrain output to a example geotif
     constrain_flag = False
     if hasattr(X,'constrain_tif_file'):
@@ -58,9 +59,13 @@ def main():
         param_resample_method = X.param_resample_method
         constrain_flag = True
 
-    is_geographic = False
-    if hasattr(X,'is_geographic'):
-        is_geographic = X.is_geographic
+    output_path = input_path[:input_path.rfind('/')+1]
+    if hasattr(X,'output_path'):
+        output_path = X.output_path
+
+    pixel_size = 0
+    if hasattr(X,'pixel_size'):
+        pixel_size = X.pixel_size
 
     user_define_extent = False
     if hasattr(X,'user_define_extent'):
@@ -101,50 +106,55 @@ def main():
     iter=1
     for vtu in pvd:
 
-        path = input_path[:input_path.rfind('/')+1] + vtu.get('file')
+        vtu_file  = vtu.get('file')
+        path = input_path[:input_path.rfind('/')+1] + vtu_file
         printProgress(iter,len(pvd))
         reader.SetFileName(path)
         reader.Update()
 
         mesh = reader.GetOutput()
 
+        #default the pixel size to (min+max)/2
+        if not pixel_size:
+            area_range = mesh.GetCellData().GetArray('Area').GetRange()
+            pixel_size = (math.sqrt(area_range[0]) + math.sqrt(area_range[1]))/2
+            pixel_size = int( math.ceil(pixel_size) )
+
         driver = ogr.GetDriverByName('Memory')
         output_usm = driver.CreateDataSource('out')
 
         srsin = osr.SpatialReference()
-        srsin.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
-                             "GEOGCS[\"GCS_North_American_1983\",         "
-                             "DATUM[\"North_American_Datum_1983\",            "
-                             " SPHEROID[\"GRS_1980\",6378137,298.257222101]],         "
-                             "PRIMEM[\"Greenwich\",0],        "
-                             " UNIT[\"Degree\",0.017453292519943295]],     "
-                             "PROJECTION[\"Albers_Conic_Equal_Area\"],     "
-                             "PARAMETER[\"False_Easting\",0],    "
-                             " PARAMETER[\"False_Northing\",0],     "
-                             "PARAMETER[\"longitude_of_center\",-96],     "
-                             "PARAMETER[\"Standard_Parallel_1\",20],     "
-                             "PARAMETER[\"Standard_Parallel_2\",60],     "
-                             "PARAMETER[\"latitude_of_center\",40],     "
-                             "UNIT[\"Meter\",1],     "
-                             "AUTHORITY[\"EPSG\",\"102008\"]]")
 
-        #output conic equal area for geotiff if we have geographic input
+        if not mesh.GetFieldData().HasArray("proj4"):
+            print "VTU file does not contain a proj4 field"
+            return -1
+
+        vtu_proj4 = mesh.GetFieldData().GetAbstractArray("proj4").GetValue(0)
+        srsin.ImportFromProj4(vtu_proj4)
+
+        is_geographic = srsin.IsGeographic()
+
+        #output conic equal area for geotiff
         srsout = osr.SpatialReference()
-        srsout.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
-                             "GEOGCS[\"GCS_North_American_1983\",         "
-                             "DATUM[\"North_American_Datum_1983\",            "
-                             " SPHEROID[\"GRS_1980\",6378137,298.257222101]],         "
-                             "PRIMEM[\"Greenwich\",0],        "
-                             " UNIT[\"Degree\",0.017453292519943295]],     "
-                             "PROJECTION[\"Albers_Conic_Equal_Area\"],     "
-                             "PARAMETER[\"False_Easting\",0],    "
-                             " PARAMETER[\"False_Northing\",0],     "
-                             "PARAMETER[\"longitude_of_center\",-96],     "
-                             "PARAMETER[\"Standard_Parallel_1\",20],     "
-                             "PARAMETER[\"Standard_Parallel_2\",60],     "
-                             "PARAMETER[\"latitude_of_center\",40],     "
-                             "UNIT[\"Meter\",1],     "
-                             "AUTHORITY[\"EPSG\",\"102008\"]]")
+
+        if not is_geographic:
+            srsout.ImportFromProj4(vtu_proj4)
+        else:
+            srsout.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
+                                 "GEOGCS[\"GCS_North_American_1983\",         "
+                                 "DATUM[\"North_American_Datum_1983\",            "
+                                 " SPHEROID[\"GRS_1980\",6378137,298.257222101]],         "
+                                 "PRIMEM[\"Greenwich\",0],        "
+                                 " UNIT[\"Degree\",0.017453292519943295]],     "
+                                 "PROJECTION[\"Albers_Conic_Equal_Area\"],     "
+                                 "PARAMETER[\"False_Easting\",0],    "
+                                 " PARAMETER[\"False_Northing\",0],     "
+                                 "PARAMETER[\"longitude_of_center\",-96],     "
+                                 "PARAMETER[\"Standard_Parallel_1\",20],     "
+                                 "PARAMETER[\"Standard_Parallel_2\",60],     "
+                                 "PARAMETER[\"latitude_of_center\",40],     "
+                                 "UNIT[\"Meter\",1],     "
+                                 "AUTHORITY[\"EPSG\",\"102008\"]]")
 
         trans = osr.CoordinateTransformation(srsin,srsout)
 
@@ -171,7 +181,8 @@ def main():
                 ring.AddPoint( mesh.GetPoint(v2)[0]/ scale, mesh.GetPoint(v2)[1]/ scale )
                 ring.AddPoint( mesh.GetPoint(v0)[0]/ scale, mesh.GetPoint(v0)[1]/ scale ) # add again to complete the ring.
 
-                ring.Transform(trans)
+                ring.Transform(trans) #only transform if needed
+
             else:
                 ring.AddPoint( mesh.GetPoint(v0)[0], mesh.GetPoint(v0)[1] )
                 ring.AddPoint (mesh.GetPoint(v1)[0], mesh.GetPoint(v1)[1] )
@@ -198,9 +209,7 @@ def main():
                     data = cd.GetArray(p).GetTuple(i)
                     feature.SetField(str(p), float(data[0]))
 
-
             layer.CreateFeature(feature)
-
 
         x_min, x_max, y_min, y_max = layer.GetExtent()
 
@@ -209,7 +218,7 @@ def main():
         y_res = int((y_max - y_min) / pixel_size)
 
         for var in variables:
-            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4]+'_'+ var.replace(" ","_")+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
+            target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ var.replace(" ","_")+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             # target_ds.SetProjection(srs)
             band = target_ds.GetRasterBand(1)
@@ -228,7 +237,7 @@ def main():
 
             if parameters is not None:
                 for p in parameters:
-                    target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
+                    target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
                     target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
                     target_ds.SetProjection(srsout.ExportToWkt())
                     band = target_ds.GetRasterBand(1)
@@ -244,7 +253,8 @@ def main():
                           'gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f -r \"%s\" -tr %f %f \"%s\" \"%s\"' %
                           (srsout.ExportToProj4(), srsout.ExportToProj4(), o_xmin, o_ymin, o_xmax,
                            o_ymax, param_resample_method[p], pixel_width, pixel_height,
-                           path[:-4] + '_' + p.replace(" ","_") + '.tif', path[:-4] + '_' + p.replace(" ","_") + '_clipped.tif')],
+                           output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '.tif',
+                           output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '_clipped.tif')],
                           shell=True)
 
         # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.

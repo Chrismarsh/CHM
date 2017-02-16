@@ -3,6 +3,7 @@
 global::global()
 {
     first_time_step = true;
+    _utc_offset = 0;
 }
 bool global::is_geographic()
 {

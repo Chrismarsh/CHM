@@ -55,6 +55,29 @@ TEST_F(TimeseriesTest, init_new_variable)
     ASSERT_DOUBLE_EQ(-8.1, itr->get("t"));
 }
 
+TEST_F(TimeseriesTest, read_comma_delimited)
+{
+    timeseries s;
+    s.open("vv_oct12010_ts1_comma_delim.txt");
+
+    auto itr = s.begin();
+
+    ASSERT_DOUBLE_EQ(3.77, itr->get("t"));
+    ASSERT_DOUBLE_EQ(70.720, itr->get("rh"));
+    ASSERT_DOUBLE_EQ(1.444, itr->get("u"));
+    ASSERT_DOUBLE_EQ(0.0000, itr->get("p"));
+    ASSERT_DOUBLE_EQ(744.954, itr->get("Qsi"));
+    ASSERT_DOUBLE_EQ(6.326, itr->get("T_g"));
+
+    ASSERT_EQ(02, itr->day());
+    ASSERT_EQ(10, itr->month());
+    ASSERT_EQ(2010, itr->year());
+
+    ASSERT_EQ(13, itr->hour());
+    ASSERT_EQ(0, itr->min());
+    ASSERT_EQ(0, itr->sec());
+}
+
 TEST_F(TimeseriesTest, Advance)
 {
     auto itr = s1.begin();

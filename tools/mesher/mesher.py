@@ -8,6 +8,7 @@ import scipy.stats.mstats as sp
 import sys
 import shutil
 import imp
+import vtk
 
 gdal.UseExceptions()  # Enable errors
 
@@ -104,7 +105,12 @@ def main():
     #     srs.ImportFromWkt(wkt)
     #     EPSG = int(srs.GetAttrValue("AUTHORITY", 1))
 
-    src_ds = gdal.Open(dem_filename)
+    try:
+        src_ds = gdal.Open(dem_filename)
+    except:
+        print 'Unable to open file ' + dem_filename
+        exit(1)
+
     wkt = src_ds.GetProjection()
     if wkt == '':
         print "Input DEM must have spatial reference information."
@@ -374,6 +380,23 @@ def main():
 
     read_header = False
 
+    vtu = vtk.vtkUnstructuredGrid()
+
+    output_vtk = base_dir + base_name + '.vtu'
+    vtuwriter = vtk.vtkXMLUnstructuredGridWriter()
+    vtuwriter.SetFileName(output_vtk)
+
+    #check what version of vtk we are using so we can avoid the api conflict
+    #http://www.vtk.org/Wiki/VTK/VTK_6_Migration/Replacement_of_SetInput#Replacement_of_SetInput.28.29_with_SetInputData.28.29_and_SetInputConnection.28.29
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        vtuwriter.SetInputData(vtu)
+    else:
+        vtuwriter.SetInput(vtu)
+
+
+    vtu_points = vtk.vtkPoints()
+    vtu_triangles = vtk.vtkCellArray()
+
     invalid_nodes = []  # any nodes that are outside of the domain AND
     print 'Reading nodes'
     with open(base_dir + 'PLGS' + base_name + '.1.node') as f:
@@ -395,6 +418,7 @@ def main():
                         invalid_nodes.append(int(items[0]) - 1)
 
                     mesh['mesh']['vertex'].append([mx, my, mz])
+
 
     print 'Length of invalid nodes = ' + str(len(invalid_nodes))
 
@@ -429,6 +453,7 @@ def main():
                                          base_name + '_USM.shp')
 
 
+    vtu_points.SetNumberOfPoints(len(mesh['mesh']['vertex']))
 
     # create the layer
     layer = output_usm.CreateLayer(base_name, srs, ogr.wkbPolygon)
@@ -466,6 +491,20 @@ def main():
 
     for key, data in initial_conditions.iteritems():
         ics[key] = []
+
+    vtu_cells  = {}
+    vtu_cells['Elevation'] = vtk.vtkFloatArray()
+    vtu_cells['Elevation'].SetName("Elevation")
+
+    for key, data in parameter_files.iteritems():
+        k = '[param] ' + key
+        vtu_cells[k]=vtk.vtkFloatArray()
+        vtu_cells[k].SetName(k)
+
+    for key, data in initial_conditions.iteritems():
+        k = '[ic] ' + key
+        vtu_cells[k]=vtk.vtkFloatArray()
+        vtu_cells[k].SetName(k)
 
     i = 0
     with open(base_dir + 'PLGS' + base_name + '.1.ele') as elem:
@@ -527,6 +566,22 @@ def main():
                     ring.AddPoint(mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1])
                     ring.AddPoint(mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1])  # add again to complete the ring.
 
+                    vtu_points.SetPoint(v0, mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1], mesh['mesh']['vertex'][v0][2])
+                    vtu_points.SetPoint(v1, mesh['mesh']['vertex'][v1][0], mesh['mesh']['vertex'][v1][1], mesh['mesh']['vertex'][v1][2])
+                    vtu_points.SetPoint(v2, mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1], mesh['mesh']['vertex'][v2][2])
+
+
+                    triangle = vtk.vtkTriangle()
+                    triangle.GetPointIds().SetId(0,v0)
+                    triangle.GetPointIds().SetId(1,v1)
+                    triangle.GetPointIds().SetId(2,v2)
+
+                    vtu_triangles.InsertNextCell(triangle)
+                    vtu_cells['Elevation'].InsertNextTuple1( (mesh['mesh']['vertex'][v0][2] +
+                                                             mesh['mesh']['vertex'][v1][2] +
+                                                             mesh['mesh']['vertex'][v2][2])/3.)
+
+
                     tpoly = ogr.Geometry(ogr.wkbPolygon)
                     tpoly.AddGeometry(ring)
 
@@ -550,10 +605,19 @@ def main():
                     # get the value under each triangle from each paramter file
                     for key, data in parameter_files.iteritems():
                         output = rasterize_elem(data, feature, key)
+
+                        if 'classifier' in data:
+                            output = data['classifier'](output)
                         params[key].append(output)
+                        vtu_cells['[param] ' + key].InsertNextTuple1(output)
+
                     for key, data in initial_conditions.iteritems():
                         output = rasterize_elem(data, feature, key)
+                        if 'classifier' in data:
+                            output = data['classifier'](output)
+
                         ics[key].append(output)
+                        vtu_cells['[ic] ' + key].InsertNextTuple1(output)
 
                     layer.CreateFeature(feature)
                     i = i + 1
@@ -561,6 +625,12 @@ def main():
 
     print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
 
+
+    vtu.SetPoints(vtu_points)
+    vtu.SetCells(vtk.VTK_TRIANGLE,vtu_triangles)
+    for p in vtu_cells.itervalues():
+        vtu.GetCellData().AddArray(p)
+    vtuwriter.Write()
 
     output_usm = None  # close the file
     print 'Saving mesh to file ' + base_name + '.mesh'

@@ -9,7 +9,7 @@
 
 #include <cmath>
 #include <armadillo>
-#include "math/distance.hpp"
+#include "math/coordinates.hpp"
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <meteoio/MeteoIO.h>
