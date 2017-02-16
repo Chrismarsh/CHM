@@ -12,6 +12,16 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("c2");
     provides("c3");
     provides("c4");
+    provides("c5");
+    provides("c6");
+    provides("c7");
+    provides("c8");
+    provides("c9");
+    provides("c10");
+    provides("c11");
+    provides("c12");
+    provides("c13");
+    provides("c14");
 
     provides("hs");
     provides("ustar");
@@ -113,7 +123,7 @@ void Lehning_blowing_snow::run(mesh domain)
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
 
 //    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
-//    arma::vec b(ntri * nLayer );
+//    arma::vec b(ntri * nLayer,arma::fill::zeros );
 //    arma::vec x(ntri * nLayer );
 
     std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
@@ -132,7 +142,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
         //get wind from the face
         double phi = face->face_data("vw_dir");
-        double u2 = face->face_data("U_2m_above_srf");
+        double u2 =  face->face_data("U_2m_above_srf");
 
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
 
@@ -210,15 +220,14 @@ void Lehning_blowing_snow::run(mesh domain)
         face->set_face_data("ustar",ustar);
         if( ustar > u_star_saltation)
         {
-            double Qsalt_pbsm = 0.68 * rho_f * u_star_t / (g *ustar) *( ustar*ustar - u_star_t*u_star_t);
-            double csalt_pbsm = Qsalt_pbsm / std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. / hs;
-            face->set_face_data("Qsalt_pbsm", Qsalt_pbsm);
-            face->set_face_data("csalt_pbsm", csalt_pbsm);
+//            double Qsalt_pbsm = 0.68 * rho_f * u_star_t / (g *ustar) *( ustar*ustar - u_star_t*u_star_t);
+//            double csalt_pbsm = Qsalt_pbsm / std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. / hs;
+//            face->set_face_data("Qsalt_pbsm", Qsalt_pbsm);
+//            face->set_face_data("csalt_pbsm", csalt_pbsm);
 
 
             //Pomeroy 1990
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
-//            c_salt = csalt_pbsm;
 
             Qsalt =  c_salt *std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. * hs; //integrate over the depth of the saltation layer
 
@@ -239,6 +248,7 @@ void Lehning_blowing_snow::run(mesh domain)
 //            Qsalt = 0;
 //            c_salt = 0.8;
 //        }
+
         face->set_face_data("csalt", c_salt);
         face->set_face_data("Qsalt", Qsalt);
 
@@ -265,9 +275,9 @@ void Lehning_blowing_snow::run(mesh domain)
             double scale = u_z / length;
 
             uvw *= scale;
-            uvw(2) = 0;//0.01;
-            if(z!=0)
-                uvw(2) = -0.5;// 0.5; //negative = down
+            uvw(2) = -0.5;
+            if(z == 0)
+                uvw(2) = -0.1;//negative = down
 
             //holds wind dot face normal
             double udotm[5];
@@ -318,17 +328,29 @@ void Lehning_blowing_snow::run(mesh domain)
             }
 
             //vertical layers
-            //this formulation includes the 3D advection term
+//            this formulation includes the 3D advection term
             if(z == 0)
             {
+
+                //center differencing
+//                C[idx][idx] += -d->A[4]*K[4]-2*alpha[3];
+//                b[idx] = -d->A[4]*K[4]*c_salt;
+//                C[idx][ntri * (z + 1) + face->cell_id) +=2*alpha[3];
+
                 //low vertical winds
 //                if(uvw(2) < 0.1)
 //                {
-                    //bottom face, no advection
+                    //bottom face, no advectiono
                     C[idx][idx] += -d->A[4] * K[4];
-                    b[idx] = -d->A[4] * K[4] * c_salt;
+                    b[idx] = -d->A[4] * K[4] * c_salt+0.0;
+//                }
+//                else
+//                {
 
-                    if (udotm[3] > 0)
+                if( C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
+                    C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
+
+                if (udotm[3] > 0)
                     {
                         C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
                         C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
@@ -337,19 +359,6 @@ void Lehning_blowing_snow::run(mesh domain)
                         C[idx][idx] += -alpha[3];
                         C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
                     }
-//                }
-//                else
-//                {
-//
-//                    if (udotm[3] > 0)
-//                    {
-//                        C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
-//                        C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
-//                    } else
-//                    {
-//                        C[idx][idx] += -alpha[3];
-//                        C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
-//                    }
 //
 //                    if (udotm[4] > 0)
 //                    {
@@ -363,6 +372,10 @@ void Lehning_blowing_snow::run(mesh domain)
 //                }
             } else if (z == nLayer - 1)// top z layer
             {
+                //center differencing
+//                C[idx][idx] += -1.*alpha[3]-1.*alpha[4]-.5000000000*d->A[3]*udotm[3]+.5000000000*d->A[4]*udotm[4];
+//                C[idx][ntri * (z - 1) + face->cell_id) += alpha[4]+.5000000000*d->A[4]*udotm[4];
+//
                 if(udotm[3] > 0)
                 {
                     C[idx][idx] += -d->A[3]*udotm[3]-alpha[3] ;
@@ -371,6 +384,8 @@ void Lehning_blowing_snow::run(mesh domain)
                 {
                     C[idx][idx] += -alpha[3];
                 }
+                if( C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
+                    C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
 
                 if(udotm[4] > 0)
                 {
@@ -385,10 +400,16 @@ void Lehning_blowing_snow::run(mesh domain)
             }
             else
             {
+                //center differencing
 //                C[idx][idx] += -1.*alpha[3]-1.*alpha[4]-.5000000000*d->A[3]*udotm[3]-.5000000000*d->A[4]*udotm[4];
-//                C[idx][ntri * (z + 1) + face->cell_id] += alpha[3]-.5000000000*d->A[3]*udotm[3];
-//                C[idx][ntri * (z - 1) + face->cell_id] += alpha[4]-.5000000000*d->A[4]*udotm[4];
+//                C[idx][ntri * (z + 1) + face->cell_id) += alpha[3]-.5000000000*d->A[3]*udotm[3];
+//                C[idx][ntri * (z - 1) + face->cell_id) += alpha[4]-.5000000000*d->A[4]*udotm[4];
 
+                if( C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
+                    C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
+
+                if( C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
+                    C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
                 if(udotm[3] > 0)
                 {
                     C[idx][idx] += -d->A[3]*udotm[3]-alpha[3];
@@ -415,11 +436,11 @@ void Lehning_blowing_snow::run(mesh domain)
 
             //This section has the vertical case for diffusion only.
 
-//            // 1 layer special case
+            // 1 layer special case
 //            if (nLayer == 1)
 //            {
 //               C[idx][idx] += -d->A[4]*K[4]+alpha[3];
-//                b(idx) += -d->A[4]*K[4]*c_salt;
+//                b(idx) = -d->A[4]*K[4]*c_salt;
 //                //top
 //                //0
 //            } else
@@ -430,79 +451,73 @@ void Lehning_blowing_snow::run(mesh domain)
 //                {
 //                    //bottom face
 //                   C[idx][idx] += -d->A[4]*K[4];
-//                   b(ntri * z + face->cell_id) += -d->A[4]*K[4]*c_salt;
+//                   b(ntri * z + face->cell_id) = -d->A[4]*K[4]*c_salt;
 //
-////                    init_C(C,idx,ntri * z + face->cell_id);
-////                    init_C(C,idx,ntri * (z + 1) + face->cell_id);
 //                    //top face
-//                    C(idx,ntri * z + face->cell_id) +=  -alpha[3];
-//                    C(idx,ntri * (z + 1) + face->cell_id) +=  alpha[3];
+//                    C[idx][ntri * z + face->cell_id] +=  -alpha[3];
+//                    C[idx][ntri * (z + 1) + face->cell_id) +=  alpha[3];
 //
 //                } else if (z == nLayer - 1)// top z layer
 //                {
-////                    init_C(C,idx,ntri * z + face->cell_id);
-////                    init_C(C,idx,ntri * (z - 1) + face->cell_id);
 //                    //top
-//                    C(idx,ntri * z + face->cell_id) += -alpha[3]-alpha[4];
+//                    C[idx][ntri * z + face->cell_id] += -alpha[3]-alpha[4];
 //                    //bottom
-//                    C(idx,ntri * (z - 1) + face->cell_id) += alpha[4];
+//                    C[idx][ntri * (z - 1) + face->cell_id) += alpha[4];
 //
 //                } else // internal cell
 //                {
 //
-//
-////                    init_C(C,idx,ntri * (z + 1) + face->cell_id);
-////                    init_C(C,idx,ntri * (z - 1) + face->cell_id);
-//
 //                    C[idx][idx] += -alpha[3]-alpha[4];
 //                    //top
-//                    C(idx,ntri * (z + 1) + face->cell_id) += alpha[3];
+//                    C[idx][ntri * (z + 1) + face->cell_id) += alpha[3];
 //                    //bottom
-//                    C(idx,ntri * (z - 1) + face->cell_id) += alpha[4];
+//                    C[idx][ntri * (z - 1) + face->cell_id) += alpha[4];
 //               }
 //            }
-        }
-    }
+        } // end z iter
+    } //end face iter
 
-    LOG_DEBUG << "slow debug part";
-    int lol = 0;
-    for(auto itr : C)
-    {
-        for(auto jtr: itr)
-        {
-            if(std::isnan(jtr.second))
-            {
-                LOG_DEBUG << "row = " << lol << "  value=" << jtr.second;
-            }
-        }
-        ++lol;
-    }
-    //setup the compressed matrix on the compute device, in available
-//    viennacl::compressed_matrix<double>  vl_C(ntri * nLayer, ntri * nLayer);
-//    viennacl::copy(C,vl_C);
-//    viennacl::vector<double> rhs;
-//    viennacl::copy(b,rhs);
+//    LOG_DEBUG << "slow debug part";
+//    int lol = 0;
+//    for(auto itr : C)
+//    {
+//        for(auto jtr: itr)
+//        {
+//            if(std::isnan(jtr.second))
+//            {
+//                LOG_DEBUG << "row = " << lol << "  value=" << jtr.second;
+//            }
+//        }
+//        ++lol;
+//    }
 
-    LOG_DEBUG << "solving";
-//    arma::sp_mat result(ntri * nLayer, ntri * nLayer );
+//        arma::sp_mat result(ntri * nLayer, ntri * nLayer );
 //    for(int i = 0; i < omp_get_max_threads(); i++ )
 //    {
 //        result += sp_C.at(i);
 //    }
 
-    // configuration of preconditioner:
+    //setup the compressed matrix on the compute device, in available
+//    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
+//    viennacl::copy(C,vl_C);
+//    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
+//    viennacl::copy(b,rhs);
+////
+////
+////
+////    // configuration of preconditioner:
 //    viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
 //    chow_patel_ilu_config.sweeps(3);       // three nonlinear sweeps
 //    chow_patel_ilu_config.jacobi_iters(2); // two Jacobi iterations per triangular 'solve' Rx=r
-//// create and compute preconditioner:
-//    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<double> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
+//    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
 
-//    std::vector<double> x(ntri * nLayer ,0.0);
 
+    LOG_DEBUG << "solving";
     //docs say 'This will use appropriate ViennaCL objects internally.'  http://viennacl.sourceforge.net/doc/iterative_8cpp-example.html
-    auto x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
+    auto x = viennacl::linalg::solve(C, b, viennacl::linalg::gmres_tag());
+//    auto x = viennacl::linalg::solve(result, b, viennacl::linalg::bicgstab_tag());
 
-//    viennacl::vector<double> vl_x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::bicgstab_tag());
+//   auto x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::gmres_tag(),chow_patel_ilu);
 
 
     LOG_DEBUG << "done";
@@ -524,7 +539,8 @@ void Lehning_blowing_snow::run(mesh domain)
             double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0)); //compute new U_z at this height in the suspension layer
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
-            face->set_face_data("c"+std::to_string(z), c ); //<0?0:c
+            if(z < 15)
+                face->set_face_data("c"+std::to_string(z), c ); //<0?0:c
         }
         face->set_face_data("Qsusp",Qsusp);
     }

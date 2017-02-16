@@ -15,7 +15,9 @@
 
 #include <viennacl/linalg/cg.hpp>
 #include <viennacl/linalg/bicgstab.hpp>
+#include <viennacl/linalg/gmres.hpp>
 #include <viennacl/ell_matrix.hpp>
+#include <viennacl/linalg/jacobi_precond.hpp>
 
 #ifdef _OPENMP
 #include <omp.h>
