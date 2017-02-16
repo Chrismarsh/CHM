@@ -42,7 +42,7 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
 
 void Lehning_blowing_snow::init(mesh domain)
 {
-    nLayer = 25;
+    nLayer = 5;
     susp_depth = 5; //5m as per pomeroy
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40;
