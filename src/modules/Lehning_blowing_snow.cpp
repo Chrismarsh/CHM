@@ -312,12 +312,6 @@ void Lehning_blowing_snow::run(mesh domain)
                         C[idx][idx] += -alpha[f];
                         C[idx][nidx] = -d->A[f]*udotm[f]+alpha[f];
 
-                        if( nidx == 23740)
-                        {
-
-                            LOG_DEBUG << "found";
-                        }
-
                     }
                     else
                     {
