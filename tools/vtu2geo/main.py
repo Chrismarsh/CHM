@@ -1,9 +1,6 @@
 import vtk
-import sys
 from osgeo import gdal,ogr,osr
-import glob
 import imp
-import os
 import sys
 import xml.etree.ElementTree as ET
 import subprocess
@@ -46,10 +43,7 @@ def main():
     X = imp.load_source('',configfile)
 
     # Grab variables
-    base = X.base
     input_path = X.input_path
-    # EPSG = X.EPSG
-
 
     variables = X.variables
     parameters = []
@@ -59,12 +53,16 @@ def main():
     # Check if we want to constrain output to a example geotif
     constrain_flag = False
     if hasattr(X,'constrain_tif_file'):
-	constrain_tif_file = X.constrain_tif_file
+        constrain_tif_file = X.constrain_tif_file
         constrain_flag = True
 
     is_geographic = False
     if hasattr(X,'is_geographic'):
         is_geographic = X.is_geographic
+
+    user_define_extent = False
+    if hasattr(X,'user_define_extent'):
+        user_define_extent = X.user_define_extent
 
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
@@ -73,33 +71,33 @@ def main():
 
     # Get info for constrained output extent/resolution if selected
     if(constrain_flag):
- 	ex_ds = gdal.Open(constrain_tif_file)
+        from gdalconst import GA_ReadOnly
+        ex_ds = gdal.Open(constrain_tif_file,GA_ReadOnly)
         gt = ex_ds.GetGeoTransform()
         pixel_width = np.abs(gt[1])
         pixel_height = np.abs(gt[5])
-        #o_xmin, o_xmax, o_ymin, o_ymax = layer.GetExtent()
-	## Define output info
-	# Extent (CRHO domain)
-	o_xmin = -1374651.2329267
-	o_xmax = -1225383.09324314
-	o_ymin = 1381800.81154171
-	o_ymax = 1537266.50438795
+        # Take extent from user input
+        if user_define_extent:
+            o_xmin = X.o_xmin
+            o_xmax = X.o_xmax
+            o_ymin = X.o_ymin
+            o_ymax = X.o_ymax
+        else: # Get extent for clipping from input tif
+            o_xmin = gt[0]
+            o_ymax = gt[3]
+            o_xmax = o_xmin + gt[1] * ex_ds.RasterXSize
+            o_ymin = o_ymax + gt[5] * ex_ds.RasterYSize
+
         if pixel_width==pixel_height:
-		pixel_size=pixel_width # If the same
-	else:
-		pixel_size=np.mean([pixel_width,pixel_height])	# If different use mean
-	print "Overwriting output_pixel size with constrain_tif_file pixel size"
+            pixel_size=pixel_width # If the same
+        else:
+            pixel_size=np.mean([pixel_width,pixel_height])	# If different use mean
+        print "Overwriting output_pixel size with constrain_tif_file pixel size"
+        print "Output pixel size is " + str(pixel_size)
         ex_ds = None
-	# Create shape file from example tif
-        #shape_file = constrain_tif_file.split('.ti')[0]+'.shp'
-        # Remove previous shapefile if exists
-	#try:
-    	#	os.remove(shape_file)
-	#except OSError:
-    	#	pass
-	#subprocess.check_call(['gdaltindex \"%s\" \"%s\"' % (shape_file,constrain_tif_file)], shell=True)
+
     else:
-	pixel_size = X.pixel_size	
+        pixel_size = X.pixel_size
 
     iter=1
     for vtu in pvd:
@@ -112,11 +110,7 @@ def main():
         mesh = reader.GetOutput()
 
         driver = ogr.GetDriverByName('Memory')
-        # driver = ogr.GetDriverByName("ESRI Shapefile")
-        # output_usm = driver.CreateDataSource('lol.shp')
         output_usm = driver.CreateDataSource('out')
-
-        # srsin.ImportFromEPSG(EPSG)
 
         srsin = osr.SpatialReference()
         srsin.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
@@ -152,6 +146,7 @@ def main():
                              "PARAMETER[\"latitude_of_center\",40],     "
                              "UNIT[\"Meter\",1],     "
                              "AUTHORITY[\"EPSG\",\"102008\"]]")
+
         trans = osr.CoordinateTransformation(srsin,srsout)
 
         layer = output_usm.CreateLayer('poly', srsout, ogr.wkbPolygon)
@@ -198,11 +193,11 @@ def main():
             for v in variables:
                 data = cd.GetArray(v).GetTuple(i)
                 feature.SetField(str(v), float(data[0]))
-	    
-	    if parameters is not None:
-            	for p in parameters:
-                	data = cd.GetArray(p).GetTuple(i)
-                	feature.SetField(str(p), float(data[0]))
+
+            if parameters is not None:
+                for p in parameters:
+                    data = cd.GetArray(p).GetTuple(i)
+                    feature.SetField(str(p), float(data[0]))
 
 
             layer.CreateFeature(feature)
@@ -226,29 +221,29 @@ def main():
             # Rasterize
             gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE',"ATTRIBUTE="+var])
             target_ds.SetProjection(srsout.ExportToWkt())
-	    target_ds = None
+            target_ds = None
 
-	    # Optional clip file
-	    if(constrain_flag):
+            # Optional clip file
+            if(constrain_flag):
                 subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f \"%s\" \"%s\"' % (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
 
-	    if parameters is not None:
-		for p in parameters:
-		    target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
-		    target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-		    target_ds.SetProjection(srsout.ExportToWkt())
-		    band = target_ds.GetRasterBand(1)
-		    band.SetNoDataValue(NoData_value)
+            if parameters is not None:
+                for p in parameters:
+                    target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
+                    target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+                    target_ds.SetProjection(srsout.ExportToWkt())
+                    band = target_ds.GetRasterBand(1)
+                    band.SetNoDataValue(NoData_value)
 
-		    # Rasterize
-		    gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
-		    target_ds = None
+                    # Rasterize
+                    gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
+                    target_ds = None
 
-		    # Optional clip file
-		    if(constrain_flag):
-			subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f \"%s\" \"%s\"' % (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax,path[:-4] + '_' + p.replace(" ","_") + '.tif',path[:-4] + '_' + p.replace(" ","_") + '_clipped.tif')], shell=True)
-	    
-        #we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
+                    # Optional clip file
+                    if(constrain_flag):
+                        subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f \"%s\" \"%s\"' % (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax,path[:-4] + '_' + p.replace(" ","_") + '.tif',path[:-4] + '_' + p.replace(" ","_") + '_clipped.tif')], shell=True)
+
+        # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
         parameters = None
 
         #no parameters and no variables, just exit at this point
