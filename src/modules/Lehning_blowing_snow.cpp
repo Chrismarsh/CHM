@@ -32,9 +32,9 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
 //    provides("ustar");
     provides("csalt");
     provides("Qsalt");
-    provides("Qsalt_pbsm");
-    provides("csalt_pbsm");
-    provides("Qdep");
+
+    provides("drift_depth");
+    provides("drift_mass");
     provides("Qsusp");
     provides("ustar_t");
     provides("sum_Qdep");
@@ -564,30 +564,20 @@ void Lehning_blowing_snow::run(mesh domain)
         double qdep = 0;
         for(int j = 0; j < 3; j++)
         {
-//            if (d->face_neigh[j])
-//            {
-//                auto neigh = face->neighbor(j);
-                auto emp = face->edge_midpoint(j);
-                auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
+            auto emp = face->edge_midpoint(j);
+            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
 
-                double qs  = interp(vec_qs, query);
-                double qt  = interp(vec_qt, query);
+            double qs  = interp(vec_qs, query);
+            double qt  = interp(vec_qt, query);
 
-                qdep += E[j]*udotm[j]*(qs+qt);
-//            }
-//            else
-//            {
-//                //use the linear average if we
-//                qdep += .5000000000*E[j]*udotm[j]*face->face_data("Qsalt")+.5000000000*E[j]*udotm[j]*face->face_data("Qsusp")+
-//                        .5000000000*E[j]*face->face_data("Qsalt")*udotm[j]+.5000000000*E[j]*face->face_data("Qsusp")*udotm[j];
-//            }
+            qdep += E[j]*udotm[j]*(qs+qt);
         }
 
+        double mass = -qdep * global_param->dt();
+        double depth = -qdep * global_param->dt() / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+        face->set_face_data("drift_depth",depth);
+        face->set_face_data("drift_mass",mass);
 
-
-        qdep = -qdep * global_param->dt() / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
-
-        face->set_face_data("Qdep",qdep);
         face->set_face_data("sum_Qdep", face->face_data("sum_Qdep") + qdep);
     }
 }
