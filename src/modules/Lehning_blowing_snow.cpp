@@ -47,6 +47,8 @@ void Lehning_blowing_snow::init(mesh domain)
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40;
 
+    do_vertical_advection = cfg.get("vertical_advection",true);
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -332,129 +334,116 @@ void Lehning_blowing_snow::run(mesh domain)
                     C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
                 C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
 
-            if(z == 0)
+            if(do_vertical_advection)
             {
-
-                //bottom face, no advectiono
-//                C[idx][idx] += -d->A[4] * K[4];
-//                b[idx] = -d->A[4] * K[4] * c_salt+0.0;
-
-                if (udotm[3] > 0)
+                if (z == 0)
                 {
-                    C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+
+                    //bottom face, no advectiono
+                    //                C[idx][idx] += -d->A[4] * K[4];
+                    //                b[idx] = -d->A[4] * K[4] * c_salt+0.0;
+
+                    if (udotm[3] > 0)
+                    {
+                        C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
+                        C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+                    } else
+                    {
+                        C[idx][idx] += -alpha[3];
+                        C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
+                    }
+
+
+                    // just the smallest little bit of advection to keep it stable :(
+                    auto uvw_0 = uvw;
+                    uvw_0(2) = sng(uvw(2)) * 0.1; //match the sign of the top of this cell.
+
+                    auto udotm_0 = arma::dot(uvw_0, m[4]);
+
+                    if (udotm[4] > 0)
+                    {
+                        C[idx][idx] += -d->A[4] * K[4] - d->A[4] * udotm_0;
+                        b[idx] = -d->A[4] * K[4] * c_salt;
+                    } else
+                    {
+                        C[idx][idx] += -d->A[4] * K[4];
+                        b[idx] += (d->A[4] * K[4] + d->A[4] * udotm_0) * c_salt;
+                    }
+
+                } else if (z == nLayer - 1)// top z layer
+                {
+                    if (udotm[3] > 0)
+                    {
+                        C[idx][idx] += -d->A[3] * udotm[3] - alpha[3];
+                    } else
+                    {
+                        C[idx][idx] += -alpha[3];
+                    }
+
+
+                    if (udotm[4] > 0)
+                    {
+                        C[idx][idx] += -d->A[4] * udotm[4] - alpha[4];
+                        C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+                    } else
+                    {
+                        C[idx][idx] += -alpha[4];
+                        C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4] * udotm[4] + alpha[4];
+                    }
                 } else
                 {
-                    C[idx][idx] += -alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
+                    if (udotm[3] > 0)
+                    {
+                        C[idx][idx] += -d->A[3] * udotm[3] - alpha[3];
+                        C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+                    } else
+                    {
+                        C[idx][idx] += -alpha[3];
+                        C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
+                    }
+
+                    if (udotm[4] > 0)
+                    {
+                        C[idx][idx] += -d->A[4] * udotm[4] - alpha[4];
+                        C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+                    } else
+                    {
+                        C[idx][idx] += -alpha[4];
+                        C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4] * udotm[4] + alpha[4];
+                    }
                 }
-
-
-                // just the smallest little bit of advection to keep it stable :(
-                auto uvw_0 = uvw;
-                uvw_0(2) = -0.1;
-
-                auto udotm_0 =  arma::dot(uvw_0, m[4]);
-
-                if (udotm[4] > 0)
-                {
-                    C[idx][idx] += -d->A[4] * K[4] - d->A[4] * udotm_0;
-                    b[idx] = -d->A[4] * K[4] * c_salt;
-                } else
-                {
-                    C[idx][idx] += -d->A[4] * K[4];
-                    b[idx] += (d->A[4] * K[4] + d->A[4] * udotm_0 ) * c_salt;
-                }
-
-            } else if (z == nLayer - 1)// top z layer
+            } else
             {
-                if(udotm[3] > 0)
-                {
-                    C[idx][idx] += -d->A[3]*udotm[3]-alpha[3] ;
-                }
-                else
-                {
-                    C[idx][idx] += -alpha[3];
-                }
+                //This section has the vertical case for diffusion only.
 
-
-                if(udotm[4] > 0)
+                if (z == 0)
                 {
-                    C[idx][idx] += -d->A[4]*udotm[4]-alpha[4];
+                    //bottom face
+                   C[idx][idx] += -d->A[4]*K[4];
+                   b[ntri * z + face->cell_id] = -d->A[4]*K[4]*c_salt;
+
+                    //top face
+                    C[idx][ntri * z + face->cell_id] +=  -alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] +=  alpha[3];
+
+                } else if (z == nLayer - 1)// top z layer
+                {
+                    //top
+                    C[idx][ntri * z + face->cell_id] += -alpha[3]-alpha[4];
+                    //bottom
                     C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
-                }
-                else
+
+                } else // internal cell
                 {
-                    C[idx][idx] += -alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
-                }
-            }
-            else
-            {
-                if(udotm[3] > 0)
-                {
-                    C[idx][idx] += -d->A[3]*udotm[3]-alpha[3];
+
+                    C[idx][idx] += -alpha[3]-alpha[4];
+                    //top
                     C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
-                }
-                else
-                {
-                    C[idx][idx] += -alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
-                }
-
-                if(udotm[4] > 0)
-                {
-                    C[idx][idx] += -d->A[4]*udotm[4]-alpha[4];
+                    //bottom
                     C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
                 }
-                else
-                {
-                    C[idx][idx] += -alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
-                }
+
             }
-
-
-            //This section has the vertical case for diffusion only.
-
-            // 1 layer special case
-//            if (nLayer == 1)
-//            {
-//               C[idx][idx] += -d->A[4]*K[4]+alpha[3];
-//                b(idx) = -d->A[4]*K[4]*c_salt;
-//                //top
-//                //0
-//            } else
-//            {
-//                //now do the vertical fluxes
-//                //we are the bottom?
-//                if (z == 0)
-//                {
-//                    //bottom face
-//                   C[idx][idx] += -d->A[4]*K[4];
-//                   b(ntri * z + face->cell_id) = -d->A[4]*K[4]*c_salt;
-//
-//                    //top face
-//                    C[idx][ntri * z + face->cell_id] +=  -alpha[3];
-//                    C[idx][ntri * (z + 1) + face->cell_id) +=  alpha[3];
-//
-//                } else if (z == nLayer - 1)// top z layer
-//                {
-//                    //top
-//                    C[idx][ntri * z + face->cell_id] += -alpha[3]-alpha[4];
-//                    //bottom
-//                    C[idx][ntri * (z - 1) + face->cell_id) += alpha[4];
-//
-//                } else // internal cell
-//                {
-//
-//                    C[idx][idx] += -alpha[3]-alpha[4];
-//                    //top
-//                    C[idx][ntri * (z + 1) + face->cell_id) += alpha[3];
-//                    //bottom
-//                    C[idx][ntri * (z - 1) + face->cell_id) += alpha[4];
-//               }
-//            }
         } // end z iter
     } //end face iter
 

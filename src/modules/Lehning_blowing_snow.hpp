@@ -61,6 +61,13 @@ public:
 
     double l__max; // vertical mixing length (m)
 
+    bool do_vertical_advection; // should we use the discretization that includes 3D advection?
+
+    //http://stackoverflow.com/a/4609795/410074
+    template <typename T> int sng(T val) {
+        return (T(0) < val) - (val < T(0));
+    }
+
     class data : public face_info
     {
     public:
