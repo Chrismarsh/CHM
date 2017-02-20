@@ -10,6 +10,8 @@
 #include <constants/PhysConst.h>
 #include "constants/Atmosphere.h"
 
+#include <meteoio/MeteoIO.h>
+
 #include <cmath>
 #include <vector>
 
@@ -33,6 +35,8 @@
 #include <string>
 //#define _USE_MATH_DEFINES
 //#include <math.h>
+
+#include <boost/math/tools/tuple.hpp>
 #include <boost/math/tools/roots.hpp>
 
 /**

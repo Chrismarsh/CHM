@@ -27,16 +27,14 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("ustar");
 
 
-    provides("u_hs");
-
-//    provides("ustar");
     provides("csalt");
     provides("Qsalt");
 
     provides("drift_depth");
     provides("drift_mass");
+    provides("drift_depth_w_subl");
     provides("Qsusp");
-    provides("ustar_t");
+    provides("Qsubl");
     provides("sum_Qdep");
 }
 
@@ -132,6 +130,9 @@ void Lehning_blowing_snow::run(mesh domain)
 
     double z0 = 0.01; //m
 
+    //ice density
+    double rho_p = 917;
+
     double k=0;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -167,7 +168,6 @@ void Lehning_blowing_snow::run(mesh domain)
         hs = 0.08436*pow(ustar,1.27);
         d->hs = hs;
         face->set_face_data("hs",hs);
-        face->set_face_data("ustar",ustar);
 
         // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
         // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
@@ -217,7 +217,7 @@ void Lehning_blowing_snow::run(mesh domain)
         double c_salt = 0;
 
         //ensure we can have snow saltation
-        double rho_p = 917;
+
         double thresh_A = .18;
         double g = 9.81;
         double _d = 0.48e-3; //d in paper
@@ -230,8 +230,6 @@ void Lehning_blowing_snow::run(mesh domain)
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
 
             Qsalt =  c_salt *std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. * hs; //integrate over the depth of the saltation layer
-
-            face->set_face_data("u_hs",std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0)));
 
             if(Qsalt < 0) // this apparently happens and bad things happen bc of it
             {
@@ -289,8 +287,6 @@ void Lehning_blowing_snow::run(mesh domain)
             if( C[idx].find(idx) == C[idx].end() )
                 C[idx][idx] = 0.0;
 
-            auto lol = &C[idx];
-
             for(int f = 0; f < 3; f++)
             {
                 if(udotm[f] > 0)
@@ -339,7 +335,7 @@ void Lehning_blowing_snow::run(mesh domain)
                 if (z == 0)
                 {
 
-                    //bottom face, no advectiono
+                    //bottom face, no advection, this breaks the solution. Have to use a low wind speed
                     //                C[idx][idx] += -d->A[4] * K[4];
                     //                b[idx] = -d->A[4] * K[4] * c_salt+0.0;
 
@@ -459,10 +455,8 @@ void Lehning_blowing_snow::run(mesh domain)
 //    viennacl::copy(C,vl_C);
 //    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
 //    viennacl::copy(b,rhs);
-////
-////
-////
-////    // configuration of preconditioner:
+
+    // configuration of preconditioner:
 //    viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
 //    chow_patel_ilu_config.sweeps(3);       // three nonlinear sweeps
 //    chow_patel_ilu_config.jacobi_iters(2); // two Jacobi iterations per triangular 'solve' Rx=r
@@ -470,6 +464,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
 
     LOG_DEBUG << "solving";
+
     //docs say 'This will use appropriate ViennaCL objects internally.'  http://viennacl.sourceforge.net/doc/iterative_8cpp-example.html
     auto x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
 //    auto x = viennacl::linalg::solve(result, b, viennacl::linalg::bicgstab_tag());
@@ -483,9 +478,23 @@ void Lehning_blowing_snow::run(mesh domain)
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
         double Qsusp = 0;
+        double Qsubl = 0;
         double hs = d->hs;
 
         double u2 = face->face_data("U_2m_above_srf");
+
+        double rh = face->face_data("rh")/100.;
+        double t = face->face_data("t")+273.15;
+        double es = mio::Atmosphere::saturatedVapourPressure(t);
+        double ea = rh * es /1000.; //kpa
+        double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
+
+        //specific humidity of the air at air temp
+        double q = 0.633*ea/P;
+
+
+        double v = 1.88*pow(10.,-5.); //kinematic viscosity of air
+
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
@@ -496,8 +505,63 @@ void Lehning_blowing_snow::run(mesh domain)
 
             if(z < 15)
                 face->set_face_data("c"+std::to_string(z), c ); //<0?0:c
+
+            //calculate dm/dt from
+            // equation 13 from Pomeroy and Li 2000
+            // To do so, use equations 12 - 16 in Pomeroy et al 1999
+
+            double rm = 4.6*pow(10.0,-5.) * pow((double)cz,-0.258); // eqn 18, mean particle size
+            double xrz = 0.005 * pow(u_z,1.36);//eqn 16
+            double omega = 1.1*pow(10.,7.) * pow(rm,1.8);
+            double Vr = omega + 3.0*xrz*cos(M_PI/4.0);
+
+            double Re = 2*rm*Vr / v;
+
+            double Nu, Sh;
+            Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);
+
+            double D = 2.06*pow(10.,-5.)*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K
+
+            double lambda_t = 0.00063*(t-273.15)+0.0673; // looks like this is degC, not K. order of magnitude off if K
+            double Ls = 2.838*pow(10.,6.); // latent heat of sublimation
+            double rho_a = mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.
+            auto Tsfn = [&](double Ts) -> double
+            {
+                double es = mio::Atmosphere::saturatedVapourPressure(Ts);
+                double ea = 1. * es /1000.; //kpa
+                double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
+
+                //specific humidity of the particle at the particle temp
+                double qTs = 0.633*ea/P;
+
+                double lambda_t = 0.00063*(Ts-273.15)+0.0673;
+                double result= (D*Sh*Ls*q*rho_a-D*Sh*Ls*qTs*rho_a+Nu*t*lambda_t)/(lambda_t*Nu)-Ts;
+                return result;
+            };
+
+            double guess = t;
+            double factor = 1;
+            int digits = std::numeric_limits<double>::digits - 3;
+            double min = 0;
+            double max = 300;
+            boost::uintmax_t max_iter=500;
+            boost::math::tools::eps_tolerance<double> tol(30);
+            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol,max_iter);
+            double Ts = r.first + (r.second - r.first)/2;
+
+            //now use equation 13 with our solved Ts to compute dm/dt(z)
+
+            double dmdtz = 2*M_PI * rm * lambda_t / Ls * Nu * (Ts - t);
+
+            double alpha = 4.08 + 12.6*(double)z;
+            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1+3.0/alpha + 2./(alpha*alpha)); //mean mass, eqn 23
+
+            double csubl = dmdtz/mm;
+
+            Qsubl += csubl * c * v_edge_height;
         }
         face->set_face_data("Qsusp",Qsusp);
+        face->set_face_data("Qsubl",Qsubl);
     }
 
 #pragma omp parallel for
@@ -524,8 +588,6 @@ void Lehning_blowing_snow::run(mesh domain)
 
         for (int j = 0; j < 3; ++j)
         {
-            auto neigh = face->neighbor(j);
-
             //just unit vectors as qsusp/qsalt flux has magnitude
             udotm[j] = arma::dot(uvw, m[j]);
 
@@ -562,11 +624,12 @@ void Lehning_blowing_snow::run(mesh domain)
             qdep += E[j]*udotm[j]*(qs+qt);
         }
 
-        double mass = -qdep * global_param->dt();
-        double depth = -qdep * global_param->dt() / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+        double masssubl = (- qdep + face->face_data("Qsubl") )* global_param->dt();
+        double mass = (- qdep + face->face_data("Qsubl") )* global_param->dt();
+        double depth = mass / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
         face->set_face_data("drift_depth",depth);
         face->set_face_data("drift_mass",mass);
-
+        face->set_face_data("drift_depth_w_subl", masssubl / 400. / face->get_area());
         face->set_face_data("sum_Qdep", face->face_data("sum_Qdep") + qdep);
     }
 }
