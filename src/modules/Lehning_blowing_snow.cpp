@@ -558,7 +558,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
             double csubl = dmdtz/mm;
 
-            Qsubl += csubl * c * v_edge_height;
+            Qsubl += csubl * c * v_edge_height * face->get_area(); // kg/(m^2*s) --> kg/s --> divide by unit length --> kg/ms
         }
         face->set_face_data("Qsusp",Qsusp);
         face->set_face_data("Qsubl",Qsubl);
@@ -621,15 +621,17 @@ void Lehning_blowing_snow::run(mesh domain)
             double qs  = interp(vec_qs, query);
             double qt  = interp(vec_qt, query);
 
-            qdep += E[j]*udotm[j]*(qs+qt);
+            qdep += E[j]*udotm[j]*(qs+qt); // -> kg*m/s^2
         }
 
         double masssubl = (- qdep + face->face_data("Qsubl") )* global_param->dt();
-        double mass = (- qdep + face->face_data("Qsubl") )* global_param->dt();
-        double depth = mass / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+        double mass_flux = -qdep * global_param->dt(); // kg/ms *dt -> kg/m
+
+        double depth = mass_flux / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+        double depth_subl = masssubl / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
         face->set_face_data("drift_depth",depth);
-        face->set_face_data("drift_mass",mass);
-        face->set_face_data("drift_depth_w_subl", masssubl / 400. / face->get_area());
+        face->set_face_data("drift_mass",mass_flux);
+        face->set_face_data("drift_depth_w_subl", depth_subl);
         face->set_face_data("sum_Qdep", face->face_data("sum_Qdep") + qdep);
     }
 }
