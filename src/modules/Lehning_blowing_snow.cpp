@@ -7,21 +7,29 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     depends("U_2m_above_srf");
     depends("vw_dir");
 
+    provides("u10");
+
     provides("c0");
     provides("c1");
     provides("c2");
     provides("c3");
     provides("c4");
-    provides("c5");
-    provides("c6");
-    provides("c7");
-    provides("c8");
-    provides("c9");
-    provides("c10");
-    provides("c11");
-    provides("c12");
-    provides("c13");
-    provides("c14");
+
+    provides("K0");
+    provides("K1");
+    provides("K2");
+    provides("K3");
+    provides("K4");
+//    provides("c5");
+//    provides("c6");
+//    provides("c7");
+//    provides("c8");
+//    provides("c9");
+//    provides("c10");
+//    provides("c11");
+//    provides("c12");
+//    provides("c13");
+//    provides("c14");
 
     provides("hs");
     provides("ustar");
@@ -29,6 +37,8 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
 
     provides("csalt");
     provides("Qsalt");
+
+    provides("u*_th");
 
     provides("drift_depth");
     provides("drift_mass");
@@ -145,7 +155,9 @@ void Lehning_blowing_snow::run(mesh domain)
 
         //get wind from the face
         double phi = face->face_data("vw_dir");
-        double u2 =  face->face_data("U_2m_above_srf");
+        double u2 = face->face_data("U_2m_above_srf");
+
+        face->set_face_data("u10",Atmosphere::log_scale_wind(u2, 2, 10, 0));
 
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
 
@@ -161,7 +173,7 @@ void Lehning_blowing_snow::run(mesh domain)
         double hs = 0;
 
         //lehning
-//        z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
+//        hs = z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
 //                         (pow(log(2. / z0), 2.) * 9.81);
 
         //pomeroy
@@ -223,7 +235,9 @@ void Lehning_blowing_snow::run(mesh domain)
         double _d = 0.48e-3; //d in paper
         double u_star_saltation = thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
 
+        face->set_face_data("u*_th",u_star_saltation);
 
+        face->set_face_data("ustar",ustar);
         if( ustar > u_star_saltation)
         {
             //Pomeroy 1990
@@ -257,7 +271,7 @@ void Lehning_blowing_snow::run(mesh domain)
             double l = PhysConst::kappa * (cz + z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * z0 + l__max);
 
             K[3] = K[4] = std::max(ustar * l, PhysConst::kappa * cz * ustar);
-
+            face->set_face_data("K"+std::to_string(z), K[3] ); //<0?0:c
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
             //bottom
@@ -336,8 +350,8 @@ void Lehning_blowing_snow::run(mesh domain)
                 {
 
                     //bottom face, no advection, this breaks the solution. Have to use a low wind speed
-                    //                C[idx][idx] += -d->A[4] * K[4];
-                    //                b[idx] = -d->A[4] * K[4] * c_salt+0.0;
+//                                    C[idx][idx] += -d->A[4] * K[4];
+//                                    b[idx] = -d->A[4] * K[4] * c_salt+0.0;
 
                     if (udotm[3] > 0)
                     {
@@ -486,7 +500,7 @@ void Lehning_blowing_snow::run(mesh domain)
         double rh = face->face_data("rh")/100.;
         double t = face->face_data("t")+273.15;
         double es = mio::Atmosphere::saturatedVapourPressure(t);
-        double ea = rh * es /1000.; //kpa
+        double ea = rh * es / 1000.; // e in kpa
         double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
 
         //specific humidity of the air at air temp
@@ -515,50 +529,50 @@ void Lehning_blowing_snow::run(mesh domain)
             double omega = 1.1*pow(10.,7.) * pow(rm,1.8);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0);
 
-            double Re = 2*rm*Vr / v;
+            double Re = 2.0*rm*Vr / v;
 
             double Nu, Sh;
             Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);
 
-            double D = 2.06*pow(10.,-5.)*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K
+            double D = 2.06*pow(10.,-5.)*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998
 
-            double lambda_t = 0.00063*(t-273.15)+0.0673; // looks like this is degC, not K. order of magnitude off if K
+//            double lambda_t = 0.024; // given in Liston 1998, J/(kmol K) thermal conductivity
+            double lambda_t = 0.000063*(t-273.15)+0.00673; // looks like this is degC, not K. order of magnitude off if K, eqn 11 Pomeroy 1993
             double Ls = 2.838*pow(10.,6.); // latent heat of sublimation
             double rho_a = mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.
             auto Tsfn = [&](double Ts) -> double
             {
-                double es = mio::Atmosphere::saturatedVapourPressure(Ts);
-                double ea = 1. * es /1000.; //kpa
-                double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
+                double es_Ts = mio::Atmosphere::saturatedVapourPressure(Ts);
+                double ea_ts = 1. * es_Ts /1000.; //kpa
 
                 //specific humidity of the particle at the particle temp
-                double qTs = 0.633*ea/P;
-
-                double lambda_t = 0.00063*(Ts-273.15)+0.0673;
-                double result= (D*Sh*Ls*q*rho_a-D*Sh*Ls*qTs*rho_a+Nu*t*lambda_t)/(lambda_t*Nu)-Ts;
+                double qTs = 0.633*ea_ts/P;
+                double result = (D*Sh*Ls*q*rho_a-D*Sh*Ls*qTs*rho_a+Nu*t*lambda_t)/(lambda_t*Nu)-Ts;
                 return result;
             };
 
             double guess = t;
             double factor = 1;
             int digits = std::numeric_limits<double>::digits - 3;
-            double min = 0;
+            double min = 200;
             double max = 300;
             boost::uintmax_t max_iter=500;
             boost::math::tools::eps_tolerance<double> tol(30);
-            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol,max_iter);
+            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol, max_iter);
             double Ts = r.first + (r.second - r.first)/2;
 
             //now use equation 13 with our solved Ts to compute dm/dt(z)
 
-            double dmdtz = 2*M_PI * rm * lambda_t / Ls * Nu * (Ts - t);
+            double dmdtz = 2.0 * M_PI * rm * lambda_t / Ls * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
 
-            double alpha = 4.08 + 12.6*(double)z;
-            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1+3.0/alpha + 2./(alpha*alpha)); //mean mass, eqn 23
+            //calculate mean mass, eqn 23, 24 in Pomeroy 1993
+            double alpha = 4.08 + 12.6*cz;
+            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/alpha + 2./(alpha*alpha)); //mean mass, eqn 23
 
             double csubl = dmdtz/mm;
 
-            Qsubl += csubl * c * v_edge_height * face->get_area(); // kg/(m^2*s) --> kg/s --> divide by unit length --> kg/ms
+            //eqn 20 in Pomeroy 1993
+            Qsubl += csubl * c * v_edge_height; //kg/(m^2*s)
         }
         face->set_face_data("Qsusp",Qsusp);
         face->set_face_data("Qsubl",Qsubl);
@@ -611,7 +625,6 @@ void Lehning_blowing_snow::run(mesh domain)
             }
         }
 
-
         double qdep = 0;
         for(int j = 0; j < 3; j++)
         {
@@ -621,13 +634,20 @@ void Lehning_blowing_snow::run(mesh domain)
             double qs  = interp(vec_qs, query);
             double qt  = interp(vec_qt, query);
 
-            qdep += E[j]*udotm[j]*(qs+qt); // -> kg*m/s^2
+            qdep += E[j]*udotm[j]*(qs+qt);
         }
 
-        double masssubl = (- qdep + face->face_data("Qsubl") )* global_param->dt();
+        double subl_mass_flux = face->face_data("Qsubl");
+
+        //we need to check if we're about to sublimate more snow than what exists in our mass
+
+        double masssubl = (- qdep  + subl_mass_flux * face->get_area() )* global_param->dt();
+
         double mass_flux = -qdep * global_param->dt(); // kg/ms *dt -> kg/m
 
-        double depth = mass_flux / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+        double depth = mass_flux / 400. / face->get_area();
+
+        // 1000 kg/m^3 -> density of water
         double depth_subl = masssubl / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
         face->set_face_data("drift_depth",depth);
         face->set_face_data("drift_mass",mass_flux);
