@@ -36,16 +36,20 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("ustar");
 
     provides("csalt");
-    provides("Qsalt");
+
 
     provides("u*_th");
 
     provides("drift_depth");
     provides("drift_mass");
-    provides("drift_depth_w_subl");
+    provides("drift_depth_no_subl");
+    provides("drift_mass_no_subl");
+
     provides("Qsusp");
     provides("Qsubl");
-    provides("sum_Qdep");
+    provides("Qsalt");
+
+    provides("sum_drift_depth");
 }
 
 void Lehning_blowing_snow::init(mesh domain)
@@ -56,6 +60,7 @@ void Lehning_blowing_snow::init(mesh domain)
     l__max = 40;
 
     do_vertical_advection = cfg.get("vertical_advection",true);
+    drift_density = cfg.get("drift_density",400.);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -648,20 +653,20 @@ void Lehning_blowing_snow::run(mesh domain)
 
         //we need to check if we're about to sublimate more snow than what exists in our mass
 
-        double masssubl = (- qdep  + subl_mass_flux )* global_param->dt();
-        double mass_flux = -qdep * global_param->dt(); // kg/ms *dt -> kg/m
+        double mass = (- qdep  + subl_mass_flux )* global_param->dt();
+        double mass_no_subl = -qdep * global_param->dt(); // kg/ms *dt -> kg/m
 
-        double depth = mass_flux / 400. / face->get_area();
-        double depth_subl = masssubl / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+        double depth = mass / drift_density / face->get_area();
+        double depth_no_subl = mass_no_subl / drift_density / face->get_area();  // 1000 kg/m^3 -> density of water
 
 
         face->set_face_data("drift_depth",depth);
+        face->set_face_data("drift_mass",mass);
 
-        face->set_face_data("drift_mass",masssubl);
+        face->set_face_data("drift_mass_no_subl", mass_no_subl);
+        face->set_face_data("drift_depth_no_subl", depth_no_subl);
 
-        face->set_face_data("drift_depth_w_subl", depth_subl);
-
-        face->set_face_data("sum_Qdep", face->face_data("sum_Qdep") + qdep);
+        face->set_face_data("sum_drift_depth", face->face_data("sum_drift_depth") + depth);
     }
 }
 

@@ -19,6 +19,9 @@ snobal::snobal(config_file cfg)
     optional("p_subcanopy");
     optional("ilwr_subcanopy");
 
+    optional("drift_depth");
+    optional("drift_mass");
+
     depends("snow_albedo");
 
     provides("swe");
@@ -270,6 +273,11 @@ void snobal::run(mesh_elem &face)
     {
         sbal->precip_now = 0;
         sbal->stop_no_snow=0;
+    }
+
+    if(has_optional("drift_mass") && has_optional("drift_depth"))
+    {
+        sbal->_adj_snow(face->face_data("drift_depth"),face->face_data("drift_mass"));
     }
 
     if(g->dead == 1)

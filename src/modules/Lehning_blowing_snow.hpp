@@ -64,7 +64,7 @@ public:
     double v_edge_height;
 
     double l__max; // vertical mixing length (m)
-
+    double drift_density; // density of the transported snow to use for calculating swe depth
     bool do_vertical_advection; // should we use the discretization that includes 3D advection?
 
     //http://stackoverflow.com/a/4609795/410074
