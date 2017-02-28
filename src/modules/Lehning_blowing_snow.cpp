@@ -6,6 +6,7 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
 {
     depends("U_2m_above_srf");
     depends("vw_dir");
+    depends("swe");
 
     provides("u10");
 
@@ -33,7 +34,6 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
 
     provides("hs");
     provides("ustar");
-
 
     provides("csalt");
     provides("Qsalt");
@@ -121,21 +121,9 @@ void Lehning_blowing_snow::run(mesh domain)
     //needed for linear system offsets
     size_t ntri = domain->number_of_faces();
 
-    //we need to hold 1 matrix per thread so we get thread safety
-//    std::vector<arma::sp_mat> sp_C;
-//    for(int i = 0; i < omp_get_max_threads(); i++ )
-//    {
-//        sp_C.push_back(arma::sp_mat(ntri * nLayer, ntri * nLayer ) );
-//    }
-
     //vcl_scalar_type is defined in the main CMakeLists.txt file.
-    // Some GPUs do not have double precision so the run will fail is the wrong precision is used
+    // Some GPUs do not have double precision so the run will fail if the wrong precision is used
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
-
-//    arma::sp_mat C(ntri * nLayer, ntri * nLayer ) ;
-//    arma::vec b(ntri * nLayer,arma::fill::zeros );
-//    arma::vec x(ntri * nLayer );
-
     std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
 
     double z0 = 0.01; //m
@@ -147,8 +135,6 @@ void Lehning_blowing_snow::run(mesh domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-//        auto& C = sp_C.at(omp_get_thread_num());
-
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
         auto& m = d->m;
@@ -156,8 +142,8 @@ void Lehning_blowing_snow::run(mesh domain)
         //get wind from the face
         double phi = face->face_data("vw_dir");
         double u2 = face->face_data("U_2m_above_srf");
-
-        face->set_face_data("u10",Atmosphere::log_scale_wind(u2, 2, 10, 0));
+        double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
+        face->set_face_data("u10",u10);
 
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
 
@@ -222,7 +208,7 @@ void Lehning_blowing_snow::run(mesh domain)
 //        }
 
         //saltation concentration
-        double tau_t_f = 0.2; // m/s
+        double tau_t_f = 0.2; // m/s threshold shear stress for aerodynamic entrainment
         double rho_f = 1.225; // air density, fix for T dependenc
         double u_star_t = pow(tau_t_f/rho_f,0.5); //threshold friction velocity
         double Qsalt = 0;
@@ -234,6 +220,7 @@ void Lehning_blowing_snow::run(mesh domain)
         double g = 9.81;
         double _d = 0.48e-3; //d in paper
         double u_star_saltation = thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
+        double t = face->face_data("t");
 
         face->set_face_data("u*_th",u_star_saltation);
 
@@ -243,13 +230,33 @@ void Lehning_blowing_snow::run(mesh domain)
             //Pomeroy 1990
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
 
+            if(c_salt < 0 && std::isnan(c_salt)) // seems to happen at low wind speeds where the parameterization breaks
+            {
+                c_salt = 0;
+                continue;
+            }
             Qsalt =  c_salt *std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. * hs; //integrate over the depth of the saltation layer
 
-            if(Qsalt < 0) // this apparently happens and bad things happen bc of it
+            //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
+            //in the triangle. In this case, we are approximating the edge value with just Qsalt, and are not considering
+            //the neighbour values.
+            double salt=0;
+
+            for(int j=0; j<3; ++j)
             {
-                Qsalt = 0;
-                c_salt = 0;
+                double udotm = arma::dot(uvw, m[j]);
+                salt += face->edge_length(j) * udotm * Qsalt;
             }
+            salt *= global_param->dt();
+            double swe = face->face_data("swe");
+            swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
+            double total_swe_mass = face->face_data("swe") * 1000. * face->get_area(); //kg
+            if( salt > total_swe_mass)
+            {
+                c_salt = 0;
+                Qsalt = 0;
+            }
+
         }
 
 //        c_salt = 0;
@@ -458,13 +465,7 @@ void Lehning_blowing_snow::run(mesh domain)
     } //end face iter
 
 
-//        arma::sp_mat result(ntri * nLayer, ntri * nLayer );
-//    for(int i = 0; i < omp_get_max_threads(); i++ )
-//    {
-//        result += sp_C.at(i);
-//    }
-
-    //setup the compressed matrix on the compute device, in available
+      //setup the compressed matrix on the compute device, in available
 //    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
 //    viennacl::copy(C,vl_C);
 //    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
@@ -481,9 +482,8 @@ void Lehning_blowing_snow::run(mesh domain)
 
     //docs say 'This will use appropriate ViennaCL objects internally.'  http://viennacl.sourceforge.net/doc/iterative_8cpp-example.html
     auto x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
-//    auto x = viennacl::linalg::solve(result, b, viennacl::linalg::bicgstab_tag());
 
-//   auto x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::gmres_tag(),chow_patel_ilu);
+//   auto x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::bicgstab_tag(),chow_patel_ilu);
 
 
 #pragma omp parallel for
@@ -536,8 +536,7 @@ void Lehning_blowing_snow::run(mesh domain)
 
             double D = 2.06*pow(10.,-5.)*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998
 
-//            double lambda_t = 0.024; // given in Liston 1998, J/(kmol K) thermal conductivity
-            double lambda_t = 0.000063*(t-273.15)+0.00673; // looks like this is degC, not K. order of magnitude off if K, eqn 11 Pomeroy 1993
+            double lambda_t = 0.000063*(t-273.15)+0.00673; // J/(kmol K) thermal conductivity looks like this is degC, not K. order of magnitude off if K, eqn 11 Pomeroy 1993
             double Ls = 2.838*pow(10.,6.); // latent heat of sublimation
             double rho_a = mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.
             auto Tsfn = [&](double Ts) -> double
@@ -562,7 +561,6 @@ void Lehning_blowing_snow::run(mesh domain)
             double Ts = r.first + (r.second - r.first)/2;
 
             //now use equation 13 with our solved Ts to compute dm/dt(z)
-
             double dmdtz = 2.0 * M_PI * rm * lambda_t / Ls * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
 
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993
@@ -634,24 +632,26 @@ void Lehning_blowing_snow::run(mesh domain)
             double qs  = interp(vec_qs, query);
             double qt  = interp(vec_qt, query);
 
-            qdep += E[j]*udotm[j]*(qs+qt);
+            qdep += E[j]*udotm[j]*(qs+qt); //kg/s, slight different that whats in the papers as we're using divergence thm.
         }
 
-        double subl_mass_flux = face->face_data("Qsubl");
+        double subl_mass_flux = face->face_data("Qsubl")  * face->get_area() ; // convert to kg/s to match our transport terms from above
 
         //we need to check if we're about to sublimate more snow than what exists in our mass
 
-        double masssubl = (- qdep  + subl_mass_flux * face->get_area() )* global_param->dt();
-
+        double masssubl = (- qdep  + subl_mass_flux )* global_param->dt();
         double mass_flux = -qdep * global_param->dt(); // kg/ms *dt -> kg/m
 
         double depth = mass_flux / 400. / face->get_area();
-
-        // 1000 kg/m^3 -> density of water
         double depth_subl = masssubl / 400. / face->get_area();  // 1000 kg/m^3 -> density of water
+
+
         face->set_face_data("drift_depth",depth);
-        face->set_face_data("drift_mass",mass_flux);
+
+        face->set_face_data("drift_mass",masssubl);
+
         face->set_face_data("drift_depth_w_subl", depth_subl);
+
         face->set_face_data("sum_Qdep", face->face_data("sum_Qdep") + qdep);
     }
 }
