@@ -40,16 +40,14 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
 
     provides("u*_th");
 
-    provides("drift_depth");
-    provides("drift_mass");
-    provides("drift_depth_no_subl");
+    provides("drift_mass"); //kg/m^2
     provides("drift_mass_no_subl");
 
     provides("Qsusp");
     provides("Qsubl");
     provides("Qsalt");
 
-    provides("sum_drift_depth");
+//    provides("sum_drift_depth");
 }
 
 void Lehning_blowing_snow::init(mesh domain)
@@ -653,20 +651,18 @@ void Lehning_blowing_snow::run(mesh domain)
 
         //we need to check if we're about to sublimate more snow than what exists in our mass
 
-        double mass = (- qdep  + subl_mass_flux )* global_param->dt();
-        double mass_no_subl = -qdep * global_param->dt(); // kg/ms *dt -> kg/m
+        double mass = (- qdep  + subl_mass_flux )* global_param->dt(); // kg/m^2s *dt -> kg/m^2
+        double mass_no_subl = -qdep * global_param->dt();
 
-        double depth = mass / drift_density / face->get_area();
-        double depth_no_subl = mass_no_subl / drift_density / face->get_area();  // 1000 kg/m^3 -> density of water
+        double depth = mass / drift_density ;
+        double depth_no_subl = mass_no_subl / drift_density ;
 
 
-        face->set_face_data("drift_depth",depth);
-        face->set_face_data("drift_mass",mass);
-
+        face->set_face_data("drift_mass",mass );
         face->set_face_data("drift_mass_no_subl", mass_no_subl);
-        face->set_face_data("drift_depth_no_subl", depth_no_subl);
 
-        face->set_face_data("sum_drift_depth", face->face_data("sum_drift_depth") + depth);
+
+//        face->set_face_data("sum_drift_depth", face->face_data("sum_drift_depth") + depth);
     }
 }
 
