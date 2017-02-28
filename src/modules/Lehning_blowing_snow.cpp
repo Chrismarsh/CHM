@@ -235,28 +235,37 @@ void Lehning_blowing_snow::run(mesh domain)
                 c_salt = 0;
                 continue;
             }
-            Qsalt =  c_salt *std::max(0.1, Atmosphere::log_scale_wind(u2, 2, hs, 0))/2. * hs; //integrate over the depth of the saltation layer
+            //mean wind speed in the saltation layer
+            double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0))/2.);
+
+            // kg/(m*s)
+            Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
             //in the triangle. In this case, we are approximating the edge value with just Qsalt, and are not considering
             //the neighbour values.
             double salt=0;
 
+            double udotm[3];
             for(int j=0; j<3; ++j)
             {
-                double udotm = arma::dot(uvw, m[j]);
-                salt += face->edge_length(j) * udotm * Qsalt;
+                udotm[j] = arma::dot(uvw, m[j]);
+                salt += face->edge_length(j) * udotm[j] * Qsalt;
             }
             salt *= global_param->dt();
-            double swe = face->face_data("swe");
+
+            //Figure out the max we can transport, ie total mass in cell
+            double swe = face->face_data("swe"); // m
             swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
             double total_swe_mass = face->face_data("swe") * 1000. * face->get_area(); //kg
-            if( salt > total_swe_mass)
+            if( salt > total_swe_mass) // could we move more than the total mass in the cell during this timestep?
             {
-                c_salt = 0;
-                Qsalt = 0;
+                //back out what the max conc should be
+                double max_conc =
+                        total_swe_mass/(uhs*hs*global_param->dt()*(face->edge_length(0)*udotm[0]+face->edge_length(1)*udotm[1]+face->edge_length(2)*udotm[2]))
+                c_salt = max_conc; // kg/m^3
+                Qsalt = c_salt * uhs * hs;
             }
-
         }
 
 //        c_salt = 0;
