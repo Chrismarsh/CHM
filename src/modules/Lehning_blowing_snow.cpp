@@ -230,7 +230,7 @@ void Lehning_blowing_snow::run(mesh domain)
             //Pomeroy 1990
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
 
-            if(c_salt < 0 && std::isnan(c_salt)) // seems to happen at low wind speeds where the parameterization breaks
+            if(c_salt < 0 || std::isnan(c_salt)) // seems to happen at low wind speeds where the parameterization breaks
             {
                 c_salt = 0;
                 continue;
