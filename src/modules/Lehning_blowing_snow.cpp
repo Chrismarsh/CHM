@@ -113,7 +113,7 @@ void Lehning_blowing_snow::init(mesh domain)
 
 
 
-        face->set_face_data("sum_Qdep",0);
+//        face->set_face_data("sum_Qdep",0);
     }
 }
 
@@ -239,7 +239,7 @@ void Lehning_blowing_snow::run(mesh domain)
                 continue;
             }
             //mean wind speed in the saltation layer
-            double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0))/2.);
+            double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0)/2.);
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer
@@ -265,7 +265,7 @@ void Lehning_blowing_snow::run(mesh domain)
             {
                 //back out what the max conc should be
                 double max_conc =
-                        total_swe_mass/(uhs*hs*global_param->dt()*(face->edge_length(0)*udotm[0]+face->edge_length(1)*udotm[1]+face->edge_length(2)*udotm[2]))
+                        total_swe_mass/(uhs*hs*global_param->dt()*(face->edge_length(0)*udotm[0]+face->edge_length(1)*udotm[1]+face->edge_length(2)*udotm[2]));
                 c_salt = max_conc; // kg/m^3
                 Qsalt = c_salt * uhs * hs;
             }
@@ -490,7 +490,7 @@ void Lehning_blowing_snow::run(mesh domain)
 //    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
 
 
-    LOG_DEBUG << "solving";
+//    LOG_DEBUG << "solving";
 
     //docs say 'This will use appropriate ViennaCL objects internally.'  http://viennacl.sourceforge.net/doc/iterative_8cpp-example.html
     auto x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
