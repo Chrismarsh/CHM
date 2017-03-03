@@ -547,10 +547,7 @@ void Lehning_blowing_snow::run(mesh domain)
             double Re = 2.0*rm*Vr / v;
 
             double Nu, Sh;
-            Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);        if(sum_drift > 0)
-        {
-            LOG_DEBUG << "blowing snow!";
-        }
+            Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);
 
             double D = 2.06*pow(10.,-5.)*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998
 
