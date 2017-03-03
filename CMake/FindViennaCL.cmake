@@ -9,6 +9,8 @@ SET(VIENNACL_INCLUDE_SEARCH_PATHS
         ../viennacl-dev
         /usr/include
         /usr/local/include
+        /opt/viennacl/include
+        /opt/Viennacl/include
         /opt/ViennaCL/include
         $ENV{VIENNACL_HOME}
         )
