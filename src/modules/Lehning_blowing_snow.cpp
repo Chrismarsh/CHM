@@ -47,7 +47,7 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("Qsubl");
     provides("Qsalt");
 
-//    provides("sum_drift_depth");
+    provides("sum_drift");
 }
 
 void Lehning_blowing_snow::init(mesh domain)
@@ -113,7 +113,7 @@ void Lehning_blowing_snow::init(mesh domain)
 
 
 
-//        face->set_face_data("sum_Qdep",0);
+        face->set_face_data("sum_drift",0);
     }
 }
 
@@ -661,8 +661,7 @@ void Lehning_blowing_snow::run(mesh domain)
         face->set_face_data("drift_mass",mass );
         face->set_face_data("drift_mass_no_subl", mass_no_subl);
 
-
-//        face->set_face_data("sum_drift_depth", face->face_data("sum_drift_depth") + depth);
+        face->set_face_data("sum_drift", face->face_data("sum_drift") + mass);
     }
 }
 
