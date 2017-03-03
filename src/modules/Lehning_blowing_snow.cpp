@@ -230,14 +230,15 @@ void Lehning_blowing_snow::run(mesh domain)
         face->set_face_data("ustar",ustar);
         if( ustar > u_star_saltation)
         {
+            LOG_DEBUG << "Blowing snow";
             //Pomeroy 1990
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
 
             if(c_salt < 0 || std::isnan(c_salt)) // seems to happen at low wind speeds where the parameterization breaks
             {
                 c_salt = 0;
-                continue;
             }
+
             //mean wind speed in the saltation layer
             double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0)/2.);
 
@@ -268,6 +269,8 @@ void Lehning_blowing_snow::run(mesh domain)
                         total_swe_mass/(uhs*hs*global_param->dt()*(face->edge_length(0)*udotm[0]+face->edge_length(1)*udotm[1]+face->edge_length(2)*udotm[2]));
                 c_salt = max_conc; // kg/m^3
                 Qsalt = c_salt * uhs * hs;
+
+                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt;
             }
         }
 
@@ -544,7 +547,10 @@ void Lehning_blowing_snow::run(mesh domain)
             double Re = 2.0*rm*Vr / v;
 
             double Nu, Sh;
-            Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);
+            Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);        if(sum_drift > 0)
+        {
+            LOG_DEBUG << "blowing snow!";
+        }
 
             double D = 2.06*pow(10.,-5.)*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998
 
@@ -660,8 +666,8 @@ void Lehning_blowing_snow::run(mesh domain)
 
         face->set_face_data("drift_mass",mass );
         face->set_face_data("drift_mass_no_subl", mass_no_subl);
-
-        face->set_face_data("sum_drift", face->face_data("sum_drift") + mass);
+        double sum_drift = face->face_data("sum_drift");
+        face->set_face_data("sum_drift", sum_drift + mass);
     }
 }
 
