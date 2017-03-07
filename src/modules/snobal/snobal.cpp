@@ -42,8 +42,6 @@ snobal::snobal(config_file cfg)
     provides("sum_snowpack_runoff");
     provides("sum_melt");
     provides("snowdepthavg");
-
-
 }
 
 void snobal::init(mesh domain)
@@ -148,10 +146,14 @@ void snobal::init(mesh domain)
                 sbal->T_s_0 = -15. + FREEZE; //assuming no snow
                 sbal->T_s_l = -15. + FREEZE;
                 sbal->z_s = face->get_initial_condition("swe") / sbal->rho;
+
+
             }
         }
         
         sbal->init_snow();
+
+        face->set_face_data("swe",sbal->m_s);
 
         //////
         

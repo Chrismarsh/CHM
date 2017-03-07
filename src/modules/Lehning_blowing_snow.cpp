@@ -227,14 +227,20 @@ void Lehning_blowing_snow::run(mesh domain)
 
         face->set_face_data("u*_th",u_star_saltation);
 
+        double swe = face->face_data("swe"); // mm   -->    kg/m^2
+        swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
+
         face->set_face_data("ustar",ustar);
-        if( ustar > u_star_saltation)
+
+        //use a 1mm cutoff for movement, as this is what most snow models use and just melt this out
+        if( ustar > u_star_saltation && swe > 1)
         {
-            LOG_DEBUG << "Blowing snow";
+
             //Pomeroy 1990
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
 
-            if(c_salt < 0 || std::isnan(c_salt)) // seems to happen at low wind speeds where the parameterization breaks
+            // seems to happen at low wind speeds where the parameterization breaks
+            if(c_salt < 0 || std::isnan(c_salt))
             {
                 c_salt = 0;
             }
@@ -259,18 +265,26 @@ void Lehning_blowing_snow::run(mesh domain)
             salt *= global_param->dt();
 
             //Figure out the max we can transport, ie total mass in cell
-            double swe = face->face_data("swe"); // m
-            swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
-            double total_swe_mass = face->face_data("swe") * 1000. * face->get_area(); //kg
+            double total_swe_mass = swe * 1000. * face->get_area(); //kg
             if( salt > total_swe_mass) // could we move more than the total mass in the cell during this timestep?
             {
+                double el0,el1,el2;
+                el0 = face->edge_length(0);
+                el1 = face->edge_length(1);
+                el2 = face->edge_length(2);
+                double dt = global_param->dt();
                 //back out what the max conc should be
                 double max_conc =
-                        total_swe_mass/(uhs*hs*global_param->dt()*(face->edge_length(0)*udotm[0]+face->edge_length(1)*udotm[1]+face->edge_length(2)*udotm[2]));
+                        total_swe_mass/(uhs*hs*dt*(el0*udotm[0]+el1*udotm[1]+el2*udotm[2]));
                 c_salt = max_conc; // kg/m^3
                 Qsalt = c_salt * uhs * hs;
+                if(is_nan(c_salt)) // can is nan if the divergence comes out as 0, and we div by 0
+                {
+                    c_salt = 0;
+                    Qsalt = 0;
+                }
 
-                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt;
+                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt << " triangle="<<i;
             }
         }
 
@@ -280,6 +294,12 @@ void Lehning_blowing_snow::run(mesh domain)
 //            Qsalt = 0;
 //            c_salt = 0.8;
 //        }
+
+//        if(c_salt > 0 )
+//        {
+//            LOG_DEBUG << "Blowing snow, csalt = " << c_salt << "kg/m^3";
+//        }
+
 
         face->set_face_data("csalt", c_salt);
         face->set_face_data("Qsalt", Qsalt);
@@ -654,11 +674,14 @@ void Lehning_blowing_snow::run(mesh domain)
 
         //we need to check if we're about to sublimate more snow than what exists in our mass
 
-        double mass = (- qdep  + subl_mass_flux )* global_param->dt(); // kg/m^2s *dt -> kg/m^2
+        double mass = (- qdep  + subl_mass_flux )* global_param->dt(); // kg/s *dt -> kg
         double mass_no_subl = -qdep * global_param->dt();
 
-        double depth = mass / drift_density ;
-        double depth_no_subl = mass_no_subl / drift_density ;
+        mass /= face->get_area();
+        mass_no_subl /= face->get_area();
+
+        double depth = mass / drift_density; //; kg/m^2
+        double depth_no_subl = mass_no_subl /  drift_density ;
 
 
         face->set_face_data("drift_mass",mass );
