@@ -277,6 +277,7 @@ void snobal::run(mesh_elem &face)
         sbal->stop_no_snow=0;
     }
 
+
     if(has_optional("drift_mass"))
     {
 

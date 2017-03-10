@@ -25,6 +25,10 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
             double xdiff = (sxi - sxj);
             double ydiff = (syi - syj);
 
+            //don't add in a duplicate point, otherwise we get nan
+            if(xdiff == 0. && ydiff == 0.)
+                continue;
+
             double Rd=0.;
             if (j == i) // diagonal
             {

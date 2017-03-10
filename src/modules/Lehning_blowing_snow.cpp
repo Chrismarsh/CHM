@@ -101,14 +101,21 @@ void Lehning_blowing_snow::init(mesh domain)
         //top, bottom
         d->A[3] = d->A[4] = face->get_area();
 
+        d->is_edge=false;
         //which faces have neighbours? Ie, are we an edge?
         for (int a = 0; a < 3; ++a)
         {
             auto neigh = face->neighbor(a);
             if (neigh == nullptr)
+            {
                 d->face_neigh[a] = false;
+                d->is_edge == true;
+            }
             else
+            {
                 d->face_neigh[a] = true;
+            }
+
         }
 
 
@@ -618,6 +625,8 @@ void Lehning_blowing_snow::run(mesh domain)
         auto d = face->get_module_data<data>(ID);
         auto& m = d->m;
 
+         double id = face->_debug_ID;
+
         double u2 = face->face_data("U_2m_above_srf");
         double phi = face->face_data("vw_dir");
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
@@ -647,7 +656,7 @@ void Lehning_blowing_snow::run(mesh domain)
         std::vector< boost::tuple<double, double, double> > vec_qt;
 
 
-        //build up the interpreted values
+        //build up the interpolated values
         for(int j = 0; j < 3; j++)
         {
             if (d->face_neigh[j])
@@ -656,9 +665,12 @@ void Lehning_blowing_snow::run(mesh domain)
                 vec_qs.push_back( boost::make_tuple(neigh->center().x(),neigh->center().y(), neigh->face_data("Qsalt")));
                 vec_qt.push_back( boost::make_tuple(neigh->center().x(),neigh->center().y(), neigh->face_data("Qsusp")));
             }
+
         }
 
         double qdep = 0;
+        std::vector<double> qsinterp;
+        std::vector<double> qtinterp;
         for(int j = 0; j < 3; j++)
         {
             auto emp = face->edge_midpoint(j);
@@ -666,7 +678,8 @@ void Lehning_blowing_snow::run(mesh domain)
 
             double qs  = interp(vec_qs, query);
             double qt  = interp(vec_qt, query);
-
+            qsinterp.push_back(qs);
+            qtinterp.push_back(qt);
             qdep += E[j]*udotm[j]*(qs+qt); //kg/s, slight different that whats in the papers as we're using divergence thm.
         }
 
@@ -683,6 +696,10 @@ void Lehning_blowing_snow::run(mesh domain)
         double depth = mass / drift_density; //; kg/m^2
         double depth_no_subl = mass_no_subl /  drift_density ;
 
+        if(is_nan(mass))
+        {
+            LOG_DEBUG << "nan snobal at id = " << face->cell_id;
+        }
 
         face->set_face_data("drift_mass",mass );
         face->set_face_data("drift_mass_no_subl", mass_no_subl);

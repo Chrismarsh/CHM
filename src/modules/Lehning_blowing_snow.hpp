@@ -86,6 +86,8 @@ public:
 
         //saltation height
         double hs;
+
+        bool is_edge;
     };
 
 };
