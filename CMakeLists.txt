@@ -175,9 +175,9 @@ if(MATLAB)
 endif()
 
 #turn off blas and lapack so we can use viennaCL
-add_definitions(-DARMA_DONT_USE_BLAS)
-add_definitions(-DARMA_DONT_USE_LAPACK)
-add_definitions(-DVIENNACL_WITH_ARMADILLO=1)
+#add_definitions(-DARMA_DONT_USE_BLAS)
+#add_definitions(-DARMA_DONT_USE_LAPACK)
+#add_definitions(-DVIENNACL_WITH_ARMADILLO=1)
 if(OPENMP_FOUND)
     message(STATUS "Enabling ViennaCL with OpenCL")
     add_definitions(-DVIENNACL_WITH_OPENMP)

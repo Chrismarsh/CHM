@@ -2,6 +2,9 @@
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_expint.h>
 #include <gsl/gsl_linalg.h>
+
+#include <armadillo>
+
 #include <boost/throw_exception.hpp>
 #include <exception.hpp>
 #include <iostream>
@@ -34,15 +37,16 @@ public:
     */
     double operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point);
 private:
-    double *A ;
+
+    arma::mat A;
+    arma::vec b;
+    arma::vec x;
+//    double *A ;
     double pi;
     double c; //euler constant
-    double *B; // known values - constant value of 0 goes in b[size-1]
+//    double *B; // known values - constant value of 0 goes in b[size-1]
     double weight;
     bool static_size;
     size_t size;
-    gsl_matrix_view m;
-    gsl_vector_view b;
-    gsl_vector* x;
-    gsl_permutation* p;
+
 };
