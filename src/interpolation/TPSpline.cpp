@@ -9,8 +9,7 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         size++; // need to make room for the constants
         A.resize(size,size);
         b.resize(size);
-//        A = new double[ size * size ];
-//        B = new double[size]; // known values - constant value of 0 goes in b[size-1]
+
     }
 
 
@@ -57,10 +56,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
             }
 
             A(i,j+1) = Rd;
-//            A[i * size + (j+1)] = Rd;
-
             A(j,i+1) = Rd;
-//            A[j * size + (i+1)] = Rd;
+
         }
     }
 
@@ -84,15 +81,6 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
 
     b(size-1) = 0.0; //constant
 
-//    std::cout << std::endl;
-//    for(int i = 0;i<size;++i)
-//    {
-//        for(int j = 0; j<size;++j)
-//        {
-//            std::cout << A[i*size+j] << ",";
-//        }
-//        std::cout << std::endl;
-//    }
     //solve equation
     int s				= 0;
 

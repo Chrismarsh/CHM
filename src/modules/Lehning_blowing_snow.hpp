@@ -88,6 +88,8 @@ public:
         double hs;
 
         bool is_edge;
+
+        double z0;
     };
 
 };

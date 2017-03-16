@@ -9,6 +9,7 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     depends("swe");
 
     provides("u10");
+    provides("is_drifting");
 
     provides("c0");
     provides("c1");
@@ -21,6 +22,8 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("K2");
     provides("K3");
     provides("K4");
+
+    provides("Qsusp_pbsm");
 //    provides("c5");
 //    provides("c6");
 //    provides("c7");
@@ -109,7 +112,7 @@ void Lehning_blowing_snow::init(mesh domain)
             if (neigh == nullptr)
             {
                 d->face_neigh[a] = false;
-                d->is_edge == true;
+                d->is_edge = true;
             }
             else
             {
@@ -136,8 +139,6 @@ void Lehning_blowing_snow::run(mesh domain)
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
     std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
 
-    double z0 = 0.01; //m
-
     //ice density
     double rho_p = 917;
 
@@ -163,7 +164,29 @@ void Lehning_blowing_snow::run(mesh domain)
         uvw(1) = v.y(); //U_y
         uvw(2) = 0;
 
-        double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
+//        double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
+
+        auto ustarfn = [&](double ustar) -> double
+        {
+
+            double result = PhysConst::kappa*u2/log(326.1845386/(ustar*ustar));
+            return result;
+        };
+
+        double guess = .1;
+        double factor = 1;
+        int digits = std::numeric_limits<double>::digits - 3;
+        double min = 0.001;
+        double max = 3;
+        boost::uintmax_t max_iter=500;
+        boost::math::tools::eps_tolerance<double> tol(30);
+//        auto r = boost::math::tools::toms748_solve(ustarfn, min, max, tol, max_iter);
+//        double ustar = r.first + (r.second - r.first)/2.0;
+//        ustar = std::max(0.1,ustar);
+
+        d->z0=0.005;
+        double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / d->z0));
+        //0.1203*ustar*ustar/(2*9.81);
 
         //depth of saltation layer
         double hs = 0;
@@ -239,21 +262,30 @@ void Lehning_blowing_snow::run(mesh domain)
 
         face->set_face_data("ustar",ustar);
 
+        face->set_face_data("is_drifting",0);
+        face->set_face_data("Qsusp_pbsm",0);
         //use a 1mm cutoff for movement, as this is what most snow models use and just melt this out
-        if( ustar > u_star_saltation && swe > 1)
+        if( ustar > u_star_saltation )
         {
-
+//            if(i==25263)
+//            {
+//                LOG_DEBUG << "hi";
+//            }
+            double pbsm_qsusp = pow(u10,4.13)/674100.0;
+            face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+            face->set_face_data("is_drifting",1);
             //Pomeroy 1990
-            c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
-
+//            c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
+            c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_saltation*u_star_saltation) / (ustar * ustar));
             // seems to happen at low wind speeds where the parameterization breaks
             if(c_salt < 0 || std::isnan(c_salt))
             {
+                LOG_DEBUG << "csalt=" << c_salt;
                 c_salt = 0;
             }
 
             //mean wind speed in the saltation layer
-            double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0)/2.);
+            double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0,d->z0)/2.);
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer
@@ -291,7 +323,7 @@ void Lehning_blowing_snow::run(mesh domain)
                     Qsalt = 0;
                 }
 
-                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt << " triangle="<<i;
+//                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt << " triangle="<<i;
             }
         }
 
@@ -317,9 +349,9 @@ void Lehning_blowing_snow::run(mesh domain)
         {
             //height in the suspension layer
             double cz = z + hs+ v_edge_height/2.; //cell center height
-            double l = PhysConst::kappa * (cz + z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * z0 + l__max);
+            double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * d->z0 + l__max);
 
-            K[3] = K[4] = std::max(ustar * l, PhysConst::kappa * cz * ustar);
+            K[3] = K[4] = 0.1 * std::max(ustar * l, PhysConst::kappa * cz * ustar);
             face->set_face_data("K"+std::to_string(z), K[3] ); //<0?0:c
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
@@ -327,7 +359,7 @@ void Lehning_blowing_snow::run(mesh domain)
             alpha[4] = d->A[4] * K[4] / v_edge_height;
 
             //compute new U_z at this height in the suspension layer
-            double u_z = std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0));
+            double u_z = std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0));
             double length = arma::norm(uvw, 2);
             double scale = u_z / length;
 
@@ -361,7 +393,6 @@ void Lehning_blowing_snow::run(mesh domain)
                     }
                     else
                     {
-
                        C[idx][idx] += -d->A[f]*udotm[f];
                     }
                 } else
@@ -376,7 +407,7 @@ void Lehning_blowing_snow::run(mesh domain)
                     }
                     else
                     {
-                       C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
+                        C[idx][idx] += -alpha[f];
                     }
                 }
 
@@ -417,7 +448,7 @@ void Lehning_blowing_snow::run(mesh domain)
                     auto uvw_0 = uvw;
                     uvw_0(2) = sng(uvw(2)) * 0.1; //match the sign of the top of this cell.
 
-                    auto udotm_0 = arma::dot(uvw_0, m[4]);
+                    auto udotm_0 = arma::dot(uvw, m[4]);
 
                     if (udotm[4] > 0)
                     {
@@ -554,9 +585,11 @@ void Lehning_blowing_snow::run(mesh domain)
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
+            c = c < 0? 0 : c;
+
             double cz = z + hs+ v_edge_height/2.; //cell center height
 
-            double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0)); //compute new U_z at this height in the suspension layer
+            double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
             if(z < 15)
@@ -655,32 +688,38 @@ void Lehning_blowing_snow::run(mesh domain)
         std::vector< boost::tuple<double, double, double> > vec_qs;
         std::vector< boost::tuple<double, double, double> > vec_qt;
 
-
-        //build up the interpolated values
-        for(int j = 0; j < 3; j++)
-        {
-            if (d->face_neigh[j])
-            {
-                auto neigh = face->neighbor(j);
-                vec_qs.push_back( boost::make_tuple(neigh->center().x(),neigh->center().y(), neigh->face_data("Qsalt")));
-                vec_qt.push_back( boost::make_tuple(neigh->center().x(),neigh->center().y(), neigh->face_data("Qsusp")));
-            }
-
-        }
-
         double qdep = 0;
-        std::vector<double> qsinterp;
-        std::vector<double> qtinterp;
-        for(int j = 0; j < 3; j++)
+        if(!d->is_edge)
         {
-            auto emp = face->edge_midpoint(j);
-            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
+            //build up the interpolated values
+            for (int j = 0; j < 3; j++)
+            {
+                if (d->face_neigh[j])
+                {
+                    auto neigh = face->neighbor(j);
+                    vec_qs.push_back(
+                            boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsalt")));
+                    vec_qt.push_back(
+                            boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsusp")));
+                }
+            }
+            vec_qs.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsalt")));
+            vec_qt.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsusp")));
 
-            double qs  = interp(vec_qs, query);
-            double qt  = interp(vec_qt, query);
-            qsinterp.push_back(qs);
-            qtinterp.push_back(qt);
-            qdep += E[j]*udotm[j]*(qs+qt); //kg/s, slight different that whats in the papers as we're using divergence thm.
+            std::vector<double> qsinterp;
+            std::vector<double> qtinterp;
+            for (int j = 0; j < 3; j++)
+            {
+                auto emp = face->edge_midpoint(j);
+                auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
+
+                double qs = interp(vec_qs, query);
+                double qt = interp(vec_qt, query);
+                qsinterp.push_back(qs);
+                qtinterp.push_back(qt);
+                qdep += E[j] * udotm[j] *
+                        (qs + qt); //kg/s, slight different that whats in the papers as we're using divergence thm.
+            }
         }
 
         double subl_mass_flux = face->face_data("Qsubl")  * face->get_area() ; // convert to kg/s to match our transport terms from above

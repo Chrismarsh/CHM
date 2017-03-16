@@ -1,7 +1,6 @@
 #pragma once
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_expint.h>
-#include <gsl/gsl_linalg.h>
 
 #include <armadillo>
 
@@ -39,12 +38,11 @@ public:
 private:
 
     arma::mat A;
-    arma::vec b;
+    arma::vec b;// known values - constant value of 0 goes in b[size-1]
     arma::vec x;
-//    double *A ;
+
     double pi;
     double c; //euler constant
-//    double *B; // known values - constant value of 0 goes in b[size-1]
     double weight;
     bool static_size;
     size_t size;
