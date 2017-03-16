@@ -164,29 +164,15 @@ void Lehning_blowing_snow::run(mesh domain)
         uvw(1) = v.y(); //U_y
         uvw(2) = 0;
 
-//        double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / z0));
 
-        auto ustarfn = [&](double ustar) -> double
-        {
+//        d->z0 = 0.001;
+//        double ustar = PhysConst::kappa * u2 / ( log (2.0 / d->z0));
 
-            double result = PhysConst::kappa*u2/log(326.1845386/(ustar*ustar));
-            return result;
-        };
-
-        double guess = .1;
-        double factor = 1;
-        int digits = std::numeric_limits<double>::digits - 3;
-        double min = 0.001;
-        double max = 3;
-        boost::uintmax_t max_iter=500;
-        boost::math::tools::eps_tolerance<double> tol(30);
-//        auto r = boost::math::tools::toms748_solve(ustarfn, min, max, tol, max_iter);
-//        double ustar = r.first + (r.second - r.first)/2.0;
-//        ustar = std::max(0.1,ustar);
-
-        d->z0=0.005;
-        double ustar = std::max(0.1, u2 * PhysConst::kappa / log(2. / d->z0));
-        //0.1203*ustar*ustar/(2*9.81);
+        //solve for ustar as perturbed by blowing snow
+        //  not 100% sure this should be done w/o blowing snow. Might need to revisit this
+        double ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
+        ustar = std::max(0.1,ustar);
+        d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
 
         //depth of saltation layer
         double hs = 0;
@@ -267,20 +253,16 @@ void Lehning_blowing_snow::run(mesh domain)
         //use a 1mm cutoff for movement, as this is what most snow models use and just melt this out
         if( ustar > u_star_saltation )
         {
-//            if(i==25263)
-//            {
-//                LOG_DEBUG << "hi";
-//            }
+
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
             face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
             face->set_face_data("is_drifting",1);
             //Pomeroy 1990
 //            c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_saltation*u_star_saltation) / (ustar * ustar));
-            // seems to happen at low wind speeds where the parameterization breaks
+            // occasionally happens to happen at low wind speeds where the parameterization breaks
             if(c_salt < 0 || std::isnan(c_salt))
             {
-                LOG_DEBUG << "csalt=" << c_salt;
                 c_salt = 0;
             }
 
@@ -332,11 +314,6 @@ void Lehning_blowing_snow::run(mesh domain)
 //        {
 //            Qsalt = 0;
 //            c_salt = 0.8;
-//        }
-
-//        if(c_salt > 0 )
-//        {
-//            LOG_DEBUG << "Blowing snow, csalt = " << c_salt << "kg/m^3";
 //        }
 
 
@@ -689,6 +666,7 @@ void Lehning_blowing_snow::run(mesh domain)
         std::vector< boost::tuple<double, double, double> > vec_qt;
 
         double qdep = 0;
+        //just set the edge to never be a source of sink.
         if(!d->is_edge)
         {
             //build up the interpolated values
@@ -734,11 +712,6 @@ void Lehning_blowing_snow::run(mesh domain)
 
         double depth = mass / drift_density; //; kg/m^2
         double depth_no_subl = mass_no_subl /  drift_density ;
-
-        if(is_nan(mass))
-        {
-            LOG_DEBUG << "nan snobal at id = " << face->cell_id;
-        }
 
         face->set_face_data("drift_mass",mass );
         face->set_face_data("drift_mass_no_subl", mass_no_subl);

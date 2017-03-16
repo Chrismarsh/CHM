@@ -14,6 +14,7 @@
 
 #include <cmath>
 #include <vector>
+#include <gsl/gsl_sf_lambert.h>
 
 #include <viennacl/linalg/cg.hpp>
 #include <viennacl/linalg/bicgstab.hpp>
