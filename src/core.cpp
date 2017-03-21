@@ -38,6 +38,9 @@ void core::config_options(const pt::ptree &value)
             severity >= _log_level
     );
 
+    _cout_log_sink->set_filter(
+            severity >= _log_level
+    );
 
     //enable/disable ncurses UI. default is enable
     boost::optional<bool> u = value.get_optional<bool>("ui");
@@ -839,7 +842,7 @@ void core::init(int argc, char **argv)
                     % expr::smessage
             );
     _cout_log_sink->set_filter(
-            severity >= debug
+            severity >= _log_level
     );
     logging::core::get()->add_sink(_cout_log_sink);
 
@@ -861,7 +864,7 @@ void core::init(int argc, char **argv)
     }
 
     pBackend_file->add_stream(pStream2);
-
+    pBackend_file->auto_flush (true);
 
     _log_sink->set_formatter
             (
@@ -874,9 +877,14 @@ void core::init(int argc, char **argv)
                     % expr::attr<log_level>("Severity")
                     % expr::smessage
             );
+    _log_sink->set_filter(
+            severity >= verbose
+    );
 
     logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
     logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
+
+
 
     logging::core::get()->add_sink(_log_sink);
 
@@ -1707,7 +1715,7 @@ void core::run()
 
             if (!_enable_ui)
             {
-                LOG_DEBUG << "Timestep: " << _global->posix_time();
+                LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
             }
 
 
