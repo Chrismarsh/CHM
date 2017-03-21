@@ -60,6 +60,8 @@ void snobal::init(mesh domain)
         g->sum_melt = 0;
         auto* sbal = &(g->data);
         g->dead=0;
+        g->delta_avalanche_snowdepth=0;
+        g->delta_avalanche_swe=0;
         /**
          * Snopack config
          */
@@ -278,10 +280,10 @@ void snobal::run(mesh_elem &face)
     // If snow avalanche variables are available
     bool snow_slide = false;
     if(has_optional("delta_avalanche_snowdepth")) {
-        sbal->delta_snowdepthavg = face->face_data("delta_avalanche_snowdepth");
+        g->delta_avalanche_snowdepth = face->face_data("delta_avalanche_snowdepth");
     }
     if(has_optional("delta_avalanche_mass")) {
-        sbal->delta_swe = face->face_data("delta_avalanche_mass");
+        g->delta_avalanche_swe = face->face_data("delta_avalanche_mass");
         snow_slide = true;
     }
 
@@ -291,8 +293,8 @@ void snobal::run(mesh_elem &face)
         // Convert change in volume and mass back to depth and mass per area, respectivly.
         // Assumes snow depth is uniform across triangle
         double area = face->get_area(); // area of current triangle (m^2)
-        double d_depth = sbal->delta_snowdepthavg / area; // m^3 / m^2 = m
-        double d_mass  = sbal->delta_swe / area * 1000; // m^3 / m^2 * 1000 kg/m^3 = kg/m^2
+        double d_depth = g->delta_avalanche_snowdepth / area; // m^3 / m^2 = m
+        double d_mass  = g->delta_avalanche_swe / area * 1000; // m^3 / m^2 * 1000 kg/m^3 = kg/m^2
         sbal->_adj_snow(d_depth,d_mass);
     }
 
