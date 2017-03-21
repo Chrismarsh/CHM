@@ -6,8 +6,8 @@ snow_slide::snow_slide(config_file cfg)
     depends("snowdepthavg");
     depends("swe");
 
-    provides("delta_swe");
-    provides("delta_snowdepthavg");
+    provides("delta_avalanche_mass");
+    provides("delta_avalanche_snowdepth");
     provides("maxDepth");
 
 }
@@ -30,8 +30,8 @@ void snow_slide::run(mesh domain)
         data->snowdepthavg_copy = face->face_data("snowdepthavg"); // Store copy of snowdepth for snow_slide use
         data->swe_copy = face->face_data("swe")/1000; // mm to m
         // Initalize snow transport to zero
-        data->delta_snowdepthavg = 0.0;
-        data->delta_swe = 0.0; // m
+        data->delta_avalanche_snowdepth = 0.0;
+        data->delta_avalanche_mass = 0.0; // m
         sorted_z.push_back( std::make_pair( face->center().z() + face->face_data("snowdepthavg"), face) );
 
     }
@@ -93,12 +93,12 @@ void snow_slide::run(mesh domain)
                 data->snowdepthavg_copy = maxDepth;
                 data->swe_copy = swe * maxDepth / snowdepthavg;
                 // Update mass transport (m^3)
-                data->delta_snowdepthavg -= del_depth * cen_area;
-                data->delta_swe -= del_swe * cen_area;
+                data->delta_avalanche_snowdepth -= del_depth * cen_area;
+                data->delta_avalanche_mass -= del_swe * cen_area;
 
                 // Save state variables
-                face->set_face_data("delta_snowdepthavg", data->delta_snowdepthavg);
-                face->set_face_data("delta_swe", data->delta_swe);
+                face->set_face_data("delta_avalanche_snowdepth", data->delta_avalanche_snowdepth);
+                face->set_face_data("delta_avalanche_mass", data->delta_avalanche_mass);
             }
 
             // Case 2) Non-Edge cell, but w_dem=0, "sink" cell. Don't route snow.
@@ -131,9 +131,9 @@ void snow_slide::run(mesh domain)
                     n_data->swe_copy += del_swe * (cen_area/n_area) * w[j]; // (m)
 
                     // Update mass transport to neighbor
-                    n_data->delta_snowdepthavg += del_depth * cen_area * w[j]; // Fraction of snowdepth (m) *
+                    n_data->delta_avalanche_snowdepth += del_depth * cen_area * w[j]; // Fraction of snowdepth (m) *
                     // center triangle area (m^2) = volune of snow depth (m^3)
-                    n_data->delta_swe +=  del_swe * cen_area * w[j]; // (m) * (m^2) = (m^3) of swe
+                    n_data->delta_avalanche_mass +=  del_swe * cen_area * w[j]; // (m) * (m^2) = (m^3) of swe
                     out_mass += del_swe * cen_area * w[j];
                 }
             }
@@ -143,8 +143,8 @@ void snow_slide::run(mesh domain)
             // This relys on the assumption of uniform density.
 
             // Update mass transport (m^3)
-            data->delta_snowdepthavg -= del_depth * cen_area;
-            data->delta_swe -= del_swe * cen_area;
+            data->delta_avalanche_snowdepth -= del_depth * cen_area;
+            data->delta_avalanche_mass -= del_swe * cen_area;
 
             // Check mass transport balances for current avalanche cell
             if (std::abs(orig_mass-out_mass)>0.0001) {
@@ -156,8 +156,8 @@ void snow_slide::run(mesh domain)
         }
 
         // Save state variables at end of time step
-        face->set_face_data("delta_snowdepthavg", data->delta_snowdepthavg);
-        face->set_face_data("delta_swe", data->delta_swe);
+        face->set_face_data("delta_avalanche_snowdepth", data->delta_avalanche_snowdepth);
+        face->set_face_data("delta_avalanche_mass", data->delta_avalanche_mass);
 
     } // End of each face
 

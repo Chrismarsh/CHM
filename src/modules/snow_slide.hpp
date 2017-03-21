@@ -24,8 +24,8 @@ public:
         double maxDepth; // m
         double snowdepthavg_copy; // m
         double swe_copy; // m (Note: swe units outside of snowslide are still mm)
-        double delta_snowdepthavg; // m^3
-        double delta_swe; // m^3
+        double delta_avalanche_snowdepth; // m^3
+        double delta_avalanche_mass; // m^3
     };
 
 };

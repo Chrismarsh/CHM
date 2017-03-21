@@ -22,8 +22,8 @@ snobal::snobal(config_file cfg)
     depends("snow_albedo");
 
     // Optional avalanche variables
-    optional("delta_snowdepthavg");
-    optional("delta_swe");
+    optional("delta_avalanche_snowdepth");
+    optional("delta_avalanche_mass");
 
     provides("swe");
     provides("snowmelt_int");
@@ -277,11 +277,11 @@ void snobal::run(mesh_elem &face)
 
     // If snow avalanche variables are available
     bool snow_slide = false;
-    if(has_optional("delta_snowdepthavg")) {
-        sbal->delta_snowdepthavg = face->face_data("delta_snowdepthavg");
+    if(has_optional("delta_avalanche_snowdepth")) {
+        sbal->delta_snowdepthavg = face->face_data("delta_avalanche_snowdepth");
     }
-    if(has_optional("delta_swe")) {
-        sbal->delta_swe = face->face_data("delta_swe");
+    if(has_optional("delta_avalanche_mass")) {
+        sbal->delta_swe = face->face_data("delta_avalanche_mass");
         snow_slide = true;
     }
 
