@@ -60,6 +60,7 @@ void Lehning_blowing_snow::init(mesh domain)
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40;
 
+    snow_diffusion_const = cfg.get("snow_diffusion_const",0.005); // Beta * K, this is beta and scales the eddy diffusivity
     do_vertical_advection = cfg.get("vertical_advection",true);
     drift_density = cfg.get("drift_density",400.);
 
@@ -120,8 +121,6 @@ void Lehning_blowing_snow::init(mesh domain)
             }
 
         }
-
-
 
         face->set_face_data("sum_drift",0);
     }
@@ -249,8 +248,8 @@ void Lehning_blowing_snow::run(mesh domain)
         face->set_face_data("ustar",ustar);
 
         face->set_face_data("is_drifting",0);
-        face->set_face_data("Qsusp_pbsm",0);
-        //use a 1mm cutoff for movement, as this is what most snow models use and just melt this out
+        face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
+
         if( ustar > u_star_saltation )
         {
 
@@ -258,19 +257,23 @@ void Lehning_blowing_snow::run(mesh domain)
             face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
             face->set_face_data("is_drifting",1);
             //Pomeroy 1990
+
+            //it's not really clear what the u_star_t is, but I think it's actually the threshold.
 //            c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_saltation*u_star_saltation) / (ustar * ustar));
-            // occasionally happens to happen at low wind speeds where the parameterization breaks
-            if(c_salt < 0 || std::isnan(c_salt))
-            {
-                c_salt = 0;
-            }
+
+            // occasionally happens to happen at low wind speeds where the parameterization breaks.
+            // hasn't happened since changed this to the threshold velocity though...
+//            if(c_salt < 0 || std::isnan(c_salt))
+//            {
+//                c_salt = 0;
+//            }
 
             //mean wind speed in the saltation layer
             double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0,d->z0)/2.);
 
             // kg/(m*s)
-            Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer
+            Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
             //in the triangle. In this case, we are approximating the edge value with just Qsalt, and are not considering
@@ -283,32 +286,36 @@ void Lehning_blowing_snow::run(mesh domain)
                 udotm[j] = arma::dot(uvw, m[j]);
                 salt += face->edge_length(j) * udotm[j] * Qsalt;
             }
-            salt *= global_param->dt();
+            salt /= face->get_area(); // -> kg/m^2*s
+
+            salt *= global_param->dt(); // ->kg/m^2
 
             //Figure out the max we can transport, ie total mass in cell
-            double total_swe_mass = swe * 1000. * face->get_area(); //kg
-            if( salt > total_swe_mass) // could we move more than the total mass in the cell during this timestep?
+            if( salt > swe) // could we move more than the total mass in the cell during this timestep?
             {
                 double el0,el1,el2;
                 el0 = face->edge_length(0);
                 el1 = face->edge_length(1);
                 el2 = face->edge_length(2);
                 double dt = global_param->dt();
-                //back out what the max conc should be
-                double max_conc =
-                        total_swe_mass/(uhs*hs*dt*(el0*udotm[0]+el1*udotm[1]+el2*udotm[2]));
-                c_salt = max_conc; // kg/m^3
+
+                //back out what the max conc should be based on our swe
+                //units: ((kg/m^2)*m^2)/( s*m*(m/s)*m ) -> kg/m^3
+                c_salt = swe*face->get_area()/(dt*hs*uhs*(el0*udotm[0]+el1*udotm[1]+el2*udotm[2]));
+
                 Qsalt = c_salt * uhs * hs;
-                if(is_nan(c_salt)) // can is nan if the divergence comes out as 0, and we div by 0
+                if(is_nan(c_salt)) //shouldn't happen but...
                 {
                     c_salt = 0;
                     Qsalt = 0;
                 }
 
 //                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt << " triangle="<<i;
+//                LOG_DEBUG << "Avail mass = " << swe << ", would have salted =  " << salt;
             }
         }
 
+        // can use for point scale plume testing.
 //        c_salt = 0;
 //        if (i == 12125 )
 //        {
@@ -328,8 +335,9 @@ void Lehning_blowing_snow::run(mesh domain)
             double cz = z + hs+ v_edge_height/2.; //cell center height
             double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * d->z0 + l__max);
 
-            K[3] = K[4] = 0.1 * std::max(ustar * l, PhysConst::kappa * cz * ustar);
-            face->set_face_data("K"+std::to_string(z), K[3] ); //<0?0:c
+            //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
+            K[3] = K[4] = snow_diffusion_const * std::max(ustar * l, PhysConst::kappa * cz * ustar);
+            face->set_face_data("K"+std::to_string(z), K[3] );
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
             //bottom
@@ -390,25 +398,25 @@ void Lehning_blowing_snow::run(mesh domain)
 
             }
 
-            //vertical layers
-            //this formulation includes the 3D advection term
+            //init to zero the vertical component regardless of do_vertical_advection
             if( z != nLayer -1 &&
-                    C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
+                C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
                 C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
 
-
             if(z!=0 &&
-                    C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
+               C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
                 C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
 
             if(do_vertical_advection)
             {
+                //vertical layers
+                //this formulation includes the 3D advection term
                 if (z == 0)
                 {
 
-                    //bottom face, no advection, this breaks the solution. Have to use a low wind speed
-//                                    C[idx][idx] += -d->A[4] * K[4];
-//                                    b[idx] = -d->A[4] * K[4] * c_salt+0.0;
+                    //bottom face, no advection
+                    C[idx][idx] += -d->A[4] * K[4];
+                    b[idx] = -d->A[4] * K[4] * c_salt+0.0;
 
                     if (udotm[3] > 0)
                     {
@@ -420,22 +428,6 @@ void Lehning_blowing_snow::run(mesh domain)
                         C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
                     }
 
-
-                    // just the smallest little bit of advection to keep it stable :(
-                    auto uvw_0 = uvw;
-                    uvw_0(2) = sng(uvw(2)) * 0.1; //match the sign of the top of this cell.
-
-                    auto udotm_0 = arma::dot(uvw, m[4]);
-
-                    if (udotm[4] > 0)
-                    {
-                        C[idx][idx] += -d->A[4] * K[4] - d->A[4] * udotm_0;
-                        b[idx] = -d->A[4] * K[4] * c_salt;
-                    } else
-                    {
-                        C[idx][idx] += -d->A[4] * K[4];
-                        b[idx] += (d->A[4] * K[4] + d->A[4] * udotm_0) * c_salt;
-                    }
 
                 } else if (z == nLayer - 1)// top z layer
                 {
@@ -457,7 +449,7 @@ void Lehning_blowing_snow::run(mesh domain)
                         C[idx][idx] += -alpha[4];
                         C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4] * udotm[4] + alpha[4];
                     }
-                } else
+                } else //middle layers
                 {
                     if (udotm[3] > 0)
                     {
@@ -515,26 +507,22 @@ void Lehning_blowing_snow::run(mesh domain)
     } //end face iter
 
 
-      //setup the compressed matrix on the compute device, in available
-//    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
-//    viennacl::copy(C,vl_C);
-//    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
-//    viennacl::copy(b,rhs);
+      //setup the compressed matrix on the compute device, if available
+    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
+    viennacl::copy(C,vl_C);
+    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
+    viennacl::copy(b,rhs);
 
     // configuration of preconditioner:
-//    viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
-//    chow_patel_ilu_config.sweeps(3);       // three nonlinear sweeps
-//    chow_patel_ilu_config.jacobi_iters(2); // two Jacobi iterations per triangular 'solve' Rx=r
-//    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
+    viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
+    chow_patel_ilu_config.sweeps(3);       // three nonlinear sweeps
+    chow_patel_ilu_config.jacobi_iters(2); // two Jacobi iterations per triangular 'solve' Rx=r
+    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
 
-
-//    LOG_DEBUG << "solving";
-
-    //docs say 'This will use appropriate ViennaCL objects internally.'  http://viennacl.sourceforge.net/doc/iterative_8cpp-example.html
-    auto x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
-
-//   auto x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::bicgstab_tag(),chow_patel_ilu);
-
+    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::bicgstab_tag(),chow_patel_ilu);
+    std::vector<vcl_scalar_type> x(vl_x.size());
+    viennacl::copy(vl_x,x);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -637,7 +625,6 @@ void Lehning_blowing_snow::run(mesh domain)
 
          double id = face->_debug_ID;
 
-        double u2 = face->face_data("U_2m_above_srf");
         double phi = face->face_data("vw_dir");
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
 
@@ -667,54 +654,80 @@ void Lehning_blowing_snow::run(mesh domain)
 
         double qdep = 0;
         //just set the edge to never be a source of sink.
-        if(!d->is_edge)
+
+//        for (int j = 0; j < 3; j++)
+//        {
+//            if (d->face_neigh[j])
+//            {
+//                auto neigh = face->neighbor(j);
+//                double qs = (neigh->face_data("Qsalt") + face->face_data("Qsalt")) / 2.0;
+//                double qt = (neigh->face_data("Qsusp") + face->face_data("Qsusp")) / 2.0;
+//
+//                qdep += E[j] * udotm[j] * (qs + qt);
+//            }
+////            else
+////            {
+////                double qs =  face->face_data("Qsalt")/2.;
+////                double qt = face->face_data("Qsusp")/2.;
+////                qdep += E[j] * udotm[j] * (qs + qt);
+////            }
+//        }
+
+        //build up the interpolated values
+        for (int j = 0; j < 3; j++)
         {
-            //build up the interpolated values
-            for (int j = 0; j < 3; j++)
+            if (d->face_neigh[j])
             {
-                if (d->face_neigh[j])
-                {
-                    auto neigh = face->neighbor(j);
-                    vec_qs.push_back(
-                            boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsalt")));
-                    vec_qt.push_back(
-                            boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsusp")));
-                }
-            }
-            vec_qs.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsalt")));
-            vec_qt.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsusp")));
+                auto neigh = face->neighbor(j);
 
-            std::vector<double> qsinterp;
-            std::vector<double> qtinterp;
-            for (int j = 0; j < 3; j++)
-            {
-                auto emp = face->edge_midpoint(j);
-                auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
-
-                double qs = interp(vec_qs, query);
-                double qt = interp(vec_qt, query);
-                qsinterp.push_back(qs);
-                qtinterp.push_back(qt);
-                qdep += E[j] * udotm[j] *
-                        (qs + qt); //kg/s, slight different that whats in the papers as we're using divergence thm.
+                vec_qs.push_back(
+                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsalt")));
+                vec_qt.push_back(
+                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsusp")));
             }
         }
+        vec_qs.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsalt")));
+        vec_qt.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsusp")));
 
-        double subl_mass_flux = face->face_data("Qsubl")  * face->get_area() ; // convert to kg/s to match our transport terms from above
+        std::vector<double> qsinterp;
+        std::vector<double> qtinterp;
+        for (int j = 0; j < 3; j++)
+        {
+            auto emp = face->edge_midpoint(j);
+            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
 
-        //we need to check if we're about to sublimate more snow than what exists in our mass
+            double qs = interp(vec_qs, query);
+            double qt = interp(vec_qt, query);
+            qsinterp.push_back(qs);
+            qtinterp.push_back(qt);
+            qdep += E[j] * udotm[j] * (qs + qt);
+        }
+        qdep /= face->get_area(); // -> kg/m^2*s
 
-        double mass = (- qdep  + subl_mass_flux )* global_param->dt(); // kg/s *dt -> kg
+//        for (int j = 0; j < 3; j++)
+//        {
+//            auto emp = face->edge_midpoint(j);
+//            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
+//
+//            double qs = interp(vec_qs, query);
+//            double qt = interp(vec_qt, query);
+//            qsinterp.push_back(qs);
+//            qtinterp.push_back(qt);
+//            qdep += E[j] * udotm[j] *
+//                    (qs + qt); //kg/s, slight different that whats in the papers as we're using divergence thm.
+//        }
+
+
+        double subl_mass_flux = face->face_data("Qsubl") ;
+
+
+
+        double mass = (- qdep  + subl_mass_flux )* global_param->dt(); // kg/m^2*s *dt -> kg/m^2
         double mass_no_subl = -qdep * global_param->dt();
-
-        mass /= face->get_area();
-        mass_no_subl /= face->get_area();
-
-        double depth = mass / drift_density; //; kg/m^2
-        double depth_no_subl = mass_no_subl /  drift_density ;
 
         face->set_face_data("drift_mass",mass );
         face->set_face_data("drift_mass_no_subl", mass_no_subl);
+
         double sum_drift = face->face_data("sum_drift");
         face->set_face_data("sum_drift", sum_drift + mass);
     }

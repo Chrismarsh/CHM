@@ -16,20 +16,24 @@
 #include <vector>
 #include <gsl/gsl_sf_lambert.h>
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
+// we need to define these and have them return constant values under a no-omp situation
+inline int omp_get_thread_num() { return 0;}
+inline int omp_get_max_threads() { return 1;}
+
+#undef VIENNACL_WITH_OPENMP
+
+#endif
+
 #include <viennacl/linalg/cg.hpp>
 #include <viennacl/linalg/bicgstab.hpp>
 #include <viennacl/linalg/gmres.hpp>
 #include <viennacl/ell_matrix.hpp>
 #include <viennacl/linalg/jacobi_precond.hpp>
 
-#ifdef _OPENMP
-#include <omp.h>
-#else
-// we need to define these and have them return constant values under a no-omp situation
-#define omp_get_max_threads() 1
-#define omp_get_thread_num() 0
 
-#endif
 
 #include <armadillo>
 #include <cstdlib>
@@ -64,6 +68,8 @@ public:
     double susp_depth;
     double v_edge_height;
 
+    // Beta * K, this is beta and scales the eddy diffusivity
+    double snow_diffusion_const ;
     double l__max; // vertical mixing length (m)
     double drift_density; // density of the transported snow to use for calculating swe depth
     bool do_vertical_advection; // should we use the discretization that includes 3D advection?
@@ -84,6 +90,8 @@ public:
 
         //face neighbours
         bool face_neigh[3];
+
+
 
         //saltation height
         double hs;

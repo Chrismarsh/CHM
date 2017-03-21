@@ -284,10 +284,10 @@ void snobal::run(mesh_elem &face)
         double mass = face->face_data("drift_mass");
         //m_s is kg/m^2 and mass is kg/m^2
         //negative = mass removal
-        if(mass < 0 && (sbal->m_s+mass ) < 0 ) // are we about to remove more mass than what exists???
-            mass = -sbal->m_s; //cap it to remove no more than available mass
+//        if(mass < 0 && (sbal->m_s+mass ) < 0 ) // are we about to remove more mass than what exists???
+//            mass = -sbal->m_s; //cap it to remove no more than available mass
 
-        sbal->_adj_snow(mass / 400., mass);
+        sbal->_adj_snow(mass / 300., mass);
     }
 
     if(g->dead == 1)
@@ -351,7 +351,3 @@ void snobal::run(mesh_elem &face)
 //    g->dead = 0;
 }
 
-void snobal::run(mesh domain)
-{
-
-}

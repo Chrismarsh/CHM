@@ -25,9 +25,6 @@ public:
     ~snobal();
 
     virtual void run(mesh_elem &face);
-
-    virtual void run(mesh domain);
-
     virtual void init(mesh domain);
 
 };
