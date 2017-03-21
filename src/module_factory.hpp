@@ -49,7 +49,7 @@ namespace pt = boost::property_tree;
 #include "fast_shadow.hpp"
 #include "deform_mesh.hpp"
 #include "crop_rotation.hpp"
-#include "Lehning_blowing_snow.hpp"
+#include "PBSM3D.hpp"
 class module_factory
 {
 public:

@@ -1,7 +1,7 @@
-#include "Lehning_blowing_snow.hpp" 
+#include "PBSM3D.hpp"
 
 
-Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
+PBSM3D::PBSM3D(config_file cfg)
         :module_base(parallel::domain)
 {
     depends("U_2m_above_srf");
@@ -53,7 +53,7 @@ Lehning_blowing_snow::Lehning_blowing_snow(config_file cfg)
     provides("sum_drift");
 }
 
-void Lehning_blowing_snow::init(mesh domain)
+void PBSM3D::init(mesh domain)
 {
     nLayer = 5;
     susp_depth = 5; //5m as per pomeroy
@@ -126,7 +126,7 @@ void Lehning_blowing_snow::init(mesh domain)
     }
 }
 
-void Lehning_blowing_snow::run(mesh domain)
+void PBSM3D::run(mesh domain)
 {
     //hardcode at the moment
 
@@ -733,7 +733,7 @@ void Lehning_blowing_snow::run(mesh domain)
     }
 }
 
-Lehning_blowing_snow::~Lehning_blowing_snow()
+PBSM3D::~PBSM3D()
 {
 
 }

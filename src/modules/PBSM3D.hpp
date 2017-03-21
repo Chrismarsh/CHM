@@ -56,11 +56,11 @@ inline int omp_get_max_threads() { return 1;}
 * Provides:
 * -
 */
-class Lehning_blowing_snow : public module_base
+class PBSM3D : public module_base
 {
 public:
-    Lehning_blowing_snow(config_file cfg);
-    ~Lehning_blowing_snow();
+    PBSM3D(config_file cfg);
+    ~PBSM3D();
     void run(mesh domain);
     void init(mesh domain);
 
