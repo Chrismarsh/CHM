@@ -7,6 +7,8 @@ PBSM3D::PBSM3D(config_file cfg)
     depends("U_2m_above_srf");
     depends("vw_dir");
     depends("swe");
+    depends("t");
+    depends("rh");
 
     provides("u10");
     provides("is_drifting");
@@ -24,16 +26,6 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("K4");
 
     provides("Qsusp_pbsm");
-//    provides("c5");
-//    provides("c6");
-//    provides("c7");
-//    provides("c8");
-//    provides("c9");
-//    provides("c10");
-//    provides("c11");
-//    provides("c12");
-//    provides("c13");
-//    provides("c14");
 
     provides("hs");
     provides("ustar");
@@ -58,11 +50,16 @@ void PBSM3D::init(mesh domain)
     nLayer = 5;
     susp_depth = 5; //5m as per pomeroy
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
-    l__max = 40;
+    l__max = 40; // mixing length for diffusivity calculations
+
+    settling_velocity = cfg.get("settling_velocity",-0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall (2008), Inhomogeneous precipitation distribution and snow transport in steep terrain, Water Resour. Res., 44(7), 1–19, doi:10.1029/2007WR006545.
+
+    if(settling_velocity > 0)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be negative"));
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.005); // Beta * K, this is beta and scales the eddy diffusivity
     do_vertical_advection = cfg.get("vertical_advection",true);
-    drift_density = cfg.get("drift_density",400.);
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -128,8 +125,6 @@ void PBSM3D::init(mesh domain)
 
 void PBSM3D::run(mesh domain)
 {
-    //hardcode at the moment
-
     //needed for linear system offsets
     size_t ntri = domain->number_of_faces();
 
@@ -139,7 +134,7 @@ void PBSM3D::run(mesh domain)
     std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
 
     //ice density
-    double rho_p = 917;
+    double rho_p = PhysConst::rho_ice;
 
     double k=0;
 #pragma omp parallel for
@@ -162,10 +157,6 @@ void PBSM3D::run(mesh domain)
         uvw(0) = v.x(); //U_x
         uvw(1) = v.y(); //U_y
         uvw(2) = 0;
-
-
-//        d->z0 = 0.001;
-//        double ustar = PhysConst::kappa * u2 / ( log (2.0 / d->z0));
 
         //solve for ustar as perturbed by blowing snow
         //  not 100% sure this should be done w/o blowing snow. Might need to revisit this
@@ -349,7 +340,7 @@ void PBSM3D::run(mesh domain)
             double scale = u_z / length;
 
             uvw *= scale;
-            uvw(2) = -0.5; //settling velocity
+            uvw(2) = settling_velocity; //settling velocity,
 
             //holds wind dot face normal
             double udotm[5];
@@ -616,6 +607,13 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("Qsubl",Qsubl);
     }
 
+    std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
+    std::vector<vcl_scalar_type> bb(ntri, 0.0);
+
+//    arma::mat A(ntri,ntri,arma::fill::zeros);
+//    arma::vec bb(ntri,arma::fill::zeros);
+
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -655,6 +653,58 @@ void PBSM3D::run(mesh domain)
         double qdep = 0;
         //just set the edge to never be a source of sink.
 
+
+
+        double eps = 1e-8;
+        double Qt[3] = {0.0,0.0,0.0};
+        double dx[3] = {1.0,1.0,1.0};
+
+        if( A[i].find(i) == A[i].end() )
+            A[i][i] = 0.0;
+
+        for (int j = 0; j < 3; j++)
+        {
+
+
+            if (d->face_neigh[j])
+            {
+                auto neigh = face->neighbor(j);
+                double qs = (neigh->face_data("Qsalt") + face->face_data("Qsalt")) / 2.0;
+                double qt = (neigh->face_data("Qsusp") + face->face_data("Qsusp")) / 2.0;
+
+                Qt[j] = qs + qt;
+
+                dx[j] = math::gis::distance(face->center(),neigh->center());
+
+                if( A[i].find(neigh->cell_id) == A[i].end() )
+                    A[i][neigh->cell_id] = 0.0;
+
+                A[i][i] += eps/(dx[j]*face->get_area())-1;
+                A[i][neigh->cell_id] += -eps/(dx[j]*face->get_area());
+                bb[i] += E[j]*Qt[j]*udotm[j]/face->get_area();
+//                A[i][neigh->cell_id] = -eps/(dx[j]*face->get_area());
+            }
+            else
+            {
+
+                //use a ghost cell 1m away around the edge w/ 0 flux
+                double qs = (0. + face->face_data("Qsalt")) / 2.0;
+                double qt = (0. + face->face_data("Qsusp")) / 2.0;
+
+                Qt[j] = qs + qt;
+
+                dx[j] = 1;
+
+                A[i][i] += eps/(dx[j]*face->get_area())-1;
+                bb[i] += E[j]*Qt[j]*udotm[j]/face->get_area();
+            }
+
+        }
+
+//        bb[i]= -(-E[0]*Qt[0]*udotm[0]-E[1]*Qt[1]*udotm[1]-E[2]*Qt[2]*udotm[2])/face->get_area();
+//        A[i][i] = -eps*(-1.0/dx[0]-1.0/dx[1]-1.0/dx[2])/face->get_area()-1.0 ;
+
+
 //        for (int j = 0; j < 3; j++)
 //        {
 //            if (d->face_neigh[j])
@@ -663,7 +713,9 @@ void PBSM3D::run(mesh domain)
 //                double qs = (neigh->face_data("Qsalt") + face->face_data("Qsalt")) / 2.0;
 //                double qt = (neigh->face_data("Qsusp") + face->face_data("Qsusp")) / 2.0;
 //
-//                qdep += E[j] * udotm[j] * (qs + qt);
+//                double Qt = qs + qt;
+//
+//                qdep += E[j] * udotm[j] * Qt;
 //            }
 ////            else
 ////            {
@@ -674,36 +726,23 @@ void PBSM3D::run(mesh domain)
 //        }
 
         //build up the interpolated values
-        for (int j = 0; j < 3; j++)
-        {
-            if (d->face_neigh[j])
-            {
-                auto neigh = face->neighbor(j);
-
-                vec_qs.push_back(
-                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsalt")));
-                vec_qt.push_back(
-                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsusp")));
-            }
-        }
-        vec_qs.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsalt")));
-        vec_qt.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsusp")));
-
-        std::vector<double> qsinterp;
-        std::vector<double> qtinterp;
-        for (int j = 0; j < 3; j++)
-        {
-            auto emp = face->edge_midpoint(j);
-            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
-
-            double qs = interp(vec_qs, query);
-            double qt = interp(vec_qt, query);
-            qsinterp.push_back(qs);
-            qtinterp.push_back(qt);
-            qdep += E[j] * udotm[j] * (qs + qt);
-        }
-        qdep /= face->get_area(); // -> kg/m^2*s
-
+//        for (int j = 0; j < 3; j++)
+//        {
+//            if (d->face_neigh[j])
+//            {
+//                auto neigh = face->neighbor(j);
+//
+//                vec_qs.push_back(
+//                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsalt")));
+//                vec_qt.push_back(
+//                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsusp")));
+//            }
+//        }
+//        vec_qs.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsalt")));
+//        vec_qt.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsusp")));
+//
+//        std::vector<double> qsinterp;
+//        std::vector<double> qtinterp;
 //        for (int j = 0; j < 3; j++)
 //        {
 //            auto emp = face->edge_midpoint(j);
@@ -713,19 +752,57 @@ void PBSM3D::run(mesh domain)
 //            double qt = interp(vec_qt, query);
 //            qsinterp.push_back(qs);
 //            qtinterp.push_back(qt);
-//            qdep += E[j] * udotm[j] *
-//                    (qs + qt); //kg/s, slight different that whats in the papers as we're using divergence thm.
+//            qdep += E[j] * udotm[j] * (qs + qt);
 //        }
 
 
-        double subl_mass_flux = face->face_data("Qsubl") ;
+//
+//        qdep /= face->get_area(); // -> kg/m^2*s
+//
+//
+//        double subl_mass_flux = face->face_data("Qsubl") ;
+//
+//
+//
+//        double mass = (- qdep  + subl_mass_flux )* global_param->dt(); // kg/m^2*s *dt -> kg/m^2
+//        double mass_no_subl = -qdep * global_param->dt();
+//
+//        face->set_face_data("drift_mass",mass );
+//        face->set_face_data("drift_mass_no_subl", mass_no_subl);
+//
+//        double sum_drift = face->face_data("sum_drift");
+//        face->set_face_data("sum_drift", sum_drift + mass);
+    }
+
+//    viennacl::compressed_matrix<vcl_scalar_type>  vl_A(ntri, ntri);
+//    viennacl::copy(A,vl_A);
+//    viennacl::vector<vcl_scalar_type> rhs_bb(ntri);
+//    viennacl::copy(bb,rhs_bb);
+//
+//    // configuration of preconditioner:
+//    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
+//
+//    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+//    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, viennacl::linalg::bicgstab_tag(),chow_patel_ilu2);
+//    std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
+//    viennacl::copy(vl_dSdt,dSdt);
 
 
+    auto dSdt = viennacl::linalg::solve(A, bb, viennacl::linalg::bicgstab_tag());
 
-        double mass = (- qdep  + subl_mass_flux )* global_param->dt(); // kg/m^2*s *dt -> kg/m^2
+
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+
+        double subl_mass_flux = face->face_data("Qsubl");
+        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
+
+        double mass = (-qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
         double mass_no_subl = -qdep * global_param->dt();
 
-        face->set_face_data("drift_mass",mass );
+        face->set_face_data("drift_mass", mass);
         face->set_face_data("drift_mass_no_subl", mass_no_subl);
 
         double sum_drift = face->face_data("sum_drift");

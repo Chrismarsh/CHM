@@ -27,15 +27,16 @@ inline int omp_get_max_threads() { return 1;}
 
 #endif
 
+
 #include <viennacl/linalg/cg.hpp>
 #include <viennacl/linalg/bicgstab.hpp>
 #include <viennacl/linalg/gmres.hpp>
+#include <viennacl/linalg/lu.hpp>
 #include <viennacl/ell_matrix.hpp>
 #include <viennacl/linalg/jacobi_precond.hpp>
 
-
-
 #include <armadillo>
+
 #include <cstdlib>
 #include <string>
 //#define _USE_MATH_DEFINES
@@ -47,14 +48,24 @@ inline int omp_get_max_threads() { return 1;}
 /**
 * \addtogroup modules
 * @{
-* Lehning_blowing_snow blowing snow impliments the blowing snow model in Alpine3D as described
- * in Lehning, et al. 2008
- * Lehning, M., Löwe, H., Ryser, M., & Raderschall, N. (2008). Inhomogeneous precipitation distribution and snow transport in steep terrain. Water Resources Research, 44(7), 1–19. http://doi.org/10.1029/2007WR006545
-* Depends:
-* -
+* PBSM3D blowing snow implements a 3D scalar transport model using some PBSM formulations
+ * scalar transport using snow concentrations is outlined here
+ * Lehning, M., H. Löwe, M. Ryser, and N. Raderschall (2008), Inhomogeneous precipitation distribution and snow transport in steep terrain, Water Resour. Res., 44(7), 1–19, doi:10.1029/2007WR006545.
+ * saltation concentration is given in
+ * Pomeroy, J. W., and D. M. Gray (1990), Saltation of snow, Water Resour. Res., 26(7), 1583–1594.
+ * but clearly given in
+ * Pomeroy, J. W., and D. Male (1992), Steady-state suspension of snow, J. Hydrol., 136(1–4), 275–301, doi:10.1016/0022-1694(92)90015-N. [online] Available from: http://linkinghub.elsevier.com/retrieve/pii/002216949290015N
+ * deposition flux shown as divergence taken from
+ * Liston, G., and M. Sturm (1998), A snow-transport model for complex terrain, J. Glaciol., 44(148), 498–516.
+ * sublimation update taken from
+ * Pomeroy, J. W., and L. Li (2000), Prairie and arctic areal snow cover mass balance using a blowing snow model, J. Geophys. Res., 105(D21), 26619–26634, doi:10.1029/2000JD900149. [online] Available from: http://www.agu.org/pubs/crossref/2000/2000JD900149.shtml
+ * Depends:
+* - Air temp (t), [C]
+ * - Relative humidity (RH), [%]
+ * - SWE [kg/m^2], can come before a snowmodel though.
 *
 * Provides:
-* -
+* - mass_drift (kg/m^2) Positive for mass deposition, negative for mass removal.
 */
 class PBSM3D : public module_base
 {
@@ -71,13 +82,8 @@ public:
     // Beta * K, this is beta and scales the eddy diffusivity
     double snow_diffusion_const ;
     double l__max; // vertical mixing length (m)
-    double drift_density; // density of the transported snow to use for calculating swe depth
     bool do_vertical_advection; // should we use the discretization that includes 3D advection?
-
-    //http://stackoverflow.com/a/4609795/410074
-    template <typename T> int sng(T val) {
-        return (T(0) < val) - (val < T(0));
-    }
+    double settling_velocity;
 
     class data : public face_info
     {
