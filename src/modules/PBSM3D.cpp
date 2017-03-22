@@ -241,7 +241,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation )
+        if( ustar > u_star_saltation && swe > 0)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
@@ -272,6 +272,8 @@ void PBSM3D::run(mesh domain)
             double salt=0;
 
             double udotm[3];
+
+
             for(int j=0; j<3; ++j)
             {
                 udotm[j] = arma::dot(uvw, m[j]);
@@ -295,7 +297,7 @@ void PBSM3D::run(mesh domain)
                 c_salt = swe*face->get_area()/(dt*hs*uhs*(el0*udotm[0]+el1*udotm[1]+el2*udotm[2]));
 
                 Qsalt = c_salt * uhs * hs;
-                if(is_nan(c_salt)) //shouldn't happen but...
+                if(is_nan(c_salt)) //if we have no swe this happens
                 {
                     c_salt = 0;
                     Qsalt = 0;
