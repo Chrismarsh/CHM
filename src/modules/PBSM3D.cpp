@@ -657,7 +657,7 @@ void PBSM3D::run(mesh domain)
 
 
 
-        double eps = 1e-8;
+        double eps = 1e-3;
         double Qt[3] = {0.0,0.0,0.0};
         double dx[3] = {1.0,1.0,1.0};
 
