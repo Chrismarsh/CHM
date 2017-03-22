@@ -151,6 +151,16 @@ void sno::init_snow(void)
 {
     double rho_dry;    /* snow density without H2O */
 
+    if (T_s_0 < (MIN_SNOW_TEMP + FREEZE)) // If T_s_0 has gone crazy (very cold), rest to air temperature
+    {
+        T_s_0 = input_rec1.T_a;
+    }
+
+    if (T_s_l < (MIN_SNOW_TEMP + FREEZE)) // If T_s_l has gone crazy (very cold), rest to air temperature
+    {
+        T_s_l = input_rec1.T_a;
+    }
+
     m_s = rho * z_s;
 
     _calc_layers();
