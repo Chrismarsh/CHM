@@ -37,7 +37,7 @@ void snow_slide::run(mesh domain)
     }
 
     // Sort faces by elevation + snowdepth
-    std::sort(sorted_z.begin(), sorted_z.end(), [](std::pair<double, mesh_elem> &a, std::pair<double, mesh_elem> &b) {
+    std::sort(sorted_z.begin(), sorted_z.end(), [](const std::pair<double, mesh_elem> &a,const std::pair<double, mesh_elem> &b) {
         return b.first < a.first;
     });
 
