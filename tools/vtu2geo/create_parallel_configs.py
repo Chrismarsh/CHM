@@ -24,15 +24,10 @@ def main():
 
     # Load in configuration file as module
     X = imp.load_source('',configfile)
-    
+   
     # Grab variables
     input_path = X.input_path
-
-    variables = X.variables
-    parameters = []
-    if hasattr(X,'parameters'):
-        parameters = X.parameters
-
+ 
     #config_dir = 'parallel_configs'
     if hasattr(X,'config_dir'):
 	config_dir = X.config_dir
@@ -40,30 +35,7 @@ def main():
     # Create folder if it doesn't exist
     if not os.path.exists(config_dir):
     	os.makedirs(config_dir)
-
-    # Check if we want to constrain output to a example geotif
-    constrain_flag = False
-    if hasattr(X,'constrain_tif_file'):
-        constrain_tif_file = X.constrain_tif_file
-        var_resample_method = X.var_resample_method
-        param_resample_method = X.param_resample_method
-        constrain_flag = True
-
-    output_path = input_path[:input_path.rfind('/')+1]
-    if hasattr(X,'output_path'):
-        output_path = X.output_path
-
-    pixel_size = 0
-    if hasattr(X,'pixel_size'):
-        pixel_size = X.pixel_size
-
-    user_define_extent = False
-    if hasattr(X,'user_define_extent'):
-        user_define_extent = X.user_define_extent
-
-    # Get size for first rasterization (less than triangle min area)
-    pixel_size = X.pixel_size
-
+    
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
     pvd = ET.parse(input_path)
@@ -72,9 +44,10 @@ def main():
     # Create execution file
     f2 = open(config_dir+'/parallel_commands.txt','w')
 
-    # TODO: hardcoded
-    para_ex = '/home/new365/CHM/tools/vtu2geo/main_parallel.py'
+    # Parallel vtu2geo script
+    para_ex = './main_parallel.py'
 
+    first = True;
     for vtu in pvd:
 
 	# Get full file name
@@ -89,6 +62,11 @@ def main():
 
 	# Write file name
 	f.write('vtu_file="'+vtu_file+'"\n')
+
+	# Unless first, write out parameters=[] so we only get them once
+	if not first:
+		f.write('parameters=[]\n')
+	first = False
 
 	# Close config file
 	f.close()
