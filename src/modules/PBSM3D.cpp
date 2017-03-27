@@ -250,7 +250,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation && swe > 1)
+        if( ustar > u_star_saltation /*&& swe > 1*/)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
@@ -655,7 +655,7 @@ void PBSM3D::run(mesh domain)
             E[j] = face->edge_length(j);
         }
 
-//        double eps = 1e-5;
+
         double dx[3] = {100.0, 100.0, 100.0};
         double V = face->get_area();
 
@@ -690,7 +690,7 @@ void PBSM3D::run(mesh domain)
             auto emp = face->edge_midpoint(j);
             auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
 
-            double qs = 0;// interp(vec_qs, query);
+            double qs = interp(vec_qs, query);
             double qt = interp(vec_qt, query);
 
             if (d->face_neigh[j])
@@ -698,7 +698,7 @@ void PBSM3D::run(mesh domain)
                 auto neigh = face->neighbor(j);
 
                 double Qtj = neigh->face_data("Qsusp");
-                double Qsj = 0;//neigh->face_data("Qsalt");
+                double Qsj = neigh->face_data("Qsalt");
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
                 if (A[i].find(neigh->cell_id) == A[i].end())
@@ -819,7 +819,11 @@ void PBSM3D::run(mesh domain)
         double subl_mass_flux = face->face_data("Qsubl");
 
 
+
         double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
+        if(d->is_edge)
+            qdep = 0;
+        
 //        double qdep =  d->is_edge ? 0 : dSdt[i];
         double mass = (qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
         double mass_no_subl = qdep * global_param->dt();
