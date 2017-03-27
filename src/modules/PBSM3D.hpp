@@ -85,7 +85,7 @@ public:
     bool do_vertical_advection; // should we use the discretization that includes 3D advection?
     double settling_velocity;
     double n_non_edge_tri;
-
+    double eps; //lapacian smoothing epilson.
     class data : public face_info
     {
     public:

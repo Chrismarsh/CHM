@@ -60,6 +60,8 @@ void PBSM3D::init(mesh domain)
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.005); // Beta * K, this is beta and scales the eddy diffusivity
     do_vertical_advection = cfg.get("vertical_advection",true);
 
+    eps = cfg.get("smooth_coeff",1e-5);
+
 
     n_non_edge_tri = 0;
 #pragma omp parallel for
@@ -248,7 +250,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation )
+        if( ustar > u_star_saltation /*&& swe > 1*/)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
@@ -652,7 +654,7 @@ void PBSM3D::run(mesh domain)
             E[j] = face->edge_length(j);
         }
 
-        double eps = 1e-5;
+//        double eps = 1e-5;
         double dx[3] = {100.0, 100.0, 100.0};
         double V = face->get_area();
 
@@ -687,18 +689,15 @@ void PBSM3D::run(mesh domain)
             auto emp = face->edge_midpoint(j);
             auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
 
-            double qs = interp(vec_qs, query);
+            double qs = 0;// interp(vec_qs, query);
             double qt = interp(vec_qt, query);
-
-            if(d->is_edge)
-                eps = 0;
 
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
 
                 double Qtj = neigh->face_data("Qsusp");
-                double Qsj = neigh->face_data("Qsalt");
+                double Qsj = 0;//neigh->face_data("Qsalt");
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
                 if (A[i].find(neigh->cell_id) == A[i].end())
@@ -712,7 +711,7 @@ void PBSM3D::run(mesh domain)
             else
             {
                 double Qtj = Qt;
-                double Qsj = Qs;
+                double Qsj = 0;//Qs;
 
                 A[i][i] += eps*E[j]/V-1.0;
                 bb[i] += .5*E[j]*(Qt+Qs+Qtj+Qsj)*udotm[j]/V;
