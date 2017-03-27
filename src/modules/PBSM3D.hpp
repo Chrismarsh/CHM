@@ -84,6 +84,7 @@ public:
     double l__max; // vertical mixing length (m)
     bool do_vertical_advection; // should we use the discretization that includes 3D advection?
     double settling_velocity;
+    double n_non_edge_tri;
 
     class data : public face_info
     {
@@ -97,6 +98,7 @@ public:
         //face neighbours
         bool face_neigh[3];
 
+        size_t cell_id;
 
 
         //saltation height

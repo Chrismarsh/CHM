@@ -61,10 +61,12 @@ void PBSM3D::init(mesh domain)
     do_vertical_advection = cfg.get("vertical_advection",true);
 
 
+    n_non_edge_tri = 0;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
+
 
         auto d = face->make_module_data<data>(ID);
 
@@ -118,6 +120,12 @@ void PBSM3D::init(mesh domain)
             }
 
         }
+        if(!d->is_edge)
+        {
+            d->cell_id=n_non_edge_tri;
+            ++n_non_edge_tri;
+        }
+
 
         face->set_face_data("sum_drift",0);
     }
@@ -136,7 +144,6 @@ void PBSM3D::run(mesh domain)
     //ice density
     double rho_p = PhysConst::rho_ice;
 
-    double k=0;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -241,7 +248,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation && swe > 0)
+        if( ustar > u_star_saltation )
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
@@ -255,10 +262,10 @@ void PBSM3D::run(mesh domain)
 
             // occasionally happens to happen at low wind speeds where the parameterization breaks.
             // hasn't happened since changed this to the threshold velocity though...
-//            if(c_salt < 0 || std::isnan(c_salt))
-//            {
-//                c_salt = 0;
-//            }
+            if(c_salt < 0 || std::isnan(c_salt))
+            {
+                c_salt = 0;
+            }
 
             //mean wind speed in the saltation layer
             double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0,d->z0)/2.);
@@ -283,8 +290,9 @@ void PBSM3D::run(mesh domain)
 
             salt *= global_param->dt(); // ->kg/m^2
 
+            bool limit_mass=false;
             //Figure out the max we can transport, ie total mass in cell
-            if( salt > swe) // could we move more than the total mass in the cell during this timestep?
+            if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
             {
                 double el0,el1,el2;
                 el0 = face->edge_length(0);
@@ -543,7 +551,7 @@ void PBSM3D::run(mesh domain)
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
-            c = c < 0? 0 : c;
+            c = c < 0 || is_nan(c) ? 0 : c; //harden against some numerical issues that occasionally come up for unknown reasons.
 
             double cz = z + hs+ v_edge_height/2.; //cell center height
 
@@ -551,7 +559,7 @@ void PBSM3D::run(mesh domain)
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
             if(z < 15)
-                face->set_face_data("c"+std::to_string(z), c ); //<0?0:c
+                face->set_face_data("c"+std::to_string(z), c );
 
             //calculate dm/dt from
             // equation 13 from Pomeroy and Li 2000
@@ -612,9 +620,6 @@ void PBSM3D::run(mesh domain)
     std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
     std::vector<vcl_scalar_type> bb(ntri, 0.0);
 
-//    arma::mat A(ntri,ntri,arma::fill::zeros);
-//    arma::vec bb(ntri,arma::fill::zeros);
-
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -623,10 +628,10 @@ void PBSM3D::run(mesh domain)
         auto d = face->get_module_data<data>(ID);
         auto& m = d->m;
 
-         double id = face->_debug_ID;
 
         double phi = face->face_data("vw_dir");
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
+
 
         //setup wind vector
         arma::vec uvw(3);
@@ -637,7 +642,7 @@ void PBSM3D::run(mesh domain)
         double udotm[3];
 
         //edge lengths b/c 2d now
-        double E[3]={0,0,0};
+        double E[3] = {0, 0, 0};
 
         for (int j = 0; j < 3; ++j)
         {
@@ -647,64 +652,76 @@ void PBSM3D::run(mesh domain)
             E[j] = face->edge_length(j);
         }
 
-        interpolation interp(interp_alg::tpspline);
+        double eps = 1e-5;
+        double dx[3] = {100.0, 100.0, 100.0};
+        double V = face->get_area();
 
-        std::vector< boost::tuple<double, double, double> > vec_qs;
-        std::vector< boost::tuple<double, double, double> > vec_qt;
-
-        double qdep = 0;
-        //just set the edge to never be a source of sink.
-
-
-
-        double eps = 1e-3;
-        double Qt[3] = {0.0,0.0,0.0};
-        double dx[3] = {1.0,1.0,1.0};
-
-        if( A[i].find(i) == A[i].end() )
+        if (A[i].find(i) == A[i].end())
             A[i][i] = 0.0;
+
+        double Qt = face->face_data("Qsusp");
+        double Qs = face->face_data("Qsalt");
+
+        interpolation interp(interp_alg::tpspline);
+        std::vector<boost::tuple<double, double, double> > vec_qs;
+        std::vector<boost::tuple<double, double, double> > vec_qt;
 
         for (int j = 0; j < 3; j++)
         {
+            if (d->face_neigh[j])
+            {
+                auto neigh = face->neighbor(j);
 
+                vec_qs.push_back(
+                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsalt")));
+                vec_qt.push_back(
+                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsusp")));
+            }
+        }
+        vec_qs.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsalt")));
+        vec_qt.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsusp")));
+
+
+        for (int j = 0; j < 3; j++)
+        {
+            auto emp = face->edge_midpoint(j);
+            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
+
+            double qs = interp(vec_qs, query);
+            double qt = interp(vec_qt, query);
+
+            if(d->is_edge)
+                eps = 0;
 
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
-                double qs = (neigh->face_data("Qsalt") + face->face_data("Qsalt")) / 2.0;
-                double qt = (neigh->face_data("Qsusp") + face->face_data("Qsusp")) / 2.0;
 
-                Qt[j] = qs + qt;
+                double Qtj = neigh->face_data("Qsusp");
+                double Qsj = neigh->face_data("Qsalt");
+                dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                dx[j] = math::gis::distance(face->center(),neigh->center());
-
-                if( A[i].find(neigh->cell_id) == A[i].end() )
+                if (A[i].find(neigh->cell_id) == A[i].end())
                     A[i][neigh->cell_id] = 0.0;
 
-                A[i][i] += eps/(dx[j]*face->get_area())-1;
-                A[i][neigh->cell_id] += -eps/(dx[j]*face->get_area());
-                bb[i] += E[j]*Qt[j]*udotm[j]/face->get_area();
-//                A[i][neigh->cell_id] = -eps/(dx[j]*face->get_area());
+                A[i][i] += 1. * eps * E[j] / (dx[j] * V) - 1.;
+                A[i][neigh->cell_id] += -1. * eps * E[j] / (dx[j] * V);
+                bb[i] += E[j] * (qs + qt) * udotm[j] / V;
+
             }
             else
             {
+                double Qtj = Qt;
+                double Qsj = Qs;
 
-                //use a ghost cell 1m away around the edge w/ 0 flux
-                double qs = (0. + face->face_data("Qsalt")) / 2.0;
-                double qt = (0. + face->face_data("Qsusp")) / 2.0;
-
-                Qt[j] = qs + qt;
-
-                dx[j] = 1;
-
-                A[i][i] += eps/(dx[j]*face->get_area())-1;
-                bb[i] += E[j]*Qt[j]*udotm[j]/face->get_area();
+                A[i][i] += eps*E[j]/V-1.0;
+                bb[i] += .5*E[j]*(Qt+Qs+Qtj+Qsj)*udotm[j]/V;
             }
 
         }
 
-//        bb[i]= -(-E[0]*Qt[0]*udotm[0]-E[1]*Qt[1]*udotm[1]-E[2]*Qt[2]*udotm[2])/face->get_area();
-//        A[i][i] = -eps*(-1.0/dx[0]-1.0/dx[1]-1.0/dx[2])/face->get_area()-1.0 ;
+//
+
 
 
 //        for (int j = 0; j < 3; j++)
@@ -776,33 +793,36 @@ void PBSM3D::run(mesh domain)
 //        face->set_face_data("sum_drift", sum_drift + mass);
     }
 
-//    viennacl::compressed_matrix<vcl_scalar_type>  vl_A(ntri, ntri);
-//    viennacl::copy(A,vl_A);
-//    viennacl::vector<vcl_scalar_type> rhs_bb(ntri);
-//    viennacl::copy(bb,rhs_bb);
-//
-//    // configuration of preconditioner:
-//    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
-//
-//    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-//    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, viennacl::linalg::bicgstab_tag(),chow_patel_ilu2);
-//    std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
-//    viennacl::copy(vl_dSdt,dSdt);
+    viennacl::compressed_matrix<vcl_scalar_type>  vl_A(ntri, ntri);
+    viennacl::copy(A,vl_A);
+    viennacl::vector<vcl_scalar_type> rhs_bb(ntri);
+    viennacl::copy(bb,rhs_bb);
+
+    // configuration of preconditioner:
+    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
+
+    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, viennacl::linalg::bicgstab_tag(),chow_patel_ilu2);
+    std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
+    viennacl::copy(vl_dSdt,dSdt);
 
 
-    auto dSdt = viennacl::linalg::solve(A, bb, viennacl::linalg::bicgstab_tag());
+//    auto dSdt = viennacl::linalg::solve(A, bb, viennacl::linalg::bicgstab_tag());
 
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
+        auto d = face->get_module_data<data>(ID);
 
         double subl_mass_flux = face->face_data("Qsubl");
-        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
 
-        double mass = (-qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
-        double mass_no_subl = -qdep * global_param->dt();
+
+        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
+//        double qdep =  d->is_edge ? 0 : dSdt[i];
+        double mass = (qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
+        double mass_no_subl = qdep * global_param->dt();
 
         face->set_face_data("drift_mass", mass);
         face->set_face_data("drift_mass_no_subl", mass_no_subl);

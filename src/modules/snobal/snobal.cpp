@@ -284,6 +284,7 @@ void snobal::run(mesh_elem &face)
     {
 
         double mass = face->face_data("drift_mass");
+        mass = is_nan(mass) ? 0 : mass;
         //m_s is kg/m^2 and mass is kg/m^2
         //negative = mass removal
 //        if(mass < 0 && (sbal->m_s+mass ) < 0 ) // are we about to remove more mass than what exists???
