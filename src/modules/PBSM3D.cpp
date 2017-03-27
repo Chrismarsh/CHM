@@ -61,7 +61,7 @@ void PBSM3D::init(mesh domain)
     do_vertical_advection = cfg.get("vertical_advection",true);
 
     eps = cfg.get("smooth_coeff",1e-5);
-
+    limit_mass= cfg.get("limit_mass",true);
 
     n_non_edge_tri = 0;
 #pragma omp parallel for
@@ -250,7 +250,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation /*&& swe > 1*/)
+        if( ustar > u_star_saltation && swe > 1)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
@@ -292,7 +292,8 @@ void PBSM3D::run(mesh domain)
 
             salt *= global_param->dt(); // ->kg/m^2
 
-            bool limit_mass=false;
+
+
             //Figure out the max we can transport, ie total mass in cell
             if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
             {

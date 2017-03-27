@@ -86,6 +86,7 @@ public:
     double settling_velocity;
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.
+    bool limit_mass; // do not saltate more snow than what exists in a cell.
     class data : public face_info
     {
     public:
