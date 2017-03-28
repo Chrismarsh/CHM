@@ -62,7 +62,7 @@ void PBSM3D::init(mesh domain)
 
     eps = cfg.get("smooth_coeff",1e-5);
     limit_mass= cfg.get("limit_mass",true);
-
+    min_mass_for_trans = cfg.get("min_mass_for_trans",10);
     n_non_edge_tri = 0;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -250,7 +250,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation /*&& swe > 1*/)
+        if( ustar > u_star_saltation && swe > min_mass_for_trans)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
