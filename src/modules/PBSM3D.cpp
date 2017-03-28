@@ -656,7 +656,7 @@ void PBSM3D::run(mesh domain)
         }
 
 
-        double dx[3] = {100.0, 100.0, 100.0};
+        double dx[3] = {2.0, 2.0, 2.0};
         double V = face->get_area();
 
         if (A[i].find(i) == A[i].end())
@@ -687,38 +687,91 @@ void PBSM3D::run(mesh domain)
 
         for (int j = 0; j < 3; j++)
         {
-            auto emp = face->edge_midpoint(j);
-            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
-
-            double qs = interp(vec_qs, query);
-            double qt = interp(vec_qt, query);
-
-            if (d->face_neigh[j])
+            if (udotm[j] > 0)
             {
-                auto neigh = face->neighbor(j);
+                double Qt = face->face_data("Qsusp") + face->face_data("Qsalt");
 
-                double Qtj = neigh->face_data("Qsusp");
-                double Qsj = neigh->face_data("Qsalt");
-                dx[j] = math::gis::distance(face->center(), neigh->center());
+                if (d->face_neigh[j])
+                {
+                    auto neigh = face->neighbor(j);
 
-                if (A[i].find(neigh->cell_id) == A[i].end())
-                    A[i][neigh->cell_id] = 0.0;
+                    if (A[i].find(neigh->cell_id) == A[i].end())
+                        A[i][neigh->cell_id] = 0.0;
 
-                A[i][i] += 1. * eps * E[j] / (dx[j] * V) - 1.;
-                A[i][neigh->cell_id] += -1. * eps * E[j] / (dx[j] * V);
-                bb[i] += E[j] * (qs + qt) * udotm[j] / V;
+                    dx[j] = math::gis::distance(face->center(), neigh->center());
 
-            }
-            else
+                    A[i][i] += eps * E[j] / (dx[j] * V) - 1.0;
+                    A[i][neigh->cell_id] += -eps * E[j] / (dx[j] * V);
+                    bb[i] += E[j] * Qt * udotm[j] / V;
+                } else
+                {
+                    A[i][i] += -1.0;
+                    bb[i] += E[j] * Qt * udotm[j] / V;
+                }
+
+            } else
             {
-                double Qtj = Qt;
-                double Qsj = 0;//Qs;
+                if (d->face_neigh[j])
+                {
 
-                A[i][i] += eps*E[j]/V-1.0;
-                bb[i] += .5*E[j]*(Qt+Qs+Qtj+Qsj)*udotm[j]/V;
+                    auto neigh = face->neighbor(j);
+                    double Qt = neigh->face_data("Qsusp") + neigh->face_data("Qsalt");
+                    if (A[i].find(neigh->cell_id) == A[i].end())
+                        A[i][neigh->cell_id] = 0.0;
+
+                    dx[j] = math::gis::distance(face->center(), neigh->center());
+
+                    A[i][i] += eps * E[j] / (dx[j] * V) - 1.0;
+                    A[i][neigh->cell_id] += -eps * E[j] / (dx[j] * V);
+                    bb[i] += E[j] * Qt * udotm[j] / V;
+                } else
+                {
+                    A[i][i] += -1.0;
+                }
             }
-
         }
+
+//
+//            auto emp = face->edge_midpoint(j);
+//            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
+//
+//            double qs = interp(vec_qs, query);
+//            double qt = interp(vec_qt, query);
+
+//            if (d->face_neigh[j])
+//            {
+//                auto neigh = face->neighbor(j);
+//                auto Qtj = neigh->face_data("Qsusp");
+//                auto Qsj = neigh->face_data("Qsalt");
+//
+//                double Q_edge = 0;
+//                if(udotm[j] > 0)
+//                {
+//                    Q_edge = Qtj + Qsj;
+//                } else{
+//                    Q_edge = face->face_data("Qsusp") + face->face_data("Qsalt");
+//                }
+//
+//
+//
+//            }
+//            else //for these do not use spline, but use simple average
+//            {
+//                double Q_edge = 0;
+//                auto Qtj = face->face_data("Qsusp");
+//                auto Qsj = face->face_data("Qsalt");
+//                if(udotm[j] > 0)
+//                {
+//                    Q_edge = Qtj + Qsj;
+//                } else{
+//                    Q_edge = face->face_data("Qsusp") + face->face_data("Qsalt");
+//                }
+//
+//                A[i][i] +=  -1.0;
+//                bb[i] += E[j]*Qtj*udotm[j]/V;
+//            }
+//
+//        }
 
 //
 
@@ -821,8 +874,8 @@ void PBSM3D::run(mesh domain)
 
 
         double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
-        if(d->is_edge)
-            qdep = 0;
+//        if(d->is_edge)
+//            qdep = 0;
         
 //        double qdep =  d->is_edge ? 0 : dSdt[i];
         double mass = (qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
