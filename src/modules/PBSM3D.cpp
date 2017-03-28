@@ -629,7 +629,7 @@ void PBSM3D::run(mesh domain)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
-        auto& m = d->m;
+        auto &m = d->m;
 
 
         double phi = face->face_data("vw_dir");
@@ -657,194 +657,92 @@ void PBSM3D::run(mesh domain)
 
 
         double dx[3] = {2.0, 2.0, 2.0};
+        http://www.cbc.ca/news/canada/toronto/toronto-pride-police-1.4043261
         double V = face->get_area();
 
         if (A[i].find(i) == A[i].end())
             A[i][i] = 0.0;
 
-        double Qt = face->face_data("Qsusp");
-        double Qs = face->face_data("Qsalt");
+//        for (int j = 0; j < 3; j++)
+//        {
+//            if (udotm[j] > 0)
+//            {
+//                double Qt = face->face_data("Qsusp") + face->face_data("Qsalt");
+//
+//                if (d->face_neigh[j])
+//                {
+//                    auto neigh = face->neighbor(j);
+//
+//                    if (A[i].find(neigh->cell_id) == A[i].end())
+//                        A[i][neigh->cell_id] = 0.0;
+//
+//                    dx[j] = math::gis::distance(face->center(), neigh->center());
+//
+//                    A[i][i] += -eps * E[j] / dx[j] - V;
+//                    A[i][neigh->cell_id] += eps * E[j] / dx[j];
+//                    bb[i] += E[j] * Qt * udotm[j];
+//                } else
+//                {
+//                    A[i][i] += -V;
+//                    bb[i] += E[j] * Qt * udotm[j];
+//                }
+//
+//            } else
+//            {
+//                if (d->face_neigh[j])
+//                {
+//
+//                    auto neigh = face->neighbor(j);
+//                    double Qt = neigh->face_data("Qsusp") + neigh->face_data("Qsalt");
+//                    if (A[i].find(neigh->cell_id) == A[i].end())
+//                        A[i][neigh->cell_id] = 0.0;
+//
+//                    dx[j] = math::gis::distance(face->center(), neigh->center());
+//
+//                    A[i][i] += -eps * E[j] / dx[j] - V;
+//                    A[i][neigh->cell_id] += eps * E[j] / dx[j];
+//                    bb[i] += E[j] * Qt * udotm[j];
+//                } else
+//                {
+//                    double Qt = face->face_data("Qsusp") + face->face_data("Qsalt");
+//                    A[i][i] += -V;
+//                    bb[i] += E[j] * Qt * udotm[j] / V;
+//                }
+//            }
+//        }
+//    }
 
-        interpolation interp(interp_alg::tpspline);
-        std::vector<boost::tuple<double, double, double> > vec_qs;
-        std::vector<boost::tuple<double, double, double> > vec_qt;
 
         for (int j = 0; j < 3; j++)
         {
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
+                auto Qtj = neigh->face_data("Qsusp") + face->face_data("Qsusp") ;
+                auto Qsj = neigh->face_data("Qsalt") + face->face_data("Qsalt") ;
+                double Qt = Qtj/2.0 + Qsj/2.0;
 
-                vec_qs.push_back(
-                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsalt")));
-                vec_qt.push_back(
-                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsusp")));
-            }
-        }
-        vec_qs.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsalt")));
-        vec_qt.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsusp")));
+                if (A[i].find(neigh->cell_id) == A[i].end())
+                    A[i][neigh->cell_id] = 0.0;
 
+                dx[j] = math::gis::distance(face->center(), neigh->center());
 
-        for (int j = 0; j < 3; j++)
-        {
-            if (udotm[j] > 0)
-            {
-                double Qt = face->face_data("Qsusp") + face->face_data("Qsalt");
-
-                if (d->face_neigh[j])
-                {
-                    auto neigh = face->neighbor(j);
-
-                    if (A[i].find(neigh->cell_id) == A[i].end())
-                        A[i][neigh->cell_id] = 0.0;
-
-                    dx[j] = math::gis::distance(face->center(), neigh->center());
-
-                    A[i][i] += eps * E[j] / (dx[j] * V) - 1.0;
-                    A[i][neigh->cell_id] += -eps * E[j] / (dx[j] * V);
-                    bb[i] += E[j] * Qt * udotm[j] / V;
-                } else
-                {
-                    A[i][i] += -1.0;
-                    bb[i] += E[j] * Qt * udotm[j] / V;
-                }
-
+                A[i][i] += -eps*E[j]/dx[j]-V;
+                A[i][neigh->cell_id] += eps*E[j]/dx[j];
+                bb[i] += E[j]*Qt*udotm[j];
             } else
             {
-                if (d->face_neigh[j])
-                {
-
-                    auto neigh = face->neighbor(j);
-                    double Qt = neigh->face_data("Qsusp") + neigh->face_data("Qsalt");
-                    if (A[i].find(neigh->cell_id) == A[i].end())
-                        A[i][neigh->cell_id] = 0.0;
-
-                    dx[j] = math::gis::distance(face->center(), neigh->center());
-
-                    A[i][i] += eps * E[j] / (dx[j] * V) - 1.0;
-                    A[i][neigh->cell_id] += -eps * E[j] / (dx[j] * V);
-                    bb[i] += E[j] * Qt * udotm[j] / V;
-                } else
-                {
-                    A[i][i] += -1.0;
-                }
+                auto Qtj = 2*face->face_data("Qsusp") ; // const flux across, 0 -> drifts!!!
+                auto Qsj =  2*face->face_data("Qsalt") ;
+                double Qt = Qtj/2.0 + Qsj/2.0;
+                A[i][i] += -V;
+                bb[i] += E[j]*Qt*udotm[j];
             }
+
         }
-
-//
-//            auto emp = face->edge_midpoint(j);
-//            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
-//
-//            double qs = interp(vec_qs, query);
-//            double qt = interp(vec_qt, query);
-
-//            if (d->face_neigh[j])
-//            {
-//                auto neigh = face->neighbor(j);
-//                auto Qtj = neigh->face_data("Qsusp");
-//                auto Qsj = neigh->face_data("Qsalt");
-//
-//                double Q_edge = 0;
-//                if(udotm[j] > 0)
-//                {
-//                    Q_edge = Qtj + Qsj;
-//                } else{
-//                    Q_edge = face->face_data("Qsusp") + face->face_data("Qsalt");
-//                }
-//
-//
-//
-//            }
-//            else //for these do not use spline, but use simple average
-//            {
-//                double Q_edge = 0;
-//                auto Qtj = face->face_data("Qsusp");
-//                auto Qsj = face->face_data("Qsalt");
-//                if(udotm[j] > 0)
-//                {
-//                    Q_edge = Qtj + Qsj;
-//                } else{
-//                    Q_edge = face->face_data("Qsusp") + face->face_data("Qsalt");
-//                }
-//
-//                A[i][i] +=  -1.0;
-//                bb[i] += E[j]*Qtj*udotm[j]/V;
-//            }
-//
-//        }
-
-//
-
-
-
-//        for (int j = 0; j < 3; j++)
-//        {
-//            if (d->face_neigh[j])
-//            {
-//                auto neigh = face->neighbor(j);
-//                double qs = (neigh->face_data("Qsalt") + face->face_data("Qsalt")) / 2.0;
-//                double qt = (neigh->face_data("Qsusp") + face->face_data("Qsusp")) / 2.0;
-//
-//                double Qt = qs + qt;
-//
-//                qdep += E[j] * udotm[j] * Qt;
-//            }
-////            else
-////            {
-////                double qs =  face->face_data("Qsalt")/2.;
-////                double qt = face->face_data("Qsusp")/2.;
-////                qdep += E[j] * udotm[j] * (qs + qt);
-////            }
-//        }
-
-        //build up the interpolated values
-//        for (int j = 0; j < 3; j++)
-//        {
-//            if (d->face_neigh[j])
-//            {
-//                auto neigh = face->neighbor(j);
-//
-//                vec_qs.push_back(
-//                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsalt")));
-//                vec_qt.push_back(
-//                        boost::make_tuple(neigh->center().x(), neigh->center().y(), neigh->face_data("Qsusp")));
-//            }
-//        }
-//        vec_qs.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsalt")));
-//        vec_qt.push_back(boost::make_tuple(face->center().x(), face->center().y(), face->face_data("Qsusp")));
-//
-//        std::vector<double> qsinterp;
-//        std::vector<double> qtinterp;
-//        for (int j = 0; j < 3; j++)
-//        {
-//            auto emp = face->edge_midpoint(j);
-//            auto query = boost::make_tuple(emp.x(), emp.y(), 0.0); //z isn't used in the interp call
-//
-//            double qs = interp(vec_qs, query);
-//            double qt = interp(vec_qt, query);
-//            qsinterp.push_back(qs);
-//            qtinterp.push_back(qt);
-//            qdep += E[j] * udotm[j] * (qs + qt);
-//        }
-
-
-//
-//        qdep /= face->get_area(); // -> kg/m^2*s
-//
-//
-//        double subl_mass_flux = face->face_data("Qsubl") ;
-//
-//
-//
-//        double mass = (- qdep  + subl_mass_flux )* global_param->dt(); // kg/m^2*s *dt -> kg/m^2
-//        double mass_no_subl = -qdep * global_param->dt();
-//
-//        face->set_face_data("drift_mass",mass );
-//        face->set_face_data("drift_mass_no_subl", mass_no_subl);
-//
-//        double sum_drift = face->face_data("sum_drift");
-//        face->set_face_data("sum_drift", sum_drift + mass);
     }
+
+
 
     viennacl::compressed_matrix<vcl_scalar_type>  vl_A(ntri, ntri);
     viennacl::copy(A,vl_A);
@@ -873,11 +771,8 @@ void PBSM3D::run(mesh domain)
 
 
 
-        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
-//        if(d->is_edge)
-//            qdep = 0;
-        
-//        double qdep =  d->is_edge ? 0 : dSdt[i];
+        double qdep = d->is_edge || is_nan(dSdt[i]) ? 0 : dSdt[i];
+
         double mass = (qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
         double mass_no_subl = qdep * global_param->dt();
 
