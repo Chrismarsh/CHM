@@ -43,6 +43,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("Qsalt");
 
     provides("sum_drift");
+    provides("sum_subl");
 }
 
 void PBSM3D::init(mesh domain)
@@ -130,6 +131,7 @@ void PBSM3D::init(mesh domain)
 
 
         face->set_face_data("sum_drift",0);
+        face->set_face_data("sum_subl",0);
     }
 }
 
@@ -781,6 +783,10 @@ void PBSM3D::run(mesh domain)
 
         double sum_drift = face->face_data("sum_drift");
         face->set_face_data("sum_drift", sum_drift + mass);
+
+        double sum_subl = face->face_data("sum_subl");
+        sum_subl += subl_mass_flux * global_param->dt();
+        face->set_face_data("sum_subl", sum_subl);
     }
 }
 
