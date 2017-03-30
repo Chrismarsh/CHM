@@ -69,6 +69,13 @@
   },
   "config":
   {
+    "PBSM3D":
+    {
+      "vertical_advection":true,
+      "smooth_coeff":1000,
+      "limit_mass":false,
+      "min_mass_for_trans":-1
+    },
     "solar":
     {
       "svf":
