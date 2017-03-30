@@ -13,6 +13,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("u10");
     provides("is_drifting");
 
+
     provides("c0");
     provides("c1");
     provides("c2");
@@ -24,6 +25,13 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("K2");
     provides("K3");
     provides("K4");
+
+//    nLayer=10;
+//    for(int i=0; i<nLayer;++i)
+//    {
+//        provides("K"+std::to_string(i));
+//        provides("c"+std::to_string(i));
+//    }
 
     provides("Qsusp_pbsm");
 
@@ -49,6 +57,8 @@ PBSM3D::PBSM3D(config_file cfg)
 void PBSM3D::init(mesh domain)
 {
     nLayer = 5;
+
+
     susp_depth = 5; //5m as per pomeroy
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40; // mixing length for diffusivity calculations
@@ -145,11 +155,27 @@ void PBSM3D::run(mesh domain)
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
     std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
 
+    PetscInitialize(NULL,NULL,NULL,NULL);
+    Vec p_x, p_b;
+    Mat p_C;
+    KSP ksp;
+    PC  pc;
+
+
+    VecCreateSeq(PETSC_COMM_SELF, ntri * nLayer, &p_b);
+    VecCreateSeq(PETSC_COMM_SELF, ntri * nLayer, &p_x);
+
+    MatCreateSeqAIJ(PETSC_COMM_SELF,ntri * nLayer,ntri * nLayer,4 * nLayer,NULL,&p_C);
+    MatSeqAIJSetPreallocation(p_C,4 * nLayer,NULL);
+    MatZeroEntries(p_C);
+    VecZeroEntries(p_b);
+
+
     //ice density
     double rho_p = PhysConst::rho_ice;
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (PetscInt i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
@@ -364,7 +390,7 @@ void PBSM3D::run(mesh domain)
                 udotm[j] = arma::dot(uvw, m[j]);
             }
             //lateral
-            size_t idx = ntri*z + face->cell_id;
+            PetscInt idx = ntri*z + face->cell_id;
 
             //I'm unclear as to what the map inits the double value to.  I assume undef'd like always, so this is called
             //to ensure that they are inited to zero so we can call the += operator w/o issue below. Only needs to be done for the diagonal elements
@@ -381,28 +407,44 @@ void PBSM3D::run(mesh domain)
                     {
                        C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
                        C[idx][idx] += alpha[f];
+
+                        PetscScalar value = C[idx][idx];
+                        MatSetValues(p_C,1,&idx,1,&idx,&value,ADD_VALUES);
                     }
                     else
                     {
                        C[idx][idx] += -d->A[f]*udotm[f];
+
+                        PetscScalar value = C[idx][idx];
+                        MatSetValues(p_C,1,&idx,1,&idx,&value,ADD_VALUES);
                     }
                 } else
                 {
                     if (d->face_neigh[f])
                     {
-                        auto nidx = ntri * z + face->neighbor(f)->cell_id;
+                        PetscInt nidx = ntri * z + face->neighbor(f)->cell_id;
 
                         C[idx][idx] += -alpha[f];
                         C[idx][nidx] = -d->A[f]*udotm[f]+alpha[f];
+
+                        PetscScalar value = C[idx][idx];
+                        MatSetValues(p_C,1,&idx,1,&idx,&value,ADD_VALUES);
+
+                        value = C[idx][nidx];
+                        MatSetValues(p_C,1,&idx,1,&nidx,&value,ADD_VALUES);
 
                     }
                     else
                     {
                         C[idx][idx] += -alpha[f];
+
+                        PetscScalar value = C[idx][idx];
+                        MatSetValues(p_C,1,&idx,1,&idx,&value,ADD_VALUES);
                     }
                 }
-
             }
+
+
 
             //init to zero the vertical component regardless of do_vertical_advection
             if( z != nLayer -1 &&
@@ -419,7 +461,6 @@ void PBSM3D::run(mesh domain)
                 //this formulation includes the 3D advection term
                 if (z == 0)
                 {
-
                     //bottom face, no advection
                     C[idx][idx] += -d->A[4] * K[4];
                     b[idx] = -d->A[4] * K[4] * c_salt+0.0;
@@ -491,12 +532,36 @@ void PBSM3D::run(mesh domain)
                     C[idx][ntri * z + face->cell_id] +=  -alpha[3];
                     C[idx][ntri * (z + 1) + face->cell_id] +=  alpha[3];
 
+                    PetscScalar value = C[idx][idx];
+                    MatSetValues(p_C,1,&idx,1,&idx,&value,INSERT_VALUES);
+
+                    PetscInt p_idx = ntri * z + face->cell_id;
+                    value = b[p_idx];
+                    VecSetValues(p_b,1,&p_idx,&value,INSERT_VALUES);
+
+                    p_idx = ntri * z + face->cell_id;
+                    value = C[idx][p_idx];
+                    MatSetValues(p_C,1,&idx,1,&p_idx,&value,INSERT_VALUES);
+
+                    p_idx = ntri * (z + 1) + face->cell_id;
+                    value = C[idx][p_idx];
+                    MatSetValues(p_C,1,&idx,1,&p_idx,&value,INSERT_VALUES);
+
                 } else if (z == nLayer - 1)// top z layer
                 {
                     //top
                     C[idx][ntri * z + face->cell_id] += -alpha[3]-alpha[4];
                     //bottom
                     C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+
+
+                    PetscInt p_idx = ntri * z + face->cell_id;
+                    PetscScalar value = C[idx][p_idx];
+                    MatSetValues(p_C,1,&idx,1,&p_idx,&value,INSERT_VALUES);
+
+                    p_idx = ntri * (z - 1) + face->cell_id;
+                    value = C[idx][p_idx];
+                    MatSetValues(p_C,1,&idx,1,&p_idx,&value,INSERT_VALUES);
 
                 } else // internal cell
                 {
@@ -506,32 +571,73 @@ void PBSM3D::run(mesh domain)
                     C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
                     //bottom
                     C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+
+                    PetscScalar value = C[idx][idx];
+                    MatSetValues(p_C,1,&idx,1,&idx,&value,INSERT_VALUES);
+
+                    PetscInt p_idx = ntri * (z + 1) + face->cell_id;
+                    value = C[idx][p_idx];
+                    MatSetValues(p_C,1,&idx,1,&p_idx,&value,INSERT_VALUES);
+
+                    p_idx = ntri * (z - 1) + face->cell_id;
+                    value = C[idx][p_idx];
+                    MatSetValues(p_C,1,&idx,1,&p_idx,&value,INSERT_VALUES);
+
                 }
 
             }
         } // end z iter
     } //end face iter
 
+    MatAssemblyBegin(p_C,MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(p_C,MAT_FINAL_ASSEMBLY);
 
-      //setup the compressed matrix on the compute device, if available
+    VecAssemblyBegin(p_b);
+    VecAssemblyBegin(p_b);
+
+
+    char** options = new char *[2];
+    options[0] = "-pc_type lu";
+    options[1] = "-pc_factor_mat_solver_package superlu";
+    int nopt=2;
+//    PetscOptionsInsert(NULL,&nopt,&options,NULL);
+
+    KSPCreate(PETSC_COMM_SELF,&ksp);
+
+//    KSPSetType(ksp,KSPPREONLY);
+    KSPSetOperators(ksp,p_C,p_C);
+//    KSPSetFromOptions(ksp);
+
+
+//    KSPGetPC(ksp,&pc);
+//    PCFactorSetMatSolverPackage(pc,MATSOLVERSUPERLU);
+//    PCSetType(pc,PCLU);
+
+
+
+//    KSPSolve(ksp,p_b,x);
+
+    //setup the compressed matrix on the compute device, if available
     viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
     viennacl::copy(C,vl_C);
     viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
     viennacl::copy(b,rhs);
 
-    // configuration of preconditioner:
+//    // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
     chow_patel_ilu_config.sweeps(3);       // three nonlinear sweeps
     chow_patel_ilu_config.jacobi_iters(2); // two Jacobi iterations per triangular 'solve' Rx=r
     viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
 
-    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::bicgstab_tag(),chow_patel_ilu);
+//    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::gmres_tag(),chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 
+//    auto x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
+
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (PetscInt i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
@@ -556,6 +662,12 @@ void PBSM3D::run(mesh domain)
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
+
+//            double c = 0;
+//            VecGetValues(p_x,1,&i,&c);
+
+
+
             c = c < 0 || is_nan(c) ? 0 : c; //harden against some numerical issues that occasionally come up for unknown reasons.
 
             double cz = z + hs+ v_edge_height/2.; //cell center height
@@ -624,19 +736,30 @@ void PBSM3D::run(mesh domain)
 
     std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
     std::vector<vcl_scalar_type> bb(ntri, 0.0);
+//    PetscInitialize(NULL,NULL,NULL,NULL);
+//    Vec p_x, p_b;
+//    Mat p_A;
+//    KSP ksp;
+//    PC  pc;
 
+
+//    VecCreateSeq(PETSC_COMM_SELF, ntri, &p_b);
+//    VecCreateSeq(PETSC_COMM_SELF, ntri, &p_x);
+//
+//    MatCreateSeqAIJ(PETSC_COMM_SELF,ntri,ntri,4,NULL,&p_A);
+//    MatSeqAIJSetPreallocation(p_A,4,NULL);
+//    MatZeroEntries(p_A);
+//    VecZeroEntries(p_b);
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (PetscInt i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
         auto &m = d->m;
 
-
         double phi = face->face_data("vw_dir");
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
-
 
         //setup wind vector
         arma::vec uvw(3);
@@ -656,7 +779,6 @@ void PBSM3D::run(mesh domain)
 
             E[j] = face->edge_length(j);
         }
-
 
         double dx[3] = {2.0, 2.0, 2.0};
         http://www.cbc.ca/news/canada/toronto/toronto-pride-police-1.4043261
@@ -720,29 +842,96 @@ void PBSM3D::run(mesh domain)
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
-                auto Qtj = neigh->face_data("Qsusp") + face->face_data("Qsusp") ;
-                auto Qsj = neigh->face_data("Qsalt") + face->face_data("Qsalt") ;
-                double Qt = Qtj/2.0 + Qsj/2.0;
+                auto Qtj = neigh->face_data("Qsusp") + face->face_data("Qsusp");
+                auto Qsj = neigh->face_data("Qsalt") + face->face_data("Qsalt");
+                double Qt = Qtj / 2.0 + Qsj / 2.0;
 
                 if (A[i].find(neigh->cell_id) == A[i].end())
                     A[i][neigh->cell_id] = 0.0;
 
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                A[i][i] += -eps*E[j]/dx[j]-V;
-                A[i][neigh->cell_id] += eps*E[j]/dx[j];
-                bb[i] += E[j]*Qt*udotm[j];
+                A[i][i] += -eps * E[j] / dx[j] - V;
+                A[i][neigh->cell_id] += eps * E[j] / dx[j];
+                bb[i] += E[j] * Qt * udotm[j];
+
             } else
             {
-                auto Qtj = 2*face->face_data("Qsusp") ; // const flux across, 0 -> drifts!!!
-                auto Qsj =  2*face->face_data("Qsalt") ;
-                double Qt = Qtj/2.0 + Qsj/2.0;
-                A[i][i] += -V;
-                bb[i] += E[j]*Qt*udotm[j];
+                auto Qtj = 2 * face->face_data("Qsusp"); // const flux across, 0 -> drifts!!!
+                auto Qsj = 2 * face->face_data("Qsalt");
+                double Qt = Qtj / 2.0 + Qsj / 2.0;
+                A[i][i]  += -V;
+                bb[i] += E[j] * Qt * udotm[j];
             }
 
         }
-    }
+
+//        for (int j = 0; j < 3; j++)
+//        {
+//            if (d->face_neigh[j])
+//            {
+//                auto neigh = face->neighbor(j);
+//                auto Qtj = neigh->face_data("Qsusp") + face->face_data("Qsusp") ;
+//                auto Qsj = neigh->face_data("Qsalt") + face->face_data("Qsalt") ;
+//                double Qt = Qtj/2.0 + Qsj/2.0;
+//
+//                dx[j] = math::gis::distance(face->center(), neigh->center());
+//
+//                double value = -eps*E[j]/dx[j]-V;
+//                MatSetValues(p_A,1,&i, 1, &i,&value ,ADD_VALUES);
+//
+//                value =  eps*E[j]/dx[j];
+//                const PetscInt ncid = neigh->cell_id;
+//                MatSetValues(p_A,1,&i,1,&ncid, &value,ADD_VALUES);
+//
+//                value = E[j]*Qt*udotm[j];
+//                VecSetValues(p_b,1,&i, &value, ADD_VALUES);
+//
+//
+//            } else
+//            {
+//                auto Qtj = 2*face->face_data("Qsusp") ; // const flux across, 0 -> drifts!!!
+//                auto Qsj =  2*face->face_data("Qsalt") ;
+//                double Qt = Qtj/2.0 + Qsj/2.0;
+//
+//                double value = -V;
+//                MatSetValues(p_A,1,&i,1,&i, &value ,ADD_VALUES);
+//
+//                value = E[j]*Qt*udotm[j];
+//                VecSetValues(p_b,1,&i,&value, ADD_VALUES);
+//            }
+//
+//        }
+
+
+
+    } // end face itr
+//    MatAssemblyBegin(p_A,MAT_FINAL_ASSEMBLY);
+//    MatAssemblyEnd(p_A,MAT_FINAL_ASSEMBLY);
+//
+//    VecAssemblyBegin(p_b);
+//    VecAssemblyBegin(p_b);
+//
+//
+//    char** options = new char *[2];
+//    options[0] = "-pc_type lu";
+//    options[1] = "-pc_factor_mat_solver_package superlu";
+//    int nopt=2;
+//    PetscOptionsInsert(NULL,&nopt,&options,NULL);
+//
+//    KSPCreate(PETSC_COMM_SELF,&ksp);
+//
+//    KSPSetType(ksp,KSPPREONLY);
+//    KSPSetOperators(ksp,p_A,p_A);
+//    KSPSetFromOptions(ksp);
+//
+//
+//    KSPGetPC(ksp,&pc);
+//    PCFactorSetMatSolverPackage(pc,MATSOLVERSUPERLU);
+//    PCSetType(pc,PCLU);
+//
+//
+//    KSPSolve(ksp,p_b,p_x);
 
 
 
@@ -762,16 +951,17 @@ void PBSM3D::run(mesh domain)
 
 //    auto dSdt = viennacl::linalg::solve(A, bb, viennacl::linalg::bicgstab_tag());
 
-
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (PetscInt i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
 
         double subl_mass_flux = face->face_data("Qsubl");
 
-
+//        double dsdt = 0;
+//        VecGetValues(p_x,1,&i,&dsdt);
+//        double qdep = d->is_edge || is_nan(dsdt) ? 0 : dsdt;
 
         double qdep = d->is_edge || is_nan(dSdt[i]) ? 0 : dSdt[i];
 

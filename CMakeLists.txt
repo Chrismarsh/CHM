@@ -196,6 +196,17 @@ find_package(Armadillo REQUIRED)
 
 find_package(ViennaCL REQUIRED)
 
+#find_package(MPI REQUIRED)
+
+#if(APPLE)
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework Accelerate")
+#endif()
+set(PETSC_DIR "/usr/local/opt/petsc/real/")
+##set(PETSC_ARCH "arch-darwin-c-opt")
+#set(PETSC_EXECUTABLE_RUNS "YES")
+find_package(PETSc REQUIRED)
+
+
 find_package(Boost
              1.60.0
              COMPONENTS
