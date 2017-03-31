@@ -28,12 +28,12 @@ inline int omp_get_max_threads() { return 1;}
 
 #endif
 
-#include <viennacl/linalg/cg.hpp>
-#include <viennacl/linalg/bicgstab.hpp>
+
 #include <viennacl/linalg/gmres.hpp>
-#include <viennacl/linalg/lu.hpp>
-#include <viennacl/ell_matrix.hpp>
-#include <viennacl/linalg/jacobi_precond.hpp>
+#include <viennacl/compressed_matrix.hpp>
+#include <viennacl/linalg/ilu.hpp>
+
+
 
 #include <armadillo>
 

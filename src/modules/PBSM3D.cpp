@@ -389,8 +389,12 @@ void PBSM3D::run(mesh domain)
                 {
                     if (d->face_neigh[f])
                     {
+                        size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                        if( C[idx].find(nidx) == C[idx].end() )
+                            C[idx][nidx] = 0.0;
+
                        C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
-                       C[idx][idx] += alpha[f];
+                       C[idx][nidx] += alpha[f];
 
                     }
                     else
@@ -403,11 +407,11 @@ void PBSM3D::run(mesh domain)
                     if (d->face_neigh[f])
                     {
                         size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                        if( C[idx].find(nidx) == C[idx].end() )
+                            C[idx][nidx] = 0.0;
 
                         C[idx][idx] += -alpha[f];
-                        C[idx][nidx] = -d->A[f]*udotm[f]+alpha[f];
-
-
+                        C[idx][nidx] += -d->A[f]*udotm[f]+alpha[f];
                     }
                     else
                     {
@@ -538,16 +542,18 @@ void PBSM3D::run(mesh domain)
 
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
-    chow_patel_ilu_config.sweeps(3);       // three nonlinear sweeps
-    chow_patel_ilu_config.jacobi_iters(2); // two Jacobi iterations per triangular 'solve' Rx=r
+    chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps
+    chow_patel_ilu_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
     viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
 
+
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, viennacl::linalg::gmres_tag(),chow_patel_ilu);
+    viennacl::linalg::gmres_tag gmres_tag(1e-3, 500, 30);
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 
-//    auto x = viennacl::linalg::solve(C, b, viennacl::linalg::bicgstab_tag());
+//    LOG_DEBUG << "No. of iters: " << gmres_tag.iters();
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -589,7 +595,7 @@ void PBSM3D::run(mesh domain)
             // equation 13 from Pomeroy and Li 2000
             // To do so, use equations 12 - 16 in Pomeroy et al 1999
 
-            double rm = 4.6*pow(10.0,-5.) * pow((double)cz,-0.258); // eqn 18, mean particle size
+            double rm = 4.6*pow(10.0,-5.) * pow((double)cz,-0.258); // eqn 18, mean particle size, also in liston 1998, eq A-4
             double xrz = 0.005 * pow(u_z,1.36);//eqn 16
             double omega = 1.1*pow(10.,7.) * pow(rm,1.8);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0);
@@ -674,7 +680,7 @@ void PBSM3D::run(mesh domain)
         }
 
         double dx[3] = {2.0, 2.0, 2.0};
-        http://www.cbc.ca/news/canada/toronto/toronto-pride-police-1.4043261
+
         double V = face->get_area();
 
         if (A[i].find(i) == A[i].end())
@@ -724,7 +730,7 @@ void PBSM3D::run(mesh domain)
     viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, viennacl::linalg::bicgstab_tag(),chow_patel_ilu2);
+    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, viennacl::linalg::gmres_tag(),chow_patel_ilu2);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
 
