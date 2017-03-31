@@ -745,7 +745,7 @@ void PBSM3D::run(mesh domain)
 
         double subl_mass_flux = face->face_data("Qsubl");
 
-        double qdep = d->is_edge || is_nan(dSdt[i]) ? 0 : dSdt[i];
+        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i]; //d->is_edge ||
 
         double mass = 0;
         if(do_sublimation)
