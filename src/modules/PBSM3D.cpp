@@ -374,7 +374,7 @@ void PBSM3D::run(mesh domain)
                 udotm[j] = arma::dot(uvw, m[j]);
             }
             //lateral
-            PetscInt idx = ntri*z + face->cell_id;
+            size_t idx = ntri*z + face->cell_id;
 
             //I'm unclear as to what the map inits the double value to.  I assume undef'd like always, so this is called
             //to ensure that they are inited to zero so we can call the += operator w/o issue below. Only needs to be done for the diagonal elements
@@ -402,7 +402,7 @@ void PBSM3D::run(mesh domain)
                 {
                     if (d->face_neigh[f])
                     {
-                        PetscInt nidx = ntri * z + face->neighbor(f)->cell_id;
+                        size_t nidx = ntri * z + face->neighbor(f)->cell_id;
 
                         C[idx][idx] += -alpha[f];
                         C[idx][nidx] = -d->A[f]*udotm[f]+alpha[f];
@@ -732,7 +732,7 @@ void PBSM3D::run(mesh domain)
 //    auto dSdt = viennacl::linalg::solve(A, bb, viennacl::linalg::bicgstab_tag());
 
 #pragma omp parallel for
-    for (PetscInt i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);

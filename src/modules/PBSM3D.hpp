@@ -28,10 +28,6 @@ inline int omp_get_max_threads() { return 1;}
 
 #endif
 
-#include <petsc.h>
-#include <petscmat.h>
-#include "petscsys.h"
-
 #include <viennacl/linalg/cg.hpp>
 #include <viennacl/linalg/bicgstab.hpp>
 #include <viennacl/linalg/gmres.hpp>
