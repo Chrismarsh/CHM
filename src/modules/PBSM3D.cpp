@@ -70,7 +70,7 @@ void PBSM3D::init(mesh domain)
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.005); // Beta * K, this is beta and scales the eddy diffusivity
     do_vertical_advection = cfg.get("vertical_advection",true);
-
+    do_sublimation = cfg.get("do_sublimation",true);
     eps = cfg.get("smooth_coeff",1e-5);
     limit_mass= cfg.get("limit_mass",true);
     min_mass_for_trans = cfg.get("min_mass_for_trans",10);
@@ -741,11 +741,13 @@ void PBSM3D::run(mesh domain)
 
         double qdep = d->is_edge || is_nan(dSdt[i]) ? 0 : dSdt[i];
 
-        double mass = (qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
-        double mass_no_subl = qdep * global_param->dt();
+        double mass = 0;
+        if(do_sublimation)
+            mass = (qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
+        else
+            mass = qdep * global_param->dt();// kg/m^2*s *dt -> kg/m^2
 
         face->set_face_data("drift_mass", mass);
-        face->set_face_data("drift_mass_no_subl", mass_no_subl);
 
         double sum_drift = face->face_data("sum_drift");
         face->set_face_data("sum_drift", sum_drift + mass);

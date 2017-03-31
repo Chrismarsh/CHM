@@ -87,6 +87,7 @@ public:
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.
     bool limit_mass; // do not saltate more snow than what exists in a cell.
+    bool do_sublimation; // should we
 
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
