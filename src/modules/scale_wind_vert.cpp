@@ -23,6 +23,59 @@ scale_wind_vert::~scale_wind_vert()
 
 void scale_wind_vert::run(mesh_elem &face) {
 
+    bool forest_edge = true; // Bool to adjust forest edges TODO: get from config
+
+    /////
+    // Call wind speed scaling functions to specific heights
+    /////
+
+    double U_2m_above_srf = scale_wind_vert::get_U_2m_above_srf(face);
+    int LC;
+    if(face->has_parameter("landcover") ) {
+        LC = face->get_parameter("landcover");
+    }
+
+    // Adjust if cell is a forest edge
+    // TODO: check if landcover exists
+    if ((forest_edge) && (face->has_parameter("landcover"))) {
+        // 0=forest
+        // 1=clearing
+        std::vector<int> n_LC = {-1, -1, -1}; // neighbor landcover types (
+        // Check if current cell's neighbors have a different landcover type
+        bool edge = false; // bool if current cell is on edge of forest/clearing
+        for (int i = 0; i < 3; ++i) {
+            auto n = face->neighbor(i); // Pointer to neighbor face
+            // Check if not-null (null indicates edge cell)
+            if (n != nullptr) {
+//                auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
+                // Calc weighting based on height diff
+                // (std::max insures that if one neighbor is higher, its weight will be zero)
+                n_LC[i] = n->get_parameter("landcover");
+                if (LC != n_LC[i]) {
+                    edge = true;
+                }
+            }
+        }
+
+        // If its an edge cell, scale wind
+        if (edge) {
+            U_2m_above_srf = U_2m_above_srf;
+        }
+
+    }
+
+    // Check that U_2m_above_srf is not too small for turbulent parameterizations (should move check there)
+    if (U_2m_above_srf<0.1)
+        U_2m_above_srf=0.1;
+
+    // Save computed wind speeds
+    //face->set_face_data("U_R",U_R);
+    face->set_face_data("U_2m_above_srf",U_2m_above_srf);
+
+
+}
+
+double scale_wind_vert::get_U_2m_above_srf(mesh_elem &face) {
 
     // Get meteorological data for current face
     double U_R           = face->face_data("U_R"); // Wind speed at reference height Z_R (m/s)
@@ -32,11 +85,11 @@ void scale_wind_vert::run(mesh_elem &face) {
 
     double Z_CanTop       = 0;
 
-    if(face->has_parameter("landcover") )
-    {
+    if(face->has_parameter("landcover") ) {
         int LC                = face->get_parameter("landcover");
         Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
     }
+
     double Z_CanBot       = Z_CanTop/2.0; //global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".TrunkHeight"); // TODO: HARDCODED until we get from obs
     //double Z_CanMid       = (Z_CanTop+Z_CanBot)/2.0; // Mid height of canopy
     double snowdepthavg   = 0;
@@ -49,23 +102,18 @@ void scale_wind_vert::run(mesh_elem &face) {
 
     double Z_2m_above_srf = snowdepthavg + 2.0; // (m)
 
-
-
     // Initialize stuff
     double U_2m_above_srf; // Wind speed 2 meters above the surface (ground or snow)
-
-    /////
-    // Call wind speed scaling functions to specific heights
-    /////
+    int LC;
 
     // If a Canopy exists
-    if (Z_CanTop>0.0) {
+    if (Z_CanTop > 0.0) {
         // Get Canopy/Surface info
 
-        int LC                = face->get_parameter("landcover");
-        //asume we have LAI, otherwise it will cleanly bail if we don't
-        double LAI            = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
-        const double alpha    = LAI; // attenuation coefficient introduced by Inoue (1963) and increases with canopy density
+        LC = face->get_parameter("landcover");
+        //assume we have LAI, otherwise it will cleanly bail if we don't
+        double LAI = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
+        const double alpha = LAI; // attenuation coefficient introduced by Inoue (1963) and increases with canopy density
 
 
         // Scale Z_R to Z_CanTop
@@ -79,29 +127,23 @@ void scale_wind_vert::run(mesh_elem &face) {
 
         // Scale Z_CanBot to Z_2m_above_srf
         if (Z_2m_above_srf < Z_CanBot) // snow depth +2 below canopy bottom
-            U_2m_above_srf = Atmosphere::log_scale_wind(U_CanBot, Z_CanBot, Z_2m_above_srf, snowdepthavg); // (U_start,Height_start,Height_end)
+            U_2m_above_srf = Atmosphere::log_scale_wind(U_CanBot, Z_CanBot, Z_2m_above_srf,
+                                                        snowdepthavg); // (U_start,Height_start,Height_end)
         else // snow depth +2 above canopy bottom
             U_2m_above_srf = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_2m_above_srf, alpha);
 
         // Save computed wind speeds (in case canopy exists)
         //face->set_face_data("U_CanTop",U_CanTop);
         //face->set_face_data("U_CanMid",U_CanMid);
-    // No Canopy exists
+        // No Canopy exists
     } else {
-        U_2m_above_srf = Atmosphere::log_scale_wind(U_R, Z_R, Z_2m_above_srf, snowdepthavg); // (U_start,Height_start,Height_end)
+        U_2m_above_srf = Atmosphere::log_scale_wind(U_R, Z_R, Z_2m_above_srf,
+                                                    snowdepthavg); // (U_start,Height_start,Height_end)
         //face->set_face_data("U_CanTop",NAN);
         //face->set_face_data("U_CanMid",NAN);
     }
 
-    // Check that U_2m_above_srf is not too small for turbulent parameterizations (should move check there)
-    if (U_2m_above_srf<0.1)
-        U_2m_above_srf=0.1;
-
-    // Save computed wind speeds
-    //face->set_face_data("U_R",U_R);
-    face->set_face_data("U_2m_above_srf",U_2m_above_srf);
-
-
+    return U_2m_above_srf;
 }
 
 //void scale_wind_vert::init(mesh domain, boost::shared_ptr <global> global_param) {
