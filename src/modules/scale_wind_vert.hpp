@@ -24,7 +24,7 @@ class scale_wind_vert : public module_base {
 public:
     scale_wind_vert(config_file cfg);
 
-    double get_U_2m_above_srf(mesh_elem face);
+    double get_U_2m_above_srf(mesh_elem &face);
 
     ~scale_wind_vert();
 
