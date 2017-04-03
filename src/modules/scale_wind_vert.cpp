@@ -31,7 +31,6 @@ void scale_wind_vert::run(mesh_elem &face) {
     double U_2m_above_srf = scale_wind_vert::get_U_2m_above_srf(face);
 
     // Adjust if cell is a forest edge
-    // TODO: check if landcover exists
     if ((forest_edge) && (face->has_parameter("landcover"))) {
 
         // Get current cell's landcover
