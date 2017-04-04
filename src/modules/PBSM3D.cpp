@@ -553,8 +553,6 @@ void PBSM3D::run(mesh domain)
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 
-//    LOG_DEBUG << "No. of iters: " << gmres_tag.iters();
-
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -575,7 +573,6 @@ void PBSM3D::run(mesh domain)
         //specific humidity of the air at air temp
         double q = 0.633*ea/P;
 
-
         double v = 1.88*pow(10.,-5.); //kinematic viscosity of air
 
         for (int z = 0; z<nLayer;++z)
@@ -593,23 +590,30 @@ void PBSM3D::run(mesh domain)
 
             //calculate dm/dt from
             // equation 13 from Pomeroy and Li 2000
-            // To do so, use equations 12 - 16 in Pomeroy et al 1999
+            // To do so, use equations 12 - 16 in Pomeroy et al 2000
+            //Pomeroy, J. W., and L. Li (2000), Prairie and arctic areal snow cover mass balance using a blowing snow model, J. Geophys. Res., 105(D21), 26619–26634, doi:10.1029/2000JD900149. [online] Available from: http://www.agu.org/pubs/crossref/2000/2000JD900149.shtml
 
-            double rm = 4.6*pow(10.0,-5.) * pow((double)cz,-0.258); // eqn 18, mean particle size, also in liston 1998, eq A-4
-            double xrz = 0.005 * pow(u_z,1.36);//eqn 16
-            double omega = 1.1*pow(10.,7.) * pow(rm,1.8);
-            double Vr = omega + 3.0*xrz*cos(M_PI/4.0);
+            //these are from
+            // Pomeroy, J. W., D. M. Gray, and P. G. Landine (1993), The prairie blowing snow model: characteristics, validation, operation, J. Hydrol., 144(1–4), 165–192.
+            double rm = 4.6e-5 * pow(cz,-0.258); // eqn 18, mean particle size
+            double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
+            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
+            double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
-            double Re = 2.0*rm*Vr / v;
+            double Re = 2.0*rm*Vr / v; //eqn 12
 
             double Nu, Sh;
             Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);
 
             double D = 2.06*pow(10.,-5.)*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998
 
-            double lambda_t = 0.000063*(t-273.15)+0.00673; // J/(kmol K) thermal conductivity looks like this is degC, not K. order of magnitude off if K, eqn 11 Pomeroy 1993
-            double Ls = 2.838*pow(10.,6.); // latent heat of sublimation
+            double lambda_t = 0.000063*(t-273.15)+0.00673; // J/(kmol K) thermal conductivity looks like this is degC, not K. order of magnitude off if K, eqn 11 text Pomeroy 1993 (PBSM paper)
+            double Ls = 2.838e6; // latent heat of sublimation, eqn 11 pomeroy 1993 (PBSM) text
             double rho_a = mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.
+
+
+            //Kelliher, F., R. Leuning, and E. Schulze (1993), Evaporation and canopy characteristics of coniferous forests and grasslands, Oecologia, 95, 153–163. [online] Available from: http://www.springerlink.com/index/N18088W380247W3P.pdf (Accessed 12 February 2013)
+            //eqn 13
             auto Tsfn = [&](double Ts) -> double
             {
                 double es_Ts = mio::Atmosphere::saturatedVapourPressure(Ts);
@@ -634,11 +638,11 @@ void PBSM3D::run(mesh domain)
             //now use equation 13 with our solved Ts to compute dm/dt(z)
             double dmdtz = 2.0 * M_PI * rm * lambda_t / Ls * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
 
-            //calculate mean mass, eqn 23, 24 in Pomeroy 1993
-            double alpha = 4.08 + 12.6*cz;
+            //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
+            double alpha = 4.08 + 12.6*cz; //24
             double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/alpha + 2./(alpha*alpha)); //mean mass, eqn 23
 
-            double csubl = dmdtz/mm;
+            double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
 
             //eqn 20 in Pomeroy 1993
             Qsubl += csubl * c * v_edge_height; //kg/(m^2*s)
@@ -733,9 +737,6 @@ void PBSM3D::run(mesh domain)
     viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, viennacl::linalg::gmres_tag(),chow_patel_ilu2);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
-
-
-//    auto dSdt = viennacl::linalg::solve(A, bb, viennacl::linalg::bicgstab_tag());
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
