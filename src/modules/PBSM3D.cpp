@@ -44,14 +44,13 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("u*_th");
 
     provides("drift_mass"); //kg/m^2
-    provides("drift_mass_no_subl");
+
 
     provides("Qsusp");
-    provides("Qsubl");
     provides("Qsalt");
 
     provides("sum_drift");
-    provides("sum_subl");
+
 }
 
 void PBSM3D::init(mesh domain)
@@ -69,7 +68,6 @@ void PBSM3D::init(mesh domain)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be negative"));
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.005); // Beta * K, this is beta and scales the eddy diffusivity
-    do_vertical_advection = cfg.get("vertical_advection",true);
     do_sublimation = cfg.get("do_sublimation",true);
     eps = cfg.get("smooth_coeff",1e-5);
     limit_mass= cfg.get("limit_mass",true);
@@ -141,7 +139,7 @@ void PBSM3D::init(mesh domain)
 
 
         face->set_face_data("sum_drift",0);
-        face->set_face_data("sum_subl",0);
+
     }
 }
 
@@ -171,12 +169,12 @@ void PBSM3D::run(mesh domain)
         double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
         face->set_face_data("u10",u10);
 
-        Vector_2 v = -math::gis::bearing_to_cartesian(phi);
+        Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
 
         //setup wind vector
         arma::vec uvw(3);
-        uvw(0) = v.x(); //U_x
-        uvw(1) = v.y(); //U_y
+        uvw(0) = vwind.x(); //U_x
+        uvw(1) = vwind.y(); //U_y
         uvw(2) = 0;
 
         //solve for ustar as perturbed by blowing snow
@@ -250,7 +248,7 @@ void PBSM3D::run(mesh domain)
         double g = 9.81;
         double _d = 0.48e-3; //d in paper
         double u_star_saltation = thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
-        double t = face->face_data("t");
+//        double t = face->face_data("t");
 
         face->set_face_data("u*_th",u_star_saltation);
 
@@ -343,250 +341,23 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("csalt", c_salt);
         face->set_face_data("Qsalt", Qsalt);
 
+        double rh = face->face_data("rh")/100.;
+        double t = face->face_data("t")+273.15;
+        double es = mio::Atmosphere::saturatedVapourPressure(t);
+        double ea = rh * es / 1000.; // e in kpa
+        double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
+        //specific humidity of the air at air temp
+        double q = 0.633*ea/P;
+
+        double v = 1.88*pow(10.,-5.); //kinematic viscosity of air
 
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
         {
             //height in the suspension layer
             double cz = z + hs+ v_edge_height/2.; //cell center height
-            double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * d->z0 + l__max);
-
-            //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
-            K[3] = K[4] = snow_diffusion_const * std::max(ustar * l, PhysConst::kappa * cz * ustar);
-            face->set_face_data("K"+std::to_string(z), K[3] );
-            //top
-            alpha[3] = d->A[3] * K[3] / v_edge_height;
-            //bottom
-            alpha[4] = d->A[4] * K[4] / v_edge_height;
-
             //compute new U_z at this height in the suspension layer
             double u_z = std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0));
-            double length = arma::norm(uvw, 2);
-            double scale = u_z / length;
-
-            uvw *= scale;
-            uvw(2) = settling_velocity; //settling velocity,
-
-            //holds wind dot face normal
-            double udotm[5];
-            for (int j = 0; j < 5; ++j)
-            {
-                udotm[j] = arma::dot(uvw, m[j]);
-            }
-            //lateral
-            size_t idx = ntri*z + face->cell_id;
-
-            //I'm unclear as to what the map inits the double value to.  I assume undef'd like always, so this is called
-            //to ensure that they are inited to zero so we can call the += operator w/o issue below. Only needs to be done for the diagonal elements
-            //as the rest are straight assignments and not +=
-
-            if( C[idx].find(idx) == C[idx].end() )
-                C[idx][idx] = 0.0;
-
-            for(int f = 0; f < 3; f++)
-            {
-                if(udotm[f] > 0)
-                {
-                    if (d->face_neigh[f])
-                    {
-                        size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-                        if( C[idx].find(nidx) == C[idx].end() )
-                            C[idx][nidx] = 0.0;
-
-                       C[idx][idx] += -d->A[f]*udotm[f]-alpha[f];
-                       C[idx][nidx] += alpha[f];
-
-                    }
-                    else
-                    {
-                       C[idx][idx] += -d->A[f]*udotm[f];
-
-                    }
-                } else
-                {
-                    if (d->face_neigh[f])
-                    {
-                        size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-                        if( C[idx].find(nidx) == C[idx].end() )
-                            C[idx][nidx] = 0.0;
-
-                        C[idx][idx] += -alpha[f];
-                        C[idx][nidx] += -d->A[f]*udotm[f]+alpha[f];
-                    }
-                    else
-                    {
-                        C[idx][idx] += -alpha[f];
-
-                    }
-                }
-            }
-
-
-
-            //init to zero the vertical component regardless of do_vertical_advection
-            if( z != nLayer -1 &&
-                C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
-                C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
-
-            if(z!=0 &&
-               C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
-                C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
-
-            if(do_vertical_advection)
-            {
-                //vertical layers
-                //this formulation includes the 3D advection term
-                if (z == 0)
-                {
-                    //bottom face, no advection
-                    C[idx][idx] += -d->A[4] * K[4];
-                    b[idx] = -d->A[4] * K[4] * c_salt+0.0;
-
-                    if (udotm[3] > 0)
-                    {
-                        C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3]);
-                        C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
-                    } else
-                    {
-                        C[idx][idx] += -alpha[3];
-                        C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
-                    }
-
-
-                } else if (z == nLayer - 1)// top z layer
-                {
-                    if (udotm[3] > 0)
-                    {
-                        C[idx][idx] += -d->A[3] * udotm[3] - alpha[3];
-                    } else
-                    {
-                        C[idx][idx] += -alpha[3];
-                    }
-
-
-                    if (udotm[4] > 0)
-                    {
-                        C[idx][idx] += -d->A[4] * udotm[4] - alpha[4];
-                        C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
-                    } else
-                    {
-                        C[idx][idx] += -alpha[4];
-                        C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4] * udotm[4] + alpha[4];
-                    }
-                } else //middle layers
-                {
-                    if (udotm[3] > 0)
-                    {
-                        C[idx][idx] += -d->A[3] * udotm[3] - alpha[3];
-                        C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
-                    } else
-                    {
-                        C[idx][idx] += -alpha[3];
-                        C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3] * udotm[3] + alpha[3];
-                    }
-
-                    if (udotm[4] > 0)
-                    {
-                        C[idx][idx] += -d->A[4] * udotm[4] - alpha[4];
-                        C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
-                    } else
-                    {
-                        C[idx][idx] += -alpha[4];
-                        C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4] * udotm[4] + alpha[4];
-                    }
-                }
-            } else
-            {
-                //This section has the vertical case for diffusion only.
-
-                if (z == 0)
-                {
-                    //bottom face
-                   C[idx][idx] += -d->A[4]*K[4];
-                   b[ntri * z + face->cell_id] = -d->A[4]*K[4]*c_salt;
-
-                    //top face
-                    C[idx][ntri * z + face->cell_id] +=  -alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] +=  alpha[3];
-
-
-                } else if (z == nLayer - 1)// top z layer
-                {
-                    //top
-                    C[idx][ntri * z + face->cell_id] += -alpha[3]-alpha[4];
-                    //bottom
-                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
-
-
-                } else // internal cell
-                {
-
-                    C[idx][idx] += -alpha[3]-alpha[4];
-                    //top
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
-                    //bottom
-                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
-
-                }
-
-            }
-        } // end z iter
-    } //end face iter
-
-
-    //setup the compressed matrix on the compute device, if available
-    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
-    viennacl::copy(C,vl_C);
-    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
-    viennacl::copy(b,rhs);
-
-    // configuration of preconditioner:
-    viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
-    chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps
-    chow_patel_ilu_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
-    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
-
-
-    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::linalg::gmres_tag gmres_tag(1e-3, 500, 30);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, gmres_tag, chow_patel_ilu);
-    std::vector<vcl_scalar_type> x(vl_x.size());
-    viennacl::copy(vl_x,x);
-
-#pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
-    {
-        auto face = domain->face(i);
-        auto d = face->get_module_data<data>(ID);
-        double Qsusp = 0;
-        double Qsubl = 0;
-        double hs = d->hs;
-
-        double u2 = face->face_data("U_2m_above_srf");
-
-        double rh = face->face_data("rh")/100.;
-        double t = face->face_data("t")+273.15;
-        double es = mio::Atmosphere::saturatedVapourPressure(t);
-        double ea = rh * es / 1000.; // e in kpa
-        double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
-
-        //specific humidity of the air at air temp
-        double q = 0.633*ea/P;
-
-        double v = 1.88*pow(10.,-5.); //kinematic viscosity of air
-
-        for (int z = 0; z<nLayer;++z)
-        {
-            double c = x[ntri * z + face->cell_id];
-            c = c < 0 || is_nan(c) ? 0 : c; //harden against some numerical issues that occasionally come up for unknown reasons.
-
-            double cz = z + hs+ v_edge_height/2.; //cell center height
-
-            double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
-            Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
-
-
-            face->set_face_data("c"+std::to_string(z), c );
 
             //calculate dm/dt from
             // equation 13 from Pomeroy and Li 2000
@@ -639,16 +410,211 @@ void PBSM3D::run(mesh domain)
             double dmdtz = 2.0 * M_PI * rm * lambda_t / Ls * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
 
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
-            double alpha = 4.08 + 12.6*cz; //24
-            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/alpha + 2./(alpha*alpha)); //mean mass, eqn 23
+            double mm_alpha = 4.08 + 12.6*cz; //24
+            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
 
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
 
-            //eqn 20 in Pomeroy 1993
-            Qsubl += csubl * c * v_edge_height; //kg/(m^2*s)
+            if(!do_sublimation)
+                csubl=0.0;
+
+            double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * d->z0 + l__max);
+
+            //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
+            K[3] = K[4] = snow_diffusion_const * std::max(ustar * l, PhysConst::kappa * cz * ustar);
+            face->set_face_data("K"+std::to_string(z), K[3] );
+            //top
+            alpha[3] = d->A[3] * K[3] / v_edge_height;
+            //bottom
+            alpha[4] = d->A[4] * K[4] / v_edge_height;
+
+
+            double length = arma::norm(uvw, 2);
+            double scale = u_z / length;
+
+            uvw *= scale;
+            uvw(2) = settling_velocity; //settling velocity,
+
+            //holds wind dot face normal
+            double udotm[5];
+            for (int j = 0; j < 5; ++j)
+            {
+                udotm[j] = arma::dot(uvw, m[j]);
+            }
+            //lateral
+            size_t idx = ntri*z + face->cell_id;
+
+            //I'm unclear as to what the map inits the double value to.  I assume undef'd like always, so this is called
+            //to ensure that they are inited to zero so we can call the += operator w/o issue below. Only needs to be done for the diagonal elements
+            //as the rest are straight assignments and not +=
+
+            if( C[idx].find(idx) == C[idx].end() )
+                C[idx][idx] = 0.0;
+
+            double V = face->get_area() * v_edge_height;
+            for(int f = 0; f < 3; f++)
+            {
+                if(udotm[f] > 0)
+                {
+                    if (d->face_neigh[f])
+                    {
+                        size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                        if( C[idx].find(nidx) == C[idx].end() )
+                            C[idx][nidx] = 0.0;
+
+                       C[idx][idx]  += (-d->A[f]*udotm[f]-alpha[f])/V+csubl;
+                       C[idx][nidx] += alpha[f]/V;
+
+                    }
+                    else
+                    {
+                       C[idx][idx] += (-d->A[f]*udotm[f]-alpha[f])/V+csubl;
+
+                    }
+                } else
+                {
+                    if (d->face_neigh[f])
+                    {
+                        size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                        if( C[idx].find(nidx) == C[idx].end() )
+                            C[idx][nidx] = 0.0;
+
+                        C[idx][idx] += -alpha[f]/V+csubl;
+                        C[idx][nidx] += (-d->A[f]*udotm[f]+alpha[f])/V;
+                    }
+                    else
+                    {
+                        C[idx][idx] += -alpha[f]/V+csubl;
+
+                    }
+                }
+            }
+
+
+
+            //init to zero the vertical component regardless of do_vertical_advection
+            if( z != nLayer -1 &&
+                C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
+                C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
+
+            if(z!=0 &&
+               C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
+                C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
+
+
+            //vertical layers
+            //this formulation includes the 3D advection term
+            if (z == 0)
+            {
+                //bottom face, no advection
+                C[idx][idx] += -d->A[4] * K[4] + csubl;
+                b[idx] = -d->A[4] * K[4] * c_salt+0.0;
+
+                if (udotm[3] > 0)
+                {
+                    C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3])/V+csubl;
+                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3]/V;
+                } else
+                {
+                    C[idx][idx] += -alpha[3]/V+csubl;
+                    C[idx][ntri * (z + 1) + face->cell_id] += (-d->A[3] * udotm[3] + alpha[3])/V;
+                }
+
+
+            } else if (z == nLayer - 1)// top z layer
+            {
+                if (udotm[3] > 0)
+                {
+                    C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3])/V+csubl;
+                } else
+                {
+                    C[idx][idx] += -alpha[3]/V+csubl;
+                }
+
+
+                if (udotm[4] > 0)
+                {
+                    C[idx][idx] += (-d->A[4] * udotm[4] - alpha[4])/V+csubl;
+                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4]/V;
+                } else
+                {
+                    C[idx][idx] += -alpha[4]/V+csubl;
+                    C[idx][ntri * (z - 1) + face->cell_id] += (-d->A[4] * udotm[4] + alpha[4])/V;
+                }
+            } else //middle layers
+            {
+                if (udotm[3] > 0)
+                {
+                    C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3])/V+csubl;
+                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3]/V;
+                } else
+                {
+                    C[idx][idx] += -alpha[3]/V+csubl;
+                    C[idx][ntri * (z + 1) + face->cell_id] += (-d->A[3] * udotm[3] + alpha[3])/V;
+                }
+
+                if (udotm[4] > 0)
+                {
+                    C[idx][idx] +=(-d->A[4] * udotm[4] - alpha[4])/V+csubl;
+                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4]/V;
+                } else
+                {
+                    C[idx][idx] += -alpha[4]/V+csubl;
+                    C[idx][ntri * (z - 1) + face->cell_id] += (-d->A[4] * udotm[4] + alpha[4])/V;
+                }
+            }
+
+
+        } // end z iter
+    } //end face iter
+
+
+    //setup the compressed matrix on the compute device, if available
+    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
+    viennacl::copy(C,vl_C);
+    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
+    viennacl::copy(b,rhs);
+
+    // configuration of preconditioner:
+    viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
+    chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps
+    chow_patel_ilu_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
+    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
+
+
+    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+    viennacl::linalg::gmres_tag gmres_tag(1e-3, 500, 30);
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, gmres_tag, chow_patel_ilu);
+    std::vector<vcl_scalar_type> x(vl_x.size());
+    viennacl::copy(vl_x,x);
+
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto d = face->get_module_data<data>(ID);
+        double Qsusp = 0;
+        double Qsubl = 0;
+        double hs = d->hs;
+
+        double u2 = face->face_data("U_2m_above_srf");
+
+        for (int z = 0; z<nLayer;++z)
+        {
+            double c = x[ntri * z + face->cell_id];
+            c = c < 0 || is_nan(c) ? 0 : c; //harden against some numerical issues that occasionally come up for unknown reasons.
+
+            double cz = z + hs+ v_edge_height/2.; //cell center height
+
+            double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
+            Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
+
+
+            face->set_face_data("c"+std::to_string(z), c );
+
         }
         face->set_face_data("Qsusp",Qsusp);
-        face->set_face_data("Qsubl",Qsubl);
+
     }
 
     std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
@@ -744,14 +710,10 @@ void PBSM3D::run(mesh domain)
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
 
-        double subl_mass_flux = face->face_data("Qsubl");
-
         double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i]; //d->is_edge ||
 
         double mass = 0;
-        if(do_sublimation)
-            mass = (qdep + subl_mass_flux) * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
-        else
+
             mass = qdep * global_param->dt();// kg/m^2*s *dt -> kg/m^2
 
         face->set_face_data("drift_mass", mass);
@@ -759,9 +721,7 @@ void PBSM3D::run(mesh domain)
         double sum_drift = face->face_data("sum_drift");
         face->set_face_data("sum_drift", sum_drift + mass);
 
-        double sum_subl = face->face_data("sum_subl");
-        sum_subl += subl_mass_flux * global_param->dt();
-        face->set_face_data("sum_subl", sum_subl);
+
     }
 }
 

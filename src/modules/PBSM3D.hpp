@@ -82,7 +82,7 @@ public:
     // Beta * K, this is beta and scales the eddy diffusivity
     double snow_diffusion_const ;
     double l__max; // vertical mixing length (m)
-    bool do_vertical_advection; // should we use the discretization that includes 3D advection?
+
     double settling_velocity;
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.
