@@ -415,8 +415,7 @@ void PBSM3D::run(mesh domain)
 
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
 
-            if(!do_sublimation)
-                csubl=0.0;
+
 
             double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * d->z0 + l__max);
 
@@ -452,6 +451,12 @@ void PBSM3D::run(mesh domain)
                 C[idx][idx] = 0.0;
 
             double V = face->get_area() * v_edge_height;
+
+            if(!do_sublimation)
+            {
+                csubl = 0.0;
+            }
+
             for(int f = 0; f < 3; f++)
             {
                 if(udotm[f] > 0)
@@ -462,13 +467,13 @@ void PBSM3D::run(mesh domain)
                         if( C[idx].find(nidx) == C[idx].end() )
                             C[idx][nidx] = 0.0;
 
-                       C[idx][idx]  += (-d->A[f]*udotm[f]-alpha[f])/V+csubl;
-                       C[idx][nidx] += alpha[f]/V;
+                       C[idx][idx]  += V*csubl-d->A[f]*udotm[f]-alpha[f];
+                       C[idx][nidx] += alpha[f];
 
                     }
                     else
                     {
-                       C[idx][idx] += (-d->A[f]*udotm[f]-alpha[f])/V+csubl;
+                       C[idx][idx] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
                     }
                 } else
@@ -479,12 +484,12 @@ void PBSM3D::run(mesh domain)
                         if( C[idx].find(nidx) == C[idx].end() )
                             C[idx][nidx] = 0.0;
 
-                        C[idx][idx] += -alpha[f]/V+csubl;
-                        C[idx][nidx] += (-d->A[f]*udotm[f]+alpha[f])/V;
+                        C[idx][idx] += V*csubl-alpha[f];
+                        C[idx][nidx] += -d->A[f]*udotm[f]+alpha[f];
                     }
                     else
                     {
-                        C[idx][idx] += -alpha[f]/V+csubl;
+                        C[idx][idx] += V*csubl-alpha[f];
 
                     }
                 }
@@ -507,17 +512,17 @@ void PBSM3D::run(mesh domain)
             if (z == 0)
             {
                 //bottom face, no advection
-                C[idx][idx] += -d->A[4] * K[4] + csubl;
-                b[idx] = -d->A[4] * K[4] * c_salt+0.0;
+                C[idx][idx] += V*csubl-d->A[4]*K[4];
+                b[idx] = -d->A[4]*K[4]*c_salt;
 
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3])/V+csubl;
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3]/V;
+                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
                 } else
                 {
-                    C[idx][idx] += -alpha[3]/V+csubl;
-                    C[idx][ntri * (z + 1) + face->cell_id] += (-d->A[3] * udotm[3] + alpha[3])/V;
+                    C[idx][idx] += V*csubl-alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] +=-d->A[3]*udotm[3]+alpha[3];
                 }
 
 
@@ -525,42 +530,42 @@ void PBSM3D::run(mesh domain)
             {
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3])/V+csubl;
+                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
                 } else
                 {
-                    C[idx][idx] += -alpha[3]/V+csubl;
+                    C[idx][idx] += V*csubl-alpha[3];
                 }
 
 
                 if (udotm[4] > 0)
                 {
-                    C[idx][idx] += (-d->A[4] * udotm[4] - alpha[4])/V+csubl;
-                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4]/V;
+                    C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
                 } else
                 {
-                    C[idx][idx] += -alpha[4]/V+csubl;
-                    C[idx][ntri * (z - 1) + face->cell_id] += (-d->A[4] * udotm[4] + alpha[4])/V;
+                    C[idx][idx] += V*csubl-alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
                 }
             } else //middle layers
             {
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += (-d->A[3] * udotm[3] - alpha[3])/V+csubl;
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3]/V;
+                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
                 } else
                 {
-                    C[idx][idx] += -alpha[3]/V+csubl;
-                    C[idx][ntri * (z + 1) + face->cell_id] += (-d->A[3] * udotm[3] + alpha[3])/V;
+                    C[idx][idx] += V*csubl-alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
                 }
 
                 if (udotm[4] > 0)
                 {
-                    C[idx][idx] +=(-d->A[4] * udotm[4] - alpha[4])/V+csubl;
-                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4]/V;
+                    C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
                 } else
                 {
-                    C[idx][idx] += -alpha[4]/V+csubl;
-                    C[idx][ntri * (z - 1) + face->cell_id] += (-d->A[4] * udotm[4] + alpha[4])/V;
+                    C[idx][idx] += V*csubl-alpha[4];
+                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
                 }
             }
 
