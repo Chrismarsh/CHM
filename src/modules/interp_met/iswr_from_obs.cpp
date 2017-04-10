@@ -8,9 +8,9 @@ iswr_from_obs::iswr_from_obs(config_file cfg)
     depends_from_met("Qsi");
     depends("solar_el");
 
-    provides("iswr_direct");
-    provides("iswr_diffuse");
-    provides("iswr");
+    provides("iswr_direct_no_slope");
+    provides("iswr_diffuse_no_slope");
+
     provides("atm_trans");
 }
 iswr_from_obs::~iswr_from_obs()
@@ -81,9 +81,9 @@ void iswr_from_obs::run(mesh_elem &face)
     double obs_dir = iswr_measured * splitting_coef;
     double obs_diff = iswr_measured * (1-splitting_coef);
 
-    face->set_face_data("iswr_direct",obs_dir);
-    face->set_face_data("iswr_diffuse",obs_diff);
-    face->set_face_data("iswr",iswr_measured);
+    face->set_face_data("iswr_direct_no_slope",obs_dir);
+    face->set_face_data("iswr_diffuse_no_slope",obs_diff);
+
     face->set_face_data("atm_trans",iswr_measured/1375.);
 }
 

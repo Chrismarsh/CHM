@@ -7,9 +7,10 @@ Burridge_iswr::Burridge_iswr(config_file cfg)
 
     depends("cloud_frac");
     depends("solar_el");
-    provides("iswr");
-    provides("iswr_diffuse");
-    provides("iswr_direct");
+
+    provides("iswr_diffuse_no_slope");
+    provides("iswr_direct_no_slope");
+
     provides("atm_trans");
 }
 
@@ -65,8 +66,8 @@ void Burridge_iswr::run(mesh_elem &face)
     if(dir <0)
         dir = 0.0;
 
-    face->set_face_data("iswr_diffuse",diff);
-    face->set_face_data("iswr_direct",dir);
-    face->set_face_data("iswr",dir+diff);
+    face->set_face_data("iswr_diffuse_no_slope",diff);
+    face->set_face_data("iswr_direct_no_slope",dir);
+
     face->set_face_data("atm_trans", (dir+diff) / 1375.);
 }

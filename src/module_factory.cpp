@@ -11,8 +11,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
 
     try
     {
-        if (ID == "slope_iswr")
-            mod = new slope_iswr(config);
+        if (ID == "iswr")
+            mod = new iswr(config);
         else if (ID == "Marsh_shading_iswr")
             mod = new Marsh_shading_iswr(config);
         else if (ID == "const_llra_ta")
