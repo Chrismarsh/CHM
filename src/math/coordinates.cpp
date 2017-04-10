@@ -80,7 +80,7 @@ namespace math
 
         double distance_UTM(Point_3 pt1, Point_3 pt2)
         {
-            Point_2 p1(pt1.x(),pt2.y());
+            Point_2 p1(pt1.x(),pt1.y());
             Point_2 p2(pt2.x(),pt2.y());
 
             return sqrt( CGAL::squared_distance(p1,p2) );

@@ -7,6 +7,7 @@
 #include <ctime>
 #include <algorithm>
 #include <sstream>
+#include <unordered_map>
 
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 
@@ -211,7 +212,7 @@ public:
     
 private:
 //    typedef tbb::concurrent_hash_map<std::string, variable_vec, crc_hash_compare> ts_hashmap;
-    typedef std::map<std::string,variable_vec> ts_hashmap;
+    typedef std::unordered_map<std::string,variable_vec> ts_hashmap;
 
     // This is a hashmap interface, vector back end
     // "var1"        |     "var2"     |     "var3"   |      

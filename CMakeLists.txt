@@ -13,7 +13,7 @@ set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
-option(PV_FILTER "Build Paraview time filter"  ON )
+option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 
@@ -46,14 +46,15 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 #some machines need to be told where odd system libraries are, so put them here
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
+
 #for meton
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
 
 ## Any custom boost path. Few of the hpc systems have out of date boost libs
 set(Boost_NO_SYSTEM_PATHS FALSE)
 if (Boost_NO_SYSTEM_PATHS)
-    set(BOOST_ROOT "/opt/boost/boost_1_61_0")
-#    set(BOOST_ROOT "/home/cbm038/boost_1_58_0")
+#    set(BOOST_ROOT "/opt/boost/boost_1_61_0")
+    set(BOOST_ROOT "/usr/local/Cellar/boost/1.62.0")
 endif()
 
 
@@ -143,7 +144,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -D_FORTIFY_SOURCE=0 -Wn
 
 #GAL requires strict rounding
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -fp-model strict -msse4 -finline ") #-frounding-math needed for cgal
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qoverride-limits -fp-model strict -msse4 -finline ") #-frounding-math needed for cgal
 endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") # OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -173,7 +174,27 @@ if(MATLAB)
     find_package(Matlab REQUIRED)
 endif()
 
-find_package(Armadillo REQUIRED)  #at least v3
+if(OPENMP_FOUND)
+    message(STATUS "Enabling ViennaCL with OpenCL")
+    add_definitions(-DVIENNACL_WITH_OPENMP)
+endif()
+
+find_package(OpenCL)
+if(OpenCL_FOUND)
+    message(STATUS "Enabling ViennaCL with OpenCL")
+    add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
+    add_definitions(-DVIENNACL_WITH_OPENCL)
+        if(APPLE)
+             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
+        endif()
+else()
+    add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
+endif()
+
+find_package(Armadillo REQUIRED)
+
+
+find_package(ViennaCL REQUIRED)
 
 find_package(Boost
              1.60.0

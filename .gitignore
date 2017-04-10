@@ -37,3 +37,5 @@ err.xml
 /src/version.h
 /modules.dot
 /CMake_fedora/*
+/cmake-build-debug/*
+/cmake-build-release/*

@@ -634,7 +634,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
     for(auto& m : vectors)
     {
-        _vtk_unstructuredGrid->GetCellData()->SetVectors(m.second);
+        _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
+
     }
 
 

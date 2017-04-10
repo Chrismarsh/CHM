@@ -77,6 +77,7 @@ set(MODULE_SRCS
 		modules/fast_shadow.cpp
         modules/deform_mesh.cpp
 		modules/crop_rotation.cpp
+        modules/PBSM3D.cpp
 
 		CACHE INTERNAL "" FORCE )
 
@@ -150,6 +151,8 @@ set (EXT_HEADER_FILES
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
 		${CURSES_INCLUDE_DIR}
 		${GDAL_INCLUDE_DIR}
+		${VIENNACL_INCLUDE_DIR}
+		${OpenCL_INCLUDE_DIR}
 		CACHE INTERNAL "" FORCE
     )
 
@@ -165,6 +168,8 @@ set( LIB_FILES
         ${LAPACK_LIBRARIES}
 		${CURSES_LIBRARIES}
 		${GDAL_LIBRARY}
+		${VIENNACL_LIBRARIES}
+		${OpenCL_LIBRARY}
 		CACHE INTERNAL "" FORCE
 )
 

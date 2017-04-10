@@ -50,6 +50,7 @@ namespace pt = boost::property_tree;
 #include "deform_mesh.hpp"
 #include "crop_rotation.hpp"
 #include "snow_slide.hpp"
+#include "PBSM3D.hpp"
 
 class module_factory
 {

@@ -26,10 +26,9 @@ public:
 
     ~snobal();
 
+    double drift_density; // if we have blowing snow, this is the density of those particles
+
     virtual void run(mesh_elem &face);
-
-    virtual void run(mesh domain);
-
     virtual void init(mesh domain);
 
 };
