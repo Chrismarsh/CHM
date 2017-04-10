@@ -15,6 +15,8 @@ public:
     double sum_runoff;
     double sum_melt;
     int dead;
+    double delta_avalanche_snowdepth;
+    double delta_avalanche_swe;
 
 };
 class snobal : public module_base
