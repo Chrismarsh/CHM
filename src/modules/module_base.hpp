@@ -238,7 +238,12 @@ public:
 
     bool is_nan(double variable)
     {
-        return variable == -9999. || std::isnan(variable);
+        if( std::fabs(variable - -9999.0) < 1e-5)
+            return true;
+        if( std::isnan(variable) )
+            return true;
+
+        return false;
     }
 
     bool is_water(mesh_elem face)

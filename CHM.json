@@ -20,11 +20,11 @@
     "prj_name":"Granger creek",
 
 
-//    "startdate":"20010501T000000",
+//   "startdate":"19991001T000000",
+//    "enddate":  "19991201T003000"
 
     "startdate":"19991001T000000",
-//    "enddate":  "20010501T090000"
-     "enddate":"19991001T233000"
+    "enddate":"19991001T000000"
   },
   "modules": //important these are [ ]
   [
@@ -42,7 +42,7 @@
      "kunkel_rh",
 //     "Thornton_p",
 //    "point_mode",
-    "dbsm"
+    "PBSM3D",
 //    "crop_rotation"
     //met process
 //    "Walcek_cloud"
@@ -69,6 +69,13 @@
   },
   "config":
   {
+    "PBSM3D":
+    {
+      "vertical_advection":true,
+      "smooth_coeff":1000,
+      "limit_mass":false,
+      "min_mass_for_trans":-1
+    },
     "solar":
     {
       "svf":
@@ -100,8 +107,10 @@
 
 //    "mesh":"meshes/wolf1m_fill.mesh"
 //    "mesh":"meshes/rosetown.mesh",
-    "mesh":"meshes/marmot_1m.mesh"
-//    "mesh": "meshes/yt.mesh", //GEM_west_srtm
+//    "mesh":"meshes/marmot_1m.mesh"
+//    "mesh":"meshes/uniform.mesh"
+    "mesh":"meshes/for_lid_clip1.tif_config_tol=2_area=10000_veg=0.0.mesh"
+//    "mesh": "meshes/Fortress_2m_DEM1.mesh"//GEM_west_srtm
 //    "mesh":"meshes/GEM_west_srtm.mesh",
     //    //map internal variables/parameters to the .mesh file's parameter section.
 //        "parameters":

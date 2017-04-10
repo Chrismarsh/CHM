@@ -44,7 +44,7 @@ void scale_wind_vert::run(mesh_elem &face) {
         snowdepthavg = face->face_data("snowdepthavg");
 
     // Snow depth check
-    if (std::isnan(snowdepthavg)) // If it is not defined
+    if (is_nan(snowdepthavg)) // If it is not defined
         snowdepthavg = 0.0;
 
     double Z_2m_above_srf = snowdepthavg + 2.0; // (m)
@@ -94,8 +94,7 @@ void scale_wind_vert::run(mesh_elem &face) {
     }
 
     // Check that U_2m_above_srf is not too small for turbulent parameterizations (should move check there)
-    if (U_2m_above_srf<0.1)
-        U_2m_above_srf=0.1;
+    U_2m_above_srf = std::max(0.1,U_2m_above_srf);
 
     // Save computed wind speeds
     //face->set_face_data("U_R",U_R);
