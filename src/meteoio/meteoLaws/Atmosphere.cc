@@ -268,7 +268,7 @@ double Atmosphere::waterSaturationPressure(const double& T) {
 */
 double Atmosphere::saturatedVapourPressure(const double& T)
 {
-	double TA = T;//K_TO_C(T);
+	double TA = T - 273.15;
 	double Es, E, Rhi, Rhw, Rh;                         //saturation and current water vapro pressure
 	const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
 	const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice

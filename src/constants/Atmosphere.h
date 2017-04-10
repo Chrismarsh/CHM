@@ -11,7 +11,7 @@ namespace Atmosphere {
 
     const double KinVisc = 1.88e-5; // kinematic viscosity of air (Sask. avg. value) (units ????)
 
-    double log_scale_wind(double u, double Z_in, double Z_out, double snowdepthavg);
+    double log_scale_wind(double u, double Z_in, double Z_out, double snowdepthavg, double z0=Snow::Z0_SNOW);
 
     // Inoue E (1963) On the turbulent structure of air flow within crop canopies. J Meteorol Soc Jpn 41:317–326
     double exp_scale_wind(double u, double Z_in, double Z_out, const double alpha);

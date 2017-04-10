@@ -17,10 +17,10 @@ double inv_dist::operator()(std::vector< boost::tuple<double,double,double> >& s
     double denominator = 0.0;
 
     double z0 = 0;
-    if (sample_points.size() == 1)
+    if (sample_points.size() == 0)
     {
         BOOST_THROW_EXCEPTION( interpolation_error()
-                                << errstr_info("IDW requires >=2 stations"));
+                                << errstr_info("IDW requires >=1 stations"));
     }
     for(size_t i=0;i<sample_points.size();i++)
     {

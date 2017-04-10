@@ -95,7 +95,7 @@ double scale_wind_vert::get_U_2m_above_srf(mesh_elem &face)
         snowdepthavg = face->face_data("snowdepthavg");
 
     // Snow depth check
-    if (std::isnan(snowdepthavg)) // If it is not defined
+    if (is_nan(snowdepthavg)) // If it is not defined
         snowdepthavg = 0.0;
 
     double Z_2m_above_srf = snowdepthavg + 2.0; // (m)
@@ -141,7 +141,13 @@ double scale_wind_vert::get_U_2m_above_srf(mesh_elem &face)
         //face->set_face_data("U_CanMid",NAN);
     }
 
-    return U_2m_above_srf;
+
+    // Check that U_2m_above_srf is not too small for turbulent parameterizations (should move check there)
+    U_2m_above_srf = std::max(0.1,U_2m_above_srf);
+
+    // Save computed wind speeds
+    //face->set_face_data("U_R",U_R);
+    face->set_face_data("U_2m_above_srf",U_2m_above_srf);
 }
 
 //void scale_wind_vert::init(mesh domain, boost::shared_ptr <global> global_param) {

@@ -19,6 +19,9 @@ snobal::snobal(config_file cfg)
     optional("p_subcanopy");
     optional("ilwr_subcanopy");
 
+    optional("drift_depth");
+    optional("drift_mass");
+
     depends("snow_albedo");
 
     provides("swe");
@@ -39,12 +42,12 @@ snobal::snobal(config_file cfg)
     provides("sum_snowpack_runoff");
     provides("sum_melt");
     provides("snowdepthavg");
-
-
 }
 
 void snobal::init(mesh domain)
 {
+    drift_density = cfg.get("drift_density",300.);
+
     //store all of snobals global_param variables from this timestep to be used as ICs for the next timestep
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -145,10 +148,14 @@ void snobal::init(mesh domain)
                 sbal->T_s_0 = -15. + FREEZE; //assuming no snow
                 sbal->T_s_l = -15. + FREEZE;
                 sbal->z_s = face->get_initial_condition("swe") / sbal->rho;
+
+
             }
         }
         
         sbal->init_snow();
+
+        face->set_face_data("swe",sbal->m_s);
 
         //////
         
@@ -272,6 +279,20 @@ void snobal::run(mesh_elem &face)
         sbal->stop_no_snow=0;
     }
 
+
+    if(has_optional("drift_mass"))
+    {
+
+        double mass = face->face_data("drift_mass");
+        mass = is_nan(mass) ? 0 : mass;
+        //m_s is kg/m^2 and mass is kg/m^2
+        //negative = mass removal
+//        if(mass < 0 && (sbal->m_s+mass ) < 0 ) // are we about to remove more mass than what exists???
+//            mass = -sbal->m_s; //cap it to remove no more than available mass
+
+        sbal->_adj_snow(mass / drift_density, mass);
+    }
+
     if(g->dead == 1)
     {
         sbal->init_snow();
@@ -333,7 +354,3 @@ void snobal::run(mesh_elem &face)
 //    g->dead = 0;
 }
 
-void snobal::run(mesh domain)
-{
-
-}
