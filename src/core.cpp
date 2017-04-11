@@ -260,34 +260,42 @@ void core::config_forcing(pt::ptree &value)
     LOG_DEBUG << "Reading meta data from config";
     std::vector< std::pair<std::string, pt::ptree> > forcings;
 
+    //positive offset going west. So the normal UTC-6 would be UTC_offset:6
+    _global->_utc_offset = value.get("UTC_offset",0);
+    LOG_DEBUG << "Applying UTC offset to ALL forcing files. UTC+" << std::to_string(_global->_utc_offset);
+
     size_t nstations=0;
     timer c; c.tic();
     for (auto &itr : value)
     {
-        if (itr.second.data().find(".json") != std::string::npos)
+
+        if(itr.first != "UTC_offset")
         {
-            auto dir = cwd_dir / itr.second.data();
-
-            auto cfg = read_json(dir.string());
-
-            for (auto &jtr : cfg)
+            if (itr.second.data().find(".json") != std::string::npos)
             {
-                //If an external file is provided, don't allow further sub json files. That is a rabbit hole that isn't worth dealing with.
-                if (jtr.second.data().find(".json") != std::string::npos)
-                {
-                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("An included forcing json file cannot contain json sub-files."));
-                }
+                auto dir = cwd_dir / itr.second.data();
 
-                std::string station_name = jtr.first.data();
-                forcings.push_back( make_pair(station_name, cfg.get_child(station_name) ));
+                auto cfg = read_json(dir.string());
+
+                for (auto &jtr : cfg)
+                {
+                    //If an external file is provided, don't allow further sub json files. That is a rabbit hole that isn't worth dealing with.
+                    if (jtr.second.data().find(".json") != std::string::npos)
+                    {
+                        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
+                                "An included forcing json file cannot contain json sub-files."));
+                    }
+
+                    std::string station_name = jtr.first.data();
+                    forcings.push_back(make_pair(station_name, cfg.get_child(station_name)));
+                    ++nstations;
+                }
+            } else
+            {
+                std::string station_name = itr.first.data();
+                forcings.push_back(make_pair(station_name, value.get_child(station_name)));
                 ++nstations;
             }
-        }
-        else
-        {
-            std::string station_name = itr.first.data();
-            forcings.push_back( make_pair(station_name, value.get_child(station_name) ));
-            ++nstations;
         }
     }
 
@@ -716,9 +724,6 @@ void core::config_output(const pt::ptree &value)
 void core::config_global(const pt::ptree &value)
 {
     LOG_DEBUG << "Found global section";
-
-    _global->_utc_offset = value.get<double>("UTC_offset");
-
 
 
 }

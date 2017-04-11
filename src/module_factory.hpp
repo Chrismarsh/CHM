@@ -11,7 +11,7 @@
 namespace pt = boost::property_tree;
 
 // Modules to build against
-#include "slope_iswr.hpp"
+#include "iswr.hpp"
 #include "Marsh_shading_iswr.hpp"
 #include "const_llra_ta.hpp"
 #include "Kunkel_monthlyTd_rh.hpp"

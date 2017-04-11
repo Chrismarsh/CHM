@@ -26,8 +26,6 @@ void solar::run(mesh_elem &face)
         Lat = data->lat;
     }
 
-    //approximate UTC offset
-    int _utc_offset=6;
 
     //Following the RA DEC to Az Alt conversion sequence explained here:
     //http://www.stargazing.net/kepler/altaz.html
