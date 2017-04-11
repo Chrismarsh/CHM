@@ -44,7 +44,7 @@ void fast_shadow::run(mesh_elem& face)
         {
             double distance = j * size_of_step;
 
-            auto f = face->find_closest_face(solar_az*M_PI / 180., distance);
+            auto f = face->find_closest_face(solar_az, distance);
 
             double z_diff = f->center().z() - me.z() ;
             if (z_diff > 0)

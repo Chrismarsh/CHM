@@ -1058,7 +1058,7 @@ bool face<Gt, Fb>::intersects(face<Gt, Fb>::Face_handle fh)
 }
 
 template < class Gt, class Fb>
-const typename face<Gt, Fb>::Face_handle face<Gt, Fb>::find_closest_face(double azmimuth,double distance)
+const typename face<Gt, Fb>::Face_handle face<Gt, Fb>::find_closest_face(double azmimuth, double distance)
 {
     return _domain->find_closest_face(math::gis::point_from_bearing(center(), azmimuth, distance));
 };
