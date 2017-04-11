@@ -31,22 +31,18 @@ namespace math
             double lon = ( fmod( lonA + dlon + PI , PI*2) ) - PI;
 
             return Point_2(lat * RadiansToDegrees,lon * RadiansToDegrees);
-//            return new GeoCoordinate(
-//                    lat * RadiansToDegrees,
-//                    lon * RadiansToDegrees,
-//                    source.Altitude);
 
         }
 
         Point_2 point_from_bearing_UTM(Point_3 src, double bearing, double distance)
         {
-            double PI = 3.1415926;
-            double DegreesToRadians = PI / 180.0;
+
+            double DegreesToRadians = M_PI / 180.0;
 
             bearing = bearing * DegreesToRadians;
 
-            double dist_x = distance * cos(bearing);
-            double dist_y = distance * sin(bearing);
+            double dist_x = distance * sin(bearing);
+            double dist_y = distance * cos(bearing);
 
             return Point_2(src.x() + dist_x, src.y() + dist_y);
         }
