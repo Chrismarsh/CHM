@@ -20,11 +20,11 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("c3");
     provides("c4");
 
-    provides("K0");
-    provides("K1");
-    provides("K2");
-    provides("K3");
-    provides("K4");
+//    provides("K0");
+//    provides("K1");
+//    provides("K2");
+//    provides("K3");
+//    provides("K4");
 
 //    nLayer=10;
 //    for(int i=0; i<nLayer;++i)
@@ -57,7 +57,6 @@ void PBSM3D::init(mesh domain)
 {
     nLayer = 5;
 
-
     susp_depth = 5; //5m as per pomeroy
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40; // mixing length for diffusivity calculations
@@ -69,7 +68,7 @@ void PBSM3D::init(mesh domain)
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.005); // Beta * K, this is beta and scales the eddy diffusivity
     do_sublimation = cfg.get("do_sublimation",true);
-    eps = cfg.get("smooth_coeff",1e-5);
+    eps = cfg.get("smooth_coeff",820);
     limit_mass= cfg.get("limit_mass",true);
     min_mass_for_trans = cfg.get("min_mass_for_trans",10);
     n_non_edge_tri = 0;
@@ -247,7 +246,7 @@ void PBSM3D::run(mesh domain)
         double thresh_A = .18;
         double g = 9.81;
         double _d = 0.48e-3; //d in paper
-        double u_star_saltation = thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
+        double u_star_saltation = 0.5;//thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
 //        double t = face->face_data("t");
 
         face->set_face_data("u*_th",u_star_saltation);
@@ -421,7 +420,7 @@ void PBSM3D::run(mesh domain)
 
             //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
             K[3] = K[4] = snow_diffusion_const * std::max(ustar * l, PhysConst::kappa * cz * ustar);
-            face->set_face_data("K"+std::to_string(z), K[3] );
+//            face->set_face_data("K"+std::to_string(z), K[3] );
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
             //bottom
@@ -497,7 +496,7 @@ void PBSM3D::run(mesh domain)
 
 
 
-            //init to zero the vertical component regardless of do_vertical_advection
+            //init to zero the vertical component
             if( z != nLayer -1 &&
                 C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
                 C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
@@ -507,13 +506,18 @@ void PBSM3D::run(mesh domain)
                 C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
 
 
+
             //vertical layers
-            //this formulation includes the 3D advection term
             if (z == 0)
             {
                 //bottom face, no advection
-                C[idx][idx] += V*csubl-d->A[4]*K[4];
-                b[idx] = -d->A[4]*K[4]*c_salt;
+//                C[idx][idx] += -d->A[4]*K[4];
+//                b[idx] = -d->A[4]*K[4]*c_salt;
+
+                double alpha4 = d->A[4] * K[4] / (hs+v_edge_height);
+                C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha4;
+                b[idx] += -alpha4*c_salt;
+
 
                 if (udotm[3] > 0)
                 {
@@ -522,7 +526,7 @@ void PBSM3D::run(mesh domain)
                 } else
                 {
                     C[idx][idx] += V*csubl-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] +=-d->A[3]*udotm[3]+alpha[3];
+                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
                 }
 
 
@@ -548,6 +552,7 @@ void PBSM3D::run(mesh domain)
                 }
             } else //middle layers
             {
+
                 if (udotm[3] > 0)
                 {
                     C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
@@ -568,8 +573,6 @@ void PBSM3D::run(mesh domain)
                     C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
                 }
             }
-
-
         } // end z iter
     } //end face iter
 
@@ -614,8 +617,8 @@ void PBSM3D::run(mesh domain)
             double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
-
-            face->set_face_data("c"+std::to_string(z), c );
+            if (z<5)
+                face->set_face_data("c"+std::to_string(z), c );
 
         }
         face->set_face_data("Qsusp",Qsusp);
