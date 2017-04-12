@@ -237,7 +237,7 @@ void PBSM3D::run(mesh domain)
         //saltation concentration
         double tau_t_f = 0.2; // m/s threshold shear stress for aerodynamic entrainment
         double rho_f = 1.225; // air density, fix for T dependenc
-        double u_star_t = pow(tau_t_f/rho_f,0.5); //threshold friction velocity
+        double u_star_t = pow(tau_t_f/rho_f,0.5); //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
         double Qsalt = 0;
         double c_salt = 0;
 
@@ -246,7 +246,7 @@ void PBSM3D::run(mesh domain)
         double thresh_A = .18;
         double g = 9.81;
         double _d = 0.48e-3; //d in paper
-        double u_star_saltation = 0.5;//thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
+        double u_star_saltation = u_star_t;//thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
 //        double t = face->face_data("t");
 
         face->set_face_data("u*_th",u_star_saltation);
