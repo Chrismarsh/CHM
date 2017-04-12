@@ -55,7 +55,7 @@ PBSM3D::PBSM3D(config_file cfg)
 
 void PBSM3D::init(mesh domain)
 {
-    nLayer = 5;
+    nLayer = cfg.get("nLayer",5);
 
     susp_depth = 5; //5m as per pomeroy
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
