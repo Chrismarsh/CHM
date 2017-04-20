@@ -209,35 +209,6 @@ void PBSM3D::run(mesh domain)
         // _4 -> is the bottom the prism
         double alpha[5] = {0, 0, 0, 0, 0};
 
-        //compute alpha and K for edges
-        if(do_lateral_diff)
-        {
-            for (int a = 0; a < 3; ++a)
-            {
-                auto neigh = face->neighbor(a);
-                alpha[a] = d->A[a];
-                double l = 40;
-                //if we have a neighbour, use the distance
-                if (neigh != nullptr)
-                {
-//                    l = math::gis::distance(face->center(), neigh->center());
-
-                    alpha[a] /= math::gis::distance(face->center(), neigh->center());
-
-                } else
-                { //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
-                    alpha[a] /= 2.0 * math::gis::distance(face->center(), face->vertex(0)->point());
-
-                }
-
-                //no horizontal diffusion .....
-                //            double l = PhysConst::kappa * (cz + z0) * l__max /
-                //                       (PhysConst::kappa * cz + PhysConst::kappa * z0 + l__max);
-
-                K[a] = std::max(ustar * l, PhysConst::kappa * 2. * ustar);
-                alpha[a] *= K[a];
-            }
-        }
 
         double t = face->face_data("t")+273.15;
 
@@ -424,9 +395,37 @@ void PBSM3D::run(mesh domain)
 
 
             double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * d->z0 + l__max);
+            //compute alpha and K for edges
+            if(do_lateral_diff)
+            {
+                for (int a = 0; a < 3; ++a)
+                {
+                    auto neigh = face->neighbor(a);
+                    alpha[a] = d->A[a];
+                    double l = 40;
+                    //if we have a neighbour, use the distance
+                    if (neigh != nullptr)
+                    {
+//                    l = math::gis::distance(face->center(), neigh->center());
+
+                        alpha[a] /= math::gis::distance(face->center(), neigh->center());
+
+                    } else
+                    { //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
+                        alpha[a] /= 2.0 * math::gis::distance(face->center(), face->vertex(0)->point());
+
+                    }
+
+                    //            double l = PhysConst::kappa * (cz + z0) * l__max /
+                    //                       (PhysConst::kappa * cz + PhysConst::kappa * z0 + l__max);
+
+                    K[a] =  PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * 2. * ustar);
+                    alpha[a] *= K[a];
+                }
+            }
 
             //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
-            K[3] = K[4] = snow_diffusion_const * std::max(ustar * l, PhysConst::kappa * cz * ustar);
+            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
 //            face->set_face_data("K"+std::to_string(z), K[3] );
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
