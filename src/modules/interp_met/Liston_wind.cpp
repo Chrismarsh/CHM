@@ -19,6 +19,9 @@ Liston_wind::Liston_wind(config_file cfg)
 void Liston_wind::init(mesh domain)
 {
 
+    ys = cfg.get("ys",0.5);
+    yc = cfg.get("yc",0.5);
+
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -194,8 +197,10 @@ void Liston_wind::run(mesh domain)
 
         double omega_c = face->get_parameter("Liston curvature");
 
-        double ys = 0.5;
-        double yc = 0.5;
+//        double ys = 0.5;
+//        double yc = 0.5;
+        double ys = 1;
+        double yc = 1;
 
         double Ww = 1 + ys * omega_s + yc * omega_c;
         W = W * Ww;

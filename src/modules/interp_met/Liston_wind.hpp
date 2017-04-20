@@ -37,6 +37,8 @@ public:
     ~Liston_wind();
     virtual void run(mesh domain);
     virtual void init(mesh domain);
+    double ys;
+    double yc;
     class lwinddata : public face_info
     {
     public:

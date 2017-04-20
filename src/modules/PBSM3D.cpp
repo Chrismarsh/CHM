@@ -68,9 +68,11 @@ void PBSM3D::init(mesh domain)
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.005); // Beta * K, this is beta and scales the eddy diffusivity
     do_sublimation = cfg.get("do_sublimation",true);
+    do_lateral_diff = cfg.get("do_lateral_diff",true);
     eps = cfg.get("smooth_coeff",820);
     limit_mass= cfg.get("limit_mass",true);
     min_mass_for_trans = cfg.get("min_mass_for_trans",10);
+
     n_non_edge_tri = 0;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -208,35 +210,40 @@ void PBSM3D::run(mesh domain)
         double alpha[5] = {0, 0, 0, 0, 0};
 
         //compute alpha and K for edges
-//        for (int a = 0; a < 3; ++a)
-//        {
-//            auto neigh = face->neighbor(a);
-//            alpha[a] = d->A[a];
-//            double l=40;
-//            //if we have a neighbour, use the distance
-//            if (neigh != nullptr)
-//            {
-//                l = math::gis::distance(face->center(), neigh->center());
-//
-//                alpha[a] /= math::gis::distance(face->center(), neigh->center());
-//
-//            } else
-//            { //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
-//                alpha[a] /= 2.0 * math::gis::distance(face->center(), face->vertex(0)->point());
-//
-//            }
-//
-//            //no horizontal diffusion .....
-////            double l = PhysConst::kappa * (cz + z0) * l__max /
-////                       (PhysConst::kappa * cz + PhysConst::kappa * z0 + l__max);
-//
-//            K[a] = std::max(ustar * l, PhysConst::kappa * 2. * ustar);
-//            alpha[a] *= K[a];
-//        }
+        if(do_lateral_diff)
+        {
+            for (int a = 0; a < 3; ++a)
+            {
+                auto neigh = face->neighbor(a);
+                alpha[a] = d->A[a];
+                double l = 40;
+                //if we have a neighbour, use the distance
+                if (neigh != nullptr)
+                {
+//                    l = math::gis::distance(face->center(), neigh->center());
+
+                    alpha[a] /= math::gis::distance(face->center(), neigh->center());
+
+                } else
+                { //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
+                    alpha[a] /= 2.0 * math::gis::distance(face->center(), face->vertex(0)->point());
+
+                }
+
+                //no horizontal diffusion .....
+                //            double l = PhysConst::kappa * (cz + z0) * l__max /
+                //                       (PhysConst::kappa * cz + PhysConst::kappa * z0 + l__max);
+
+                K[a] = std::max(ustar * l, PhysConst::kappa * 2. * ustar);
+                alpha[a] *= K[a];
+            }
+        }
+
+        double t = face->face_data("t")+273.15;
 
         //saltation concentration
-        double tau_t_f = 0.2; // m/s threshold shear stress for aerodynamic entrainment
-        double rho_f = 1.225; // air density, fix for T dependenc
+        double tau_t_f = 0.5; // m/s threshold shear stress for aerodynamic entrainment
+        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.1.225; // air density, fix for T dependenc
         double u_star_t = pow(tau_t_f/rho_f,0.5); //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
         double Qsalt = 0;
         double c_salt = 0;
@@ -341,7 +348,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("Qsalt", Qsalt);
 
         double rh = face->face_data("rh")/100.;
-        double t = face->face_data("t")+273.15;
+
         double es = mio::Atmosphere::saturatedVapourPressure(t);
         double ea = rh * es / 1000.; // e in kpa
         double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
@@ -685,8 +692,8 @@ void PBSM3D::run(mesh domain)
 
             } else
             {
-                auto Qtj = 2 * face->face_data("Qsusp"); // const flux across, 0 -> drifts!!!
-                auto Qsj = 2 * face->face_data("Qsalt");
+                auto Qtj = 2. * face->face_data("Qsusp"); // const flux across, 0 -> drifts!!!
+                auto Qsj = 2. * face->face_data("Qsalt");
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
                 A[i][i]  += -V;
                 bb[i] += E[j] * Qt * udotm[j];
