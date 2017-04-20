@@ -66,7 +66,7 @@ void PBSM3D::init(mesh domain)
     if(settling_velocity > 0)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be negative"));
 
-    snow_diffusion_const = cfg.get("snow_diffusion_const",0.005); // Beta * K, this is beta and scales the eddy diffusivity
+    snow_diffusion_const = cfg.get("snow_diffusion_const",0.3); // Beta * K, this is beta and scales the eddy diffusivity
     do_sublimation = cfg.get("do_sublimation",true);
     do_lateral_diff = cfg.get("do_lateral_diff",true);
     eps = cfg.get("smooth_coeff",820);
