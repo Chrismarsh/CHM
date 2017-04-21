@@ -42,7 +42,6 @@ public:
         double corrected_theta;
         double W;
     };
-    double distance;
 };
 
 /**

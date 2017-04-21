@@ -23,17 +23,17 @@ triangle::~triangle()
 
 }
 
-void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
+void triangle::make_rasterized(vertex v0_in, vertex v1_in, vertex v2_in, const raster& r)
 {
     auto gt = r.getGt();
     auto wkt = r.getDs()->GetProjectionRef();
     auto srs = OGRSpatialReference(wkt);
 
     OGRLinearRing ring;
-    ring.addPoint(v0[0],v0[1]);
-    ring.addPoint(v1[0],v1[1]);
-    ring.addPoint(v2[0],v2[1]);
-    ring.addPoint(v0[0],v0[1]); //close it
+    ring.addPoint(v0_in[0],v0_in[1]);
+    ring.addPoint(v1_in[0],v1_in[1]);
+    ring.addPoint(v2_in[0],v2_in[1]);
+    ring.addPoint(v0_in[0],v0_in[1]); //close it
 
     OGRPolygon poly;
     poly.addRing(&ring);
@@ -185,9 +185,9 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     int is_nan_v[3]={0,0,0};
 
 
-    pz = rasterized_triangle->getXY(v0[0],v0[1]);
-    this->v0[0] = v0[0];
-    this->v0[1] = v0[1];
+    pz = rasterized_triangle->getXY(v0_in[0],v0_in[1]);
+    this->v0[0] = v0_in[0];
+    this->v0[1] = v0_in[1];
     this->v0[2] = pz;
 
     if(std::isnan(pz))
@@ -196,9 +196,9 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     }
 
 
-    pz = rasterized_triangle->getXY(v1[0],v1[1]);
-    this->v1[0] = v1[0];
-    this->v1[1] = v1[1];
+    pz = rasterized_triangle->getXY(v1_in[0],v1_in[1]);
+    this->v1[0] = v1_in[0];
+    this->v1[1] = v1_in[1];
     this->v1[2] = pz;
     if(std::isnan(pz))
     {
@@ -206,9 +206,9 @@ void triangle::make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r)
     }
 
 
-    pz = rasterized_triangle->getXY(v2[0],v2[1]);
-    this->v2[0] = v2[0];
-    this->v2[1] = v2[1];
+    pz = rasterized_triangle->getXY(v2_in[0],v2_in[1]);
+    this->v2[0] = v2_in[0];
+    this->v2[1] = v2_in[1];
     this->v2[2] = pz;
     if(std::isnan(pz))
     {

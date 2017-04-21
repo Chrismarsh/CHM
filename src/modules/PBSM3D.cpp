@@ -402,7 +402,7 @@ void PBSM3D::run(mesh domain)
                 {
                     auto neigh = face->neighbor(a);
                     alpha[a] = d->A[a];
-                    double l = 40;
+//                    double l = 40;
                     //if we have a neighbour, use the distance
                     if (neigh != nullptr)
                     {

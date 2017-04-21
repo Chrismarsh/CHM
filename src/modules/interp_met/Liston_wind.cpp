@@ -197,11 +197,6 @@ void Liston_wind::run(mesh domain)
 
         double omega_c = face->get_parameter("Liston curvature");
 
-//        double ys = 0.5;
-//        double yc = 0.5;
-        double ys = 1;
-        double yc = 1;
-
         double Ww = 1 + ys * omega_s + yc * omega_c;
         W = W * Ww;
 

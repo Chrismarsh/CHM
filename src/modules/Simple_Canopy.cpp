@@ -73,9 +73,9 @@ void Simple_Canopy::run(mesh_elem &face)
 
     double Ts; //", NHRU, "snow surface temperature IN CANOPY", "(°C)", &Ts);
 
-    double Qsisn; //", NHRU, "incident short-wave at surface", "(W/m^2)", &Qsisn); Includes canopy impacts
+    double Qsisn=0; //", NHRU, "incident short-wave at surface", "(W/m^2)", &Qsisn); Includes canopy impacts
 
-    double Qlisn; //", NHRU, "incident long-wave at surface", "(W/m^2)", &Qlisn);
+    double Qlisn=0; //", NHRU, "incident long-wave at surface", "(W/m^2)", &Qlisn);
 
     // declared variables
 
@@ -101,13 +101,13 @@ void Simple_Canopy::run(mesh_elem &face)
 
     double SUnload_H2O; //"", NHRU, "unloaded canopy snow as water", "(mm)", &SUnload_H2O);
 
-    double net_snow; //"", NHRU, "hru_snow minus interception", "(mm/int)", &net_snow);
+    double net_snow=0; //"", NHRU, "hru_snow minus interception", "(mm/int)", &net_snow);
 
     double net_p; //"", NHRU, "total precipitation after interception", "(mm/int)", &net_p);
 
     double u_FHt; //"", NHRU, "wind speed at forest top (z = FHt)", "(m/s)", &u_FHt);
 
-    double Cc; //"", NHRU, "Canopy coverage", "()", &Cc); UNITS???
+    double Cc=0; //"", NHRU, "Canopy coverage", "()", &Cc); UNITS???
 
     double intcp_evap; //"", NHRU, "HRU Evaporation from interception", "(mm/int)", &intcp_evap);
 
@@ -489,8 +489,8 @@ void Simple_Canopy::run(mesh_elem &face)
                 }
                 else{ */// use Priestley-Taylor when snowcover IN CANOPY
                 //double Q = iswr*86400/Global::Freq/1e6/lambda(ta); // convert w/m2 to mm/m^2/int (original CRHM)
-                double temp_Global_Freq = global_param->dt() / 86400; // time steps per day (following CRHM convention)
-                double Q = iswr * 86400 / temp_Global_Freq / 1e6 / lambda(ta); // convert w/m2 to mm/m^2/int TODO: Units don't make sense here (missing density of water??)
+                double temp_Global_Freq = global_param->dt() / 86400.0; // time steps per day (following CRHM convention)
+                double Q = iswr * 86400.0 / temp_Global_Freq / 1e6 / lambda(ta); // convert w/m2 to mm/m^2/int TODO: Units don't make sense here (missing density of water??)
 
                 if (iswr > 0.0)
                     Pevap = 1.26 * delta(ta) * Q / (delta(ta) + gamma(air_pressure, ta));

@@ -841,7 +841,8 @@ rect* segmented_AABB::get_rect(size_t row, size_t col)
 
 segmented_AABB::segmented_AABB()
 {
-
+    n_rows = 0;
+    n_cols = 0;
 }
 
 bool segmented_AABB::pt_in_rect(Delaunay::Vertex_handle v, rect* r)

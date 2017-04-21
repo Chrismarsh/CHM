@@ -9,6 +9,9 @@ core::core()
     _end_ts = nullptr;
     _per_triangle_timeseries = false;
     _interpolation_method = interp_alg::tpspline;
+
+    //default logging level
+    _log_level = debug;
 }
 
 core::~core()

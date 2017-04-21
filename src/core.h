@@ -238,6 +238,7 @@ protected:
     public:
         output_info()
         {
+            frequency=1;
             fname = "";
             latitude = 0;
             longitude = 0;
@@ -255,6 +256,7 @@ protected:
             vtu,
             ascii
         };
+
         output_type type;
         std::string name;
         std::vector<mesh_outputs> mesh_output_formats;
@@ -265,7 +267,7 @@ protected:
         mesh_elem face;
         timeseries ts;
         size_t frequency;
-//        std::set<std::string>
+
     };
 
     bool _enable_ui;

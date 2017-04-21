@@ -33,11 +33,8 @@ void uniform_wind::run(mesh domain)
 {
     double PI = 3.14159;
 
-
-
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
-
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
