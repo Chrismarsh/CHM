@@ -212,8 +212,10 @@ void PBSM3D::run(mesh domain)
 
         double t = face->face_data("t")+273.15;
 
-        //saltation concentration
-        double tau_t_f = 0.5; // m/s threshold shear stress for aerodynamic entrainment
+        // m/s threshold shear stress for aerodynamic entrainment
+        //0.2m/s as per Figure 2 Doorschot, J. J. J., & Lehning, M. (2002). Equilibrium saltation: Mass fluxes, aerodynamic entrainment, and dependence on grain properties. Boundary-Layer Meteorology, 104(1), 111–130. http://doi.org/10.1023/A:1015516420286
+        double tau_t_f = 0.2;
+
         double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.1.225; // air density, fix for T dependenc
         double u_star_t = pow(tau_t_f/rho_f,0.5); //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
         double Qsalt = 0;
@@ -597,7 +599,7 @@ void PBSM3D::run(mesh domain)
 
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::linalg::gmres_tag gmres_tag(1e-3, 500, 30);
+    viennacl::linalg::gmres_tag gmres_tag(1e-10, 500, 30);
     viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
@@ -714,7 +716,7 @@ void PBSM3D::run(mesh domain)
     viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, viennacl::linalg::gmres_tag(),chow_patel_ilu2);
+    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, gmres_tag,chow_patel_ilu2);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
 
