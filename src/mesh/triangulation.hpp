@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "interpolation.h"
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
 
@@ -142,6 +143,7 @@ public:
      * Does not make any gaurantee about state.
      */
     bool coloured;
+
 //    face_info* info;
 
     /**

@@ -83,9 +83,9 @@ void Liston_wind::init(mesh domain)
             southwest = domain->find_closest_face(math::gis::point_from_bearing(me,225,distance)); //me.x() - distance, me.y() - distance
             zsw = southwest->get_z();
 
-            double curve = .25 * ((z - .5 * (zw + ze)) / (2 * distance) + (z - .5 * (zs + zn)) / (2 * distance) +
-                                  (z - .5 * (zsw + zne)) / (2 * sqrt(2 * distance)) +
-                                  (z - .5 * (znw + zse)) / (2 * sqrt(2 * distance)));
+            double curve = .25 * ((z - .5 * (zw + ze)) / (2.0 * distance) + (z - .5 * (zs + zn)) / (2.0 * distance) +
+                                  (z - .5 * (zsw + zne)) / (2.0 * sqrt(2.0) * distance) +
+                                  (z - .5 * (znw + zse)) / (2.0 * sqrt(2.0) * distance));
 
             auto* c = face->get_module_data<lwinddata>(ID);
             c->curvature = curve;
@@ -105,7 +105,7 @@ void Liston_wind::init(mesh domain)
         auto face = domain->face(i);
         auto* c = face->get_module_data<lwinddata>(ID);
 
-        double value = c->curvature / curmax / 2.0;//rescale to [-0.5,+0.5];
+        double value = c->curvature / (curmax * 2.0);//rescale to [-0.5,+0.5];
 
         //with very coarse meshes, with very few total triangles,
         // there are edge cases where curmax=0 and makes curvature NAN. Just set it to 0, no curvature, and don't do silly speedup/down
@@ -147,7 +147,7 @@ void Liston_wind::run(mesh domain)
             double W = s->get("U_R");
             W = std::max(W, 0.1);
 
-            double theta = s->get("vw_dir") * 3.14159 / 180.;
+            double theta = s->get("vw_dir") * M_PI / 180.;
             double phi = math::gis::bearing_to_polar(s->get("vw_dir") );
 
             double zonal_u = -W * sin(theta);
@@ -164,10 +164,10 @@ void Liston_wind::run(mesh domain)
         double zonal_u = face->get_module_data<lwinddata>(ID)->interp(u, query);
         double zonal_v = face->get_module_data<lwinddata>(ID)->interp(v, query);
 
-        double theta = 3.0 * PI * 0.5 - atan2(zonal_v, zonal_u);
+        double theta = 3.0 * M_PI * 0.5 - atan2(zonal_v, zonal_u);
 //        double theta = atan2(-zonal_v, -zonal_u);
-        if (theta > 2 * PI)
-            theta = theta - 2 * PI;
+        if (theta > 2.0 * M_PI)
+            theta = theta - 2.0 * M_PI;
 
         //eqn 15
         double omega_s = face->slope() * cos(theta - face->aspect());
@@ -192,12 +192,16 @@ void Liston_wind::run(mesh domain)
         double omega_s = face->slope() * cos(theta - face->aspect());
 
         //scale between [-0.5,0.5]
-        omega_s = omega_s / max_omega_s / 2.0;
+        omega_s = omega_s / (max_omega_s * 2.0);
 
 
         double omega_c = face->get_parameter("Liston curvature");
 
-        double Ww = 1 + ys * omega_s + yc * omega_c;
+        double Ww = 1.0 + ys * omega_s + yc * omega_c;
+
+        if(std::isnan(Ww))
+            Ww=1.0;
+
         W = W * Ww;
 
         double aspect = face->aspect();
@@ -218,10 +222,10 @@ void Liston_wind::run(mesh domain)
         if (std::abs(dirdiff) < 90.0*d2r)
         {
             theta = theta - 0.5 * std::min(omega_s, 45.0*d2r) * sin((2.0 * dirdiff));
-            if (theta > 2*M_PI)
+            if (theta > 2.0*M_PI)
                 theta = theta - 2*M_PI;
             else if (theta < 0.0)
-                theta = theta + 2*M_PI;
+                theta = theta + 2.0*M_PI;
 
         }
 
@@ -238,7 +242,73 @@ void Liston_wind::run(mesh domain)
 
     }
 
-
+//    size_t ntri = domain->number_of_faces();
+//    std::vector< std::map< unsigned int, vcl_scalar_type> > U(ntri);
+//    std::vector<vcl_scalar_type> b(ntri, 0.0);
+//    double eps = 1;
+//
+//
+//    for (size_t i = 0; i < domain->size_faces(); i++)
+//    {
+//
+//        auto face = domain->face(i);
+//        auto V = face->get_area();
+//
+//        U[i][i] = 0;
+//        for (int j = 0; j < 3; j++)
+//        {
+//            if (face->neighbor(j) != nullptr)
+//                U[i][face->neighbor(j)->cell_id] = 0;
+//        }
+//        for (int j = 0; j < 3; j++)
+//        {
+//            auto Ej = face->edge_length(j);
+//            if (face->neighbor(j) != nullptr)
+//            {
+//
+//                U[i][i] += 1.0 - (0.5) * eps * Ej / V;
+//                U[i][face->neighbor(j)->cell_id] += -0.5 * eps * Ej / V;
+//
+//            } else
+//            {
+//                U[i][i] += -0.5 * eps * Ej / V;
+//            }
+//            b[i] = face->face_data("U_R");
+//        }
+//    }
+//    viennacl::compressed_matrix<vcl_scalar_type>  vl_U(ntri, ntri);
+//    viennacl::copy(U,vl_U);
+//    viennacl::vector<vcl_scalar_type> rhs(ntri );
+//    viennacl::copy(b,rhs);
+//    viennacl::linalg::gmres_tag gmres_tag(1e-1, 500, 30);
+//    viennacl::vector<vcl_scalar_type>  vl_x = viennacl::linalg::solve(U, rhs, gmres_tag);
+//    LOG_DEBUG << "done solve";
+//    std::vector<vcl_scalar_type> x(vl_x.size());
+//    viennacl::copy(vl_x,x);
+//    for (size_t i = 0; i < domain->size_faces(); i++)
+//    {
+//
+//        auto face = domain->face(i);
+//        std::vector<boost::tuple<double, double, double> > u;
+//        for (size_t j = 0; j < 3; j++)
+//        {
+//            auto neigh = face->neighbor(j);
+//            if (neigh != nullptr)
+//                u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_R")));
+//        }
+//
+//        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+//
+//        interpolation interp(interp_alg::tpspline);
+//        double new_u = interp(u, query);
+//        face->get_module_data<lwinddata>(ID)->temp_u = new_u;
+//    }
+//
+//    for (size_t i = 0; i < domain->size_faces(); i++)
+//    {
+//        auto face = domain->face(i);
+//        face->set_face_data("U_R",face->get_module_data<lwinddata>(ID)->temp_u );
+//    }
 }
 
 Liston_wind::~Liston_wind()

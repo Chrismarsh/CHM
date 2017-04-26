@@ -230,6 +230,10 @@ int main(int argc, char *argv[])
     std::cout << "Number of input PLGS vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the triangulation..." << std::endl;
     CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters,error_metric,is_geographic));
+    std::cout << "Run Lloyd optimization...";
+    CGAL::lloyd_optimize_mesh_2(cdt,
+                                CGAL::parameters::max_iteration_number = 100);
+    std::cout << " done." << std::endl;
 
 
     auto nodefilepath = path; //eg PLGSwolf_lidar1.1.node

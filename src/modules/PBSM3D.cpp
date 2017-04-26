@@ -481,7 +481,6 @@ void PBSM3D::run(mesh domain)
                     else
                     {
                        C[idx][idx] += V*csubl-d->A[f]*udotm[f]-alpha[f];
-
                     }
                 } else
                 {
@@ -497,7 +496,6 @@ void PBSM3D::run(mesh domain)
                     else
                     {
                         C[idx][idx] += V*csubl-alpha[f];
-
                     }
                 }
             }

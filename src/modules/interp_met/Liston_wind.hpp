@@ -13,6 +13,10 @@
 #include <cmath>
 
 
+#include <viennacl/linalg/gmres.hpp>
+#include <viennacl/compressed_matrix.hpp>
+#include <viennacl/linalg/ilu.hpp>
+
 /**
 * \addtogroup modules
 * @{
@@ -46,6 +50,7 @@ public:
         interpolation interp;
         double corrected_theta;
         double W;
+        double temp_u;
     };
     double distance;
 };
