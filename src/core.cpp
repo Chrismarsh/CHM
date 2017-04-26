@@ -621,12 +621,28 @@ void core::config_output(const pt::ptree &value)
             out.type = output_info::time_series;
             out.name = out_type;
 
-            auto fname = itr.second.get<std::string>("file");
+            std::string fname = "";
+            try
+            {
+                fname = itr.second.get<std::string>("file");
+            }
+            catch(const pt::ptree_error &e)
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing output filename for " + out.name));
+            }
             auto f = pts_path / fname;
             out.fname = f.string();
 
-            out.longitude = itr.second.get<double>("longitude");
-            out.latitude = itr.second.get<double>("latitude");
+            try
+            {
+                out.longitude = itr.second.get<double>("longitude");
+                out.latitude = itr.second.get<double>("latitude");
+            }
+            catch(const pt::ptree_error &e)
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing latitude and/or longitude for " + out.name));
+            }
+
 
             if( (out.latitude > 90 || out.latitude < -90) ||
                 (out.longitude > 180 || out.longitude < -180) )
