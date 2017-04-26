@@ -43,6 +43,10 @@ def main():
         simplify = X.simplify
         simplify_tol = X.simplify_tol
 
+    lloyd_itr = 0;
+    if hasattr(X,'lloyd_itr'):
+        lloyd_itr = X.lloyd_itr
+
     max_tolerance = None
     if hasattr(X, 'max_tolerance'):
         max_tolerance = X.max_tolerance
@@ -342,14 +346,15 @@ def main():
     is_geographic = srs.IsGeographic()
 
     if not reuse_mesh:
-        execstr = '%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s ' % \
+        execstr = '%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s --lloyd %d' % \
                   (triangle_path,
                    base_dir + poly_file,
                    max_tolerance,
                    base_dir + base_name + '_projected.tif',
                    max_area,
                    min_area,
-                   errormetric
+                   errormetric,
+                   lloyd_itr
                    )
 
         if is_geographic:

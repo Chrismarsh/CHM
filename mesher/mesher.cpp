@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     double max_area = 0;
     double min_area = 1;
     bool is_geographic = false;
-
+    size_t lloyd_itr = 0;
     std::string error_metric = "rmse"; //default of RMSE
     //holds all rasters we perform tolerance checking on
     std::vector< std::pair< boost::shared_ptr<raster>,double> > rasters;
@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
 
             ("area,a", po::value<double>(&max_area), "Maximum area a triangle can be. Square unit.")
             ("min-area,m", po::value<double>(&min_area), "Minimum area a triangle can be. Square unit.")
+            ("lloyd,l", po::value<size_t>(&lloyd_itr), "Number of Llyod iterations.")
             ("error-metric,M", po::value<std::string>(&error_metric), "Error metric. One of: rmse, mean_tol, max_tol."
                                                          "mean_tol compares the mean triangle vertex value to the mean raster value. "
                                                         "max_tol mimics the ArcGIS TIN tolerance, and is the maximum difference between the triangle and any single raster cell.");
@@ -230,11 +231,16 @@ int main(int argc, char *argv[])
     std::cout << "Number of input PLGS vertices: " << cdt.number_of_vertices() << std::endl;
     std::cout << "Meshing the triangulation..." << std::endl;
     CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125,max_area,min_area,rasters,category_rasters,error_metric,is_geographic));
-    std::cout << "Run Lloyd optimization...";
-    CGAL::lloyd_optimize_mesh_2(cdt,
-                                CGAL::parameters::max_iteration_number = 100);
-    std::cout << " done." << std::endl;
 
+    //run lloyd optimizations if required.
+    //if run, 100 is a good pick
+    //http://doc.cgal.org/latest/Mesh_2/#title9
+    if(lloyd_itr > 0)
+    {
+        std::cout << "Running " << lloyd_itr << " Lloyd iterations...";
+        CGAL::lloyd_optimize_mesh_2(cdt, CGAL::parameters::max_iteration_number = lloyd_itr);
+        std::cout << " done." << std::endl;
+    }
 
     auto nodefilepath = path; //eg PLGSwolf_lidar1.1.node
     nodefilepath /= p.filename().replace_extension(".1.node");
