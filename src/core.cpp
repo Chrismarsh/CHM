@@ -12,6 +12,7 @@ core::core()
 
     //default logging level
     _log_level = debug;
+    _output_station_ptv = true;
 }
 
 core::~core()
@@ -261,6 +262,8 @@ void core::config_forcing(pt::ptree &value)
 {
     LOG_DEBUG << "Found forcing section";
     LOG_DEBUG << "Reading meta data from config";
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+
     std::vector< std::pair<std::string, pt::ptree> > forcings;
 
     //positive offset going west. So the normal UTC-6 would be UTC_offset:6
@@ -374,6 +377,9 @@ void core::config_forcing(pt::ptree &value)
         double elevation = itr.second.get<double>("elevation");
         s->z(elevation);
 
+        if(_output_station_ptv)
+            points->InsertNextPoint ( s->x(), s->y(), s->z() );
+
         std::string file = itr.second.get<std::string>("file");
         auto f = cwd_dir / file;
         s->open(f.string());
@@ -419,6 +425,26 @@ void core::config_forcing(pt::ptree &value)
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 
     LOG_DEBUG << "Finished reading stations";
+
+    if(_output_station_ptv)
+    {
+        vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
+        polydata->SetPoints(points);
+
+        // Write the file
+        vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+        auto f = o_path / "stations.vtp";
+        writer->SetFileName(f.string().c_str());
+
+#if VTK_MAJOR_VERSION <= 5
+        writer->SetInput(polydata);
+#else
+        writer->SetInputData(polydata);
+#endif
+
+        writer->Write();
+    }
+
 
 }
 void core::config_parameters(pt::ptree &value)
@@ -590,14 +616,19 @@ void core::config_matlab(const pt::ptree &value)
 void core::config_output(const pt::ptree &value)
 {
     LOG_DEBUG << "Found output section";
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+
+    _output_station_ptv = true;
+
     size_t ID = 0;
     auto pts_dir = "points";
     auto msh_dir = "meshes";
     boost::filesystem::path pts_path;
     boost::filesystem::path msh_path;
 
+
     auto output_dir = value.get<std::string>("output_dir","output");
-    auto o_path = cwd_dir / output_dir;
+    o_path = cwd_dir / output_dir;
     boost::filesystem::create_directories(o_path);
 
     // Create empty folders /points/ and /meshes/
@@ -671,6 +702,7 @@ void core::config_output(const pt::ptree &value)
             }
 
 
+
             out.face = _mesh->locate_face(out.longitude, out.latitude);
 
 
@@ -680,6 +712,8 @@ void core::config_output(const pt::ptree &value)
                                                              "Requested an output point that is not in the triangulation domain. Pt:"
                                                              + std::to_string(out.longitude) + "," + std::to_string(out.latitude) + " name: " + out.name));
 
+            //set the point to be the center of the triangle that the output point lies on
+            points->InsertNextPoint ( out.face->get_x(), out.face->get_y(), out.face->get_z() );
 
             LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
 
@@ -734,6 +768,22 @@ void core::config_output(const pt::ptree &value)
 
         _outputs.push_back(out);
     }
+    vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
+    polydata->SetPoints(points);
+    // Write the file
+    vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+
+    //output this to the same folder as the points are written out to
+    auto f = pts_path / "output_points.vtp";
+    writer->SetFileName(f.string().c_str());
+    #if VTK_MAJOR_VERSION <= 5
+        writer->SetInput(polydata);
+    #else
+        writer->SetInputData(polydata);
+    #endif
+    writer->SetDataModeToAscii();
+    writer->Write();
+
 }
 
 void core::config_global(const pt::ptree &value)
@@ -1045,6 +1095,17 @@ void core::init(int argc, char **argv)
      */
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
+
+    //output should come before forcing, controls if we should output the vtp file of station locations
+    try
+    {
+        config_output(cfg.get_child("output"));
+    } catch (pt::ptree_bad_path &e)
+    {
+        _output_station_ptv = false;
+        LOG_DEBUG << "Optional section Output not found";
+    }
+
     config_forcing(cfg.get_child("forcing"));
 
     /*
@@ -1077,13 +1138,7 @@ void core::init(int argc, char **argv)
     boost::filesystem::path full_path(boost::filesystem::current_path());
     _ui.write_cwd(full_path.string());
 
-    try
-    {
-        config_output(cfg.get_child("output"));
-    } catch (pt::ptree_bad_path &e)
-    {
-        LOG_DEBUG << "Optional section Output not found";
-    }
+
 
     try
     {
