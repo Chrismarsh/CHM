@@ -245,7 +245,7 @@ void Liston_wind::run(mesh domain)
 //    size_t ntri = domain->number_of_faces();
 //    std::vector< std::map< unsigned int, vcl_scalar_type> > U(ntri);
 //    std::vector<vcl_scalar_type> b(ntri, 0.0);
-//    double eps = 1;
+//    double eps = 0;
 //
 //
 //    for (size_t i = 0; i < domain->size_faces(); i++)
@@ -263,15 +263,17 @@ void Liston_wind::run(mesh domain)
 //        for (int j = 0; j < 3; j++)
 //        {
 //            auto Ej = face->edge_length(j);
-//            if (face->neighbor(j) != nullptr)
+//            auto neigh = face->neighbor(j);
+//            if (neigh != nullptr)
 //            {
-//
-//                U[i][i] += 1.0 - (0.5) * eps * Ej / V;
-//                U[i][face->neighbor(j)->cell_id] += -0.5 * eps * Ej / V;
+//                double dx =  math::gis::distance(face->center(), neigh->center());
+//                U[i][i] += 1.0+eps*Ej/(V*dx);
+//                U[i][face->neighbor(j)->cell_id] += -eps*Ej/(V*dx);
 //
 //            } else
 //            {
-//                U[i][i] += -0.5 * eps * Ej / V;
+//                U[i][i] += 1.0;//+eps*Ej/V;
+//
 //            }
 //            b[i] = face->face_data("U_R");
 //        }
@@ -280,8 +282,8 @@ void Liston_wind::run(mesh domain)
 //    viennacl::copy(U,vl_U);
 //    viennacl::vector<vcl_scalar_type> rhs(ntri );
 //    viennacl::copy(b,rhs);
-//    viennacl::linalg::gmres_tag gmres_tag(1e-1, 500, 30);
-//    viennacl::vector<vcl_scalar_type>  vl_x = viennacl::linalg::solve(U, rhs, gmres_tag);
+//    viennacl::linalg::gmres_tag gmres_tag(1e-5, 500, 30);
+//    viennacl::vector<vcl_scalar_type>  vl_x = viennacl::linalg::solve(vl_U, rhs, gmres_tag);
 //    LOG_DEBUG << "done solve";
 //    std::vector<vcl_scalar_type> x(vl_x.size());
 //    viennacl::copy(vl_x,x);
@@ -303,11 +305,13 @@ void Liston_wind::run(mesh domain)
 //        double new_u = interp(u, query);
 //        face->get_module_data<lwinddata>(ID)->temp_u = new_u;
 //    }
-//
+////
 //    for (size_t i = 0; i < domain->size_faces(); i++)
 //    {
 //        auto face = domain->face(i);
 //        face->set_face_data("U_R",face->get_module_data<lwinddata>(ID)->temp_u );
+////        face->set_face_data("U_R",x[i] );
+//
 //    }
 }
 

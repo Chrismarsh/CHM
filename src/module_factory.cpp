@@ -89,6 +89,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
 	        mod = new snow_slide(config);
         else if (ID == "PBSM3D")
             mod = new PBSM3D(config);
+        else if (ID == "fetchr")
+            mod = new fetchr(config);
 
     }
     catch(module_error& e)

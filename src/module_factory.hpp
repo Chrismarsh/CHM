@@ -51,6 +51,7 @@ namespace pt = boost::property_tree;
 #include "crop_rotation.hpp"
 #include "snow_slide.hpp"
 #include "PBSM3D.hpp"
+#include "fetchr.hpp"
 
 class module_factory
 {

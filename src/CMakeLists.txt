@@ -54,6 +54,7 @@ set(MODULE_SRCS
 		modules/point_mode.cpp
 
         modules/iswr.cpp
+		modules/fetchr.cpp
 		modules/Marsh_shading_iswr.cpp
 		modules/Sicart_ilwr.cpp
 		modules/PenmanMonteith_evaporation.cpp

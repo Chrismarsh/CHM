@@ -10,6 +10,8 @@ PBSM3D::PBSM3D(config_file cfg)
     depends("t");
     depends("rh");
 
+    optional("fetch");
+
     provides("u10");
     provides("is_drifting");
 
@@ -164,6 +166,10 @@ void PBSM3D::run(mesh domain)
         auto d = face->get_module_data<data>(ID);
         auto& m = d->m;
 
+        double fetch = 1000;
+        if(has_optional("fetch"))
+            fetch = face->face_data("fetch");
+
         //get wind from the face
         double phi = face->face_data("vw_dir");
         double u2 = face->face_data("U_2m_above_srf");
@@ -239,7 +245,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation && swe > min_mass_for_trans)
+        if( ustar > u_star_saltation && swe > min_mass_for_trans && fetch >= 300)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
