@@ -35,11 +35,12 @@ void fetchr::run(mesh_elem& face)
     //direction it is from, need upwind fetch
     double wind_dir = face->face_data("vw_dir") ;
 
+    //if we are using vegetation and the current face is covered in veg, set the fetch to 0
     if(incl_veg && face->has_parameter("landcover"))
     {
         int me_LC = face->get_parameter("landcover");
         double me_Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(me_LC) + ".CanopyHeight");
-        if(me_Z_CanTop > 1)
+        if(me_Z_CanTop > 1) // 1m might be too high?
         {
             face->set_face_data("fetch", 0);
             return;
@@ -48,7 +49,6 @@ void fetchr::run(mesh_elem& face)
     }
 
     // search along wind_dir azimuth in j step increments
-#pragma omp parallel for
     for (int j = 1; j <= steps; ++j)
     {
         double distance = j * size_of_step;
@@ -68,6 +68,7 @@ void fetchr::run(mesh_elem& face)
         //equation 1, pg 771, Lapen and Martz 1993
         double Z_core = face->center().z() + distance*I;
 
+        //reset the fetch if there is elevation, but also if we run into vegetation >1m
         if(Z_test >= Z_core || Z_CanTop > 1)
         {
             face->set_face_data("fetch", distance);
