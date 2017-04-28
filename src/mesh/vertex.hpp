@@ -77,28 +77,33 @@ public:
 template < class Gt, class Vb >
 ex_vertex<Gt, Vb>::~ex_vertex()
 {
-   // delete info;
+
 };
 
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex() : Base()
 {
-   // info = NULL;
+
+    _id = 0;
 }
+
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(const Point & p) : Base(p)
 {
-  //  info = NULL;
+    _id = 0;
+
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(const Point & p, Face_handle f) : Base(f, p)
 {
-  //  info = NULL;
+    _id = 0;
+
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(Face_handle f) : Base(f)
 {
-   // info = NULL;
+    _id = 0;
+
 }
 
 template < class Gt, class Vb>

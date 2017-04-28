@@ -25,39 +25,45 @@ fast_shadow::~fast_shadow()
 
 void fast_shadow::run(mesh_elem& face)
 {
-        //currentl degrees
-        double solar_az = face->face_data("solar_az") ;
-        double solar_el = face->face_data("solar_el") ;
 
-        face->set_face_data("shadow", 0);
-        //bail early
-        if (solar_el < 5)
-            return;
+    double solar_el = face->face_data("solar_el") *M_PI / 180.;
 
-        Point_3 me = face->center();
-        auto cosSlope = cos(face->slope());
-        auto sinSlope = sin(face->slope());
+    face->set_face_data("shadow", 0);
+    //bail early
+    if (solar_el < 0)
+        return;
 
-        double phi = 0.;
-        // search along each azimuth in j step increments to find horizon angle
-        for (int j = 1; j <= steps; ++j)
+    double solar_az = face->face_data("solar_az") ;
+
+    Point_3 me = face->center();
+
+    double phi = 0.;
+    // search along each azimuth in j step increments to find horizon angle
+    for (int j = 1; j <= steps; ++j)
+    {
+        double distance = j * size_of_step;
+
+        auto f = face->find_closest_face(solar_az, distance);
+
+        double z_diff = f->center().z() - me.z() ;
+        if (z_diff > 0)
         {
-            double distance = j * size_of_step;
-
-            auto f = face->find_closest_face(solar_az*M_PI / 180., distance);
-
-            double z_diff = f->center().z() - me.z() ;
-            if (z_diff > 0)
-            {
-                double dist = math::gis::distance(f->center(), me);
-                phi = std::max(atan(z_diff / dist), phi);
-            }
+            double dist = math::gis::distance(f->center(), me);
+            phi = std::max(atan(z_diff / dist), phi);
         }
-
-        if (phi > (solar_el *M_PI / 180.) )
+        //try to bail early if possible
+        if (phi > solar_el )
         {
             face->set_face_data("shadow", 1);
         }
+    }
+    //try to bail early if possible
+    if (phi > solar_el )
+    {
+        face->set_face_data("shadow", 1);
+    }
+
+
 
 }
 

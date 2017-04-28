@@ -86,7 +86,7 @@ void Richard_albedo::init(mesh domain)
     albedo_bare = cfg.get("init_albedo_bare",0.17); //initial bare ground albedo
 
 #pragma omp parallel for
-    for (auto i=0; i < domain->size_faces(); ++i)
+    for (size_t i=0; i < domain->size_faces(); ++i)
     {
         auto face = domain->face(i);
         auto* d = face->make_module_data<data>(ID);

@@ -292,6 +292,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         center_points.push_back(pt2);
     }
 
+
     //make the search tree
     dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
                                  boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
@@ -388,6 +389,33 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     }
     _num_faces = this->number_of_faces();
     _num_vertex = this->number_of_vertices();
+
+    std::vector<double> temp_slope(size_faces());
+
+    for (size_t i = 0; i < size_faces(); i++)
+    {
+
+        auto f = face(i);
+        std::vector<boost::tuple<double, double, double> > u;
+        for (size_t j = 0; j < 3; j++)
+        {
+            auto neigh = f->neighbor(j);
+            if (neigh != nullptr)
+                u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->slope()));
+        }
+
+        auto query = boost::make_tuple(f->get_x(), f->get_y(), f->get_z());
+
+        interpolation interp(interp_alg::tpspline);
+        double new_slope = interp(u, query);
+        temp_slope.at(i) = new_slope;
+    }
+
+    for (size_t i = 0; i < size_faces(); i++)
+    {
+        auto f = face(i);
+        f->_slope = temp_slope.at(i);
+    }
 
     return parameters;
 }
@@ -634,7 +662,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
     for(auto& m : vectors)
     {
-        _vtk_unstructuredGrid->GetCellData()->SetVectors(m.second);
+        _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
+
     }
 
 
@@ -840,7 +869,8 @@ rect* segmented_AABB::get_rect(size_t row, size_t col)
 
 segmented_AABB::segmented_AABB()
 {
-
+    n_rows = 0;
+    n_cols = 0;
 }
 
 bool segmented_AABB::pt_in_rect(Delaunay::Vertex_handle v, rect* r)

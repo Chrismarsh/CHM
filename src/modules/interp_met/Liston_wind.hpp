@@ -13,6 +13,10 @@
 #include <cmath>
 
 
+#include <viennacl/linalg/gmres.hpp>
+#include <viennacl/compressed_matrix.hpp>
+#include <viennacl/linalg/ilu.hpp>
+
 /**
 * \addtogroup modules
 * @{
@@ -37,6 +41,8 @@ public:
     ~Liston_wind();
     virtual void run(mesh domain);
     virtual void init(mesh domain);
+    double ys;
+    double yc;
     class lwinddata : public face_info
     {
     public:
@@ -44,6 +50,8 @@ public:
         interpolation interp;
         double corrected_theta;
         double W;
+        double temp_u;
+        interpolation interp_smoothing;
     };
     double distance;
 };

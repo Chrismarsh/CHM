@@ -7,8 +7,9 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
     {
         size = sample_points.size();
         size++; // need to make room for the constants
-        A = new double[ size * size ];
-        B = new double[size]; // known values - constant value of 0 goes in b[size-1]
+        A.resize(size,size);
+        b.resize(size);
+
     }
 
 
@@ -24,6 +25,10 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
 
             double xdiff = (sxi - sxj);
             double ydiff = (syi - syj);
+
+            //don't add in a duplicate point, otherwise we get nan
+            if(xdiff == 0. && ydiff == 0.)
+                continue;
 
             double Rd=0.;
             if (j == i) // diagonal
@@ -50,56 +55,43 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
 
             }
 
-            //A(i,j+1) = Rd;
-            A[i * size + (j+1)] = Rd;
+            A(i,j+1) = Rd;
+            A(j,i+1) = Rd;
 
-            //A(j,i+1) = Rd;
-            A[j * size + (i+1)] = Rd;
         }
     }
 
     //set constants and build b values
     for(unsigned int i = 0; i< size;i++)
     {
-        A[i*size+0] = 1;
-        A[(size-1)*size+i] = 1;
+        A(i,0) = 1;
+//        A[i*size+0] = 1;
+
+        A(size-1,i)=1;
+//        A[(size-1)*size+i] = 1;
     }
-    A[(size-1)*(size)+0] = 0.0;
+    A(size-1,0)=0;
+//    A[(size-1)*(size)+0] = 0.0;
 
     for(size_t i=0;i<size-1;i++)
-        B[i] = sample_points.at(i).get<2>() ;
-
-    B[size-1] = 0.0; //constant
-
-//    std::cout << std::endl;
-//    for(int i = 0;i<size;++i)
-//    {
-//        for(int j = 0; j<size;++j)
-//        {
-//            std::cout << A[i*size+j] << ",";
-//        }
-//        std::cout << std::endl;
-//    }
-    //solve equation via gsl via lu decomp
-    int s				= 0;
-    if(!static_size)
     {
-        m 	= gsl_matrix_view_array (A, size, size);
-        b	= gsl_vector_view_array (B, size);
-        x	= gsl_vector_alloc (size);
-        p   = gsl_permutation_alloc (size);
+        b(i) = sample_points.at(i).get<2>() ;
     }
+//        B[i] = sample_points.at(i).get<2>() ;
 
-    gsl_linalg_LU_decomp (&m.matrix, p, &s);
-    gsl_linalg_LU_solve (&m.matrix, p, &b.vector, x);
+    b(size-1) = 0.0; //constant
 
-    double z0 = x->data[0];//little a
+    //solve equation
+    int s				= 0;
+
+    arma::vec x = arma::solve(A,b);
+    double z0 = x(0);//little a
 
     //skip x[0] we already pulled off above
     double ex = query_point.get<0>();
     double ey =  query_point.get<1>();
 
-    for (unsigned int i = 1; i < x->size ;i++)
+    for (unsigned int i = 1; i < x.size() ;i++)
     {
         double sx = sample_points.at(i-1).get<0>(); //x
         double sy = sample_points.at(i-1).get<1>(); //y
@@ -110,17 +102,7 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         dij = (dij * weight/2.0) * (dij * weight/2.0);
         double Rd = -(log(dij) + c + gsl_sf_expint_E1(dij));
 
-        z0 = z0 + x->data[i]*Rd;
-    }
-
-
-    if(!static_size)
-    {
-        gsl_permutation_free (p);
-        gsl_vector_free (x);
-        delete[] B;
-        delete[] A;
-
+        z0 = z0 + x(i)*Rd;
     }
 
     return z0;
@@ -133,15 +115,12 @@ thin_plate_spline::thin_plate_spline(size_t sz)
     size = sz;
     size++; // need to make room for the constants
 
-    A = new double[ size * size ];
-    B = new double[size]; // known values - constant value of 0 goes in b[size-1]
+    A.resize(size,size );
+    b.resize(size); // known values - constant value of 0 goes in b[size-1]
 
     static_size = true;
 
-    m 	= gsl_matrix_view_array (A, size, size);
-    b	= gsl_vector_view_array (B, size);
-    x	= gsl_vector_alloc (size);
-    p   = gsl_permutation_alloc (size);
+
 }
 thin_plate_spline::thin_plate_spline()
 {
@@ -153,12 +132,5 @@ thin_plate_spline::thin_plate_spline()
 }
 thin_plate_spline::~thin_plate_spline()
 {
-    if(static_size)
-    {
-        gsl_permutation_free (p);
-        gsl_vector_free (x);
-        delete[] B;
-        delete[] A;
-    }
 
 }

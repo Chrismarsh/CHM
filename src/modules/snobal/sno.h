@@ -321,7 +321,6 @@ public:
            measurement (m) */
     double z_0;            /* roughness length */
 
-
 /*   precipitation info for the current DATA timestep    */
 
     int precip_now;
