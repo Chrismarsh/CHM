@@ -8,6 +8,8 @@
 #include <vtkPoints.h>
 #include <vtkXMLPolyDataWriter.h>
 #include <vtkVersion.h>
+#include <vtkStringArray.h>
+#include <vtkPointData.h>
 
 //std includes
 #include <string>

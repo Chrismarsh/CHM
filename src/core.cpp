@@ -263,7 +263,8 @@ void core::config_forcing(pt::ptree &value)
     LOG_DEBUG << "Found forcing section";
     LOG_DEBUG << "Reading meta data from config";
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-
+    vtkSmartPointer<vtkStringArray> labels = vtkSmartPointer<vtkStringArray>::New();
+    labels->SetName("Station name");
     std::vector< std::pair<std::string, pt::ptree> > forcings;
 
     //positive offset going west. So the normal UTC-6 would be UTC_offset:6
@@ -331,6 +332,7 @@ void core::config_forcing(pt::ptree &value)
     if(!_mesh->is_geographic())
         coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
+    labels->SetNumberOfValues(nstations);
 //#pragma omp parallel for
     //TODO: this dead locks, not sure why
     for(size_t i =0; i < nstations; ++i)
@@ -378,7 +380,10 @@ void core::config_forcing(pt::ptree &value)
         s->z(elevation);
 
         if(_output_station_ptv)
-            points->InsertNextPoint ( s->x(), s->y(), s->z() );
+        {
+            points->InsertNextPoint(s->x(), s->y(), s->z());
+            labels->SetValue(i,station_name );
+        }
 
         std::string file = itr.second.get<std::string>("file");
         auto f = cwd_dir / file;
@@ -428,9 +433,10 @@ void core::config_forcing(pt::ptree &value)
 
     if(_output_station_ptv)
     {
+
         vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
         polydata->SetPoints(points);
-
+        polydata->GetPointData()->AddArray(labels);
         // Write the file
         vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
         auto f = o_path / "stations.vtp";
@@ -617,7 +623,8 @@ void core::config_output(const pt::ptree &value)
 {
     LOG_DEBUG << "Found output section";
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-
+    vtkSmartPointer<vtkStringArray> labels = vtkSmartPointer<vtkStringArray>::New();
+    labels->SetName("Point output name");
     _output_station_ptv = true;
 
     size_t ID = 0;
@@ -714,6 +721,7 @@ void core::config_output(const pt::ptree &value)
 
             //set the point to be the center of the triangle that the output point lies on
             points->InsertNextPoint ( out.face->get_x(), out.face->get_y(), out.face->get_z() );
+            labels->InsertNextValue(out.name);
 
             LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
 
@@ -770,6 +778,7 @@ void core::config_output(const pt::ptree &value)
     }
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
+    polydata->GetPointData()->AddArray(labels);
     // Write the file
     vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
 
@@ -781,7 +790,7 @@ void core::config_output(const pt::ptree &value)
     #else
         writer->SetInputData(polydata);
     #endif
-    writer->SetDataModeToAscii();
+
     writer->Write();
 
 }
