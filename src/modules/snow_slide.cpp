@@ -21,8 +21,10 @@ void snow_slide::run(mesh domain)
 {
 
     // Make a vector of pairs (elevation + snowdepth, pointer to face)
-    std::vector< std::pair<double, mesh_elem> > sorted_z;
-    for(size_t i = 0; i  <domain->size_faces(); i++)
+    tbb::concurrent_vector< std::pair<double, mesh_elem> > sorted_z(domain->size_faces());
+
+#pragma omp parallel for
+    for(size_t i = 0; i  < domain->size_faces(); i++)
     {
         auto face = domain->face(i); // Get face
         // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
@@ -32,15 +34,17 @@ void snow_slide::run(mesh domain)
         // Initalize snow transport to zero
         data->delta_avalanche_snowdepth = 0.0;
         data->delta_avalanche_mass = 0.0; // m
-        sorted_z.push_back( std::make_pair( face->center().z() + face->face_data("snowdepthavg"), face) );
+        sorted_z.at(i) = std::make_pair( face->center().z() + face->face_data("snowdepthavg"), face) ;
 
     }
 
     // Sort faces by elevation + snowdepth
-    std::sort(sorted_z.begin(), sorted_z.end(), [](const std::pair<double, mesh_elem> &a,const std::pair<double, mesh_elem> &b) {
+//    std::sort(sorted_z.begin(), sorted_z.end(), [](const std::pair<double, mesh_elem> &a,const std::pair<double, mesh_elem> &b) {
+//        return b.first < a.first;
+//    });
+    tbb::parallel_sort(sorted_z.begin(), sorted_z.end(), [](const std::pair<double, mesh_elem> &a,const std::pair<double, mesh_elem> &b) {
         return b.first < a.first;
     });
-
     // Loop through each face, from highest to lowest triangle surface
     for (size_t i = 0; i < sorted_z.size(); i++) {
         auto face = sorted_z[i].second; // Get pointer to face
