@@ -85,13 +85,14 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
             mod = new deform_mesh(config);
         else if (ID == "crop_rotation")
             mod = new crop_rotation(config);
+        else if (ID == "t_monthly_lapse")
+            mod = new t_monthly_lapse(config);
   	    else if (ID == "snow_slide")
 	        mod = new snow_slide(config);
         else if (ID == "PBSM3D")
             mod = new PBSM3D(config);
         else if (ID == "fetchr")
             mod = new fetchr(config);
-
     }
     catch(module_error& e)
     {
