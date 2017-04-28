@@ -43,6 +43,7 @@ public:
     {
         interpolation interp;
     };
+    double MLR[12];
 };
 
 /**
