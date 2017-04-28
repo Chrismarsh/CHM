@@ -35,7 +35,7 @@ void fetchr::run(mesh_elem& face)
     //direction it is from, need upwind fetch
     double wind_dir = face->face_data("vw_dir") ;
 
-    if(incl_veg)
+    if(incl_veg && face->has_parameter("landcover"))
     {
         int me_LC = face->get_parameter("landcover");
         double me_Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(me_LC) + ".CanopyHeight");
@@ -74,6 +74,7 @@ void fetchr::run(mesh_elem& face)
             break;
         }
     }
+
 
 
 
