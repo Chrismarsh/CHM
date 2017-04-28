@@ -28,6 +28,7 @@ void Liston_wind::init(mesh domain)
         auto face = domain->face(i);
         auto d = face->make_module_data<lwinddata>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+        d->interp_smoothing.init(interp_alg::tpspline);
         face->coloured = false;
     }
 
@@ -245,7 +246,7 @@ void Liston_wind::run(mesh domain)
 //    size_t ntri = domain->number_of_faces();
 //    std::vector< std::map< unsigned int, vcl_scalar_type> > U(ntri);
 //    std::vector<vcl_scalar_type> b(ntri, 0.0);
-//    double eps = 0;
+//    double eps = 820;
 //
 //
 //    for (size_t i = 0; i < domain->size_faces(); i++)
@@ -272,7 +273,7 @@ void Liston_wind::run(mesh domain)
 //
 //            } else
 //            {
-//                U[i][i] += 1.0;//+eps*Ej/V;
+//                U[i][i] += 1.0 ;//+eps*Ej/V;
 //
 //            }
 //            b[i] = face->face_data("U_R");
@@ -282,37 +283,38 @@ void Liston_wind::run(mesh domain)
 //    viennacl::copy(U,vl_U);
 //    viennacl::vector<vcl_scalar_type> rhs(ntri );
 //    viennacl::copy(b,rhs);
-//    viennacl::linalg::gmres_tag gmres_tag(1e-5, 500, 30);
+//    viennacl::linalg::gmres_tag gmres_tag(1e-10, 500, 30);
 //    viennacl::vector<vcl_scalar_type>  vl_x = viennacl::linalg::solve(vl_U, rhs, gmres_tag);
 //    LOG_DEBUG << "done solve";
 //    std::vector<vcl_scalar_type> x(vl_x.size());
 //    viennacl::copy(vl_x,x);
-//    for (size_t i = 0; i < domain->size_faces(); i++)
-//    {
-//
-//        auto face = domain->face(i);
-//        std::vector<boost::tuple<double, double, double> > u;
-//        for (size_t j = 0; j < 3; j++)
-//        {
-//            auto neigh = face->neighbor(j);
-//            if (neigh != nullptr)
-//                u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_R")));
-//        }
-//
-//        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-//
-//        interpolation interp(interp_alg::tpspline);
-//        double new_u = interp(u, query);
-//        face->get_module_data<lwinddata>(ID)->temp_u = new_u;
-//    }
-////
-//    for (size_t i = 0; i < domain->size_faces(); i++)
-//    {
-//        auto face = domain->face(i);
-//        face->set_face_data("U_R",face->get_module_data<lwinddata>(ID)->temp_u );
-////        face->set_face_data("U_R",x[i] );
-//
-//    }
+
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+
+        auto face = domain->face(i);
+        std::vector<boost::tuple<double, double, double> > u;
+        for (size_t j = 0; j < 3; j++)
+        {
+            auto neigh = face->neighbor(j);
+            if (neigh != nullptr)
+                u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_R")));
+        }
+
+        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+
+        double new_u = face->get_module_data<lwinddata>(ID)->interp_smoothing(u, query);
+        face->get_module_data<lwinddata>(ID)->temp_u = new_u;
+    }
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        face->set_face_data("U_R",face->get_module_data<lwinddata>(ID)->temp_u );
+//        face->set_face_data("U_R",x[i] );
+
+    }
 }
 
 Liston_wind::~Liston_wind()

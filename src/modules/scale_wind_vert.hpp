@@ -27,12 +27,12 @@ public:
     scale_wind_vert(config_file cfg);
 
     ~scale_wind_vert();
-
-    virtual void run(mesh_elem &face);
+    virtual void init(mesh domain);
     virtual void run(mesh domain);
     //virtual void init(mesh domain);
     struct d: public face_info
     {
         double temp_u;
-    } data;
+        interpolation interp;
+    };
 };

@@ -22,7 +22,15 @@ scale_wind_vert::~scale_wind_vert()
 
 }
 
-void scale_wind_vert::run(mesh_elem &face) {
+void scale_wind_vert::init(mesh domain)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto data = face->make_module_data<d>(ID);
+        data->interp.init(interp_alg::tpspline);
+    }
 
 }
 

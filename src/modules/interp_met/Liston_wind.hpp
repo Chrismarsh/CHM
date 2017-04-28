@@ -51,6 +51,7 @@ public:
         double corrected_theta;
         double W;
         double temp_u;
+        interpolation interp_smoothing;
     };
     double distance;
 };
