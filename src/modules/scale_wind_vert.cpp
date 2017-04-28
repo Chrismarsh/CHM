@@ -74,7 +74,7 @@ void scale_wind_vert::run(mesh domain)
         if (Z_2m_above_srf >= Z_R)
         {
             face->set_face_data("U_2m_above_srf", U_R);
-            return;
+            continue;
         }
 
 
