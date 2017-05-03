@@ -462,6 +462,7 @@ timeseries::timeseries()
     _rows = 0;
     _isOpen = false;
     _timeseries_length=0;
+    _variables.set_empty_key("");
 }
 
 

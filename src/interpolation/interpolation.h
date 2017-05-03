@@ -27,17 +27,18 @@ public:
      * Some of the interpolators need to allocate memory, and if called multiple times, it is faster to preinit and set size
      * as required where size is the number of items used to interpolate from. E.g., # stations.
      */
-    interpolation(interp_alg ia, size_t size=0);
+    interpolation(interp_alg ia, size_t size=0,
+                  std::map<std::string,std::string> config = std::map<std::string,std::string>());
     interpolation();
+
     ~interpolation();
 
-    void init(interp_alg ia, size_t size=0);
+    void init(interp_alg ia, size_t size=0, std::map<std::string,std::string> config = std::map<std::string,std::string>());
 
     double operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point);
-
-private:
-//    boost::movelib::unique_ptr<interp_base> base;
     boost::shared_ptr<interp_base> base;
+private:
+
     size_t size;
     interp_alg ia;
 };
