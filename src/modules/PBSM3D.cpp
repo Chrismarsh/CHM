@@ -12,15 +12,14 @@ PBSM3D::PBSM3D(config_file cfg)
 
     optional("fetch");
 
-    provides("u10");
-    provides("is_drifting");
+//    provides("u10");
+//    provides("is_drifting");
 
-
-    provides("c0");
-    provides("c1");
-    provides("c2");
-    provides("c3");
-    provides("c4");
+//    provides("c0");
+//    provides("c1");
+//    provides("c2");
+//    provides("c3");
+//    provides("c4");
 
 //    provides("K0");
 //    provides("K1");
@@ -35,19 +34,17 @@ PBSM3D::PBSM3D(config_file cfg)
 //        provides("c"+std::to_string(i));
 //    }
 
-    provides("Qsusp_pbsm");
+//    provides("Qsusp_pbsm");
 
-    provides("hs");
-    provides("ustar");
+//    provides("hs");
+//    provides("ustar");
 
-    provides("csalt");
+//    provides("csalt");
 
 
-    provides("u*_th");
+//    provides("u*_th");
 
     provides("drift_mass"); //kg/m^2
-
-
     provides("Qsusp");
     provides("Qsalt");
 
@@ -174,7 +171,7 @@ void PBSM3D::run(mesh domain)
         double phi = face->face_data("vw_dir");
         double u2 = face->face_data("U_2m_above_srf");
         double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
-        face->set_face_data("u10",u10);
+//        face->set_face_data("u10",u10);
 
         Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
 
@@ -200,7 +197,7 @@ void PBSM3D::run(mesh domain)
         //pomeroy
         hs = 0.08436*pow(ustar,1.27);
         d->hs = hs;
-        face->set_face_data("hs",hs);
+//        face->set_face_data("hs",hs);
 
         // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
         // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
@@ -235,22 +232,22 @@ void PBSM3D::run(mesh domain)
         double u_star_saltation = u_star_t;//thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
 //        double t = face->face_data("t");
 
-        face->set_face_data("u*_th",u_star_saltation);
+//        face->set_face_data("u*_th",u_star_saltation);
 
         double swe = face->face_data("swe"); // mm   -->    kg/m^2
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
-        face->set_face_data("ustar",ustar);
+//        face->set_face_data("ustar",ustar);
 
-        face->set_face_data("is_drifting",0);
-        face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
+//        face->set_face_data("is_drifting",0);
+//        face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
         if( ustar > u_star_saltation && swe > min_mass_for_trans && fetch >= 300)
         {
 
-            double pbsm_qsusp = pow(u10,4.13)/674100.0;
-            face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
-            face->set_face_data("is_drifting",1);
+//            double pbsm_qsusp = pow(u10,4.13)/674100.0;
+//            face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+//            face->set_face_data("is_drifting",1);
             //Pomeroy 1990
 
             //it's not really clear what the u_star_t is, but I think it's actually the threshold.
@@ -323,7 +320,7 @@ void PBSM3D::run(mesh domain)
 //        }
 
 
-        face->set_face_data("csalt", c_salt);
+//        face->set_face_data("csalt", c_salt);
         face->set_face_data("Qsalt", Qsalt);
 
         double rh = face->face_data("rh")/100.;
@@ -629,8 +626,8 @@ void PBSM3D::run(mesh domain)
             double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
-            if (z<5)
-                face->set_face_data("c"+std::to_string(z), c );
+//            if (z<5)
+//                face->set_face_data("c"+std::to_string(z), c );
 
         }
         face->set_face_data("Qsusp",Qsusp);
