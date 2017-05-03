@@ -11,6 +11,8 @@ void sig_winch_wrapper(int sig)
 
 ui::ui()
 {
+    buf = nullptr;
+    scr = nullptr;
     topbar  = nullptr;
     top_left = nullptr;
     top_right     = nullptr;

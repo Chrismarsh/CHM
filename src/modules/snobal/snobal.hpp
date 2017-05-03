@@ -15,6 +15,8 @@ public:
     double sum_runoff;
     double sum_melt;
     int dead;
+    double delta_avalanche_snowdepth;
+    double delta_avalanche_swe;
 
 };
 class snobal : public module_base
@@ -24,10 +26,9 @@ public:
 
     ~snobal();
 
+    double drift_density; // if we have blowing snow, this is the density of those particles
+
     virtual void run(mesh_elem &face);
-
-    virtual void run(mesh domain);
-
     virtual void init(mesh domain);
 
 };

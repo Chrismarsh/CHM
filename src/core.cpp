@@ -9,6 +9,10 @@ core::core()
     _end_ts = nullptr;
     _per_triangle_timeseries = false;
     _interpolation_method = interp_alg::tpspline;
+
+    //default logging level
+    _log_level = debug;
+    _output_station_ptv = true;
 }
 
 core::~core()
@@ -38,6 +42,9 @@ void core::config_options(const pt::ptree &value)
             severity >= _log_level
     );
 
+    _cout_log_sink->set_filter(
+            severity >= _log_level
+    );
 
     //enable/disable ncurses UI. default is enable
     boost::optional<bool> u = value.get_optional<bool>("ui");
@@ -255,36 +262,47 @@ void core::config_forcing(pt::ptree &value)
 {
     LOG_DEBUG << "Found forcing section";
     LOG_DEBUG << "Reading meta data from config";
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    vtkSmartPointer<vtkStringArray> labels = vtkSmartPointer<vtkStringArray>::New();
+    labels->SetName("Station name");
     std::vector< std::pair<std::string, pt::ptree> > forcings;
+
+    //positive offset going west. So the normal UTC-6 would be UTC_offset:6
+    _global->_utc_offset = value.get("UTC_offset",0);
+    LOG_DEBUG << "Applying UTC offset to ALL forcing files. UTC+" << std::to_string(_global->_utc_offset);
 
     size_t nstations=0;
     timer c; c.tic();
     for (auto &itr : value)
     {
-        if (itr.second.data().find(".json") != std::string::npos)
+
+        if(itr.first != "UTC_offset")
         {
-            auto dir = cwd_dir / itr.second.data();
-
-            auto cfg = read_json(dir.string());
-
-            for (auto &jtr : cfg)
+            if (itr.second.data().find(".json") != std::string::npos)
             {
-                //If an external file is provided, don't allow further sub json files. That is a rabbit hole that isn't worth dealing with.
-                if (jtr.second.data().find(".json") != std::string::npos)
-                {
-                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("An included forcing json file cannot contain json sub-files."));
-                }
+                auto dir = cwd_dir / itr.second.data();
 
-                std::string station_name = jtr.first.data();
-                forcings.push_back( make_pair(station_name, cfg.get_child(station_name) ));
+                auto cfg = read_json(dir.string());
+
+                for (auto &jtr : cfg)
+                {
+                    //If an external file is provided, don't allow further sub json files. That is a rabbit hole that isn't worth dealing with.
+                    if (jtr.second.data().find(".json") != std::string::npos)
+                    {
+                        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
+                                "An included forcing json file cannot contain json sub-files."));
+                    }
+
+                    std::string station_name = jtr.first.data();
+                    forcings.push_back(make_pair(station_name, cfg.get_child(station_name)));
+                    ++nstations;
+                }
+            } else
+            {
+                std::string station_name = itr.first.data();
+                forcings.push_back(make_pair(station_name, value.get_child(station_name)));
                 ++nstations;
             }
-        }
-        else
-        {
-            std::string station_name = itr.first.data();
-            forcings.push_back( make_pair(station_name, value.get_child(station_name) ));
-            ++nstations;
         }
     }
 
@@ -314,6 +332,7 @@ void core::config_forcing(pt::ptree &value)
     if(!_mesh->is_geographic())
         coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
+    labels->SetNumberOfValues(nstations);
 //#pragma omp parallel for
     //TODO: this dead locks, not sure why
     for(size_t i =0; i < nstations; ++i)
@@ -359,6 +378,12 @@ void core::config_forcing(pt::ptree &value)
 
         double elevation = itr.second.get<double>("elevation");
         s->z(elevation);
+
+        if(_output_station_ptv)
+        {
+            points->InsertNextPoint(s->x(), s->y(), s->z());
+            labels->SetValue(i,station_name );
+        }
 
         std::string file = itr.second.get<std::string>("file");
         auto f = cwd_dir / file;
@@ -406,6 +431,27 @@ void core::config_forcing(pt::ptree &value)
 
     LOG_DEBUG << "Finished reading stations";
 
+    if(_output_station_ptv)
+    {
+
+        vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
+        polydata->SetPoints(points);
+        polydata->GetPointData()->AddArray(labels);
+        // Write the file
+        vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+        auto f = o_path / "stations.vtp";
+        writer->SetFileName(f.string().c_str());
+
+#if VTK_MAJOR_VERSION <= 5
+        writer->SetInput(polydata);
+#else
+        writer->SetInputData(polydata);
+#endif
+
+        writer->Write();
+    }
+
+
 }
 void core::config_parameters(pt::ptree &value)
 {
@@ -451,15 +497,11 @@ void core::config_meshes(const pt::ptree &value)
     _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
     if(is_geographic)
     {
-//        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_latlong,_1,_2,_3);
-//        math::gis::distance = boost::bind<double>(& math::gis::distance_latlong,_1,_2);
 
         math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
         math::gis::distance = &math::gis::distance_latlong;
     } else
     {
-//        math::gis::point_from_bearing = boost::bind<Point_2>(& math::gis::point_from_bearing_UTM,_1,_2,_3);
-//        math::gis::distance = boost::bind<double>(& math::gis::distance_UTM,_1,_2);
 
         math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
         math::gis::distance = &math::gis::distance_UTM;
@@ -580,14 +622,20 @@ void core::config_matlab(const pt::ptree &value)
 void core::config_output(const pt::ptree &value)
 {
     LOG_DEBUG << "Found output section";
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    vtkSmartPointer<vtkStringArray> labels = vtkSmartPointer<vtkStringArray>::New();
+    labels->SetName("Point output name");
+    _output_station_ptv = true;
+
     size_t ID = 0;
     auto pts_dir = "points";
     auto msh_dir = "meshes";
     boost::filesystem::path pts_path;
     boost::filesystem::path msh_path;
 
+
     auto output_dir = value.get<std::string>("output_dir","output");
-    auto o_path = cwd_dir / output_dir;
+    o_path = cwd_dir / output_dir;
     boost::filesystem::create_directories(o_path);
 
     // Create empty folders /points/ and /meshes/
@@ -611,12 +659,28 @@ void core::config_output(const pt::ptree &value)
             out.type = output_info::time_series;
             out.name = out_type;
 
-            auto fname = itr.second.get<std::string>("file");
+            std::string fname = "";
+            try
+            {
+                fname = itr.second.get<std::string>("file");
+            }
+            catch(const pt::ptree_error &e)
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing output filename for " + out.name));
+            }
             auto f = pts_path / fname;
             out.fname = f.string();
 
-            out.longitude = itr.second.get<double>("longitude");
-            out.latitude = itr.second.get<double>("latitude");
+            try
+            {
+                out.longitude = itr.second.get<double>("longitude");
+                out.latitude = itr.second.get<double>("latitude");
+            }
+            catch(const pt::ptree_error &e)
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing latitude and/or longitude for " + out.name));
+            }
+
 
             if( (out.latitude > 90 || out.latitude < -90) ||
                 (out.longitude > 180 || out.longitude < -180) )
@@ -645,6 +709,7 @@ void core::config_output(const pt::ptree &value)
             }
 
 
+
             out.face = _mesh->locate_face(out.longitude, out.latitude);
 
 
@@ -654,6 +719,9 @@ void core::config_output(const pt::ptree &value)
                                                              "Requested an output point that is not in the triangulation domain. Pt:"
                                                              + std::to_string(out.longitude) + "," + std::to_string(out.latitude) + " name: " + out.name));
 
+            //set the point to be the center of the triangle that the output point lies on
+            points->InsertNextPoint ( out.face->get_x(), out.face->get_y(), out.face->get_z() );
+            labels->InsertNextValue(out.name);
 
             LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
 
@@ -708,14 +776,28 @@ void core::config_output(const pt::ptree &value)
 
         _outputs.push_back(out);
     }
+    vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
+    polydata->SetPoints(points);
+    polydata->GetPointData()->AddArray(labels);
+    // Write the file
+    vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
+
+    //output this to the same folder as the points are written out to
+    auto f = pts_path / "output_points.vtp";
+    writer->SetFileName(f.string().c_str());
+    #if VTK_MAJOR_VERSION <= 5
+        writer->SetInput(polydata);
+    #else
+        writer->SetInputData(polydata);
+    #endif
+
+    writer->Write();
+
 }
 
 void core::config_global(const pt::ptree &value)
 {
     LOG_DEBUG << "Found global section";
-
-    _global->_utc_offset = value.get<double>("UTC_offset");
-
 
 
 }
@@ -839,7 +921,7 @@ void core::init(int argc, char **argv)
                     % expr::smessage
             );
     _cout_log_sink->set_filter(
-            severity >= debug
+            severity >= _log_level
     );
     logging::core::get()->add_sink(_cout_log_sink);
 
@@ -861,7 +943,7 @@ void core::init(int argc, char **argv)
     }
 
     pBackend_file->add_stream(pStream2);
-
+    pBackend_file->auto_flush (true);
 
     _log_sink->set_formatter
             (
@@ -874,9 +956,14 @@ void core::init(int argc, char **argv)
                     % expr::attr<log_level>("Severity")
                     % expr::smessage
             );
+    _log_sink->set_filter(
+            severity >= verbose
+    );
 
     logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
     logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
+
+
 
     logging::core::get()->add_sink(_log_sink);
 
@@ -1017,6 +1104,17 @@ void core::init(int argc, char **argv)
      */
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
+
+    //output should come before forcing, controls if we should output the vtp file of station locations
+    try
+    {
+        config_output(cfg.get_child("output"));
+    } catch (pt::ptree_bad_path &e)
+    {
+        _output_station_ptv = false;
+        LOG_DEBUG << "Optional section Output not found";
+    }
+
     config_forcing(cfg.get_child("forcing"));
 
     /*
@@ -1049,13 +1147,7 @@ void core::init(int argc, char **argv)
     boost::filesystem::path full_path(boost::filesystem::current_path());
     _ui.write_cwd(full_path.string());
 
-    try
-    {
-        config_output(cfg.get_child("output"));
-    } catch (pt::ptree_bad_path &e)
-    {
-        LOG_DEBUG << "Optional section Output not found";
-    }
+
 
     try
     {
@@ -1707,7 +1799,7 @@ void core::run()
 
             if (!_enable_ui)
             {
-                LOG_DEBUG << "Timestep: " << _global->posix_time();
+                LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
             }
 
 

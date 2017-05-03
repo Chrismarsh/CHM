@@ -4,14 +4,51 @@
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
 #include <CGAL/Delaunay_mesher_2.h>
 #include <CGAL/Delaunay_mesh_face_base_2.h>
-#include <CGAL/Triangulation_vertex_base_with_info_2.h>
+//#include <CGAL/Triangulation_vertex_base_with_info_2.h>
+#include <CGAL/Delaunay_mesh_vertex_base_2.h>
 #include <CGAL/Delaunay_mesh_size_criteria_2.h>
-
+#include <CGAL/lloyd_optimize_mesh_2.h>
 #include "mesh_2_criteria_area.h"
 
     typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
-    typedef CGAL::Triangulation_vertex_base_with_info_2<size_t, K> Vb;
+template < typename Info_, typename GT,
+        typename Vb = CGAL::Delaunay_mesh_vertex_base_2<GT> >
+class Delaunay_mesh_vertex_base_with_info_2
+        : public Vb
+{
+    Info_ _info;
+
+public:
+    typedef typename Vb::Face_handle                   Face_handle;
+    typedef typename Vb::Point                         Point;
+    typedef Info_                                      Info;
+
+    template < typename TDS2 >
+    struct Rebind_TDS {
+        typedef typename Vb::template Rebind_TDS<TDS2>::Other          Vb2;
+        typedef Delaunay_mesh_vertex_base_with_info_2<Info, GT, Vb2>   Other;
+    };
+
+    Delaunay_mesh_vertex_base_with_info_2()
+            : Vb() {}
+
+    Delaunay_mesh_vertex_base_with_info_2(const Point & p)
+            : Vb(p) {}
+
+    Delaunay_mesh_vertex_base_with_info_2(const Point & p, Face_handle c)
+            : Vb(p, c) {}
+
+    Delaunay_mesh_vertex_base_with_info_2(Face_handle c)
+            : Vb(c) {}
+
+    const Info& info() const { return _info; }
+    Info&       info()       { return _info; }
+};
+
+
+//    typedef CGAL::Triangulation_vertex_base_with_info_2<size_t, K> Vb;
+typedef Delaunay_mesh_vertex_base_with_info_2<size_t, K> Vb;
 
     template<class Gt, class Fb = CGAL::Delaunay_mesh_face_base_2<Gt> >
     class Delaunay_mesh_face_base_info_2 : public Fb

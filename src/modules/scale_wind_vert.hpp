@@ -7,7 +7,9 @@
 #include "logger.hpp"
 #include <string>
 #include <math.h>
-
+#include <viennacl/linalg/gmres.hpp>
+#include <viennacl/compressed_matrix.hpp>
+#include <viennacl/linalg/ilu.hpp>
 /**
  * \addtogroup modules
  * @{
@@ -25,8 +27,12 @@ public:
     scale_wind_vert(config_file cfg);
     
     ~scale_wind_vert();
-
-    virtual void run(mesh_elem &face);
-
+    virtual void init(mesh domain);
+    virtual void run(mesh domain);
     //virtual void init(mesh domain);
+    struct d: public face_info
+    {
+        double temp_u;
+        interpolation interp;
+    };
 };

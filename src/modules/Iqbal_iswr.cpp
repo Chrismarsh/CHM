@@ -13,9 +13,9 @@ Iqbal_iswr::Iqbal_iswr(config_file cfg)
     depends("cloud_frac");
     depends("solar_el");
 
-    provides("iswr");
-    provides("iswr_direct");
-    provides("iswr_diffuse");
+    provides("iswr_direct_no_slope");
+    provides("iswr_diffuse_no_slope");
+
     provides("atm_trans");
 }
 
@@ -33,9 +33,8 @@ void Iqbal_iswr::run(mesh_elem &face)
 
     if (sun_elevation < 3)
     {
-        face->set_face_data("iswr",0);
-        face->set_face_data("iswr_direct",0);
-        face->set_face_data("iswr_diffuse",0);
+        face->set_face_data("iswr_direct_no_slope",0);
+        face->set_face_data("iswr_diffuse_no_slope",0);
         return;
     }
 
@@ -166,9 +165,9 @@ void Iqbal_iswr::run(mesh_elem &face)
     double dir = R_direct  * (0.6 + 0.2*cos_zenith) * (1.0-cf);
 
 
-    face->set_face_data("iswr_direct",dir);
-    face->set_face_data("iswr_diffuse",R_diffuse);
-    face->set_face_data("iswr",dir+R_diffuse);
+    face->set_face_data("iswr_direct_no_slope",dir);
+    face->set_face_data("iswr_diffuse_no_slope",R_diffuse);
+
     face->set_face_data("atm_trans",(dir+R_diffuse)/1375.);
 
 }

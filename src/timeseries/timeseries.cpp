@@ -423,7 +423,7 @@ void timeseries::open(std::string path)
     {
         auto dt = _date_vec.at(1) - _date_vec.at(0);
 
-        for (int i = 1; i < _date_vec.size(); ++i)
+        for (size_t i = 1; i < _date_vec.size(); ++i)
         {
             //using our calculated timestep, check what we think out timestep should be
             auto pred_ts = _date_vec.at(i - 1) + dt;
@@ -462,6 +462,7 @@ timeseries::timeseries()
     _rows = 0;
     _isOpen = false;
     _timeseries_length=0;
+    _variables.set_empty_key("");
 }
 
 

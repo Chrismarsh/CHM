@@ -11,7 +11,7 @@
 namespace pt = boost::property_tree;
 
 // Modules to build against
-#include "slope_iswr.hpp"
+#include "iswr.hpp"
 #include "Marsh_shading_iswr.hpp"
 #include "const_llra_ta.hpp"
 #include "Kunkel_monthlyTd_rh.hpp"
@@ -50,6 +50,10 @@ namespace pt = boost::property_tree;
 #include "deform_mesh.hpp"
 #include "crop_rotation.hpp"
 #include "sub_grid.hpp"
+#include "t_monthly_lapse.hpp"
+#include "snow_slide.hpp"
+#include "PBSM3D.hpp"
+#include "fetchr.hpp"
 
 class module_factory
 {

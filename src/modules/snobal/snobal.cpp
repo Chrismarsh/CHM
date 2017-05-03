@@ -12,14 +12,21 @@ snobal::snobal(config_file cfg)
     depends("ilwr");
 
     // Optional subcanopy variables if a canopy module is included (used if exist)
-    optional("frac_precip_rain_subcanopy");
+    optional("frac_precip_snow_subcanopy");
     optional("iswr_subcanopy");
     optional("rh_subcanopy");
     optional("ta_subcanopy");
     optional("p_subcanopy");
     optional("ilwr_subcanopy");
 
+    optional("drift_depth");
+    optional("drift_mass");
+
     depends("snow_albedo");
+
+    // Optional avalanche variables
+    optional("delta_avalanche_snowdepth");
+    optional("delta_avalanche_mass");
 
     provides("swe");
     provides("snowmelt_int");
@@ -39,12 +46,12 @@ snobal::snobal(config_file cfg)
     provides("sum_snowpack_runoff");
     provides("sum_melt");
     provides("snowdepthavg");
-
-
 }
 
 void snobal::init(mesh domain)
 {
+    drift_density = cfg.get("drift_density",300.);
+
     //store all of snobals global_param variables from this timestep to be used as ICs for the next timestep
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -56,6 +63,8 @@ void snobal::init(mesh domain)
         g->sum_melt = 0;
         auto* sbal = &(g->data);
         g->dead=0;
+        g->delta_avalanche_snowdepth=0;
+        g->delta_avalanche_swe=0;
         /**
          * Snopack config
          */
@@ -145,10 +154,14 @@ void snobal::init(mesh domain)
                 sbal->T_s_0 = -15. + FREEZE; //assuming no snow
                 sbal->T_s_l = -15. + FREEZE;
                 sbal->z_s = face->get_initial_condition("swe") / sbal->rho;
+
+
             }
         }
         
         sbal->init_snow();
+
+        face->set_face_data("swe",sbal->m_s);
 
         //////
         
@@ -250,15 +263,14 @@ void snobal::run(mesh_elem &face)
         p = face->face_data("p");
     }
 
-
     if(p > 0)
     {
         sbal->precip_now = 1;
         sbal->m_pp = p;
 
         // Optional inputs if there is a canopy or not
-        if(has_optional("frac_precip_rain_subcanopy")) {
-            sbal->percent_snow = face->face_data("frac_precip_rain_subcanopy");
+        if(has_optional("frac_precip_snow_subcanopy")) {
+            sbal->percent_snow = face->face_data("frac_precip_snow_subcanopy");
         } else {
             sbal->percent_snow = face->face_data("frac_precip_snow");
         }
@@ -271,6 +283,41 @@ void snobal::run(mesh_elem &face)
         sbal->precip_now = 0;
         sbal->stop_no_snow=0;
     }
+  
+    if(has_optional("drift_mass"))
+    {
+
+        double mass = face->face_data("drift_mass");
+        mass = is_nan(mass) ? 0 : mass;
+        //m_s is kg/m^2 and mass is kg/m^2
+        //negative = mass removal
+//        if(mass < 0 && (sbal->m_s+mass ) < 0 ) // are we about to remove more mass than what exists???
+//            mass = -sbal->m_s; //cap it to remove no more than available mass
+
+        sbal->_adj_snow(mass / drift_density, mass);
+    }
+
+    // If snow avalanche variables are available
+    bool snow_slide = false;
+    if(has_optional("delta_avalanche_snowdepth")) {
+        g->delta_avalanche_snowdepth = face->face_data("delta_avalanche_snowdepth");
+    }
+    if(has_optional("delta_avalanche_mass")) {
+        g->delta_avalanche_swe = face->face_data("delta_avalanche_mass");
+        snow_slide = true;
+    }
+
+    // Redistribute snow (if snow_slide is used)
+    if(snow_slide) {
+        // _adj_snow(depth change (m), swe change (kg/m^2))
+        // Convert change in volume and mass back to depth and mass per area, respectivly.
+        // Assumes snow depth is uniform across triangle
+        double area = face->get_area(); // area of current triangle (m^2)
+        double d_depth = g->delta_avalanche_snowdepth / area; // m^3 / m^2 = m
+        double d_mass  = g->delta_avalanche_swe / area * 1000; // m^3 / m^2 * 1000 kg/m^3 = kg/m^2
+        sbal->_adj_snow(d_depth,d_mass);
+    }
+
 
     if(g->dead == 1)
     {
@@ -333,7 +380,3 @@ void snobal::run(mesh_elem &face)
 //    g->dead = 0;
 }
 
-void snobal::run(mesh domain)
-{
-
-}

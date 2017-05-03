@@ -4,6 +4,10 @@ import math
 import imp
 import sys
 import xml.etree.ElementTree as ET
+import subprocess
+import numpy as np
+from gdalconst import GA_ReadOnly
+gdal.UseExceptions()  # Enable errors
 
 # Print iterations progress
 # http://stackoverflow.com/a/34325723/410074
@@ -31,7 +35,7 @@ def main():
     #####  load user configurable paramters here    #######
     # Check user defined configuraiton file
     if len(sys.argv) == 1:
-        print('ERROR: main.py requires one argument [configuration file] (i.e. python main.py vtu2geo.py)')
+        print('ERROR: main.py requires one argument [configuration file] (i.e. python main.py vtu2geo_config.py)')
         return
 
     # Get name of configuration file/module
@@ -42,11 +46,19 @@ def main():
 
     # Grab variables
     input_path = X.input_path
-    variables = X.variables
 
+    variables = X.variables
     parameters = []
     if hasattr(X,'parameters'):
         parameters = X.parameters
+
+    # Check if we want to constrain output to a example geotif
+    constrain_flag = False
+    if hasattr(X,'constrain_tif_file'):
+        constrain_tif_file = X.constrain_tif_file
+        var_resample_method = X.var_resample_method
+        param_resample_method = X.param_resample_method
+        constrain_flag = True
 
     output_path = input_path[:input_path.rfind('/')+1]
     if hasattr(X,'output_path'):
@@ -56,10 +68,41 @@ def main():
     if hasattr(X,'pixel_size'):
         pixel_size = X.pixel_size
 
+    user_define_extent = False
+    if hasattr(X,'user_define_extent'):
+        user_define_extent = X.user_define_extent
+
+    # Get size for first rasterization (less than triangle min area)
+    pixel_size = X.pixel_size
+
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
     pvd = ET.parse(input_path)
     pvd = pvd.findall(".//*[@file]")
+
+    # Get info for constrained output extent/resolution if selected
+    if(constrain_flag):
+
+        ex_ds = gdal.Open(constrain_tif_file,GA_ReadOnly)
+        gt = ex_ds.GetGeoTransform()
+        pixel_width = np.abs(gt[1])
+        pixel_height = np.abs(gt[5])
+        # Take extent from user input
+        if user_define_extent:
+            o_xmin = X.o_xmin
+            o_xmax = X.o_xmax
+            o_ymin = X.o_ymin
+            o_ymax = X.o_ymax
+        else: # Get extent for clipping from input tif
+            o_xmin = gt[0]
+            o_ymax = gt[3]
+            o_xmax = o_xmin + gt[1] * ex_ds.RasterXSize
+            o_ymin = o_ymax + gt[5] * ex_ds.RasterYSize
+
+        print "Output pixel size is " + str(pixel_width) + " by " + str(pixel_height)
+        ex_ds = None
+
+
 
     iter=1
     for vtu in pvd:
@@ -79,8 +122,6 @@ def main():
             pixel_size = int( math.ceil(pixel_size) )
 
         driver = ogr.GetDriverByName('Memory')
-        # driver = ogr.GetDriverByName("ESRI Shapefile")
-        # output_usm = driver.CreateDataSource('lol.shp')
         output_usm = driver.CreateDataSource('out')
 
         srsin = osr.SpatialReference()
@@ -164,14 +205,14 @@ def main():
                 data = cd.GetArray(v).GetTuple(i)
                 feature.SetField(str(v), float(data[0]))
 
-            for p in parameters:
-                data = cd.GetArray(p).GetTuple(i)
-                feature.SetField(str(p), float(data[0]))
+            if parameters is not None:
+                for p in parameters:
+                    data = cd.GetArray(p).GetTuple(i)
+                    feature.SetField(str(p), float(data[0]))
 
             layer.CreateFeature(feature)
 
         x_min, x_max, y_min, y_max = layer.GetExtent()
-
 
         NoData_value = -9999
         x_res = int((x_max - x_min) / pixel_size)
@@ -190,25 +231,39 @@ def main():
             target_ds.SetProjection(srsout.ExportToWkt())
             target_ds = None
 
+            # Optional clip file
+            if(constrain_flag):
+                subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f -r \"%s\" -tr %f %f \"%s\" \"%s\"' %
+                                       (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, var_resample_method[var], pixel_width, pixel_height, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
 
-        for p in parameters:
-            target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_' + p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
-            target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-            target_ds.SetProjection(srsout.ExportToWkt())
-            band = target_ds.GetRasterBand(1)
-            band.SetNoDataValue(NoData_value)
+            if parameters is not None:
+                for p in parameters:
+                    target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
+                    target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+                    target_ds.SetProjection(srsout.ExportToWkt())
+                    band = target_ds.GetRasterBand(1)
+                    band.SetNoDataValue(NoData_value)
 
-            # Rasterize
-            gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
-            target_ds = None
+                    # Rasterize
+                    gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
+                    target_ds = None
 
-        #we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
+                    # Optional clip file
+                    if(constrain_flag):
+                        subprocess.check_call([
+                          'gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f -r \"%s\" -tr %f %f \"%s\" \"%s\"' %
+                          (srsout.ExportToProj4(), srsout.ExportToProj4(), o_xmin, o_ymin, o_xmax,
+                           o_ymax, param_resample_method[p], pixel_width, pixel_height,
+                           output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '.tif',
+                           output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '_clipped.tif')],
+                          shell=True)
+
+        # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
         parameters = None
 
         #no parameters and no variables, just exit at this point
         if not variables and parameters is None:
             break
-
 
         iter += 1
 

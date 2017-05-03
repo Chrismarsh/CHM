@@ -59,7 +59,8 @@ namespace math
         Vector_2 polar_to_cartesian(double theta);
 
         /**
-         * Converts a North-based bearing to cartesian vector components
+         * Converts a North-based bearing to cartesian vector components, pointing in the direction of bearing.
+         * Negate for a vector coming *from* the bearing.
          * @param bearing In degrees, N=0
          * @return x,y components
          */

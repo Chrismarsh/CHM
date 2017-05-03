@@ -18,7 +18,7 @@ class triangle
 {
 public:
     triangle();
-    void make_rasterized(vertex v0, vertex v1, vertex v2, const raster& r);
+    void make_rasterized(vertex v0_in, vertex v1_in, vertex v2_in, const raster& r);
 
 
     boost::shared_ptr<raster> rasterized_triangle;
