@@ -16,6 +16,7 @@ option(USE_OMP "Enable OpenMP"  ON )
 option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
+option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
 #meteoio plugins
 SET(PLUGIN_A3DIO ON CACHE BOOL "Compilation A3DIO ON or OFF")
@@ -63,15 +64,6 @@ endif()
 macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS "On")
-include(${CMAKE_SOURCE_DIR}/CMake/PVS-Studio.cmake)
-pvs_studio_add_target(TARGET analyze
-        OUTPUT FORMAT errorfile
-        ANALYZE target
-        LICENSE "/home/chris/Downloads/PVS-Studio.lic"
-        LOG target.plog
-        )
 
 # lovely CMake script to integrate git hashes
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
@@ -155,7 +147,7 @@ else()
 endif()
 
 #Setup CXX flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -D_FORTIFY_SOURCE=0 -Wno-unused-variable")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -D_FORTIFY_SOURCE=0 -Wno-unused-variable -Wno-unknown-pragmas")
 
 
 #GAL requires strict rounding

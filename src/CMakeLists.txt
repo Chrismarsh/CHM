@@ -215,6 +215,17 @@ target_link_libraries(
 	${LIB_FILES}
 )
 
+
+if(STATIC_ANLAYSIS)
+	include( ${CMAKE_SOURCE_DIR}/CMake/PVS-Studio.cmake)
+	pvs_studio_add_target(TARGET analyze ALL
+			OUTPUT FORMAT errorfile
+			ANALYZE CHM
+			LICENSE "/home/chris/Downloads/PVS-Studio.lic"
+			LOG CHM.plog
+			)
+endif()
+
 if (test)
 
 	add_subdirectory (tests/googletest/googletest)
