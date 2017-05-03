@@ -17,8 +17,7 @@
 #include <boost/utility.hpp>
 #include <boost/tuple/tuple.hpp>
 
-
-#include <tbb/concurrent_hash_map.h>
+#include <sparsehash/dense_hash_map>
 #include <tbb/concurrent_vector.h>
 
 #include "regex_tokenizer.hpp"
@@ -212,7 +211,8 @@ public:
     
 private:
 //    typedef tbb::concurrent_hash_map<std::string, variable_vec, crc_hash_compare> ts_hashmap;
-    typedef std::unordered_map<std::string,variable_vec> ts_hashmap;
+//    typedef std::unordered_map<std::string,variable_vec> ts_hashmap;
+    typedef google::dense_hash_map<std::string,variable_vec> ts_hashmap;
 
     // This is a hashmap interface, vector back end
     // "var1"        |     "var2"     |     "var3"   |      
@@ -233,7 +233,6 @@ private:
     //pushes variables back, only useful for reading from a file
     void push_back(double data, std::string variable);
 
-    
 
 };
 

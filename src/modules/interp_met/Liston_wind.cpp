@@ -28,7 +28,8 @@ void Liston_wind::init(mesh domain)
         auto face = domain->face(i);
         auto d = face->make_module_data<lwinddata>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
-        d->interp_smoothing.init(interp_alg::tpspline);
+        d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
+
         face->coloured = false;
     }
 

@@ -361,7 +361,7 @@ void PBSM3D::run(mesh domain)
             double Nu, Sh;
             Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);
 
-            double D = 2.06*pow(10.,-5.)*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998
+            double D = 2.06*10.0e-5*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998
 
             double lambda_t = 0.000063*(t-273.15)+0.00673; // J/(kmol K) thermal conductivity looks like this is degC, not K. order of magnitude off if K, eqn 11 text Pomeroy 1993 (PBSM paper)
             double Ls = 2.838e6; // latent heat of sublimation, eqn 11 pomeroy 1993 (PBSM) text
