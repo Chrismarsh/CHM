@@ -2,12 +2,15 @@
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_expint.h>
 
+#include <eigen3/Eigen/LU>
+#include <eigen3/Eigen/Dense>
 #include <armadillo>
 
 #include <boost/throw_exception.hpp>
 #include <exception.hpp>
 #include <iostream>
 #include "interp_base.hpp"
+#include "logger.hpp"
 
 /**
 * \class thin_plate_spline
@@ -23,10 +26,8 @@ public:
     /**
      * Allocating A,b,x, and p every time this is called adds up.
      * So the sz can be pre-set to pre allocate all the arrays.
-     * However, this assumes, with no checking, that in calls to operator()
-     * sample_points.size() == sz
      */
-    thin_plate_spline(size_t sz);
+    thin_plate_spline(size_t sz,std::map<std::string,std::string> config = std::map<std::string,std::string>());
 
     /**
     * Spline of the sample_points at the query_point location.
@@ -35,16 +36,18 @@ public:
     * \return Interpolated value at the query_point
     */
     double operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point);
+
+    bool reuse_LU;
 private:
+    Eigen::Matrix<double,Eigen::Dynamic, Eigen::Dynamic> A;
+    Eigen::Matrix<double,Eigen::Dynamic,1> b; // known values - constant value of 0 goes in b[size-1]
+    Eigen::Matrix<double,Eigen::Dynamic,1> x;
 
-    arma::mat A;
-    arma::vec b;// known values - constant value of 0 goes in b[size-1]
-    arma::vec x;
-
+    Eigen::FullPivLU< Eigen::Matrix<double,Eigen::Dynamic, Eigen::Dynamic> > lu;
     double pi;
     double c; //euler constant
     double weight;
-    bool static_size;
+    bool uninit_lu_decomp;
     size_t size;
 
 };

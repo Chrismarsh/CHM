@@ -1,19 +1,17 @@
 #include "interpolation.h"
 
-interpolation::interpolation(interp_alg ia, size_t size)
+interpolation::interpolation(interp_alg ia, size_t size,
+                             std::map<std::string,std::string> config)
 {
-    init(ia,size);
+    init(ia,size,config);
 }
 
-void interpolation::init(interp_alg ia, size_t size)
+void interpolation::init(interp_alg ia, size_t size,std::map<std::string,std::string> config)
 {
 
     if (ia == interp_alg::tpspline)
     {
-        if (size)
-            base = boost::make_shared<thin_plate_spline>(size);
-        else
-            base = boost::make_shared<thin_plate_spline>();
+        base = boost::make_shared<thin_plate_spline>(size,config);
     }
     else if(ia == interp_alg::idw)
     {
@@ -54,11 +52,10 @@ double interpolation::operator()(std::vector< boost::tuple<double,double,double>
         LOG_WARNING << "More than 15 sample points is likely to cause slow downs";
     }
 
-    if(sample_points.size() != this->size || this->size == 0)
-    {
-
-        this->init(ia,sample_points.size());
-    }
+//    if(sample_points.size() != this->size || this->size == 0)
+//    {
+//        this->init(ia,sample_points.size());
+//    }
 
     return base->operator()(sample_points,query_point);
 }

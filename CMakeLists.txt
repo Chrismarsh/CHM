@@ -68,6 +68,15 @@ endmacro()
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
 # Get the current working branch
 
+configure_file(CMakeLists_external.txt.in
+        ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
+execute_process(COMMAND ${CMAKE_COMMAND} --build .
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
+
+
 # Generate gitrevision.hh if Git is available
 # and the .git directory is present
 # this is the case when the software is checked out from a Git repo
@@ -100,9 +109,6 @@ configure_file(
 )
 
 
-#Setup CXX flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall ")
-
 #ignore these two under Clion as CGAL will complain
 if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
         CMAKE_BUILD_TYPE MATCHES MinSizeRel OR
@@ -133,7 +139,7 @@ remove_cxx_flag("-O3")
 
 #reset these back
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Og ")
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
 endif()
@@ -192,7 +198,16 @@ else()
 endif()
 
 find_package(Armadillo REQUIRED)
+find_package(Eigen3 REQUIRED)
 
+
+set( SPARSEHASH_ROOT "${CMAKE_BINARY_DIR}/lib/sparsehash")
+find_package(Sparsehash REQUIRED)
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+set(Tcmalloc_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/gperftools/include")
+find_package(tcmalloc REQUIRED)
 
 find_package(ViennaCL REQUIRED)
 

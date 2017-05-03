@@ -1,0 +1,29 @@
+cmake_minimum_required(VERSION 2.8)
+project(externalLib)
+include(ExternalProject)
+
+message(STATUS  "${CMAKE_BINARY_DIR}")
+ExternalProject_Add(
+        sparsehash
+        GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
+        INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/sparsehash
+
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
+
+        BUILD_COMMAND make -j2 install
+        BUILD_IN_SOURCE 1
+
+)
+
+
+ExternalProject_Add(
+        gperftools
+        GIT_REPOSITORY https://github.com/gperftools/gperftools
+        INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
+
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
+
+        BUILD_COMMAND make -j2 install
+        BUILD_IN_SOURCE 1
+
+)
