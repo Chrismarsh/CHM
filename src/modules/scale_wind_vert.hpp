@@ -25,7 +25,7 @@
 class scale_wind_vert : public module_base {
 public:
     scale_wind_vert(config_file cfg);
-
+    
     ~scale_wind_vert();
     virtual void init(mesh domain);
     virtual void run(mesh domain);

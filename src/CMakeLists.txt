@@ -69,7 +69,8 @@ set(MODULE_SRCS
 		modules/Gray_inf.cpp
 		modules/Simple_Canopy.cpp
 		modules/scale_wind_vert.cpp
- 	 	modules/snow_slide.cpp
+		modules/sub_grid.cpp
+    modules/snow_slide.cpp
 		${SNOBAL_SRC}
 
 		modules/threshold_p_phase.cpp

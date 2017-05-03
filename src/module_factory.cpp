@@ -85,6 +85,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
             mod = new deform_mesh(config);
         else if (ID == "crop_rotation")
             mod = new crop_rotation(config);
+        else if (ID == "sub_grid")
+            mod = new sub_grid(config);
         else if (ID == "t_monthly_lapse")
             mod = new t_monthly_lapse(config);
   	    else if (ID == "snow_slide")
