@@ -64,6 +64,15 @@ macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS "On")
+include(${CMAKE_SOURCE_DIR}/CMake/PVS-Studio.cmake)
+pvs_studio_add_target(TARGET analyze
+        OUTPUT FORMAT errorfile
+        ANALYZE target
+        LICENSE "/home/chris/Downloads/PVS-Studio.lic"
+        LOG target.plog
+        )
+
 # lovely CMake script to integrate git hashes
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
 # Get the current working branch
@@ -136,6 +145,7 @@ remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
 
 remove_cxx_flag("-O2")
 remove_cxx_flag("-O3")
+
 
 #reset these back
 if (CMAKE_BUILD_TYPE MATCHES Debug)
