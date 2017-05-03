@@ -6,6 +6,7 @@ import sys
 import xml.etree.ElementTree as ET
 import subprocess
 import numpy as np
+from gdalconst import GA_ReadOnly
 gdal.UseExceptions()  # Enable errors
 
 # Print iterations progress
@@ -81,7 +82,7 @@ def main():
 
     # Get info for constrained output extent/resolution if selected
     if(constrain_flag):
-        from gdalconst import GA_ReadOnly
+
         ex_ds = gdal.Open(constrain_tif_file,GA_ReadOnly)
         gt = ex_ds.GetGeoTransform()
         pixel_width = np.abs(gt[1])
