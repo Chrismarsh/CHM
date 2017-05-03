@@ -1,7 +1,8 @@
 #pragma once
 
 #include <boost/shared_ptr.hpp>
-
+#include <tbb/concurrent_vector.h>
+#include <tbb/parallel_sort.h>
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
