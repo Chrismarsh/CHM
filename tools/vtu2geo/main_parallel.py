@@ -43,6 +43,9 @@ def main():
     # Load in configuration file as module
     X = imp.load_source('',configfile)
 
+    # Get current vtu_file
+    vtu_file = X.vtu_file
+
     # Grab variables
     input_path = X.input_path
 
@@ -76,8 +79,8 @@ def main():
 
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
-    pvd = ET.parse(input_path)
-    pvd = pvd.findall(".//*[@file]")
+    #pvd = ET.parse(input_path)
+    #pvd = pvd.findall(".//*[@file]")
 
     # Get info for constrained output extent/resolution if selected
     if(constrain_flag):
@@ -103,12 +106,12 @@ def main():
 
 
 
-    iter=1
-    for vtu in pvd:
+    #iter=1
+    for vtu_file in [vtu_file]:
 
-        vtu_file  = vtu.get('file')
+        
         path = input_path[:input_path.rfind('/')+1] + vtu_file
-        printProgress(iter,len(pvd))
+        #printProgress(iter,len(pvd))
         reader.SetFileName(path)
         reader.Update()
 
@@ -264,7 +267,7 @@ def main():
         if not variables and parameters is None:
             break
 
-        iter += 1
+        #iter += 1
 
 if __name__ == "__main__":
 
