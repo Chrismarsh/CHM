@@ -30,7 +30,7 @@ fetchr::~fetchr()
 void fetchr::run(mesh_elem& face)
 {
 
-    face->set_face_data("fetch", 1000.0);
+    face->set_face_data("fetch", max_distance);
 
     //direction it is from, need upwind fetch
     double wind_dir = face->face_data("vw_dir") ;
@@ -39,6 +39,7 @@ void fetchr::run(mesh_elem& face)
     if(incl_veg && face->has_parameter("landcover"))
     {
         int me_LC = face->get_parameter("landcover");
+
         double me_Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(me_LC) + ".CanopyHeight");
         if(me_Z_CanTop > 1) // 1m might be too high?
         {
@@ -69,7 +70,7 @@ void fetchr::run(mesh_elem& face)
         double Z_core = face->center().z() + distance*I;
 
         //reset the fetch if there is elevation, but also if we run into vegetation >1m
-        if(Z_test >= Z_core || Z_CanTop > 1)
+        if(Z_test >= Z_core /*|| Z_CanTop > 1*/)
         {
             face->set_face_data("fetch", distance);
             break;
