@@ -1677,7 +1677,7 @@ void core::_determine_module_dep()
     s = ss.str();
     LOG_DEBUG << "_modules order after sort: " << s.substr(0, s.length() - 2);
 
-    _ui.write_modules(s.substr(0, s.length() - 2));
+//    _ui.write_modules(s.substr(0, s.length() - 2));
     // Parallel compilation ordering
 //    std::vector<int> time(size, 0);
 //    for (auto i = make_order.begin(); i != make_order.end(); ++i)
