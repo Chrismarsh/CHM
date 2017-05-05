@@ -8,9 +8,9 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
     {
         size = sample_points.size();
         size++; // need to make room for the constants
-        A.resize(size,size);
-        b.resize(size);
-
+        A = MatrixXXd::Zero(size,size);
+        b = VectorXd::Zero(size);
+        x = VectorXd::Zero(size);
     }
 
     if(uninit_lu_decomp)
@@ -123,8 +123,9 @@ thin_plate_spline::thin_plate_spline(size_t sz, std::map<std::string,std::string
     size = sz;
     size++; // need to make room for the constants
 
-    A.resize(size,size );
-    b.resize(size); // known values - constant value of 0 goes in b[size-1]
+    A = MatrixXXd::Zero(size,size);
+    b = VectorXd::Zero(size);
+    x = VectorXd::Zero(size);
 
     auto itr = config.find("reuse_LU");
     if(itr != config.end())

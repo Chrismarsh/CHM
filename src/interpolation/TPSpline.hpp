@@ -39,9 +39,12 @@ public:
 
     bool reuse_LU;
 private:
-    Eigen::Matrix<double,Eigen::Dynamic, Eigen::Dynamic> A;
-    Eigen::Matrix<double,Eigen::Dynamic,1> b; // known values - constant value of 0 goes in b[size-1]
-    Eigen::Matrix<double,Eigen::Dynamic,1> x;
+    typedef Eigen::Matrix<double,Eigen::Dynamic,1> VectorXd;
+    typedef Eigen::Matrix<double,Eigen::Dynamic, Eigen::Dynamic> MatrixXXd;
+
+    MatrixXXd A ;
+    VectorXd b; // known values - constant value of 0 goes in b[size-1]
+    VectorXd x;
 
     Eigen::FullPivLU< Eigen::Matrix<double,Eigen::Dynamic, Eigen::Dynamic> > lu;
     double pi;
