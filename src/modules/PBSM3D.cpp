@@ -13,7 +13,7 @@ PBSM3D::PBSM3D(config_file cfg)
     optional("fetch");
 
 //    provides("u10");
-//    provides("is_drifting");
+    provides("is_drifting");
 
 //    provides("c0");
 //    provides("c1");
