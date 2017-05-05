@@ -74,6 +74,11 @@ def main():
         if user_output_dir[-1] is not os.path.sep:
             user_output_dir += os.path.sep
 
+    #instead of using Albers, should we use the input file's projection?
+    #this is useful for preserving a UTM input. If the input file is geographic, this will currently bail.
+    use_input_prj = False
+    if hasattr(X,'use_input_prj'):
+        use_input_prj=X.use_input_prj
     ########################################################
 
     base_name = os.path.basename(dem_filename)
@@ -115,13 +120,16 @@ def main():
         print 'Unable to open file ' + dem_filename
         exit(1)
 
-    wkt = src_ds.GetProjection()
-    if wkt == '':
+
+    if src_ds.GetProjection() == '':
         print "Input DEM must have spatial reference information."
         exit(1)
 
     wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
-    srs_out =  osr.SpatialReference()
+    if use_input_prj:
+        wkt_out = src_ds.GetProjection()
+
+    srs_out = osr.SpatialReference()
     srs_out.ImportFromWkt(wkt_out)
 
 
@@ -596,9 +604,9 @@ def main():
 
 
                     if is_geographic:
-                        wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
-                        srs_out =  osr.SpatialReference()
-                        srs_out.ImportFromWkt(wkt_out)
+                        # wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+                        # srs_out =  osr.SpatialReference()
+                        # srs_out.ImportFromWkt(wkt_out)
 
                         transform = osr.CoordinateTransformation(srs, srs_out)
                         p = tpoly.Clone()
