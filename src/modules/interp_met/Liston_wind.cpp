@@ -98,7 +98,7 @@ void Liston_wind::init(mesh domain)
             }
 
 
-        }
+    }
 
 
     #pragma omp parallel for
