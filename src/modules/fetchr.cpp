@@ -19,6 +19,9 @@ fetchr::fetchr(config_file cfg)
     I = cfg.get("I",0.06);
 
     incl_veg = cfg.get("incl_veg",true);
+
+    h_IBL = 5;
+
 }
 
 fetchr::~fetchr()
@@ -29,6 +32,7 @@ fetchr::~fetchr()
 
 void fetchr::run(mesh_elem& face)
 {
+
 
     face->set_face_data("fetch", max_distance);
 
@@ -69,8 +73,18 @@ void fetchr::run(mesh_elem& face)
         //equation 1, pg 771, Lapen and Martz 1993
         double Z_core = face->center().z() + distance*I;
 
-        //reset the fetch if there is elevation, but also if we run into vegetation >1m
-        if(Z_test >= Z_core /*|| Z_CanTop > 1*/)
+        double z0_1 = 0.12*Z_CanTop;
+        double z0_2 = 0.001;
+        double n=1.0/0.8;
+        double h = 5; //IBL height, m
+
+        //Kaimal, J., Finnigan, J., 1994. Atmospheric Boundary Layer Flows: Their structure and measurement. Oxford University Press, Toronto.
+        //eq 4.2,4.3
+        double x_sss  = pow(((33.33333333*h-25.*z0_2)/(log(z0_1/z0_2)*z0_2)),n)*z0_2;
+
+        //reset the fetch if there is elevation, but also if we run into vegetation and haven't restablished the IBL (assumed @ 5m)
+        if(Z_test >= Z_core ||
+                (incl_veg && distance < x_sss) )
         {
             face->set_face_data("fetch", distance);
             break;

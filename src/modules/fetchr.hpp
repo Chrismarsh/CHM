@@ -22,7 +22,7 @@ public:
     int steps;
     //max distance to search
     double max_distance;
-
+    double h_IBL; // IBL depth to reestablish steady state (5m to fit blowins snow assumption)
     //size of the step to take
     double size_of_step;
 
