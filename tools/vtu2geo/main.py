@@ -64,7 +64,7 @@ def main():
     if hasattr(X,'output_path'):
         output_path = X.output_path
 
-    pixel_size = 0
+    pixel_size = 10
     if hasattr(X,'pixel_size'):
         pixel_size = X.pixel_size
 
@@ -73,7 +73,7 @@ def main():
         user_define_extent = X.user_define_extent
 
     # Get size for first rasterization (less than triangle min area)
-    pixel_size = X.pixel_size
+
 
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
