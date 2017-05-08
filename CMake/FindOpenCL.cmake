@@ -60,6 +60,7 @@ ELSE (APPLE)
 
         # Unix style platforms
         FIND_LIBRARY(OPENCL_LIBRARIES OpenCL
+                PATHS /opt/AMDAPPSDK-3.0/lib/x86_64
                 ENV LD_LIBRARY_PATH
                 )
 
@@ -69,7 +70,7 @@ ELSE (APPLE)
         # The AMD SDK currently does not place its headers
         # in /usr/include, therefore also search relative
         # to the library
-        FIND_PATH(OPENCL_INCLUDE_DIRS CL/cl.h PATHS ${_OPENCL_INC_CAND} "/usr/local/cuda/include")
+        FIND_PATH(OPENCL_INCLUDE_DIRS CL/cl.h PATHS ${_OPENCL_INC_CAND}  "/usr/local/cuda/include")
         FIND_PATH(OPENCL_CPP_INCLUDE_DIRS CL/cl.hpp PATHS ${_OPENCL_INC_CAND} "/usr/local/cuda/include")
 
     ENDIF (WIN32)
@@ -86,8 +87,11 @@ IF( OPENCL_CPP_INCLUDE_DIRS )
 ENDIF( OPENCL_CPP_INCLUDE_DIRS )
 
 SET( HAVE_OPENCL TRUE )
-message(STATUS "OpenCL detected: " ${OPENCL_LIB_DIR})
 
 MARK_AS_ADVANCED(
         OPENCL_INCLUDE_DIRS
 )
+
+message(STATUS "OpenCL detected: " ${OPENCL_LIB_DIR})
+message(STATUS "OpenCL incl: ${OPENCL_INCLUDE_DIRS}")
+message(STATUS "OpenCL lib: ${OpenCL_LIBRARY}")
