@@ -67,6 +67,8 @@ def main():
     pixel_size = 10
     if hasattr(X,'pixel_size'):
         pixel_size = X.pixel_size
+    else:
+        print 'Default pixel size of 10 mx10 m will be used.'
 
     user_define_extent = False
     if hasattr(X,'user_define_extent'):
@@ -219,7 +221,7 @@ def main():
         y_res = int((y_max - y_min) / pixel_size)
 
         for var in variables:
-            target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ var.replace(" ","_")+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
+            target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ var.replace(" ","_")+str(pixel_size)+'x'+str(pixel_size)+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             # target_ds.SetProjection(srs)
             band = target_ds.GetRasterBand(1)
@@ -238,7 +240,7 @@ def main():
 
             if parameters is not None:
                 for p in parameters:
-                    target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ p.replace(" ","_") + '.tif', x_res, y_res, 1, gdal.GDT_Float32)
+                    target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
                     target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
                     target_ds.SetProjection(srsout.ExportToWkt())
                     band = target_ds.GetRasterBand(1)
