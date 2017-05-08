@@ -635,8 +635,14 @@ def main():
                     layer.CreateFeature(feature)
                     i = i + 1
 
+    #if the simplify_tol is too large, we can end up with a triangle that is entirely outside of the domain
+    if len(invalid_nodes) > 0:
+        print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
+        print 'This will have occured if an entire triangle is outside of the domain. There is no way to reconstruct this.'
+        print 'Try reducing simplify_tol'
+        raise
 
-    print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
+
 
 
     vtu.SetPoints(vtu_points)
