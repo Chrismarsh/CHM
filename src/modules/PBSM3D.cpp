@@ -34,13 +34,13 @@ PBSM3D::PBSM3D(config_file cfg)
 //        provides("c"+std::to_string(i));
 //    }
 
-//    provides("Qsusp_pbsm");
+    provides("Qsusp_pbsm");
 
 //    provides("hs");
 //    provides("ustar");
 
-//    provides("csalt");
-
+    provides("csalt");
+    provides("c_salt_fetch_big");
 
 //    provides("u*_th");
 
@@ -231,7 +231,7 @@ void PBSM3D::run(mesh domain)
         double _d = 0.48e-3; //d in paper
         double u_star_saltation = u_star_t;//thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
 //        double t = face->face_data("t");
-
+        double c_salt_fetch_big;
 //        face->set_face_data("u*_th",u_star_saltation);
 
         double swe = face->face_data("swe"); // mm   -->    kg/m^2
@@ -239,15 +239,15 @@ void PBSM3D::run(mesh domain)
 
 //        face->set_face_data("ustar",ustar);
 
-//        face->set_face_data("is_drifting",0);
+        face->set_face_data("is_drifting",0);
 //        face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation && swe > min_mass_for_trans && fetch >= 300)
+        if( ustar > u_star_saltation && swe > min_mass_for_trans)
         {
 
-//            double pbsm_qsusp = pow(u10,4.13)/674100.0;
-//            face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
-//            face->set_face_data("is_drifting",1);
+            double pbsm_qsusp = pow(u10,4.13)/674100.0;
+            face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+            face->set_face_data("is_drifting",1);
             //Pomeroy 1990
 
             //it's not really clear what the u_star_t is, but I think it's actually the threshold.
@@ -261,6 +261,17 @@ void PBSM3D::run(mesh domain)
                 c_salt = 0;
             }
 
+            c_salt_fetch_big = c_salt;
+            double fetch_ref = 500;
+            double mu = 3.0;
+
+            //use the exp decay of Liston, eq 10
+            //95% of max saltation occurs at fetch = 500m
+            //Liston, G., & Sturm, M. (1998). A snow-transport model for complex terrain. Journal of Glaciology.
+            if(fetch < 500)
+            {
+                c_salt *= 1.0-exp(-mu * fetch/fetch_ref);
+            }
             //mean wind speed in the saltation layer
             double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0,d->z0)/2.);
 
@@ -271,40 +282,35 @@ void PBSM3D::run(mesh domain)
             //in the triangle. In this case, we are approximating the edge value with just Qsalt, and are not considering
             //the neighbour values.
             double salt=0;
-
             double udotm[3];
-
-
+            double A = face->get_area();
+            double E[3];
             for(int j=0; j<3; ++j)
             {
+                E[j]=face->edge_length(j);
                 udotm[j] = arma::dot(uvw, m[j]);
-                salt += face->edge_length(j) * udotm[j] * Qsalt;
+                salt += -.5000000000*E[j]*Qsalt*udotm[j]/A;
             }
-            salt /= face->get_area(); // -> kg/m^2*s
 
+            //https://www.wolframalpha.com/input/?i=(m*(kg%2Fm%5E3*(m%2Fs)*m)%2Fm%5E2)*s
             salt *= global_param->dt(); // ->kg/m^2
-
 
 
             //Figure out the max we can transport, ie total mass in cell
             if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
             {
-                double el0,el1,el2;
-                el0 = face->edge_length(0);
-                el1 = face->edge_length(1);
-                el2 = face->edge_length(2);
-                double dt = global_param->dt();
 
                 //back out what the max conc should be based on our swe
                 //units: ((kg/m^2)*m^2)/( s*m*(m/s)*m ) -> kg/m^3
-                c_salt = swe*face->get_area()/(dt*hs*uhs*(el0*udotm[0]+el1*udotm[1]+el2*udotm[2]));
+                c_salt = -2.*swe*A/(uhs*hs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2]));
 
                 Qsalt = c_salt * uhs * hs;
-                if(is_nan(c_salt)) //if we have no swe this happens
+                if(is_nan(c_salt)) //shoouldn't happen but....
                 {
                     c_salt = 0;
                     Qsalt = 0;
                 }
+
 
 //                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt << " triangle="<<i;
 //                LOG_DEBUG << "Avail mass = " << swe << ", would have salted =  " << salt;
@@ -320,7 +326,8 @@ void PBSM3D::run(mesh domain)
 //        }
 
 
-//        face->set_face_data("csalt", c_salt);
+        face->set_face_data("csalt", c_salt);
+        face->set_face_data("c_salt_fetch_big", c_salt_fetch_big);
         face->set_face_data("Qsalt", Qsalt);
 
         double rh = face->face_data("rh")/100.;
