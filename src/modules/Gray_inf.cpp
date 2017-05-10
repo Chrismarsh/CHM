@@ -13,8 +13,8 @@ Gray_inf::Gray_inf(config_file cfg)
     provides("runoff");
     provides("soil_storage");
     provides("potential_inf");
-    provides("opportunity time");
-    provides("available storage");
+    provides("opportunity_time");
+    provides("available_storage");
 
 }
 
@@ -119,8 +119,8 @@ void Gray_inf::run(mesh_elem &face)
         face->set_face_data("inf",inf);
         face->set_face_data("potential_inf",potential_inf);
         face->set_face_data("soil_storage", d->storage);
-        face->set_face_data("opportunity time",d->opportunity_time);
-        face->set_face_data("available storage",avail_storage);
+        face->set_face_data("opportunity_time",d->opportunity_time);
+        face->set_face_data("available_storage",avail_storage);
     }
     else
     {
