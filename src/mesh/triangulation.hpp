@@ -1165,7 +1165,7 @@ bool face<Gt, Fb>::has(const std::string& variable)
 template < class Gt, class Fb>
 void face<Gt, Fb>::set_face_data(const std::string& variable, double data)
 {
-    _itr->set(variable, data);
+     _itr->set(variable, data);
 }
 
 template < class Gt, class Fb>

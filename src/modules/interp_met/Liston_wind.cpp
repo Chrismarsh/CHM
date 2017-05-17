@@ -10,7 +10,7 @@ Liston_wind::Liston_wind(config_file cfg)
     provides("U_R");
     provides("vw_dir");
     provides("vw_dir_divergence");
-    distance = cfg.get<double>("distance",300);//300.0;
+    distance = cfg.get<double>("distance",300);
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
@@ -105,7 +105,7 @@ void Liston_wind::init(mesh domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto* c = face->get_module_data<lwinddata>(ID);
+        auto *c = face->get_module_data<lwinddata>(ID);
 
         double value = c->curvature / (curmax * 2.0);//rescale to [-0.5,+0.5];
 
