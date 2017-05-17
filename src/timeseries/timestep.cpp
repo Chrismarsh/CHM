@@ -89,24 +89,28 @@ bool timestep::has(const std::string &variable)
 
 double timestep::get(const std::string &variable)
 {
-//    auto res = _itrs.find(variable);
-//    if(res == _itrs.end())
-//    {
-//        return nan("");
-//    }
+#ifdef DEBUG
+    auto res = _itrs.find(variable);
+    if(res == _itrs.end())
+        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
+#endif
 
     return _itrs[variable][0];
+
 }
 
 void timestep::set(const std::string &variable, const double &value)
 {
     //this is slower than just getting the value, but it prevents subtle bugs where
     // a module tries to create a variable it didn't allocate in a provides call
-//    auto res = _itrs.find(variable);
-//    if(res == _itrs.end())
-//        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
-//    res->second[0] = value;
+#ifdef DEBUG
+    auto res = _itrs.find(variable);
+    if(res == _itrs.end())
+        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
+#endif
+
     _itrs[variable][0] = value;
+
 }
 
 timestep::variable_vec::iterator timestep::get_itr(const std::string &varName)

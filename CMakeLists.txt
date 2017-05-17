@@ -147,6 +147,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og ") #new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
     endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG")
 else()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
