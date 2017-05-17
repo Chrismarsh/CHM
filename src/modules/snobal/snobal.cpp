@@ -114,22 +114,22 @@ void snobal::init(mesh domain)
 
         //init the step_info struct
         sbal->tstep_info[DATA_TSTEP].level = DATA_TSTEP;
-        sbal->tstep_info[DATA_TSTEP].time_step = global_param->dt(); //3600; // 1hr TODO: fix hard code snobal timesteps
+        sbal->tstep_info[DATA_TSTEP].time_step = global_param->dt();
         sbal->tstep_info[DATA_TSTEP].intervals = 0;
-        sbal->tstep_info[DATA_TSTEP].threshold = 60;
+        sbal->tstep_info[DATA_TSTEP].threshold = 20;
         sbal->tstep_info[DATA_TSTEP].output = 0;
 
 
         sbal->tstep_info[NORMAL_TSTEP].level = NORMAL_TSTEP;
-        sbal->tstep_info[NORMAL_TSTEP].time_step = global_param->dt();//3600;
+        sbal->tstep_info[NORMAL_TSTEP].time_step = global_param->dt();
         sbal->tstep_info[NORMAL_TSTEP].intervals = sbal->tstep_info[DATA_TSTEP].time_step /
                                                              sbal->tstep_info[NORMAL_TSTEP].time_step;;
-        sbal->tstep_info[NORMAL_TSTEP].threshold = 60;
+        sbal->tstep_info[NORMAL_TSTEP].threshold = 20;
         sbal->tstep_info[NORMAL_TSTEP].output = 0;
 
 
         sbal->tstep_info[MEDIUM_TSTEP].level = MEDIUM_TSTEP;
-        sbal->tstep_info[MEDIUM_TSTEP].time_step = global_param->dt()/4; //3600. / 4.; //15min
+        sbal->tstep_info[MEDIUM_TSTEP].time_step = global_param->dt()/4;
         sbal->tstep_info[MEDIUM_TSTEP].intervals = sbal->tstep_info[NORMAL_TSTEP].time_step /
                                                              sbal->tstep_info[MEDIUM_TSTEP].time_step;
         sbal->tstep_info[MEDIUM_TSTEP].threshold = 10;
@@ -137,10 +137,10 @@ void snobal::init(mesh domain)
 
 
         sbal->tstep_info[SMALL_TSTEP].level = SMALL_TSTEP;
-        sbal->tstep_info[SMALL_TSTEP].time_step = global_param->dt()/ 60;//3600. / 60.;
+        sbal->tstep_info[SMALL_TSTEP].time_step = global_param->dt()/ 60;
         sbal->tstep_info[SMALL_TSTEP].intervals = sbal->tstep_info[MEDIUM_TSTEP].time_step /
                                                             sbal->tstep_info[SMALL_TSTEP].time_step;
-        sbal->tstep_info[SMALL_TSTEP].threshold = 1;
+        sbal->tstep_info[SMALL_TSTEP].threshold = 0.1;
         sbal->tstep_info[SMALL_TSTEP].output = 0;
 
 
