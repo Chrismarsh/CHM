@@ -14,12 +14,8 @@ PBSM3D::PBSM3D(config_file cfg)
 
 //    provides("u10");
     provides("is_drifting");
+    provides("salt_limit");
 
-//    provides("c0");
-//    provides("c1");
-//    provides("c2");
-//    provides("c3");
-//    provides("c4");
 
 //    provides("K0");
 //    provides("K1");
@@ -27,12 +23,12 @@ PBSM3D::PBSM3D(config_file cfg)
 //    provides("K3");
 //    provides("K4");
 
-//    nLayer=10;
-//    for(int i=0; i<nLayer;++i)
-//    {
+    nLayer=10;
+    for(int i=0; i<nLayer;++i)
+    {
 //        provides("K"+std::to_string(i));
-//        provides("c"+std::to_string(i));
-//    }
+        provides("c"+std::to_string(i));
+    }
 
     provides("Qsusp_pbsm");
 
@@ -279,8 +275,7 @@ void PBSM3D::run(mesh domain)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
-            //in the triangle. In this case, we are approximating the edge value with just Qsalt, and are not considering
-            //the neighbour values.
+            //in the triangle. I
             double salt=0;
             double udotm[3];
             double A = face->get_area();
@@ -293,8 +288,9 @@ void PBSM3D::run(mesh domain)
             }
 
             //https://www.wolframalpha.com/input/?i=(m*(kg%2Fm%5E3*(m%2Fs)*m)%2Fm%5E2)*s
-            salt *= global_param->dt(); // ->kg/m^2
+            salt = std::fabs(salt) *  global_param->dt(); // ->kg/m^2
 
+            face->set_face_data("salt_limit",salt);
 
             //Figure out the max we can transport, ie total mass in cell
             if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
@@ -424,7 +420,7 @@ void PBSM3D::run(mesh domain)
 
                     } else
                     { //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
-                        alpha[a] /= 2.0 * math::gis::distance(face->center(), face->vertex(0)->point());
+                        alpha[a] /= 5.0 * math::gis::distance(face->center(), face->vertex(0)->point());
 
                     }
 
@@ -466,8 +462,8 @@ void PBSM3D::run(mesh domain)
 
             if( C[idx].find(idx) == C[idx].end() )
                 C[idx][idx] = 0.0;
-
-            double V = face->get_area() * v_edge_height;
+            b[idx] = 0;
+            double V = face->get_area()  * v_edge_height;
 
             if(!do_sublimation)
             {
@@ -490,7 +486,8 @@ void PBSM3D::run(mesh domain)
                     }
                     else
                     {
-                       C[idx][idx] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+//                       C[idx][idx] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+                        C[idx][idx] += V*csubl-d->A[f]*udotm[f];
                     }
                 } else
                 {
@@ -505,7 +502,8 @@ void PBSM3D::run(mesh domain)
                     }
                     else
                     {
-                        C[idx][idx] += V*csubl-alpha[f];
+//                        C[idx][idx] += V*csubl-alpha[f];
+                        C[idx][idx] += -.99*d->A[f]*udotm[f]+csubl*V;
                     }
                 }
             }
@@ -633,8 +631,7 @@ void PBSM3D::run(mesh domain)
             double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
-//            if (z<5)
-//                face->set_face_data("c"+std::to_string(z), c );
+            face->set_face_data("c"+std::to_string(z),c);
 
         }
         face->set_face_data("Qsusp",Qsusp);
