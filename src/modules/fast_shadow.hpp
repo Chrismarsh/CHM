@@ -5,7 +5,10 @@
 #include "module_base.hpp"
 #include "TPSpline.hpp"
 
-
+// Calculates horizon shadows using an adaptation of Dozier and Frew 1990 to an unstructured mesh
+//Dozier, J., & Frew, J. (1990).
+// Rapid calculation of terrain parameters for radiation modeling from digital elevation data.
+// IEEE Transactions on Geoscience and Remote, 28(5), 963–969.
 class fast_shadow : public module_base
 {
 public:
