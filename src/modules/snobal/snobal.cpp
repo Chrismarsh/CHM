@@ -137,10 +137,10 @@ void snobal::init(mesh domain)
 
 
         sbal->tstep_info[SMALL_TSTEP].level = SMALL_TSTEP;
-        sbal->tstep_info[SMALL_TSTEP].time_step = global_param->dt()/ 60;
+        sbal->tstep_info[SMALL_TSTEP].time_step = global_param->dt()/ 100;// 60;
         sbal->tstep_info[SMALL_TSTEP].intervals = sbal->tstep_info[MEDIUM_TSTEP].time_step /
                                                             sbal->tstep_info[SMALL_TSTEP].time_step;
-        sbal->tstep_info[SMALL_TSTEP].threshold = 0.1;
+        sbal->tstep_info[SMALL_TSTEP].threshold = 0.2;
         sbal->tstep_info[SMALL_TSTEP].output = 0;
 
 
@@ -182,7 +182,7 @@ void snobal::run(mesh_elem &face)
     }
 
     //debugging
-    auto id = face->_debug_ID;
+    auto id = face->cell_id;
 
     bool run=false;
 
