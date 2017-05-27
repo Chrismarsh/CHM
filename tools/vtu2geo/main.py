@@ -6,6 +6,7 @@ import sys
 import xml.etree.ElementTree as ET
 import subprocess
 import numpy as np
+import os
 from gdalconst import GA_ReadOnly
 gdal.UseExceptions()  # Enable errors
 
@@ -79,12 +80,20 @@ def main():
 
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
-    pvd = ET.parse(input_path)
-    pvd = pvd.findall(".//*[@file]")
+
+# see if we were given a single vtu file or a pvd xml file
+    filename, file_extension = os.path.splitext(input_path)
+    is_pvd = False
+    pvd = [input_path] # if not given a pvd file, make this iterable for the below code
+    if file_extension == 'pvd':
+        print 'Detected pvd file, processing all linked vtu files'
+        is_pvd = True
+        pvd = ET.parse(input_path)
+        pvd = pvd.findall(".//*[@file]")
+
 
     # Get info for constrained output extent/resolution if selected
     if(constrain_flag):
-
         ex_ds = gdal.Open(constrain_tif_file,GA_ReadOnly)
         gt = ex_ds.GetGeoTransform()
         pixel_width = np.abs(gt[1])
@@ -109,8 +118,18 @@ def main():
     iter=1
     for vtu in pvd:
 
-        vtu_file  = vtu.get('file')
-        path = input_path[:input_path.rfind('/')+1] + vtu_file
+        #if not pvd...
+        path = vtu
+        vtu_file = ''
+
+        if is_pvd:
+            vtu_file  = vtu.get('file')
+            path = input_path[:input_path.rfind('/')+1] + vtu_file
+        else:
+            base = os.path.basename(path) # since we have a full path to vtu, we need to get just the vtu filename
+            vtu_file = os.path.splitext(base)[0] #we strip out vtu later so keep here
+
+
         printProgress(iter,len(pvd))
         reader.SetFileName(path)
         reader.Update()
