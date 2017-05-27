@@ -50,6 +50,7 @@ set(MODULE_SRCS
 		modules/interp_met/p_no_lapse.cpp
 		modules/interp_met/lw_no_lapse.cpp
 		modules/interp_met/uniform_wind.cpp
+		modules/interp_met/MS_wind.cpp
 		modules/interp_met/t_monthly_lapse.cpp
 
 		modules/point_mode.cpp

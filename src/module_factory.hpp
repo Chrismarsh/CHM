@@ -54,6 +54,7 @@ namespace pt = boost::property_tree;
 #include "snow_slide.hpp"
 #include "PBSM3D.hpp"
 #include "fetchr.hpp"
+#include "MS_wind.hpp"
 
 class module_factory
 {

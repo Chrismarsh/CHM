@@ -95,6 +95,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
             mod = new PBSM3D(config);
         else if (ID == "fetchr")
             mod = new fetchr(config);
+        else if (ID == "MS_wind")
+            mod = new MS_wind(config);
     }
     catch(module_error& e)
     {
