@@ -16,6 +16,7 @@ option(USE_OMP "Enable OpenMP"  ON )
 option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
+option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
 #meteoio plugins
 SET(PLUGIN_A3DIO ON CACHE BOOL "Compilation A3DIO ON or OFF")
@@ -44,16 +45,17 @@ SET(DATA_QA OFF CACHE BOOL "Data Quality Assurance outputs ON or OFF")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 #some machines need to be told where odd system libraries are, so put them here
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
+
 #for meton
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
 
 ## Any custom boost path. Few of the hpc systems have out of date boost libs
 set(Boost_NO_SYSTEM_PATHS FALSE)
 if (Boost_NO_SYSTEM_PATHS)
-    set(BOOST_ROOT "/opt/boost/boost_1_61_0")
-#    set(BOOST_ROOT "/home/cbm038/boost_1_58_0")
+#    set(BOOST_ROOT "/opt/boost/boost_1_61_0")
+    set(BOOST_ROOT "/usr/local/Cellar/boost/1.62.0")
 endif()
 
 
@@ -66,6 +68,15 @@ endmacro()
 # lovely CMake script to integrate git hashes
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
 # Get the current working branch
+
+configure_file(CMakeLists_external.txt.in
+        ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
+execute_process(COMMAND ${CMAKE_COMMAND} --build .
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
+
 
 # Generate gitrevision.hh if Git is available
 # and the .git directory is present
@@ -99,9 +110,6 @@ configure_file(
 )
 
 
-#Setup CXX flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall ")
-
 #ignore these two under Clion as CGAL will complain
 if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
         CMAKE_BUILD_TYPE MATCHES MinSizeRel OR
@@ -130,20 +138,28 @@ remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
 remove_cxx_flag("-O2")
 remove_cxx_flag("-O3")
 
+
 #reset these back
 if (CMAKE_BUILD_TYPE MATCHES Debug)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.7")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Og ") #new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
+    else()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
+    endif()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG")
 else()
+
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
 endif()
 
 #Setup CXX flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -D_FORTIFY_SOURCE=0 -Wno-unused-variable")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -D_FORTIFY_SOURCE=0 -Wno-unused-variable -Wno-unknown-pragmas")
 
 
 #GAL requires strict rounding
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -fp-model strict -msse4 -finline ") #-frounding-math needed for cgal
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qoverride-limits -fp-model strict -msse4 -finline ") #-frounding-math needed for cgal
 endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") # OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -173,7 +189,36 @@ if(MATLAB)
     find_package(Matlab REQUIRED)
 endif()
 
-find_package(Armadillo REQUIRED)  #at least v3
+if(OPENMP_FOUND)
+    message(STATUS "Enabling ViennaCL with OpenCL")
+    add_definitions(-DVIENNACL_WITH_OPENMP)
+endif()
+
+find_package(OpenCL)
+if(OpenCL_FOUND)
+    message(STATUS "Enabling ViennaCL with OpenCL")
+    add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
+    add_definitions(-DVIENNACL_WITH_OPENCL)
+        if(APPLE)
+             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
+        endif()
+else()
+    add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
+endif()
+
+find_package(Armadillo REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+
+set( SPARSEHASH_ROOT "${CMAKE_BINARY_DIR}/lib/sparsehash")
+find_package(Sparsehash REQUIRED)
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+set(Tcmalloc_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/gperftools/include")
+find_package(tcmalloc REQUIRED)
+
+find_package(ViennaCL REQUIRED)
 
 find_package(Boost
              1.60.0
@@ -191,10 +236,7 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(GDAL REQUIRED)
-
-#find_package(MeteoIO REQUIRED)
-#find_package(Libsnowpack REQUIRED)
+find_package(GDAL 2.1 REQUIRED)
 
 find_package (Threads REQUIRED)
 
@@ -203,6 +245,8 @@ find_package(TBB REQUIRED)
 find_package(GSL REQUIRED)
 
 find_package(Curses REQUIRED)
+
+#find_package(Sundials REQUIRED)
 
 #if we are building the plugin we need to compile against paraview (which brings in VTK)
 #otherwise use just VTK. You cannot link against both at the same time

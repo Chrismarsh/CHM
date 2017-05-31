@@ -1,10 +1,14 @@
 import vtk
-import sys
 from osgeo import gdal,ogr,osr
-import glob
+import math
 import imp
 import sys
 import xml.etree.ElementTree as ET
+import subprocess
+import numpy as np
+import os
+from gdalconst import GA_ReadOnly
+gdal.UseExceptions()  # Enable errors
 
 # Print iterations progress
 # http://stackoverflow.com/a/34325723/410074
@@ -32,7 +36,7 @@ def main():
     #####  load user configurable paramters here    #######
     # Check user defined configuraiton file
     if len(sys.argv) == 1:
-        print('ERROR: main.py requires one argument [configuration file] (i.e. python main.py vtu2geo.py)')
+        print('ERROR: main.py requires one argument [configuration file] (i.e. python main.py vtu2geo_config.py)')
         return
 
     # Get name of configuration file/module
@@ -42,68 +46,143 @@ def main():
     X = imp.load_source('',configfile)
 
     # Grab variables
-    base = X.base
     input_path = X.input_path
-    EPSG = X.EPSG
-    variables = X.variables
-    parameters = X.parameters
-    pixel_size = X.pixel_size
 
-    is_geographic = False
-    if hasattr(X,'is_geographic'):
-        is_geographic = X.is_geographic
+    variables = X.variables
+    parameters = []
+    if hasattr(X,'parameters'):
+        parameters = X.parameters
+
+    # Check if we want to constrain output to a example geotif
+    constrain_flag = False
+    if hasattr(X,'constrain_tif_file'):
+        constrain_tif_file = X.constrain_tif_file
+        var_resample_method = X.var_resample_method
+        param_resample_method = X.param_resample_method
+        constrain_flag = True
+
+    output_path = input_path[:input_path.rfind('/')+1]
+    if hasattr(X,'output_path'):
+        output_path = X.output_path
+
+    pixel_size = 10
+    if hasattr(X,'pixel_size'):
+        pixel_size = X.pixel_size
+    else:
+        print 'Default pixel size of 10 mx10 m will be used.'
+
+    user_define_extent = False
+    if hasattr(X,'user_define_extent'):
+        user_define_extent = X.user_define_extent
+
+    # Get size for first rasterization (less than triangle min area)
+
 
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
-    pvd = ET.parse(input_path)
-    pvd = pvd.findall(".//*[@file]")
+
+# see if we were given a single vtu file or a pvd xml file
+    filename, file_extension = os.path.splitext(input_path)
+    is_pvd = False
+    pvd = [input_path] # if not given a pvd file, make this iterable for the below code
+    if file_extension == 'pvd':
+        print 'Detected pvd file, processing all linked vtu files'
+        is_pvd = True
+        pvd = ET.parse(input_path)
+        pvd = pvd.findall(".//*[@file]")
+
+
+    # Get info for constrained output extent/resolution if selected
+    if(constrain_flag):
+        ex_ds = gdal.Open(constrain_tif_file,GA_ReadOnly)
+        gt = ex_ds.GetGeoTransform()
+        pixel_width = np.abs(gt[1])
+        pixel_height = np.abs(gt[5])
+        # Take extent from user input
+        if user_define_extent:
+            o_xmin = X.o_xmin
+            o_xmax = X.o_xmax
+            o_ymin = X.o_ymin
+            o_ymax = X.o_ymax
+        else: # Get extent for clipping from input tif
+            o_xmin = gt[0]
+            o_ymax = gt[3]
+            o_xmax = o_xmin + gt[1] * ex_ds.RasterXSize
+            o_ymin = o_ymax + gt[5] * ex_ds.RasterYSize
+
+        print "Output pixel size is " + str(pixel_width) + " by " + str(pixel_height)
+        ex_ds = None
+
+
 
     iter=1
     for vtu in pvd:
 
-        path = input_path[:input_path.rfind('/')+1] + vtu.get('file')
+        #if not pvd...
+        path = vtu
+        vtu_file = ''
+
+        if is_pvd:
+            vtu_file  = vtu.get('file')
+            path = input_path[:input_path.rfind('/')+1] + vtu_file
+        else:
+            base = os.path.basename(path) # since we have a full path to vtu, we need to get just the vtu filename
+            vtu_file = os.path.splitext(base)[0] #we strip out vtu later so keep here
+
+
         printProgress(iter,len(pvd))
         reader.SetFileName(path)
         reader.Update()
 
         mesh = reader.GetOutput()
 
+        #default the pixel size to (min+max)/2
+        if not pixel_size:
+            area_range = mesh.GetCellData().GetArray('Area').GetRange()
+            pixel_size = (math.sqrt(area_range[0]) + math.sqrt(area_range[1]))/2
+            pixel_size = int( math.ceil(pixel_size) )
+
         driver = ogr.GetDriverByName('Memory')
-        # driver = ogr.GetDriverByName("ESRI Shapefile")
-        # output_usm = driver.CreateDataSource('lol.shp')
         output_usm = driver.CreateDataSource('out')
 
-        srs = osr.SpatialReference()
-        srs.ImportFromEPSG(EPSG)
-
         srsin = osr.SpatialReference()
-        srsin.ImportFromEPSG(EPSG)
-        #output conic equal area for geotiff if we have geographic input
+
+        if not mesh.GetFieldData().HasArray("proj4"):
+            print "VTU file does not contain a proj4 field"
+            return -1
+
+        vtu_proj4 = mesh.GetFieldData().GetAbstractArray("proj4").GetValue(0)
+        srsin.ImportFromProj4(vtu_proj4)
+
+        is_geographic = srsin.IsGeographic()
+
+        #output conic equal area for geotiff
         srsout = osr.SpatialReference()
-        srsout.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
-                             "GEOGCS[\"GCS_North_American_1983\",         "
-                             "DATUM[\"North_American_Datum_1983\",            "
-                             " SPHEROID[\"GRS_1980\",6378137,298.257222101]],         "
-                             "PRIMEM[\"Greenwich\",0],        "
-                             " UNIT[\"Degree\",0.017453292519943295]],     "
-                             "PROJECTION[\"Albers_Conic_Equal_Area\"],     "
-                             "PARAMETER[\"False_Easting\",0],    "
-                             " PARAMETER[\"False_Northing\",0],     "
-                             "PARAMETER[\"longitude_of_center\",-96],     "
-                             "PARAMETER[\"Standard_Parallel_1\",20],     "
-                             "PARAMETER[\"Standard_Parallel_2\",60],     "
-                             "PARAMETER[\"latitude_of_center\",40],     "
-                             "UNIT[\"Meter\",1],     "
-                             "AUTHORITY[\"EPSG\",\"102008\"]]")
+
+        if not is_geographic:
+            srsout.ImportFromProj4(vtu_proj4)
+        else:
+            srsout.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
+                                 "GEOGCS[\"GCS_North_American_1983\",         "
+                                 "DATUM[\"North_American_Datum_1983\",            "
+                                 " SPHEROID[\"GRS_1980\",6378137,298.257222101]],         "
+                                 "PRIMEM[\"Greenwich\",0],        "
+                                 " UNIT[\"Degree\",0.017453292519943295]],     "
+                                 "PROJECTION[\"Albers_Conic_Equal_Area\"],     "
+                                 "PARAMETER[\"False_Easting\",0],    "
+                                 " PARAMETER[\"False_Northing\",0],     "
+                                 "PARAMETER[\"longitude_of_center\",-96],     "
+                                 "PARAMETER[\"Standard_Parallel_1\",20],     "
+                                 "PARAMETER[\"Standard_Parallel_2\",60],     "
+                                 "PARAMETER[\"latitude_of_center\",40],     "
+                                 "UNIT[\"Meter\",1],     "
+                                 "AUTHORITY[\"EPSG\",\"102008\"]]")
+
         trans = osr.CoordinateTransformation(srsin,srsout)
 
-        if is_geographic:
-            srs = srsout
-
-        layer = output_usm.CreateLayer('poly', srs, ogr.wkbPolygon)
+        layer = output_usm.CreateLayer('poly', srsout, ogr.wkbPolygon)
 
         cd = mesh.GetCellData()
-
 
 
         for i in range(0,cd.GetNumberOfArrays()):
@@ -124,7 +203,8 @@ def main():
                 ring.AddPoint( mesh.GetPoint(v2)[0]/ scale, mesh.GetPoint(v2)[1]/ scale )
                 ring.AddPoint( mesh.GetPoint(v0)[0]/ scale, mesh.GetPoint(v0)[1]/ scale ) # add again to complete the ring.
 
-                ring.Transform(trans)
+                ring.Transform(trans) #only transform if needed
+
             else:
                 ring.AddPoint( mesh.GetPoint(v0)[0], mesh.GetPoint(v0)[1] )
                 ring.AddPoint (mesh.GetPoint(v1)[0], mesh.GetPoint(v1)[1] )
@@ -151,44 +231,62 @@ def main():
                     data = cd.GetArray(p).GetTuple(i)
                     feature.SetField(str(p), float(data[0]))
 
-
             layer.CreateFeature(feature)
 
-
         x_min, x_max, y_min, y_max = layer.GetExtent()
-
 
         NoData_value = -9999
         x_res = int((x_max - x_min) / pixel_size)
         y_res = int((y_max - y_min) / pixel_size)
 
         for var in variables:
-            target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4]+'_'+var+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
+            target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ var.replace(" ","_")+str(pixel_size)+'x'+str(pixel_size)+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             # target_ds.SetProjection(srs)
             band = target_ds.GetRasterBand(1)
-            target_ds.SetProjection(srs.ExportToWkt())
+
             band.SetNoDataValue(NoData_value)
 
             # Rasterize
             gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE',"ATTRIBUTE="+var])
+            target_ds.SetProjection(srsout.ExportToWkt())
+            target_ds = None
 
-        if parameters is not None:
-            for p in parameters:
-                target_ds = gdal.GetDriverByName('GTiff').Create(path[:-4] + '_' + p + '.tif', x_res, y_res, 1,
-                                                                 gdal.GDT_Float32)
-                target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-                target_ds.SetProjection(srs.ExportToWkt())
-                band = target_ds.GetRasterBand(1)
-                band.SetNoDataValue(NoData_value)
+            # Optional clip file
+            if(constrain_flag):
+                subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f -r \"%s\" -tr %f %f \"%s\" \"%s\"' %
+                                       (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, var_resample_method[var], pixel_width, pixel_height, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
 
-                # Rasterize
-                gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],
-                                    options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
-            parameters = None
+            if parameters is not None:
+                for p in parameters:
+                    target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
+                    target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+                    target_ds.SetProjection(srsout.ExportToWkt())
+                    band = target_ds.GetRasterBand(1)
+                    band.SetNoDataValue(NoData_value)
+
+                    # Rasterize
+                    gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
+                    target_ds = None
+
+                    # Optional clip file
+                    if(constrain_flag):
+                        subprocess.check_call([
+                          'gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f -r \"%s\" -tr %f %f \"%s\" \"%s\"' %
+                          (srsout.ExportToProj4(), srsout.ExportToProj4(), o_xmin, o_ymin, o_xmax,
+                           o_ymax, param_resample_method[p], pixel_width, pixel_height,
+                           output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '.tif',
+                           output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '_clipped.tif')],
+                          shell=True)
+
+        # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
+        parameters = None
+
+        #no parameters and no variables, just exit at this point
+        if not variables and parameters is None:
+            break
 
         iter += 1
-# output_usm = None
 
 if __name__ == "__main__":
 

@@ -73,7 +73,8 @@ public:
 
     void Rethrow()
     {
-        if (this->Ptr) std::rethrow_exception(this->Ptr);
+        if (this->Ptr)
+            std::rethrow_exception(this->Ptr);
     }
 
     template <typename Function, typename... Parameters>

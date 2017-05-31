@@ -6,12 +6,13 @@ timestep::timestep(const boost::shared_ptr<timestep> src)
 {
    
     _itrs = itr_map(src->_itrs);
+
     _date_itr = date_variable::iterator(src->_date_itr);
 }
 
 timestep::timestep()
 {
-   
+   _itrs.set_empty_key("");
 }
 
 timestep::~timestep()
@@ -88,25 +89,27 @@ bool timestep::has(const std::string &variable)
 
 double timestep::get(const std::string &variable)
 {
+#ifdef DEBUG
     auto res = _itrs.find(variable);
     if(res == _itrs.end())
-    {
-        return nan("");
-    }
-//        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
+        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
+#endif
 
     return _itrs[variable][0];
+
 }
 
 void timestep::set(const std::string &variable, const double &value)
 {
     //this is slower than just getting the value, but it prevents subtle bugs where
     // a module tries to create a variable it didn't allocate in a provides call
+#ifdef DEBUG
     auto res = _itrs.find(variable);
     if(res == _itrs.end())
         BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
-    res->second[0] = value;
+#endif
 
+    _itrs[variable][0] = value;
 
 }
 

@@ -14,6 +14,7 @@
 // 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+#include <vtkStringArray.h>
 #include "triangulation.hpp"
 
 triangulation::triangulation()
@@ -27,6 +28,9 @@ triangulation::triangulation()
     _vtk_unstructuredGrid = nullptr;
     _is_geographic = false;
     _UTM_zone = 0;
+    _terrain_deformed=false;
+    _min_z =  999999;
+    _max_z = -999999;
 }
 
 #ifdef MATLAB
@@ -68,7 +72,6 @@ triangulation::~triangulation()
 //    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
 //}
 
-
 std::string triangulation::proj4()
 {
     return _srs_wkt;
@@ -92,10 +95,8 @@ mesh_elem triangulation::locate_face(double x, double y)
 {
     Point_2 query(x,y);
     return locate_face(query);
-
-
-
 }
+
 mesh_elem triangulation::locate_face(Point_2 query)
 {
     mesh_elem face = find_closest_face(query);
@@ -134,14 +135,14 @@ mesh_elem triangulation::locate_face(Point_2 query)
     return nullptr;
 }
 
-mesh_elem triangulation::find_closest_face(Point_2 query)
+mesh_elem triangulation::find_closest_face(Point_2 query) const
 {
     K_neighbor_search search(*(dD_tree.get()), query, 1);
     auto it = search.begin();
     return  boost::get<1>(it->first);
 
 }
-mesh_elem triangulation::find_closest_face(double x, double y)
+mesh_elem triangulation::find_closest_face(double x, double y) const
 {
     //http://doc.cgal.org/latest/Spatial_searching/index.html
     Point_2 query(x,y);
@@ -228,6 +229,9 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         }
         Point_3 pt( items[0], items[1], items[2]);
 
+        _max_z = std::max(_max_z,items[2]);
+        _min_z = std::min(_min_z,items[2]);
+
         Vertex_handle Vh = this->create_vertex();
         Vh->set_point(pt);
         Vh->set_id(i);
@@ -274,12 +278,20 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         }
         face->_debug_ID= --i; //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
         face->_debug_name= std::to_string(i);
+        face->_domain = this;
+
+        vert1->set_face(face);
+        vert2->set_face(face);
+        vert3->set_face(face);
+
+
         _faces.push_back(face);
 
         Point_2 pt2(face->center().x(),face->center().y());
 
         center_points.push_back(pt2);
     }
+
 
     //make the search tree
     dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
@@ -377,6 +389,33 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     }
     _num_faces = this->number_of_faces();
     _num_vertex = this->number_of_vertices();
+
+    std::vector<double> temp_slope(size_faces());
+
+    for (size_t i = 0; i < size_faces(); i++)
+    {
+
+        auto f = face(i);
+        std::vector<boost::tuple<double, double, double> > u;
+        for (size_t j = 0; j < 3; j++)
+        {
+            auto neigh = f->neighbor(j);
+            if (neigh != nullptr)
+                u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->slope()));
+        }
+
+        auto query = boost::make_tuple(f->get_x(), f->get_y(), f->get_z());
+
+        interpolation interp(interp_alg::tpspline);
+        double new_slope = interp(u, query);
+        temp_slope.at(i) = new_slope;
+    }
+
+    for (size_t i = 0; i < size_faces(); i++)
+    {
+        auto f = face(i);
+        f->_slope = temp_slope.at(i);
+    }
 
     return parameters;
 }
@@ -480,6 +519,11 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
     triangles->Allocate(this->_num_vertex);
 
+    vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
+    proj4->SetNumberOfComponents(1);
+    proj4->SetName("proj4");
+    proj4->InsertNextValue(_srs_wkt);
+
     double scale = is_geographic() == true ? 100000. : 1.;
 
     for (size_t i = 0; i < this->size_faces(); i++)
@@ -503,6 +547,10 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     _vtk_unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
     _vtk_unstructuredGrid->SetPoints(points);
     _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
+    _vtk_unstructuredGrid->GetFieldData()->AddArray(proj4);
+
+//    vtkSmartPointer<vtkStringArray> test = vtkStringArray::SafeDownCast(_vtk_unstructuredGrid->GetFieldData()->GetAbstractArray("proj4"));
+//    LOG_DEBUG << test->GetValue(0) ;
 
 
     //assume that all the faces have the same number of variables and the same types of variables
@@ -554,7 +602,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 {
     //if we haven't inited yet, do so.
-    if(!_vtk_unstructuredGrid)
+    if(!_vtk_unstructuredGrid || _terrain_deformed)
     {
         this->init_vtkUnstructured_Grid(output_variables);
     }
@@ -614,7 +662,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
     for(auto& m : vectors)
     {
-        _vtk_unstructuredGrid->GetCellData()->SetVectors(m.second);
+        _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
+
     }
 
 
@@ -638,13 +687,14 @@ void triangulation::write_vtu(std::string file_name)
 #endif
     writer->Write();
 
+//    write_vtp(file_name);
 }
 
 void triangulation::write_vtp(std::string file_name)
 {
     //this now needs to be called from outside these functions
 //    update_vtk_data();
-
+//
 //    vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
 //    geometryFilter->SetInputData(_vtk_unstructuredGrid);
 //    geometryFilter->Update();
@@ -656,7 +706,7 @@ void triangulation::write_vtp(std::string file_name)
 //    flattener->Update();
 //
 //    vtkSmartPointer<vtkTransformFilter> filt = vtkSmartPointer<vtkTransformFilter>::New();
-//    filt->SetInputData(geometryFilter->GetOutput());
+//    filt->SetInputConnection(geometryFilter->GetOutputPort());
 //    filt->SetTransform(flattener);
 //    filt->Update();
 //
@@ -666,8 +716,8 @@ void triangulation::write_vtp(std::string file_name)
 //    // Create a grid of points to interpolate over
 //    vtkSmartPointer<vtkPlaneSource> gridPoints = vtkSmartPointer<vtkPlaneSource>::New();
 //
-//    size_t dx = 300; //(meters)
-//    size_t dy = 300;
+//    size_t dx = 10; //(meters)
+//    size_t dy = 10;
 //
 //    double distx = bounds[1] - bounds[0];
 //    double disty = bounds[3] - bounds[2];
@@ -704,13 +754,24 @@ void triangulation::write_vtp(std::string file_name)
 
 }
 
- boost::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
- {
-    boost::shared_ptr<segmented_AABB> AABB = boost::make_shared<segmented_AABB>();
-    AABB->make(this,rows,cols);
-    return AABB;
-     
- }
+
+double triangulation::max_z()
+{
+    return _max_z;
+}
+
+double triangulation::min_z()
+{
+    return _min_z;
+}
+
+boost::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
+{
+boost::shared_ptr<segmented_AABB> AABB = boost::make_shared<segmented_AABB>();
+AABB->make(this,rows,cols);
+return AABB;
+
+}
 
 
 void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
@@ -808,7 +869,8 @@ rect* segmented_AABB::get_rect(size_t row, size_t col)
 
 segmented_AABB::segmented_AABB()
 {
-
+    n_rows = 0;
+    n_cols = 0;
 }
 
 bool segmented_AABB::pt_in_rect(Delaunay::Vertex_handle v, rect* r)

@@ -21,6 +21,7 @@ namespace pt = boost::property_tree;
 *
 * A module must inherent from this class. This provides the interface for all module.
 */
+
 class module_base
 {
 public:
@@ -142,6 +143,9 @@ public:
      */
     void provides(std::string variable)
     {
+        if(variable.find_first_of("\t ") != std::string::npos)
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + variable +" has a space. This is not allowed."));
+
         _provides->push_back(variable);
     }
 
@@ -234,7 +238,12 @@ public:
 
     bool is_nan(double variable)
     {
-        return variable == -9999. || std::isnan(variable);
+        if( std::fabs(variable - -9999.0) < 1e-5)
+            return true;
+        if( std::isnan(variable) )
+            return true;
+
+        return false;
     }
 
     bool is_water(mesh_elem face)

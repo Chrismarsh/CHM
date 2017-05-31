@@ -8,7 +8,7 @@
 #include <constants/PhysConst.h>
 #include <constants/Vegetation.h>
 #include <string>
-#include "face.hpp"
+
 
 /*
  * @Brief Solves energy and mass equations for canopy states using parameterizations based on LAI and canopy closure.

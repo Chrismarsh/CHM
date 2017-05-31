@@ -2,6 +2,15 @@
 
 #define BOOST_SPIRIT_THREADSAFE
 
+//vtk includes
+#include <vtkPolyData.h>
+#include <vtkSmartPointer.h>
+#include <vtkPoints.h>
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkVersion.h>
+#include <vtkStringArray.h>
+
+
 //std includes
 #include <string>
 #include <sstream>
@@ -57,7 +66,7 @@ namespace po = boost::program_options;
 #include "interpolation.h"
 #include "readjson.hpp"
 #include "version.h"
-#include "math/distance.hpp"
+#include "math/coordinates.hpp"
 
 struct vertex{
     std::string name;
@@ -177,6 +186,9 @@ protected:
     // e.g. CHM -f /some/other/path/CHM.json
     // then we need to affix every file IO (excep the log ?) with this path.
     boost::filesystem::path cwd_dir;
+    boost::filesystem::path o_path; //path to output folder
+
+    bool _output_station_ptv; //should we ouput the station ptv file? if we have no output section, then don't do this.
 
     //this is called via system call when the model is done to notify the user
     std::string _notification_script;
@@ -238,6 +250,7 @@ protected:
     public:
         output_info()
         {
+            frequency=1;
             fname = "";
             latitude = 0;
             longitude = 0;
@@ -255,6 +268,7 @@ protected:
             vtu,
             ascii
         };
+
         output_type type;
         std::string name;
         std::vector<mesh_outputs> mesh_output_formats;
@@ -265,7 +279,7 @@ protected:
         mesh_elem face;
         timeseries ts;
         size_t frequency;
-//        std::set<std::string>
+
     };
 
     bool _enable_ui;

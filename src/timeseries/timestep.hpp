@@ -3,10 +3,12 @@
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 
 
-#include <tbb/concurrent_hash_map.h>
+#include <sparsehash/dense_hash_map>
+
 #include <tbb/concurrent_vector.h>
 #include <vector>
 #include <cstddef>
+#include <unordered_map>
 
 #include "exception.hpp"
 #include "variable_map.hpp"
@@ -120,7 +122,9 @@ private:
 
 //    typedef tbb::concurrent_hash_map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
    // typedef std::map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
-    typedef std::map< std::string, variable_vec::iterator> itr_map;
+//    typedef std::unordered_map< std::string, variable_vec::iterator> itr_map;
+    typedef google::dense_hash_map<std::string, variable_vec::iterator> itr_map;
+//      typedef spp::sparse_hash_map<std::string, variable_vec::iterator> itr_map;
     //holds the iterators for the current timestep. 
     //these are iterators into each vector in the variable hashmap
     itr_map _itrs; 

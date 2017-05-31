@@ -43,17 +43,20 @@ set(MODULE_SRCS
 		modules/interp_met/kunkel_rh.cpp
 		modules/interp_met/rh_from_obs.cpp
 		modules/interp_met/Longwave_from_obs.cpp
-                modules/interp_met/Longwave_from_obs.cpp
+		modules/interp_met/Longwave_from_obs.cpp
 		modules/interp_met/Dist_tlapse.cpp
 		modules/interp_met/rh_no_lapse.cpp
 		modules/interp_met/t_no_lapse.cpp
 		modules/interp_met/p_no_lapse.cpp
 		modules/interp_met/lw_no_lapse.cpp
-                modules/interp_met/uniform_wind.cpp
+		modules/interp_met/uniform_wind.cpp
+		modules/interp_met/MS_wind.cpp
+		modules/interp_met/t_monthly_lapse.cpp
 
 		modules/point_mode.cpp
 
-		modules/slope_iswr.cpp
+        modules/iswr.cpp
+		modules/fetchr.cpp
 		modules/Marsh_shading_iswr.cpp
 		modules/Sicart_ilwr.cpp
 		modules/PenmanMonteith_evaporation.cpp
@@ -67,14 +70,20 @@ set(MODULE_SRCS
 		modules/Gray_inf.cpp
 		modules/Simple_Canopy.cpp
 		modules/scale_wind_vert.cpp
+		modules/sub_grid.cpp
+    modules/snow_slide.cpp
 		${SNOBAL_SRC}
 
 		modules/threshold_p_phase.cpp
 		${SNOWPACK_SRCS}
 
 		modules/solar.cpp
+		modules/fast_shadow.cpp
+        modules/deform_mesh.cpp
+		modules/crop_rotation.cpp
+        modules/PBSM3D.cpp
 
-		CACHE INTERNAL "" FORCE)
+		CACHE INTERNAL "" FORCE )
 
 
 set(CHM_SRCS
@@ -109,10 +118,10 @@ set(CHM_SRCS
 
 		interpolation/interpolation.cpp
 		${METEOIO_SRCS}
-		math/distance.cpp
+        math/coordinates.cpp
 
 		CACHE INTERNAL "" FORCE
-        )
+		)
 
 
 set (HEADER_FILES
@@ -146,6 +155,10 @@ set (EXT_HEADER_FILES
         ${CGAL_3RD_PARTY_INCLUDE_DIRS}
 		${CURSES_INCLUDE_DIR}
 		${GDAL_INCLUDE_DIR}
+		${VIENNACL_INCLUDE_DIR}
+		${OPENCL_INCLUDE_DIRS}
+		${Tcmalloc_INCLUDE_DIR}
+		${SPARSEHASH_INCLUDE_DIRS}
 		CACHE INTERNAL "" FORCE
     )
 
@@ -161,6 +174,9 @@ set( LIB_FILES
         ${LAPACK_LIBRARIES}
 		${CURSES_LIBRARIES}
 		${GDAL_LIBRARY}
+		${VIENNACL_LIBRARIES}
+		${OPENCL_LIBRARIES}
+		${Tcmalloc_LIBRARY}
 		CACHE INTERNAL "" FORCE
 )
 
@@ -201,6 +217,17 @@ target_link_libraries(
 	${LIB_FILES}
 )
 
+
+if(STATIC_ANLAYSIS)
+	include( ${CMAKE_SOURCE_DIR}/CMake/PVS-Studio.cmake)
+	pvs_studio_add_target(TARGET analyze ALL
+			OUTPUT FORMAT errorfile
+			ANALYZE CHM
+			LICENSE "/home/chris/Downloads/PVS-Studio.lic"
+			LOG CHM.plog
+			)
+endif()
+
 if (test)
 
 	add_subdirectory (tests/googletest/googletest)
@@ -214,13 +241,12 @@ if (test)
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-            math/distance.cpp)
+            )
 
 
 	set( GTEST_LINK
 			gtest
 			gtest_main
-
 			)
 
 	add_executable(

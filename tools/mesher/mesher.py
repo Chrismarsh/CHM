@@ -8,6 +8,7 @@ import scipy.stats.mstats as sp
 import sys
 import shutil
 import imp
+import vtk
 
 gdal.UseExceptions()  # Enable errors
 
@@ -42,6 +43,10 @@ def main():
         simplify = X.simplify
         simplify_tol = X.simplify_tol
 
+    lloyd_itr = 0;
+    if hasattr(X,'lloyd_itr'):
+        lloyd_itr = X.lloyd_itr
+
     max_tolerance = None
     if hasattr(X, 'max_tolerance'):
         max_tolerance = X.max_tolerance
@@ -69,6 +74,11 @@ def main():
         if user_output_dir[-1] is not os.path.sep:
             user_output_dir += os.path.sep
 
+    #instead of using Albers, should we use the input file's projection?
+    #this is useful for preserving a UTM input. If the input file is geographic, this will currently bail.
+    use_input_prj = False
+    if hasattr(X,'use_input_prj'):
+        use_input_prj=X.use_input_prj
     ########################################################
 
     base_name = os.path.basename(dem_filename)
@@ -104,14 +114,22 @@ def main():
     #     srs.ImportFromWkt(wkt)
     #     EPSG = int(srs.GetAttrValue("AUTHORITY", 1))
 
-    src_ds = gdal.Open(dem_filename)
-    wkt = src_ds.GetProjection()
-    if wkt == '':
+    try:
+        src_ds = gdal.Open(dem_filename)
+    except:
+        print 'Unable to open file ' + dem_filename
+        exit(1)
+
+
+    if src_ds.GetProjection() == '':
         print "Input DEM must have spatial reference information."
         exit(1)
 
     wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
-    srs_out =  osr.SpatialReference()
+    if use_input_prj:
+        wkt_out = src_ds.GetProjection()
+
+    srs_out = osr.SpatialReference()
     srs_out.ImportFromWkt(wkt_out)
 
 
@@ -336,14 +354,15 @@ def main():
     is_geographic = srs.IsGeographic()
 
     if not reuse_mesh:
-        execstr = '%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s ' % \
+        execstr = '%s --poly-file %s --tolerance %f --raster %s --area %f --min-area %f --error-metric %s --lloyd %d' % \
                   (triangle_path,
                    base_dir + poly_file,
                    max_tolerance,
                    base_dir + base_name + '_projected.tif',
                    max_area,
                    min_area,
-                   errormetric
+                   errormetric,
+                   lloyd_itr
                    )
 
         if is_geographic:
@@ -374,6 +393,23 @@ def main():
 
     read_header = False
 
+    vtu = vtk.vtkUnstructuredGrid()
+
+    output_vtk = base_dir + base_name + '.vtu'
+    vtuwriter = vtk.vtkXMLUnstructuredGridWriter()
+    vtuwriter.SetFileName(output_vtk)
+
+    #check what version of vtk we are using so we can avoid the api conflict
+    #http://www.vtk.org/Wiki/VTK/VTK_6_Migration/Replacement_of_SetInput#Replacement_of_SetInput.28.29_with_SetInputData.28.29_and_SetInputConnection.28.29
+    if vtk.vtkVersion.GetVTKMajorVersion() > 5:
+        vtuwriter.SetInputData(vtu)
+    else:
+        vtuwriter.SetInput(vtu)
+
+
+    vtu_points = vtk.vtkPoints()
+    vtu_triangles = vtk.vtkCellArray()
+
     invalid_nodes = []  # any nodes that are outside of the domain AND
     print 'Reading nodes'
     with open(base_dir + 'PLGS' + base_name + '.1.node') as f:
@@ -395,6 +431,7 @@ def main():
                         invalid_nodes.append(int(items[0]) - 1)
 
                     mesh['mesh']['vertex'].append([mx, my, mz])
+
 
     print 'Length of invalid nodes = ' + str(len(invalid_nodes))
 
@@ -429,6 +466,7 @@ def main():
                                          base_name + '_USM.shp')
 
 
+    vtu_points.SetNumberOfPoints(len(mesh['mesh']['vertex']))
 
     # create the layer
     layer = output_usm.CreateLayer(base_name, srs, ogr.wkbPolygon)
@@ -466,6 +504,20 @@ def main():
 
     for key, data in initial_conditions.iteritems():
         ics[key] = []
+
+    vtu_cells  = {}
+    vtu_cells['Elevation'] = vtk.vtkFloatArray()
+    vtu_cells['Elevation'].SetName("Elevation")
+
+    for key, data in parameter_files.iteritems():
+        k = '[param] ' + key
+        vtu_cells[k]=vtk.vtkFloatArray()
+        vtu_cells[k].SetName(k)
+
+    for key, data in initial_conditions.iteritems():
+        k = '[ic] ' + key
+        vtu_cells[k]=vtk.vtkFloatArray()
+        vtu_cells[k].SetName(k)
 
     i = 0
     with open(base_dir + 'PLGS' + base_name + '.1.ele') as elem:
@@ -527,6 +579,22 @@ def main():
                     ring.AddPoint(mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1])
                     ring.AddPoint(mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1])  # add again to complete the ring.
 
+                    vtu_points.SetPoint(v0, mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1], mesh['mesh']['vertex'][v0][2])
+                    vtu_points.SetPoint(v1, mesh['mesh']['vertex'][v1][0], mesh['mesh']['vertex'][v1][1], mesh['mesh']['vertex'][v1][2])
+                    vtu_points.SetPoint(v2, mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1], mesh['mesh']['vertex'][v2][2])
+
+
+                    triangle = vtk.vtkTriangle()
+                    triangle.GetPointIds().SetId(0,v0)
+                    triangle.GetPointIds().SetId(1,v1)
+                    triangle.GetPointIds().SetId(2,v2)
+
+                    vtu_triangles.InsertNextCell(triangle)
+                    vtu_cells['Elevation'].InsertNextTuple1( (mesh['mesh']['vertex'][v0][2] +
+                                                             mesh['mesh']['vertex'][v1][2] +
+                                                             mesh['mesh']['vertex'][v2][2])/3.)
+
+
                     tpoly = ogr.Geometry(ogr.wkbPolygon)
                     tpoly.AddGeometry(ring)
 
@@ -536,9 +604,9 @@ def main():
 
 
                     if is_geographic:
-                        wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
-                        srs_out =  osr.SpatialReference()
-                        srs_out.ImportFromWkt(wkt_out)
+                        # wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
+                        # srs_out =  osr.SpatialReference()
+                        # srs_out.ImportFromWkt(wkt_out)
 
                         transform = osr.CoordinateTransformation(srs, srs_out)
                         p = tpoly.Clone()
@@ -550,17 +618,38 @@ def main():
                     # get the value under each triangle from each paramter file
                     for key, data in parameter_files.iteritems():
                         output = rasterize_elem(data, feature, key)
+
+                        if 'classifier' in data:
+                            output = data['classifier'](output)
                         params[key].append(output)
+                        vtu_cells['[param] ' + key].InsertNextTuple1(output)
+
                     for key, data in initial_conditions.iteritems():
                         output = rasterize_elem(data, feature, key)
+                        if 'classifier' in data:
+                            output = data['classifier'](output)
+
                         ics[key].append(output)
+                        vtu_cells['[ic] ' + key].InsertNextTuple1(output)
 
                     layer.CreateFeature(feature)
                     i = i + 1
 
+    #if the simplify_tol is too large, we can end up with a triangle that is entirely outside of the domain
+    if len(invalid_nodes) > 0:
+        print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
+        print 'This will have occured if an entire triangle is outside of the domain. There is no way to reconstruct this.'
+        print 'Try reducing simplify_tol'
+        raise
 
-    print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
 
+
+
+    vtu.SetPoints(vtu_points)
+    vtu.SetCells(vtk.VTK_TRIANGLE,vtu_triangles)
+    for p in vtu_cells.itervalues():
+        vtu.GetCellData().AddArray(p)
+    vtuwriter.Write()
 
     output_usm = None  # close the file
     print 'Saving mesh to file ' + base_name + '.mesh'
