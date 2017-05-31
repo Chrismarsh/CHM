@@ -122,13 +122,14 @@ template < class Gt, class Vb>
 template<typename T>
 T* ex_vertex<Gt, Vb>::make_module_data(std::string module)
 {
+
     auto it = _vertex_module_data.find(module);
 
     //we don't already have this, make a new one.
     if(it == _vertex_module_data.end())
     {
-        T* vert_data = new T;
-        set_module_data(module,vert_data);
+        T* vi = new T;
+        _vertex_module_data[module] = vi;
     }
 
     return get_module_data<T>(module);
@@ -139,17 +140,16 @@ template < class Gt, class Vb>
 template<typename T>
 T* ex_vertex<Gt, Vb>::get_module_data(std::string module)
 {
-    vertex_info* info=nullptr;
-    try
-    {
-        info = _vertex_module_data[module];
-    }
-    catch(...)
+
+    auto it = _vertex_module_data.find(module);
+
+    //we don't have
+    if(it == _vertex_module_data.end())
     {
         BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
     }
 
-    return reinterpret_cast<T*>(info);
+    return dynamic_cast<T*>(it->second);
 
 }
 

@@ -27,12 +27,9 @@ void Marsh_shading_iswr::run(mesh domain)
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
         auto vert = domain->vertex(i);
-        auto lol = vert->face();
+
         double A =  vert->face()->face_data("solar_az");
         double E = vert->face()->face_data("solar_el");
-
-        if (E < 5)
-            continue;
 
 
         //euler rotation matrix K
@@ -46,7 +43,7 @@ void Marsh_shading_iswr::run(mesh domain)
           << sin(q0) * sin(z0) << -cos(z0) * sin(q0) << cos(q0) << arma::endr;
 
 
-        vertex_data* vf = vert->make_module_data<vertex_data>(ID);
+        auto vf = vert->make_module_data<vertex_data>(ID);
 
         arma::vec coord(3);
 
@@ -122,10 +119,6 @@ void Marsh_shading_iswr::run(mesh domain)
             tbb::parallel_sort(BBR->get_rect(i, ii)->triangles.begin(), BBR->get_rect(i, ii)->triangles.end(),
                     [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
                     {
-//                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->info);
-//                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->info);
-//                        module_shadow_face_info* fa_info = reinterpret_cast<module_shadow_face_info*> (fa->get_module_data("Marsh_shading_iswr"));
-//                        module_shadow_face_info* fb_info = reinterpret_cast<module_shadow_face_info*> (fb->get_module_data("Marsh_shading_iswr"));
                           auto fa_info = fa->get_module_data<module_shadow_face_info>(
                                   "Marsh_shading_iswr");
                           auto fb_info = fb->get_module_data<module_shadow_face_info>(
@@ -151,8 +144,7 @@ void Marsh_shading_iswr::run(mesh domain)
                 for (size_t k = j + 1; k < num_tri; k++)
                 {
                     triangulation::Face_handle face_k = BBR->get_rect(i, ii)->triangles.at(k);
-                    //module_shadow_face_info* face_k_info = reinterpret_cast<module_shadow_face_info*> (face_k->get_module_data(ID));
-                    auto face_k_info = face_k->get_module_data<module_shadow_face_info>(ID);
+                     auto face_k_info = face_k->get_module_data<module_shadow_face_info>(ID);
 
                     if (face_k_info->shadow == 0)
                     {
@@ -176,18 +168,9 @@ void Marsh_shading_iswr::run(mesh domain)
                     }
                 }
 
-
-
-                //module_shadow_face_info* face_info = reinterpret_cast<module_shadow_face_info*> (face_j->get_module_data(ID));
-                auto face_info = face_j->get_module_data<module_shadow_face_info>(ID);
+               auto face_info = face_j->get_module_data<module_shadow_face_info>(ID);
                 face_j->set_face_data("shadow", face_info->shadow);
                 face_j->set_face_data("z_prime", face_info->z_prime);
-
-                //if we're shadowed, set direct beam = 0
-//                if (face_info->shadow ==1)
-//                    face_j->set_face_data("iswr_direct_slope", 0);
-
-
 
             }
         }
@@ -198,23 +181,10 @@ void Marsh_shading_iswr::run(mesh domain)
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
         auto vert = domain->vertex(i);
-//        if (!vert->info)
-//            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Null vertex info"));
-        auto vf = vert->get_module_data<vertex_data>(ID);
-//        vertex_data * vf = reinterpret_cast<vertex_data *> (vert->info);
+        auto  vf = vert->get_module_data<vertex_data>(ID);
         vert->set_point(vf->org_vertex);
     }
 
-    #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
-    {
-        auto face = domain->face(i);
-        face->remove_face_data("Marsh_shading_iswr");
-
-//        auto swr = face->face_data("iswr_direct_slope");
-//        auto diff = face->face_data("iswr_diffuse");
-//        face->set_face_data("iswr",swr+diff);
-    }
 }
 
 Marsh_shading_iswr::~Marsh_shading_iswr()
