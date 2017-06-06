@@ -27,6 +27,7 @@ public:
     bool vw_dir ;
     bool iswr_diffuse ;
     bool iswr_direct ;
+    bool U_2m_above_srf;
 };
 
 

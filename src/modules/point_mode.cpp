@@ -7,6 +7,7 @@ point_mode::point_mode(config_file cfg)
      t      = cfg.get<bool>("provide.t",true);
      rh     = cfg.get<bool>("provide.rh",true);
      U_R    = cfg.get<bool>("provide.U_R",true);
+     U_2m_above_srf = cfg.get<bool>("provide.U_2m_above_srf",true);
      p      = cfg.get<bool>("provide.p",true);
      ilwr   = cfg.get<bool>("provide.ilwr",true);
      iswr   = cfg.get<bool>("provide.iswr",true);
@@ -27,8 +28,11 @@ point_mode::point_mode(config_file cfg)
         provides("rh");
     }
 
-    if(U_R)
-    {
+    // If U_2m_above_srf is provided, use it. Otherwise use U_R.
+    if(U_2m_above_srf) {
+        depends_from_met("U_2m_above_srf");
+        provides("U_2m_above_srf");
+    } else if(U_R) {
         depends_from_met("U_R");
         provides("U_R");
     }
@@ -92,8 +96,12 @@ void point_mode::run(mesh_elem &face)
         double srh = global_param->stations().at(0)->get("rh");
         face->set_face_data("rh", srh);
     }
-    //TODO: add option if has u (no filter applied)
-    if(U_R)
+    
+    if(U_2m_above_srf) {
+        double su = global_param->stations().at(0)->get("U_2m_above_srf");
+        su = std::max(su,0.1);
+        face->set_face_data("U_2m_above_srf",su);
+    } else if (U_R)
     {
         double su = global_param->stations().at(0)->get("U_R");
 
