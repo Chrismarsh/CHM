@@ -161,7 +161,7 @@ void snobal::init(mesh domain)
         
         sbal->init_snow();
 
-        face->set_face_data("swe",sbal->m_s);
+//        face->set_face_data("swe",sbal->m_s);
 
         //////
         

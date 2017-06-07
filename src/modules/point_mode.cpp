@@ -32,7 +32,7 @@ point_mode::point_mode(config_file cfg)
     if(U_2m_above_srf) {
         depends_from_met("U_2m_above_srf");
         provides("U_2m_above_srf");
-    } else if(U_R) {
+    }else if(U_R) {
         depends_from_met("U_R");
         provides("U_R");
     }
