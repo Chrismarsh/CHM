@@ -23,12 +23,7 @@ void MS_wind::init(mesh domain)
         auto d = face->make_module_data<data>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
         d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
-
     }
-
-
-
-
 }
 
 
@@ -62,8 +57,6 @@ void MS_wind::run(mesh domain)
             double W = s->get("U_R") / speedup;
             W = std::max(W, 0.1);
 
-
-//            double phi = math::gis::bearing_to_polar(s->get("vw_dir") );
 
             double zonal_u = -W * sin(theta);
             double zonal_v = -W * cos(theta);
@@ -135,7 +128,7 @@ void MS_wind::run(mesh domain)
         }
 
         //figure out which lookup map we need
-        int d = int(theta*180/M_PI/45.);
+        int d = int(theta*180.0/M_PI/45.);
         if (d == 0) d = 8;
 
         double speedup = face->get_parameter("MS"+std::to_string(d));

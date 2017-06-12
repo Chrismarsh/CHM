@@ -113,7 +113,6 @@
       do k=1,8
         r = 45*(k-1) *3.14159/180.
         d = dd(k)
-        !rr = INT(45*(k-1))
         rr = d
         base= 'Windspeed_Normalized_'
         ext = '.txt'
