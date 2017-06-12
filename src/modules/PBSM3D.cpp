@@ -10,29 +10,30 @@ PBSM3D::PBSM3D(config_file cfg)
     depends("t");
     depends("rh");
 
+    depends("p_snow");
+    depends("p");
+//    provides("p");
+//    provides("p_snow");
+
     optional("fetch");
 
 //    provides("u10");
     provides("is_drifting");
     provides("salt_limit");
 
-
-//    provides("K0");
-//    provides("K1");
-//    provides("K2");
-//    provides("K3");
-//    provides("K4");
-
-    nLayer=10;
+    nLayer=cfg.get("nLayer",5);
     for(int i=0; i<nLayer;++i)
     {
-//        provides("K"+std::to_string(i));
+        provides("K"+std::to_string(i));
         provides("c"+std::to_string(i));
     }
 
+    provides("Km_coeff");
     provides("Qsusp_pbsm");
+    provides("suspension_mass");
+    provides("saltation_mass");
 
-//    provides("hs");
+    provides("hs");
 //    provides("ustar");
 
     provides("csalt");
@@ -187,13 +188,13 @@ void PBSM3D::run(mesh domain)
         double hs = 0;
 
         //lehning
-//        hs = z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
-//                         (pow(log(2. / z0), 2.) * 9.81);
+//        hs = d->z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
+//                         (pow(log(2. / d->z0), 2.) * 9.81);
 
         //pomeroy
         hs = 0.08436*pow(ustar,1.27);
         d->hs = hs;
-//        face->set_face_data("hs",hs);
+        face->set_face_data("hs",hs);
 
         // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
         // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
@@ -236,7 +237,7 @@ void PBSM3D::run(mesh domain)
 //        face->set_face_data("ustar",ustar);
 
         face->set_face_data("is_drifting",0);
-//        face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
+        face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
         if( ustar > u_star_saltation && swe > min_mass_for_trans)
         {
@@ -273,6 +274,7 @@ void PBSM3D::run(mesh domain)
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
+            face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
             //in the triangle. I
@@ -314,11 +316,11 @@ void PBSM3D::run(mesh domain)
         }
 
         // can use for point scale plume testing.
-//        c_salt = 0;
-//        if (i == 12125 )
+//
+//        if (i != 7105 )
 //        {
 //            Qsalt = 0;
-//            c_salt = 0.8;
+//            c_salt = 0;
 //        }
 
 
@@ -399,10 +401,6 @@ void PBSM3D::run(mesh domain)
             double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
 
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
-
-
-
-            double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * cz + PhysConst::kappa * d->z0 + l__max);
             //compute alpha and K for edges
             if(do_lateral_diff)
             {
@@ -410,31 +408,40 @@ void PBSM3D::run(mesh domain)
                 {
                     auto neigh = face->neighbor(a);
                     alpha[a] = d->A[a];
-//                    double l = 40;
+
                     //if we have a neighbour, use the distance
                     if (neigh != nullptr)
                     {
-//                    l = math::gis::distance(face->center(), neigh->center());
-
                         alpha[a] /= math::gis::distance(face->center(), neigh->center());
 
                     } else
-                    { //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
+                    {
+                        //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
                         alpha[a] /= 5.0 * math::gis::distance(face->center(), face->vertex(0)->point());
 
                     }
 
-                    //            double l = PhysConst::kappa * (cz + z0) * l__max /
-                    //                       (PhysConst::kappa * cz + PhysConst::kappa * z0 + l__max);
-
-                    K[a] =  PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * 2. * ustar);
+                    //do just very low horz diffusion for numerics
+                     K[a] =  0.00001;    //PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * 2. * ustar);
                     alpha[a] *= K[a];
                 }
             }
+            //Li and Pomeroy 2000
+            double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
+//            double l = PhysConst::kappa * (cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
+            double w = 1.1*10e7*pow(rm,1.8);
+            double c2 = 1;
+            double dc = 1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
 
+            snow_diffusion_const=dc;
+            face->set_face_data("Km_coeff",dc);
             //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
-            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
-//            face->set_face_data("K"+std::to_string(z), K[3] );
+            K[3] = K[4] = snow_diffusion_const * ustar * l;
+
+
+//            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
+
+            face->set_face_data("K"+std::to_string(z), K[3] );
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
             //bottom
@@ -445,7 +452,7 @@ void PBSM3D::run(mesh domain)
             double scale = u_z / length;
 
             uvw *= scale;
-            uvw(2) = settling_velocity; //settling velocity,
+            uvw(2) = -w;//settling_velocity; //settling velocity,
 
             //holds wind dot face normal
             double udotm[5];
@@ -486,8 +493,13 @@ void PBSM3D::run(mesh domain)
                     }
                     else
                     {
+                        //no mass in
 //                       C[idx][idx] += V*csubl-d->A[f]*udotm[f]-alpha[f];
-                        C[idx][idx] += V*csubl-d->A[f]*udotm[f];
+
+                        //allow mass in
+//                        C[idx][idx] += V*csubl-d->A[f]*udotm[f];
+
+                        C[idx][idx] += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
                     }
                 } else
                 {
@@ -502,8 +514,13 @@ void PBSM3D::run(mesh domain)
                     }
                     else
                     {
+                        //No mass in
 //                        C[idx][idx] += V*csubl-alpha[f];
-                        C[idx][idx] += -.99*d->A[f]*udotm[f]+csubl*V;
+
+                        //allow mass in
+//                        C[idx][idx] += -.99*d->A[f]*udotm[f]+csubl*V;
+
+                        C[idx][idx] += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
                     }
                 }
             }
@@ -524,14 +541,16 @@ void PBSM3D::run(mesh domain)
             //vertical layers
             if (z == 0)
             {
-                //bottom face, no advection
-//                C[idx][idx] += -d->A[4]*K[4];
-//                b[idx] = -d->A[4]*K[4]*c_salt;
 
-                double alpha4 = d->A[4] * K[4] / (hs+v_edge_height);
+                double alpha4 = d->A[4] * K[4] / (hs/2.0 + v_edge_height/2.0);
+
+                //bottom face, no advection
+//                C[idx][idx] += V*csubl-alpha4;
+//                b[idx] += -alpha4*c_salt;
+
+                //includes advection term
                 C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha4;
                 b[idx] += -alpha4*c_salt;
-
 
                 if (udotm[3] > 0)
                 {
@@ -542,31 +561,36 @@ void PBSM3D::run(mesh domain)
                     C[idx][idx] += V*csubl-alpha[3];
                     C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
                 }
-
-
             } else if (z == nLayer - 1)// top z layer
             {
+                //(kg/m^2/s)/(m/s)  ---->  kg/m^3
+                double cprecip = face->face_data("p_snow")/global_param->dt()/w;
+
                 if (udotm[3] > 0)
                 {
                     C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    b[idx] += -alpha[3] * cprecip;
                 } else
                 {
                     C[idx][idx] += V*csubl-alpha[3];
+                    b[idx] += d->A[3]*cprecip*udotm[3] - alpha[3] * cprecip;
                 }
-
 
                 if (udotm[4] > 0)
                 {
                     C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha[4];
                     C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+
                 } else
                 {
                     C[idx][idx] += V*csubl-alpha[4];
                     C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
                 }
+
+                face->set_face_data("p_snow",0);
+                face->set_face_data("p",0);
             } else //middle layers
             {
-
                 if (udotm[3] > 0)
                 {
                     C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
@@ -605,7 +629,7 @@ void PBSM3D::run(mesh domain)
 
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::linalg::gmres_tag gmres_tag(1e-10, 500, 30);
+    viennacl::linalg::gmres_tag gmres_tag(1e-16, 500, 30);
     viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
@@ -621,6 +645,7 @@ void PBSM3D::run(mesh domain)
 
         double u2 = face->face_data("U_2m_above_srf");
 
+        double total_mass = 0;
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
@@ -631,10 +656,14 @@ void PBSM3D::run(mesh domain)
             double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
+            total_mass += c * v_edge_height * face->get_area();
+
             face->set_face_data("c"+std::to_string(z),c);
 
         }
         face->set_face_data("Qsusp",Qsusp);
+        face->set_face_data("suspension_mass",total_mass);
+
 
     }
 
@@ -692,17 +721,17 @@ void PBSM3D::run(mesh domain)
 
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                A[i][i] += -eps * E[j] / dx[j] - V;
-                A[i][neigh->cell_id] += eps * E[j] / dx[j];
-                bb[i] += E[j] * Qt * udotm[j];
+                A[i][i] += V + eps * E[j] / dx[j];
+                A[i][neigh->cell_id] += - eps * E[j] / dx[j];
+                bb[i] += - E[j] * Qt * udotm[j];
 
             } else
             {
                 auto Qtj = 2. * face->face_data("Qsusp"); // const flux across, 0 -> drifts!!!
                 auto Qsj = 2. * face->face_data("Qsalt");
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
-                A[i][i]  += -V;
-                bb[i] += E[j] * Qt * udotm[j];
+                A[i][i]  += V;
+                bb[i] += -E[j] * Qt * udotm[j];
             }
 
         }
@@ -735,7 +764,7 @@ void PBSM3D::run(mesh domain)
 
         double mass = 0;
 
-            mass = qdep * global_param->dt();// kg/m^2*s *dt -> kg/m^2
+        mass = qdep * global_param->dt();// kg/m^2*s *dt -> kg/m^2
 
         face->set_face_data("drift_mass", mass);
 
