@@ -3,12 +3,15 @@ project(externalLib)
 include(ExternalProject)
 
 message(STATUS  "${CMAKE_BINARY_DIR}")
+
+
+#define D_XOPEN_SOURCE for OSX
 ExternalProject_Add(
         sparsehash
         GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
         INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/sparsehash
 
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
         UPDATE_COMMAND ""
         BUILD_COMMAND make -j2 install
         BUILD_IN_SOURCE 1
@@ -21,9 +24,19 @@ ExternalProject_Add(
         GIT_REPOSITORY https://github.com/gperftools/gperftools
         INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
 
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
         UPDATE_COMMAND ""
         BUILD_COMMAND make -j2 install
         BUILD_IN_SOURCE 1
 
 )
+
+find_package(Eigen3)
+if(NOT EIGEN3_INCLUDE_DIR)
+    message(STATUS "Eigen3 not found, downloading Eigen3")
+    ExternalProject_Add(
+            eigen3
+            HG_REPOSITORY https://bitbucket.org/eigen/eigen/
+            INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/eigen3
+            BUILD_IN_SOURCE 1)
+endif()

@@ -69,9 +69,6 @@ endmacro()
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
 # Get the current working branch
 
-configure_file(CMakeLists_external.txt.in
-        ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
-
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 execute_process(COMMAND ${CMAKE_COMMAND} --build .
@@ -184,6 +181,13 @@ if(OPENMP_FOUND AND CMAKE_BUILD_TYPE MATCHES Release)
 endif()
 
 
+
+
+#things covered by the superbuild
+# super build things we are missing
+configure_file(CMakeLists_external.txt.in
+        ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
+
 if(MATLAB)
     #for matlab to run you need csh installed
     find_package(Matlab REQUIRED)
@@ -207,8 +211,11 @@ else()
 endif()
 
 find_package(Armadillo REQUIRED)
-find_package(Eigen3 REQUIRED)
-
+find_package(Eigen3)
+if(NOT EIGEN3_INCLUDE_DIR)
+    set(Eigen3_DIR "${CMAKE_BINARY_DIR}/lib/eigen3")
+    find_package(Eigen3 REQUIRED)
+endif()
 
 set( SPARSEHASH_ROOT "${CMAKE_BINARY_DIR}/lib/sparsehash")
 find_package(Sparsehash REQUIRED)
