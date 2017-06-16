@@ -23,6 +23,7 @@ modules.pdf
 /tests/CMakeFiles
 /tests/gtest/CMakeFiles/
 /tools/mesher/*
+/tools/MSwind/*
 /tools/vtu2geo/*
 !/tools/vtu2geo/main.py
 !/tools/mesher/main.py
