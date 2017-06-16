@@ -181,8 +181,6 @@ if(OPENMP_FOUND AND CMAKE_BUILD_TYPE MATCHES Release)
 endif()
 
 
-
-
 #things covered by the superbuild
 # super build things we are missing
 configure_file(CMakeLists_external.txt.in

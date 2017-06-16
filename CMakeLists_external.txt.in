@@ -38,5 +38,5 @@ if(NOT EIGEN3_INCLUDE_DIR)
             eigen3
             HG_REPOSITORY https://bitbucket.org/eigen/eigen/
             INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/eigen3
-            BUILD_IN_SOURCE 1)
+            BUILD_IN_SOURCE 0)
 endif()
