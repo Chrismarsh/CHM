@@ -161,6 +161,8 @@ void snobal::init(mesh domain)
         
         sbal->init_snow();
 
+        //in point mode, the entire mesh still exists, but no timeseries has been allocated for the faces
+        //thus this segfaults. This should be fixed
 //        face->set_face_data("swe",sbal->m_s);
 
         //////

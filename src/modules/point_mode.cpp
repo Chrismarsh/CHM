@@ -4,16 +4,16 @@ point_mode::point_mode(config_file cfg)
         : module_base(parallel::data)
 {
 
-     t      = cfg.get<bool>("provide.t",true);
-     rh     = cfg.get<bool>("provide.rh",true);
-     U_R    = cfg.get<bool>("provide.U_R",true);
-     U_2m_above_srf = cfg.get<bool>("provide.U_2m_above_srf",true);
-     p      = cfg.get<bool>("provide.p",true);
-     ilwr   = cfg.get<bool>("provide.ilwr",true);
-     iswr   = cfg.get<bool>("provide.iswr",true);
-     vw_dir = cfg.get<bool>("provide.vw_dir",true);
-     iswr_diffuse    = cfg.get<bool>("provide.iswr_diffuse",false);
-     iswr_direct     = cfg.get<bool>("provide.iswr_direct",false);
+     t              = cfg.get("provide.t",true);
+     rh             = cfg.get("provide.rh",true);
+     U_R            = cfg.get("provide.U_R",true);
+     U_2m_above_srf = cfg.get("provide.U_2m_above_srf",true);
+     p              = cfg.get("provide.p",true);
+     ilwr           = cfg.get("provide.ilwr",true);
+     iswr           = cfg.get("provide.iswr",true);
+     vw_dir         = cfg.get("provide.vw_dir",true);
+     iswr_diffuse   = cfg.get("provide.iswr_diffuse",false);
+     iswr_direct    = cfg.get("provide.iswr_direct",false);
 
 
     if(t)
