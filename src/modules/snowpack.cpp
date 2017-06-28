@@ -36,7 +36,10 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     provides("ilwr_out");
     provides("iswr_out");
     provides("R_n");
+    provides("runoff");
 
+    provides("sum_runoff");
+    provides("sum_subl");
 
 }
 
@@ -145,7 +148,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     Mdata.tss=  data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
 
     //setting this to tss is inline with Alpine3d if there is no soil node. However, it might make more sense to use a const ground temp?
-    Mdata.ts0 = Mdata.tss;//273.15-4.;
+    Mdata.ts0 = 273.15-4.; //Mdata.tss;//
 
 //    Mdata.hs = mio::IOUtils::nodata;
 
@@ -209,6 +212,10 @@ void Lehning_snowpack::run(mesh_elem &face)
 
     //always write out 0 swe regardless of amount of swee
     face->set_face_data("swe",data->Xdata->swe);
+    face->set_face_data("runoff",surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
+
+    face->set_face_data("sum_runoff",  face->face_data("sum_runoff") + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
+    face->set_face_data("sum_subl",  face->face_data("sum_subl") + surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION]);
 
 
 
@@ -313,6 +320,9 @@ void Lehning_snowpack::init(mesh domain)
         d->sp = boost::make_shared<Snowpack>(*(d->Spackconfig));
         d->meteo = boost::make_shared<Meteo>( (d->config));
         d->stability = boost::make_shared<Stability> ( (d->config), false);
+
+        face->set_face_data("sum_runoff",0);
+        face->set_face_data("sum_subl",0);
 
     }
 }
