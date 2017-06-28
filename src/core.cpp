@@ -2036,8 +2036,11 @@ void core::run()
 #pragma omp parallel for
         for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
         {
-            auto db = _mesh->face(i)->_debug_ID;
-            _mesh->face(i)->to_file(std::to_string(db) + "_timeseries.txt");
+            auto db = _mesh->face(i)->cell_id;
+
+            auto f = (o_path / "points") / (std::to_string(db) + "_timeseries.txt");
+
+            _mesh->face(i)->to_file(f.string());
         }
 
     }
