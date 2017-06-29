@@ -29,7 +29,7 @@ void Sicart_ilwr::run(mesh_elem& face)
 
 
     double RH = face->face_data("rh") / 100.0;
-    double es = mio::Atmosphere::waterSaturationPressure(T);//mio::Atmosphere::saturatedVapourPressure(T);
+    double es = mio::Atmosphere::vaporSaturationPressure(T);//mio::Atmosphere::saturatedVapourPressure(T);
     double e =  es * RH;
     e = e * 0.01; // pa->mb
     double sigma = 5.67*pow(10.0,-8.0); //boltzman

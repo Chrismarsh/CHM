@@ -23,27 +23,15 @@
  * This header file contains all the data structures needed for the 1d snowpack model
  */
 
-#ifndef __SNOWPACK_H__
-#define __SNOWPACK_H__
+#ifndef SNOWPACK_H
+#define SNOWPACK_H
 
+#include <snowpack/Meteo.h>
 #include <snowpack/DataClasses.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Hazard.h>
-#include <snowpack/Utils.h>
-#include <snowpack/Laws_sn.h>
-#include <snowpack/SnowDrift.h>
-#include <snowpack/Stability.h>
-#include <snowpack/snowpackCore/WaterTransport.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/snowpackCore/Aggregate.h>
-#include <snowpack/snowpackCore/PhaseChange.h>
 
 #include <meteoio/MeteoIO.h>
+#include <vector>
 #include <string>
-#include <sstream>
-#include <errno.h>
-
-#include "exception.hpp"
 
 /// @brief The number of element incidences
 #define N_OF_INCIDENCES 2
@@ -53,12 +41,11 @@ class Snowpack {
 	public:
 		Snowpack(const SnowpackConfig& i_cfg);
 
-		void runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double& cumu_precip,
+		void runSnowpackModel(CurrentMeteo Mdata, SnowStation& Xdata, double& cumu_precip,
 		                      BoundCond& Bdata, SurfaceFluxes& Sdata);
 
 		void setUseSoilLayers(const bool& value);
 		const static double new_snow_albedo, min_ice_content;
-	bool alpine3d; ///< triggers various tricks for Alpine3D (including reducing the number of warnings)
 
 	private:
 		/**
@@ -74,11 +61,6 @@ class Snowpack {
 		static void EL_INCID(const size_t &e, int Ie[]);
 		static void EL_TEMP( const int Ie[], double Te0[], double Tei[], const std::vector<NodeData> &T0, const double Ti[] );
 		static void EL_RGT_ASSEM(double F[], const int Ie[], const double Fe[]);
-
-		bool compSnowForces(ElementData &Edata,  double dt, double cos_sl, double Zn[ N_OF_INCIDENCES ],
-		                    double Un[ N_OF_INCIDENCES ], double Se[ N_OF_INCIDENCES ][ N_OF_INCIDENCES ],
-		                    double Fc[ N_OF_INCIDENCES ], double Fi[ N_OF_INCIDENCES ],
-		                    double Fe[ N_OF_INCIDENCES ]);
 
 		void compSnowCreep(const CurrentMeteo& Mdata, SnowStation& Xdata);
 
@@ -98,9 +80,9 @@ class Snowpack {
 		                                   double Fe[ N_OF_INCIDENCES ]);
 
 		double getParameterizedAlbedo(const SnowStation& Xdata, const CurrentMeteo& Mdata) const;
-		double getModelAlbedo(const double& pAlbedo, const SnowStation& Xdata, CurrentMeteo& Mdata) const;
+		double getModelAlbedo(const SnowStation& Xdata, CurrentMeteo& Mdata) const;
 		
-		void compTemperatureProfile(SnowStation& Xdata, CurrentMeteo& Mdata, BoundCond& Bdata);
+		bool compTemperatureProfile(const CurrentMeteo& Mdata, SnowStation& Xdata, BoundCond& Bdata, const bool& ThrowAtNoConvergence);
 
 		void assignSomeFluxes(SnowStation& Xdata, const CurrentMeteo& Mdata, const double& mAlb,
 		                      SurfaceFluxes& Sdata);
@@ -118,6 +100,8 @@ class Snowpack {
 		std::string variant, viscosity_model, watertransportmodel_snow, watertransportmodel_soil;
 		std::string hn_density, hn_density_parameterization;
 		std::string sw_mode, snow_albedo, albedo_parameterization, albedo_average_schmucki, sw_absorption_scheme;
+		Meteo::ATM_STABILITY atm_stability_model;
+		bool allow_adaptive_timestepping;
 		double albedo_fixedValue, hn_density_fixedValue;
 		double meteo_step_length;
 		double thresh_change_bc, geo_heat, height_of_meteo_values, height_new_elem, sn_dt;
@@ -133,13 +117,16 @@ class Snowpack {
 		bool combine_elements, reduce_n_elements, change_bc, meas_tss;
 		bool vw_dendricity;
 		bool enhanced_wind_slab; ///< to use an even stronger wind slab densification than implemented by default
+		bool alpine3d; ///< triggers various tricks for Alpine3D (including reducing the number of warnings)
+		bool ageAlbedo; ///< use the age of snow in the albedo parametrizations? default: true
 
 		const static bool hydrometeor;
 		const static double snowfall_warning;
 		const static unsigned int new_snow_marker;
+		bool adjust_height_of_meteo_values;
 		bool advective_heat;
 		double heat_begin, heat_end;
-		double temp_index_degree_day;
+		double temp_index_degree_day, temp_index_swr_factor;
 		bool forestfloor_alb;
 }; //end class Snowpack
 

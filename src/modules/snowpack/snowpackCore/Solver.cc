@@ -1,7 +1,6 @@
 /* GENERAL INFO
 * AUTHOR: GUIDO SARTORIS ETH ZUERICH
 */
-
 /*
 * In this module are defined the function the user call
 * in order to solve a linear system of equations
@@ -18,6 +17,12 @@
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wcast-align"
+#endif
+
+#ifdef __GNUG__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
 #endif
 
 static bool gd_MemErr;
@@ -26,26 +31,40 @@ typedef struct  {
 	int *pC0, *pSize;
 } pBLOCK;
 
-#define  GD_MEM_ERR( POINTER, MSG0, MSG )                                                      \
-{                                                                                              \
-	if ( POINTER  ) {                                                                      \
-		gd_MemErr = false;                                                             \
-	} else {                                                                               \
-		gd_MemErr = true; fprintf(stderr, "\n+++++ %s: %s\n", MSG0,MSG);               \
-	}                                                                                      \
-}                                                                                              \
+int Permute(  int N ,
+     int * Perm ,
+     double * Vector
+);
+int InvertMatrix(  SD_BLOCK_MATRIX_DATA * pMat
+  );
+int InverseMatrixVector (  SD_BLOCK_MATRIX_DATA * pMat ,
+     double * X
+  );
+int BuildSparseConFormat(SD_CON_MATRIX_DATA *pMat, int *pRowStart0, int *pColumn0);
+static void  RunMmd(int neqns, int *xadj, int *adjncy, int *invp, int *perm, int delta, int *head, int *qsize, int *nsize, int *list, int *marker, int maxint, int *ncsub);
+int ComputeTmpConMatrix(SD_CON_MATRIX_DATA *pMat0, SD_TMP_CON_MATRIX_DATA *pMat);
+int  ComputeFillIn(SD_TMP_CON_MATRIX_DATA *pMat);
+int ComputeBlockMatrix( SD_TMP_CON_MATRIX_DATA *pTmpMat, SD_BLOCK_MATRIX_DATA *pMat);
 
 #define GD_MALLOC( POINTER, TYPE, N, MSG )                                                     \
 {                                                                                              \
 	POINTER = (TYPE *)malloc( sizeof(TYPE)*(N+1) );                                        \
-   	GD_MEM_ERR( POINTER, "NO SPACE TO ALLOCATE", MSG );                                    \
+	if ( POINTER  ) {                                                                      \
+		gd_MemErr = false;                                                             \
+	} else {                                                                               \
+		gd_MemErr = true; fprintf(stderr, "\n+++++ %s: %s\n",  "NO SPACE TO ALLOCATE", MSG);               \
+	}                                                                                      \
 }
 
 #define GD_REALLOC( POINTER, TYPE, N, MSG )                                                    \
 {                                                                                              \
 	if ( POINTER )  {                                                                      \
   		POINTER = (TYPE *)realloc( (char*)POINTER, sizeof(TYPE)*(N+1) );               \
-                     GD_MEM_ERR( POINTER, "NO SPACE TO REALLOCATE", MSG );                     \
+  		if ( POINTER  ) {                                                                      \
+			gd_MemErr = false;                                                             \
+		} else {                                                                               \
+			gd_MemErr = true; fprintf(stderr, "\n+++++ %s: %s\n", "NO SPACE TO REALLOCATE", MSG);               \
+		}                                                                                   \
 	} else {                                                                               \
   		GD_MALLOC(  POINTER, TYPE, N, MSG );                                           \
 	}                                                                                      \
@@ -58,7 +77,6 @@ typedef struct  {
    		POINTER = NULL;                                                                \
 	}                                                                                      \
 }                                                                                              \
-
 
 /*
  * This section contains macros which are high vectorizable. On some computers they can be
@@ -92,15 +110,22 @@ typedef struct  {
    RESULT = r_;                                                                                \
 }
 
+/**
+ * @struct SD_CHUNK_DATA
+* @brief The CHUNK_DATA is used to keep track of allocated memory chunks ( block of memory ). For
+* each allocated chunk we store the pointer returned from the memory allocator, so that a
+* later deallocation of the memory will be possible.
+*/
+
 #define SD_CHUNK_REALLOC_SIZE  250
 
 #define SD_ALLOC_CHUNK(CHUNK,SIZE)                                                             \
 {  if ( CHUNK.nChunks >= CHUNK.pChunksSize )                                                   \
    {  CHUNK.pChunksSize += SD_CHUNK_REALLOC_SIZE;                                              \
-      GD_REALLOC( CHUNK.pChunks, SD_COL_BLOCK_DATA*, CHUNK.pChunksSize, "Chunk pointer Data" );             \
+      GD_REALLOC( CHUNK.pChunks, char*, CHUNK.pChunksSize, "Chunk pointer Data" );             \
    }                                                                                           \
-   GD_MALLOC( CHUNK.pChunks[ CHUNK.nChunks ], SD_COL_BLOCK_DATA, SIZE, "Chunk Data" );                      \
-   CHUNK.TotChunkSize += (int)SIZE;                                                                 \
+   GD_MALLOC( CHUNK.pChunks[ CHUNK.nChunks ], char, SIZE, "Chunk Data" );                      \
+   CHUNK.TotChunkSize += SIZE;                                                                 \
    CHUNK.nChunks++;                                                                            \
 }
 
@@ -111,7 +136,53 @@ typedef struct  {
    CHUNK.TotChunkSize = 0;                                                                     \
 }
 
-//DATA FOR COLUMN AND COLUMN BLOCK ALLOCATION
+/*
+* BLOCK MATRIX DATA USED FOR NUMERICAL FACTORIZATION
+*/
+
+/**
+ * @struct SD_ROW_BLOCK_DATA
+* @brief The data structure to store the matrix for numerical factorization is a simple one. The
+* matrix structure is after the mmd sorting algorithm and the symbolic factorization mainly
+* composed of clustered non-zero matrix coefficients which form blocks. In this case we use a
+* data strucutre to represent these row and column blocks.
+* NOTE: The row blocks are simply what in the literature is specified as supernodes. We have
+* kept the data structure as simple as possible to minimize the numerical operations and so
+* the execution time.
+* NOTE: When we define a system we have the possibility to define a multiplicity factor. This
+* allows us to perform all initialization tasks ( input of incidences, symbolic
+* factorization, block format calculation ) with all indices modulo the multiplicity factor
+* to save time and memory. Thus the computed block format is always the same for any
+* specified multiplicity factor only the block bounds are different.
+* ATTENTION: The size of the permutation vector is only Dim/(Multiplicity Factor).
+*/
+
+#define  SD_MARKED    (1<<30) /* An flag bit used for permutation. Use:(1<<15) on PC */
+
+#define SD_P_FIRST_COL_BLOCK(pMAT,pROW) (pMAT->pFirstColBlock + pROW->iColBlock)
+#define SD_P_SIZE_COL_BLOCK(pMAT,pROW)  (pMAT->pSizeColBlock  + pROW->iColBlock)
+
+#define SD_SEARCH_BLOCK_ROW(ROW, pROW_LOW, pROW_HIGH, pROW)                                    \
+{  SD_ROW_BLOCK_DATA *low_, *high_, *mid_;                                                     \
+   low_ = pROW_LOW; high_ = pROW_HIGH;                                                         \
+   while( low_<=high_ )                                                                        \
+   {  mid_ = low_ + ( high_ - low_ ) / 2;                                                      \
+      if      ( ROW < mid_->Row0 ) high_ = mid_ - 1;                                           \
+      else if ( ROW > mid_->Row1 ) low_  = mid_ + 1;                                           \
+      else { pROW=mid_;  break;  }                                                             \
+   }                                                                                           \
+}
+
+/*
+* SPARSE MATRIX DATA USED INITIALLY TO READ THE CONNECTIVITY MATRIX
+*/
+
+#define SD_ROW(     NUM, pMAT)    ( (pMAT)->pRow[NUM]    )
+#define SD_COL(pCOL)  ( (pCOL)->Col )
+
+/*
+* DATA FOR COLUMN AND COLUMN BLOCK ALLOCATION
+*/
 #define SD_N_ALLOC_COL  500
 
 #define SD_ALLOC_COL(N_COL, pMAT)                                                              \
@@ -133,35 +204,27 @@ typedef struct  {
 * eccessive scattering of data in memory.
 */
 
-inline void SD_FREE_COL_BLOCK_0(SD_COL_BLOCK_DATA *pCOL_BLOCK, SD_TMP_CON_MATRIX_DATA *pMAT)
-{  
-	(pCOL_BLOCK)->Next = (pMAT)->FreeColBlock; 
-	(pMAT)->FreeColBlock = (pCOL_BLOCK);
-}
+#define SD_FREE_COL_BLOCK_0(pCOL_BLOCK, pMAT)                                                  \
+{  (pCOL_BLOCK)->Next = (pMAT)->FreeColBlock; (pMAT)->FreeColBlock = (pCOL_BLOCK);  }
 
-inline void SD_FREE_COL_BLOCK(SD_COL_BLOCK_DATA *pCOL_BLOCK, SD_TMP_CON_MATRIX_DATA *pMAT)
-{  
-	SD_FREE_COL_BLOCK_0(pCOL_BLOCK, pMAT); 
-	pMAT->nColBlock--;
-}
+#define SD_FREE_COL_BLOCK(pCOL_BLOCK, pMAT)                                                    \
+{  SD_FREE_COL_BLOCK_0(pCOL_BLOCK, pMAT); pMAT->nColBlock--;  }
 
-inline void SD_ALLOC_COL_BLOCK(const int& N_COL_BLOCK, SD_TMP_CON_MATRIX_DATA *pMAT)
-{  
-	SD_ALLOC_CHUNK((pMAT)->PoolColBlock, sizeof(SD_COL_BLOCK_DATA)*N_COL_BLOCK);
-	SD_COL_BLOCK_DATA *pColBlock_ = ( SD_COL_BLOCK_DATA * )(pMAT)->PoolColBlock.pChunks[ (pMAT)->PoolColBlock.nChunks-1 ];
-	for (int i_=N_COL_BLOCK; 0<i_--; pColBlock_++) 
-		SD_FREE_COL_BLOCK_0(pColBlock_, pMAT);
+#define SD_ALLOC_COL_BLOCK(N_COL_BLOCK, pMAT)                                                  \
+{  SD_COL_BLOCK_DATA *pColBlock_;                                                              \
+   SD_ALLOC_CHUNK((pMAT)->PoolColBlock, sizeof(SD_COL_BLOCK_DATA)*N_COL_BLOCK);                \
+   pColBlock_ = ( SD_COL_BLOCK_DATA * )                                                        \
+                (pMAT)->PoolColBlock.pChunks[ (pMAT)->PoolColBlock.nChunks-1 ];                \
+   for(int i_=N_COL_BLOCK; 0<i_--; pColBlock_++) SD_FREE_COL_BLOCK_0(pColBlock_, pMAT);        \
 }
 
 #define SD_N_ALLOC_COL_BLOCK  500
 
-//HACK if this is replecaed by a function, this leads to segfaults...
 #define SD_GET_COL_BLOCK(pCOL_BLOCK, pMAT)                                                     \
 {  if  ( !(pMAT)->FreeColBlock )  SD_ALLOC_COL_BLOCK(SD_N_ALLOC_COL_BLOCK, pMAT);              \
    pCOL_BLOCK = (pMAT)->FreeColBlock; (pMAT)->FreeColBlock = (pMAT)->FreeColBlock->Next;       \
    pMAT->nColBlock++;                                                                          \
 }
-
 
 /*
 * COLUMN DATA MANAGEMENT
@@ -193,24 +256,18 @@ inline void SD_ALLOC_COL_BLOCK(const int& N_COL_BLOCK, SD_TMP_CON_MATRIX_DATA *p
    *ppCOL     = pCOL;                                                                          \
 }
 
-#define MAX_MULT 100 /* a very big value */
-#define FOR_MULT(X) for(m=0; m<Mult; m++) {X;}
+#define ERROR_SOLVER(MSG)      { printf("++++Errror:%s:%d:%s\n", __FILE__, __LINE__, MSG); return(1); }
+#define USER_ERROR(MSG) { printf("++++Errror:gs_SolveMatrix:%s\n", MSG); return 1; }
+#define EXIT(MSG)  {  printf("++++Exit:%s:%d:%s\n", __FILE__, __LINE__, MSG);  exit(1);   }
 
 #define BLOCK_INIT(BLOCK,pCOL0,pSIZE) { BLOCK.pC0 = pCOL0; BLOCK.pSize = pSIZE; }
 #define BLOCK_NEXT(BLOCK)             ( BLOCK.pC0++,       BLOCK.pSize++ )
 #define BLOCK_C0(BLOCK)                 BLOCK.pC0[0]
 #define BLOCK_C1(BLOCK)                (BLOCK.pC0[0]+BLOCK.pSize[0])
+#define BLOCK_SIZE(BLOCK)               BLOCK.pSize[0]
 
 #define pC0_FIRST_COL(  pROW)  (pMatFirstColBlock + pROW->iColBlock)
 #define pSIZE_FIRST_COL(pROW)  (pMatSizeColBlock  + pROW->iColBlock)
-
-/*
-* This macro compute for a matrix stored packed row-wise in a one dimensional array the
-* position of a diagonal element in a given row.
-*/
-inline size_t DIAGONAL(const size_t& DIM, const size_t& K){
-	return ( (K)*(DIM) -( (K)*((K)-1) )/2 );
-}
 
 #define FIND_COL_BLOCK(pFIRST_BLK, COL, ppBLK, FOUND)                                          \
 {                                                                                              \
@@ -251,12 +308,14 @@ inline size_t DIAGONAL(const size_t& DIM, const size_t& K){
   }                                                                                            \
 }
 
+/*
+* This macro performs a binary search for the row: ROW. The block containing this row is
+* returned by pROW
+*/
+
 #define FIRST_BLOCK_ROW(pMAT) ( pMAT->pRowBlock )
 #define LAST_BLOCK_ROW(pMAT)  ( pMAT->pRowBlock + pMAT->nRowBlock - 1 )
 
-// This macro performs a binary search for the row: ROW. The block containing this row is returned by pROW
-//interestingly, if this is converted into a function, the compiled code crashes because pROW remains NULL. 
-//This means that something very fishy takes place and is most probably hidden by the macro having access to the full context of its "caller"
 #define SEARCH_ROW(ROW, pROW_LOW, pROW_HIGH, pROW)                                             \
 {  SD_ROW_BLOCK_DATA *low_, *high_, *mid_;                                                     \
    low_ = pROW_LOW; high_ = pROW_HIGH;                                                         \
@@ -266,55 +325,6 @@ inline size_t DIAGONAL(const size_t& DIM, const size_t& K){
       else if ( ROW > mid_->Row1 ) low_  = mid_ + 1;                                           \
       else { pROW=mid_;  break;  }                                                             \
    }                                                                                           \
-   }
-
-inline void SD_SEARCH_BLOCK_ROW(const int& ROW, SD_ROW_BLOCK_DATA *pROW_LOW, SD_ROW_BLOCK_DATA *pROW_HIGH, SD_ROW_BLOCK_DATA *pROW)
-{
-	(void)pROW; //otherwise, the compiler does not see that pROW is used...
-	SD_ROW_BLOCK_DATA *low_ = pROW_LOW; 
-	SD_ROW_BLOCK_DATA *high_ = pROW_HIGH;
-	while( low_<=high_ ) {
-		SD_ROW_BLOCK_DATA *mid_ = low_ + ( high_ - low_ ) / 2;
-		if ( ROW < mid_->Row0 )
-			high_ = mid_ - 1;
-		else if ( ROW > mid_->Row1 )
-			low_  = mid_ + 1;
-		else { 
-			pROW = mid_;
-			break;
-		}
-	}
-}
-
-/*
-* A linear search is performed in the row pROW to find the column COL. This macro use the
-* column value of the next column block to determine in which column block the column is to
-* be found. In this case the dimension of the search array is set to the number of column
-* block minus one. If the column block is not found, the block can only be the last defined
-* column block. NOTE: Here we are forced to perform a linear search because we have to
-* compute the total number of column coefficients defined prior the founded column block. A
-* binary search could be used if instead of the column block size we store the sum of defined
-* column coefficients. This is of course possible and only little change in the software are
-* necessary, however, in this case we can no more pack in one integer the data for a column
-* block definition.
-*/
-inline void SEARCH_COL(const int& COL, const int& ROW, SD_BLOCK_MATRIX_DATA *pMAT, SD_ROW_BLOCK_DATA *pROW, int &FOUND, int &OFFSET) {  
-	int *col_ = (pMAT->pFirstColBlock + pROW->iColBlock);
-	int *size_ = (pMAT->pSizeColBlock  + pROW->iColBlock);
-	const size_t delta_   = ROW - pROW->Row0;
-	OFFSET   = pROW->iFloat + static_cast<int>(DIAGONAL(pROW->nCol, delta_));
-	++col_;
-	for(int i_=pROW->nColBlock-1; (i_--)>0; OFFSET += size_[0], col_++, size_++) {  
-		if ( COL < col_[0] )
-			break;
-	}
-	--col_;
-	if ( COL >= col_[0]+size_[0] ) {
-		FOUND = 0;
-	} else {
-		FOUND = 1;
-		OFFSET += COL - col_[0] - static_cast<int>(delta_);
-	}
 }
 
 /*
@@ -338,16 +348,42 @@ inline void SEARCH_COL(const int& COL, const int& ROW, SD_BLOCK_MATRIX_DATA *pMA
       Col1_0_  = (pCol0_++)[0] + (pSize0_++)[0];                                               \
    }                                                                                           \
 }
-  
-#define SD_COL(pCOL)  ( (pCOL)->Col )
-#define SD_ROW(     NUM, pMAT)    ( (pMAT)->pRow[NUM]    )
-#define  SD_MARKED    (1<<30) /* An flag bit used for permutation. Use:(1<<15) on PC */
 
 /*
-* MATRIX DEFINITON AND ELEMENT INCIDENCES ASSEMBLING FUNCTIONS
+* This macro compute for a matrix stored packed row-wise in a one dimensional array the
+* position of a diagonal element in a given row.
 */
 
-int ComputePermutation( SD_CON_MATRIX_DATA *pMat );
+#define DIAGONAL(DIM,K) ( (K)*(DIM) -( (K)*((K)-1) )/2 )
+
+/*
+* A linear search is performed in the row pROW to find the column COL. This macro use the
+* column value of the next column block to determine in which column block the column is to
+* be found. In this case the dimension of the search array is set to the number of column
+* block minus one. If the column block is not found, the block can only be the last defined
+* column block. NOTE: Here we are forced to perform a linear search because we have to
+* compute the total number of column coefficients defined prior the founded column block. A
+* binary search could be used if instead of the column block size we store the sum of defined
+* column coefficients. This is of course possible and only little change in the software are
+* necessary, however, in this case we can no more pack in one integer the data for a column
+* block definition.
+*/
+
+#define SEARCH_COL(COL, ROW, pMAT, pROW, FOUND, OFFSET)                                        \
+{  int *col_, *size_;                                                   \
+   col_     = SD_P_FIRST_COL_BLOCK(pMAT,pROW);                                                 \
+   size_    = SD_P_SIZE_COL_BLOCK( pMAT,pROW);                                                 \
+   const int delta_   = ROW - pROW->Row0;                                                                \
+   OFFSET   = pROW->iFloat + DIAGONAL(pROW->nCol, delta_);                                     \
+   {  ++col_;                                                                                  \
+      for(int i_=pROW->nColBlock-1; (i_--)>0; OFFSET += size_[0], col_++, size_++)                 \
+      {  if ( COL < col_[0] )  break;  }                                                       \
+       --col_;                                                                                 \
+      if ( COL >= col_[0]+size_[0] ) {  FOUND = 0; }                                           \
+      else                           {  FOUND = 1;  OFFSET += COL - col_[0] - delta_;  }       \
+   }                                                                                           \
+}
+
 
 /**
 * @brief Allocate the matrix row data in order to store the connectivity matrix data.
@@ -355,103 +391,51 @@ int ComputePermutation( SD_CON_MATRIX_DATA *pMat );
  * @param pMat SD_CON_MATRIX_DATA
  * @return int
 */
-inline void AllocateConData( const size_t& Dim, SD_CON_MATRIX_DATA *pMat )
+inline int AllocateConData( size_t Dim, SD_CON_MATRIX_DATA *pMat )
 {
 	pMat->nRow = Dim;
 	GD_MALLOC( pMat->pRow, SD_ROW_DATA, pMat->nRow, "Row Allocation");
 	memset( pMat->pRow, 0, sizeof(SD_ROW_DATA)*pMat->nRow );
 	if ( gd_MemErr ) {
-		throw mio::IOException("Memory allocation/set error", AT);
+		ERROR_SOLVER("Memory Error");
 	}
-}
 
-/**
- * @brief This function permute a vector, for a given permutation vector and compute the inverse
- * permutation vector. Of course this is a trivial task if we have a second vector to store
- * the new permuted vector, but we do not want to allocated extra memory so that we use a
- * somewhat expensive algorithm which do not yet require a second storage vector. Here we
- * assume that the dimension of permutation array is less than 2**31, because we use the 31th
- * bit of each index of the permutation vector to store a flag, which tells us that we have
- * already permuted that element. The algorithm is very simple, we take one element, look if
- * we have already permuted that element, and if not we permute all elements connected to this
- * element by a permutation cycle i.e. we shift right by one all elements of that cycle.
- * ATTENTION: This function not only permute the given vector, but also compute the inverse
- * permutation vector which is stored at the place of the permutation vector.
- * @param N int
- * @param Perm int
- * @param Vector double
- * @return int
- */
-inline int Permute(const int& N, int * Perm, double * Vector)
-{
-	for (int i = 0; i < N;  Perm[i++] &= (~SD_MARKED) ) {
-		if ( Perm[i] & SD_MARKED ) {
-			continue;
-		}
-		double ValueTo = Vector[i];
-		int From = i;
-		int To = Perm[i];
-		while (1) {  // follows the cycle, until we find an already permuted element
-			const double Value      = Vector[To];
-			Vector[To] = ValueTo;
-			const int ToNext     = Perm[To];
-			Perm  [To] = From | SD_MARKED;
-			if ( ToNext & SD_MARKED ) {
-				break;
-			}
-			ValueTo    = Value;
-			From       = To;
-			To         = ToNext;
-		}
-	}
 	return 0;
 
-}
+}  // AllocateConData
 
-
-/**
- * @brief The same as before but with a multyplicity factor. We define a second function to be little
- * faster when Mult == 1. NOTE: We are limited to a maximal multiplicity factor.
- * @param N int
- * @param Mult int
- * @param Perm int
- * @param Vector double
- * @return int
- */
-inline int PermuteWithMult(const int& N, const int& Mult, int *Perm, double *Vector)
+int ReleaseConMatrix( SD_CON_MATRIX_DATA *pMat )
 {
-	int   m;
-	double    ValueTo[MAX_MULT], Value[MAX_MULT];
+	GD_FREE(pMat->pPerm);
+	GD_FREE(pMat->pSupernode);
+	GD_FREE(pMat->pPermInv);
+	GD_FREE(pMat->pRow);
+	SD_DESTROY_CHUNK(pMat->PoolCol);
 
-	if ( Mult > MAX_MULT ) {
-		std::cout <<  "+++++ Multiplicy factor " << Mult << " too large\n";
-		return 1;
-	}
-
-	for (int i = 0; i < N;  Perm[i++] &= (~SD_MARKED) ) {
-		if ( Perm[i] & SD_MARKED )  {
-			continue;
-		}
-		FOR_MULT( ValueTo[m] = Vector[Mult*i+m] );
-		int From    = i;
-		int To      = Perm[i];
-
-		while (1) { // follows the cycle, until we find an already permuted element
-			FOR_MULT( Value[m] = Vector[Mult*To+m] ) ;
-			FOR_MULT( Vector[Mult*To+m] = ValueTo[m] );
-			const int ToNext = Perm[To];
-			Perm[To] = From | SD_MARKED;
-			if ( ToNext & SD_MARKED ) {
-				break;
-			}
-			FOR_MULT( ValueTo[m] = Value[m] );
-			From = To;
-			To = ToNext;
-		}
-	}
 	return 0;
 
-}
+}  // ReleaseConMatrix
+
+/*
+ * INTERFACE FUNCITONS TO ACCESS THE SOLVER
+ */
+int ds_Initialize(const size_t& MatDim, SD_MATRIX_DATA **ppMat)
+{
+	SD_MATRIX_DATA  *pMat = NULL;
+
+	GD_MALLOC( pMat, SD_MATRIX_DATA, 1, "Matrix Data");
+	memset( pMat,0,sizeof(SD_MATRIX_DATA) );
+	pMat->nEq = MatDim;
+	if ( AllocateConData( MatDim, &pMat->Mat.Con ) )
+		 return 1;
+
+	pMat->State = ConMatrix;
+
+	*ppMat = pMat;
+
+	return 0;
+
+}  /* ds_Initialize */
 
 /*
 * This function compute the triangular factorization for a block of rows of dimension N_PIVOT
@@ -475,9 +459,10 @@ inline int PermuteWithMult(const int& N, const int& Mult, int *Perm, double *Vec
 * unused. ATTENTION: This function change the value of N[0] which is first set to N_COL and then
 * is changed continously.
 */
-inline void FACT_SYM_MAT_BLOCK (const int& N_PIVOT, const int& TOT_ROW, const int& N_ROW, const int& N_COL, double *MAT0, const int& DIM0, double *MAT1, const int& DIM1, const int& N_BLOCK, int *N, int *JUMP)
+inline void FACT_SYM_MAT_BLOCK (int N_PIVOT, int TOT_ROW, int N_ROW, int N_COL, double *MAT0, int DIM0,
+                         double *MAT1, int DIM1, int N_BLOCK, int *N, int *JUMP)
 {
-	int n_k, k__;
+	int n_k, i_, k__;
 	double *Mat_k0, *Mat_k, *Mat_i;
 	for ( Mat_k0 = MAT0, k__ = 0, n_k = N_PIVOT; n_k > 0; n_k--, k__++ ) {
 		const double Pivot = 1. / (*Mat_k0);
@@ -485,7 +470,7 @@ inline void FACT_SYM_MAT_BLOCK (const int& N_PIVOT, const int& TOT_ROW, const in
 		Mat_i = MAT1;
 		int dim_i = DIM1;
 		N[0]  = N_COL;
-		for ( int i_ = N_ROW; i_ > 0; Mat_k++, i_-- ) {
+		for ( i_ = N_ROW; i_ > 0; Mat_k++, i_-- ) {
 			VD_AXPY_JUMP(N_BLOCK, N, JUMP, -(*Mat_k)*Pivot, Mat_k, Mat_i );
 			N[0]-- ;
 			Mat_i += (dim_i)--;
@@ -493,6 +478,231 @@ inline void FACT_SYM_MAT_BLOCK (const int& N_PIVOT, const int& TOT_ROW, const in
 		Mat_k0  += DIM0 - k__;
 	}
 }
+
+/**
+* @brief This function compute the permutation array and thus run the mmd algorithm.
+ * @param pMat SD_CON_MATRIX_DATA
+ * @return int
+*/
+inline int ComputePermutation( SD_CON_MATRIX_DATA *pMat )
+{
+	int *head;     /* array 0..maxN */
+	int *list;     /* array 0..maxN */
+	int *marker;   /* array 0..maxN */
+	int *xadj;     /* array 0..maxN */
+	int *adjncy;   /* array 0..maxCol */
+	static const int maxint = 32000;   /* use a better value */
+	int ncsub;
+	int delta;
+	int nEq;
+
+	// Allocate memory requested by the mmd algorithm
+	nEq = pMat->nRow;
+
+	GD_MALLOC( pMat->pSupernode, int, nEq , "supernode size vector");
+	GD_MALLOC( pMat->pPerm,      int, nEq , "permutation vector");
+	GD_MALLOC( pMat->pPermInv,   int, nEq , "inverse permutation vector");
+	GD_MALLOC( head,             int, nEq*4 + 1 + pMat->nCol, "mmd tmp memory");
+	list   = head + 1*nEq;
+	marker = head + 2*nEq;
+	xadj   = head + 3*nEq;
+	adjncy = head + 4*nEq + 1;
+
+	/*
+	* Run the mmd algorithm. The mmd implementation is a translation of a FORTRAN version so
+	* that we pass all array pointers decremented by one.
+	*/
+	delta = 0;   // Is this a good value?
+
+	BuildSparseConFormat(pMat, xadj, adjncy);
+
+	RunMmd(pMat->nRow, xadj-1, adjncy-1, pMat->pPerm-1, pMat->pPermInv-1, delta,
+		head-1, pMat->pSupernode-1, &pMat->nSupernode, list-1, marker-1, maxint, &ncsub );
+
+	// Release temporary data used only by mmd
+	GD_FREE(head);
+
+
+	return 0;
+
+}  // ComputePermutation
+
+inline int SymbolicFact(SD_MATRIX_DATA *pMat)
+{
+	SD_TMP_CON_MATRIX_DATA  TmpConMat;
+	SD_BLOCK_MATRIX_DATA    BlockMat;
+
+	ComputePermutation( &pMat->Mat.Con);
+	ComputeTmpConMatrix(&pMat->Mat.Con, &TmpConMat);
+	ComputeFillIn(&TmpConMat);
+	ComputeBlockMatrix(&TmpConMat, &BlockMat);
+	pMat->State     = BlockMatrix;
+	pMat->Mat.Block = BlockMat;
+
+	return 0;
+
+}  // SymbolicFact
+
+int ds_Solve( const SD_MATRIX_WHAT& Code, SD_MATRIX_DATA *pMat, double *X)
+{
+	// SymbolicFactorize
+	if ( Code & SymbolicFactorize ){
+		if ( Code & NumericFactorize ){
+			USER_ERROR("You cannot invert the matrix symbolically and numerically contemporary");
+		}
+
+		if ( pMat->State != ConMatrix ){
+			USER_ERROR("Bad Matrix Format for Symbolic Factorization");
+		}
+
+		SymbolicFact(pMat);
+	}
+
+	// NumericFactoriz
+	if ( Code & NumericFactorize ){
+		if (  pMat->State != BlockMatrix ){
+			USER_ERROR("Bad Matrix Format for Numerical Factorization");
+		}
+		InvertMatrix( &pMat->Mat.Block );
+	}
+
+	// BackForwardSubst
+	if ( Code & BackForwardSubst ){
+		int DimTot, i;
+		if (  pMat->State != BlockMatrix ){
+			USER_ERROR("Bad Matrix Format for Back- For-ward Substitution");
+		}
+		DimTot = pMat->Mat.Block.Dim + pMat->nDeletedEq;
+
+		Permute( DimTot, pMat->Mat.Block.pPerm, X );
+		InverseMatrixVector( &pMat->Mat.Block, X );
+		for(i=pMat->Mat.Block.Dim; i<DimTot; i++){
+			X[i] = 0.;
+		}
+		Permute( DimTot, pMat->Mat.Block.pPerm, X );
+	}
+
+	// ResetMatrixData
+   	if ( Code & ResetMatrixData ){
+		if ( Code != ResetMatrixData ){
+			USER_ERROR("You cannot reset the matrix together with other operations");
+		}
+
+		if ( pMat->State != BlockMatrix ){
+			USER_ERROR("Bad Matrix Format to reset matrix");
+		}
+
+		memset( pMat->Mat.Block.pUpper, 0, pMat->Mat.Block.SizeUpper * sizeof(double) );
+	}
+
+   	// ReleaseMatrixData
+   	if ( Code & ReleaseMatrixData ){
+		if ( pMat->State == ConMatrix ){
+			ReleaseConMatrix(&pMat->Mat.Con);
+		} else if ( pMat->State == BlockMatrix  ){
+			ReleaseBlockMatrix(&pMat->Mat.Block);
+		} else ERROR_SOLVER("Unknown matrix state");{
+			GD_FREE(pMat);
+		}
+	}
+
+	return 0;
+
+}  /* ds_Solve */
+
+/**
+ * @brief This function assemble the element matrix for one element and must be called for each
+ * (finite) element after the element connectivity have been assembled and the matrix symbolic
+ * factorized. To perform this task we also newly require the element incidences. The
+ * variable: Dim specifies the dimension of the matrix: Mat which is not required to be equal
+ * to the numer of element incidences: nEq.
+ * ATTENTION: This function do not generate a run time error if the specified incidences have
+ * not been previously defined.
+ * NOTE: If the matrix has been specified as symmetric we always use only the upper part of
+ * the element matrix.
+ * @param [in] pMat0 SD_MATRIX_DATA
+ * @param [in] nEq int
+ * @param [in] Eq int
+ * @param [in] Dim int
+ * @param [in] ElMat double
+ * @return int
+ */
+int ds_AssembleMatrix(SD_MATRIX_DATA *pMat0, const int& nEq, int Eq[], const int& Dim, const double *ElMat)
+{
+	SD_BLOCK_MATRIX_DATA *pMat=NULL;
+	SD_ROW_BLOCK_DATA *pRow=NULL;
+	int Row, Col, PermRow, PermCol, Found, Index;
+
+	pMat = &pMat0->Mat.Block;
+
+	for (Row = 0; Row < nEq; Row++) {
+		PermRow = pMat->pPerm[ Eq[Row] ];
+		SEARCH_ROW(PermRow, FIRST_BLOCK_ROW(pMat), LAST_BLOCK_ROW(pMat), pRow);
+		for (Col = 0; Col < nEq; Col++) {
+			PermCol = pMat->pPerm[ Eq[Col] ];
+			if ( PermCol < PermRow ) {
+				continue;
+			}
+			SEARCH_COL(PermCol, PermRow, pMat, pRow, Found, Index);
+			if ( Found ) {
+				if ( Row<Col ) {
+					pMat->pUpper[Index] += ElMat[ Row*Dim + Col ];
+				} else {
+					pMat->pUpper[Index] += ElMat[ Col*Dim + Row ];
+				}
+			}
+		}
+	}
+	return 0;
+
+}  /* ds_AssembleMatrix */
+
+
+/**
+ * @brief This function permute a vector, for a given permutation vector and compute the inverse
+ * permutation vector. Of course this is a trivial task if we have a second vector to store
+ * the new permuted vector, but we do not want to allocated extra memory so that we use a
+ * somewhat expensive algorithm which do not yet require a second storage vector. Here we
+ * assume that the dimension of permutation array is less than 2**31, because we use the 31th
+ * bit of each index of the permutation vector to store a flag, which tells us that we have
+ * already permuted that element. The algorithm is very simple, we take one element, look if
+ * we have already permuted that element, and if not we permute all elements connected to this
+ * element by a permutation cycle i.e. we shift right by one all elements of that cycle.
+ * ATTENTION: This function not only permute the given vector, but also compute the inverse
+ * permutation vector which is stored at the place of the permutation vector.
+ * @param N int
+ * @param Perm int
+ * @param Vector double
+ * @return int
+ */
+int Permute(int N, int * Perm, double * Vector)
+{
+	int   i, To, From, ToNext;
+	double ValueTo, Value;
+
+	for (i = 0; i < N;  Perm[i++] &= (~SD_MARKED) ) {
+		if ( Perm[i] & SD_MARKED ) {
+			continue;
+		}
+		ValueTo = Vector[i];
+		From = i;
+		To = Perm[i];
+		while (1) {  // follows the cycle, until we find an already permuted element
+			Value      = Vector[To];
+			Vector[To] = ValueTo;
+			ToNext     = Perm[To];
+			Perm  [To] = From | SD_MARKED;
+			if ( ToNext & SD_MARKED ) {
+				break;
+			}
+			ValueTo    = Value;
+			From       = To;
+			To         = ToNext;
+		}
+	}
+	return 0;
+
+}  // Permute
 
 /**
  * @brief This function is the kernel of the solution algorithm, and compute the LU triangular
@@ -503,15 +713,17 @@ inline void FACT_SYM_MAT_BLOCK (const int& N_PIVOT, const int& TOT_ROW, const in
  * @param pMat SD_BLOCK_MATRIX_DATA
  * @return int
 */
-inline int  InvertMatrix( SD_BLOCK_MATRIX_DATA *pMat )
+int  InvertMatrix( SD_BLOCK_MATRIX_DATA *pMat )
 {
-	SD_ROW_BLOCK_DATA *pPivotRow;
-	int nPivotRow;
-	int *pMatFirstColBlock = pMat->pFirstColBlock; //called by a macro
-	int *pMatSizeColBlock = pMat->pSizeColBlock; //called by a macro
-	SD_ROW_BLOCK_DATA *pLastSearchRow = pMat->pRowBlock + pMat->nRowBlock - 1;
-	int *pBlockJump = pMat->pBlockJump;
-	double *Upper = pMat->pUpper;
+	SD_ROW_BLOCK_DATA *pPivotRow, *pSearchRow, *pLastSearchRow;
+	int nPivotRow,*pBlockJump, *pMatFirstColBlock, *pMatSizeColBlock;
+	double *Upper;
+
+	pMatFirstColBlock = pMat->pFirstColBlock;
+	pMatSizeColBlock = pMat->pSizeColBlock  ;
+	pLastSearchRow = pMat->pRowBlock + pMat->nRowBlock - 1;
+	pBlockJump = pMat->pBlockJump;
+	Upper = pMat->pUpper;
 
 	/*
 	* This is the pivot block loop. For each row block defined in the matrix which are
@@ -522,18 +734,19 @@ inline int  InvertMatrix( SD_BLOCK_MATRIX_DATA *pMat )
 	* factorize the column-row block pair.
 	*/
 	for ( pPivotRow = pMat->pRowBlock, nPivotRow = pMat->nRowBlock; (nPivotRow--)>0; pPivotRow++) {
-		int DimCol0, DimRow;
+		int iColBlock, nColBlock, nCol, Row_i0, Row_i1, RowDelta, DimCol, DimCol0, TotRow, DimPivot, DimRow;
+		double *PivotUpper, *RowUpper;
 		pBLOCK pColBlock;
 
 		// Initilize some data for this new pivot block
-		SD_ROW_BLOCK_DATA *pSearchRow = pPivotRow;
-		const int nColBlock = pPivotRow->nColBlock;
-		const int nCol = (int)pPivotRow->nCol;
-		double *PivotUpper = Upper + pPivotRow->iFloat;
+		pSearchRow  = pPivotRow;
+		nColBlock   = pPivotRow->nColBlock;
+		nCol        = pPivotRow->nCol;
+		PivotUpper  = Upper + pPivotRow->iFloat;
 		BLOCK_INIT(pColBlock, pC0_FIRST_COL(pPivotRow), pSIZE_FIRST_COL(pPivotRow) );
 
 		// Factorize the Pivot row block, this is a dense matrix operation
-		const int DimPivot = pPivotRow->Row1 - pPivotRow->Row0 + 1;
+		DimPivot = pPivotRow->Row1 - pPivotRow->Row0 + 1;
 		FACT_SYM_MAT(PivotUpper, DimPivot, nCol);
 
 		/*
@@ -546,11 +759,11 @@ inline int  InvertMatrix( SD_BLOCK_MATRIX_DATA *pMat )
 		* For each column block is possible that we have to process more than one row blocks so
 		* that this result in a double nested for loop.
 		*/
-		for ( int iColBlock = nColBlock, TotRow    = DimPivot, Row_i0 = BLOCK_C0(pColBlock) + TotRow,
+		for ( iColBlock = nColBlock, TotRow    = DimPivot, Row_i0 = BLOCK_C0(pColBlock) + TotRow,
 			Row_i1 = BLOCK_C1(pColBlock); iColBlock>0; BLOCK_NEXT(pColBlock),
 			Row_i0 = BLOCK_C0(pColBlock), Row_i1 = BLOCK_C1(pColBlock), iColBlock-- ) {
 
-			for ( ; Row_i0<Row_i1; TotRow += DimRow, Row_i0 += DimRow, pColBlock.pSize[0] = DimCol0 ) {
+			for ( ; Row_i0<Row_i1; TotRow += DimRow, Row_i0 += DimRow, BLOCK_SIZE(pColBlock) = DimCol0 ) {
 				if ( Row_i0 > pSearchRow->Row1 ) {
 					pSearchRow++;
 					if ( Row_i0 > pSearchRow->Row1 ) {
@@ -559,8 +772,8 @@ inline int  InvertMatrix( SD_BLOCK_MATRIX_DATA *pMat )
 					}
 				}
 
-				const int RowDelta = Row_i0 - pSearchRow->Row0;
-				const int DimCol   = Row_i1 - Row_i0;
+				RowDelta = Row_i0 - pSearchRow->Row0;
+				DimCol   = Row_i1 - Row_i0;
 				DimRow   = pSearchRow->Row1 - Row_i0 + 1;
 				if ( DimCol < DimRow ) {
 					DimRow = DimCol;
@@ -569,11 +782,11 @@ inline int  InvertMatrix( SD_BLOCK_MATRIX_DATA *pMat )
 				BLOCK_JUMP( iColBlock, pColBlock.pC0, pColBlock.pSize, pC0_FIRST_COL(pSearchRow),
 					    pSIZE_FIRST_COL(pSearchRow), pBlockJump);
 				pBlockJump[0] = 0 ;
-				DimCol0       = pColBlock.pSize[0]; // save this value because it will change
+				DimCol0       = BLOCK_SIZE(pColBlock); // save this value because it will change
 
-				double *RowUpper = Upper + pSearchRow->iFloat + DIAGONAL(pSearchRow->nCol, RowDelta);
+				RowUpper = Upper + pSearchRow->iFloat + DIAGONAL(pSearchRow->nCol, RowDelta);
 				FACT_SYM_MAT_BLOCK(DimPivot, TotRow, DimRow, DimCol, PivotUpper, nCol,
-							RowUpper,   (int)pSearchRow->nCol-RowDelta,
+							RowUpper,   pSearchRow->nCol-RowDelta,
       							iColBlock,  pColBlock.pSize, pBlockJump);
 			}
 		}
@@ -581,127 +794,6 @@ inline int  InvertMatrix( SD_BLOCK_MATRIX_DATA *pMat )
 	return 0;
 
 } // InvertMatrix
-
-inline int ds_MatrixConnectivity( SD_MATRIX_DATA *pMat0, int *pMatDim, int **ppxConCon, int *pSize)
-{
-	SD_CON_MATRIX_DATA   *pMat = &pMat0->Mat.Con;
-	int *pRowStart, *pColumn;
-	SD_ROW_DATA *pRow;
-
-	*pMatDim  = (int)pMat->nRow;
-	*pSize = (int)pMat->nCol/2 + *pMatDim + 1;
-	GD_MALLOC( *ppxConCon,  int, *pSize , "connectivity vector");
-	if ( gd_MemErr ){
-		return 1;
-	}
-	size_t Row;
-	for (Row = 0, pRow = pMat->pRow, pRowStart = *ppxConCon, pColumn = *ppxConCon + *pMatDim + 1,
-		*pRowStart = *pMatDim + 1; Row<pMat->nRow; Row++, pRow++, pRowStart++){
-		size_t nCol = 0;
-		SD_COL_DATA *pCol = pRow->Col;
-		while( pCol ){
-			const size_t Col =  SD_COL(pCol);
-			if ( Col > Row ){
-				*pColumn++ = (int)Col;  
-				nCol++;
-			}
-			pCol = pCol->Next;
-		}
-		pRowStart[1] = pRowStart[0] + (int)nCol;
-	}
-
-	return 0;
-
-}  /* ds_MatrixConnectivity */
-
-
-/**
- * @brief This function assemble in a given row the value of the column coefficients. ATTENTION: Is
- * supposed that the array Col use the FORTRAN notation.
- * @param pMat0 SD_MATRIX_DATA
- * @param Row int
- * @param nCol int
- * @param pCol int
- * @param Diagonal double
- * @param Coeff double
- * @return int
-*/
-inline int ds_AssembleRowCoeff(SD_MATRIX_DATA * pMat0, const int& Row, const int& nCol, const int * pCol, const double Diagonal, const double * Coeff)
-{
-	SD_BLOCK_MATRIX_DATA *pMat = &pMat0->Mat.Block;
-	SD_ROW_BLOCK_DATA *pRow=NULL;
-	int Found, Index;
-	const int PermRow =  pMat->pPerm[ Row ];
-	
-	SEARCH_ROW(PermRow, FIRST_BLOCK_ROW(pMat), LAST_BLOCK_ROW(pMat), pRow);
-	SEARCH_COL(PermRow, PermRow, pMat, pRow, Found, Index);
-	if ( Found ) {
-		pMat->pUpper[Index] += Diagonal;
-	}
-	for (int Col = 0; Col < nCol; Col++) {
-		const int PermCol =  pMat->pPerm[ pCol[Col]-1 ];
-		if ( PermRow < PermCol ) {
-			SEARCH_COL(PermCol, PermRow, pMat, pRow, Found, Index);
-			if ( Found ) {
-				pMat->pUpper[Index] += Coeff[Col];
-			}
-		} else {
-			SD_ROW_BLOCK_DATA  *pRow1=NULL;
-			SEARCH_ROW(PermCol, FIRST_BLOCK_ROW(pMat), LAST_BLOCK_ROW(pMat), pRow1);
-			SEARCH_COL(PermRow, PermCol, pMat, pRow1, Found, Index);
-			if ( Found ) {
-				pMat->pUpper[Index] += Coeff[Col];
-			}
-		}
-	}
-	return 0;
-
-}  // ds_AssembleRowCoeff
-
-/**
- * @brief Multiply the matrix with a vector. This function can be called at any time, but it makes
- * only sense before the matrix has been LU factorized.
- * @param pMat SD_BLOCK_MATRIX_DATA
- * @param X double
- * @param Y double
- * @return int
- */
-inline int  MatrixVector( SD_BLOCK_MATRIX_DATA *pMat, double *X, double *Y )
-{
-	SD_ROW_BLOCK_DATA *pPivotRow;
-	int                nPivotRow, nRow;
-
-	int *pMatFirstColBlock = pMat->pFirstColBlock;
-	int *pMatSizeColBlock  = pMat->pSizeColBlock;
-	double *Upper             = pMat->pUpper;
-	memset(Y, 0, sizeof(double) * (pMat->Dim) ) ;
-
-	for( nRow = 0, pPivotRow = pMat->pRowBlock, nPivotRow = pMat->nRowBlock; (nPivotRow--)>0; pPivotRow++) {
-		double VectorDot;
-		pBLOCK pColBlock;
-
-		const int DimPivot = pPivotRow->Row1 - pPivotRow->Row0 + 1;
-		const int nCol = (int)pPivotRow->nCol;
-		double *PivotUpper = Upper + pPivotRow->iFloat;
-		BLOCK_INIT(pColBlock, pC0_FIRST_COL(pPivotRow), pSIZE_FIRST_COL(pPivotRow) );
-
-		int dim;
-		for (dim = 0; dim < DimPivot; dim++, nRow++) {
-			VD_DOT_POS( pPivotRow->nColBlock, pColBlock.pSize, pColBlock.pC0, PivotUpper, X, VectorDot );
-			Y[nRow] += VectorDot;
-			pColBlock.pSize[0]--;
-			pColBlock.pC0[0]++;
-			PivotUpper++;
-			VD_AXPY_POS(pPivotRow->nColBlock, pColBlock.pSize, pColBlock.pC0, X[nRow], PivotUpper, Y );
-			PivotUpper +=  nCol - dim -1;
-		}
-		pColBlock.pSize[0] += dim;
-		pColBlock.pC0[0]   -= dim;
-	}
-
-	return 0;
-
-} // MatrixVector
 
 
 /**
@@ -712,60 +804,74 @@ inline int  MatrixVector( SD_BLOCK_MATRIX_DATA *pMat, double *X, double *Y )
  * @param X double
  * @return int
  */
-inline int  InverseMatrixVector( SD_BLOCK_MATRIX_DATA *pMat, double *X )
+int  InverseMatrixVector( SD_BLOCK_MATRIX_DATA *pMat, double *X )
 {
 	SD_ROW_BLOCK_DATA *pPivotRow;
-	int nPivotRow, nRow;
+	double *Upper;
+	int nPivotRow, *pMatFirstColBlock, *pMatSizeColBlock, nRow;
 
-	int *pMatFirstColBlock = pMat->pFirstColBlock;
-	int *pMatSizeColBlock  = pMat->pSizeColBlock;
-	double *Upper             = pMat->pUpper;
+	pMatFirstColBlock = pMat->pFirstColBlock;
+	pMatSizeColBlock  = pMat->pSizeColBlock;
+	Upper             = pMat->pUpper;
 
 	// Forward substitution, solve the lower triangular system, where in the diagonal we have all ones.
-	for( nRow = 0, pPivotRow = pMat->pRowBlock, nPivotRow = pMat->nRowBlock; (nPivotRow--)>0; pPivotRow++) {
+	for (nRow = 0, pPivotRow = pMat->pRowBlock, nPivotRow = pMat->nRowBlock; (nPivotRow--)>0; pPivotRow++) {
+		int         DimPivot, nCol, dim;
+		double      *PivotUpper, Alpha;
 		pBLOCK      pColBlock;
-		const int DimPivot = pPivotRow->Row1 - pPivotRow->Row0 + 1;
-		const int nCol = (int)pPivotRow->nCol;
-		double *PivotUpper  = Upper + pPivotRow->iFloat;
+
+		DimPivot    = pPivotRow->Row1 - pPivotRow->Row0 + 1;
+		nCol        = pPivotRow->nCol;
+		PivotUpper  = Upper + pPivotRow->iFloat;
 		BLOCK_INIT(pColBlock, pC0_FIRST_COL(pPivotRow), pSIZE_FIRST_COL(pPivotRow) );
 
-		int dim;
 		for (dim = 0; dim < DimPivot; dim++) {
-			const double Alpha = -X[nRow++] / (*PivotUpper++);
+			Alpha = -X[nRow++] / (*PivotUpper++);
 			pColBlock.pSize[0]--;
 			pColBlock.pC0[0]++;
+
+			//printf("Alpha %f Mat0 %f Vec0 %f\n", Alpha, PivotUpper[0], X[pColBlock.pC0[0]]);
 			VD_AXPY_POS(pPivotRow->nColBlock, pColBlock.pSize, pColBlock.pC0, Alpha, PivotUpper, X );
 			PivotUpper +=  nCol - dim -1;
+
+			// { int i; for(i=0; i<pMat->Dim; i++) printf("%f\n", X[i]); printf("\n");  }
 		}
 		pColBlock.pSize[0] += dim;
 		pColBlock.pC0[0]   -= dim;
 	}
 
 	// Backward substitution, solve the upper triangular system
-	for (nRow = (int)pMat->Dim - 1, nPivotRow = pMat->nRowBlock,
+	for (nRow = pMat->Dim - 1, nPivotRow = pMat->nRowBlock,
 		pPivotRow = pMat->pRowBlock + nPivotRow - 1; (nPivotRow--)>0; pPivotRow--) {
+		int         DimPivot, nCol, dim;
+		double      *PivotUpper, VectorDot;
 		pBLOCK      pColBlock;
 
-		const int DimPivot = pPivotRow->Row1 - pPivotRow->Row0 + 1;
-		const int nCol = (int)pPivotRow->nCol;
-		double *PivotUpper  = Upper + pPivotRow->iFloat + DIAGONAL(nCol,DimPivot-1) + 1;
+		DimPivot    = pPivotRow->Row1 - pPivotRow->Row0 + 1;
+		nCol        = pPivotRow->nCol;
+		PivotUpper  = Upper + pPivotRow->iFloat + DIAGONAL(nCol,DimPivot-1) + 1;
 		BLOCK_INIT(pColBlock, pC0_FIRST_COL(pPivotRow), pSIZE_FIRST_COL(pPivotRow) );
 
 		pColBlock.pC0[0]   += DimPivot;
 		pColBlock.pSize[0] -= DimPivot;
-		int dim;
 		for(dim = DimPivot-1; dim >= 0; nRow--, dim--) {
-			double VectorDot;
 			VD_DOT_POS(pPivotRow->nColBlock, pColBlock.pSize, pColBlock.pC0, PivotUpper, X, VectorDot );
+
+			// printf("Dot %f Mat0 %f Vec0 %f\n", VectorDot, PivotUpper[0], X[pColBlock.pC0[0]]);
+
 			pColBlock.pC0[0]--;
 			pColBlock.pSize[0]++;
 			X[nRow] -= VectorDot;
 			PivotUpper--;
 			X[nRow] /= PivotUpper[0];
 			PivotUpper -=  nCol - dim ;
+
+			//   { int i; for(i=0; i<pMat->Dim; i++) printf("%f\n", X[i]); printf("\n");  }
 		}
 	}
+
 	return 0;
+
 } // InverseMatrixVector
 
 /*
@@ -788,8 +894,8 @@ inline int  InverseMatrixVector( SD_BLOCK_MATRIX_DATA *pMat, double *X )
  * @param list,marker vector for degree update.
  * @param tag -- int tag value.
 */
-inline void MmdUpdate( const int& ehead,  const int& neqns,  const int *xadj,  const int *adjncy,  const int& delta,  int *mdeg,
-  			int *head, int *forward,  int *backward, int *qsize, int *list,  int *marker,  const int& maxint,  int *tag)
+static void MmdUpdate( int ehead,  int neqns,  int *xadj,  int *adjncy,  int delta,  int *mdeg,
+  			int *head, int *forward,  int *backward, int *qsize, int *list,  int *marker,  int maxint,  int *tag)
 {
       int  deg, deg0, element, enode, fnode, i, iq2, istop,
            istart, j, jstop, jstart, link, mdeg0, mtag, nabor,
@@ -1028,8 +1134,8 @@ n2300:
  * @param marker -- marker vector.
  * @param list -- temporary linked list of eliminated nabors.
 */
-inline void MmdElimin(const int& mdeg_node, const int *xadj, int *adjncy, int *head, int *forward, int *backward,
-				  int *qsize, int *list, int *marker, const int& maxint, const int& tag)
+static void MmdElimin(int mdeg_node, int *xadj, int *adjncy, int *head, int *forward, int *backward,
+				  int *qsize, int *list, int *marker, int maxint, int tag)
 {
 	int   element, i,   istop, istart, j,
 		jstop, jstart, link,
@@ -1168,6 +1274,8 @@ n1100:
 			}
 		}
 	}
+	return;
+
 } // MmdElimin
 
 /**
@@ -1183,7 +1291,7 @@ n1100:
  * @param list -- linked list.
  * @param marker -- marker vector.
 */
-inline void  MmdInit(const int& neqns, const int *xadj, int *head, int *forward, int *backward, int *qsize, int *list, int *marker)
+static int  MmdInit(int neqns, int *xadj, int *head, int *forward, int *backward, int *qsize, int *list, int *marker)
 {
 	int  fnode, ndeg, node;
 
@@ -1205,6 +1313,8 @@ inline void  MmdInit(const int& neqns, const int *xadj, int *head, int *forward,
 		}
 		backward[node] = -ndeg;
 	}
+	return 0;
+
 } // MmdInit
 
 /**
@@ -1221,7 +1331,7 @@ inline void  MmdInit(const int& neqns, const int *xadj, int *head, int *forward,
 * @param perm -- the permutation vector.
 * @param nsize -- number of supernodes
 */
-inline void  MmdNumbering(const int& neqns, int *perm, int *invp, const int *qsize, int *nsize)
+static void  MmdNumbering(int neqns, int *perm, int *invp, int *qsize, int *nsize)
 {
 	int father, nextf, node, nqsize, num, root;
 
@@ -1268,6 +1378,8 @@ inline void  MmdNumbering(const int& neqns, int *perm, int *invp, const int *qsi
 		invp[node] = num  - 1;
 		perm[num ] = node - 1;
 	}
+	return;
+
 }  // MmdNumbering
 
 /**
@@ -1296,7 +1408,7 @@ inline void  MmdNumbering(const int& neqns, int *perm, int *invp, const int *qsi
  *  @param marker -- a temporary marker vector.
 * Subroutines used -- MmdElimin, MmdInit, MmdNumbering, MmdUpdate.
 */
-inline void  RunMmd(const int& neqns, const int *xadj, int *adjncy, int *invp, int *perm, const int& delta, int *head, int *qsize, int *nsize, int *list, int *marker, const int& maxint, int *ncsub)
+static void  RunMmd(int neqns, int *xadj, int *adjncy, int *invp, int *perm, int delta, int *head, int *qsize, int *nsize, int *list, int *marker, int maxint, int *ncsub)
 {
 	int  ehead, i, mdeg, mdlmt, mdeg_node, nextmd, num, tag;
 	if ( neqns <= 0 ) {
@@ -1409,63 +1521,29 @@ n1000:
  * @param pColumn0 int
  * @return int
 */
-inline int BuildSparseConFormat(SD_CON_MATRIX_DATA *pMat, int *pRowStart0, int *pColumn0)
+int BuildSparseConFormat(SD_CON_MATRIX_DATA *pMat, int *pRowStart0, int *pColumn0)
 {
-	int i, *pRowStart, *pColumn;
+	 int          i, *pRowStart, *pColumn;
 	SD_ROW_DATA *pRow;
 
-	for (i = (int)pMat->nRow, pRow = pMat->pRow, pRowStart = pRowStart0,
+
+	for (i = pMat->nRow, pRow = pMat->pRow, pRowStart = pRowStart0,
 	      pColumn = pColumn0, *pRowStart =1; i>0; i--,pRow++, pRowStart++) {
-		int nCol = 0;
-		SD_COL_DATA *pCol = pRow->Col;
+		int nCol;
+		SD_COL_DATA *pCol;
+		nCol = 0;
+		pCol = pRow->Col;
 		while ( pCol ) {
-			*pColumn++ = (int)SD_COL(pCol)+1;
-			pCol = pCol->Next; 
-			nCol++;
+			*pColumn++ = SD_COL(pCol)+1;
+			pCol = pCol->Next; nCol++;
 		}
 		pRowStart[1] = pRowStart[0] + nCol;
 	}
+
+
 	return 0;
+
 }  // BuildSparseConFormat
-
-/**
-* @brief This function compute the permutation array and thus run the mmd algorithm.
- * @param pMat SD_CON_MATRIX_DATA
- * @return int
-*/
-inline int ComputePermutation( SD_CON_MATRIX_DATA *pMat )
-{
-	int *head;     /* array 0..maxN */
-	const int maxint = 32000;   /* use a better value */
-
-	// Allocate memory requested by the mmd algorithm
-	const int nEq = (int)pMat->nRow;
-
-	GD_MALLOC( pMat->pSupernode, int, nEq , "supernode size vector");
-	GD_MALLOC( pMat->pPerm,      int, nEq , "permutation vector");
-	GD_MALLOC( pMat->pPermInv,   int, nEq , "inverse permutation vector");
-	GD_MALLOC( head,             int, nEq*4 + 1 + pMat->nCol, "mmd tmp memory");
-	int *list   = head + 1*nEq;
-	int *marker = head + 2*nEq;
-	int *xadj   = head + 3*nEq;
-	int *adjncy = head + 4*nEq + 1;
-
-	/*
-	* Run the mmd algorithm. The mmd implementation is a translation of a FORTRAN version so
-	* that we pass all array pointers decremented by one.
-	*/
-	int delta = 0;   // Is this a good value?
-	int ncsub;
-	BuildSparseConFormat(pMat, xadj, adjncy);
-
-	RunMmd((int)pMat->nRow, xadj-1, adjncy-1, pMat->pPerm-1, pMat->pPermInv-1, delta,
-		head-1, pMat->pSupernode-1, &pMat->nSupernode, list-1, marker-1, maxint, &ncsub );
-	// Release temporary data used only by mmd
-	GD_FREE(head);
-
-	return 0;
-}  // ComputePermutation
-
 
 /**
 * @brief This routine set up a temporary adjacency block matrix format for the purpose to speed-up
@@ -1480,41 +1558,45 @@ inline int ComputePermutation( SD_CON_MATRIX_DATA *pMat )
  * @param pMat SD_TMP_CON_MATRIX_DATA
  * @return int
 */
-inline int ComputeTmpConMatrix(SD_CON_MATRIX_DATA *pMat0, SD_TMP_CON_MATRIX_DATA *pMat)
+int ComputeTmpConMatrix(SD_CON_MATRIX_DATA *pMat0, SD_TMP_CON_MATRIX_DATA *pMat)
 {
+	SD_TMP_ROW_BLOCK_DATA *pRowBlock;
+	SD_ROW_DATA           *pRow;
+	int                   *pPerm, *pPermInv, *pSupernode;
+
 	if ( sizeof(SD_ROW_BLOCK_DATA)     != sizeof(SD_TMP_ROW_BLOCK_DATA ) ||
 		sizeof(SD_TMP_ROW_BLOCK_DATA) >  sizeof(SD_ROW_BLOCK_DATA)         ) {
-		throw mio::IOException("DATA STRUCTURE INCOMPATIBILITY", AT);
+		EXIT("DATA STRUCTURE INCOMPATIBILITY");
 	}
 
 	// First allocate definetively the matrix row block data
 	memset( pMat, 0, sizeof(SD_TMP_CON_MATRIX_DATA) );
 	pMat->nRowBlock = pMat0->nSupernode;
-	SD_TMP_ROW_BLOCK_DATA *pRowBlock;
 	GD_MALLOC( pRowBlock, SD_TMP_ROW_BLOCK_DATA, pMat->nRowBlock, "Row Block Allocation");
 	pMat->nRow      = pMat0->nRow;
 	pMat->pPerm     = pMat0->pPerm;
 	pMat->pRowBlock = pRowBlock;
 
-	const int *pSupernode = pMat0->pSupernode;
-	const int *pPerm = pMat0->pPerm;
-	const int *pPermInv = pMat0->pPermInv;
-	const SD_ROW_DATA *pRow = pMat0->pRow;
+	pSupernode      = pMat0->pSupernode;
+	pPerm           = pMat0->pPerm;
+	pPermInv        = pMat0->pPermInv;
+	pRow            = pMat0->pRow;
 
 	/*
 	* Set the temporary adjacency block data. For each row block process each single column
 	* coefficients and the diagonal one.
 	*/
 	for (size_t PermRow = 0; PermRow < pMat->nRow; PermRow++) {
-		SD_COL_BLOCK_DATA *pColBlock;
+		int Supernode, Row, Found;
+		SD_COL_BLOCK_DATA **ppColBlock, *pColBlock, *pFreeColBlock, *pStartColBlock;
 
-		const int Row = pPermInv  [PermRow];
-		const int Supernode = pSupernode[Row];
+		Row                  = pPermInv  [PermRow];
+		Supernode            = pSupernode[Row];
 		if ( Supernode <= 0 ) {
 			continue;
 		}
-		pRowBlock->Data.Row0  = (int)PermRow;
-		pRowBlock->Data.Row1  = (int)PermRow + Supernode - 1;
+		pRowBlock->Data.Row0  = PermRow;
+		pRowBlock->Data.Row1  = PermRow + Supernode - 1;
 
 		// Insert the diagonal block as first block
 		SD_GET_COL_BLOCK(pColBlock, pMat);
@@ -1538,9 +1620,12 @@ inline int ComputeTmpConMatrix(SD_CON_MATRIX_DATA *pMat0, SD_TMP_CON_MATRIX_DATA
 			if ( PermRow > PermCol ) {
 				continue;
 			}
-			SD_COL_BLOCK_DATA *pStartColBlock = (PermCol < pColBlock->Col0)? pRowBlock->Data.ColBlock : pColBlock;
-			SD_COL_BLOCK_DATA **ppColBlock = &pStartColBlock;
-			int Found;
+			if ( PermCol < pColBlock->Col0  ) {
+				pStartColBlock = pRowBlock->Data.ColBlock;
+			} else {
+				pStartColBlock = pColBlock;
+			}
+			ppColBlock = &pStartColBlock;
 			FIND_COL_BLOCK(pStartColBlock, PermCol, ppColBlock, Found);
 			if ( !Found ) {
 				SD_GET_COL_BLOCK(pColBlock, pMat);
@@ -1549,7 +1634,7 @@ inline int ComputeTmpConMatrix(SD_CON_MATRIX_DATA *pMat0, SD_TMP_CON_MATRIX_DATA
 				pColBlock->Col0 = pColBlock->Col1 = PermCol;
 			} else {
 				pColBlock     = (*ppColBlock);
-				SD_COL_BLOCK_DATA *pFreeColBlock = pColBlock->Next;
+				pFreeColBlock = pColBlock->Next;
 				if ( pFreeColBlock && ( pColBlock->Col1 +1 ) >= pFreeColBlock->Col0 ) {
 					pColBlock->Col1 = pFreeColBlock->Col1;
 					pColBlock->Next = pFreeColBlock->Next;
@@ -1626,17 +1711,24 @@ inline void MERGE_COL_BLOCK(SD_COL_BLOCK_DATA *pCOL0, SD_COL_BLOCK_DATA **ppCOL1
  * @param pMat SD_TMP_CON_MATRIX_DATA
  * @return int
 */
-inline int ComputeFillIn(SD_TMP_CON_MATRIX_DATA *pMat)
+int  ComputeFillIn(SD_TMP_CON_MATRIX_DATA *pMat)
 {
+	SD_ROW_BLOCK_DATA *pPivotRow, *pSearchRow, *pLastSearchRow;
+	int               nPivotRow;
+
 	#define pFIRST_COL_BLOCK(pROW_BLOCK)  ( ( (SD_TMP_ROW_BLOCK_DATA *)pROW_BLOCK)->Data.ColBlock )
+
 	/*
 	* This is the pivot block loop. For each row block defined in the matrix which are
 	* considered sequentially we set the selected row block to be the pivot block.
 	*/
-	SD_ROW_BLOCK_DATA *pPivotRow      = ( SD_ROW_BLOCK_DATA *) pMat->pRowBlock;
-	SD_ROW_BLOCK_DATA *pLastSearchRow = pPivotRow + pMat->nRowBlock - 1;
+	pPivotRow      = ( SD_ROW_BLOCK_DATA *) pMat->pRowBlock;
+	pLastSearchRow = pPivotRow + pMat->nRowBlock - 1;
 
-	for ( int nPivotRow = pMat->nRowBlock; (nPivotRow--)>0; pPivotRow++) {
+	for ( nPivotRow = pMat->nRowBlock; (nPivotRow--)>0; pPivotRow++) {
+		int                Row_i0, Row_i1, DimRow, Col0;
+		SD_COL_BLOCK_DATA  *pColBlock;
+
 		/*
 		* Process each column block defined in the pivot row block.In this case for each column
 		* block we have to found out the corresponding row block. This is an expensive search
@@ -1647,16 +1739,16 @@ inline int ComputeFillIn(SD_TMP_CON_MATRIX_DATA *pMat)
 		* column block is possible that we have to process more than one row blocks so that
 		* this result in a double nested for loop.
 		*/
-		SD_ROW_BLOCK_DATA *pSearchRow = pPivotRow;
-		SD_COL_BLOCK_DATA  *pColBlock  = pFIRST_COL_BLOCK(pPivotRow); /* the first pColBlock is never nil !!! */
-		int Row_i0     = (int)pColBlock->Col0;
-		int Row_i1     = (int)pColBlock->Col1;
-		int DimRow    = pPivotRow->Row1 - pPivotRow->Row0 + 1;
+		pSearchRow = pPivotRow;
+		pColBlock  = pFIRST_COL_BLOCK(pPivotRow); /* the first pColBlock is never nil !!! */
+		Row_i0     = pColBlock->Col0;
+		Row_i1     = pColBlock->Col1;
+		DimRow     = pPivotRow->Row1 - pPivotRow->Row0 + 1;
 		goto  SkeepFirstMergeOperation;
 
 		do {
-			Row_i0  = (int)pColBlock->Col0;
-			Row_i1  = (int)pColBlock->Col1;
+			Row_i0  = pColBlock->Col0;
+			Row_i1  = pColBlock->Col1;
 			for ( ; Row_i0<=Row_i1; Row_i0 += DimRow ) {
 				if ( Row_i0 > pSearchRow->Row1 ) {
 					pSearchRow++;
@@ -1667,12 +1759,11 @@ inline int ComputeFillIn(SD_TMP_CON_MATRIX_DATA *pMat)
 				}
 				DimRow = pSearchRow->Row1 - Row_i0 + 1;
 
-				{ //this is needed to reduce the scope of Col0, because of the jump
-					const size_t Col0 = pFIRST_COL_BLOCK(pSearchRow)->Col0;
-					MERGE_COL_BLOCK(pColBlock, &pFIRST_COL_BLOCK(pSearchRow), pMat);
-					pFIRST_COL_BLOCK(pSearchRow)->Col0 = Col0;
-				}
-SkeepFirstMergeOperation:;
+				Col0 = pFIRST_COL_BLOCK(pSearchRow)->Col0;
+				MERGE_COL_BLOCK(pColBlock, &pFIRST_COL_BLOCK(pSearchRow), pMat);
+				pFIRST_COL_BLOCK(pSearchRow)->Col0 = Col0;
+
+				SkeepFirstMergeOperation:;
 			}
 		} while ( pColBlock = pColBlock->Next, pColBlock );
 	}
@@ -1686,10 +1777,9 @@ SkeepFirstMergeOperation:;
 * multiplicity factor is not 1 at this time we define the true row and column blocks.
  * @param pTmpMat SD_TMP_CON_MATRIX_DATA
  * @param pMat SD_BLOCK_MATRIX_DATA
- * @param Mult int
  * @return int
 */
-inline int ComputeBlockMatrix( SD_TMP_CON_MATRIX_DATA *pTmpMat, SD_BLOCK_MATRIX_DATA *pMat, const int& Mult)
+int ComputeBlockMatrix( SD_TMP_CON_MATRIX_DATA *pTmpMat, SD_BLOCK_MATRIX_DATA *pMat)
 {
 	SD_TMP_ROW_BLOCK_DATA *pTmpRowBlock;
 	SD_ROW_BLOCK_DATA     *pRowBlock;
@@ -1697,7 +1787,7 @@ inline int ComputeBlockMatrix( SD_TMP_CON_MATRIX_DATA *pTmpMat, SD_BLOCK_MATRIX_
 	int                    k, nTotCol, nTotColBlock, MaxColBlock, *pFirstColBlock, *pSizeColBlock;
 
 	memset( pMat, 0, sizeof(SD_BLOCK_MATRIX_DATA) );
-	pMat->Dim        = pTmpMat->nRow*Mult;
+	pMat->Dim        = pTmpMat->nRow;
 	pMat->pPerm      = pTmpMat->pPerm;
 	pMat->nRowBlock  = pTmpMat->nRowBlock;
 	pMat->nColBlock  = pTmpMat->nColBlock;
@@ -1712,15 +1802,15 @@ inline int ComputeBlockMatrix( SD_TMP_CON_MATRIX_DATA *pTmpMat, SD_BLOCK_MATRIX_
 	if ( gd_MemErr )
 		return 1;
 
-	for( k = pMat->nRowBlock, pFirstColBlock = pMat->pFirstColBlock, pSizeColBlock = pMat->pSizeColBlock, nTotCol = 0,
+	for (k = pMat->nRowBlock, pFirstColBlock = pMat->pFirstColBlock, pSizeColBlock = pMat->pSizeColBlock, nTotCol = 0,
 		nTotColBlock = 0, MaxColBlock = 0, pTmpRowBlock = pTmpMat->pRowBlock; k>0; k--, pTmpRowBlock++ )
 	{
-		int nCol, nColBlock;
+		int Delta, nCol, nColBlock;
 
 		for ( pColBlock = pTmpRowBlock->Data.ColBlock, nCol = 0, nColBlock = 0; pColBlock;
 				pColBlock = pColBlock->Next, nColBlock++, pFirstColBlock++, pSizeColBlock++ ) {
-			pFirstColBlock[0] = Mult*(int)pColBlock->Col0;
-			pSizeColBlock [0] = Mult*( (int)pColBlock->Col1 - (int)pColBlock->Col0 + 1 );
+			pFirstColBlock[0] = pColBlock->Col0;
+			pSizeColBlock [0] = ( pColBlock->Col1 - pColBlock->Col0 + 1 );
 			nCol             += pSizeColBlock[0];
 		}
 
@@ -1732,14 +1822,13 @@ inline int ComputeBlockMatrix( SD_TMP_CON_MATRIX_DATA *pTmpMat, SD_BLOCK_MATRIX_
 		if ( MaxColBlock < nColBlock ) {
 			MaxColBlock = nColBlock;
 		}
-		const int Delta            = Mult * ( pRowBlock->Row1 - pRowBlock->Row0 + 1 );
-		pRowBlock->Row0 *= Mult;
-		pRowBlock->Row1  = ( pRowBlock->Row1 + 1 ) * Mult - 1;
+		Delta            = ( pRowBlock->Row1 - pRowBlock->Row0 + 1 );
+		pRowBlock->Row1  = ( pRowBlock->Row1 + 1 ) - 1;
 		nTotCol         += Delta * nCol - ( Delta*(Delta-1) )/2;
 		nTotColBlock    += nColBlock;
 	}
 	if ( nTotColBlock != pTmpMat->nColBlock ) {
-		throw mio::IOException("Wrong column block count", AT);
+		EXIT("Wrong column block count");
 	}
 
 	/*
@@ -1763,216 +1852,6 @@ inline int ComputeBlockMatrix( SD_TMP_CON_MATRIX_DATA *pTmpMat, SD_BLOCK_MATRIX_
 
 }  // ComputeBlockMatrix
 
-inline int SymbolicFact(SD_MATRIX_DATA *pMat)
-{
-	SD_TMP_CON_MATRIX_DATA  TmpConMat;
-	SD_BLOCK_MATRIX_DATA    BlockMat;
-
-	ComputePermutation( &pMat->Mat.Con);
-	ComputeTmpConMatrix(&pMat->Mat.Con, &TmpConMat);
-	ComputeFillIn(&TmpConMat);
-	ComputeBlockMatrix(&TmpConMat, &BlockMat, pMat->Multiplicity);
-	pMat->State     = BlockMatrix;
-	pMat->Mat.Block = BlockMat;
-
-	return 0;
-
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// Functions exposed as API
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void ds_Initialize(const size_t& MatDim, int Multiplicity, SD_MATRIX_DATA **ppMat)
-{
-	SD_MATRIX_DATA  *pMat = NULL;
-	if ( Multiplicity<=0 ) Multiplicity=1;
-
-	GD_MALLOC( pMat, SD_MATRIX_DATA, 1, "Matrix Data");
-	memset( pMat,0,sizeof(SD_MATRIX_DATA) );
-	pMat->nEq = (int)MatDim * Multiplicity;
-	pMat->Multiplicity = Multiplicity;
-	AllocateConData( MatDim, &pMat->Mat.Con );
-	pMat->State = ConMatrix;
-	*ppMat = pMat;
-}
-
-/**
- * @brief This function assemble the element matrix for one element and must be called for each
- * (finite) element after the element connectivity have been assembled and the matrix symbolic
- * factorized. To perform this task we also newly require the element incidences. The
- * variable: Dim specifies the dimension of the matrix: Mat which is not required to be equal
- * to the numer of element incidences: nEq.
- * ATTENTION: This function do not generate a run time error if the specified incidences have
- * not been previously defined.
- * NOTE: If the matrix has been specified as symmetric we always use only the upper part of
- * the element matrix.
- * @param [in] pMat0 SD_MATRIX_DATA
- * @param [in] nEq int
- * @param [in] Eq int
- * @param [in] Dim int
- * @param [in] ElMat double
- * @return int
- */
-int ds_AssembleMatrix( SD_MATRIX_DATA *pMat0, const int& nEq, int Eq[], const int& Dim, const double *ElMat )
-{
-	SD_BLOCK_MATRIX_DATA *pMat = &pMat0->Mat.Block;
-	SD_ROW_BLOCK_DATA *pRow=NULL;
-	const int Mult = pMat0->Multiplicity;
-
-	for (int Row = 0; Row < nEq*Mult; Row++) {
-		const int PermRow = Mult * pMat->pPerm[ Eq[Row/Mult] ] + Row%Mult;
-		SEARCH_ROW(PermRow, FIRST_BLOCK_ROW(pMat), LAST_BLOCK_ROW(pMat), pRow);
-		for (int Col = 0; Col < nEq*Mult; Col++) {
-			const int PermCol = Mult * pMat->pPerm[ Eq[Col / Mult] ] + Col%Mult;
-			if ( PermCol < PermRow ) {
-				continue;
-			}
-			int Found, Index;
-			SEARCH_COL(PermCol, PermRow, pMat, pRow, Found, Index);
-			if ( Found ) {
-				if ( Row<Col ) {
-					pMat->pUpper[Index] += ElMat[ Row*Dim + Col ];
-				} else {
-					pMat->pUpper[Index] += ElMat[ Col*Dim + Row ];
-				}
-			}
-		}
-	}
-	return 0;
-
-}  /* ds_AssembleMatrix */
-
-/**
-* @brief This function assemble the element connnectivity for one or more elements in order to build
-* a sparse matrix format. Of course we only store the upper part of the connectivity matrix
-* because we only consider structure symmetric matrices.
- * @param pMat0 SD_MATRIX_DATA
- * @param nEq int
- * @param Eq (int [])
- * @param nEl int
- * @param Dim int
- * @return int
-*/
-int ds_DefineConnectivity( SD_MATRIX_DATA *const pMat0, const int& nEq, int Eq[], const int& nEl, const int& Dim )
-{
-	SD_CON_MATRIX_DATA *pMat = &pMat0->Mat.Con;
-
-	for (int e = 0; e < nEl; Eq += Dim, e++) {
-		for (int i = 0; i < nEq; i++) {
-			const size_t Row_i  = Eq[i];
-			SD_ROW_DATA *pRow_i = &SD_ROW(Row_i, pMat);
-
-			for (int j = 0; j < nEq; j++) {
-				const size_t Col_j  = Eq[j];
-				if ( Row_i == Col_j ) {
-					continue;
-				}
-				size_t Found;
-				SD_COL_DATA **ppC, *pCol;
-				SD_FIND_COL(pRow_i->Col, Col_j, ppC, Found);
-				if ( !Found ) {
-					SD_GET_COL(pCol, pMat);
-					SD_INSERT_COL(ppC, pCol, Col_j);
-					pMat->nCol++;
-				}
-			}
-		}
-	}
-	return 0;
-
-}  // ds_DefineConnectivity
-
-
-int ds_Solve( const SD_MATRIX_WHAT& Code, SD_MATRIX_DATA *pMat, double *X)
-{
-	// SymbolicFactorize
-	if ( Code & SymbolicFactorize ){
-		if ( Code & NumericFactorize ){
-			throw mio::IOException("You cannot invert the matrix symbolically and numerically contemporary", AT);
-		}
-
-		if ( pMat->State != ConMatrix ){
-			throw mio::IOException("Bad Matrix Format for Symbolic Factorization", AT);
-		}
-
-		SymbolicFact(pMat);
-	}
-
-	// NumericFactoriz
-	if ( Code & NumericFactorize ){
-		if (  pMat->State != BlockMatrix ){
-			throw mio::IOException("Bad Matrix Format for Numerical Factorization", AT);
-		}
-		InvertMatrix( &pMat->Mat.Block );
-	}
-
-	// BackForwardSubst
-	if ( Code & BackForwardSubst ){
-		if (  pMat->State != BlockMatrix ){
-			throw mio::IOException("Bad Matrix Format for Back- For-ward Substitution", AT);
-		}
-		const int DimTot = (int)pMat->Mat.Block.Dim + pMat->nDeletedEq;
-		const int Mult   = pMat->Multiplicity;
-
-		if ( Mult==1 ){
-			Permute( DimTot, pMat->Mat.Block.pPerm, X );
-		} else{
-			PermuteWithMult( DimTot/Mult, Mult, pMat->Mat.Block.pPerm, X );
-		}
-       		InverseMatrixVector( &pMat->Mat.Block, X );
-       		for(int i=(int)pMat->Mat.Block.Dim; i<DimTot; i++){
-			X[i] = 0.;
-		}
-       		if ( Mult==1 ){
-			Permute( DimTot, pMat->Mat.Block.pPerm, X );
-		} else {
-			PermuteWithMult( DimTot/Mult, Mult, pMat->Mat.Block.pPerm, X );
-		}
-	}
-
-	// ResetMatrixData
-	if ( Code & ResetMatrixData ){
-		if ( Code != ResetMatrixData ){
-			throw mio::IOException("You cannot reset the matrix together with other operations", AT);
-		}
-
-		if ( pMat->State != BlockMatrix ){
-			throw mio::IOException("Bad Matrix Format to reset matrix", AT);
-		}
-
-		memset( pMat->Mat.Block.pUpper, 0, static_cast<size_t>(pMat->Mat.Block.SizeUpper) * sizeof(double) );
-	}
-
-   	// ReleaseMatrixData
-   	if ( Code & ReleaseMatrixData ){
-		if ( pMat->State == ConMatrix ){
-			ReleaseConMatrix(&pMat->Mat.Con);
-		} else if ( pMat->State == BlockMatrix  ){
-			ReleaseBlockMatrix(&pMat->Mat.Block);
-		} else {
-			GD_FREE(pMat);
-			throw mio::IOException("Unknown matrix state", AT);
-		}
-	}
-
-	return 0;
-
-}  /* ds_Solve */
-
-int ReleaseConMatrix( SD_CON_MATRIX_DATA *pMat )
-{
-	GD_FREE(pMat->pPerm);
-	GD_FREE(pMat->pSupernode);
-	GD_FREE(pMat->pPermInv);
-	GD_FREE(pMat->pRow);
-	SD_DESTROY_CHUNK(pMat->PoolCol);
-
-	return 0;
-
-}  // ReleaseConMatrix
-
 /**
 * @brief Release all the data allocated for the numerical factorization algorithm.
  * @param pMat SD_BLOCK_MATRIX_DATA
@@ -1991,6 +1870,60 @@ int ReleaseBlockMatrix( SD_BLOCK_MATRIX_DATA *pMat )
 
 }  // ReleaseBlockMatrix
 
+/**
+* @brief This function assemble the element connnectivity for one or more elements in order to build
+* a sparse matrix format. Of course we only store the upper part of the connectivity matrix
+* because we only consider structure symmetric matrices.
+ * @param pMat0 SD_MATRIX_DATA
+ * @param nEq int
+ * @param Eq (int [])
+ * @param nEl int
+ * @param Dim int
+ * @return int
+*/
+int ds_DefineConnectivity(SD_MATRIX_DATA *pMat0, const int& nEq, int Eq[], const int& nEl, const int& Dim )
+{
+	int e, i, j;
+	size_t Row_i;
+	SD_ROW_DATA        *pRow_i;
+	SD_CON_MATRIX_DATA *pMat;
+
+	pMat = &pMat0->Mat.Con;
+
+	for (e = 0; e < nEl; Eq += Dim, e++) {
+		for (i = 0; i < nEq; i++) {
+			Row_i  = Eq[i];
+			pRow_i = &SD_ROW(Row_i, pMat);
+
+			for (j = 0; j < nEq; j++) {
+				size_t Col_j, Found;
+				SD_COL_DATA **ppC, *pCol;
+				Col_j  = Eq[j];
+				if ( Row_i == Col_j ) {
+					continue;
+				}
+				SD_FIND_COL(pRow_i->Col, Col_j, ppC, Found);
+				if ( !Found ) {
+					SD_GET_COL(pCol, pMat);
+					SD_INSERT_COL(ppC, pCol, Col_j);
+					pMat->nCol++;
+					// printf("Inserting %d %d\n", Row_i, Col_j);
+				}
+			}
+		}
+	}
+	return 0;
+
+}  // ds_DefineConnectivity
+
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+#ifdef __GNUG__
+#pragma GCC diagnostic pop
+#endif
+
+/*
+ * End of SymbFact.c
+ */
+

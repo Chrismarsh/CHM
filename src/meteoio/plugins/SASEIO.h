@@ -15,12 +15,11 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __SASEIO_H__
-#define __SASEIO_H__
+#ifndef SASEIO_H
+#define SASEIO_H
 
 #include <meteoio/IOInterface.h>
-#include <meteoio/Config.h>
-#include <meteoio/dataClasses/StationData.h>
+
 #include <string>
 
 namespace mio {
@@ -38,29 +37,13 @@ class SASEIO : public IOInterface {
 		SASEIO(const std::string& configfile);
 		SASEIO(const SASEIO&);
 		SASEIO(const Config& cfgreader);
-		~SASEIO() throw();
-
-		virtual void read2DGrid(Grid2DObject& grid_out, const std::string& parameter="");
-		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
-		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
 
 		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
 		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector< std::vector<MeteoData> >& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
-
-		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo,
-		                            const std::string& name="");
-
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
-		virtual void readPOI(std::vector<Coords>& pts);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& filename);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
+		                           std::vector< std::vector<MeteoData> >& vecMeteo);
 
 	private:
 	    	void readConfig();
-		void cleanup() throw();
 		void readStationIDs(std::vector<std::string>& vecStationID) const;
 		static void parseStationID(const std::string& stationID, std::string& stnAbbrev, std::string& stnNumber);
 		void getStationMetaData(const std::string& stat_abk, const std::string& stao_nr,const std::string& sqlQuery,

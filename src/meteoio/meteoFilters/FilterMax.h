@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __FILTERMAX_H__
-#define __FILTERMAX_H__
+#ifndef FILTERMAX_H
+#define FILTERMAX_H
 
 #include <meteoio/meteoFilters/FilterBlock.h>
 #include <vector>

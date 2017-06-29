@@ -15,15 +15,12 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __CONFIGREADER_H__
-#define __CONFIGREADER_H__
+#ifndef CONFIGREADER_H
+#define CONFIGREADER_H
 
 #include <meteoio/IOUtils.h>
-#include <meteoio/FileUtils.h>
 #include <meteoio/IOExceptions.h>
 
-#include <cstdio>
-#include <fstream>
 #include <string>
 #include <sstream>
 #include <map>
@@ -42,8 +39,9 @@ namespace mio {
  * - empty lines are ignored
  * - if there is no section name given in a file, the default section called "GENERAL" is assumed
  * - a VALUE for a KEY can consist of multiple whitespace separated values (e.g. MYNUMBERS = 17.77 -18.55 8888 99.99)
+ * 
  * @anchor config_import
- * - it is possible to import another ini file, by specifying as many of the keys listed below as necessary.
+ * It is possible to import another ini file, by specifying as many of the keys listed below as necessary.
  *   Please not that in order to prevent circular dependencies, it is not possible to import the same file several times.
  *      - IMPORT_BEFORE = {file and path to import}. This must take place before any non-import
  *        key or section header. This imports the specified file before processing the current file, allowing
@@ -265,7 +263,7 @@ class Config {
 			const std::string new_section( IOUtils::strToUpper(section) );
 			const size_t nr_keys = findKeys(vecKeys, keystart, new_section);
 
-			for(size_t ii=0; ii<nr_keys; ++ii) {
+			for (size_t ii=0; ii<nr_keys; ++ii) {
 				const std::string full_key = new_section + "::" + vecKeys[ii];
 				T tmp;
 				try {
@@ -273,7 +271,25 @@ class Config {
 				} catch(const std::exception&){
 					throw UnknownValueException("[E] Error in "+sourcename+" reading key "+full_key, AT);
 				}
-				vecT.push_back(tmp);
+				vecT.push_back( tmp );
+			}
+		}
+
+		template <typename T> void getValues(const std::string& keystart, const std::string& section, std::vector<T>& vecT, std::vector<std::string>& vecKeys) const
+		{
+			vecT.clear();
+			const std::string new_section( IOUtils::strToUpper(section) );
+			const size_t nr_keys = findKeys(vecKeys, keystart, new_section);
+
+			for (size_t ii=0; ii<nr_keys; ++ii) {
+				const std::string full_key = new_section + "::" + vecKeys[ii];
+				T tmp;
+				try {
+					IOUtils::getValueForKey<T>(properties, full_key, tmp, IOUtils::dothrow);
+				} catch(const std::exception&){
+					throw UnknownValueException("[E] Error in "+sourcename+" reading key "+full_key, AT);
+				}
+				vecT.push_back( tmp );
 			}
 		}
 

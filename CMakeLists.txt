@@ -18,35 +18,12 @@ option(test "Build all tests."  ON ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
-#meteoio plugins
-SET(PLUGIN_A3DIO ON CACHE BOOL "Compilation A3DIO ON or OFF")
-SET(PLUGIN_ALPUG ON CACHE BOOL "Compilation ALPUG ON or OFF")
-SET(PLUGIN_ARCIO ON CACHE BOOL "Compilation ARCIO ON or OFF")
-SET(PLUGIN_ARPSIO ON CACHE BOOL "Compilation ARPSIO ON or OFF")
-SET(PLUGIN_BORMAIO OFF CACHE BOOL "Compilation BORMAIO ON or OFF")
-SET(PLUGIN_CNRMIO OFF CACHE BOOL "Compilation CNRMIO ON or OFF")
-SET(PLUGIN_COSMOXMLIO OFF CACHE BOOL "Compilation COSMOXMLIO ON or OFF")
-SET(PLUGIN_GEOTOPIO ON CACHE BOOL "Compilation GEOTOPIO ON or OFF")
-SET(PLUGIN_GRASSIO ON CACHE BOOL "Compilation GRASSIO ON or OFF")
-SET(PLUGIN_GRIBIO OFF CACHE BOOL "Compilation GRIBIO ON or OFF")
-SET(PLUGIN_GSNIO OFF CACHE BOOL "Compilation GSNIO ON or OFF")
-SET(PLUGIN_IMISIO OFF CACHE BOOL "Compilation IMISIO ON or OFF")
-SET(PLUGIN_NETCDFIO OFF CACHE BOOL "Compilation NETCDFIO ON or OFF")
-SET(PLUGIN_PGMIO ON CACHE BOOL "Compilation PGMIO ON or OFF")
-SET(PLUGIN_PNGIO OFF CACHE BOOL "Compilation PNGIO ON or OFF")
-SET(PLUGIN_PSQLIO OFF CACHE BOOL "Compilation PSQLIO ON or OFF")
-SET(PLUGIN_SMETIO ON CACHE BOOL "Compilation SMETIO ON or OFF")
-SET(PLUGIN_SNIO ON CACHE BOOL "Compilation SNIO ON or OFF")
-SET(PLUGIN_SASEIO OFF CACHE BOOL "Compilation SASEIO ON or OFF")
-SET(PROJ4 OFF CACHE BOOL "Use PROJ4 for the class MapProj ON or OFF")
-SET(DATA_QA OFF CACHE BOOL "Data Quality Assurance outputs ON or OFF")
-
 #the mio and snowpack includes behave odly if you don't do the Cmake_source_dir like below, so treat these differently than the rest.
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 #some machines need to be told where odd system libraries are, so put them here
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
 
 #for meton
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
@@ -209,11 +186,11 @@ else()
 endif()
 
 find_package(Armadillo REQUIRED)
-find_package(Eigen3)
-if(NOT EIGEN3_INCLUDE_DIR)
-    set(Eigen3_DIR "${CMAKE_BINARY_DIR}/lib/eigen3")
-    find_package(Eigen3 REQUIRED)
-endif()
+find_package(Eigen3 REQUIRED)
+#if(NOT EIGEN3_INCLUDE_DIR)
+#    set(Eigen3_DIR "${CMAKE_BINARY_DIR}/lib/eigen3")
+#    find_package(Eigen3 REQUIRED)
+#endif()
 
 set( SPARSEHASH_ROOT "${CMAKE_BINARY_DIR}/lib/sparsehash")
 find_package(Sparsehash REQUIRED)

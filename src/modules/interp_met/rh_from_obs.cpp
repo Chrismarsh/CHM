@@ -44,7 +44,7 @@ void rh_from_obs::run(mesh_elem& face)
                 continue;
             double rh = s->get("rh")/100.;
             double t = s->get("t");
-            double es = mio::Atmosphere::waterSaturationPressure(t+273.15);
+            double es = mio::Atmosphere::vaporSaturationPressure(t+273.15);
             double ea = rh * es;
             sea.push_back( ea  );
             sz.push_back( s->z());
@@ -69,7 +69,7 @@ void rh_from_obs::run(mesh_elem& face)
 
         double rh = s->get("rh")/100.;
         double t = s->get("t");
-        double es = mio::Atmosphere::waterSaturationPressure(t+273.15);
+        double es = mio::Atmosphere::vaporSaturationPressure(t+273.15);
         double ea = rh * es;
         double z = s->z();
         ea = ea + lapse*(0.0-z);
@@ -84,7 +84,7 @@ void rh_from_obs::run(mesh_elem& face)
     //raise it back up
     ea = ea + lapse*( face->get_z() - 0.0);
 
-    double es = mio::Atmosphere::waterSaturationPressure(face->face_data("t")+273.15);
+    double es = mio::Atmosphere::vaporSaturationPressure(face->face_data("t")+273.15);
     double rh = ea/es*100.0;
 
     rh = std::min(rh,100.0);

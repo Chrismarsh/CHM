@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __PROCUNDERCATCH_FORLAND_H__
-#define __PROCUNDERCATCH_FORLAND_H__
+#ifndef PROCUNDERCATCH_FORLAND_H
+#define PROCUNDERCATCH_FORLAND_H
 
 #include <meteoio/meteoFilters/FilterBlock.h>
 #include <vector>

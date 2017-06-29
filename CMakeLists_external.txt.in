@@ -31,12 +31,12 @@ ExternalProject_Add(
 
 )
 
-find_package(Eigen3)
-if(NOT EIGEN3_INCLUDE_DIR)
-    message(STATUS "Eigen3 not found, downloading Eigen3")
-    ExternalProject_Add(
-            eigen3
-            HG_REPOSITORY https://bitbucket.org/eigen/eigen/
-            INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/eigen3
-            BUILD_IN_SOURCE 0)
-endif()
+#find_package(Eigen3)
+#if(NOT EIGEN3_INCLUDE_DIR)
+#    message(STATUS "Eigen3 not found, downloading Eigen3")
+#   ExternalProject_Add(
+#           eigen3
+#           HG_REPOSITORY https://bitbucket.org/eigen/eigen/
+#            INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/eigen3
+#            BUILD_IN_SOURCE 0)
+#endif()

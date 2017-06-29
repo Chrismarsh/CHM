@@ -18,8 +18,8 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __SMET_IO_H__
-#define __SMET_IO_H__
+#ifndef SMET_IO_H
+#define SMET_IO_H
 
 #include <meteoio/MeteoIO.h>
 #include <snowpack/Constants.h>
@@ -32,6 +32,11 @@ class SmetIO : public SnowpackIOInterface {
 
 	public:
 		SmetIO(const SnowpackConfig& i_cfg, const RunInfo& run_info);
+		SmetIO(const SmetIO&);
+		
+		~SmetIO();
+		
+		SmetIO& operator=(const SmetIO&); ///<Assignement operator, required because of pointer member
 
 		virtual bool snowCoverExists(const std::string& i_snowfile, const std::string& stationID) const;
 
@@ -59,20 +64,30 @@ class SmetIO : public SnowpackIOInterface {
 		static void setSnoSmetHeader(const SnowStation& Xdata, const mio::Date& date, smet::SMETWriter& smet_writer);
 		static void setFormatting(const size_t& nr_solutes,
 		                   std::vector<int>& vec_width, std::vector<int>&  vec_precision);
-		static void writeSnoFile(const std::string& snofilename, const mio::Date& date, const SnowStation& Xdata,
-		                         const ZwischenData& Zdata);
+		void writeSnoFile(const std::string& snofilename, const mio::Date& date, const SnowStation& Xdata,
+		                         const ZwischenData& Zdata) const;
 		bool keyExists(const smet::SMETReader& reader, const std::string& key) const;
 		double get_doubleval(const smet::SMETReader& reader, const std::string& keyname) const;
 		int get_intval(const smet::SMETReader& reader, const std::string& keyname) const;
 		mio::Date read_snosmet(const std::string& snofilename, const std::string& stationID, SN_SNOWSOIL_DATA& SSdata);
 		mio::Date read_snosmet_header(const smet::SMETReader& sno_reader, const std::string& stationID,
 		                              SN_SNOWSOIL_DATA& SSdata);
+		double compPerpPosition(const double& z_vert, const double& hs_ref,
+		                        const double& ground, const double& cos_sl);
+		std::string getFieldsHeader();
+		void writeTimeSeriesHeader(const SnowStation& Xdata, smet::SMETWriter& smet_writer);
+		void writeTimeSeriesData(const SnowStation& Xdata, const SurfaceFluxes& Sdata, const CurrentMeteo& Mdata, const ProcessDat& Hdata, const double &wind_trans24, smet::SMETWriter& smet_writer);
 
 	private:
+		std::vector<double> fixedPositions;
 		std::string outpath, o_snowpath, snowpath, experiment, inpath, i_snowpath, sw_mode;
 		const RunInfo info;
+		std::map<std::string, smet::SMETWriter*> tsWriters; ///< for each filename, we keep an associated SMETWriter
 		double in_dflt_TZ;
-		bool useSoilLayers, perp_to_slope;
+		double calculation_step_length, ts_days_between;
+		double min_depth_subsurf;
+		bool avgsum_time_series, useCanopyModel, useSoilLayers, research_mode, perp_to_slope;
+		bool out_heat, out_lw, out_sw, out_meteo, out_haz, out_mass, out_t, out_load, out_stab, out_canopy, out_soileb;
 };
 
 #endif

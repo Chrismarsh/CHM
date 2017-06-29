@@ -18,14 +18,12 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __SNOWPACKCONFIG_H__
-#define __SNOWPACKCONFIG_H__
-
-#include <snowpack/Constants.h>
+#ifndef SNOWPACKCONFIG_H
+#define SNOWPACKCONFIG_H
 
 #include <meteoio/MeteoIO.h>
-#include <vector>
 #include <map>
+#include <string>
 
 class SnowpackConfig : public mio::Config {
 

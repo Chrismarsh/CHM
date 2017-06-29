@@ -20,10 +20,10 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef  __SOLVER_H__
-#define  __SOLVER_H__
+#ifndef  SOLVER_H
+#define  SOLVER_H
 
-#include <cstdio>
+#include <cstddef> //needed for size_t
 
 /**
  * @file Solver.h
@@ -54,42 +54,13 @@
  * @author GUIDO SARTORIS  ETH ZUERICH
  */
 
-typedef struct SD_COL_BLOCK_DATA
-{
-	size_t Col0, Col1;
-	struct SD_COL_BLOCK_DATA  *Next;
-} SD_COL_BLOCK_DATA;
-
-/**
- * @struct SD_CHUNK_DATA
-* @brief The CHUNK_DATA is used to keep track of allocated memory chunks ( block of memory ). For
-* each allocated chunk we store the pointer returned from the memory allocator, so that a
-* later deallocation of the memory will be possible.
-*/
 typedef struct
 {
 	int     nChunks;
 	int     pChunksSize;
-	SD_COL_BLOCK_DATA   **pChunks;
+	char   **pChunks;
 	int     TotChunkSize;
 } SD_CHUNK_DATA;
-
-/**
- * @struct SD_ROW_BLOCK_DATA
-* @brief The data structure to store the matrix for numerical factorization is a simple one. The
-* matrix structure is after the mmd sorting algorithm and the symbolic factorization mainly
-* composed of clustered non-zero matrix coefficients which form blocks. In this case we use a
-* data strucutre to represent these row and column blocks.
-* NOTE: The row blocks are simply what in the literature is specified as supernodes. We have
-* kept the data structure as simple as possible to minimize the numerical operations and so
-* the execution time.
-* NOTE: When we define a system we have the possibility to define a multiplicity factor. This
-* allows us to perform all initialization tasks ( input of incidences, symbolic
-* factorization, block format calculation ) with all indices modulo the multiplicity factor
-* to save time and memory. Thus the computed block format is always the same for any
-* specified multiplicity factor only the block bounds are different.
-* ATTENTION: The size of the permutation vector is only Dim/(Multiplicity Factor).
-*/
 
 typedef struct
 {
@@ -116,9 +87,6 @@ typedef struct
 	double              *pUpper;
 }  SD_BLOCK_MATRIX_DATA;
 
-/*
-* SPARSE MATRIX DATA USED INITIALLY TO READ THE CONNECTIVITY MATRIX
-*/
 typedef struct SD_COL_DATA
 {
 	size_t               Col;
@@ -137,6 +105,7 @@ typedef struct
 	int                   *pPermInv;
 	int                    nSupernode;
 	int                   *pSupernode;
+
 	SD_ROW_DATA           *pRow;
 	SD_CHUNK_DATA          PoolCol;
 	SD_COL_DATA           *FreeCol;
@@ -144,15 +113,11 @@ typedef struct
 	size_t                 nCol;
 }  SD_CON_MATRIX_DATA;
 
-/*
-* BLOCK SPARSE MATRIX DATA USED FOR SYMBOLIC FACTORIZATION
-*
-* When we are building the block matrix format we need some other data structure than the
-* final one. In this case the intermediary data strcuture is of smaller size than the final
-* one and has a common data field. In this case with a union definition we force both data
-* structures to have the same size, and the same common field so that to avoid unnecessary
-* reallocation and movement of data.
-*/
+typedef struct SD_COL_BLOCK_DATA
+{
+	size_t Col0, Col1;
+	struct SD_COL_BLOCK_DATA  *Next;
+} SD_COL_BLOCK_DATA;
 
 typedef union
 {
@@ -197,12 +162,12 @@ typedef  struct
 {
 	int   nEq;
 	int   nDeletedEq;
-	int   Multiplicity;
+
 	StateType State;
-	union {
-		SD_CON_MATRIX_DATA      Con;
-		SD_TMP_CON_MATRIX_DATA  TmpCon;
-		SD_BLOCK_MATRIX_DATA    Block;
+	union
+	{  SD_CON_MATRIX_DATA      Con;
+	SD_TMP_CON_MATRIX_DATA  TmpCon;
+	SD_BLOCK_MATRIX_DATA    Block;
 	}  Mat;
 }  SD_MATRIX_DATA;
 
@@ -311,10 +276,9 @@ int ds_DefineConnectivity( SD_MATRIX_DATA *const pMat0, const int& nEq, int Eq[]
  *
  * @param MatDim dimension of the matrix [A]. The true number of equations
  * and unknowns is given by: MatDim * Multiplicity
- * @param Multiplicity Multiplicity factor with value >= 1
  * @param ppMat A pointer to an opaque data type storing data related to the matrix [A]
  */
-void ds_Initialize( const size_t& MatDim, int Multiplicity, SD_MATRIX_DATA **ppMat );
+int ds_Initialize( const size_t& MatDim, SD_MATRIX_DATA **ppMat );
 
 /**
 * @brief This function assemble the element square matrix [ElMat] for one element with nEq*M x nEq*M
@@ -343,7 +307,6 @@ void ds_Initialize( const size_t& MatDim, int Multiplicity, SD_MATRIX_DATA **ppM
  * @param [in] Dim first dimension of the 2D-array ElMat[][Dim]
  * @param [in] ElMat element square matrix to be assembled in the matrix [A]
 */
-
 int ds_AssembleMatrix( SD_MATRIX_DATA *pMat0, const int& nEq, int Eq[], const int& Dim, const double *ElMat );
 
 /**
@@ -355,5 +318,4 @@ int ds_Solve( const SD_MATRIX_WHAT& Code, SD_MATRIX_DATA *pMat, double *pX );
 
 int ReleaseConMatrix( SD_CON_MATRIX_DATA * pMat );
 int ReleaseBlockMatrix( SD_BLOCK_MATRIX_DATA * pMat );
-
 #endif

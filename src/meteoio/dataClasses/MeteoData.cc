@@ -17,9 +17,12 @@
 */
 #include <meteoio/dataClasses/MeteoData.h>
 #include <meteoio/dataClasses/StationData.h>
+#include <meteoio/IOUtils.h>
 
 #include <cmath>
 #include <limits>
+#include <iomanip>
+#include <sstream>
 
 using namespace std;
 namespace mio {
@@ -54,12 +57,14 @@ bool MeteoGrids::initStaticData()
 	paramname.push_back("PSUM_S");
 	paramname.push_back("TSG");
 	paramname.push_back("TSS");
+	paramname.push_back("TSOIL");
 	paramname.push_back("P");
 	paramname.push_back("P_SEA");
 	paramname.push_back("U");
 	paramname.push_back("V");
 	paramname.push_back("W");
 	paramname.push_back("SWE");
+	paramname.push_back("RSNO");
 	paramname.push_back("ROT");
 	paramname.push_back("ALB");
 	paramname.push_back("DEM");
@@ -78,34 +83,27 @@ const std::string& MeteoGrids::getParameterName(const size_t& parindex)
 	return paramname[parindex];
 }
 
+size_t MeteoGrids::getParameterIndex(const std::string& parname)
+{
+	for (size_t ii=0; ii<MeteoGrids::nrOfParameters; ii++) {
+		if (paramname[ii] == parname)
+			return ii;
+	}
+
+	return IOUtils::npos; //parameter not a part of MeteoGrids
+}
+
 /************************************************************
  * static section                                           *
  ************************************************************/
 const double MeteoData::epsilon = 1e-5;
 const size_t MeteoData::nrOfParameters =  MeteoData::lastparam - MeteoData::firstparam + 1;
-map<size_t, string> MeteoData::static_meteoparamname;
 std::vector<std::string> MeteoData::s_default_paramname;
 const bool MeteoData::__init = MeteoData::initStaticData();
 
 bool MeteoData::initStaticData()
 {
-	//Associate unsigned int value and a string representation of a meteo parameter
-	static_meteoparamname[P]      = "P";
-	static_meteoparamname[TA]     = "TA";
-	static_meteoparamname[RH]     = "RH";
-	static_meteoparamname[TSG]    = "TSG";
-	static_meteoparamname[TSS]    = "TSS";
-	static_meteoparamname[HS]     = "HS";
-	static_meteoparamname[VW]     = "VW";
-	static_meteoparamname[DW]     = "DW";
-	static_meteoparamname[VW_MAX] = "VW_MAX";
-	static_meteoparamname[RSWR]   = "RSWR";
-	static_meteoparamname[ISWR]   = "ISWR";
-	static_meteoparamname[ILWR]   = "ILWR";
-	static_meteoparamname[TAU_CLD]= "TAU_CLD";
-	static_meteoparamname[PSUM]    = "PSUM";
-	static_meteoparamname[PSUM_PH]    = "PSUM_PH";
-
+	//Since the parameters enum starts at 0, this is enough to associate an index with its name
 	s_default_paramname.push_back("P");
 	s_default_paramname.push_back("TA");
 	s_default_paramname.push_back("RH");
@@ -130,7 +128,7 @@ const std::string& MeteoData::getParameterName(const size_t& parindex)
 	if (parindex >= MeteoData::nrOfParameters)
 		throw IndexOutOfBoundsException("Trying to access meteo parameter that does not exist", AT);
 
-	return MeteoData::static_meteoparamname[parindex];
+	return MeteoData::s_default_paramname[parindex];
 }
 
 /************************************************************
@@ -139,17 +137,22 @@ const std::string& MeteoData::getParameterName(const size_t& parindex)
 
 const std::string& MeteoData::getNameForParameter(const size_t& parindex) const
 {
-	if (parindex >= nrOfAllParameters)
+	if (parindex >= MeteoData::nrOfAllParameters)
 		throw IndexOutOfBoundsException("Trying to get name for parameter that does not exist", AT);
 
-	return param_name[parindex];
+	if (parindex<MeteoData::nrOfParameters) return MeteoData::s_default_paramname[parindex];
+	return extra_param_name[parindex-MeteoData::nrOfParameters];
 }
 
 bool MeteoData::param_exists(const std::string& i_paramname) const
 {
-	const size_t current_size = param_name.size();
-	for (size_t ii = 0; ii<current_size; ii++) {
-		if (param_name[ii] == i_paramname)
+	for (size_t ii = 0; ii<MeteoData::nrOfParameters; ii++) {
+		if (s_default_paramname[ii] == i_paramname)
+			return true;
+	}
+	
+	for (size_t ii = 0; ii<extra_param_name.size(); ii++) {
+		if (extra_param_name[ii] == i_paramname)
 			return true;
 	}
 
@@ -164,7 +167,7 @@ size_t MeteoData::addParameter(const std::string& i_paramname)
 		return current_index; //do nothing, because parameter is already present
 
 	//add parameter
-	param_name.push_back(i_paramname);
+	extra_param_name.push_back(i_paramname);
 	data.push_back(IOUtils::nodata);
 
 	//Increase nrOfAllParameters
@@ -173,29 +176,19 @@ size_t MeteoData::addParameter(const std::string& i_paramname)
 	return (nrOfAllParameters - 1);
 }
 
-size_t MeteoData::getNrOfParameters() const
-{
-	return nrOfAllParameters;
-}
-
 MeteoData::MeteoData()
-         : date(0.0, 0.), meta(), param_name(s_default_paramname), data(MeteoData::nrOfParameters, IOUtils::nodata), nrOfAllParameters(MeteoData::nrOfParameters), resampled(false)
+         : date(0.0, 0.), meta(), extra_param_name(), data(MeteoData::nrOfParameters, IOUtils::nodata), nrOfAllParameters(MeteoData::nrOfParameters), resampled(false)
 { }
 
 MeteoData::MeteoData(const Date& date_in)
-         : date(date_in), meta(), param_name(s_default_paramname), data(MeteoData::nrOfParameters, IOUtils::nodata), nrOfAllParameters(MeteoData::nrOfParameters), resampled(false)
+         : date(date_in), meta(), extra_param_name(), data(MeteoData::nrOfParameters, IOUtils::nodata), nrOfAllParameters(MeteoData::nrOfParameters), resampled(false)
 { }
 
 MeteoData::MeteoData(const Date& date_in, const StationData& meta_in)
-         : date(date_in), meta(meta_in), param_name(s_default_paramname), data(MeteoData::nrOfParameters, IOUtils::nodata), nrOfAllParameters(MeteoData::nrOfParameters), resampled(false)
+         : date(date_in), meta(meta_in), extra_param_name(), data(MeteoData::nrOfParameters, IOUtils::nodata), nrOfAllParameters(MeteoData::nrOfParameters), resampled(false)
 { }
 
-void MeteoData::setDate(const Date& in_date)
-{
-	date = in_date;
-}
-
-void MeteoData::reset()
+void MeteoData::reset() 
 {
 	std::fill(data.begin(), data.end(), IOUtils::nodata);
 }
@@ -204,7 +197,8 @@ void MeteoData::reset()
 * @brief Standardize nodata values
 * The plugin-specific nodata values are replaced by MeteoIO's internal nodata value
 */
-void MeteoData::standardizeNodata(const double& plugin_nodata) {
+void MeteoData::standardizeNodata(const double& plugin_nodata) 
+{
 	for (size_t ii=0; ii<nrOfAllParameters; ii++) {
 		//loop through all meteo params and check whether they're nodata values
 		if (data[ii] <= plugin_nodata)
@@ -212,47 +206,27 @@ void MeteoData::standardizeNodata(const double& plugin_nodata) {
 	}
 }
 
-bool MeteoData::isResampled() const
-{
-	return resampled;
-}
-
-void MeteoData::setResampled(const bool& in_resampled)
-{
-	resampled = in_resampled;
-}
-
 bool MeteoData::operator==(const MeteoData& in) const
 {
 	//An object is equal if the date is equal and all meteo parameters are equal
-	if (date != in.date) {
-		return false;
-	}
+	if (date != in.date) return false;
 
-	if (nrOfAllParameters != in.nrOfAllParameters) { //the number of meteo parameters has to be consistent
+	if (nrOfAllParameters != in.nrOfAllParameters) //the number of meteo parameters has to be consistent
 		return false;
-	}
 
 	for (size_t ii=0; ii<nrOfAllParameters; ii++) {
 		//const double epsilon_rel = (fabs(data[ii]) < fabs(in.data[ii]) ? fabs(in.data[ii]) : fabs(data[ii])) * std::numeric_limits<double>::epsilon(); // Hack not working...
 		//const double epsilon_rel = (fabs(data[ii]) < fabs(in.data[ii]) ? fabs(in.data[ii]) : fabs(data[ii])) * 0.0000001; // Hack not working with 0 == 0 ....
-		if( !IOUtils::checkEpsilonEquality(data[ii], in.data[ii], epsilon) ){
-			return false;
-		}
+		if ( !IOUtils::checkEpsilonEquality(data[ii], in.data[ii], epsilon) ) return false;
 	}
 
 	return true;
 }
 
-bool MeteoData::operator!=(const MeteoData& in) const
-{
-	return !(*this==in);
-}
-
 double& MeteoData::operator()(const size_t& parindex)
 {
 #ifndef NOSAFECHECKS
-	if (parindex >= nrOfAllParameters)//getNrOfParameters())
+	if (parindex >= nrOfAllParameters)
 		throw IndexOutOfBoundsException("Trying to access meteo parameter that does not exist", AT);
 #endif
 	return data[parindex];
@@ -261,7 +235,7 @@ double& MeteoData::operator()(const size_t& parindex)
 const double& MeteoData::operator()(const size_t& parindex) const
 {
 #ifndef NOSAFECHECKS
-	if (parindex >= nrOfAllParameters)//getNrOfParameters())
+	if (parindex >= nrOfAllParameters) 
 		throw IndexOutOfBoundsException("Trying to access meteo parameter that does not exist", AT);
 #endif
 	return data[parindex];
@@ -287,9 +261,14 @@ const double& MeteoData::operator()(const std::string& parname) const
 
 size_t MeteoData::getParameterIndex(const std::string& parname) const
 {
-	for (size_t ii=0; ii<nrOfAllParameters; ii++) {
-		if (param_name[ii] == parname)
+	for (size_t ii = 0; ii<MeteoData::nrOfParameters; ii++) {
+		if (s_default_paramname[ii] == parname)
 			return ii;
+	}
+	
+	for (size_t ii=0; ii<extra_param_name.size(); ii++) {
+		if (extra_param_name[ii] == parname)
+			return ii+MeteoData::nrOfParameters;
 	}
 
 	return IOUtils::npos; //parameter not a part of MeteoData
@@ -300,8 +279,9 @@ const std::string MeteoData::toString() const {
 	os << "<meteo>\n";
 	os << meta.toString();
 	os << date.toString(Date::FULL) << "\n";
+	os << setw(8) << nrOfAllParameters << " parameters\n";
 
-	for (size_t ii=0; ii<getNrOfParameters(); ii++) {
+	for (size_t ii=0; ii<nrOfAllParameters; ii++) {
 		const double& value = operator()(ii);
 		if (value != IOUtils::nodata)
 			os << setw(8) << getNameForParameter(ii) << ":" << setw(15) << value << endl;
@@ -314,12 +294,12 @@ const std::string MeteoData::toString() const {
 std::iostream& operator<<(std::iostream& os, const MeteoData& data) {
 	os << data.date;
 	os << data.meta;
-	const size_t s_vector = data.param_name.size();
+	const size_t s_vector = data.extra_param_name.size();
 	os.write(reinterpret_cast<const char*>(&s_vector), sizeof(size_t));
 	for (size_t ii=0; ii<s_vector; ii++) {
-		const size_t s_string = data.param_name[ii].size();
+		const size_t s_string = data.extra_param_name[ii].size();
 		os.write(reinterpret_cast<const char*>(&s_string), sizeof(size_t));
-		os.write(reinterpret_cast<const char*>(&data.param_name[ii][0]), s_string*sizeof(data.param_name[ii][0]));
+		os.write(reinterpret_cast<const char*>(&data.extra_param_name[ii][0]), s_string*sizeof(data.extra_param_name[ii][0]));
 	}
 
 	const size_t s_data = data.data.size();
@@ -336,12 +316,12 @@ std::iostream& operator>>(std::iostream& is, MeteoData& data) {
 	is >> data.meta;
 	size_t s_vector;
 	is.read(reinterpret_cast<char*>(&s_vector), sizeof(size_t));
-	data.param_name.resize(s_vector);
+	data.extra_param_name.resize(s_vector);
 	for (size_t ii=0; ii<s_vector; ii++) {
 		size_t s_string;
 		is.read(reinterpret_cast<char*>(&s_string), sizeof(size_t));
-		data.param_name[ii].resize(s_string);
-		is.read(reinterpret_cast<char*>(&data.param_name[ii][0]), s_string*sizeof(data.param_name[ii][0]));
+		data.extra_param_name[ii].resize(s_string);
+		is.read(reinterpret_cast<char*>(&data.extra_param_name[ii][0]), s_string*sizeof(data.extra_param_name[ii][0]));
 	}
 
 	size_t s_data;
@@ -354,13 +334,138 @@ std::iostream& operator>>(std::iostream& is, MeteoData& data) {
 	return is;
 }
 
+MeteoData::Merge_Type MeteoData::getMergeType(std::string merge_type)
+{
+	IOUtils::toUpper( merge_type );
+	if (merge_type=="STRICT_MERGE") return STRICT_MERGE;
+	else if (merge_type=="EXPAND_MERGE") return EXPAND_MERGE;
+	else if (merge_type=="FULL_MERGE") return FULL_MERGE;
+	else
+		throw UnknownValueException("Unknown merge type '"+merge_type+"'", AT);
+}
+
+/*
+ * In the cases != STRICT_MERGE, it matters if vec2 is bigger than vec1. So we define the following indices
+ * in order to store the information about the insertion positions:
+ * 
+ * ----------------[-----------------]----------------------------	vec1
+ *                 ↓                 ↓                         
+ *             vec1_start        vec1_end                      
+ *                 ↓                 ↓                         
+ * ------[---------|-----------------|--------------]-------------	vec2
+ */
+void MeteoData::mergeTimeSeries(std::vector<MeteoData>& vec1, const std::vector<MeteoData>& vec2, const Merge_Type& strategy)
+{
+	if (vec2.empty()) return; //nothing to merge
+	if (strategy==STRICT_MERGE && vec1.empty()) return; //optimization for STRICT_MERGE
+	
+	//adding the necessary extra parameters to vec1 elements, no matter which merge strategy
+	if (!vec1.empty()) {
+		const size_t nrExtra2 = vec2.back().nrOfAllParameters - nrOfParameters;
+		for (size_t pp=0; pp<nrExtra2; pp++) {
+			const std::string extra_name( vec2.back().extra_param_name[pp] );
+			if (vec1.back().getParameterIndex(extra_name)==IOUtils::npos) {
+				for (size_t ii=0; ii<vec1.size(); ii++) vec1[ii].addParameter( extra_name );
+			}
+		}
+	}
+	
+	if (strategy==STRICT_MERGE) { //optimization for STRICT_MERGE
+		if (vec1.back().date<vec2.front().date) return; //vec1 is before vec2
+		if (vec1.front().date>vec2.back().date) return; //vec1 is after vec2
+	}
+	
+	size_t vec1_start = 0; //the index in vec2 that matches the original start of vec1
+	size_t vec1_end = 0; //the index in vec2 that matches the original end of vec1
+	
+	//filling data before vec1
+	if (strategy!=STRICT_MERGE && vec1.front().date>vec2.front().date) {
+		const Date start_date( vec1.front().date );
+		vec1_start = vec2.size(); //if no overlap is found, take all vec2
+		for(size_t ii=0; ii<vec2.size(); ii++) { //find the range of elements to add
+			if (vec2[ii].date>=start_date) {
+				vec1_start = ii;
+				break;
+			}
+		}
+		
+		MeteoData md_pattern( vec1.front() ); //This assumes that station1 is not moving!
+		md_pattern.reset(); //keep metadata and extra params
+		vec1.insert(vec1.begin(), vec1_start, md_pattern);
+		for (size_t ii=0; ii<vec1_start; ii++) {
+			vec1[ii].date = vec2[ii].date;
+			vec1[ii].merge( vec2[ii] );
+		}
+	}
+	
+	//general case: merge one timestamp at a time
+	if (strategy==FULL_MERGE) {
+		std::vector<MeteoData> tmp;
+		tmp.reserve( vec1.size() + (vec2.size() - vec1_start)); //"worst case" scenario: all elements will be added
+		MeteoData md_pattern( vec1.front() ); //This assumes that station1 is not moving!
+		md_pattern.reset(); //keep metadata and extra params
+		
+		size_t idx2 = vec1_start; //all previous elements were handled before
+		size_t last_v1 = vec1_start; //last element from vec1 that will have to be invalidated
+		for(size_t ii=vec1_start; ii<vec1.size(); ii++) {
+			const Date curr_date( vec1[ii].date );
+			while ((idx2<vec2.size()) && (curr_date>vec2[idx2].date)) {
+				tmp.push_back( md_pattern );
+				tmp.back().date = vec2[idx2].date;
+				tmp.back().merge( vec2[idx2] ); //so the extra params are properly handled
+				idx2++;
+			}
+			if (idx2==vec2.size())  break; //nothing left to merge
+				
+			if (curr_date==vec2[idx2].date) {
+				vec1[ii].merge( vec2[idx2] );
+				idx2++;
+			}
+			tmp.push_back( vec1[ii] );
+			last_v1 = ii;
+		}
+
+		const size_t new_count = last_v1 - vec1_start + 1;
+		if (new_count<tmp.size())
+			vec1.insert( vec1.begin() + vec1_start, tmp.size()-new_count, tmp.front()); //so room for the extra params is allocated
+
+		for(size_t ii=0; ii<tmp.size(); ii++)
+			vec1[vec1_start+ii] = tmp[ii];
+
+		vec1_end = idx2;
+	} else {
+		size_t idx2 = vec1_start;
+		for (size_t ii=vec1_start; ii<vec1.size(); ii++) { //loop over the timestamps. If some elements were inserted, vec1 now starts at vec1_start. If not, vec1_start==0
+			const Date curr_date( vec1[ii].date );
+			while ((idx2<vec2.size()) && (curr_date>vec2[idx2].date)) idx2++;
+			
+			if (idx2==vec2.size()) return; //nothing left to merge
+			if (curr_date==vec2[idx2].date) vec1[ii].merge( vec2[idx2] ); //merging
+		}
+		vec1_end = idx2;
+	}
+
+	//filling data after vec1
+	if (strategy!=STRICT_MERGE && vec1.back().date<vec2.back().date) {
+		if (vec1_end!=vec2.size()) {
+			MeteoData md_pattern( vec1.back() ); //This assumes that station1 is not moving!
+			md_pattern.reset(); //keep metadata and extra params
+			for (size_t ii=vec1_end; ii<vec2.size(); ii++) {
+				vec1.push_back( md_pattern );
+				vec1.back().date = vec2[ii].date;
+				vec1.back().merge( vec2[ii] );
+			}
+		}
+	}
+}
+
 void MeteoData::merge(std::vector<MeteoData>& vec1, const std::vector<MeteoData>& vec2, const bool& simple_merge)
 {
 	if (vec2.empty()) return;
 
 	if (simple_merge || vec1.empty()) {
 		vec1.reserve( vec1.size()+vec2.size() );
-		for(size_t ii=0; ii<vec2.size(); ii++) vec1.push_back( vec2[ii] );
+		for (size_t ii=0; ii<vec2.size(); ii++) vec1.push_back( vec2[ii] );
 	} else {
 		for (size_t ii=0; ii<vec2.size(); ii++) merge(vec1, vec2[ii]);
 	}
@@ -389,7 +494,7 @@ void MeteoData::merge(std::vector<MeteoData>& vec)
 	
 	std::vector<MeteoData> vecResult;
 	std::vector<size_t> mergeIdx(nElems);
-	for(size_t ii=0; ii<nElems; ii++) mergeIdx[ii] = ii;
+	for (size_t ii=0; ii<nElems; ii++) mergeIdx[ii] = ii;
 	
 	for (size_t ii=0; ii<nElems; ii++) {
 		if (mergeIdx[ii]==IOUtils::npos) continue; //this element has already been merged, skip
@@ -405,11 +510,10 @@ void MeteoData::merge(std::vector<MeteoData>& vec)
 	vec.swap( vecResult );
 }
 
-MeteoData MeteoData::merge(const MeteoData& meteo1, const MeteoData& meteo2)
+MeteoData MeteoData::merge(MeteoData meteo1, const MeteoData& meteo2)
 {
-	MeteoData tmp(meteo1);
-	tmp.merge(meteo2);
-	return tmp;
+	meteo1.merge(meteo2);
+	return meteo1;
 }
 
 void MeteoData::merge(const MeteoData& meteo2)
@@ -432,41 +536,16 @@ void MeteoData::merge(const MeteoData& meteo2)
 		if (data[ii]==IOUtils::nodata) data[ii]=meteo2.data[ii];
 	}
 
-	//merge extra parameters
-	const size_t nrExtra1 = nrOfAllParameters - nrOfParameters;
+	//for each meteo2 extra parameter, check if a matching parameter exist
 	const size_t nrExtra2 = meteo2.nrOfAllParameters - nrOfParameters;
-
-	//no extra parameters to add -> return
-	if (nrExtra2==0) return;
-
-	//extra parameters only in meteo2 -> add them
-	if (nrExtra1==0) {
-		for (size_t ii=0; ii<nrExtra2; ii++) {
-			const size_t new_idx = addParameter( meteo2.param_name[nrOfParameters+ii] );
-			data[new_idx] = meteo2.data[nrOfParameters+ii];
-		}
-		return;
-	}
-
-	//extra parameters in both the current meteodata and meteo2 -> tedious merge...
-	std::vector<bool> meteo2_flags(nrExtra2, false); //to keep track of which elements have been copied
-	//merge the extra field of the current meteodata
-	for (size_t ii=0; ii<nrExtra1; ii++) {
-		const std::string curr_name = param_name[nrOfParameters+ii];
-		//look for this parameter in meteo2
-		for (size_t jj=0; jj<nrExtra2; jj++) {
-			if (meteo2.param_name[nrOfParameters+jj]==curr_name ) {
-				meteo2_flags[jj] = true;
-				if (data[nrOfParameters+ii]==IOUtils::nodata) data[nrOfParameters+ii]=meteo2.data[nrOfParameters+jj];
-				break;
-			}
-		}
-	}
-	//merge the extra fields of meteo2 that were NOT in the current meteodata
 	for (size_t ii=0; ii<nrExtra2; ii++) {
-		if (meteo2_flags[ii]==false) {
-			const size_t new_idx = addParameter( meteo2.param_name[nrOfParameters+ii] );
+		const string extra_name = meteo2.extra_param_name[ii];
+		const size_t extra_param_idx = getParameterIndex(extra_name);
+		if (extra_param_idx==IOUtils::npos) { //no such parameter in current object
+			const size_t new_idx = addParameter( extra_name );
 			data[new_idx] = meteo2.data[nrOfParameters+ii];
+		} else if (data[extra_param_idx]==IOUtils::nodata) {
+			data[extra_param_idx] = meteo2.data[nrOfParameters+ii];
 		}
 	}
 }

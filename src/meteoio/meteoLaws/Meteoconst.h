@@ -15,10 +15,21 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __METEOCONST_H__
-#define __METEOCONST_H__
+#ifndef METEOCONST_H
+#define METEOCONST_H
 
 #include <cfloat>
+
+/**
+ * @brief _VERSION is given as a compilation flag to tell us what is the version number \n
+ * Please only use MIO_VERSION in the code
+ */
+#ifndef MIO_VERSION
+	//here below, the double-expansion stringification macro trick...
+	#define STR1(x) #x
+	#define STR2(x) STR1(x)
+	#define MIO_VERSION STR2( _VERSION )
+#endif
 
 namespace mio {
 
@@ -27,7 +38,8 @@ namespace Cst {
 	const double gravity = 9.80665; // (m s-2)
 	const double std_press = 101325.; // (Pa) at sea level
 	const double std_temp = 288.15; // (K) at sea level
-	const double dry_adiabatique_lapse_rate = 0.0065; // (K/m)
+	const double mean_adiabatique_lapse_rate = 0.0065; // (K/m)
+	const double dry_adiabatique_lapse_rate = 0.0098; // (K/m)
 
 	const double gaz_constant_dry_air = 287.058; // (J kg-1 K-1)
 	const double gaz_constant_water_vapor = 461.9; // (J kg-1 K-1)

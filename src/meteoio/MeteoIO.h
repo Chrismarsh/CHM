@@ -16,8 +16,8 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __METEOIO_H__
-#define __METEOIO_H__
+#ifndef METEOIO_H
+#define METEOIO_H
 
 #ifdef _MSC_VER
 //VC++ complains that it can not generate an assignment operator
@@ -33,6 +33,7 @@
 #include <meteoio/dataClasses/Array2D.h>
 #include <meteoio/dataClasses/Array3D.h>
 #include <meteoio/dataClasses/Array4D.h>
+#include <meteoio/dataClasses/CoordsAlgorithms.h>
 #include <meteoio/dataClasses/Coords.h>
 #include <meteoio/dataClasses/Date.h>
 #include <meteoio/dataClasses/DEMObject.h>
@@ -46,9 +47,9 @@
 #include <meteoio/DataGenerator.h>
 #include <meteoio/exports.h>
 #include <meteoio/FileUtils.h>
-#include <meteoio/GeneratorAlgorithms.h>
+#include <meteoio/dataGenerators/GeneratorAlgorithms.h>
 #include <meteoio/Graphics.h>
-#include <meteoio/InterpolationAlgorithms.h>
+#include <meteoio/spatialInterpolations/InterpolationAlgorithms.h>
 #include <meteoio/IOExceptions.h>
 #include <meteoio/IOHandler.h>
 #include <meteoio/IOInterface.h>
@@ -86,7 +87,7 @@
 #include <meteoio/plugins/libsmet.h>
 
 #include <meteoio/ResamplingAlgorithms2D.h>
-#include <meteoio/ResamplingAlgorithms.h>
+#include <meteoio/meteoResampling/ResamplingAlgorithms.h>
 #include <meteoio/Timer.h>
 
 #endif

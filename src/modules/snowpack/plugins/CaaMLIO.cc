@@ -16,6 +16,7 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <snowpack/plugins/CaaMLIO.h>
+#include <snowpack/Utils.h>
 //#include <meteoio/meteolaws/Atmosphere.h>
 
 #include <sstream>
@@ -43,7 +44,7 @@ using namespace mio;
 /**
  * @page caaml CAAML
  * @section caaml_format Format
- * This plugin reads the CAAML files as generated according <A HREF="http://caaml.org/">CAAML V5.0</A>'s 
+ * This plugin reads the CAAML files as generated according <A HREF="http://caaml.org/">CAAML V5.0</A>'s
  * <A HREF="http://caaml.org/Schemas/V5.0/Profiles/SnowProfileIACS">specification</A>.
  *
  * @section caaml_keywords Keywords
@@ -97,9 +98,9 @@ const xmlChar* CaaMLIO::xml_ns_slf = (const xmlChar*) "http://www.slf.ch/snowpro
 const xmlChar* CaaMLIO::xml_ns_abrev_slf = (const xmlChar*) "slf";
 const xmlChar* CaaMLIO::xml_ns_snp = (const xmlChar*) "http://www.slf.ch/snowpack/1.0";
 const xmlChar* CaaMLIO::xml_ns_abrev_snp = (const xmlChar*) "snp";
-const std::string xml_schemaLocation_snp = "file:///H:/alpine3d/snowpack.xsd";
-const std::string prefix = "caaml:";
-const std::string prefix_snp = "snp:";
+// const std::string xml_schemaLocation_snp = "http://www.slf.ch/snowpack/snowpack.xsd";
+const std::string namespaceCAAML = "caaml";
+const std::string namespaceSNP = "snp";
 //Define paths in xml-file
 const std::string CaaMLIO::TimeData_xpath = "/caaml:SnowProfile/caaml:validTime";
 const std::string CaaMLIO::StationMetaData_xpath = "/caaml:SnowProfile/caaml:locRef/caaml:ObsPoint";
@@ -108,7 +109,7 @@ const std::string CaaMLIO::SnowData_xpath = "/caaml:SnowProfile/caaml:snowProfil
 CaaMLIO::CaaMLIO(const SnowpackConfig& cfg, const RunInfo& run_info)
            : info(run_info),
              i_snowpath(), sw_mode(), o_snowpath(), experiment(),
-             useSoilLayers(false), perp_to_slope(false), in_tz(),
+             useSoilLayers(false), perp_to_slope(false), aggregate_caaml(false), in_tz(),
              snow_prefix(), snow_ext(".caaml"), caaml_nodata(-999.),
              in_doc(NULL), in_xpathCtx(NULL), in_encoding(XML_CHAR_ENCODING_NONE)
 {
@@ -133,6 +134,7 @@ void CaaMLIO::init(const SnowpackConfig& cfg)
 	if (i_snowpath.empty())
 		i_snowpath = tmpstr;
 
+	cfg.getValue("AGGREGATE_CAAML", "Output", aggregate_caaml);
 	cfg.getValue("EXPERIMENT", "Output", experiment);
 	cfg.getValue("METEOPATH", "Output", tmpstr, IOUtils::nothrow);
 	cfg.getValue("SNOWPATH", "Output", o_snowpath, IOUtils::nothrow);
@@ -193,7 +195,7 @@ void CaaMLIO::openIn_CAAML(const std::string& in_snowfile)
 	if (in_encoding==XML_CHAR_ENCODING_NONE) {
 		in_doc = xmlParseFile(in_snowfile.c_str());
 	} else {
-		xmlParserCtxtPtr ctxt = xmlCreateFileParserCtxt( in_snowfile.c_str() );
+		const xmlParserCtxtPtr ctxt( xmlCreateFileParserCtxt( in_snowfile.c_str() ) );
 		xmlSwitchEncoding( ctxt, in_encoding);
 		xmlParseDocument( ctxt);
 		in_doc = ctxt->myDoc;
@@ -240,13 +242,13 @@ void CaaMLIO::closeIn_CAAML() throw()
  */
 bool CaaMLIO::snowCoverExists(const std::string& i_snowfile, const std::string& /*stationID*/) const
 {
-	string snofilename = getFilenamePrefix(i_snowfile, i_snowpath, false);
+	std::string snofilename( getFilenamePrefix(i_snowfile, i_snowpath, false) );
 
 	if (snofilename.rfind(".caaml") == string::npos) {
 		snofilename += ".caaml";
 	}
 
-	return IOUtils::fileExists(snofilename);
+	return FileUtils::fileExists(snofilename);
 }
 
 /**
@@ -259,8 +261,8 @@ bool CaaMLIO::snowCoverExists(const std::string& i_snowfile, const std::string& 
 void CaaMLIO::readSnowCover(const std::string& i_snowfile, const std::string& stationID,
                             SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata)
 {
-	string snofilename = getFilenamePrefix(i_snowfile, i_snowpath, false);
-	string hazfilename(snofilename);
+	std::string snofilename( getFilenamePrefix(i_snowfile, i_snowpath, false) );
+	std::string hazfilename(snofilename);
 
 	if (snofilename.rfind(".caaml") == string::npos) {
 		snofilename += ".caaml";
@@ -277,7 +279,7 @@ void CaaMLIO::readSnowCover(const std::string& i_snowfile, const std::string& st
 std::string CaaMLIO::getFilenamePrefix(const std::string& fnam, const std::string& path, const bool addexp) const
 {
 	//TODO: read only once (in constructor)
-	string filename_prefix = path + "/" + fnam;
+	std::string filename_prefix( path + "/" + fnam );
 
 	if (addexp && (experiment != "NO_EXP"))
 		filename_prefix += "_" + experiment;
@@ -305,36 +307,36 @@ bool CaaMLIO::read_snocaaml(const std::string& in_snowFilename, const std::strin
 	xpaths.push_back("/caaml:tempProfile/caaml:Obs");
 	xpaths.push_back("/caaml:densityProfile/caaml:Layer");
 	xpaths.push_back("/caaml:hardnessProfile/caaml:Layer");
-	std::vector<size_t> len(xpaths.size());
-	std::vector<std::vector<double> > depths(xpaths.size());
-	std::vector<std::vector<double> > val(xpaths.size());
+	std::vector<std::vector<double> > depths( xpaths.size() ); //store 3 profiles: obs, density and hardness
+	std::vector<std::vector<double> > val( xpaths.size() );
 
 	//Loop on the paths to read corresponding profile
-	std::list<string>::iterator path;
 	size_t jj = 0;
-	for (path=xpaths.begin(); path!=xpaths.end(); path++, jj++) {
-		getProfiles(*path,len[jj],depths[jj],val[jj]);
+	for (std::list<std::string>::iterator path=xpaths.begin(); path!=xpaths.end(); path++, jj++) {
+		getProfiles(*path, depths[jj], val[jj]);
 	}
 
-	//Read profile direction
-	const bool reverse = getLayersDir();
-
 	//Read layers
-	xmlNodeSetPtr data = xmlGetData(SnowData_xpath+"/caaml:stratProfile/caaml:Layer");
+	const xmlNodeSetPtr data( xmlGetData(SnowData_xpath+"/caaml:stratProfile/caaml:Layer") );
 
-	SSdata.nLayers = data->nodeNr;
+	SSdata.nLayers = static_cast<size_t>( data->nodeNr );
 	SSdata.Ldata.resize(SSdata.nLayers, LayerData());
 
 	//Loop on the layer nodes to set their properties
 	jj = 0;
 	if (SSdata.nLayers>0) {
-		for (size_t ii = (reverse?SSdata.nLayers-1:0); ii != (reverse?-1:SSdata.nLayers); ii += (reverse?-1:1), jj++) {
-			SSdata.Ldata[jj] = xmlGetLayer(data->nodeTab[ii]);
+		const bool reverse = getLayersDir(); //Read profile direction
+		if (!reverse) {
+			for (size_t ii = 0; ii < SSdata.nLayers; ii++, jj++)
+				SSdata.Ldata[jj] = xmlGetLayer(data->nodeTab[ii]);
+		} else {
+			for (size_t ii = SSdata.nLayers; ii-- > 0; jj++)
+				SSdata.Ldata[jj] = xmlGetLayer(data->nodeTab[ii]);
 		}
 	}
 
 	//Set temperature, density and hardness from the profiles
-	setProfileVal(SSdata.Ldata,len,depths,val);
+	setProfileVal(SSdata.Ldata, depths, val);
 
 	//Layer default values
  	for (size_t ii = 0; ii < SSdata.nLayers; ii++) {
@@ -362,21 +364,33 @@ bool CaaMLIO::read_snocaaml(const std::string& in_snowFilename, const std::strin
 
 xmlNodeSetPtr CaaMLIO::xmlGetData(const std::string& path)
 {
-	const xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((const xmlChar*)path.c_str(),in_xpathCtx);
+	const xmlXPathObjectPtr xpathObj( xmlXPathEvalExpression((const xmlChar*)path.c_str(),in_xpathCtx) );
 	if (xpathObj == NULL) {
-		throw NoAvailableDataException("No data found !", AT);
+		throw NoDataException("Invalid xpath expression: '"+path+"'", AT);
 	}
+
 	xmlNodeSetPtr &data = xpathObj->nodesetval;
- 	if (data->nodeNr==0)
- 		throw NoAvailableDataException("No data found !", AT);
+ 	if (xmlXPathNodeSetIsEmpty(data) || data->nodeNr==0) {
+		xmlXPathFreeObject(xpathObj);
+ 		throw NoDataException("No data found for '"+path+"'", AT);
+	}
 
 	return data;
 }
 
 Date CaaMLIO::xmlGetDate()
 {
-	const xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((const xmlChar*)TimeData_xpath.c_str(),in_xpathCtx);
-	const string date_str( (char*) xmlNodeGetContent(xpathObj->nodesetval->nodeTab[0]) );
+	const xmlXPathObjectPtr xpathObj( xmlXPathEvalExpression((const xmlChar*)TimeData_xpath.c_str(),in_xpathCtx) );
+	if (xpathObj == NULL) {
+		throw NoDataException("Invalid xpath expression: '"+TimeData_xpath+"'", AT);
+	}
+
+ 	if (xmlXPathNodeSetIsEmpty(xpathObj->nodesetval)) {
+		xmlXPathFreeObject(xpathObj);
+ 		throw NoDataException("No data found for '"+TimeData_xpath+"'", AT);
+	}
+
+	const std::string date_str( (char*) xmlNodeGetContent(xpathObj->nodesetval->nodeTab[0]) );
 
 	Date date;
 	IOUtils::convertString(date, date_str, in_tz);
@@ -385,17 +399,18 @@ Date CaaMLIO::xmlGetDate()
 
 StationData CaaMLIO::xmlGetStationData(const std::string& stationID)
 {
-	double x, y, z, slopeAngle, azimuth;
+	double x=IOUtils::nodata, y=IOUtils::nodata, z=IOUtils::nodata;
+	double slopeAngle=IOUtils::nodata, azimuth=IOUtils::nodata;
 	std::string stationName;
 
-	xmlNodeSetPtr data = xmlGetData(StationMetaData_xpath);
+	const xmlNodeSetPtr data( xmlGetData(StationMetaData_xpath) );
 	for (xmlNode *cur_c = data->nodeTab[0]->children; cur_c; cur_c = cur_c->next) {
 		if (cur_c->type != XML_TEXT_NODE) {
-			const string field_name( (const char*)cur_c->name );
+			const std::string field_name( (const char*)cur_c->name );
 			//Ignore some fields
 			if (field_name!="customData" && field_name!="comment" && field_name!="metaDataProperty") {
 				if (field_name=="name") {
-				    stationName = string((const char*)xmlNodeGetContent(cur_c));
+				    stationName = std::string((const char*)xmlNodeGetContent(cur_c));
 				} else if (field_name=="validElevation") {
 				    sscanf((const char*)xmlNodeGetContent(cur_c),"%lf",&z);
 				} else if (field_name=="validSlopeAngle") {
@@ -411,16 +426,15 @@ StationData CaaMLIO::xmlGetStationData(const std::string& stationID)
 
 	Coords tmppos;
 	tmppos.setLatLon(x, y, z);
-	StationData metatmp;
-	metatmp.setStationData(tmppos, stationID, stationName);
+	StationData metatmp(tmppos, stationID, stationName);
 	metatmp.setSlope(slopeAngle, azimuth);
 	return metatmp;
 }
 
 double CaaMLIO::xmlSetVal(const string& xpath, const string& property, const double& dflt)
 {
-	const string path = SnowData_xpath+xpath+":"+property;
-	const xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((const xmlChar*)path.c_str(), in_xpathCtx);
+	const std::string path( SnowData_xpath+xpath+":"+property );
+	const xmlXPathObjectPtr xpathObj( xmlXPathEvalExpression((const xmlChar*)path.c_str(), in_xpathCtx) );
 	double val = IOUtils::nodata;
 
 	if (xpathObj->nodesetval->nodeNr > 0)
@@ -434,9 +448,9 @@ double CaaMLIO::xmlSetVal(const string& xpath, const string& property, const dou
 
 int CaaMLIO::xmlSetVal(const string& xpath, const std::string& property, const int& dflt)
 {
-	const string path = SnowData_xpath+xpath+":"+property;
-	const xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((const xmlChar*)path.c_str(), in_xpathCtx);
-	int val = IOUtils::nodata;
+	const std::string path( SnowData_xpath+xpath+":"+property );
+	const xmlXPathObjectPtr xpathObj( xmlXPathEvalExpression((const xmlChar*)path.c_str(), in_xpathCtx) );
+	int val = IOUtils::inodata;
 
 	if (xpathObj->nodesetval->nodeNr > 0)
 		sscanf((const char*)xmlNodeGetContent(xpathObj->nodesetval->nodeTab[0]), "%d", &val);
@@ -449,7 +463,7 @@ int CaaMLIO::xmlSetVal(const string& xpath, const std::string& property, const i
 
 void CaaMLIO::setCustomSnowSoil(SN_SNOWSOIL_DATA& Xdata)
 {
-	const std::string xpath = "/caaml:customData/snp";
+	const std::string xpath( "/caaml:customData/snp" );
 	Xdata.Albedo = xmlSetVal(xpath,"Albedo",0.6);
 	Xdata.SoilAlb = xmlSetVal(xpath,"SoilAlb",0.2);
 	Xdata.BareSoil_z0 = xmlSetVal(xpath,"BareSoil_z0",0.02);
@@ -458,34 +472,29 @@ void CaaMLIO::setCustomSnowSoil(SN_SNOWSOIL_DATA& Xdata)
 	Xdata.Canopy_BasalArea = xmlSetVal(xpath,"CanopyBasalArea",0.);
 	Xdata.Canopy_Direct_Throughfall = xmlSetVal(xpath,"CanopyDirectThroughfall",1.);
 	Xdata.WindScalingFactor = xmlSetVal(xpath,"WindScalingFactor",1.);
-	Xdata.ErosionLevel = xmlSetVal(xpath,"ErosionLevel",0.);
+	Xdata.ErosionLevel = xmlSetVal(xpath,"ErosionLevel",0);
 	Xdata.TimeCountDeltaHS = xmlSetVal(xpath,"TimeCountDeltaHS",0.);
 }
 
 //Direction in which the layers should be read and stored in SSdata
 bool CaaMLIO::getLayersDir()
 {
-	xmlXPathObjectPtr xpathObj = xmlXPathEvalExpression((const xmlChar*)SnowData_xpath.c_str(),in_xpathCtx);
-	const string direction( (const char*)xmlGetProp(xpathObj->nodesetval->nodeTab[0],(const xmlChar*)"dir") );
+	const xmlXPathObjectPtr xpathObj( xmlXPathEvalExpression((const xmlChar*)SnowData_xpath.c_str(),in_xpathCtx) );
+	const std::string direction( (const char*)xmlGetProp(xpathObj->nodesetval->nodeTab[0],(const xmlChar*)"dir") );
 
-	if (direction=="bottom up") {
-		return false; //Standard direction
-	} else {
-		return true; //Reverse direction
-	}
+	return (direction!="bottom up"); //standard direction -> false, otherwise "true" for Reverse direction
 }
 
 LayerData CaaMLIO::xmlGetLayer(xmlNodePtr cur)
 {
+	std::string code;
+
 	LayerData Layer;
-	double z, temp, hard;
-	double* form;
-	char* code;
 	if (cur->type == XML_ELEMENT_NODE) {
 		//Loop on the children
 		for (xmlNode *cur_c = cur->children; cur_c; cur_c = cur_c->next) {
 			if (cur_c->type != XML_TEXT_NODE) {
-				const string field_name( (const char*)cur_c->name );
+				const std::string field_name( (const char*)cur_c->name );
 				//Ignore some fields
 				if (field_name!="customData" && field_name!="comment" && field_name!="metaDataProperty") {
 					//Default reading
@@ -497,21 +506,21 @@ LayerData CaaMLIO::xmlGetLayer(xmlNodePtr cur)
 							unit = (const xmlChar*) "unit";
 						}
 						if (!strcmp((const char*) cur_c->name, "depthTop")) {
+							double z;
 							sscanf((const char*) xmlNodeGetContent(cur_c),"%lf",&z);
 						} else if (!strcmp((const char*) cur_c->name, "thickness")) {
+							double temp;
 							sscanf((const char*) xmlNodeGetContent(cur_c),"%lf",&temp);
 							Layer.hl = unitConversion(temp,(char*)xmlGetProp(cur_c,unit),(char*)"m");
 							Layer.ne = (size_t) ceil(Layer.hl/0.02);
 						} else if (!strcmp((const char*) cur_c->name, "hardness")) {
-							hard = hardness_codeToVal((char*) xmlNodeGetContent(cur_c));
+							//const double hard = hardness_codeToVal((char*) xmlNodeGetContent(cur_c));
 						} else if (!strcmp((const char*) cur_c->name, "lwc")) {
 							Layer.phiWater = lwc_codeToVal((char*) xmlNodeGetContent(cur_c));
 						} else if (!strcmp((const char*) cur_c->name, "grainFormPrimary")) {
-							code = (char*) xmlNodeGetContent(cur_c);
-							form = form_codeToVal(code);
-							Layer.sp = form[0];
-							Layer.dd = form[1];
-							Layer.mk = (unsigned short int) form[2];
+							//code = (char*) xmlNodeGetContent(cur_c);
+							code = std::string( (char*)xmlNodeGetContent(cur_c) );
+							grainShape_codeToVal(code, Layer.sp, Layer.dd, Layer.mk);
 						}
 					//Treating "grainSize" field
 					} else {
@@ -537,7 +546,7 @@ LayerData CaaMLIO::xmlGetLayer(xmlNodePtr cur)
 	}
 
 	if (Layer.rg == 0.) {
-	    if (!strcmp(code,"IF")) {
+	    if (code=="IF") {
 		Layer.rg = 3./2.;
 		Layer.rb = 3./8.;
 	    } else {
@@ -548,28 +557,28 @@ LayerData CaaMLIO::xmlGetLayer(xmlNodePtr cur)
 	return Layer;
 }
 
-void CaaMLIO::getProfiles(const std::string path, size_t &len, std::vector<double> &depths, std::vector<double> &val)
+void CaaMLIO::getProfiles(const std::string path, std::vector<double> &depths, std::vector<double> &val)
 {
-	xmlNodeSetPtr data = xmlGetData(SnowData_xpath+path);
-	len = data->nodeNr; //HACK: no necessary, a depth.size() would later do the job
-	depths.resize(len);
-	val.resize(len);
+	const xmlNodeSetPtr data( xmlGetData(SnowData_xpath+path) );
+	const size_t nrElem = static_cast<size_t>(data->nodeNr);
+	depths.resize(nrElem);
+	val.resize(nrElem);
 
 	//double l;
 	//Loop on the nodes
- 	for (size_t ii=0; ii<len; ++ii) {
+ 	for (size_t ii=0; ii<nrElem; ++ii) {
 		if (data->nodeTab[ii]->type == XML_ELEMENT_NODE) {
 			//Loop on the children
 			for (xmlNode *cur_c = data->nodeTab[ii]->children; cur_c; cur_c = cur_c->next) {
 				if (cur_c->type != XML_TEXT_NODE) {
-					const string field_name( (const char*)cur_c->name );
+					const std::string field_name( (const char*)cur_c->name );
 					//Ignore some fields
 					if (field_name!="customData" && field_name!="comment" && field_name!="metaDataProperty") {
-						string name( field_name );
+						std::string name( field_name );
 						if (name.compare(0,4,"snow")==0) name.erase(0,4);
 
 						if (!name.empty()) name[0] = (const char)std::toupper( name[0] );
-						const string unitname = "uom"+name;
+						const std::string unitname( "uom"+name );
 
 						if (name=="Temp" || name=="Density" || name=="Hardness") {
 							sscanf((const char*) xmlNodeGetContent(cur_c), "%lf", &val[ii]);
@@ -595,62 +604,58 @@ void CaaMLIO::getProfiles(const std::string path, size_t &len, std::vector<doubl
 	//If necessary, reverse order
 	if (depths.size()>=2 && depths[0]<depths[1]) {
 		double temp;
-		for (size_t ii=0; ii<floor(len/2); ++ii) {
+		for (size_t ii=0; ii<floor(nrElem/2); ++ii) {
 			temp = depths[ii];
-			depths[ii] = depths[len-ii-1];
-			depths[len-ii-1] = temp;
+			depths[ii] = depths[nrElem-ii-1];
+			depths[nrElem-ii-1] = temp;
 			temp = val[ii];
-			val[ii] = val[len-ii-1];
-			val[len-ii-1] = temp;
+			val[ii] = val[nrElem-ii-1];
+			val[nrElem-ii-1] = temp;
 		}
 	}
 }
 
-void CaaMLIO::setProfileVal(std::vector<LayerData> &Layers, std::vector<size_t> len, std::vector<std::vector<double> > depths, std::vector<std::vector<double> > val)
+void CaaMLIO::setProfileVal(std::vector<LayerData> &Layers, std::vector<std::vector<double> > depths, std::vector<std::vector<double> > val)
 {
 	double z = 0.;
-	//cout << endl << "Depth\tTemp\tDensity\tHardness" << endl;
-	for (size_t ii=0; ii<Layers.size(); ii++) {
+	for (size_t ii=0; ii<Layers.size(); ii++) { //loop over the number of layers
+		//profile 0 is the obs profile, 1 is the density and 2 is the hardness
 		z += Layers[ii].hl;
 		//Compute temperature at the top of the layer
 		size_t ind = 0;
-		while (z<depths[0][ind] && ind<len[0])
+		while (ind<depths[0].size() && z<depths[0][ind])
 			ind++;
 
 		Layers[ii].tl = val[0][ind];
 		if (ind>0 && z>depths[0][ind])
 			Layers[ii].tl += (val[0][ind]-val[0][ind-1])*(z-depths[0][ind])/(depths[0][ind]-depths[0][ind-1]);
 
-		//cout << z << "\t" << Layers[ii].tl;
 		//Compute average density and hardness in the layer
 		for (size_t k=1; k<3; k++) {
 			ind = 0;
-			double zprev=z, cumsum=0, wghts=0;
-			while (depths[k][ind]>z-Layers[ii].hl && ind<len[k]) { // HACK: there is no garantee that depth[k] exists!
+			double zprev=z, cumsum=0, weights=0;
+			while (ind<depths[k].size() &&  depths[k][ind]>z-Layers[ii].hl) {
 				ind++;
 				if (depths[k][ind]-z < 1e-12) {
 					if (depths[k][ind]<=z-Layers[ii].hl) {
 						cumsum += val[k][ind-1]*(zprev-(z-Layers[ii].hl));
-						wghts += (zprev-(z-Layers[ii].hl));
+						weights += (zprev-(z-Layers[ii].hl));
 					} else {
 						cumsum += val[k][ind-1]*(zprev-depths[k][ind]);
-						wghts += (zprev-depths[k][ind]);
+						weights += (zprev-depths[k][ind]);
 						zprev = depths[k][ind];
 					}
 				}
 			}
 			if (k==1) {
-				Layers[ii].phiIce = (cumsum/wghts)/Constants::density_ice;
-				//cout << "\t" << Layers[ii].phiIce;
-			} else {
-				//cout << "\t" << cumsum/wghts << endl;
+				Layers[ii].phiIce = (cumsum/weights)/Constants::density_ice;
 			}
 		}
 	}
 }
 
 void CaaMLIO::setCustomLayerData(LayerData &Layer) {
-	const std::string xpath = "/caaml:stratProfile/caaml:Layer/caaml:customData/snp";
+	const std::string xpath( "/caaml:stratProfile/caaml:Layer/caaml:customData/snp" );
 	Layer.phiSoil = xmlSetVal(xpath,"phiSoil",0.);
 	Layer.hr = xmlSetVal(xpath,"SurfaceHoarMass",0.);
 	Layer.CDot = xmlSetVal(xpath,"StressRate",0.);
@@ -662,13 +667,13 @@ void CaaMLIO::setDepositionDates(std::vector<LayerData> &Layers, const Date prof
 {
 	for (size_t ii=0; ii<Layers.size(); ii++) {
 		if (xmlXPathEvalExpression((const xmlChar*)(SnowData_xpath+"/caaml:stratProfile/caaml:Layer/caaml:customData/snp:DepositionDate").c_str(),in_xpathCtx)->nodesetval->nodeNr) {
-			const string date_str( (char*) xmlNodeGetContent(xmlGetData(SnowData_xpath+"/caaml:stratProfile/caaml:Layer/caaml:customData/snp:DepositionDate")->nodeTab[0]) );
+			const std::string date_str( (char*) xmlNodeGetContent(xmlGetData(SnowData_xpath+"/caaml:stratProfile/caaml:Layer/caaml:customData/snp:DepositionDate")->nodeTab[0]) );
 			Date date;
 			IOUtils::convertString(date, date_str, in_tz);
 			Layers[ii].depositionDate = date;
 		} else {
-			const unsigned int frm = ElementData::snowType(Layers[ii].dd,Layers[ii].sp,Layers[ii].rg,Layers[ii].mk,Layers[ii].phiWater,ElementData::snowResidualWaterContent(Layers[ii].phiIce));
-			const unsigned int a = (int) (frm/100.);
+			const unsigned int snowType = ElementData::snowType(Layers[ii].dd,Layers[ii].sp,Layers[ii].rg,Layers[ii].mk,Layers[ii].phiWater,ElementData::snowResidualWaterContent(Layers[ii].phiIce));
+			const unsigned int a = (unsigned int) (snowType/100.);
 			if (ii==0) {
 				if (a==6) {
 					Layers[ii].depositionDate = profileDate;
@@ -698,8 +703,8 @@ void CaaMLIO::setDepositionDates(std::vector<LayerData> &Layers, const Date prof
 void CaaMLIO::writeSnowCover(const Date& date, const SnowStation& Xdata,
                              const ZwischenData& Zdata, const bool& forbackup)
 {
-	string snofilename = getFilenamePrefix(Xdata.meta.getStationID().c_str(), o_snowpath) + ".caaml";
-	string hazfilename = getFilenamePrefix(Xdata.meta.getStationID().c_str(), o_snowpath) + ".haz";
+	std::string snofilename( getFilenamePrefix(Xdata.meta.getStationID().c_str(), o_snowpath) + ".caaml" );
+	std::string hazfilename( getFilenamePrefix(Xdata.meta.getStationID().c_str(), o_snowpath) + ".haz" );
 
 	if (forbackup) {
 		stringstream ss;
@@ -708,54 +713,74 @@ void CaaMLIO::writeSnowCover(const Date& date, const SnowStation& Xdata,
 		hazfilename += ss.str();
 	}
 
-	writeSnowFile(snofilename, date, Xdata, Zdata);
-	//SmetIO::writeHazFile(hazfilename, date, Xdata, Zdata);
+	writeSnowFile(snofilename, date, Xdata, aggregate_caaml);
+	SmetIO::writeHazFile(hazfilename, date, Xdata, Zdata);
 }
 
 void CaaMLIO::writeSnowFile(const std::string& snofilename, const Date& date, const SnowStation& Xdata,
-                           const ZwischenData& /*Zdata*/)
+                            const bool /*aggregate*/)
 {
-	xmlTextWriterPtr writer = xmlNewTextWriterFilename(snofilename.c_str(), 0);
-	xmlTextWriterSetIndent(writer,1);
+	xmlTextWriterPtr writer( xmlNewTextWriterFilename(snofilename.c_str(), 0) );
+	xmlTextWriterSetIndent(writer,3);
 	xmlTextWriterStartDocument(writer, NULL, "UTF-8", NULL);
 
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"SnowProfile").c_str());
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":SnowProfile").c_str());
 	xmlTextWriterWriteAttribute(writer,(const xmlChar*)("xmlns:"+string((const char*)xml_ns_abrev_caaml)).c_str(),xml_ns_caaml);
 	xmlTextWriterWriteAttribute(writer,(const xmlChar*)("xmlns:"+string((const char*)xml_ns_abrev_gml)).c_str(),xml_ns_gml);
 	xmlTextWriterWriteAttribute(writer,(const xmlChar*)("xmlns:"+string((const char*)xml_ns_abrev_xsi)).c_str(),xml_ns_xsi);
-	xmlTextWriterWriteAttribute(writer,(const xmlChar*)"xsi:schemaLocation",(const xmlChar*)(string((const char*)xml_ns_snp)+" "+xml_schemaLocation_snp).c_str());
+	// xmlTextWriterWriteAttribute(writer,(const xmlChar*)"xsi:schemaLocation",(const xmlChar*)(string((const char*)xml_ns_snp)+" "+xml_schemaLocation_snp).c_str());
 	xmlTextWriterWriteAttribute(writer,(const xmlChar*)"xmlns:snp",(const xmlChar*)xml_ns_snp);
 	xmlTextWriterWriteAttribute(writer,(const xmlChar*)("xmlns:"+string((const char*)xml_ns_abrev_slf)).c_str(),xml_ns_slf);
 	xmlTextWriterWriteAttribute(writer,(const xmlChar*)"gml:id",(const xmlChar*)("SLF_"+Xdata.meta.stationID).c_str());
 
 	//Required fields
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"metaDataProperty").c_str());
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"MetaData").c_str());
-	time_t now;
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":metaDataProperty").c_str());
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":MetaData").c_str());
+	time_t now; //HACK
 	time(&now);
 	struct tm *timeinfo = localtime(&now);
-	char timeNow[50];
-	strftime(timeNow,50,"%FT%T.000+01:00",timeinfo);
-	xmlWriteElement(writer,(prefix+"dateTimeReport").c_str(),timeNow,"","");
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"srcRef").c_str());
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"Operation").c_str());
+	strftime(dateStr,30,"%FT%T.000+01:00",timeinfo);
+	writeDate(writer,":dateTimeReport",dateStr);
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":srcRef").c_str());
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":Operation").c_str());
 	xmlTextWriterWriteAttribute(writer,(const xmlChar*)"gml:id",(const xmlChar*)"OPERATION_ID");
-	xmlWriteElement(writer,(prefix+"name").c_str(),"","","");
+	xmlWriteElement(writer,(namespaceCAAML+":name").c_str(),"SNOWPACK","","");
 	xmlTextWriterEndElement(writer);
 	xmlTextWriterEndElement(writer);
 	xmlTextWriterEndElement(writer);
 	xmlTextWriterEndElement(writer);
 
-	//Write profile date
-	writeDate(writer,date);
+	// Write profile date
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":validTime").c_str());
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":TimeInstant").c_str());
+	const double tz = date.getTimeZone();
+	sprintf(dateStr,"%s.000%+03d:%02d",date.toString(Date::ISO).c_str(),(int) tz,(int) (60*(tz-(int)tz))); //HACK: not (int)tz but floor(tz)!
+	writeDate(writer,":timePosition",dateStr);
+	xmlTextWriterEndElement(writer);
+	xmlTextWriterEndElement(writer);
 
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"snowProfileResultsOf").c_str());
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"SnowProfileMeasurements").c_str());
+	// Write stratigraphic profile
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":snowProfileResultsOf").c_str());
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":SnowProfileMeasurements").c_str());
 	xmlTextWriterWriteAttribute(writer,(const xmlChar*)"dir",(const xmlChar*)"top down");
 
 	//Write custom snow/soil data
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"customData").c_str());
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":customData").c_str());
 	writeCustomSnowSoil(writer,Xdata);
+	xmlTextWriterEndElement(writer);
+
+	// Write profile depth
+	sprintf(valueStr,"%.4f",100.*Xdata.cH);
+	xmlWriteElement(writer,(namespaceCAAML+":profileDepth").c_str(),valueStr,"uom","cm");
+
+	//Write height of snow and Snow Water Equivalent (SWE)
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":hS").c_str());
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":Components").c_str());
+	sprintf(valueStr,"%.4f",100.*(Xdata.cH - Xdata.Ground));
+	xmlWriteElement(writer,(namespaceCAAML+":snowHeight").c_str(),valueStr,"uom","cm");
+	sprintf(valueStr,"%.2f",Xdata.swe);
+	xmlWriteElement(writer,(namespaceCAAML+":swe").c_str(),valueStr,"uom","mm");
+	xmlTextWriterEndElement(writer);
 	xmlTextWriterEndElement(writer);
 
 	//Write layers and quantity profiles
@@ -763,9 +788,9 @@ void CaaMLIO::writeSnowFile(const std::string& snofilename, const Date& date, co
 	writeProfiles(writer,Xdata);
 
 	xmlTextWriterEndElement(writer);
-	xmlTextWriterEndElement(writer);
+	xmlTextWriterEndElement(writer); // end stratigraphic profile
 
-	//Write station data
+	// Write station data
 	writeStationData(writer,Xdata);
 
 	xmlTextWriterEndElement(writer);
@@ -783,85 +808,106 @@ void CaaMLIO::xmlWriteElement(const xmlTextWriterPtr writer, const char* name, c
 	xmlTextWriterEndElement(writer);
 }
 
-void CaaMLIO::writeDate(const xmlTextWriterPtr writer, const Date date)
+// void CaaMLIO::writeDate(const xmlTextWriterPtr writer, const Date date)
+void CaaMLIO::writeDate(const xmlTextWriterPtr writer, const char* att_name, const char* att_val)
 {
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"validTime").c_str());
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"TimeInstant").c_str());
-	char dateStr[50];
-	const double tz = date.getTimeZone();
-	sprintf(dateStr,"%s:00.000%+03d:%02d",date.toString(Date::ISO).c_str(),(int) tz,(int) (60*(tz-(int)tz))); //HACK: not (int)tz but floor(tz)!
-	xmlWriteElement(writer,(prefix+"timePosition").c_str(),dateStr,"","");
-	xmlTextWriterEndElement(writer);
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+att_name).c_str());
+	xmlTextWriterWriteAttribute(writer,(const xmlChar*)"xmlns:xs",(const xmlChar*)("http://www.w3.org/2001/XMLSchema"));
+	xmlTextWriterWriteAttribute(writer,(const xmlChar*)"xsi:type",(const xmlChar*)("xs:dateTime")); //,timeNow);
+	xmlTextWriterWriteString(writer, (const xmlChar*) att_val);
 	xmlTextWriterEndElement(writer);
 }
 
 void CaaMLIO::writeCustomSnowSoil(const xmlTextWriterPtr writer, const SnowStation& Xdata)
 {
-	char tempStr[10];
-	sprintf(tempStr,"%.4f",Xdata.Albedo);
-	xmlWriteElement(writer,(prefix_snp+"Albedo").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Xdata.SoilAlb);
-	xmlWriteElement(writer,(prefix_snp+"SoilAlb").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Xdata.BareSoil_z0);
-	xmlWriteElement(writer,(prefix_snp+"BareSoil_z0").c_str(),tempStr,"uom","m");
-	sprintf(tempStr,"%.4f",Xdata.Cdata.height);
-	xmlWriteElement(writer,(prefix_snp+"CanopyHeight").c_str(),tempStr,"uom","m");
-	sprintf(tempStr,"%.4f",Xdata.Cdata.lai);
-	xmlWriteElement(writer,(prefix_snp+"CanopyLAI").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Xdata.Cdata.BasalArea);
-	xmlWriteElement(writer,(prefix_snp+"CanopyBasalArea").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Xdata.Cdata.throughfall);
-	xmlWriteElement(writer,(prefix_snp+"CanopyDirectThroughfall").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Xdata.WindScalingFactor);
-	xmlWriteElement(writer,(prefix_snp+"WindScalingFactor").c_str(),tempStr,"","");
-	sprintf(tempStr,"%d",static_cast<unsigned int>(Xdata.ErosionLevel));
-	xmlWriteElement(writer,(prefix_snp+"ErosionLevel").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Xdata.TimeCountDeltaHS);
-	xmlWriteElement(writer,(prefix_snp+"TimeCountDeltaHS").c_str(),tempStr,"","");
+	sprintf(valueStr,"%.4f",Xdata.Albedo);
+	xmlWriteElement(writer,(namespaceSNP+":Albedo").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.4f",Xdata.SoilAlb);
+	xmlWriteElement(writer,(namespaceSNP+":SoilAlb").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.4f",Xdata.BareSoil_z0);
+	xmlWriteElement(writer,(namespaceSNP+":BareSoil_z0").c_str(),valueStr,"uom","m");
+	sprintf(valueStr,"%.4f",Xdata.Cdata.height);
+	xmlWriteElement(writer,(namespaceSNP+":CanopyHeight").c_str(),valueStr,"uom","m");
+	sprintf(valueStr,"%.4f",Xdata.Cdata.lai);
+	xmlWriteElement(writer,(namespaceSNP+":CanopyLAI").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.4f",Xdata.Cdata.BasalArea);
+	xmlWriteElement(writer,(namespaceSNP+":CanopyBasalArea").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.4f",Xdata.Cdata.throughfall);
+	xmlWriteElement(writer,(namespaceSNP+":CanopyDirectThroughfall").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.4f",Xdata.WindScalingFactor);
+	xmlWriteElement(writer,(namespaceSNP+":WindScalingFactor").c_str(),valueStr,"","");
+	sprintf(valueStr,"%d",static_cast<unsigned int>(Xdata.ErosionLevel));
+	xmlWriteElement(writer,(namespaceSNP+":ErosionLevel").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.4f",Xdata.TimeCountDeltaHS);
+	xmlWriteElement(writer,(namespaceSNP+":TimeCountDeltaHS").c_str(),valueStr,"","");
 }
 
 void CaaMLIO::writeLayers(const xmlTextWriterPtr writer, const SnowStation& Xdata)
 {
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"stratProfile").c_str());
+	xmlTextWriterStartElement( writer,(const xmlChar*)(namespaceCAAML+":stratProfile").c_str() );
 	if (!Xdata.Edata.empty()) {
-		double cumHgt = Xdata.cH;
-		char cumHgtStr[10], hgtStr[10], size[10];
-		for (size_t ii = Xdata.Edata.size()-1; ii-->0;) {
-			sprintf(hgtStr,"%.4f",100*Xdata.Edata[ii].L);
-			sprintf(cumHgtStr,"%.4f",100*cumHgt);
-			xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"Layer").c_str());
+		for (size_t ii = Xdata.Edata.size(); ii-->0;) {
+			const bool snowLayer = (ii >= Xdata.SoilNode);
+			xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":Layer").c_str());
 
-			//Write custom layer data
-			xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"customData").c_str());
+			// Write custom layer data
+			xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":customData").c_str());
 			writeCustomLayerData(writer,Xdata.Edata[ii],Xdata.Ndata[ii]);
 			xmlTextWriterEndElement(writer);
 
-			xmlWriteElement(writer,(prefix+"depthTop").c_str(),cumHgtStr,"uom","cm");
+			// Write snow and soil layer data
+			sprintf(layerDepthTopStr,"%.4f",100.*(Xdata.cH - Xdata.Ndata[ii+1].z));
+			xmlWriteElement(writer,(namespaceCAAML+":depthTop").c_str(),layerDepthTopStr,"uom","cm");
+			sprintf(layerThicknessStr,"%.4f",100.*Xdata.Edata[ii].L);
+			xmlWriteElement(writer,(namespaceCAAML+":thickness").c_str(),layerThicknessStr,"uom","cm");
 
-			xmlWriteElement(writer,(prefix+"thickness").c_str(),hgtStr,"uom","cm");
-
-			const unsigned int frm = ElementData::snowType(Xdata.Edata[ii].dd,Xdata.Edata[ii].sp,Xdata.Edata[ii].rg,Xdata.Edata[ii].mk,Xdata.Edata[ii].theta[WATER],Xdata.Edata[ii].res_wat_cont);
-			const unsigned int a = (int) (frm/100.);
-			const unsigned int b = (int) ((frm-100*a)/10.);
-			//const unsigned int c = (int) (frm-100*a-10*b);
-			xmlWriteElement(writer,(prefix+"grainFormPrimary").c_str(),form_valToCode(a).c_str(),"","");
-			xmlWriteElement(writer,(prefix+"grainFormSecondary").c_str(),form_valToCode(b).c_str(),"","");
-
-			if (Xdata.Edata[ii].rg != 0.) {
-				xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"grainSize").c_str());
+			if (snowLayer) {
+				//const unsigned int snowType = ElementData::snowType(Xdata.Edata[ii].dd, Xdata.Edata[ii].sp, Xdata.Edata[ii].rg, Xdata.Edata[ii].mk, Xdata.Edata[ii].theta[WATER],  Xdata.Edata[ii].res_wat_cont);
+				const unsigned int snowType = Xdata.Edata[ii].getSnowType();
+				const unsigned int a = snowType/100;
+				const unsigned int b = (snowType-100*a)/10;
+				const unsigned int c = snowType-100*a-10*b;
+				if (c != 2) {
+					xmlWriteElement(writer,(namespaceCAAML+":grainFormPrimary").c_str(),grainShape_valToAbbrev(a).c_str(),"","");
+				} else {
+					xmlWriteElement(writer,(namespaceCAAML+":grainFormPrimary").c_str(),"MFcr","","");
+				}
+				xmlWriteElement(writer,(namespaceCAAML+":grainFormSecondary").c_str(),grainShape_valToAbbrev(b).c_str(),"","");
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":grainSize").c_str());
 				xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uom",(const xmlChar*)"mm");
-				xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"Components").c_str());
-				sprintf(size,"%.3f",2.*Xdata.Edata[ii].rg);
-				xmlWriteElement(writer,(prefix+"avg").c_str(),size,"","");
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":Components").c_str());
+				sprintf(layerValStr,"%.3f",2.*Xdata.Edata[ii].rg);
+				xmlWriteElement(writer,(namespaceCAAML+":avg").c_str(),layerValStr,"","");
 				xmlTextWriterEndElement(writer);
 				xmlTextWriterEndElement(writer);
 			}
-
-			xmlWriteElement(writer,(prefix+"hardness").c_str(),hardness_valToCode(Xdata.Edata[ii].hard).c_str(),"uom","N"); //HACK: check values... seem always the same!
-
-			xmlWriteElement(writer,(prefix+"lwc").c_str(),lwc_valToCode(Xdata.Edata[ii].theta[WATER]).c_str(),"uom","");
+			xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":validFormationTime").c_str());
+			xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":TimeInstant").c_str());
+			const double tz = Xdata.Edata[ii].depositionDate.getTimeZone();
+			sprintf(dateStr,"%s.000%+03d:%02d",Xdata.Edata[ii].depositionDate.toString(Date::ISO).c_str(),(int) tz,(int) (60*(tz-(int)tz)));
+			writeDate(writer,":timePosition",dateStr);
 			xmlTextWriterEndElement(writer);
-			cumHgt -= Xdata.Edata[ii].L;
+			xmlTextWriterEndElement(writer);
+			if (snowLayer) {
+				xmlWriteElement(writer,(namespaceCAAML+":hardness").c_str(),hardness_valToCode(Xdata.Edata[ii].hard).c_str(),"uom",""); //HACK: check values... seem always the same!
+			}
+			xmlWriteElement(writer,(namespaceCAAML+":lwc").c_str(),lwc_valToCode(Xdata.Edata[ii].theta[WATER]).c_str(),"uom","");
+			sprintf(layerValStr,"%.2f",Xdata.Edata[ii].Rho);
+			xmlWriteElement(writer,(namespaceCAAML+":density").c_str(),layerValStr,"uom","kgm-3");
+			// snow properties only
+			if (snowLayer) {
+				sprintf(layerValStr,"%.2f",Xdata.Edata[ii].ogs);
+				xmlWriteElement(writer,(namespaceCAAML+":specSurfArea").c_str(),layerValStr,"uom","m2kg-1");
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":layerStrength").c_str());
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":Components").c_str());
+				sprintf(layerValStr,"%.2f",Xdata.Edata[ii].s_strength);
+				xmlWriteElement(writer,(namespaceCAAML+":strengthValue").c_str(),layerValStr,"uom","Nm-2");
+				xmlTextWriterEndElement(writer);
+				xmlTextWriterEndElement(writer);
+				// sprintf(layerValStr,"%.2f",Xdata.Edata[ii].solute);
+				// xmlWriteElement(writer,(namespaceCAAML+":impurities").c_str(),layerValStr,"uom","");
+				xmlTextWriterEndElement(writer);
+			}
 		}
 	}
 	xmlTextWriterEndElement(writer);
@@ -869,136 +915,105 @@ void CaaMLIO::writeLayers(const xmlTextWriterPtr writer, const SnowStation& Xdat
 
 void CaaMLIO::writeCustomLayerData(const xmlTextWriterPtr writer, const ElementData& Edata, const NodeData& Ndata)
 {
-	char dateStr[50];
-	const double tz = Edata.depositionDate.getTimeZone();
-	sprintf(dateStr,"%s:00.000%+03d:%02d",Edata.depositionDate.toString(Date::ISO).c_str(),(int) tz,(int) (60*(tz-(int)tz)));
-	xmlWriteElement(writer,(prefix_snp+"DepositionDate").c_str(),dateStr,"","");
-	char tempStr[10];
-	sprintf(tempStr,"%.4f",Edata.theta[SOIL]);
-	xmlWriteElement(writer,(prefix_snp+"phiSoil").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Edata.soil[2]);
-	xmlWriteElement(writer,(prefix_snp+"SoilRho").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Edata.soil[0]);
-	xmlWriteElement(writer,(prefix_snp+"SoilK").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Edata.soil[1]);
-	xmlWriteElement(writer,(prefix_snp+"SoilC").c_str(),tempStr,"","");
-	sprintf(tempStr,"%.4f",Ndata.hoar);
-	xmlWriteElement(writer,(prefix_snp+"SurfaceHoarMass").c_str(),tempStr,"uom","kg/m2");
-	sprintf(tempStr,"%.4f",Edata.CDot);
-	xmlWriteElement(writer,(prefix_snp+"StressRate").c_str(),tempStr,"uom","Pa/s");
-	sprintf(tempStr,"%.4f",Edata.metamo);
-	xmlWriteElement(writer,(prefix_snp+"Metamorphism").c_str(),tempStr,"","");
+	// const double tz = Edata.depositionDate.getTimeZone();
+	// sprintf(dateStr,"%s:00.000%+03d:%02d",Edata.depositionDate.toString(Date::ISO).c_str(),(int) tz,(int) (60*(tz-(int)tz)));
+	// xmlWriteElement(writer,(namespaceSNP+":DepositionDate").c_str(),dateStr,"","");
+	sprintf(valueStr,"%.4f",Edata.theta[SOIL]);
+	xmlWriteElement(writer,(namespaceSNP+":phiSoil").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.4f",Edata.soil[2]);
+	xmlWriteElement(writer,(namespaceSNP+":SoilRho").c_str(),valueStr,"uom","kgm-3");
+	sprintf(valueStr,"%.4f",Edata.soil[0]);
+	xmlWriteElement(writer,(namespaceSNP+":SoilK").c_str(),valueStr,"uom","Wm-1s-1");
+	sprintf(valueStr,"%.4f",Edata.soil[1]);
+	xmlWriteElement(writer,(namespaceSNP+":SoilC").c_str(),valueStr,"uom","Jkg-1");
+	sprintf(valueStr,"%.4f",Edata.rb);
+	xmlWriteElement(writer,(namespaceSNP+":bondSize").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.2f",Edata.dd);
+	xmlWriteElement(writer,(namespaceSNP+":dendricity").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.2f",Edata.sp);
+	xmlWriteElement(writer,(namespaceSNP+":sphericity").c_str(),valueStr,"","");
+	sprintf(valueStr,"%4lu",Edata.mk);
+	xmlWriteElement(writer,(namespaceSNP+":marker").c_str(),valueStr,"","");
+	sprintf(valueStr,"%.4f",Ndata.hoar);
+	xmlWriteElement(writer,(namespaceSNP+":SurfaceHoarMass").c_str(),valueStr,"uom","kgm-2");
+	xmlWriteElement(writer,(namespaceSNP+":ne").c_str(),"1","","");
+	sprintf(valueStr,"%.4f",Edata.CDot);
+	xmlWriteElement(writer,(namespaceSNP+":StressRate").c_str(),valueStr,"uom","Nm-2s-1");
+	sprintf(valueStr,"%.4f",Edata.metamo);
+	xmlWriteElement(writer,(namespaceSNP+":Metamorphism").c_str(),valueStr,"","");
 }
 
 void CaaMLIO::writeProfiles(const xmlTextWriterPtr writer, const SnowStation& Xdata)
 {
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"tempProfile").c_str());	//start tempProfile
+	// temperature profile
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":tempProfile").c_str());
 		xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uomDepth",(const xmlChar*)"cm");
 		xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uomTemp",(const xmlChar*)"degC");
 		if (!Xdata.Ndata.empty()) {
-			char cumHgtStr[10];
-			char tempStr[10];
-			for (size_t ii = Xdata.Ndata.size()-1; ii-->0;) {
-				xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"Obs").c_str());
-				sprintf(cumHgtStr,"%.4f",100*Xdata.Ndata[ii].z);
-				xmlWriteElement(writer,(prefix+"depth").c_str(),cumHgtStr,"","");
-
-				if (Xdata.Ndata[ii].T < 100.) { //Celsius
-					sprintf(tempStr,"%.3f",Xdata.Ndata[ii].T);
-				} else { //Kelvin
-					sprintf(tempStr,"%.3f",unitConversion(Xdata.Ndata[ii].T,(char*)"degK",(char*)"degC"));
-				}
-				xmlWriteElement(writer,(prefix+"snowTemp").c_str(),tempStr,"","");
+			for (size_t ii = Xdata.Ndata.size(); ii-->0;) {
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":Obs").c_str());
+				sprintf(layerDepthTopStr,"%.4f",100*(Xdata.cH - Xdata.Ndata[ii].z));
+				xmlWriteElement(writer,(namespaceCAAML+":depth").c_str(),layerDepthTopStr,"","");
+				sprintf(valueStr,"%.3f",unitConversion(Xdata.Ndata[ii].T,(char*)"degK",(char*)"degC"));
+				xmlWriteElement(writer,(namespaceCAAML+":snowTemp").c_str(),valueStr,"","");
 				xmlTextWriterEndElement(writer);
 			}
 		}
-	xmlTextWriterEndElement(writer);	//end tempProfile
+	xmlTextWriterEndElement(writer);	//end temperature profile
 
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"densityProfile").c_str());	//start densityProfile
+	// density profile; not needed, erase later
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":densityProfile").c_str());
 		xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uomDepthTop",(const xmlChar*)"cm");
 		xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uomThickness",(const xmlChar*)"cm");
 		xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uomDensity",(const xmlChar*)"kgm-3");
 		if (!Xdata.Edata.empty()) {
-			char hgtStr[10], cumHgtStr[10];
-			double cumHgt = Xdata.cH;
-			char densStr[10];
-			for (size_t ii = Xdata.Edata.size()-1; ii-->0;) {
-				xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"Layer").c_str());
-				sprintf(cumHgtStr,"%.4f",100*cumHgt);
-				xmlWriteElement(writer,(prefix+"depthTop").c_str(),cumHgtStr,"","");
-
-				sprintf(hgtStr,"%.4f",100*Xdata.Edata[ii].L);
-				xmlWriteElement(writer,(prefix+"thickness").c_str(),hgtStr,"","");
-
-				sprintf(densStr,"%.2f",Xdata.Edata[ii].theta[ICE]*Constants::density_ice);
-				xmlWriteElement(writer,(prefix+"density").c_str(),densStr,"","");
+			for (size_t ii = Xdata.Edata.size(); ii-->0;) {
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":Layer").c_str());
+				sprintf(layerDepthTopStr,"%.4f",100*(Xdata.cH - Xdata.Ndata[ii+1].z));
+				xmlWriteElement(writer,(namespaceCAAML+":depthTop").c_str(),layerDepthTopStr,"","");
+				sprintf(layerThicknessStr,"%.4f",100*Xdata.Edata[ii].L);
+				xmlWriteElement(writer,(namespaceCAAML+":thickness").c_str(),layerThicknessStr,"","");
+				sprintf(valueStr,"%.2f",Xdata.Edata[ii].Rho);
+				xmlWriteElement(writer,(namespaceCAAML+":density").c_str(),valueStr,"","");
 				xmlTextWriterEndElement(writer);
-				cumHgt -= Xdata.Edata[ii].L;
 			}
 		}
 	xmlTextWriterEndElement(writer);	//end densityProfile
-
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"hardnessProfile").c_str());	//start hardnessProfile
-		xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uomDepthTop",(const xmlChar*)"cm");
-		xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uomThickness",(const xmlChar*)"cm");
-		xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uomHardness",(const xmlChar*)"N");
-		xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"MetaData").c_str());	//start MetaData
-			xmlWriteElement(writer,(prefix+"methodOfMeas").c_str(),"Ram Sonde","","");
-		xmlTextWriterEndElement(writer);	//end MetaData
-		
-		if (!Xdata.Edata.empty()) {
-			double cumHgt = Xdata.cH;
-			char hardStr[10], hgtStr[10], cumHgtStr[10];
-			for (size_t ii = Xdata.Edata.size()-1; ii-->0;) {
-				xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"Layer").c_str());
-				sprintf(cumHgtStr,"%.4f",100*cumHgt);
-				xmlWriteElement(writer,(prefix+"depthTop").c_str(),cumHgtStr,"","");
-
-				sprintf(hgtStr,"%.4f",100*Xdata.Edata[ii].L);
-				xmlWriteElement(writer,(prefix+"thickness").c_str(),hgtStr,"","");
-
-				sprintf(hardStr,"%d",999); //HACK write out real value or skip section!
-				xmlWriteElement(writer,(prefix+"hardness").c_str(),hardStr,"","");
-				xmlTextWriterEndElement(writer);
-				cumHgt -= Xdata.Edata[ii].L;
-			}
-		}
-	xmlTextWriterEndElement(writer);	//end hardnessProfile
 }
 
 void CaaMLIO::writeStationData(const xmlTextWriterPtr writer, const SnowStation& Xdata)
 {
-	xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"locRef").c_str());	//start locRef
-		xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"ObsPoint").c_str());	//start ObsPoint
+	xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":locRef").c_str());	//start locRef
+		xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":ObsPoint").c_str());	//start ObsPoint
 			xmlTextWriterWriteAttribute(writer,(const xmlChar*)"gml:id",(const xmlChar*)("SLF_"+Xdata.meta.stationID+"_1").c_str());
-			xmlWriteElement(writer,(prefix+"name").c_str(),(const char*) Xdata.meta.stationName.c_str(),"","");
-			xmlWriteElement(writer,(prefix+"obsPointSubType").c_str(),"","","");
+			xmlWriteElement(writer,(namespaceCAAML+":name").c_str(),(const char*) Xdata.meta.stationName.c_str(),"","");
+			xmlWriteElement(writer,(namespaceCAAML+":obsPointSubType").c_str(),"","","");
 
-			xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"validElevation").c_str());	//start validElevation
-				xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"ElevationPosition").c_str());	//start ElevationPosition
+			xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":validElevation").c_str());	//start validElevation
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":ElevationPosition").c_str());	//start ElevationPosition
 					xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uom",(const xmlChar*)"m");
 					char elevStr[5];
 					sprintf(elevStr,"%.0f",Xdata.meta.position.getAltitude());
-					xmlWriteElement(writer,(prefix+"position").c_str(),elevStr,"","");
+					xmlWriteElement(writer,(namespaceCAAML+":position").c_str(),elevStr,"","");
 				xmlTextWriterEndElement(writer);	//end ElevationPosition
 			xmlTextWriterEndElement(writer);	//end validElevation
 
-			xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"validAspect").c_str());	//start validAspect
-				xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"AspectPosition").c_str());	//start AspectPosition
-					xmlWriteElement(writer,(prefix+"position").c_str(),IOUtils::bearing(Xdata.meta.getAzimuth()).c_str(),"","");
+			xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":validAspect").c_str());	//start validAspect
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":AspectPosition").c_str());	//start AspectPosition
+					xmlWriteElement(writer,(namespaceCAAML+":position").c_str(),IOUtils::bearing(Xdata.meta.getAzimuth()).c_str(),"","");
 				xmlTextWriterEndElement(writer);	//end AspectPosition
 			xmlTextWriterEndElement(writer);	//end validAspect
 
-			xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"validSlopeAngle").c_str());	//start validSlopeAngle
-				xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"SlopeAnglePosition").c_str());	//start SlopeAnglePosition
+			xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":validSlopeAngle").c_str());	//start validSlopeAngle
+				xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":SlopeAnglePosition").c_str());	//start SlopeAnglePosition
 					xmlTextWriterWriteAttribute(writer,(const xmlChar*)"uom",(const xmlChar*)"deg");
 					char slopStr[5];
 					sprintf(slopStr,"%.0f",Xdata.meta.getSlopeAngle());
-					xmlWriteElement(writer,(prefix+"position").c_str(),slopStr,"","");
+					xmlWriteElement(writer,(namespaceCAAML+":position").c_str(),slopStr,"","");
 				xmlTextWriterEndElement(writer);	//end SlopeAnglePosition
 			xmlTextWriterEndElement(writer);	//end validSlopeAngle
 
-			xmlTextWriterStartElement(writer,(const xmlChar*)(prefix+"pointLocation").c_str());	//start pointLocation
+			xmlTextWriterStartElement(writer,(const xmlChar*)(namespaceCAAML+":pointLocation").c_str());	//start pointLocation
 				xmlTextWriterStartElement(writer,(const xmlChar*)"gml:Point");	//start gml:Point
 					xmlTextWriterWriteAttribute(writer,(const xmlChar*)"gml:id",(const xmlChar*)("SLF_"+Xdata.meta.stationID+"_2").c_str());
 					xmlTextWriterWriteAttribute(writer,(const xmlChar*)"srsName",(const xmlChar*)"urn:ogc:def:crs:OGC:1.3:CRS84");
@@ -1039,9 +1054,9 @@ bool CaaMLIO::writeHazardData(const std::string& /*stationID*/, const std::vecto
 double CaaMLIO::lwc_codeToVal(const char* code)
 {
 	if (!strcmp(code,"D")) return 0.;
-	if (!strcmp(code,"M")) return 0.015;
-	if (!strcmp(code,"W")) return 0.055;
-	if (!strcmp(code,"V")) return 0.115;
+	if (!strcmp(code,"M")) return 0.01;
+	if (!strcmp(code,"W")) return 0.03;
+	if (!strcmp(code,"V")) return 0.08;
 	if (!strcmp(code,"S")) return 0.15;
 
 	throw IOException("Unrecognized liquid water content code.", AT);
@@ -1055,11 +1070,11 @@ double CaaMLIO::lwc_codeToVal(const char* code)
  */
 std::string CaaMLIO::lwc_valToCode(const double val)
 {
-	if (val==0.) return "D";
-	if (val<0.03) return "M";
-	if (val<0.08) return "W";
-	if (val<0.15) return "V";
-	if (val<1.) return "S";
+	if (val == 0.00) return "D";
+	if (val <  0.03) return "M";
+	if (val <  0.08) return "W";
+	if (val <  0.15) return "V";
+	if (val <  1.00) return "S";
 
 	throw IOException("Invalid liquid water content value.", AT);
 }
@@ -1079,24 +1094,24 @@ double CaaMLIO::hardness_codeToVal(char* code)
 	c[1] = strtok(NULL,"-");
 
 	for (size_t i=0; i<2; i++) {
-	   if (c[i]) {
-		n++;
-		if (!strcmp(c[i],"F")) {
-		  val += 1.;
-		} else if (!strcmp(c[i],"4F")) {
-		  val += 2.;
-		} else if (!strcmp(c[i],"1F")) {
-		  val += 3.;
-		} else if (!strcmp(c[i],"P")) {
-		  val += 4.;
-		} else if (!strcmp(c[i],"K")) {
-		  val += 5.;
-		} else if (!strcmp(c[i],"I")) {
-		  val += 6.;
-		} else {
-		  throw IOException("Unrecognized hardness code.", AT);
+		if (c[i]) {
+			n++;
+			if (!strcmp(c[i],"F")) {
+				val += 1.;
+			} else if (!strcmp(c[i],"4F")) {
+				val += 2.;
+			} else if (!strcmp(c[i],"1F")) {
+				val += 3.;
+			} else if (!strcmp(c[i],"P")) {
+				val += 4.;
+			} else if (!strcmp(c[i],"K")) {
+				val += 5.;
+			} else if (!strcmp(c[i],"I")) {
+				val += 6.;
+			} else {
+				throw IOException("Unrecognized hardness code.", AT);
+			}
 		}
-	   }
 	}
 	return val/n;
 }
@@ -1109,76 +1124,59 @@ double CaaMLIO::hardness_codeToVal(char* code)
  */
 std::string CaaMLIO::hardness_valToCode(const double val)
 {
-	if (val == 1.) return "F";
+	if (val == 1.0) return "F";
 	if (val == 1.5) return "F-4F";
-	if (val == 2.) return "4F";
+	if (val == 2.0) return "4F";
 	if (val == 2.5) return "4F-1F";
-	if (val == 3.) return "1F";
+	if (val == 3.0) return "1F";
 	if (val == 3.5) return "1F-P";
-	if (val == 4.) return "P";
+	if (val == 4.0) return "P";
 	if (val == 4.5) return "P-K";
-	if (val == 5.) return "K";
+	if (val == 5.0) return "K";
 	if (val == 5.5) return "K-I";
-	if (val == 6.) return "I";
+	if (val == 6.0) return "I";
 
 	throw IOException("Unrecognized hardness value.", AT);
 }
 
 /**
- * @brief Convert from grain form code to values (sphericity, dendricity, marker)
+ * @brief Convert from grain shape code to values (sphericity, dendricity, marker)
  * @author Adrien Gaudard
- * @param code Grain form code
- * return Grain form values (sphericity, dendricity, marker)
+ * @param[in] code Grain shape code
+ * @param[out] sp sphericity
+ * @param[out] dd dendricity
+ * @param[out] mk micro-structure marker
  */
-double* CaaMLIO::form_codeToVal(const char* code)
+void CaaMLIO::grainShape_codeToVal(const std::string& code, double &sp, double &dd, unsigned short int &mk)
 {
-	double* var = new double[3]; //sp, dd, mk
-
-	if (!strncmp(code,"PP",2)) {
-		var[0] = 0.5;
-		var[1] = 1.;
-		var[2] = 0.;
-	} else if (!strncmp(code,"DF",2)) {
-		var[0] = 0.5;
-		var[1] = 0.5;
-		var[2] = 0.;
-	} else if (!strncmp(code,"RG",2)) {
-		var[0] = 1.;
-		var[1] = 0.;
-		var[2] = 2.;
-	} else if (!strncmp(code,"FC",2)) {
-		var[0] = 0.;
-		var[1] = 0.;
-		var[2] = 1.;
-	} else if (!strncmp(code,"DH",2)) {
-		var[0] = 0.;
-		var[1] = 0.;
-		var[2] = 1.;
-	} else if (!strncmp(code,"SH",2)) {
-		var[0] = 0.;
-		var[1] = 0.;
-		var[2] = 1.;
-	} else if (!strncmp(code,"MF",2)) {
-		var[0] = 1.;
-		var[1] = 0.;
-		var[2] = 2.;
-	} else if (!strncmp(code,"IF",2)) {
-		var[0] = 1.;
-		var[1] = 0.;
-		var[2] = 2.;
+	if (code=="PP") {
+		sp = 0.5; dd = 1.; mk = 0;
+	} else if (code=="DF") {
+		sp = 0.5; dd = 0.5; mk = 0;
+	} else if (code=="RG") {
+		sp = 1.; dd = 0.; mk = 2;
+	} else if (code=="FC") {
+		sp = 0.; dd = 0.; mk = 1;
+	} else if (code=="DH") {
+		sp = 0.; dd = 0.; mk = 1;
+	} else if (code=="SH") {
+		sp = 0.; dd = 0.; mk = 1;
+	} else if (code=="MF") {
+		sp = 1.; dd = 0.; mk = 2;
+	} else if (code=="IF") {
+		sp = 1.; dd = 0.; mk = 2;
 	} else {
-		throw IOException("Unrecognized grain form code.", AT);
+		throw IOException("Unrecognized grain shape code.", AT);
 	}
-	return var;
 }
 
 /**
- * @brief Convert from grain form value to code
+ * @brief Convert from grain shape value to code
  * @author Adrien Gaudard
- * @param var Grain form value
- * return Grain form code
+ * @param var Grain shape value
+ * return Grain shape code
  */
-std::string CaaMLIO::form_valToCode(const int var)
+std::string CaaMLIO::grainShape_valToAbbrev(const unsigned int var)
 {
 	if (var == 0) return "PPgp";
 	if (var == 1) return "PP";
@@ -1191,21 +1189,21 @@ std::string CaaMLIO::form_valToCode(const int var)
 	if (var == 8) return "IF";
 	if (var == 9) return "FCxr";
 
-	throw IOException("Unrecognized grain form value.", AT);
+	throw IOException("Unrecognized grain shape code.", AT);
 }
 
 /**
- * @brief Convert from grain form values (sphericity, dendricity, marker) to two-character code
+ * @brief Convert from grain shape values (sphericity, dendricity, marker) to two-character code
  * @author Adrien Gaudard
- * @param var Grain form values (sphericity, dendricity, marker) (AMBIGUOUS)
- * return Grain form two-character code (NOT ALL REPRESENTED)
+ * @param var Grain shape values (sphericity, dendricity, marker) (AMBIGUOUS)
+ * return Grain shape two-character code (NOT ALL REPRESENTED)
  */
-std::string CaaMLIO::form_valToCode_old(const double* var)
+std::string CaaMLIO::grainShape_valToAbbrev_old(const double* var)
 {
 	const double sp = ((int)(var[0]*10+0.5))/10.;
 	const double dd = ((int)(var[1]*10+0.5))/10.;
 	const double mk = ((int)(var[2]*10+0.5))/10.;
-	
+
 	if (sp == 0.5 && dd == 1. && mk == 0.) return "PP";
 	if (sp == 0.5 && dd == 0.5 && mk == 0.) return "DF";
 	if (sp == 1. && dd == 0. && (mk == 2. || mk == 12.)) return "RG";
@@ -1215,5 +1213,5 @@ std::string CaaMLIO::form_valToCode_old(const double* var)
 	if (sp == 1. && dd == 0. && mk == 2.) return "MF";
 	if (sp == 1. && dd == 0. && mk == 2.) return "IF";
 
-	throw IOException("Unrecognized set of grain form values.", AT);
+	throw IOException("Unrecognized set of grain shape values.", AT);
 }

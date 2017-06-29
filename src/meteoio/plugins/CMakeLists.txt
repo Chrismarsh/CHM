@@ -1,9 +1,7 @@
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake/")
-#
-#causes headaches to do this.
-#CONFIGURE_FILE( ${PROJECT_SOURCE_DIR}/src/meteoio/IOHandler.cmake.cc ${PROJECT_SOURCE_DIR}/src/meteoio/IOHandler.cc )
-CONFIGURE_FILE( meteoio/IOHandler.cmake.cc meteoio/IOHandler.cc )
+
+CONFIGURE_FILE( ${PROJECT_SOURCE_DIR}/src/meteoio/IOHandler.cmake.cc ${PROJECT_SOURCE_DIR}/src/meteoio/IOHandler.cc )
 
 IF(PLUGIN_ALPUG)
 	SET(plugins_sources ${plugins_sources} plugins/ALPUG.cc)
@@ -35,6 +33,13 @@ IF(PLUGIN_COSMOXMLIO)
 	SET(plugins_sources ${plugins_sources} plugins/CosmoXMLIO.cc)
 ENDIF(PLUGIN_COSMOXMLIO)
 
+IF(PLUGIN_DBO)
+	FIND_PACKAGE(CURL REQUIRED)
+	INCLUDE_DIRECTORIES(SYSTEM ${CURL_INCLUDE_DIRS})
+	SET(plugin_libs ${plugin_libs} ${CURL_LIBRARIES})
+	SET(plugins_sources ${plugins_sources} plugins/DBO.cc)
+ENDIF(PLUGIN_DBO)
+
 IF(PLUGIN_GRASSIO)
 	SET(plugins_sources ${plugins_sources} plugins/GrassIO.cc)
 ENDIF(PLUGIN_GRASSIO)
@@ -63,6 +68,13 @@ IF(PLUGIN_IMISIO)
 	SET(plugin_libs ${plugin_libs} ${OCCI_LIBRARIES})
 	SET(plugins_sources ${plugins_sources} plugins/ImisIO.cc)
 ENDIF(PLUGIN_IMISIO)
+
+IF(PLUGIN_OSHDIO)
+	FIND_PACKAGE(Matio REQUIRED)
+	INCLUDE_DIRECTORIES(SYSTEM ${Matio_INCLUDE_DIR})
+	SET(plugin_libs ${plugin_libs} ${Matio_LIBRARY})
+	SET(plugins_sources ${plugins_sources} plugins/OshdIO.cc)
+ENDIF(PLUGIN_OSHDIO)
 
 IF(PLUGIN_PGMIO)
 	SET(plugins_sources ${plugins_sources} plugins/PGMIO.cc)

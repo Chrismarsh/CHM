@@ -23,18 +23,15 @@
  * This header file contains all the data structures needed for the 1d snowpack model
  */
 
-#ifndef __DATACLASSES_H__
-#define __DATACLASSES_H__
+#ifndef DATACLASSES_H
+#define DATACLASSES_H
 
 #include <snowpack/SnowpackConfig.h>
 
 #include <snowpack/Constants.h>
 #include <meteoio/MeteoIO.h>
 
-#include <cstdio>
-#include <fstream>
 #include <string>
-#include <sstream>
 #include <vector>
 
 /// @brief The 3 different phases in the matrix
@@ -113,8 +110,8 @@ class CurrentMeteo {
 		double z0;       ///< The roughness length computed in SnowDrift and also used later for the MeteoHeat fluxes (m)
 		double psi_s;    ///< Stability correction for scalar heat fluxes
 		double iswr;     ///< Incoming SHORTWAVE radiation (W m-2)
+		double ilwr;     ///< Incomding LONGWAVE radiation (W m-2)    Chris Marsh added
 		double rswr;     ///< Reflected SHORTWAVE radiation (W m-2) divide this value by the ALBEDO to get iswr
-	    double ilwr;     ///< Incomding LONGWAVE radiation (W m-2)
 		double mAlbedo;  ///< Measured snow albedo
 		double diff;     ///< Diffuse radiation from the sky (W m-2)
 		double dir_h;    ///< Horizontal direct radiation from the sky (W m-2)
@@ -217,7 +214,7 @@ class SN_SNOWSOIL_DATA {
 	public:
 		SN_SNOWSOIL_DATA() : meta(), profileDate(), nN(0), Height(0.),
                      nLayers(0), Ldata(), HS_last(0.), Albedo(0.), SoilAlb(0.), BareSoil_z0(0.),
-                     Canopy_Height(0.), Canopy_LAI(0.),Canopy_BasalArea(0.004), Canopy_Direct_Throughfall(0.),
+                     Canopy_Height(0.), Canopy_LAI(0.), Canopy_BasalArea(0.004), Canopy_Direct_Throughfall(0.),
                      WindScalingFactor(1.), ErosionLevel(0), TimeCountDeltaHS(0.)
 		{
 			Ldata.clear();
@@ -229,9 +226,9 @@ class SN_SNOWSOIL_DATA {
 
 		mio::StationData meta;            ///< Station meta data
 		mio::Date profileDate;            ///< Date of profile
-		size_t nN;                        ///< Total number of FE nodes
-		double Height;                    ///< Total height of snowpack in m (sum of the layer heights)
-		size_t nLayers;                   ///< Total number of snowpack layers at loading
+		size_t nN;                        ///< Total number of FE nodes after loading
+		double Height;                    ///< Total height of soil-snow column in m (sum of the layer heights)
+		size_t nLayers;                   ///< Total number of soil and snow layers at loading
 		std::vector<LayerData> Ldata;     ///< contains all the information required to construct the Xdata
 		double HS_last;                   ///< Last checked calculated snow depth used for albedo control
 		double Albedo;                    ///< Snow albedo
@@ -254,6 +251,13 @@ class SN_SNOWSOIL_DATA {
  */
 class ElementData {
 	public:
+		/// This enum provides names for possible Young's modulus calculations
+		typedef enum YOUNG_MODULUS {
+		            Sigrist, ///< Sigrist, 2006
+			    Pow, ///< another power law
+		            Exp ///< exponential law
+		} Young_Modulus;
+
 		ElementData();
 
 		bool checkVolContent() const;
@@ -272,8 +276,10 @@ class ElementData {
 		double neck2VolumetricStrain() const;
 
 		void snowType();
-		static unsigned short int snowType(const double& dendricity, const double& sphericity, const double& grain_dia, const size_t& marker,
+		unsigned short int getSnowType() const;
+		static unsigned short int snowType(const double& dendricity, const double& sphericity, const double& grain_dia, const unsigned short int& marker,
                         const double& theta_w, const double& res_wat_cont);
+		static double getYoungModule(const double& rho_slab, const Young_Modulus& model);
 
 		const std::string toString() const;
 		friend std::iostream& operator<<(std::iostream& os, const ElementData& data);
@@ -310,8 +316,9 @@ class ElementData {
 		double res_wat_cont;       ///< Residual water content
 		double Qmf;                ///< Subsurface Melting & Freezing Data: change of energy due to phase changes (melt-freeze)
 		double QIntmf;             ///< Apparent change in internal energy due to phase change (caused by difference in heat capacity of water and ice)
-		double dE, E, Ee, Ev;      ///< Total element strain (GREEN'S strains -- TOTAL LAGRANGIAN FORMULATION.
-		double EDot, EvDot;        ///< Total Strain Rate, elastic and viscous, respectively (s-1) (Simply, E/sn_dt)
+		double dEps, Eps, Eps_e, Eps_v;      ///< Total element strain (GREEN'S strains -- TOTAL LAGRANGIAN FORMULATION): Eps_e is elastic and Eps_v is viscous
+		double Eps_Dot, Eps_vDot;        ///< Total Strain Rate, elastic and viscous, respectively (s-1) (Simply, Eps/sn_dt)
+		double E;                  ///< Young's modulus of elasticity (Pa)
 		double S;                  ///< Total Element Stress (Pa), S being the energy conjugate stress
 		double C;                  ///< Total Element Stress (Pa), C being the real or the Cauchy stress, which is output
 		double CDot;               ///< Stress rate (Pa s-1), that is the overload change rate
@@ -319,6 +326,7 @@ class ElementData {
 		double s_strength;         ///< Parameterized snow shear strength (kPa)
 		double hard;               ///< Parameterized hand hardness (1)
 		double S_dr;               ///< Stability Index based on deformation rate (Direct Action Avalanching)
+		double crit_cut_length;    ///< Critical cut length (m)
 		double theta_r;            ///< Residual water content of previous time step (m^3/m^3), used exclusively for solving Richards equation in snow
 		double lwc_source;         ///< Source/sink term for Richards equation
 		//NIED (H. Hirashima)
@@ -466,6 +474,7 @@ class SnowStation {
 
 		void reduceNumberOfElements(const size_t& rnE);
 		void combineElements(const size_t& number_top_elements, const bool& reduce_n_elements);
+		void combineElements(const size_t& number_top_elements, const bool& reduce_n_elements, const size_t& cond);
 		static bool combineCondition(const ElementData& Edata0, const ElementData& Edata1, const double& depth, const bool& reduce_n_elements);
 		static void mergeElements(ElementData& Edata0, const ElementData& Edata1, const bool& merge, const bool& topElement);
 		void splitElements();
@@ -489,7 +498,7 @@ class SnowStation {
 
 		mio::StationData meta;      ///< Station meta data
 		double cos_sl;              ///< Cosinus of slope angle, initialized once!
-		size_t sector;              ///< current slope sector of width 360./MAX(1, nSlopes-1)
+		size_t sector;              ///< current slope sector of width 360./max(1, nSlopes-1)
 
 		CanopyData Cdata;           ///< Pointer to canopy data
 		double pAlbedo;             ///< Parameterized snow albedo
@@ -498,8 +507,8 @@ class SnowStation {
 		double BareSoil_z0;         ///< Bare soil roughness in m
 		size_t SoilNode;            ///< The top soil node, 0 in case of SNP_SOIL == 0
 		double Ground;              ///< The ground height -- meaning the height of the top soil node
-		double cH;                  ///< The CALCULATED snowpack height, including soil depth if SNP_SOIL == 1
-		double mH;                  ///< The ENFORCED snowpack height, including soil depth if SNP_SOIL == 1
+		double cH;                  ///< The CALCULATED height, including soil depth if SNP_SOIL == 1
+		double mH;                  ///< The MEASURED height, including soil depth if SNP_SOIL == 1
 		double mass_sum;            ///< Total mass summing mass of snow elements
 		double swe;                 ///< Total mass summing snow water equivalent of elements
 		double lwc_sum;             ///< Total liquid water in snowpack
@@ -507,8 +516,8 @@ class SnowStation {
 		double rho_hn;              ///< Density of new snow to be used on slopes
 		size_t ErosionLevel;        ///< Element where snow erosion stopped previously for the drift index
 		double ErosionMass;         ///< Eroded mass either real or virtually (storage if less than one element)
-		int S_class1;               ///< Stability class based on hand hardness, grain class ...
-		int S_class2;               ///< Stability class based on hand hardness, grain class ...
+		char S_class1;               ///< Stability class based on hand hardness, grain class ...
+		char S_class2;               ///< Stability class based on hand hardness, grain class ...
 		double S_d;                 ///< Minimum Direct Action Stability Index  ...
 		double z_S_d;               ///< Depth of Minimum Direct Action Stability
 		double S_n;                 ///< Minimum Natural Stability Index
@@ -650,11 +659,11 @@ class SnowProfileLayer {
 		// Profile meta data
 		mio::Date profileDate; ///< Date of profile
 		std::string stationname;
-		size_t  loc_for_snow;
-		size_t  loc_for_wind;
+		unsigned char  loc_for_snow;
+		unsigned char  loc_for_wind;
 
 		mio::Date depositionDate;   ///< Date of deposition (mainly used for snow layers)
-		double height;         ///< 0 to 1000      (cm)
+		double height;         ///< Height of snow or snow depth; 0 to 1000      (cm)
 		double rho;            ///< 0 to 1000      (kg m-3)
 		double T;              ///< -50 to 50, snow temperature at top of layer (degC)
 		double gradT;          ///< -1000 to 1000, temperature gradient across layer (K m-1)
@@ -668,20 +677,22 @@ class SnowProfileLayer {
 		double sphericity;     ///< 0 to 1         (1)
 		double ogs;            ///< 0 to 100, optical equivalent grain size (mm)
 		double coordin_num;    ///< 0 to 10        (1)
-		size_t marker;         ///< 0 to 999       (1)
+		unsigned short int marker;         ///< 0 to 999       (1)
 		short unsigned int type; ///< 0 to 999     (1)
 		double hard;           ///< 0. to 5.       (1)
 
 	private:
 		void generateLayer(const ElementData& Edata, const NodeData& Ndata);
 		void generateLayer(const ElementData& Edata, const NodeData& Ndata,
-                           const mio::Date& dateOfProfile, const double hoar_density_surf);
+		                   const mio::Date& dateOfProfile, const double hoar_density_surf);
 };
 
 /// @brief class to collect the information about the current simulation (version, date)
 class RunInfo {
 	public:
 		RunInfo();
+		RunInfo(const RunInfo& orig);
+		RunInfo& operator=(const RunInfo&) {return *this;} //everything is static, so we can not change anything
 
 		const std::string version;   ///< SNOWPACK version
 		const mio::Date computation_date; ///< Date of computation
@@ -708,9 +719,9 @@ struct ProcessDat {
 
 	mio::Date date;        ///< Process date
 	unsigned int nHz;               ///< Number of hazard steps
-	char stat_abbrev[16];
-	int  loc_for_snow;
-	int  loc_for_wind;
+	std::string stat_abbrev;
+	unsigned char loc_for_snow;
+	unsigned char loc_for_wind;
 	// Data
 	double ch;             ///< height of snow HS (cm)
 	double swe;            ///< snow water equivalent SWE (kg m-2)
@@ -735,8 +746,8 @@ struct ProcessDat {
 	double psum12;          ///< 12 h new snow water equivalent (kg m-2)
 	double psum24;          ///< 24 h new snow water equivalent (kg m-2)
 	double psum72;          ///< 72 h new snow water equivalent (kg m-2)
-	int stab_class1;       ///< stability classes 1,3,5
-	int stab_class2;       ///< profile type 0..10
+	signed char stab_class1;       ///< stability classes 1,3,5
+	signed char stab_class2;       ///< profile type 0..10
 	double stab_index1;    ///< deformation index Sdef
 	double stab_height1;   ///< depth of stab_index1 (cm)
 	double stab_index2;    ///< natural stability index Sn38
@@ -759,42 +770,42 @@ struct ProcessDat {
 };
 
 struct ProcessInd {
-	ProcessInd() : stat_abbrev(0), loc_for_snow(0), loc_for_wind(0),
-	               ch(0), swe(0), tot_lwc(0), runoff(0), dewpt_def(0),
-	               hoar_size(0), hoar_ind6(0), hoar_ind24(0),
-	               wind_trans(0), wind_trans24(0),
-	               hn3(0), hn6(0), hn12(0), hn24(0), hn72(0), hn72_24(0), psum3(0), psum6(0), psum12(0), psum24(0), psum72(0),
-	               stab_class1(0), stab_class2(0),
-	               stab_index1(0), stab_height1(0), stab_index2(0), stab_height2(0), stab_index3(0), stab_height3(0), stab_index4(0), stab_height4(0), stab_index5(0), stab_height5(0),
-	               crust(0), en_bal(0), sw_net(0), t_top1(0), t_top2(0), lwi_N(0), lwi_S(0)
+	ProcessInd() : stat_abbrev(true), loc_for_snow(true), loc_for_wind(true),
+	               ch(true), swe(true), tot_lwc(true), runoff(true), dewpt_def(true),
+	               hoar_size(true), hoar_ind6(true), hoar_ind24(true),
+	               wind_trans(true), wind_trans24(true),
+	               hn3(true), hn6(true), hn12(true), hn24(true), hn72(true), hn72_24(true), psum3(true), psum6(true), psum12(true), psum24(true), psum72(true),
+	               stab_class1(true), stab_class2(true),
+	               stab_index1(true), stab_height1(true), stab_index2(true), stab_height2(true), stab_index3(true), stab_height3(true), stab_index4(true), stab_height4(true), stab_index5(true), stab_height5(true),
+	               crust(true), en_bal(true), sw_net(true), t_top1(true), t_top2(true), lwi_N(true), lwi_S(true)
 	{}
 
-	short stat_abbrev;
-	short loc_for_snow;
-	short loc_for_wind;
+	bool stat_abbrev;
+	bool loc_for_snow;
+	bool loc_for_wind;
 	// Data
-	short ch;
-	short swe;
-	short tot_lwc;
-	short runoff;
-	short dewpt_def;
-	short hoar_size;
-	short hoar_ind6, hoar_ind24;
-	short wind_trans, wind_trans24;
-	short hn3, hn6, hn12, hn24, hn72;
-	short hn72_24;
-	short psum3, psum6, psum12, psum24, psum72;
-	short stab_class1, stab_class2;
-	short stab_index1, stab_height1;
-	short stab_index2, stab_height2;
-	short stab_index3, stab_height3;
-	short stab_index4, stab_height4;
-	short stab_index5, stab_height5;
-	short crust;
-	short en_bal;
-	short sw_net;
-	short t_top1, t_top2;
-	short lwi_N, lwi_S;
+	bool ch;
+	bool swe;
+	bool tot_lwc;
+	bool runoff;
+	bool dewpt_def;
+	bool hoar_size;
+	bool hoar_ind6, hoar_ind24;
+	bool wind_trans, wind_trans24;
+	bool hn3, hn6, hn12, hn24, hn72;
+	bool hn72_24;
+	bool psum3, psum6, psum12, psum24, psum72;
+	bool stab_class1, stab_class2;
+	bool stab_index1, stab_height1;
+	bool stab_index2, stab_height2;
+	bool stab_index3, stab_height3;
+	bool stab_index4, stab_height4;
+	bool stab_index5, stab_height5;
+	bool crust;
+	bool en_bal;
+	bool sw_net;
+	bool t_top1, t_top2;
+	bool lwi_N, lwi_S;
 };
 
 /// @brief Class for recording reference properties of tagged elements

@@ -16,6 +16,7 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <meteoio/dataClasses/Grid3DObject.h>
+#include <meteoio/IOExceptions.h>
 #include <cmath>
 
 using namespace std;
@@ -23,7 +24,7 @@ using namespace std;
 namespace mio {
 
 Grid3DObject& Grid3DObject::operator=(const Grid3DObject& source) {
-	if(this != &source) {
+	if (this != &source) {
 		grid3D = source.grid3D;
 		cellsize = source.cellsize;
  		llcorner = source.llcorner;
@@ -43,7 +44,7 @@ Grid3DObject& Grid3DObject::operator+=(const double& rhs) {
 	return *this;
 }
 
-const Grid3DObject Grid3DObject::operator+(const double& rhs) {
+const Grid3DObject Grid3DObject::operator+(const double& rhs) const {
 	Grid3DObject result = *this;
 	result.grid3D += rhs;
 	return result;
@@ -56,7 +57,7 @@ Grid3DObject& Grid3DObject::operator+=(const Grid3DObject& rhs) {
 	return *this;
 }
 
-const Grid3DObject Grid3DObject::operator+(const Grid3DObject& rhs) {
+const Grid3DObject Grid3DObject::operator+(const Grid3DObject& rhs) const {
 	if (!isSameGeolocalization(rhs))
 		throw InvalidArgumentException("[E] grids must have the same geolocalization in order to do arithmetic operations!", AT);
 	Grid3DObject result(*this);
@@ -69,7 +70,7 @@ Grid3DObject& Grid3DObject::operator-=(const double& rhs) {
 	return *this;
 }
 
-const Grid3DObject Grid3DObject::operator-(const double& rhs) {
+const Grid3DObject Grid3DObject::operator-(const double& rhs) const {
 	Grid3DObject result(*this);
 	result.grid3D -= rhs;
 	return result;
@@ -82,7 +83,7 @@ Grid3DObject& Grid3DObject::operator-=(const Grid3DObject& rhs) {
 	return *this;
 }
 
-const Grid3DObject Grid3DObject::operator-(const Grid3DObject& rhs) {
+const Grid3DObject Grid3DObject::operator-(const Grid3DObject& rhs) const {
 	if (!isSameGeolocalization(rhs))
 		throw InvalidArgumentException("[E] grids must have the same geolocalization in order to do arithmetic operations!", AT);
 	Grid3DObject result(*this);
@@ -95,7 +96,7 @@ Grid3DObject& Grid3DObject::operator*=(const double& rhs) {
 	return *this;
 }
 
-const Grid3DObject Grid3DObject::operator*(const double& rhs) {
+const Grid3DObject Grid3DObject::operator*(const double& rhs) const {
 	Grid3DObject result(*this);
 	result.grid3D *= rhs;
 	return result;
@@ -108,7 +109,7 @@ Grid3DObject& Grid3DObject::operator*=(const Grid3DObject& rhs) {
 	return *this;
 }
 
-const Grid3DObject Grid3DObject::operator*(const Grid3DObject& rhs) {
+const Grid3DObject Grid3DObject::operator*(const Grid3DObject& rhs) const {
 	if (!isSameGeolocalization(rhs))
 		throw InvalidArgumentException("[E] grids must have the same geolocalization in order to do arithmetic operations!", AT);
 	Grid3DObject result(*this);
@@ -121,7 +122,7 @@ Grid3DObject& Grid3DObject::operator/=(const double& rhs) {
 	return *this;
 }
 
-const Grid3DObject Grid3DObject::operator/(const double& rhs) {
+const Grid3DObject Grid3DObject::operator/(const double& rhs) const {
 	Grid3DObject result(*this);
 	result.grid3D /= rhs;
 	return result;
@@ -134,7 +135,7 @@ Grid3DObject& Grid3DObject::operator/=(const Grid3DObject& rhs) {
 	return *this;
 }
 
-const Grid3DObject Grid3DObject::operator/(const Grid3DObject& rhs) {
+const Grid3DObject Grid3DObject::operator/(const Grid3DObject& rhs) const {
 	if (!isSameGeolocalization(rhs))
 		throw InvalidArgumentException("[E] grids must have the same geolocalization in order to do arithmetic operations!", AT);
 	Grid3DObject result(*this);
@@ -161,7 +162,7 @@ Grid3DObject::Grid3DObject(const Grid3DObject& i_grid3D,
 {
 	//we take the previous corner (so we use the same projection parameters)
 	//and we shift it by the correct X and Y distance
-	if( (llcorner.getEasting()!=IOUtils::nodata) && (llcorner.getNorthing()!=IOUtils::nodata) ) {
+	if ( (llcorner.getEasting()!=IOUtils::nodata) && (llcorner.getNorthing()!=IOUtils::nodata) ) {
 		llcorner.setXY( llcorner.getEasting()+static_cast<double>(i_nx)*i_grid3D.cellsize,
 		                llcorner.getNorthing()+static_cast<double>(i_ny)*i_grid3D.cellsize,
 		                llcorner.getAltitude()+static_cast<double>(i_nz)*i_grid3D.cellsize );
@@ -186,14 +187,15 @@ Grid3DObject::Grid3DObject(const double& i_cellsize, const Coords& i_llcorner, c
               : grid3D(i_grid3D), z(), llcorner(i_llcorner),
                 cellsize(i_cellsize), z_is_absolute(true) {}
 
-bool Grid3DObject::gridify(std::vector<Coords>& vec_points) const
+                
+bool Grid3DObject::gridify(std::vector<Coords>& vec_points, const bool& keep_invalid) const 
 {
 	bool status=true;
 
 	std::vector<Coords>::iterator v_Itr = vec_points.begin();
 	while ( v_Itr != vec_points.end() ) {
-		if( gridify(*v_Itr)==false ) {
-			v_Itr = vec_points.erase(v_Itr);
+		if ( gridify(*v_Itr)==false ) {
+			if (!keep_invalid) v_Itr = vec_points.erase(v_Itr);
 			status=false;
 		} else {
 			++v_Itr;
@@ -207,12 +209,12 @@ bool Grid3DObject::gridify(Coords& point) const
 {
 	std::string proj_type, proj_args;
 	point.getProj(proj_type, proj_args);
-	if(proj_type=="NULL") {
+	if (proj_type=="NULL") {
 		//if the projection was "NULL", we set it to the grid's
 		point.copyProj(llcorner);
 	}
 
-	if(point.getGridI()!=IOUtils::inodata && point.getGridJ()!=IOUtils::inodata && point.getGridK()!=IOUtils::inodata) {
+	if (point.getGridI()!=IOUtils::inodata && point.getGridJ()!=IOUtils::inodata && point.getGridK()!=IOUtils::inodata) {
 		//we need to compute (easting,northing) and (lat,lon) and altitude
 		return( grid_to_WGS84(point) );
 	} else {
@@ -225,24 +227,25 @@ bool Grid3DObject::grid_to_WGS84(Coords& point) const
 {
 	int i=point.getGridI(), j=point.getGridJ(), k=point.getGridK();
 
-	if(i==IOUtils::inodata || j==IOUtils::inodata || k==IOUtils::inodata) {
+	if (i==IOUtils::inodata || j==IOUtils::inodata || k==IOUtils::inodata) {
 		//the point is invalid (outside the grid or contains nodata)
+		point.setGridIndex(IOUtils::inodata, IOUtils::inodata, IOUtils::inodata, false); //mark the point as invalid
 		return false;
 	}
 
 	const int ncols = (signed)getNx();
 	const int nrows = (signed)getNy();
 	const int ndepths = (signed)getNz();
-	if(i>ncols || i<0 || j>nrows || j<0 || k>ndepths || k<0) {
+	if (i>ncols || i<0 || j>nrows || j<0 || k>ndepths || k<0) {
 		//the point is outside the grid, we reset the indices to the closest values
 		//still fitting in the grid and return an error
-		if(i<0) i=0;
-		if(j<0) j=0;
-		if(k<0) k=0;
-		if(i>ncols) i=ncols;
-		if(j>nrows) j=nrows;
-		if(k>ndepths) k=ndepths;
-		point.setGridIndex(i, j, k, false);
+		if (i<0) i=0;
+		if (j<0) j=0;
+		if (k<0) k=0;
+		if (i>ncols) i=ncols;
+		if (j>nrows) j=nrows;
+		if (k>ndepths) k=ndepths;
+		point.setGridIndex(i, j, k, false); //mark the point as invalid
 		return false;
 	}
 
@@ -251,7 +254,7 @@ bool Grid3DObject::grid_to_WGS84(Coords& point) const
 	const double northing = ((double)j) * cellsize + llcorner.getNorthing();
 	const double altitude = ((double)k) * cellsize + llcorner.getAltitude();
 
-	if(point.isSameProj(llcorner)==true) {
+	if (point.isSameProj(llcorner)==true) {
 		//same projection between the grid and the point -> precise, simple and efficient arithmetics
 		point.setXY(easting, northing, altitude);
 	} else {
@@ -262,20 +265,22 @@ bool Grid3DObject::grid_to_WGS84(Coords& point) const
 		point.setXY(easting, northing, altitude);
 		point.copyProj(tmp_proj); //back to the original projection -> reproject the coordinates
 	}
+	
+	point.setGridIndex(i, j, k, true); //mark the point as valid
 	return true;
 }
 
 bool Grid3DObject::WGS84_to_grid(Coords point) const
 {
-	if(point.getLat()==IOUtils::nodata || point.getLon()==IOUtils::nodata || point.getAltitude()==IOUtils::nodata) {
+	if (point.getLat()==IOUtils::nodata || point.getLon()==IOUtils::nodata || point.getAltitude()==IOUtils::nodata) {
 		//if the point is invalid, there is nothing we can do
+		point.setGridIndex(IOUtils::inodata, IOUtils::inodata, IOUtils::inodata, false); //mark the point as invalid
 		return false;
 	}
 
-	bool error_code=true;
 	int i,j,k;
 
-	if(point.isSameProj(llcorner)==true) {
+	if (point.isSameProj(llcorner)==true) {
 		//same projection between the grid and the point -> precise, simple and efficient arithmetics
 		i = (int)floor( (point.getEasting()-llcorner.getEasting()) / cellsize );
 		j = (int)floor( (point.getNorthing()-llcorner.getNorthing()) / cellsize );
@@ -289,35 +294,36 @@ bool Grid3DObject::WGS84_to_grid(Coords point) const
 		k = (int)floor( (point.getAltitude()-llcorner.getAltitude()) / cellsize );
 	}
 
+	bool status=true;
 	//checking that the calculated indices fit in the grid2D
 	//and giving them the closest value within the grid if not.
-	if(i<0) {
+	if (i<0) {
 		i=0;
-		error_code=false;
+		status=false;
 	}
-	if(i>(signed)grid3D.getNx()) {
+	if (i>=(signed)grid3D.getNx()) {
 		i=(signed)grid3D.getNx();
-		error_code=false;
+		status=false;
 	}
-	if(j<0) {
+	if (j<0) {
 		j=0;
-		error_code=false;
+		status=false;
 	}
-	if(j>(signed)grid3D.getNy()) {
+	if (j>=(signed)grid3D.getNy()) {
 		j=(signed)grid3D.getNy();
-		error_code=false;
+		status=false;
 	}
-	if(k<0) {
+	if (k<0) {
 		k=0;
-		error_code=false;
+		status=false;
 	}
-	if(k>(signed)grid3D.getNz()) {
+	if (k>=(signed)grid3D.getNz()) {
 		k=(signed)grid3D.getNz();
-		error_code=false;
+		status=false;
 	}
 
-	point.setGridIndex(i, j, k, false);
-	return error_code;
+	point.setGridIndex(i, j, k, status);  //mark as valid or invalid according to status
+	return status;
 }
 
 void Grid3DObject::set(const size_t& i_ncols, const size_t& i_nrows, const size_t& i_ndepths,
@@ -355,6 +361,10 @@ void Grid3DObject::size(size_t& o_ncols, size_t& o_nrows, size_t& o_ndepths) con
 	o_ndepths = grid3D.getNz();
 }
 
+size_t Grid3DObject::size() const {
+	return grid3D.size();
+}
+
 size_t Grid3DObject::getNx() const {
 	return grid3D.getNx();
 }
@@ -383,7 +393,7 @@ void Grid3DObject::setValues(const double& i_cellsize, const Coords& i_llcorner)
 
 bool Grid3DObject::isSameGeolocalization(const Grid3DObject& target) const
 {
-	if( grid3D.getNx()==target.grid3D.getNx() &&
+	if ( grid3D.getNx()==target.grid3D.getNx() &&
 	    grid3D.getNy()==target.grid3D.getNy() &&
 	    grid3D.getNz()==target.grid3D.getNz() &&
 	    cellsize==target.cellsize &&
@@ -399,8 +409,8 @@ void Grid3DObject::extractLayer(const size_t& i_z, Grid2DObject& layer)
 	const size_t ncols = grid3D.getNx();
 	const size_t nrows = grid3D.getNy();
 	layer.set(ncols, nrows, cellsize, llcorner);
-	for(size_t jj=0; jj<nrows; jj++) {
-		for(size_t ii=0; ii<ncols; ii++) {
+	for (size_t jj=0; jj<nrows; jj++) {
+		for (size_t ii=0; ii<ncols; ii++) {
 			layer(ii,jj) = grid3D(ii,jj,i_z);
 		}
 	}

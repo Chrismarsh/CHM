@@ -21,32 +21,23 @@
  * @file Metamorphism.h
  */
 
-#ifndef __METAMORPHISM_H__
-#define __METAMORPHISM_H__
+#ifndef METAMORPHISM_H
+#define METAMORPHISM_H
 
-#include <snowpack/Constants.h>
 #include <snowpack/DataClasses.h>
-#include <snowpack/Utils.h>
-#include <snowpack/Laws_sn.h>
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <cmath>
-#include <ctime>
-#include <fcntl.h>
 #include <meteoio/MeteoIO.h>
 #include <map>
 #include <string>
 
+#define CALL_MEMBER_FN(object,ptrToMember)  ((object).*(ptrToMember))
+
 class SnowStation;
 class Metamorphism;
-
 typedef void (Metamorphism::*MetaModelFn)(const CurrentMeteo&, SnowStation&);
 typedef double (Metamorphism::*MetaSpRateFn)(const ElementData&);
 
 class Metamorphism {
-
 	public:
 		Metamorphism(const SnowpackConfig& i_cfg);
 

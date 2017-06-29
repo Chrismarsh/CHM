@@ -18,22 +18,21 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __SNOWDRIFT_H__
-#define __SNOWDRIFT_H__
+#ifndef SNOWDRIFT_H
+#define SNOWDRIFT_H
 
 #include <meteoio/MeteoIO.h>
-#include <snowpack/Constants.h>
-#include <cmath>
+
 #include <snowpack/Saltation.h>
-#include <snowpack/snowpackCore/Snowpack.h>
-#include <vector>
+#include <snowpack/DataClasses.h>
+#include <snowpack/SnowpackConfig.h>
 
 class Saltation;
 
 /**
  * @class SnowDrift
  * @brief This class contains the computation of local snow drift and the associated erosion
- * @version 10.02
+ * @ingroup postprocessing
  */
 class SnowDrift {
 
@@ -55,5 +54,5 @@ class SnowDrift {
 		static const bool msg_erosion;
 }; //End class SnowDrift
 
-#endif //#ifndef __SNOWDRIFT_H__
+#endif
 

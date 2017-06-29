@@ -18,8 +18,8 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __IMISDBIO_H__
-#define __IMISDBIO_H__
+#ifndef IMISDBIO_H
+#define IMISDBIO_H
 
 #include <snowpack/plugins/SnowpackIOInterface.h>
 #include <snowpack/DataClasses.h>
@@ -59,7 +59,7 @@ class ImisDBIO : public SnowpackIOInterface{
 
 		void openDB();
 		void closeDB();
-		void deleteProfile(const std::string& stationName, const size_t& stationNumber,
+		void deleteProfile(const std::string& stationName, const unsigned char& stationNumber,
 		                 const mio::Date& dateStart, const mio::Date& dateEnd);
 		void deleteHdata(const std::string& stationName, const std::string& stationNumber,
 		                 const mio::Date& dateStart, const mio::Date& dateEnd);

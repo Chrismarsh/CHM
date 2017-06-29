@@ -5,7 +5,14 @@ INCLUDE("${PROJECT_SOURCE_DIR}/src/modules/snowpack/snowpackCore/CMakeLists.txt"
 
 #FIND_PACKAGE(MeteoIO)
 #INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES} ${METEOIO_INCLUDE_DIR})
-#LINK_DIRECTORIES(${METEOIO_LIBRARIES}) #this, so that if the users types in paths, it works
+#SET(extra_libs ${extra_libs} ${METEOIO_LIBRARIES})
+
+IF(ENABLE_LAPACK)
+	FIND_PACKAGE(Lapack REQUIRED)
+	LINK_DIRECTORIES(${Lapack_LIBRARIES})
+	LINK_DIRECTORIES(${Blas_LIBRARIES})
+	SET(extra_libs ${extra_libs} ${Lapack_LIBRARIES} ${Blas_LIBRARIES})
+ENDIF(ENABLE_LAPACK)
 
 SET(snowpacklib_sources
 	DataClasses.cc
@@ -14,6 +21,7 @@ SET(snowpacklib_sources
 	Saltation.cc
 	Laws_sn.cc
 	Utils.cc
+	StabilityAlgorithms.cc
 	Stability.cc
 	Hazard.cc
 	SnowDrift.cc
@@ -21,29 +29,17 @@ SET(snowpacklib_sources
 	${core_sources}
 )
 
-##set names for static and dynamic library
-#IF(BUILD_STATIC_LIBS)
-#	SET(STATICNAME ${PROJECT_NAME}_STATIC)
-#	SET(STATICLIBNAME ${PROJECT_NAME})
-#	ADD_LIBRARY(${STATICNAME} STATIC ${snowpacklib_sources})
-#	TARGET_LINK_LIBRARIES(${STATICNAME} ${METEOIO_LIBRARIES})
-#ENDIF(BUILD_STATIC_LIBS)
-#
+#set compiling targets
 #IF(BUILD_SHARED_LIBS)
-#	SET(SHAREDNAME ${PROJECT_NAME})
-#	ADD_LIBRARY(${SHAREDNAME} SHARED ${snowpacklib_sources})
-#	TARGET_LINK_LIBRARIES(${SHAREDNAME} ${METEOIO_LIBRARIES})
-#ENDIF(BUILD_SHARED_LIBS)
-#
-##set compiling targets
-#IF(BUILD_SHARED_LIBS)
-#IF(WIN32)
-#	SET(LIB_DEST "bin") #since for Windows, dlls have to be alongside the exe
-#ELSE(WIN32)
 #	SET(LIB_DEST "lib")
-#ENDIF(WIN32)
+#	IF(WIN32)
+#		SET(LIB_DEST "bin") #since for Windows, dlls have to be alongside the exe
+#	ENDIF(WIN32)
+#	SET(SHAREDNAME ${PROJECT_NAME})
+#	ADD_LIBRARY(${SHAREDNAME} ${snowpacklib_sources})
+#	TARGET_LINK_LIBRARIES(${SHAREDNAME} ${extra_libs} ${METEOIO_LIBRARIES})
 #	SET_TARGET_PROPERTIES(${SHAREDNAME} PROPERTIES
-#		MACOSX_RPATH "${CMAKE_INSTALL_RPATH}"
+#		MACOSX_RPATH TRUE
 #		PREFIX "${LIBPREFIX}"
 #		LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/${LIB_DEST}"
 #		ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/${LIB_DEST}"
@@ -61,8 +57,12 @@ SET(snowpacklib_sources
 #ENDIF(BUILD_SHARED_LIBS)
 #
 #IF(BUILD_STATIC_LIBS)
+#	SET(STATICNAME ${PROJECT_NAME}_STATIC)
+#	SET(STATICLIBNAME ${PROJECT_NAME})
+#	ADD_LIBRARY(${STATICNAME} STATIC ${snowpacklib_sources})
+#	TARGET_LINK_LIBRARIES(${STATICNAME} ${extra_libs} ${METEOIO_LIBRARIES})
 #	SET_TARGET_PROPERTIES(${STATICNAME} PROPERTIES
-#		MACOSX_RPATH "${CMAKE_INSTALL_RPATH}"
+#		MACOSX_RPATH TRUE
 #		PREFIX "${LIBPREFIX}"
 #		LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
 #		ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"

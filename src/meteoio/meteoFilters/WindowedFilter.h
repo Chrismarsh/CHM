@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __WINDOWEDFILTER_H__
-#define __WINDOWEDFILTER_H__
+#ifndef WINDOWEDFILTER_H
+#define WINDOWEDFILTER_H
 
 #include <meteoio/meteoFilters/FilterBlock.h>
 #include <vector>

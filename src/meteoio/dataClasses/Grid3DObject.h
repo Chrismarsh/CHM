@@ -15,12 +15,11 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __GRID3DOBJECT_H__
-#define __GRID3DOBJECT_H__
+#ifndef GRID3DOBJECT_H
+#define GRID3DOBJECT_H
 
 #include <meteoio/dataClasses/Coords.h>
 #include <meteoio/dataClasses/Array3D.h>
-#include <meteoio/IOExceptions.h>
 #include <meteoio/dataClasses/Grid2DObject.h>
 
 #include <iostream>
@@ -104,6 +103,7 @@ class Grid3DObject{
 		void set(const Grid3DObject& i_grid, const double& init);
 
 		void size(size_t& o_ncols, size_t& o_nrows, size_t& o_ndepths) const;
+		size_t size() const;
 		size_t getNx() const;
 		size_t getNy() const;
 		size_t getNz() const;
@@ -134,10 +134,12 @@ class Grid3DObject{
 		* This means that the Coords::point object that is given either contains geographic coordinates or
 		* grid indices. This method will calculate the missing ones (so that (i,j) match with (lat,lon)
 		* and (east,north)). Any point that is either invalid or outside the grid is removed from the vector.
+		* If the given point had a "NULL" projection, it will be set to the grid's.
 		* @param vec_points vector containing the coordinates to convert
+		* @param keep_invalid keep invalid coordinates? (default: false)
 		* @return false if invalid or external points had to be removed
 		*/
-		bool gridify(std::vector<Coords>& vec_points) const;
+		bool gridify(std::vector<Coords>& vec_points, const bool& keep_invalid=false) const;
 
 		/**
 		* @brief check if the current Grid3DObject has the same geolocalization attributes
@@ -159,24 +161,24 @@ class Grid3DObject{
 		Grid3DObject& operator=(const double& value); ///<Assignement operator
 
 		Grid3DObject& operator+=(const double& rhs);
-		const Grid3DObject operator+(const double& rhs);
+		const Grid3DObject operator+(const double& rhs) const;
 		Grid3DObject& operator+=(const Grid3DObject& rhs);
-		const Grid3DObject operator+(const Grid3DObject& rhs);
+		const Grid3DObject operator+(const Grid3DObject& rhs) const;
 
 		Grid3DObject& operator-=(const double& rhs);
-		const Grid3DObject operator-(const double& rhs);
+		const Grid3DObject operator-(const double& rhs) const;
 		Grid3DObject& operator-=(const Grid3DObject& rhs);
-		const Grid3DObject operator-(const Grid3DObject& rhs);
+		const Grid3DObject operator-(const Grid3DObject& rhs) const;
 
 		Grid3DObject& operator*=(const double& rhs);
-		const Grid3DObject operator*(const double& rhs);
+		const Grid3DObject operator*(const double& rhs) const;
 		Grid3DObject& operator*=(const Grid3DObject& rhs);
-		const Grid3DObject operator*(const Grid3DObject& rhs);
+		const Grid3DObject operator*(const Grid3DObject& rhs) const;
 
 		Grid3DObject& operator/=(const double& rhs);
-		const Grid3DObject operator/(const double& rhs);
+		const Grid3DObject operator/(const double& rhs) const;
 		Grid3DObject& operator/=(const Grid3DObject& rhs);
-		const Grid3DObject operator/(const Grid3DObject& rhs);
+		const Grid3DObject operator/(const Grid3DObject& rhs) const;
 
 		bool operator==(const Grid3DObject& in) const; ///<Operator that tests for equality
 		bool operator!=(const Grid3DObject& in) const; ///<Operator that tests for inequality

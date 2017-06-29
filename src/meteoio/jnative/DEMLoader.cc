@@ -38,7 +38,7 @@ IOInterface* DEMLoader::generateIOInterface(
 
 	IOInterface *io = NULL;
 	try {
-		cfg.addKey("DEMFILE", "Input", IOUtils::cleanPath(cDemFile));
+		cfg.addKey("DEMFILE", "Input", FileUtils::cleanPath(cDemFile));
 		cfg.addKey("COORDSYS", "Input", cDemCoordSystem);
 		cfg.addKey("COORDPARAM", "Input", "");
 
@@ -53,12 +53,12 @@ IOInterface* DEMLoader::generateIOInterface(
 		cfg.addKey("ILWR::algorithms", "Interpolations2D", "IDW_LAPSE CST");
 		cfg.addKey("ISWR::algorithms", "Interpolations2D", "IDW_LAPSE CST");
 
-		if(cInterfaceType == "ARCIO")
+		if (cInterfaceType == "ARCIO")
 			io = new ARCIO(cfg);
-		//else if(cInterfaceType ==  "BormaIO" ): io = new BormaIO(cfg);
-		/*else if(cInterfaceType == "GeotopIO" )
+		//else if (cInterfaceType ==  "BormaIO" ): io = new BormaIO(cfg);
+		/*else if (cInterfaceType == "GeotopIO" )
 			io = new GeotopIO(cfg);*/
-		else if(cInterfaceType == "GrassIO" )
+		else if (cInterfaceType == "GrassIO" )
 			io = new GrassIO(cfg);
 		else
 			io = new ARCIO(cfg); //default IOinterface
@@ -89,7 +89,7 @@ const DEMObject& DEMLoader::internal_loadSubDEM(const std::string  cDemFile,
 		s = oss.str();
 	}
 	demMapType::iterator iter = demMap.find(s);
-	if( iter != demMap.end() ){
+	if ( iter != demMap.end() ){
 		const DEMObject& res =  iter->second; //found in map, return it
 		std::cerr << "DEMLoader : "  << s << " already loaded" <<  std::endl;
 		return res;
@@ -99,7 +99,7 @@ const DEMObject& DEMLoader::internal_loadSubDEM(const std::string  cDemFile,
 	{
 		iter = demMap.find(s); //may have been loaded by concurent thread
 		try{
-			if( iter == demMap.end() ){
+			if ( iter == demMap.end() ){
 				IOInterface* io = this->generateIOInterface(cDemFile, cDemCoordSystem, cInterfaceType);
 				if (io!=NULL){
 					std::cerr << "DEMLoader : "  << s << " loading ..." <<  std::endl;
@@ -146,7 +146,7 @@ const DEMObject& DEMLoader::internal_loadFullDEM(const std::string  cDemFile,
 
 	std::string s(cDemFile);
 	demMapType::iterator iter = demMap.find(s);
-	if( iter != demMap.end() ){
+	if ( iter != demMap.end() ){
 		const DEMObject& res =  iter->second; //found in map, return it
 		std::cerr << "DEMLoader : "  << s << " already loaded" <<  std::endl;
 		return res;
@@ -155,7 +155,7 @@ const DEMObject& DEMLoader::internal_loadFullDEM(const std::string  cDemFile,
 	synchronized(mutexDemMap) //defines and enter a critical section
 	{
 		iter = demMap.find(s); //may have been loaded by concurent thread
-		if( iter == demMap.end() ){
+		if ( iter == demMap.end() ){
 			try{
 				IOInterface* io = this->generateIOInterface(cDemFile, cDemCoordSystem, cInterfaceType);
 				if (io!=NULL){

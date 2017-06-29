@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __PROCADD_H__
-#define __PROCADD_H__
+#ifndef PROCADD_H
+#define PROCADD_H
 
 #include <meteoio/meteoFilters/FilterBlock.h>
 #include <vector>

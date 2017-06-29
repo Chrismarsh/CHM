@@ -31,11 +31,28 @@ ProcPSUMDistribute::ProcPSUMDistribute(const std::vector<std::string>& vec_args,
 	parse_args(vec_args);
 }
 
+/** 
+ * @brief Distributes a precipitation sum over the most probable preceeding time steps.
+ * This works by looking at various criterias (like relative humidity, TA-TSS, etc) and picking up
+ * the time steps that show the highest scores.
+ * About this index usage in the code below: When looking into the ovec vector, they are:
+ * \verbatim
+ ___▒_____________▒_____________▒____
+    ↑             ↑
+    ii          endIdx
+  \endverbatim
+ * The goal is that the only "hard" references we can have are the accumulated value (ie the only values != nodata) 
+ * and therefore their index are always kept (as ii and endIdx). This leads to the many "ii+1" in the code below since 
+ * the period over which the data has to be distributed starts at ii+1 and goes until endIdx (which will become the new ii for the
+ * next iteration).
+ * 
+ */
 void ProcPSUMDistribute::process(const unsigned int& param, const std::vector<MeteoData>& ivec,
                             std::vector<MeteoData>& ovec)
 {
 	ovec = ivec;
 	const size_t nr_elems = ivec.size();
+	bool first_true_point = true; //is it the first point with valid data?
 
 	size_t ii=0;
 	while (ii<nr_elems) {
@@ -43,30 +60,43 @@ void ProcPSUMDistribute::process(const unsigned int& param, const std::vector<Me
 		const Date endDate = startDate + measured_period;
 		const size_t endIdx = findNextAccumulation(param, ovec, endDate, ii+1);
 
-		if (endIdx==IOUtils::npos) { //no accumulation found
-			if (ovec.back().date<endDate) { //the proper end dat is not in our vector
-				fillInterval(param, ovec, ii, nr_elems-1, 0.); //fill the rest with 0
-				ii = nr_elems;
-			} else { //the next accumulation is really missing
-				if (is_soft) {
-					fillInterval(param, ovec, ii, endIdx, 0.); //fill the interval with 0
-					ii = endIdx+1;
-				} else {
-					std::ostringstream ss;
-					ss << "Redistribution of precipitation before reaccumulation failed: precipitation value required ";
-					ss << "in the " << startDate.toString(Date::ISO) << " - " << endDate.toString(Date::ISO) << " interval!\n";
-					throw NoAvailableDataException(ss.str(), AT);
-				}
+		//the proper end date is not in our vector
+		if (endIdx==IOUtils::npos) {
+			fillInterval(param, ovec, ii+1, nr_elems-1, 0.); //fill the rest with 0
+			break;
+		}
+		
+		if (endIdx==ii) { //no accumulation period found ahead of a large gap
+			if (!is_soft) {
+				std::ostringstream ss;
+				ss << "Redistribution of precipitation before reaccumulation failed: precipitation value required ";
+				ss << "in the " << startDate.toString(Date::ISO) << " - " << endDate.toString(Date::ISO) << " interval!\n";
+				throw NoDataException(ss.str(), AT);
 			}
+			ovec[endIdx](param) = 0.;
+			ii++;
+			continue;
+		}
+		
+		//at the end of the accumulation period, there is nodata
+		if (ovec[endIdx](param)==IOUtils::nodata) {
+			if (!is_soft) {
+				std::ostringstream ss;
+				ss << "Redistribution of precipitation before reaccumulation failed: precipitation value required ";
+				ss << "in the " << startDate.toString(Date::ISO) << " - " << endDate.toString(Date::ISO) << " interval!\n";
+				throw NoDataException(ss.str(), AT);
+			}
+			fillInterval(param, ovec, ii+1, endIdx, 0.); //fill the interval with 0
+			ii = endIdx;
 			continue;
 		}
 
 		//we might have found an accumulation that comes too early -> ok for first point, otherwise multiple accumulations
-		if (ovec[endIdx].date<endDate && ii!=0) {
+		if (ovec[endIdx].date<endDate && !first_true_point) {
 			const double interval = endDate.getJulian(true) - startDate.getJulian(true);
-			std::ostringstream ss;
 			const string param_name = ovec[0].getNameForParameter(param);
 
+			std::ostringstream ss;
 			if (interval==measured_period) {
 				ss << "The precipitation must be provided at the end of the accumulation period ";
 				ss << "for the " << getName() << " filter, and this is not the case for " << endDate.toString(Date::ISO);
@@ -84,16 +114,19 @@ void ProcPSUMDistribute::process(const unsigned int& param, const std::vector<Me
 		SmartDistributePSUM(precip, ii+1, endIdx, param, ovec);
 
 		ii = endIdx;
+		first_true_point = false;
 	}
 }
 
-//find first value before or at endDate
+//find the index of the first value > endDate. Please check if the matching value is not nodata!
+//return IOUtils::npos if endDate is not in the provided vector.
 size_t ProcPSUMDistribute::findNextAccumulation(const unsigned int& param, const std::vector<MeteoData>& ivec, const Date& endDate, size_t ii)
 {
 	const size_t nr_elems = ivec.size();
 	while (ii<nr_elems && ivec[ii].date<=endDate && ivec[ii](param)==IOUtils::nodata) ii++;
-
-	if (ii==nr_elems || ivec[ii].date>endDate) return IOUtils::npos;
+	if (ii==nr_elems) return IOUtils::npos;
+	
+	if (ivec[ii].date>endDate) return ii-1; //we never found data!=nodata, so revert to last point in the period
 
 	return ii;
 }

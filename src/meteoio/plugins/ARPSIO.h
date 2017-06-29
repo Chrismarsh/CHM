@@ -15,23 +15,15 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __ARPSIO_H__
-#define __ARPSIO_H__
+#ifndef ARPSIO_H
+#define ARPSIO_H
 
-#include <meteoio/Config.h>
 #include <meteoio/IOInterface.h>
-#include <meteoio/IOUtils.h>
-#include <meteoio/dataClasses/Coords.h>
-#include <meteoio/IOExceptions.h>
-#include <meteoio/dataClasses/Grid3DObject.h>
 
 #include <string>
 #include <sstream>
 #include <iostream>
 #include <cstring>
-
-#define ARPS_MAX_LINE_LENGTH 6000
-#define ARPS_MAX_STRING_LENGTH 256
 
 namespace mio {
 
@@ -48,7 +40,6 @@ class ARPSIO : public IOInterface {
 		ARPSIO(const std::string& configfile);
 		ARPSIO(const ARPSIO&);
 		ARPSIO(const Config& cfgreader);
-		~ARPSIO() throw();
 
 		ARPSIO& operator=(const ARPSIO&); ///<Assignement operator, required because of pointer member
 
@@ -56,40 +47,26 @@ class ARPSIO : public IOInterface {
 		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
 
 		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
 
-		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
-		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector< std::vector<MeteoData> >& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
-
-		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo,
-		                            const std::string& name="");
-
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
-		virtual void readPOI(std::vector<Coords>& pts);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& filename);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
-
-		void read3DGrid(Grid3DObject& grid_out, const std::string& in_name); //HACK
+		using IOInterface::read3DGrid; //to call before overwriding the method
+		virtual void read3DGrid(Grid3DObject& grid_out, const std::string& parameter="");
 
 	private:
 		void setOptions();
-		void cleanup() throw();
-		void initializeGRIDARPS();
-		void initializeTrueARPS(const char curr_line[ARPS_MAX_LINE_LENGTH]);
-		void openGridFile(const std::string& in_filename);
-		void readGridLayer(const std::string& parameter, const unsigned int& layer, Grid2DObject& grid);
-		void moveToMarker(const std::string& marker);
+		void listFields(const std::string& filename);
+		void read2DGrid_internal(FILE* &fin, const std::string& filename, Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter);
+		void initializeGRIDARPS(FILE* &fin, const std::string& filename);
+		void initializeTrueARPS(FILE* &fin, const std::string& filename, const std::string& curr_line);
+		void openGridFile(FILE* &fin, const std::string& filename);
+		void readGridLayer(FILE* &fin, const std::string& filename, const std::string& parameter, const unsigned int& layer, Grid2DObject& grid);
+		static void moveToMarker(FILE* &fin, const std::string& filename, const std::string& marker);
+		void skipToLayer(FILE* &fin, const std::string& filename, const unsigned int& layers) const;
 
 		const Config cfg;
-		//std::ifstream fin; //Input file streams
-		FILE *fin;
-		std::string filename;
 		static const double plugin_nodata; //plugin specific nodata value, e.g. -999
 		static const char* default_ext;
 		std::string coordin, coordinparam, coordout, coordoutparam; //projection parameters
-		std::string grid2dpath_in; //where are input grids stored
+		std::string grid2dpath_in, grid3dpath_in; //where are input grids stored
 		std::string ext; //file extension
 		unsigned int dimx, dimy, dimz;
 		double cellsize;

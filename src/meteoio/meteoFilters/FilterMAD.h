@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __FILTERMAD_H__
-#define __FILTERMAD_H__
+#ifndef FILTERMAD_H
+#define FILTERMAD_H
 
 #include <meteoio/meteoFilters/WindowedFilter.h>
 #include <vector>
@@ -27,13 +27,12 @@ namespace mio {
 /**
  * @class  FilterMAD
  * @ingroup processing
- * @date   2011-11-01
  * @brief Median Absolute Deviation.
  * Values outside of median ± 3 σ_MAD are rejected. The σ_MAD is calculated as follows:\n
  * <center>\f$ \sigma_{MAD} = K \cdot \mathop{median_i} \left( \left| X_i - \mathop{median_j} ( X_j ) \right| \right) \f$ with \f$ K = \Phi^{-1}; \Phi = 0.6745 \f$ </center>\n
  * See http://en.wikipedia.org/wiki/Median_absolute_deviation for more information about the Mean Absolute Deviation.
+  * Examples for the io.ini file:
  * @code
- * Valid examples for the io.ini file:
  *          TA::filter1 = mad
  *          TA::arg1    = soft left 1 1800  (1800 seconds time span for the left leaning window)
  *          RH::filter1 = mad

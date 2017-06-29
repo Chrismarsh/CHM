@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __BUFFER_H__
-#define __BUFFER_H__
+#ifndef BUFFER_H
+#define BUFFER_H
 
 #include <meteoio/dataClasses/Grid2DObject.h>
 #include <meteoio/dataClasses/DEMObject.h>
@@ -101,7 +101,15 @@ class MeteoBuffer {
 		 * @param vecMeteo        A vector of vector<MeteoData> objects providing the data
 		 */
 		void push(const Date& date_start, const Date& date_end, const std::vector< METEO_SET >& vecMeteo);
-		//void push(const Date& date, const METEO_SET& vecMeteo);
+
+
+		/**
+		 * @brief Add a data point for several stations. The data is considered valid within the provided two dates
+		 * @param date_start      A Date object representing the beginning of an interval (inclusive)
+		 * @param date_end        A Date object representing the end of an interval (inclusive)
+		 * @param vecMeteo        A vector of MeteoData objects providing the data
+		 */
+		void push(const Date& date_start, const Date& date_end, const std::vector<MeteoData>& vecMeteo);
 
 		const std::string toString() const;
 
@@ -124,6 +132,7 @@ class MeteoBuffer {
  * @author Mathias Bavay
  * @date   2015-02-06
 */
+//TODO: make it a template so it can buffer dems, 2D, 3D grids
 class GridBuffer {
 	public:
 		GridBuffer(const size_t& in_max_grids);

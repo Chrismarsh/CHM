@@ -15,10 +15,9 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __SUN_H__
-#define __SUN_H__
+#ifndef SUN_H
+#define SUN_H
 
-#include <meteoio/IOUtils.h>
 #include <meteoio/meteoLaws/Suntrajectory.h>
 
 namespace mio {
@@ -42,31 +41,35 @@ class SunObject {
 
 		SunObject(const position_algo alg=MEEUS);
 		SunObject(const double& i_latitude, const double& i_longitude, const double& i_altitude);
-		SunObject(const double& i_latitude, const double& i_longitude, const double& i_altitude, const double& i_julian, const double& TZ=0.);
+		SunObject(const double& i_latitude, const double& i_longitude, const double& i_altitude, const double& i_julian, const double& i_TZ=0.);
 
 		//local julian date and timezone
-		void setDate(const double& i_julian, const double& TZ=0.);
+		void setDate(const double& i_julian, const double& i_TZ=0.);
 		void setLatLon(const double& i_latitude, const double& i_longitude, const double& i_altitude);
+		void resetAltitude(const double& i_altitude);
 		void setElevationThresh(const double& i_elevation_threshold);
 
-		void calculateRadiation(const double& ta, const double& rh, const double& pressure, const double& ground_albedo); //HACK handle cloudy atmosphere?
+		void calculateRadiation(const double& ta, const double& rh, double pressure, const double& ground_albedo);
 		void calculateRadiation(const double& ta, const double& rh, const double& mean_albedo);
 		void getBeamRadiation(double& R_toa, double& R_direct, double& R_diffuse) const;
 		void getHorizontalRadiation(double& R_toa, double& R_direct, double& R_diffuse) const;
 		void getSlopeRadiation(const double& slope_azi, const double& slope_elev, double& R_toa, double& R_direct, double& R_diffuse) const;
-		double getElevationThresh() const;
+		double getElevationThresh() const {return elevation_threshold;}
 
+		double getSplittingBoland(const double& iswr_modeled, const double& iswr_measured, const double& t) const;
 		double getSplitting(const double& iswr_modeled, const double& iswr_measured) const;
 		double getSplitting(const double& iswr_measured) const;
+		double getCorrectionFactor(const double& iswr_measured, double &Md, bool &day, bool &night) const;
+		double getCorrectionFactor(const double& iswr_measured) const;
 
+		double getJulian(const double& o_TZ) const {return (julian_gmt+o_TZ*1./24.);}
+		const std::string toString() const;
+		
 		//SunTrajectory position;
 		SunMeeus position;
-
-		double getJulian(const double& TZ) const;
-
-		const std::string toString() const;
+		static const double elevation_dftlThreshold, rad_threshold;
+		
 	private:
-		void update();
 		void getBeamPotential(const double& sun_elevation, const double& Eccentricity_corr,
 		                      const double& ta, const double& rh, const double& pressure, const double& mean_albedo,
 		                      double& R_toa, double& R_direct, double& R_diffuse) const;
@@ -75,11 +78,10 @@ class SunObject {
 		                 double& R_direct, double& R_diffuse) const;
 
 	private:
-		double julian_gmt;
+		double julian_gmt, TZ;
 		double latitude, longitude, altitude;
 		double elevation_threshold;
 		double beam_toa, beam_direct, beam_diffuse;
-		static const double elevation_dftlThreshold;
 };
 
 } //end namespace

@@ -15,14 +15,12 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __STATIONDATA_H__
-#define __STATIONDATA_H__
+#ifndef STATIONDATA_H
+#define STATIONDATA_H
 
 #include <meteoio/dataClasses/Coords.h>
-#include <meteoio/IOUtils.h>
 
 #include <string>
-#include <sstream>
 #include <iomanip>
 #include <vector>
 
@@ -54,22 +52,23 @@ class StationData {
 		StationData(const Coords& i_position, const std::string& i_id="", const std::string& i_name="");
 
 		//Specific getter functions
-		std::string getStationID() const;
-		std::string getStationName() const;
-		Coords getPosition() const;
-		std::string getHash() const;
+		std::string getStationID() const {return stationID;}
+		std::string getStationName() const {return stationName;}
+		Coords getPosition() const {return position;}
+		std::string getHash() const {return stationID+"::"+stationName;}
+		double getAltitude() const {return position.getAltitude();}
 
 		/**
 		* @brief Get local slope angle
 		* @return angle of the local slope (in degrees, between 0 and 90 degrees)
 		*/
-		double getSlopeAngle() const;
+		double getSlopeAngle() const {return slope;}
 
 		/**
 		* @brief Get local slope azimuth
 		* @return azimuth of the local slope expressed as a bearing (0 is North, in degrees, clockwise)
 		*/
-		double getAzimuth() const;
+		double getAzimuth() const {return azi;}
 
 		/**
 		* @brief General setter function
@@ -107,7 +106,7 @@ class StationData {
 		* @param sd2 second StationData to merge, lowest priority
 		* @return new StationData object
 		*/
-		static StationData merge(const StationData& sd1, const StationData& sd2);
+		static StationData merge(StationData sd1, const StationData& sd2);
 
 		/**
 		* @brief Simple merge strategy.

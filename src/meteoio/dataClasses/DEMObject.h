@@ -20,11 +20,7 @@
 
 #include <meteoio/dataClasses/Array2D.h>
 #include <meteoio/dataClasses/Grid2DObject.h>
-#include <meteoio/IOUtils.h>
 #include <meteoio/meteoLaws/Meteoconst.h> //for math constants
-
-#include <cmath>
-#include <limits>
 
 namespace mio {
 
@@ -67,6 +63,12 @@ class DEMObject : public Grid2DObject {
 			CURVATURE=4 ///< update the curvatures
 		} update_type;
 
+		///Keywords for selecting the toString formats
+		typedef enum {
+			FULL, ///< Provide all the usually necessary information
+			SHORT ///< Simplified, lat/lon only
+		} FORMATS;
+
 		DEMObject(const slope_type& i_algorithm=DFLT);
 
 		DEMObject(const size_t& ncols_in, const size_t& nrows_in,
@@ -94,45 +96,43 @@ class DEMObject : public Grid2DObject {
 		void sanitize();
 
 		Grid2DObject getHillshade(const double& elev=38., const double& azimuth=0.) const;
-		double horizontalDistance(const double& xcoord1, const double& ycoord1, const double& xcoord2, const double& ycoord2);
-		double horizontalDistance(Coords point1, const Coords& point2);
-		double terrainDistance(Coords point1, const Coords& point2);
-		void getPointsBetween(const int& ix1, const int& iy1, const int& ix2, const int& iy2, std::vector<GRID_POINT_2D>& vec_points);
-		void getPointsBetween(Coords point1, Coords point2, std::vector<GRID_POINT_2D>& vec_points);
-		void getPointsBetween(const Coords& point, const double& bearing, std::vector<GRID_POINT_2D>& vec_points);
-		double getHorizon(const Coords& point, const double& bearing);
-		void getHorizon(const Coords& point, const double& increment, std::vector<double>& horizon);
+		double getHorizon(const size_t& ix1, const size_t& iy1, const double& bearing) const;
+		double getHorizon(const Coords& point, const double& bearing) const;
+		void getHorizon(const Coords& point, const double& increment, std::vector< std::pair<double,double> >& horizon) const;
+		double getCellSkyViewFactor(const size_t& ii, const size_t& jj) const;
 
 		DEMObject& operator=(const Grid2DObject&); ///<Assignement operator
 		DEMObject& operator=(const double& value); ///<Assignement operator
 
 		DEMObject& operator+=(const double& rhs);
-		const DEMObject operator+(const double& rhs);
+		const DEMObject operator+(const double& rhs) const;
 		DEMObject& operator+=(const Grid2DObject& rhs);
-		const DEMObject operator+(const Grid2DObject& rhs);
+		const DEMObject operator+(const Grid2DObject& rhs) const;
 
 		DEMObject& operator-=(const double& rhs);
-		const DEMObject operator-(const double& rhs);
+		const DEMObject operator-(const double& rhs) const;
 		DEMObject& operator-=(const Grid2DObject& rhs);
-		const DEMObject operator-(const Grid2DObject& rhs);
+		const DEMObject operator-(const Grid2DObject& rhs) const;
 
 		DEMObject& operator*=(const double& rhs);
-		const DEMObject operator*(const double& rhs);
+		const DEMObject operator*(const double& rhs) const;
 		DEMObject& operator*=(const Grid2DObject& rhs);
-		const DEMObject operator*(const Grid2DObject& rhs);
+		const DEMObject operator*(const Grid2DObject& rhs) const;
 
 		DEMObject& operator/=(const double& rhs);
-		const DEMObject operator/(const double& rhs);
+		const DEMObject operator/(const double& rhs) const;
 		DEMObject& operator/=(const Grid2DObject& rhs);
-		const DEMObject operator/(const Grid2DObject& rhs);
+		const DEMObject operator/(const Grid2DObject& rhs) const;
 
 		bool operator==(const DEMObject& in) const; ///<Operator that tests for equality
 		bool operator!=(const DEMObject& in) const; ///<Operator that tests for inequality
 
+		const std::string toString(const FORMATS& type = FULL) const;
 		friend std::iostream& operator<<(std::iostream& os, const DEMObject& dem);
 		friend std::iostream& operator>>(std::iostream& is, DEMObject& dem);
 
 	private:
+		double getTanMaxSlope(const double& tan_local_slope, const double& dmax, const double& bearing, const size_t& i, const size_t& j) const;
 		void CalculateAziSlopeCurve(slope_type algorithm);
 		double CalculateAspect(const double& o_Nx, const double& o_Ny, const double& o_Nz, const double& o_slope, const double no_slope=Cst::PI);
 		void CalculateHick(double A[4][4], double& o_slope, double& o_Nx, double& o_Ny, double& o_Nz);
@@ -150,6 +150,7 @@ class DEMObject : public Grid2DObject {
 		void getNeighbours(const size_t i, const size_t j, double A[4][4]);
 		double safeGet(const int i, const int j);
 
+		double max_shade_distance; ///< maximum distance to look for when computing a horizon
 		int update_flag;
 		slope_type dflt_algorithm;
 		size_t slope_failures; ///<contains the number of points that have an elevation but no slope

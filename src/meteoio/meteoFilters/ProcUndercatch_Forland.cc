@@ -37,7 +37,7 @@ ProcUndercatch_Forland::ProcUndercatch_Forland(const std::vector<std::string>& v
 void ProcUndercatch_Forland::process(const unsigned int& param, const std::vector<MeteoData>& ivec,
                         std::vector<MeteoData>& ovec)
 {
-	if(param!=MeteoData::PSUM)
+	if (param!=MeteoData::PSUM)
 		throw InvalidArgumentException("Trying to use "+getName()+" filter on " + MeteoData::getParameterName(param) + " but it can only be applied to precipitation!!" + getName(), AT);
 	ovec = ivec;
 
@@ -50,10 +50,10 @@ void ProcUndercatch_Forland::process(const unsigned int& param, const std::vecto
 			continue; //preserve nodata values and no precip or purely liquid precip
 		}
 
-		if(TA<=Tsnow_WMO)
+		if (TA<=Tsnow_WMO)
 			tmp *= solidPrecipitation(TA, VW);
 		else {
-			if(ii==0) {
+			if (ii==0) {
 				cerr << "[W] Could not correct " << ovec[0].getNameForParameter(param) << ": ";
 				cerr << "not enough data for accumulation period at date " << ovec[0].date.toString(Date::ISO) << "\n";
 				continue;
@@ -61,7 +61,7 @@ void ProcUndercatch_Forland::process(const unsigned int& param, const std::vecto
 			const Date timestep = ovec[ii].date - ovec[ii-1].date;
 			const double Pint = ovec[ii](MeteoData::PSUM) / (timestep.getJulian(true)*24.);
 			const double krain = liquidPrecipitation(Pint, VW);
-			if(TA>=Train_WMO) {
+			if (TA>=Train_WMO) {
 				tmp *= krain;
 			} else {
 				const double ksnow = solidPrecipitation(TA, VW);
@@ -75,38 +75,38 @@ void ProcUndercatch_Forland::process(const unsigned int& param, const std::vecto
 double ProcUndercatch_Forland::solidPrecipitation(double TA, double VW)
 {
 	TA = IOUtils::K_TO_C(TA); //convert to celsius
-	if(type!=wfj)
+	if (type!=wfj)
 		VW = Atmosphere::windLogProfile(VW, 10., 2.); //impact seems minimal
 	else
 		VW *= 0.84;
 
 	//restrict the range of T and VW
-	if(VW<1.) VW=1.;
-	if(VW>7.) VW=7.;
-	if(TA<-12.) TA=-12.;
+	if (VW<1.) VW=1.;
+	if (VW>7.) VW=7.;
+	if (TA<-12.) TA=-12.;
 
 	double beta0, beta1, beta2, beta3;
-	if(type==hellmann) {
+	if (type==hellmann) {
 		beta0 = 0.04587;
 		beta1 = 0.23677;
 		beta2 = 0.017979;
 		beta3 = -0.015407;
-	} else if(type==swedish) {
+	} else if (type==swedish) {
 		beta0 = -0.08871;
 		beta1 = 0.16146;
 		beta2 = 0.011276;
 		beta3 = -0.008770;
-	} else if(type==norvegian || type==belfort || type==geonor) {
+	} else if (type==norvegian || type==belfort || type==geonor) {
 		beta0 = -0.12159;
 		beta1 = 0.18546;
 		beta2 = 0.006918;
 		beta3 = -0.005254;
-	} else if(type==finnish || type==wfj) {
+	} else if (type==finnish || type==wfj) {
 		beta0 = -0.07556;
 		beta1 = 0.10999;
 		beta2 = 0.012214;
 		beta3 = -0.007071;
-	} else if(type==tretyakov) {
+	} else if (type==tretyakov) {
 		beta0 = -0.04816;
 		beta1 = 0.13383;
 		beta2 = 0.009064;
@@ -121,14 +121,14 @@ double ProcUndercatch_Forland::solidPrecipitation(double TA, double VW)
 //TA in celsius, Pint in mm/h
 double ProcUndercatch_Forland::liquidPrecipitation(const double& Pint, double VW)
 {
-	if(type!=wfj)
+	if (type!=wfj)
 		VW = Atmosphere::windLogProfile(VW, 10., 2.); //impact seems minimal
 	else
 		VW *= 0.84;
 
 	//restrict the range of T and VW
-	if(VW<1.) VW=1.;
-	if(VW>7.) VW=7.;
+	if (VW<1.) VW=1.;
+	if (VW>7.) VW=7.;
 
 	const double c = (type==hellmann)? 0. : -0.05;
 	const double lnI = log( Pint );
@@ -141,25 +141,25 @@ void ProcUndercatch_Forland::parse_args(std::vector<std::string> filter_args)
 	if (filter_args.size()!=1)
 		throw InvalidArgumentException("Wrong number of arguments for filter " + getName() + ", please provide the rain gauge type!", AT);
 
-	for(size_t ii=0; ii<filter_args.size(); ii++) {
+	for (size_t ii=0; ii<filter_args.size(); ii++) {
 		IOUtils::toLower(filter_args[ii]);
 	}
 
-	if(filter_args[0]=="wfj") {
+	if (filter_args[0]=="wfj") {
 		type=wfj;
-	} else if(filter_args[0]=="hellmann") {
+	} else if (filter_args[0]=="hellmann") {
 		type=hellmann;
-	} else if(filter_args[0]=="swedish") {
+	} else if (filter_args[0]=="swedish") {
 		type=swedish;
-	} else if(filter_args[0]=="norvegian") {
+	} else if (filter_args[0]=="norvegian") {
 		type=norvegian;
-	} else if(filter_args[0]=="finnish") {
+	} else if (filter_args[0]=="finnish") {
 		type=finnish;
-	} else if(filter_args[0]=="tretyakov") {
+	} else if (filter_args[0]=="tretyakov") {
 		type=tretyakov;
-	} else if(filter_args[0]=="belfort") {
+	} else if (filter_args[0]=="belfort") {
 		type=belfort;
-	} else if(filter_args[0]=="geonor") {
+	} else if (filter_args[0]=="geonor") {
 		type=geonor;
 	} else {
 		throw InvalidArgumentException("Rain gauge type \""+ filter_args[0] +"\" unknown for filter "+getName(), AT);

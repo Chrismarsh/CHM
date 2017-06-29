@@ -31,7 +31,7 @@ FilterUnheatedPSUM::FilterUnheatedPSUM(const std::vector<std::string>& vec_args,
 void FilterUnheatedPSUM::process(const unsigned int& param, const std::vector<MeteoData>& ivec,
                         std::vector<MeteoData>& ovec)
 {
-	if(param!=MeteoData::PSUM) {
+	if (param!=MeteoData::PSUM) {
 		ostringstream ss;
 		ss << "Can not use " << getName() << " processing on " << MeteoData::getParameterName(param);
 		throw InvalidArgumentException(ss.str(), AT);
@@ -40,9 +40,9 @@ void FilterUnheatedPSUM::process(const unsigned int& param, const std::vector<Me
 	ovec = ivec;
 	for (size_t ii=0; ii<ovec.size(); ii++){
 		double& tmp = ovec[ii](param);
-		if(tmp == IOUtils::nodata) continue; //preserve nodata values
+		if (tmp == IOUtils::nodata) continue; //preserve nodata values
 
-		if(tmp>0.) {
+		if (tmp>0.) {
 			const double rh = ivec[ii](MeteoData::RH);
 			const double ta = ivec[ii](MeteoData::TA);
 			const double tss = ivec[ii](MeteoData::TSS);
@@ -72,7 +72,7 @@ void FilterUnheatedPSUM::parse_args(std::vector<std::string> vec_args) {
 	if (nb_args == 0) {
 		thresh_rh = 0.5;
 		thresh_Dt = 3.0;
-	} else if(nb_args == 2) {
+	} else if (nb_args == 2) {
 		thresh_rh = filter_args[0];
 		thresh_Dt = filter_args[1];
 	} else

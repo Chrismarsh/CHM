@@ -43,9 +43,9 @@ void ProcExpSmoothing::process(const unsigned int& param, const std::vector<Mete
 		double& value = ovec[ii](param);
 
 		size_t start, end;
-		if( get_window_specs(ii, ivec, start, end) ) {
+		if ( get_window_specs(ii, ivec, start, end) ) {
 			value = calcExpSmoothing(ivec, param, start, end, ii);
-		} else if(!is_soft) value = IOUtils::nodata;
+		} else if (!is_soft) value = IOUtils::nodata;
 	}
 
 }
@@ -63,17 +63,17 @@ double ProcExpSmoothing::calcExpSmoothing(const std::vector<MeteoData>& ivec, co
 
 		//computing the average (centered window) or take the proper point (left or right window)
 		double val;
-		if(val1!=IOUtils::nodata && val2!=IOUtils::nodata) {
+		if (val1!=IOUtils::nodata && val2!=IOUtils::nodata) {
 			val = (val1+val2) * .5;
-		} else if(val1!=IOUtils::nodata) {
+		} else if (val1!=IOUtils::nodata) {
 			val = val1;
-		} else if(val2!=IOUtils::nodata) {
+		} else if (val2!=IOUtils::nodata) {
 			val = val2;
 		} else
 			val = IOUtils::nodata;
 
 		//add the contribution
-		if(val!=IOUtils::nodata) {
+		if (val!=IOUtils::nodata) {
 			if (initCompleted){
 				expavg = alpha*val + (1.-alpha)*expavg;
 			} else {
@@ -106,7 +106,7 @@ void ProcExpSmoothing::parse_args(std::vector<std::string> vec_args)
 	min_data_points = (unsigned int)floor(filter_args[0]);
 	min_time_span = Duration(filter_args[1] / 86400.0, 0.);
 	alpha = filter_args[2];
-	if(alpha<0. || alpha>1.) {
+	if (alpha<0. || alpha>1.) {
 		throw InvalidArgumentException("The alpha parameter for filter " + getName() + " must be between 0 and 1!", AT);
 	}
 }

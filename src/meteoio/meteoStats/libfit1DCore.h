@@ -15,11 +15,10 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __LIBFIT1DCORE_H__
-#define __LIBFIT1DCORE_H__
+#ifndef LIBFIT1DCORE_H
+#define LIBFIT1DCORE_H
 
 #include <meteoio/IOExceptions.h>
-#include <meteoio/IOUtils.h>
 #include <meteoio/dataClasses/Matrix.h>
 
 #include <vector>
@@ -43,7 +42,7 @@ class FitModel {
 		FitModel& operator =(const FitModel& source);
 		std::string toString() const;
 	protected:
-		virtual bool checkInputs() {return true;}
+		virtual bool checkInputs();
 
 		std::vector<double> Lambda; //parameters of the fit
 		std::vector<double> X; //X of input data set to fit
@@ -77,7 +76,6 @@ class FitLeastSquare : public FitModel {
 		virtual void setDefaultGuess(); //set defaults guess values. Called by setData
 
 	private:
-		bool checkInputs();
 		void initLambda();
 		void initDLambda(Matrix& dLambda) const;
 		double getDelta(const double& var) const;

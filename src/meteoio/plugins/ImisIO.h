@@ -15,22 +15,14 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __IMISIO_H__
-#define __IMISIO_H__
+#ifndef IMISIO_H
+#define IMISIO_H
 
-#include <meteoio/Config.h>
 #include <meteoio/IOInterface.h>
-#include <meteoio/IOUtils.h>
-#include <meteoio/dataClasses/Coords.h>
-#include <meteoio/IOExceptions.h>
 
 #include <string>
-#include <sstream>
-#include <set>
 #include <map>
-#include <iostream>
 #include <vector>
-#include <ctime>
 #include <occi.h>
 
 namespace mio {
@@ -38,9 +30,7 @@ namespace mio {
 class AnetzData{
 	public:
 		AnetzData()
-		: nrOfAnetzStations(3), nrOfCoefficients(3), coeffs(3, IOUtils::nodata), anetzstations(3, "")
-		{
-		}
+		: nrOfAnetzStations(3), nrOfCoefficients(3), coeffs(3, IOUtils::nodata), anetzstations(3, "") {}
 
 		AnetzData(const size_t& nr_anetz,
 		          const std::string& i_anetz1, const std::string& i_anetz2, const std::string& i_anetz3,
@@ -75,31 +65,12 @@ class ImisIO : public IOInterface {
 		ImisIO(const std::string& configfile);
 		ImisIO(const ImisIO&);
 		ImisIO(const Config&);
-		~ImisIO() throw();
-
-		virtual void read2DGrid(Grid2DObject& dem_out, const std::string& parameter="");
-		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
-
-		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
 
 		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
 		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector< std::vector<MeteoData> >& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
-
-		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo,
-		                            const std::string& name="");
-
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
-		virtual void readPOI(std::vector<Coords>& pts);
-
-		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& name);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
+		                           std::vector< std::vector<MeteoData> >& vecMeteo);
 
 	private:
-		void cleanup() throw();
-
 		void openDBConnection(oracle::occi::Environment*& env, oracle::occi::Connection*& conn);
 		void closeDBConnection(oracle::occi::Environment*& env, oracle::occi::Connection*& conn);
 		void getDBParameters();
@@ -135,17 +106,11 @@ class ImisIO : public IOInterface {
 		void convertUnits(MeteoData& meteo);
 
 		//helper functions for the Anetz coefficient mangling:
-		void findAnetzStations(const size_t& indexStart, const size_t& indexEnd,
-		                       std::map<std::string, size_t>& mapAnetzNames, std::vector<StationData>& vecAnetzStation);
-		void getAnetzPSUM(const AnetzData& ad, const std::map<std::string, size_t>& mapAnetzNames,
-		                 const std::vector< std::vector<double> >& vec_of_psums, std::vector<double>& psum);
-		void assimilateAnetzData(const Date& dateStart, const AnetzData& ad,
-		                         const std::vector< std::vector<double> > vec_of_psums,
-		                         const std::map<std::string, size_t>& mapAnetzNames, const size_t& stationindex,
-		                         std::vector< std::vector<MeteoData> >& vecMeteo);
-		void calculatePsum(const Date& dateStart, const Date& dateEnd,
-		                   const std::vector< std::vector<MeteoData> >& vecMeteoAnetz,
-		                   std::vector< std::vector<double> >& vec_of_psums);
+		void findAnetzStations(std::map<std::string, size_t>& mapAnetzNames, std::vector<StationData>& vecAnetzStation);
+		void assimilateAnetzData(const AnetzData& ad,
+                                 const std::map<std::string, size_t>& mapAnetzNames, const std::vector< std::vector< std::pair<Date, double> > > &vecPsum,
+                                 const size_t& stationindex, std::vector< std::vector<MeteoData> >& vecMeteo);
+		void computeAnetzPSUM(std::vector<MeteoData> &vecMeteo, std::vector< std::pair<Date, double> > &vecPsum);
 
 		static const double in_tz; //timezone
 		const Config cfg;

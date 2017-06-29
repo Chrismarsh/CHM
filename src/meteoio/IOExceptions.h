@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __IOEXCEPTIONS_H__
-#define __IOEXCEPTIONS_H__
+#ifndef IOEXCEPTIONS_H
+#define IOEXCEPTIONS_H
 
 #include <exception>
 #include <string>
@@ -38,7 +38,7 @@ namespace mio {
  */
 
 
-class IOException : public std::exception {
+class MIO_API IOException : public std::exception {
 	public:
 		IOException(const std::string& message="IOException occured", const std::string& position="");
 		~IOException() throw() {}
@@ -52,39 +52,39 @@ class IOException : public std::exception {
 };
 
 /**
- * @class FileNotFoundException
- * @brief thrown when a there is an unsuccessful attempt to locate a file
+ * @class NotFoundException
+ * @brief thrown when a there is an unsuccessful attempt to locate a file/server/...
  *
  * @author Thomas Egger
  */
-class MIO_API FileNotFoundException : public IOException {
+class MIO_API NotFoundException : public IOException {
 	public:
-		FileNotFoundException(const std::string& filename="",
-		                      const std::string& position="") : IOException("FileNotFoundException: " + filename, position){}
+		NotFoundException(const std::string& filename="",
+		                      const std::string& position="") : IOException("NotFound: " + filename, position){}
 };
 
 /**
- * @class FileAccessException
- * @brief thrown when a there are insufficient rights to access the file in a certain way (e.g. read, write)
+ * @class AccessException
+ * @brief thrown when a there are insufficient rights to access a file/server/... in a certain way (e.g. read, write)
  *
  * @author Thomas Egger
  */
-class MIO_API FileAccessException : public IOException {
+class MIO_API AccessException : public IOException {
 	public:
-		FileAccessException(const std::string& filename="",
-		                    const std::string& position="") : IOException("FileAccessException: " + filename, position){}
+		AccessException(const std::string& filename="",
+		                    const std::string& position="") : IOException("InvalidAccess: " + filename, position){}
 };
 
 /**
- * @class InvalidFileNameException
- * @brief thrown when a filename given is not valid (e.g. "..", "." or empty)
+ * @class InvalidNameException
+ * @brief thrown when a given filename/servername/... is not valid (e.g. "..", "." or empty)
  *
  * @author Thomas Egger
  */
-class MIO_API InvalidFileNameException : public IOException {
+class MIO_API InvalidNameException : public IOException {
 	public:
-		InvalidFileNameException(const std::string& filename="",
-		                         const std::string& position="") : IOException("InvalidFileNameException: " + filename, position){}
+		InvalidNameException(const std::string& filename="",
+		                         const std::string& position="") : IOException("InvalidName: " + filename, position){}
 };
 
 /**
@@ -96,7 +96,7 @@ class MIO_API InvalidFileNameException : public IOException {
 class MIO_API InvalidFormatException : public IOException {
 	public:
 		InvalidFormatException(const std::string& message="",
-		                       const std::string& position="") : IOException("InvalidFormatException: " + message, position){}
+		                       const std::string& position="") : IOException("InvalidFormat: " + message, position){}
 };
 
 /**
@@ -108,7 +108,7 @@ class MIO_API InvalidFormatException : public IOException {
 class MIO_API IndexOutOfBoundsException : public IOException {
 	public:
 		IndexOutOfBoundsException(const std::string& message="",
-		                          const std::string& position="") : IOException("IndexOutOfBoundsException: " + message, position){}
+		                          const std::string& position="") : IOException("IndexOutOfBounds: " + message, position){}
 };
 
 /**
@@ -120,7 +120,7 @@ class MIO_API IndexOutOfBoundsException : public IOException {
 class MIO_API ConversionFailedException : public IOException {
 	public:
 		ConversionFailedException(const std::string& message="",
-		                          const std::string& position="") : IOException("ConversionFailedException: " + message, position){}
+		                          const std::string& position="") : IOException("ConversionFailed: " + message, position){}
 };
 
 /**
@@ -132,7 +132,7 @@ class MIO_API ConversionFailedException : public IOException {
 class MIO_API InvalidArgumentException : public IOException {
 	public:
 		InvalidArgumentException(const std::string& message="",
-		                         const std::string& position="") : IOException("InvalidArgumentException: " + message, position){}
+		                         const std::string& position="") : IOException("InvalidArgument: " + message, position){}
 };
 
 /**
@@ -144,29 +144,21 @@ class MIO_API InvalidArgumentException : public IOException {
 class MIO_API UnknownValueException : public IOException {
 	public:
 		UnknownValueException(const std::string& message="",
-		                      const std::string& position="") : IOException("UnknownValueException: " + message, position){}
+		                      const std::string& position="") : IOException("UnknownValue: " + message, position){}
 };
 
 /**
- * @class NoAvailableDataException
+ * @class NoDataException
  * @brief thrown when no data is available
  *
  * @author Florian Hof
  */
-class MIO_API NoAvailableDataException : public IOException
+class MIO_API NoDataException : public IOException
 {
 	public:
-		NoAvailableDataException(const std::string& message="",
-		                         const std::string& position="") : IOException("NoAvailableDataException: " + message, position){}
+		NoDataException(const std::string& message="",
+		                         const std::string& position="") : IOException("NoData: " + message, position){}
 };
 } //end namespace
 
-// Define DEBUG an empty function for seq compilation
-#ifndef DEBUG
-#define DEBUG printdebug
-inline void printdebug(...) {}
 #endif
-
-#endif /*__IOException_H__*/
-
-

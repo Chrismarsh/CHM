@@ -18,18 +18,17 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __ASCIIIO_H__
-#define __ASCIIIO_H__
+#ifndef ASCIIIO_H
+#define ASCIIIO_H
 
 #include <meteoio/MeteoIO.h>
-#include <snowpack/Constants.h>
 #include <snowpack/plugins/SnowpackIOInterface.h>
-#include <snowpack/Hazard.h>
 
 class AsciiIO : public SnowpackIOInterface {
 
 	public:
 		AsciiIO(const SnowpackConfig& i_cfg, const RunInfo& run_info);
+		AsciiIO& operator=(const AsciiIO&); ///<Assignement operator, required because of const "info" member
 
 		virtual bool snowCoverExists(const std::string& i_snowfile, const std::string& stationID) const;
 
@@ -57,14 +56,16 @@ class AsciiIO : public SnowpackIOInterface {
 		bool appendFile(const std::string& filename, const mio::Date& startdate, const std::string& ftype);
 		bool parseMetFile(const char& eoln, const mio::Date& start_date, std::istream& fin, std::ostream& ftmp);
 		bool parseProFile(const char& eoln, const mio::Date& start_date, std::istream& fin, std::ostream& ftmp);
+		bool parsePrfFile(const char& eoln, const mio::Date& start_date, std::istream& fin, std::ostream& ftmp);
 
 		std::string getFilenamePrefix(const std::string& fnam, const std::string& path, const bool addexp=true) const;
 
 		void writeMETHeader(const SnowStation& Xdata, std::ofstream &fout) const;
-		void writePROHeader(const SnowStation& Xdata, std::ofstream &fout) const;
+		void writeProHeader(const SnowStation& Xdata, std::ofstream &fout) const;
+		void writePrfHeader(const SnowStation& Xdata, std::ofstream &fout) const;
 		bool checkHeader(const SnowStation& Xdata, const std::string& filename, const std::string& ext, const std::string& signature) const;
 
-		void writeProfilePro(const mio::Date& date, const SnowStation& Xdata);
+		void writeProfilePro(const mio::Date& date, const SnowStation& Xdata, const bool& aggregate);
 		void writeProfileProAddDefault(const SnowStation& Xdata, std::ofstream &fout);
 		void writeProfileProAddCalibration(const SnowStation& Xdata, std::ofstream &fout);
 

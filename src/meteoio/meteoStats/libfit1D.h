@@ -15,11 +15,11 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __LIBFIT1D_H__
-#define __LIBFIT1D_H__
+#ifndef LIBFIT1D_H
+#define LIBFIT1D_H
 
-#include <meteoio/IOExceptions.h>
 #include <meteoio/meteoStats/libfit1DCore.h>
+#include <meteoio/IOUtils.h>
 
 #include <vector>
 
@@ -41,7 +41,6 @@ class SimpleLinear : public FitModel {
 		double f(const double& x) const;
 		void setLapseRate(const double& in_lapse_rate) {fixed_lapse_rate = in_lapse_rate; fit_ready = false; min_nb_pts=1;}
 	protected:
-		bool checkInputs();
 		double fixed_lapse_rate;
 };
 

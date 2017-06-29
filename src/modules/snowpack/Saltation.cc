@@ -18,8 +18,12 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/Saltation.h>
 #include <meteoio/MeteoIO.h>
+
+#include <snowpack/Saltation.h>
+#include <snowpack/Constants.h>
+#include <snowpack/Utils.h>
+#include <cmath>
 
 using namespace mio;
 using namespace std;
@@ -241,7 +245,7 @@ double Saltation::sa_MassFlux(const double& z0, const double& tauS, const double
 		const double hsalt = z0 + Saltation::hs_frac * Optim::pow2(u0 * cos(angle_e_rad)) / (4. * Constants::g);
 		const double udisturb = sa_vw(hsalt, tauA, tauS, z0, u0 * sin(angle_e_rad), slope_angle);
 		const double ulog = sqrt(tauS / Constants::density_air) / Saltation::karman * log(hsalt / z0);
-		cs = MIN (0.02, Constants::density_air * Optim::pow2((ulog - udisturb)/ubar) );
+		cs = std::min(0.02, Constants::density_air * Optim::pow2((ulog - udisturb)/ubar) );
 	} else {
 		cs = 0.0;
 	}
@@ -325,7 +329,7 @@ double Saltation::sa_AeroEntrain(const double& z0, const double& tauS, const dou
 		const double hsalt = z0 + Saltation::hs_frac * Optim::pow2(u0 * cos(angle_e_rad)) / (4. * Constants::g);
 		const double udisturb = sa_vw(hsalt, tauA, tauS, z0, u0 * sin(angle_e_rad), slope_angle);
 		const double ulog = sqrt(tauS / Constants::density_air) / Saltation::karman * log(hsalt / z0);
-		cs = MIN (0.02, Constants::density_air * Optim::pow2((ulog - udisturb)/ubar) );
+		cs = std::min(0.02, Constants::density_air * Optim::pow2((ulog - udisturb)/ubar) );
 	} else {
 		cs = 0.0;
 	}

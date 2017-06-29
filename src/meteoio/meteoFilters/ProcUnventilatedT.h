@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __UNVENTILATED_T_H__
-#define __UNVENTILATED_T_H__
+#ifndef UNVENTILATED_T_H
+#define UNVENTILATED_T_H
 
 #include <meteoio/meteoFilters/FilterBlock.h>
 #include <vector>
@@ -69,8 +69,7 @@ class ProcUnventilatedT : public ProcessingBlock {
 		void parse_args(std::vector<std::string> vec_args);
 
 		double usr_albedo, usr_vw_thresh;
-		static const double dflt_albedo, soil_albedo, snow_albedo;
-		static const double snow_thresh, vw_thresh;
+		static const double dflt_albedo, vw_thresh;
 		bool nakamura; //use Nakamura or Huwald model
 
 };

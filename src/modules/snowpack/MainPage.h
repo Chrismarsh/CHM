@@ -15,8 +15,18 @@
     You should have received a copy of the GNU Lesser General Public License
     along with SNOWPACK.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __MAINPAGE_H__
-#define __MAINPAGE_H__
+#ifndef MAINPAGE_H
+#define MAINPAGE_H
+
+//groups
+/*! \defgroup postprocessing Post-processing
+   Documentation for all method applied as post-processing, after the profile has been computed.
+*/
+
+/*! \defgroup data_structures Data structures
+   Documentation for the internal data structures.
+*/
+
 
  /**
  * @mainpage Table of content
@@ -227,7 +237,7 @@
 /**
  * @page getopt_copyright BSD copyright notice
  * This copyright notice applies to files applications/snowpack/getopt.* and getopt_long.* as used on the MS Windows
- * platform. All other files in this product are covered by the <a href="https://www.gnu.org/licenses/lgpl.txt">LGPL version 3</a> 
+ * platform. All other files in this product are exclusively covered by the <a href="https://www.gnu.org/licenses/lgpl.txt">LGPL version 3</a> 
  * or above, or <a href="https://www.gnu.org/licenses/gpl.txt">GPL version 3</a> or above unless otherwise specified.
  *
  * Copyright (c) 1987, 1993, 1994 The Regents of the University of California.  All rights reserved.
@@ -265,18 +275,28 @@
 /**
  * @page requirements Data requirements
  * %Snowpack performs physical modeling of the various processes taking place between the soil, snow cover and atmosphere in order to
- * simulate the evolution of the snow cover based on meteorological input data. It requires the following meteorological parameters (please check the 
- * required units in the plugin documentation):
+ * simulate the evolution of the snow cover based on meteorological input data. It requires the following meteorological parameters:
  * - air temperature (TA)
  * - relative humidity (RH)
  * - wind speed (VW)
- * - incoming short wave radiation (ISWR) or reflected short wave radiation (RSWR)
- * - incoming long wave radiation (ILWR) or surface temperature (TSS)
- * - precipitation (PSUM) or snow height (HS)
+ * - incoming short wave radiation (ISWR) <i>and/or</i> reflected short wave radiation (RSWR)
+ * - incoming long wave radiation (ILWR) <i>and/or</i> surface temperature (TSS)
+ * - precipitation (PSUM) <i>and/or</i> snow height (HS)
  * - ground temperature (TSG, if available)
  * - snow temperatures at various depths (TS1, TS2, etc if available and only for comparisons, see section \ref SnowSoilTemperatures)
  *
- * These parameters \b must be available at least at a hourly time step.
+ * These parameters <b>should best</b> be available at a hourly time step and preferably in MKSA units 
+ * (please check the MeteoIO plugins documentation for specific cases, like GRIB, NetCDF... that are automatically handled).
+ *
+ * @section data_preparation Data preparation
+ * In order to help %Snowpack handle the (sometimes broken) data sets to be used in a simulation, the <a href="https://models.slf.ch/p/meteoio">MeteoIO library</a> is used.
+ * This enables %Snowpack to get data from a variety of sources (several input file formats, connection to a database, connection to a web service) and to
+ * pre-process real-world data, by filtering the data on the fly and by resampling the data on the fly. Please read the MeteoIO documentation (available 
+ * <A HREF="https://models.slf.ch/docserver/meteoio/html/index.html">online</A> for the last official release) to learn about
+ * the supported file formats, the available filters and resampling/re-accumulation strategies. 
+ * 
+ * It is recommended to prepare the data in the
+ * <A HREF="https://models.slf.ch/docserver/meteoio/html/smetio.html">SMET</A> file format for its ease of use.
  *
  * @section data_recomendations Data recommendations
  * In case incoming and reflected short wave radiation as well as incoming long wave radiation are all
@@ -293,12 +313,6 @@
  * CHANGE_BC = true
  * @endcode
  * For energy balance interpretation the change of internal energy is for that case better than the sum of fluxes.
- *
- * @section data_preparation Data preparation
- * In order to help %Snowpack handle the (sometimes broken) data sets to be used in a simulation, the <a href="https://models.slf.ch/p/meteoio">MeteoIO library</a> is used.
- * This enables %Snowpack to get data from a variety of sources (several input file formats, connection to a database, connection to a web service) and to
- * pre-process real-world data, by filtering the data on the fly and by resampling the data on the fly. Please read the MeteoIO documentation to learn about
- * the supported file formats, the available filters and resampling/re-accumulation strategies.
  *
  * @section data_checks Data checks
  * Please keep in mind that any inaccuracy on the input parameters will have an impact on
@@ -417,7 +431,8 @@
  * - the surface fluxes in a SurfaceFluxes object.
  *
  * In order to initialize some of these objects from data stored in files, a helper class has been designed: SnowpackIO. Of interest are the following calls:
- * SnowpackIO::readSnowCover, SnowpackIO::writeSnowCover, SnowpackIO::writeProfile, SnowpackIO::writeTimeSeries.
+ * SnowpackIO::readSnowCover, SnowpackIO::writeSnowCover, SnowpackIO::writeProfile, SnowpackIO::writeTimeSeries. Please keep in mind that the %Snowpack
+ * parameters are internally always given **perpendicularly to the ground**.
  *
  * In order to compute hazard relevant data, the Hazard class has been designed. The stability data is computed by the Stability class. Some information has
  * to be exchanged between the SnowpackIO object and the Hazard and/or Stability objects. This is handled by the SN_SNOWSOIL_DATA and ZwischenData classes.
@@ -506,14 +521,14 @@
  * @page adding_extra_models Adding extra models
  * Various processes can already be simulated using different models as configured by the user. This result is achieved by providing a specific model of
  * the process of interest, together with the proper entry in a std::map container that links a model keyword with its implementation. In order to look at the
- * required steps, we will take as an example the hand hardness implementation in the Stability class. Please keep in mind that when adding a new model to
+ * required steps, we will take as an example the hand hardness implementation in the StabilityAlgorithms class. Please keep in mind that when adding a new model to
  * a process that already has multiple available choices, only the first and the third steps are required, the other one being already done.
  *
  * @section model_implementation Model implementation
  * A method has to be implemented in the class with the same prototype as the original method. In our example, the original method (setHandHardnessMONTI)
  * has the following prototype:
  * @code
- * double setHandHardnessMONTI(const ElementData& Edata);
+ * double setHandHardnessMONTI(const ElementData& Edata, const double& buried_hoar_density);
  * @endcode
  * so any alternative implementation must use the same prototype. If some parameters would be ignored by some implementation, simply comment out the unused variable:
  * @code
@@ -521,14 +536,14 @@
  * @endcode
  *
  * @section function_pointer Function pointer typedef
- * All these methods sharing the same prototype, a generic function pointer type (actually, a method pointer) can be defined:
+ * All these methods sharing the same prototype, a generic function pointer type can be defined in the Stability class:
  * @code
- * typedef double (Stability::*StabMemFn)(const ElementData&);
+ * typedef double (*StabMemFn)(const ElementData&, const double&);
  * @endcode
  *
  * @section model_map Model map
- * Once an alternative implementation has been written (and properly declared in the header file), it must be "registered" in the model map. In our exmaple, this map
- * is defined in the header %file:
+ * Once an alternative implementation has been written (and properly declared in the "StabilityAlgorithms.h" header %file), it must be "registered" in the model map. In our exmaple, this map
+ * is defined in the "Stability.h" header %file:
  * @code
  * static std::map<std::string, StabMemFn> mapHandHardness;
  * @endcode
@@ -536,9 +551,9 @@
  * @code
  * const bool Stability::__init = Stability::initStaticData();
  * bool Stability::initStaticData() {
- * 	mapHandHardness["MONTI"]    = &Stability::setHandHardnessMONTI;
- * 	mapHandHardness["BELLAIRE"]  = &Stability::setHandHardnessBELLAIRE;
- * 	mapHandHardness["ASARC"]    = &Stability::setHandHardnessASARC;
+ * 	mapHandHardness["MONTI"]    = &StabilityAlgorithms::setHandHardnessMONTI;
+ * 	mapHandHardness["BELLAIRE"]  = &StabilityAlgorithms::setHandHardnessBELLAIRE;
+ * 	mapHandHardness["ASARC"]    = &StabilityAlgorithms::setHandHardnessASARC;
  * 	return true;
  * }
  * @endcode
@@ -557,13 +572,9 @@
  * above (ie. either "DEFAULT" or "MONTI" or "ASARC").
  *
  * @section calling_model Model call
- * Finally, the process model has to be called where needed. A helper macro can be defined as
+ * Finally, the process model has to be called where needed, so each time the hand hardness has to be computed, the call becomes:
  * @code
- * #define CALL_MEMBER_FN(object,ptrToMember)  ((object).*(ptrToMember))
- * @endcode
- * and in the code, each time the hand hardness has to be computed, the call becomes:
- * @code
- * hardness = CALL_MEMBER_FN(*this, mapHandHardness[hardness_parameterization])(EMS[e]);
+ * hardness = (mapHandHardness[hardness_parameterization]))(EMS[e], hoar_density_buried);
  * @endcode
  *
  */

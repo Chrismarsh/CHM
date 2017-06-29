@@ -15,11 +15,11 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __IOHANDLER_H__
-#define __IOHANDLER_H__
+#ifndef IOHANDLER_H
+#define IOHANDLER_H
 
 #include <meteoio/IOInterface.h>
-#include <meteoio/IOExceptions.h>
+#include <meteoio/DataCreator.h>
 
 #include <map>
 #include <set>
@@ -45,6 +45,9 @@ class IOHandler : public IOInterface {
 		//methods defined in the IOInterface class
 		virtual void read2DGrid(Grid2DObject& out_grid, const std::string& parameter="");
 		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
+		virtual void read3DGrid(Grid3DObject& grid_out, const std::string& i_filename="");
+		virtual void read3DGrid(Grid3DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
+		
 		virtual void readDEM(DEMObject& dem_out);
 		virtual void readLanduse(Grid2DObject& landuse_out);
 		virtual void readStationData(const Date& date,
@@ -53,33 +56,45 @@ class IOHandler : public IOInterface {
 		virtual void writeMeteoData(const std::vector<METEO_SET>& vecMeteo,
 		                            const std::string& name="");
 		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector<METEO_SET>& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
+		                           std::vector<METEO_SET>& vecMeteo);
 
 		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
 		virtual void readPOI(std::vector<Coords>& pts);
 		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& name);
 		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
+		virtual void write3DGrid(const Grid3DObject& grid_out, const std::string& options);
+		virtual void write3DGrid(const Grid3DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
 
 		const std::string toString() const;
 
 	private:
 		IOInterface* getPlugin(const std::string& plugin_name) const;
 		IOInterface* getPlugin(const std::string& cfgkey, const std::string& cfgsection);
-		void parse_copy_config();
+		void create_copy_map();
+		void create_move_map();
 		void create_exclude_map();
 		void create_keep_map();
-		void checkTimestamps(const std::vector<METEO_SET>& vecVecMeteo) const;
+		void create_merge_map();
+		
+		static void checkTimestamps(const std::vector<METEO_SET>& vecVecMeteo);
+		void copy_params(std::vector< METEO_SET >& vecMeteo) const;
+		void move_params(std::vector< METEO_SET >& vecMeteo) const;
 		void exclude_params(std::vector<METEO_SET>& vecVecMeteo) const;
 		void keep_params(std::vector<METEO_SET>& vecVecMeteo) const;
-		void copy_parameters(const size_t& stationindex, std::vector< METEO_SET >& vecMeteo) const;
+		void merge_stations(std::vector<METEO_SET>& vecVecMeteo) const;
+		void merge_stations(STATIONS_SET& vecStation) const;
 
 		const Config& cfg;
+		DataCreator dataCreator;
 		std::map<std::string, IOInterface*> mapPlugins;
 		std::map< std::string, std::set<std::string> > excluded_params;
 		std::map< std::string, std::set<std::string> > kept_params;
-		std::vector<std::string> copy_parameter, copy_name;
-		bool enable_copying, excludes_ready, keeps_ready;
+		std::map< std::string, std::vector<std::string> > merge_commands;
+		std::map< std::string, std::string > copy_commands;
+		std::map< std::string, std::set<std::string> > move_commands;
+		std::vector<std::string> merged_stations;
+		int merge_strategy;
+		bool copy_ready, move_ready, excludes_ready, keeps_ready, merge_ready;
 };
 
 } //namespace

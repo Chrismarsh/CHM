@@ -28,6 +28,12 @@
 #include <snowpack/snowpackCore/Canopy.h>
 #include <snowpack/snowpackCore/Metamorphism.h>
 #include <snowpack/snowpackCore/Solver.h>
+#include <snowpack/Laws_sn.h>
+#include <snowpack/snowpackCore/Aggregate.h>
+
+#include <cstdio>
+#include <fstream>
+#include <sstream>
 #include <assert.h>
 
 using namespace mio;
@@ -53,6 +59,10 @@ const double SnowStation::comb_thresh_rg = 0.125;   ///< Grain radius (mm)
 RunInfo::RunInfo()
             : version(SN_VERSION), computation_date(getRunDate()),
               compilation_date(getCompilationDate()), user(IOUtils::getLogName()) {}
+
+RunInfo::RunInfo(const RunInfo& orig)
+            : version(orig.version), computation_date(orig.computation_date),
+              compilation_date(orig.compilation_date), user(orig.user) {}
 
 mio::Date RunInfo::getRunDate()
 {
@@ -112,7 +122,7 @@ SnowProfileLayer::SnowProfileLayer()
                     depositionDate(), height(0.), rho(0.), T(0.), gradT(0.), v_strain_rate(0.),
                     theta_i(0.), theta_w(0.), theta_a(0.),
                     grain_size(0.), bond_size(0.), dendricity(0.), sphericity(0.), ogs(0.),
-                    coordin_num(0.), marker(0), type(0), hard(0.) {}
+                    coordin_num(0.), marker(0), type(0), hard(IOUtils::nodata) {}
 
 /**
  * @brief Generates a snow profile layer from element and upper node data
@@ -136,9 +146,9 @@ void SnowProfileLayer::generateLayer(const ElementData& Edata, const NodeData& N
 	sphericity = Edata.sp;
 	ogs = Edata.ogs; // in mm
 	coordin_num = Edata.N3;
-	marker = Edata.mk%100;
+	marker = static_cast<unsigned short int>( Edata.mk%100 );
 	type = Edata.type;
-	v_strain_rate = fabs(Edata.EvDot);
+	v_strain_rate = fabs(Edata.Eps_vDot);
 	hard = Edata.hard;
 }
 
@@ -148,8 +158,7 @@ void SnowProfileLayer::generateLayer(const ElementData& Edata, const NodeData& N
  * @param Edata
  * @param Ndata
  */
-void SnowProfileLayer::generateLayer(const ElementData& Edata, const NodeData& Ndata,
-                                     const mio::Date& dateOfProfile, const double hoar_density_surf)
+void SnowProfileLayer::generateLayer(const ElementData& Edata, const NodeData& Ndata, const mio::Date& dateOfProfile, const double hoar_density_surf)
 {
 	const double hoar_size = Ndata.hoar/hoar_density_surf; // (m)
 
@@ -166,7 +175,7 @@ void SnowProfileLayer::generateLayer(const ElementData& Edata, const NodeData& N
 	bond_size = grain_size/3.;
 	dendricity = 0.;
 	sphericity = 0.;
-	ogs = MIN(4.e-1, grain_size); // in mm, see opticalEquivalentGrainSize();
+	ogs = std::min(4.e-1, grain_size); // in mm, see opticalEquivalentGrainSize();
 	coordin_num = 2.;
 	marker = 3;
 	type = 660;
@@ -187,18 +196,18 @@ std::vector<SnowProfileLayer> SnowProfileLayer::generateProfile(const mio::Date&
 	const vector<ElementData>& EMS = Xdata.Edata;
 	const double cos_sl = Xdata.cos_sl;
 	const bool surf_hoar = (NDS[nE].hoar > (hoar_density_surf * MM_TO_M(hoar_min_size_surf)));
-
-	const size_t nL = surf_hoar? nE+1 : nE;
-	std::vector<SnowProfileLayer> Pdata(nL);
-
+	
 	// Generate the profile data from the element data (1 layer = 1 element)
-	size_t snowloc = 0;
+	unsigned char snowloc = 0;
 	string mystation = Xdata.meta.getStationID();
 	if (isdigit(mystation[mystation.length()-1])) {
-		snowloc = static_cast<size_t>( mystation[mystation.length()-1] - '0' ); //trick to convert the number as char to a number
+		snowloc = static_cast<unsigned char>( mystation[mystation.length()-1] - '0' ); //trick to convert the number as char to a number
 		if (mystation.length() > 2)
 			mystation = mystation.substr(0, mystation.length()-1);
 	}
+
+	const size_t nL = surf_hoar? (nE+1 - Xdata.SoilNode) : (nE - Xdata.SoilNode);
+	std::vector<SnowProfileLayer> Pdata(nL);
 
 	for(size_t ll=0, e=Xdata.SoilNode; ll<nL; ll++, e++) { // We dump only snow layers
 		// Write profile meta data
@@ -206,7 +215,7 @@ std::vector<SnowProfileLayer> SnowProfileLayer::generateProfile(const mio::Date&
 		Pdata[ll].stationname = mystation;
 		Pdata[ll].loc_for_snow = snowloc;
 		Pdata[ll].loc_for_wind = 1;
-
+		
 		// Write snow layer data
 		if (ll < nE) {
 			Pdata[ll].generateLayer(EMS[e], NDS[e+1]);
@@ -246,7 +255,7 @@ void SnowProfileLayer::average(const double& Lp0, const double& Lp1, const SnowP
 	ogs         = (Lp1*profile_layer.ogs + Lp0*ogs) / layerThickness;
 	bond_size   = (Lp1*profile_layer.bond_size + Lp0*bond_size) / layerThickness;
 	hard        = (Lp1*profile_layer.hard + Lp0*hard) / layerThickness;
-	marker      = MAX(profile_layer.marker, marker);
+	marker      = std::max(profile_layer.marker, marker);
 }
 
 const std::string BoundCond::toString() const
@@ -339,7 +348,7 @@ void SurfaceFluxes::collectSurfaceFluxes(const BoundCond& Bdata,
 	qw     += Mdata.iswr - Mdata.rswr;
 
 	pAlbedo += Xdata.pAlbedo;
-	if (Mdata.mAlbedo != Constants::undefined)
+	if (Mdata.mAlbedo != Constants::undefined && mAlbedo != Constants::undefined)
 		mAlbedo += Mdata.mAlbedo;
 	else
 		mAlbedo = Constants::undefined;
@@ -749,9 +758,9 @@ ElementData::ElementData() : depositionDate(), L0(0.), L(0.),
                              Rho(0.), M(0.), sw_abs(0.),
                              rg(0.), dd(0.), sp(0.), ogs(0.), rb(0.), N3(0.), mk(0),
                              type(0), metamo(0.), dth_w(0.), res_wat_cont(0.), Qmf(0.), QIntmf(0.),
-                             dE(0.), E(0.), Ee(0.), Ev(0.), EDot(0.), EvDot(0.),
+                             dEps(0.), Eps(0.), Eps_e(0.), Eps_v(0.), Eps_Dot(0.), Eps_vDot(0.), E(0.),
                              S(0.), C(0.), CDot(0.), ps2rb(0.),
-                             s_strength(0.), hard(0.), S_dr(0.), theta_r(0.), lwc_source(0.), dhf(0.) {}
+                             s_strength(0.), hard(IOUtils::nodata), S_dr(0.), crit_cut_length(Constants::undefined), theta_r(0.), lwc_source(0.), dhf(0.) {}
 
 std::iostream& operator<<(std::iostream& os, const ElementData& data)
 {
@@ -796,12 +805,13 @@ std::iostream& operator<<(std::iostream& os, const ElementData& data)
 	os.write(reinterpret_cast<const char*>(&data.res_wat_cont), sizeof(data.res_wat_cont));
 	os.write(reinterpret_cast<const char*>(&data.Qmf), sizeof(data.Qmf));
 
-	os.write(reinterpret_cast<const char*>(&data.dE), sizeof(data.dE));
+	os.write(reinterpret_cast<const char*>(&data.dEps), sizeof(data.dEps));
+	os.write(reinterpret_cast<const char*>(&data.Eps), sizeof(data.Eps));
+	os.write(reinterpret_cast<const char*>(&data.Eps_e), sizeof(data.Eps_e));
+	os.write(reinterpret_cast<const char*>(&data.Eps_v), sizeof(data.Eps_v));
+	os.write(reinterpret_cast<const char*>(&data.Eps_Dot), sizeof(data.Eps_Dot));
+	os.write(reinterpret_cast<const char*>(&data.Eps_vDot), sizeof(data.Eps_vDot));
 	os.write(reinterpret_cast<const char*>(&data.E), sizeof(data.E));
-	os.write(reinterpret_cast<const char*>(&data.Ee), sizeof(data.Ee));
-	os.write(reinterpret_cast<const char*>(&data.Ev), sizeof(data.Ev));
-	os.write(reinterpret_cast<const char*>(&data.EDot), sizeof(data.EDot));
-	os.write(reinterpret_cast<const char*>(&data.EvDot), sizeof(data.EvDot));
 
 	os.write(reinterpret_cast<const char*>(&data.S), sizeof(data.S));
 	os.write(reinterpret_cast<const char*>(&data.C), sizeof(data.C));
@@ -863,12 +873,13 @@ std::iostream& operator>>(std::iostream& is, ElementData& data)
 	is.read(reinterpret_cast<char*>(&data.res_wat_cont), sizeof(data.res_wat_cont));
 	is.read(reinterpret_cast<char*>(&data.Qmf), sizeof(data.Qmf));
 
-	is.read(reinterpret_cast<char*>(&data.dE), sizeof(data.dE));
+	is.read(reinterpret_cast<char*>(&data.dEps), sizeof(data.dEps));
+	is.read(reinterpret_cast<char*>(&data.Eps), sizeof(data.Eps));
+	is.read(reinterpret_cast<char*>(&data.Eps_e), sizeof(data.Eps_e));
+	is.read(reinterpret_cast<char*>(&data.Eps_v), sizeof(data.Eps_v));
+	is.read(reinterpret_cast<char*>(&data.Eps_Dot), sizeof(data.Eps_Dot));
+	is.read(reinterpret_cast<char*>(&data.Eps_vDot), sizeof(data.Eps_vDot));
 	is.read(reinterpret_cast<char*>(&data.E), sizeof(data.E));
-	is.read(reinterpret_cast<char*>(&data.Ee), sizeof(data.Ee));
-	is.read(reinterpret_cast<char*>(&data.Ev), sizeof(data.Ev));
-	is.read(reinterpret_cast<char*>(&data.EDot), sizeof(data.EDot));
-	is.read(reinterpret_cast<char*>(&data.EvDot), sizeof(data.EvDot));
 
 	is.read(reinterpret_cast<char*>(&data.S), sizeof(data.S));
 	is.read(reinterpret_cast<char*>(&data.C), sizeof(data.C));
@@ -881,6 +892,27 @@ std::iostream& operator>>(std::iostream& is, ElementData& data)
 	is.read(reinterpret_cast<char*>(&data.lwc_source), sizeof(data.lwc_source));
 	is.read(reinterpret_cast<char*>(&data.dhf), sizeof(data.dhf));
 	return is;
+}
+
+double ElementData::getYoungModule(const double& rho_slab, const Young_Modulus& model)
+{
+	switch (model) {
+		case Sigrist: {//This is the parametrization by Sigrist, 2006
+			static const double A = 968.e6; //in Pa
+			const double E = A * pow( rho_slab/Constants::density_ice, 2.94 ); //in Pa
+			return E;
+		}
+		case Pow: {
+			const double E = 5.07e9 * (pow((rho_slab/Constants::density_ice), 5.13));
+			return E;
+		}
+		case Exp: {
+			const double E = 1.873e5 * exp(0.0149*(rho_slab));
+			return E;
+		}
+		default:
+			throw mio::UnknownValueException("Selected Young's modulus model has not been implemented", AT);
+	}
 }
 
 /**
@@ -962,7 +994,7 @@ void ElementData::opticalEquivalentGrainSize()
 	if (dd > Constants::eps2)
 		ogs = 2. * (1.e-1 * (0.5 * (dd + (1. - dd) * (4. - sp)))); // (mm)
 	else
-		ogs = 2. * (0.5 * ((2. * rg * sp) + (1. - sp) * MAX(4.e-1, rg))); // rg in mm
+		ogs = 2. * (0.5 * ((2. * rg * sp) + (1. - sp) * std::max(4.e-1, rg))); // rg in mm
 }
 
 /**
@@ -998,8 +1030,8 @@ double ElementData::snowResidualWaterContent(const double& theta_i)
 {
 	double resWatCont;
 
-	const double fraction = Constants::density_water/Constants::density_ice;
-	const double limit_theta_i = 1. - fraction * ((1. + 0.0165 * fraction) - sqrt((1. + 0.0165 * fraction)*(1. + 0.0165 * fraction) - 4. * fraction * 0.0264)) / (2. * fraction);	// abc-formula
+	static const double fraction = Constants::density_water/Constants::density_ice;
+	static const double limit_theta_i = 1. - fraction * ((1. + 0.0165 * fraction) - sqrt((1. + 0.0165 * fraction)*(1. + 0.0165 * fraction) - 4. * fraction * 0.0264)) / (2. * fraction);	// abc-formula
 
 	if (theta_i > limit_theta_i) {
 		// This case is the limiting case where:
@@ -1013,7 +1045,7 @@ double ElementData::snowResidualWaterContent(const double& theta_i)
 			resWatCont = 0.08 - 0.1023 * (theta_i - 0.03);
 		}
 	}
-	return MIN(resWatCont, 0.08); //NOTE: MIN() only needed in case of theta_i < 0.03
+	return std::min(resWatCont, 0.08); //NOTE: std::min() only needed in case of theta_i < 0.03
 }
 
 /**
@@ -1031,13 +1063,13 @@ double ElementData::soilFieldCapacity() const
 {
 	double fc;
 	if (!(rg > 0.)) {
-		fc = MIN(SnLaws::field_capacity_soil, (1. - theta[SOIL]) * 0.1);
+		fc = std::min(SnLaws::field_capacity_soil, (1. - theta[SOIL]) * 0.1);
 	} else {
 		//Follow implementation by Tobias Hipp master thesis.
 		//Note that the value of 0.0976114 is more precise and the value of 60.8057 is
 		//slightly different from what is mentioned in thesis, to make the function continuous over rg.
 		if(rg<17.0) {
-			fc = MIN(0.95, 0.32 / sqrt(rg) + 0.02);
+			fc = std::min(0.95, 0.32 / sqrt(rg) + 0.02);
 		} else {
 			if(rg<60.8057) {
 				fc=0.0976114-0.002*(rg-17.0);
@@ -1046,7 +1078,7 @@ double ElementData::soilFieldCapacity() const
 			}
 		}
 	}
-	return fc;
+	return std::min(1. - theta[SOIL], fc);		// Ensure that the field capacity does not exceed the pore space.
 }
 
 /**
@@ -1127,11 +1159,16 @@ double ElementData::neck2VolumetricStrain() const
 
 void ElementData::snowType()
 {
-	type = snowType(dd, sp, 2.*rg, mk%100, theta[WATER], res_wat_cont);
+	type = snowType(dd, sp, 2.*rg, static_cast<unsigned short int>(mk%100), theta[WATER], res_wat_cont);
+}
+
+unsigned short int ElementData::getSnowType() const
+{
+	return snowType(dd, sp, 2.*rg, static_cast<unsigned short int>(mk%100), theta[WATER], res_wat_cont);
 }
 
 unsigned short int ElementData::snowType(const double& dendricity, const double& sphericity,
-                          const double& grain_size, const size_t& marker, const double& theta_w, const double& res_wat_cont)
+                          const double& grain_size, const unsigned short int& marker, const double& theta_w, const double& res_wat_cont)
 {
 	int a=-1,b=-1,c=0;
 
@@ -1227,7 +1264,7 @@ unsigned short int ElementData::snowType(const double& dendricity, const double&
 			b = 7; c = 0;
 			if (sphericity > 0.75) {
 				a = 7;
-			} else if( sphericity > 0.4 ) {
+			} else if (sphericity > 0.4 ) {
 				if (grain_size <= 0.7) {
 					b = a; a = 7;
 				} else if (marker != 13 ) {
@@ -1286,8 +1323,9 @@ const std::string ElementData::toString() const
 	os << "\tSoil: density=" << soil[SOIL_RHO] << " Conductivity=" << soil[SOIL_K] << " Capacity=" << soil[SOIL_C] << "\n";
 
 	os << "\tStrains: S=" <<  S << " C=" << C << " s_strength=" << s_strength << "\n";
-	os << "\tStrains: dE=" << dE << " E=" <<  E << " Ee=" <<  Ee << " Ev=" <<  Ev << "\n";
-	os << "\tStrain rates EDot=" <<  EDot << " EvDpt=" <<  EvDot << " CDot=" <<  CDot << "\n";
+	os << "\tStrains: dEps=" << dEps << " Eps=" <<  Eps << " Eps_e=" <<  Eps_e << " Eps_v=" <<  Eps_v << "\n";
+	os << "\tYoung's modulus of elasticity=" << E << "\n";
+	os << "\tStrain rates Eps_Dot=" <<  Eps_Dot << " Eps_vDpt=" <<  Eps_vDot << " CDot=" <<  CDot << "\n";
 	os << "\tStability: S_dr=" << S_dr << " hard=" << hard << " dhf=" << dhf << "\n";
 	os << "</ElementData>\n";
 	return os.str();
@@ -1428,7 +1466,7 @@ SnowStation::~SnowStation()
 		} else if ( pMat->State == BlockMatrix  ){
 			ReleaseBlockMatrix(&pMat->Mat.Block);
 		}
-		//free(pMat);
+		free(pMat);
 	}
 }
 
@@ -1524,7 +1562,7 @@ double SnowStation::getModelledTemperature(const double& z) const
 
 /**
  * @brief Reallocate element and node data \n
- * Xdata->Edata, Xdata->Ndata and Xdata->nElems, Xdata->nNodes are reallocated or reset, respectively.
+ * Edata and Ndata as well as nElems and nNodes are reallocated or reset, respectively.
  * @param number_of_elements The new number of elements
  */
 void SnowStation::resize(const size_t& number_of_elements)
@@ -1605,6 +1643,42 @@ void SnowStation::combineElements(const size_t& i_number_top_elements, const boo
 	}
 }
 
+void SnowStation::combineElements(const size_t& i_number_top_elements, const bool& reduce_n_elements, const size_t& cond)
+{
+	if (nElems - SoilNode < i_number_top_elements+1) {
+		return;
+	}
+
+	size_t nRemove=0;       // Number of elements to be removed
+	bool merge=false;
+	for (size_t eLower = SoilNode, eUpper = SoilNode+1; eLower < nElems-i_number_top_elements; eLower++, eUpper++) {
+		switch (cond) {
+			case 1:	// merging WaterTransport
+				merge = (combineCondition(Edata[eLower], Edata[eUpper], cH-Ndata[eUpper].z, reduce_n_elements));
+				break;
+			case 2:	// aggregate first round
+				merge = (Aggregate::joinSimilarLayers(Edata[eUpper], Edata[eLower]));
+				break;
+			case 3:	// aggregate second round
+				merge = (Aggregate::mergeThinLayer(Edata[eUpper], Edata[eLower]));
+				break;
+			default:
+				merge = false;
+				break;
+		}
+		if (merge) {
+			mergeElements(Edata[eLower], Edata[eUpper], true, (eUpper==nElems-1));
+			nRemove++;
+			Edata[eUpper].Rho = Constants::undefined;
+			eLower++; eUpper++;
+		}
+	}
+	if (nRemove > 0) {
+		const size_t rnE = nElems - nRemove; //Reduced number of elements
+		reduceNumberOfElements(rnE);
+	}
+}
+
 /**
  * @brief Remove the upper "marked" element of two (snow only) \n
  * -# Merging two elements:
@@ -1650,8 +1724,8 @@ void SnowStation::reduceNumberOfElements(const size_t& rnE)
 
 	const double cH_old = cH;
 	cH = Ndata[nNodes-1].z + Ndata[nNodes-1].u;
-	mH -= (cH_old - cH);
-	ErosionLevel = MAX(SoilNode, MIN(ErosionLevel, rnE-1));
+	if (mH!=Constants::undefined) mH -= (cH_old - cH);
+	ErosionLevel = std::max(SoilNode, std::min(ErosionLevel, rnE-1));
 }
 
 /**
@@ -1734,10 +1808,10 @@ void SnowStation::initialize(const SN_SNOWSOIL_DATA& SSdata, const size_t& i_sec
 			Edata[e].L0 = Edata[e].L = (Ndata[e+1].z - Ndata[e].z);
 			Edata[e].gradT = (Ndata[e+1].T-Ndata[e].T) / Edata[e].L;
 			// Creep data
-			Edata[e].E = Edata[e].S = Edata[e].EDot=0.0;
-			Edata[e].Ev = Edata[e].Ee = Edata[e].EvDot=0.0;
+			Edata[e].E = Edata[e].Eps = Edata[e].S = Edata[e].Eps_Dot=0.0;
+			Edata[e].Eps_v = Edata[e].Eps_e = Edata[e].Eps_vDot=0.0;
 			// Very important to initialize the increments in length and strain
-			Edata[e].dE = 0.0;
+			Edata[e].dEps = 0.0;
 			// Volumetric Components
 			Edata[e].theta[SOIL]  = SSdata.Ldata[ll].phiSoil;
 			Edata[e].theta[AIR]   = SSdata.Ldata[ll].phiVoids;
@@ -1780,13 +1854,13 @@ void SnowStation::initialize(const SN_SNOWSOIL_DATA& SSdata, const size_t& i_sec
 			Edata[e].CDot = SSdata.Ldata[ll].CDot;
 			Edata[e].metamo = SSdata.Ldata[ll].metamo;
 			Edata[e].S_dr = INIT_STABILITY;
-			Edata[e].hard = 0.;
+			Edata[e].hard = IOUtils::nodata;
 			Edata[e].M = Edata[e].Rho * Edata[e].L0;
 			assert(Edata[e].M >= (-Constants::eps2)); //mass must be positive
 		} // end of element layer for
 	} // end of layer for
 
-	ErosionLevel = (SSdata.ErosionLevel > 0)? static_cast<size_t>(SSdata.ErosionLevel) : MAX(SoilNode, nElems-1);
+	ErosionLevel = (SSdata.ErosionLevel > 0)? static_cast<size_t>(SSdata.ErosionLevel) : std::max(SoilNode, nElems-1);
 
 	// Find the real Cauchy stresses
 	double SigC = 0.0;
@@ -1875,9 +1949,9 @@ void SnowStation::initialize(const SN_SNOWSOIL_DATA& SSdata, const size_t& i_sec
  */
 double SnowStation::flexibleMaxElemLength(const double& depth)
 {
-	const double upper_limit_length=1.0;
+	static const double upper_limit_length=1.0;
 	const double calc_length = static_cast<double>( int( int(depth * 100.) / 10) + 1) * comb_thresh_l;
-	return MIN(calc_length, upper_limit_length);
+	return std::min(calc_length, upper_limit_length);
 }
 
 /**
@@ -1906,7 +1980,6 @@ bool SnowStation::combineCondition(const ElementData& Edata0, const ElementData&
 	if (reduce_n_elements == true) {
 		max_elem_l = flexibleMaxElemLength(depth);
 	}
-
 
 	if ( (Edata0.L > max_elem_l) || (Edata1.L > max_elem_l) )
 		return false;
@@ -2011,33 +2084,33 @@ void SnowStation::splitElements()
  */
 void SnowStation::mergeElements(ElementData& EdataLower, const ElementData& EdataUpper, const bool& merge, const bool& topElement)
 {
-	const double L_lower = EdataLower.L; //Length of lower element
-	const double L_upper = EdataUpper.L; //Length of upper element
-	double LNew = L_lower;               //Length of "new" element
+	const double L_lower = EdataLower.L; //Thickness of lower element
+	const double L_upper = EdataUpper.L; //Thickness of upper element
+	double LNew = L_lower;               //Thickness of "new" element
 
 	if (merge) {
-		// Determine new element length under the condition of keeping the density of the lower element constant.
+		// Determine new element length under the condition of keeping the density of the lower element constant, if the density of the lower element is larger than the upper element.
 		// This is only in case we are considering the top element, to deal with the common situation where top elements are being removed due to low
 		// ice content as a result of melt. We don't want to transfer this low ice content to lower layers.
-		if (EdataUpper.Rho != Constants::undefined && EdataLower.Rho != Constants::undefined && topElement==true) {	// Check if densities are defined, which may not be the case if elements are already marked for removal (may happen when removing multiple adjacent elements).
+		if (EdataUpper.Rho != Constants::undefined && EdataLower.Rho != Constants::undefined && EdataUpper.Rho < EdataLower.Rho && topElement==true) {	// Check if densities are defined, which may not be the case if elements are already marked for removal (may happen when removing multiple adjacent elements).
 			LNew += (EdataUpper.Rho * L_upper) / EdataLower.Rho;
 		} else {
 			LNew += L_upper;
 		}
 		EdataLower.depositionDate = EdataUpper.depositionDate;
 		if (EdataLower.theta[ICE] + EdataUpper.theta[ICE] > 0.) {
-			EdataLower.rg = ( EdataLower.theta[ICE]*L_lower*EdataLower.rg + EdataUpper.theta[ICE]*L_upper*EdataUpper.rg ) / (EdataLower.theta[ICE]*L_lower + EdataUpper.theta[ICE]*L_upper);
 			EdataLower.dd = ( EdataLower.theta[ICE]*L_lower*EdataLower.dd + EdataUpper.theta[ICE]*L_upper*EdataUpper.dd ) / (EdataLower.theta[ICE]*L_lower + EdataUpper.theta[ICE]*L_upper);
 			EdataLower.sp = ( EdataLower.theta[ICE]*L_lower*EdataLower.sp + EdataUpper.theta[ICE]*L_upper*EdataUpper.sp ) / (EdataLower.theta[ICE]*L_lower + EdataUpper.theta[ICE]*L_upper);
+			EdataLower.rg = ( EdataLower.theta[ICE]*L_lower*EdataLower.rg + EdataUpper.theta[ICE]*L_upper*EdataUpper.rg ) / (EdataLower.theta[ICE]*L_lower + EdataUpper.theta[ICE]*L_upper);
 			EdataLower.rb = ( EdataLower.theta[ICE]*L_lower*EdataLower.rb + EdataUpper.theta[ICE]*L_upper*EdataUpper.rb ) / (EdataLower.theta[ICE]*L_lower + EdataUpper.theta[ICE]*L_upper);
 			EdataLower.CDot = ( EdataLower.theta[ICE]*L_lower*EdataLower.CDot + EdataUpper.theta[ICE]*L_upper*EdataUpper.CDot ) / (EdataLower.theta[ICE]*L_lower + EdataUpper.theta[ICE]*L_upper);
 		}
 		EdataLower.opticalEquivalentGrainSize();
-		EdataLower.E = EdataLower.Ev;
-		EdataLower.Ee = 0.0; // TODO (very old) Check whether not simply add the elastic
-		                     //                 and viscous strains of the elements and average the stress?
+		EdataLower.Eps = EdataLower.Eps_v; //HACK: why?
+		EdataLower.Eps_e = 0.0; // TODO (very old) Check whether not simply add the elastic
+		                     //                 and viscous strains of the elements and average the stress? E is kept from Lower
 	} else {
-		EdataLower.Ee = EdataLower.E = EdataLower.Ev = EdataLower.dE = 0.0;
+		EdataLower.E = EdataLower.Eps_e = EdataLower.Eps = EdataLower.Eps_v = EdataLower.dEps = 0.0;
 	}
 
 	EdataLower.L0 = EdataLower.L = LNew;
@@ -2051,7 +2124,8 @@ void SnowStation::mergeElements(ElementData& EdataLower, const ElementData& Edat
 		// If there is not enough space, adjust element length:
 		EdataLower.theta[AIR] = EdataLower.theta[WATER]*((Constants::density_water/Constants::density_ice)-1.);
 		const double tmpsum = EdataLower.theta[AIR]+EdataLower.theta[ICE]+EdataLower.theta[WATER];
-		LNew *= tmpsum;
+		// Ensure that the element does not become larger than the sum of lengths of the original ones (no absolute element "growth")!
+		LNew = std::min(LNew * tmpsum, L_lower + L_upper);
 		EdataLower.L0 = EdataLower.L = LNew;
 		EdataLower.theta[AIR] /= tmpsum;
 		EdataLower.theta[ICE] /= tmpsum;
@@ -2085,28 +2159,29 @@ void SnowStation::mergeElements(ElementData& EdataLower, const ElementData& Edat
  */
 bool SnowStation::isGlacier(const bool& hydro) const
 {
-	if(hydro) {
+	if (hydro) {
 		//if more than 2m of pure ice in the whole profile -> hydrologically, glacier melt
-		const double ice_depth_glacier = 2.;
+		static const double ice_depth_glacier = 2.;
 		double sum_ice_depth=0.;
-		for(size_t layer_index=0; layer_index<nElems; layer_index++) {
-			if( Edata[layer_index].type==880 || (Edata[layer_index].mk % 10 == 7) || (Edata[layer_index].mk % 10 == 8))
+		for (size_t layer_index=0; layer_index<nElems; layer_index++) {
+			if ((Edata[layer_index].type==880) || (Edata[layer_index].mk % 10 == 7) || (Edata[layer_index].mk % 10 == 8))
 				sum_ice_depth += Edata[layer_index].L;
 		}
 
 		return (sum_ice_depth>=ice_depth_glacier);
 	} else {
 		bool is_pure_ice=true;
-		const size_t check_depth=5;
+		static const size_t check_depth=5;
 		const size_t top_index = nElems-1;
 		const size_t top_index_toCheck = top_index - check_depth;
 		const size_t soil_index = SoilNode-1;
 		const size_t end_index = (top_index_toCheck>soil_index)? top_index_toCheck : soil_index;
 
-		if(nElems==0 || top_index==soil_index) return false; //there are only soil layers or none
+		if (nElems==0 || top_index==soil_index) return false; //there are only soil layers or none
 
-		for(size_t layer_index=top_index+1; layer_index-- > end_index; ) { //because it is decremented right away when testing...
-			if(Edata[layer_index].type!=880 && (Edata[layer_index].mk % 10 != 7) && (Edata[layer_index].mk % 10 != 8)) {
+		for (size_t layer_index=top_index+1; layer_index-- > end_index; ) { //because it is decremented right away when testing...
+			const bool is_ice = (Edata[layer_index].type==880) || (Edata[layer_index].mk % 10 == 7) || (Edata[layer_index].mk % 10 == 8);
+			if (!is_ice)  {
 				is_pure_ice=false;
 				break;
 			}
@@ -2309,10 +2384,10 @@ const std::string SnowStation::toString() const
 	else
 		os << "Kt= " << hex << Kt << dec << "\n";
 	/*for (unsigned int ii=1; ii<Ndata.size(); ii++) {
-		os << Ndata[ii];
+		os << Ndata[ii].toString();
 	}
 	for (unsigned int ii=1; ii<Edata.size(); ii++) {
-		os << Edata[ii];
+		os << Edata[ii].toString();
 	}*/
 	//os << "Canopy=" << Cdata;
 
@@ -2341,8 +2416,7 @@ CurrentMeteo::CurrentMeteo(const SnowpackConfig& cfg)
           numberMeasTemperatures(mio::IOUtils::unodata), numberFixedRates()
 {
 	maxNumberMeasTemperatures = cfg.get("MAX_NUMBER_MEAS_TEMPERATURES", "SnowpackAdvanced", IOUtils::nothrow);
-    //TODO: fix chris
-//	fixedPositions = cfg.get("FIXED_POSITIONS", "SnowpackAdvanced", IOUtils::nothrow);
+	fixedPositions = std::vector<double>();//cfg.get("FIXED_POSITIONS", "SnowpackAdvanced", IOUtils::nothrow));
 	minDepthSubsurf = cfg.get("MIN_DEPTH_SUBSURF", "SnowpackAdvanced", IOUtils::nothrow);
 	numberFixedRates = cfg.get("NUMBER_FIXED_RATES", "SnowpackAdvanced", IOUtils::nothrow);
 }
@@ -2398,7 +2472,7 @@ void CurrentMeteo::setMeasTempParameters(const mio::MeteoData& md)
 		        maxNumberMeasTemperatures);
 	}
 
-	const size_t number_ts = MAX(numberMeasTemperatures, fixedPositions.size());
+	const size_t number_ts = std::max(numberMeasTemperatures, fixedPositions.size());
 	ts.resize(number_ts, mio::IOUtils::nodata);
 	zv_ts.resize(number_ts, mio::IOUtils::nodata);
 }

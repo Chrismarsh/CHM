@@ -22,8 +22,11 @@
  * @version 10.02
  * This module contains the hazard computation routines
  */
+#include <stdio.h>
 
 #include <snowpack/Hazard.h>
+#include <snowpack/Stability.h>
+#include <snowpack/Utils.h>
 
 using namespace mio;
 using namespace std;
@@ -54,13 +57,10 @@ Hazard::Hazard(const SnowpackConfig& cfg, const double duration)
         hoar_density_surf(IOUtils::nodata), hoar_min_size_surf(IOUtils::nodata)
 
 {
-	if (duration<=0.)
-		throw InvalidArgumentException("Hazard duration must be >0", AT);
-	
 	/**
 	 * @brief Defines how the height of snow is going to be handled
-	 * - 0: Depth of snowfall is determined from the water equivalent of snowfall (PSUM)
-	 * - 1: The measured height of snow is used to determine whether new snow has been deposited.
+	 * - false: Depth of snowfall is determined from the water equivalent of snowfall (PSUM)
+	 * - true: The measured height of snow is used to determine whether new snow has been deposited.
 	 *      This setting MUST be chosen in operational mode. \n
 	 *      This procedure has the disadvantage that if the snowpack settles too strongly
 	 *      extra mass is added to the snowpack. \n
@@ -71,8 +71,8 @@ Hazard::Hazard(const SnowpackConfig& cfg, const double duration)
 	const double calculation_step_length = cfg.get("CALCULATION_STEP_LENGTH", "Snowpack");
 	sn_dt = M_TO_S(calculation_step_length);
 	/* Dew point relative to water or ice
-	 * - default: 1
-	 * - Antarctica: 0 */
+	 * - default: true
+	 * - Antarctica: false */
 	cfg.getValue("FORCE_RH_WATER", "SnowpackAdvanced", force_rh_water);
 	cfg.getValue("RESEARCH", "SnowpackAdvanced", research_mode);
 	//Density of surface hoar (-> hoar index of surface node) (kg m-3)
@@ -81,12 +81,12 @@ Hazard::Hazard(const SnowpackConfig& cfg, const double duration)
 	cfg.getValue("HOAR_MIN_SIZE_SURF", "SnowpackAdvanced", hoar_min_size_surf);
 
 	/*
-	* Hazard data interval in units of CALCULATION_STEP_LENGTH \n
+	* Hazard data interval in units of CALCULATION_STEP_LENGTH
 	* WARNING: In operational mode, this has to result in a 30 min interval!
 	* It is a matter of consitency. If you change this, a big mess will result!!!
 	*/
 	cfg.getValue("HAZARD_STEPS_BETWEEN", "Output", hazard_steps_between);
-
+	if (duration<=0.) throw InvalidArgumentException("Hazard duration must be >0", AT);
 	nHz = static_cast<unsigned int>( floor( (duration / (static_cast<double>(hazard_steps_between) * sn_dt)) ) + 2 );
 	if (nHz == 0) nHz = 1;
 }
@@ -165,9 +165,9 @@ double Hazard::compDriftIndex(std::vector<double>& vecDrift, const double& newDr
 	if (nValues <= (unsigned int)(floor(Constants::min_percent_values * 2. * nHours))) {
 		return Constants::undefined;
 	} else {
-		const double flux = H_TO_S(MAX(0.,(sumVec - Hazard::minimum_drift)) / (2. * nHours)); // kg m-1 h-1
+		const double flux = H_TO_S(std::max(0.,(sumVec - Hazard::minimum_drift)) / (2. * nHours)); // kg m-1 h-1
 		double ero_depo = M_TO_CM(flux * nHours / (Hazard::typical_slope_length * rho));
-		ero_depo = MIN(ero_depo, nHours * Hazard::maximum_drift * cos(slope_angle*mio::Cst::to_rad));
+		ero_depo = std::min(ero_depo, nHours * Hazard::maximum_drift * cos(slope_angle*mio::Cst::to_rad));
 		ero_depo /= cos(slope_angle*mio::Cst::to_rad);
 		return ero_depo;
 	}
@@ -176,14 +176,14 @@ double Hazard::compDriftIndex(std::vector<double>& vecDrift, const double& newDr
 void Hazard::getDriftIndex(ProcessDat& Hdata, ProcessInd& Hdata_ind,
                            std::vector<double>& vecDrift, const double& newDriftValue, const double slope_angle)
 {
-	Hdata_ind.wind_trans = 0;
-	Hdata_ind.wind_trans24 = 0;
+	Hdata_ind.wind_trans = true;
+	Hdata_ind.wind_trans24 = true;
 
 	Hdata.wind_trans = compDriftIndex(vecDrift, newDriftValue, Hazard::wind_slab_density, 6, slope_angle, pushOverwrite);
 	Hdata.wind_trans24 = compDriftIndex(vecDrift, Constants::undefined, Hazard::wind_slab_density, 24, slope_angle, noAction);
 
-	if (Hdata.wind_trans < 0.) Hdata_ind.wind_trans = -1;
-	if (Hdata.wind_trans24 < 0.) Hdata_ind.wind_trans24 = -1;
+	if (Hdata.wind_trans < 0.) Hdata_ind.wind_trans = false;
+	if (Hdata.wind_trans24 < 0.) Hdata_ind.wind_trans24 = false;
 }
 
 /**
@@ -259,7 +259,7 @@ void Hazard::compMeltFreezeCrust(const SnowStation& Xdata, ProcessDat& Hdata, Pr
 	if ( (crust_height >= 0.) && (crust_height <= Xdata.cH/cos_sl) ) {
 		Hdata.crust = M_TO_CM(crust_height);
 	} else {
-		Hdata_ind.crust = -1;
+		Hdata_ind.crust = false;
 	}
 }
 
@@ -295,48 +295,48 @@ void Hazard::getHazardDataMainStation(ProcessDat& Hdata, ProcessInd& Hdata_ind,
 	// Initialization
 	Hdata.date = Mdata.date;
 
-	Hdata.dewpt_def = 21.7;    Hdata_ind.dewpt_def  = 0;
-	Hdata.hoar_ind6 = 21.7;    Hdata_ind.hoar_ind6 = 0;
-	Hdata.hoar_ind24 = 21.7;   Hdata_ind.hoar_ind24 = 0;
-	Hdata.hoar_size = 21.7;    Hdata_ind.hoar_ind24 = 0;
+	Hdata.dewpt_def = 21.7;    Hdata_ind.dewpt_def  = true;
+	Hdata.hoar_ind6 = 21.7;    Hdata_ind.hoar_ind6 = true;
+	Hdata.hoar_ind24 = 21.7;   Hdata_ind.hoar_ind24 = true;
+	Hdata.hoar_size = 21.7;    Hdata_ind.hoar_ind24 = true;
 
-	Hdata.hn3 = 21.7;          Hdata_ind.hn3 = 0;
-	Hdata.hn6 = 21.7;          Hdata_ind.hn6 = 0;
-	Hdata.hn12 = 21.7;         Hdata_ind.hn12 = 0;
-	Hdata.hn24 = 21.7;         Hdata_ind.hn24 = 0;
-	Hdata.hn72 = 21.7;         Hdata_ind.hn72 = 0;
-	Hdata.hn72_24 = 21.7;      Hdata_ind.hn72_24 = 0;
-	Hdata.psum3  = 21.7;        Hdata_ind.psum3  = 0;
-	Hdata.psum6  = 21.7;        Hdata_ind.psum6  = 0;
-	Hdata.psum12 = 21.7;        Hdata_ind.psum12 = 0;
-	Hdata.psum24 = 21.7;        Hdata_ind.psum24 = 0;
-	Hdata.psum72 = 21.7;        Hdata_ind.psum72 = 0;
+	Hdata.hn3 = 21.7;          Hdata_ind.hn3 = true;
+	Hdata.hn6 = 21.7;          Hdata_ind.hn6 = true;
+	Hdata.hn12 = 21.7;         Hdata_ind.hn12 = true;
+	Hdata.hn24 = 21.7;         Hdata_ind.hn24 = true;
+	Hdata.hn72 = 21.7;         Hdata_ind.hn72 = true;
+	Hdata.hn72_24 = 21.7;      Hdata_ind.hn72_24 = true;
+	Hdata.psum3  = 21.7;        Hdata_ind.psum3  = true;
+	Hdata.psum6  = 21.7;        Hdata_ind.psum6  = true;
+	Hdata.psum12 = 21.7;        Hdata_ind.psum12 = true;
+	Hdata.psum24 = 21.7;        Hdata_ind.psum24 = true;
+	Hdata.psum72 = 21.7;        Hdata_ind.psum72 = true;
 
-	Hdata.stab_class1 = 0;     Hdata_ind.stab_class1 = 0;
-	Hdata.stab_class2 = 5;     Hdata_ind.stab_class2 = 0;
+	Hdata.stab_class1 = 0;     Hdata_ind.stab_class1 = true;
+	Hdata.stab_class2 = 5;     Hdata_ind.stab_class2 = true;
 
-	Hdata.stab_index1 = Stability::max_stability;    Hdata_ind.stab_index1 = 0;
-	Hdata.stab_index2 = Stability::max_stability;    Hdata_ind.stab_index2 = 0;
-	Hdata.stab_index3 = Stability::max_stability;    Hdata_ind.stab_index3 = 0;
-	Hdata.stab_index4 = Stability::max_stability;    Hdata_ind.stab_index4 = 0;
-	Hdata.stab_index5 = Stability::max_stability;    Hdata_ind.stab_index5 = 0;
-	Hdata.stab_height1 = hs;   Hdata_ind.stab_height1 = 0;
-	Hdata.stab_height2 = hs;   Hdata_ind.stab_height2 = 0;
-	Hdata.stab_height3 = hs;   Hdata_ind.stab_height3 = 0;
-	Hdata.stab_height4 = hs;   Hdata_ind.stab_height4 = 0;
-	Hdata.stab_height5 = hs;   Hdata_ind.stab_height5 = 0;
+	Hdata.stab_index1 = Stability::max_stability;    Hdata_ind.stab_index1 = true;
+	Hdata.stab_index2 = Stability::max_stability;    Hdata_ind.stab_index2 = true;
+	Hdata.stab_index3 = Stability::max_stability;    Hdata_ind.stab_index3 = true;
+	Hdata.stab_index4 = Stability::max_stability;    Hdata_ind.stab_index4 = true;
+	Hdata.stab_index5 = Stability::max_stability;    Hdata_ind.stab_index5 = true;
+	Hdata.stab_height1 = hs;   Hdata_ind.stab_height1 = true;
+	Hdata.stab_height2 = hs;   Hdata_ind.stab_height2 = true;
+	Hdata.stab_height3 = hs;   Hdata_ind.stab_height3 = true;
+	Hdata.stab_height4 = hs;   Hdata_ind.stab_height4 = true;
+	Hdata.stab_height5 = hs;   Hdata_ind.stab_height5 = true;
 
-	Hdata.ch = M_TO_CM(hs);    Hdata_ind.ch = 0;
+	Hdata.ch = M_TO_CM(hs);    Hdata_ind.ch = true;
 
-	Hdata.swe     = 0.;        Hdata_ind.swe     = 0;
-	Hdata.tot_lwc = 0.;        Hdata_ind.tot_lwc = 0;
-	Hdata.runoff  = 0.;        Hdata_ind.runoff  = 0;
+	Hdata.swe     = 0.;        Hdata_ind.swe     = true;
+	Hdata.tot_lwc = 0.;        Hdata_ind.tot_lwc = true;
+	Hdata.runoff  = 0.;        Hdata_ind.runoff  = true;
 
-	Hdata.crust  =  0.0;       Hdata_ind.crust  = 0;
-	Hdata.en_bal = 21.7;       Hdata_ind.en_bal = 0;
-	Hdata.sw_net = 21.7;       Hdata_ind.sw_net = 0;
-	Hdata.t_top1 = 21.7;       Hdata_ind.t_top1 = 0;
-	Hdata.t_top2 = 21.7;       Hdata_ind.t_top2 = 0;
+	Hdata.crust  =  0.0;       Hdata_ind.crust  = true;
+	Hdata.en_bal = 21.7;       Hdata_ind.en_bal = true;
+	Hdata.sw_net = 21.7;       Hdata_ind.sw_net = true;
+	Hdata.t_top1 = 21.7;       Hdata_ind.t_top1 = true;
+	Hdata.t_top2 = 21.7;       Hdata_ind.t_top2 = true;
 
 	// Compute depths of snowfall for given time intervals
 	double t_hn[6] ={0.5, 3., 6., 12., 24., 72.}, hn[6], precip[6];
@@ -374,14 +374,14 @@ void Hazard::getHazardDataMainStation(ProcessDat& Hdata, ProcessInd& Hdata_ind,
 	if (Hdata.hoar_size <= hoar_min_size_surf)
 		Hdata.hoar_size = 0.;
 	if (!((Hdata.hoar_size >= 0.) && (Hdata.hoar_size < 100.)))
-		Hdata_ind.hoar_size = -1;
+		Hdata_ind.hoar_size = false;
 	// HOAR INDEX (6h and 24h), mass in kg m-2
 	Hdata.hoar_ind6  = compHoarIndex(Zdata.hoar24, Sdata.hoar, 6, pushOverwrite);
 	if (!((Hdata.hoar_ind6 > -10.) && (Hdata.hoar_ind6 < 10.)))
-		Hdata_ind.hoar_ind6 = -1;
+		Hdata_ind.hoar_ind6 = false;
 	Hdata.hoar_ind24 = compHoarIndex(Zdata.hoar24, Sdata.hoar, 24, noAction);
 	if (!((Hdata.hoar_ind24 > -10.) && (Hdata.hoar_ind24 < 10.)))
-		Hdata_ind.hoar_ind24 = -1;
+		Hdata_ind.hoar_ind24 = false;
 
 	// Instantaneous dewpoint deficit between TSS and Td(air)
 	if (research_mode) {
@@ -392,7 +392,7 @@ void Hazard::getHazardDataMainStation(ProcessDat& Hdata, ProcessInd& Hdata_ind,
 	}
 
 	if (!((Hdata.dewpt_def > -50.) && (Hdata.dewpt_def < 50.))) {
-		Hdata_ind.dewpt_def = -1;
+		Hdata_ind.dewpt_def = false;
 	}
 
 	// SWE and total liquid water content
@@ -405,57 +405,57 @@ void Hazard::getHazardDataMainStation(ProcessDat& Hdata, ProcessInd& Hdata_ind,
 	if ((Xdata.S_class1 <= 10) && (Xdata.S_class1 >= 0))
 		Hdata.stab_class1 = Xdata.S_class1;
 	else
-		Hdata_ind.stab_class1 = -1;
+		Hdata_ind.stab_class1 = false;
 	// Stability class
 	if ((Xdata.S_class2 <= 5) && (Xdata.S_class2 >= 1))
 		Hdata.stab_class2 = Xdata.S_class2;
 	else
-		Hdata_ind.stab_class2 = -1;
+		Hdata_ind.stab_class2 = false;
 	// 1: Stability index: Deformation index
 	if ((Xdata.S_d < (Stability::max_stability + Constants::eps)) && (Xdata.S_d > 0.))
 		Hdata.stab_index1 = Xdata.S_d;
 	else
-		Hdata_ind.stab_index1 = -1;
+		Hdata_ind.stab_index1 = false;
 	if ((Xdata.z_S_d < (hs + Constants::eps)) && (Xdata.z_S_d > 0.))
 		Hdata.stab_height1 = M_TO_CM(Xdata.z_S_d / cos_sl);
 	else
-		Hdata_ind.stab_height1 = -1;
+		Hdata_ind.stab_height1 = false;
 	// 2: Natural stability index Sn38
 	if ((Xdata.S_n < (Stability::max_stability + Constants::eps)) && (Xdata.S_n > 0.))
 		Hdata.stab_index2 = Xdata.S_n;
 	else
-		Hdata_ind.stab_index2 = -1;
+		Hdata_ind.stab_index2 = false;
 	if ((Xdata.z_S_n < (hs + Constants::eps)) && (Xdata.z_S_n > 0.))
 		Hdata.stab_height2 = M_TO_CM(Xdata.z_S_n / cos_sl);
 	else
-		Hdata_ind.stab_height2 = -1;
+		Hdata_ind.stab_height2 = false;
 	// 3: Skier stability index Sk38
 	if ((Xdata.S_s < (Stability::max_stability + Constants::eps)) && (Xdata.S_s > 0.))
 		Hdata.stab_index3 = Xdata.S_s;
 	else
-		Hdata_ind.stab_index3 = -1;
+		Hdata_ind.stab_index3 = false;
 	if ((Xdata.z_S_s < (hs + Constants::eps)) && (Xdata.z_S_s > 0.))
 		Hdata.stab_height3 = M_TO_CM(Xdata.z_S_s / cos_sl);
 	else
-		Hdata_ind.stab_height3 = -1;
+		Hdata_ind.stab_height3 = false;
 	// 4: Structural stability index SSI
 	if ((Xdata.S_4 < (Stability::max_stability + Constants::eps)) && (Xdata.S_4 > 0.))
 		Hdata.stab_index4 = Xdata.S_4;
 	else
-		Hdata_ind.stab_index4 = -1;
+		Hdata_ind.stab_index4 = false;
 	if ((Xdata.z_S_4 < (hs + Constants::eps)) && (Xdata.z_S_4 > 0.))
 		Hdata.stab_height4 = M_TO_CM(Xdata.z_S_4 / cos_sl);
 	else
-		Hdata_ind.stab_height4 = -1;
+		Hdata_ind.stab_height4 = false;
 	// 5: ???Index???
 	if ((Xdata.S_5 < (Stability::max_stability + Constants::eps)) && (Xdata.S_5 > 0.))
 		Hdata.stab_index5 = Xdata.S_5;
 	else
-		Hdata_ind.stab_index5 = -1;
+		Hdata_ind.stab_index5 = false;
 	if ((Xdata.z_S_5 < (hs + Constants::eps)) && (Xdata.z_S_5 > 0.))
 		Hdata.stab_height5 = M_TO_CM(Xdata.z_S_5 / cos_sl);
 	else
-		Hdata_ind.stab_height5 = -1;
+		Hdata_ind.stab_height5 = false;
 
 	// Surface crust [type == 772] computed for southerly aspect outside compHazard()
 
@@ -467,13 +467,13 @@ void Hazard::getHazardDataMainStation(ProcessDat& Hdata, ProcessInd& Hdata_ind,
 		Hdata.en_bal = ((Sdata.qw + Sdata.lw_net + Sdata.qs + Sdata.ql + Sdata.qr) * sn_dt
 		                    * hazard_steps_between) / 1000.;
 	if (!((Hdata.en_bal > -3000.) && (Hdata.en_bal < 3000.)))
-		Hdata_ind.en_bal = -1;
+		Hdata_ind.en_bal = false;
 
 	// Net SW energy at surface (kJ m-2)
 	if (Sdata.sw_in > 0.) {
 		Hdata.sw_net = (Sdata.qw * sn_dt * hazard_steps_between) / 1000.;
 		if (!((Hdata.sw_net > -3000.) && (Hdata.sw_net < 3000.)))
-			Hdata_ind.sw_net = -1;
+			Hdata_ind.sw_net = false;
 	} else {
 		Hdata.sw_net = 0.;
 	}
@@ -482,11 +482,11 @@ void Hazard::getHazardDataMainStation(ProcessDat& Hdata, ProcessInd& Hdata_ind,
 	double h_top1 = hs - 0.05;
 	Hdata.t_top1 = Xdata.getModelledTemperature(h_top1);
 	if ( !((Hdata.t_top1 > -50.) && (Hdata.t_top1 <= 0.)) )
-		Hdata_ind.t_top1 = -1;
+		Hdata_ind.t_top1 = false;
 	double h_top2 = hs - 0.10;
 	Hdata.t_top2 = Xdata.getModelledTemperature(h_top2);
 	if (!((Hdata.t_top2 > -50.) && (Hdata.t_top2 <= 0.)))
-		Hdata_ind.t_top2 = -1;
+		Hdata_ind.t_top2 = false;
 
 	if (stationDriftIndex)
 		getDriftIndex(Hdata, Hdata_ind, Zdata.drift24, newDrift, Xdata.cos_sl);
@@ -516,12 +516,12 @@ void Hazard::getHazardDataSlope(ProcessDat& Hdata, ProcessInd& Hdata_ind,
 	if (north) {
 		Hdata.lwi_N = Xdata.getLiquidWaterIndex();
 		if ((Hdata.lwi_N < -Constants::eps) || (Hdata.lwi_N >= 10.))
-			Hdata_ind.lwi_N = -1;
+			Hdata_ind.lwi_N = false;
 	}
 	if (south) {
 		Hdata.lwi_S = Xdata.getLiquidWaterIndex();
 		if ((Hdata.lwi_S < -Constants::eps) || (Hdata.lwi_S >= 10.))
-			Hdata_ind.lwi_S = -1;
+			Hdata_ind.lwi_S = false;
 		compMeltFreezeCrust(Xdata, Hdata, Hdata_ind);
 	}
 }

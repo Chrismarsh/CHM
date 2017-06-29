@@ -228,7 +228,7 @@ void snobal::run(mesh_elem &face)
         t = face->face_data("t");
     }
 
-    double ea = mio::Atmosphere::waterSaturationPressure(t+273.15)  * rh/100.;
+    double ea = mio::Atmosphere::vaporSaturationPressure(t+273.15)  * rh/100.;
 
     // Optional inputs if there is a canopy or not
     if(has_optional("iswr_subcanopy")) {

@@ -55,7 +55,7 @@ void ProcAdd::process(const unsigned int& param, const std::vector<MeteoData>& i
 			double& tmp = ovec[ii](param);
 			if (tmp == IOUtils::nodata) continue; //preserve nodata values
 
-			tmp += vecOffsets[ ovec[ii].date.getJulianDayNumber() ];
+			tmp += vecOffsets[ ovec[ii].date.getJulianDayNumber()-1 ]; //indices start at 0 while day numbers start at 1
 		}
 	} else if (type=='h') {
 		int year, month, day, hour;
@@ -77,7 +77,7 @@ void ProcAdd::parse_args(const std::vector<std::string>& vec_args)
 		if (!IOUtils::convertString(offset, vec_args[0]))
 			throw InvalidArgumentException("Invalid offset \""+vec_args[0]+"\" specified for the "+getName()+" filter. If correcting for a period, please specify the period!", AT);
 	} else if (nrArgs==2) {
-		const string type_str=IOUtils::strToUpper( vec_args[0] );
+		const std::string type_str( IOUtils::strToUpper( vec_args[0] ) );
 		if (type_str=="MONTHLY") type='m';
 		else if (type_str=="DAILY") type='d';
 		else if (type_str=="HOURLY") type='h';
@@ -85,10 +85,10 @@ void ProcAdd::parse_args(const std::vector<std::string>& vec_args)
 			throw InvalidArgumentException("Invalid period \""+type_str+"\" specified for the "+getName()+" filter", AT);
 
 		//if this is a relative path, prefix the path with the current path
-		const std::string in_filename = vec_args[1];
-		const std::string prefix = ( IOUtils::isAbsolutePath(in_filename) )? "" : root_path+"/";
-		const std::string path = IOUtils::getPath(prefix+in_filename, true);  //clean & resolve path
-		const std::string filename = path + "/" + IOUtils::getFilename(in_filename);
+		const std::string in_filename( vec_args[1] );
+		const std::string prefix = ( FileUtils::isAbsolutePath(in_filename) )? "" : root_path+"/";
+		const std::string path( FileUtils::getPath(prefix+in_filename, true) );  //clean & resolve path
+		const std::string filename( path + "/" + FileUtils::getFilename(in_filename) );
 		ProcessingBlock::readCorrections(getName(), filename, type, 0., vecOffsets);
 	} else
 		throw InvalidArgumentException("Wrong number of arguments for filter " + getName(), AT);

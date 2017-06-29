@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __MATHOPTIM_H__
-#define __MATHOPTIM_H__
+#ifndef MATHOPTIM_H
+#define MATHOPTIM_H
 
 #include <stdint.h>
 #include <cmath>
@@ -42,7 +42,7 @@ namespace Optim {
 	* @return rounded number cast as int
 	*/
 	inline long int round(const double& x) {
-		if(x>=0.) return static_cast<long int>( x+.5 );
+		if (x>=0.) return static_cast<long int>( x+.5 );
 		else return static_cast<long int>( x-.5 );
 	}
 
@@ -103,6 +103,10 @@ namespace Optim {
 		return u.x*(1.5f - xhalf*u.x*u.x);// Newton step, repeating increases accuracy
 	}
 
+	#ifdef __clang__
+	#pragma clang diagnostic push
+	#pragma clang diagnostic ignored "-Wdouble-promotion"
+	#endif
 	inline double invSqrt(const double x) {
 		const double xhalf = 0.5f*x;
 
@@ -114,6 +118,10 @@ namespace Optim {
 		u.i = SQRT_MAGIC_D - (u.i >> 1);  // gives initial guess y0
 		return u.x*(1.5f - xhalf*u.x*u.x);// Newton step, repeating increases accuracy
 	}
+	#ifdef __clang__
+	#pragma clang diagnostic pop
+	#endif
+	
 	#ifdef _MSC_VER
 	#pragma warning( pop ) //for Visual C++, restore previous warnings behavior
 	#endif
@@ -169,7 +177,7 @@ namespace Optim {
 	* @return a^b
 	*/
 	inline double fastPow(double a, double b) {
-		if(b>0.) {
+		if (b>0.) {
 			return fastPowInternal(a,b);
 		} else {
 			const double tmp = fastPowInternal(a,-b);
@@ -183,7 +191,7 @@ namespace Optim {
 	#endif
 	//see http://metamerist.com/cbrt/cbrt.htm
 	template <int n> inline float nth_rootf(float x) {
-		const bool sgn = (x<0.)? true : false;
+		const bool sgn = (x<0.f)? true : false;
 		if (sgn) x = -x;
 		const int ebits = 8;
 		const int fbits = 23;

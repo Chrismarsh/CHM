@@ -10,7 +10,6 @@ FOREACH(f ${meteoio_sources})
 	LIST(APPEND METEOIO_SRCS "meteoio/${f}")
 ENDFOREACH(f)
 
-
 #snowpack specific
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/CMakeLists.txt)
 SET(SNOWPACK_SRCS "")
@@ -71,12 +70,10 @@ set(MODULE_SRCS
 		modules/Simple_Canopy.cpp
 		modules/scale_wind_vert.cpp
 		modules/sub_grid.cpp
-    modules/snow_slide.cpp
+    	modules/snow_slide.cpp
 		${SNOBAL_SRC}
-
 		modules/threshold_p_phase.cpp
 		${SNOWPACK_SRCS}
-
 		modules/solar.cpp
 		modules/fast_shadow.cpp
         modules/deform_mesh.cpp

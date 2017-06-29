@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __PROCUNDERCATCH_HAMON_H__
-#define __PROCUNDERCATCH_HAMON_H__
+#ifndef PROCUNDERCATCH_HAMON_H
+#define PROCUNDERCATCH_HAMON_H
 
 #include <meteoio/meteoFilters/FilterBlock.h>
 #include <vector>

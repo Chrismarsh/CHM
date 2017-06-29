@@ -15,19 +15,13 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __PGMIO_H__
-#define __PGMIO_H__
+#ifndef PGMIO_H
+#define PGMIO_H
 
-#include <meteoio/Config.h>
 #include <meteoio/IOInterface.h>
-#include <meteoio/IOUtils.h>
-#include <meteoio/dataClasses/Coords.h>
-#include <meteoio/IOExceptions.h>
-#include <meteoio/dataClasses/Grid3DObject.h>
 
 #include <string>
 #include <sstream>
-#include <iostream>
 
 namespace mio {
 
@@ -44,40 +38,25 @@ class PGMIO : public IOInterface {
 		PGMIO(const std::string& configfile);
 		PGMIO(const PGMIO&);
 		PGMIO(const Config& cfgreader);
-		~PGMIO() throw();
 
 		virtual void read2DGrid(Grid2DObject& grid_out, const std::string& parameter="");
 		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
 
 		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
-
-		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
-		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector< std::vector<MeteoData> >& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
-
-		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo,
-		                            const std::string& name="");
-
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
-		virtual void readPOI(std::vector<Coords>& pts);
+		
 		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& filename);
 		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
 
-		void read3DGrid(Grid3DObject& grid_out, const std::string& in_name); //HACK
-
 	private:
 		void getGridPaths();
-		void cleanup() throw();
-		void read2DGrid_internal(Grid2DObject& grid_out, const std::string& full_name);
-		size_t getNextHeader(std::vector<std::string>& vecString, const std::string& filename);
+		static bool readGridded(std::ifstream& fin, const std::string& full_name, const double& scale_factor, const double& val_min, Grid2DObject& grid_out);
+		static void readColumn(std::ifstream& fin, const std::string& full_name, const double& scale_factor, const double& val_min, Grid2DObject& grid_out);
+		void read2DGrid_internal(Grid2DObject& grid_out, const std::string& full_name) const;
+		static size_t getNextHeader(std::vector<std::string>& vecString, const std::string& filename, std::ifstream& fin);
 
 		const Config cfg;
 		static const double plugin_nodata; //plugin specific nodata value, e.g. -999
 		std::string coordin, coordinparam, coordout, coordoutparam; //projection parameters
-		std::ifstream fin; //Input file streams
-		std::ofstream fout;//Output file streams
 		std::string grid2dpath_in, grid2dpath_out;
 };
 

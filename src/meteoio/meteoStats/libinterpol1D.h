@@ -15,13 +15,11 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __LIBINTERPOL1D_H__
-#define __LIBINTERPOL1D_H__
-
-#include <meteoio/IOExceptions.h>
-#include <meteoio/IOUtils.h>
+#ifndef LIBINTERPOL1D_H
+#define LIBINTERPOL1D_H
 
 #include <vector>
+#include <string>
 
 namespace mio {
 
@@ -51,6 +49,7 @@ class Interpol1D {
 		static double variance(const std::vector<double>& X);
 		static double std_dev(const std::vector<double>& X);
 		static double covariance(const std::vector<double>& z1, const std::vector<double>& z2);
+		static double corr(const std::vector<double>& z1, const std::vector<double>& z2);
 
 		static void LinRegression(const std::vector<double>& X, const std::vector<double>& Y, double& a, double& b, double& r, std::string& mesg, const bool& fixed_rate=false);
 		static void NoisyLinRegression(const std::vector<double>& in_X, const std::vector<double>& in_Y, double& A, double& B, double& R, std::string& mesg, const bool& fixed_rate=false);

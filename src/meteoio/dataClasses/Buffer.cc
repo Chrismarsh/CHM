@@ -45,6 +45,7 @@ bool MeteoBuffer::get(const Date& date, METEO_SET &vecMeteo) const
 bool MeteoBuffer::get(const Date& date_start, const Date& date_end, std::vector< METEO_SET > &vecMeteo) const
 {
 	vecMeteo.clear();
+	vecMeteo.reserve(ts_buffer.size());
 
 	if (empty() || (date_start < ts_start) || (date_end > ts_end)) //data is NOT fully in cache
 		return false;
@@ -58,9 +59,12 @@ bool MeteoBuffer::get(const Date& date_start, const Date& date_end, std::vector<
 		size_t pos_start = IOUtils::seek(date_start, ts_buffer[ii], false);
 		if (pos_start==IOUtils::npos) pos_start = 0;
 		size_t pos_end = IOUtils::seek(date_end, ts_buffer[ii], false);
-		if (pos_end==IOUtils::npos) pos_end = ts_buffer[ii].size() - 1;
+		if (pos_end==IOUtils::npos)
+			pos_end = ts_buffer[ii].size();
+		else
+			pos_end++; //because "insert" does not include the element pointed to by the last iterator
 
-		vecMeteo[ii].reserve(pos_end-pos_start+1); //weird that the "insert" does not handle it internally...
+		vecMeteo[ii].reserve(pos_end-pos_start);
 		vecMeteo[ii].insert(vecMeteo[ii].begin(), ts_buffer[ii].begin()+pos_start, ts_buffer[ii].begin()+pos_end);
 	}
 
@@ -78,6 +82,71 @@ void MeteoBuffer::clear()
 	ts_buffer.clear();
 	ts_start.setUndef(true);
 	ts_end.setUndef(true);
+}
+
+void MeteoBuffer::push(const Date& date_start, const Date& date_end, const std::vector<MeteoData>& vecMeteo)
+{
+	const size_t nrStationsPush = vecMeteo.size();
+	if (nrStationsPush==0) return;
+
+	if (empty()) {
+		ts_start = date_start;
+		ts_end = date_end;
+		ts_buffer.resize(nrStationsPush); //allocate the memory
+		for (size_t ii=0; ii<nrStationsPush; ii++)
+			ts_buffer[ii].push_back( vecMeteo[ii] );
+		return;
+	} else {
+		if (date_start>ts_end || date_end<ts_start) {
+			std::cerr << "Clearing buffer [" << ts_start.toString(Date::ISO) << " - " << ts_end.toString(Date::ISO) << "] to accommodate date [";
+			std::cerr << date_start.toString(Date::ISO) << " - " << date_end.toString(Date::ISO) << "]\n";
+		}
+
+		const size_t nrStationsBuffer = ts_buffer.size();
+
+		//check that we are dealing with the same stations
+		if (nrStationsBuffer!=nrStationsPush) {
+			ostringstream ss;
+			ss << "The number of stations changed over time from " << nrStationsBuffer << " to " << nrStationsPush << ", ";
+			ss << "this is not handled yet!";
+			throw IOException(ss.str(), AT);
+		}
+
+		for (size_t ii=0; ii<nrStationsPush; ii++) { //for all stations
+			if (ts_buffer[ii].empty()) continue;
+			if (ts_buffer[ii].front().meta.getHash()!=vecMeteo[ii].meta.getHash())
+				throw IOException("A station changed over time from "+ts_buffer[ii].front().meta.getHash()+" to "+vecMeteo[ii].meta.getHash(), AT);
+		}
+	}
+
+	//now, do the inserts
+	for (size_t ii=0; ii<nrStationsPush; ii++) { //for all stations
+		const Date buffer_start = ts_buffer[ii].front().date;
+		const Date buffer_end = ts_buffer[ii].back().date;
+		const Date data_ts = vecMeteo[ii].date;
+		if (data_ts<date_start || data_ts>date_end) {
+			const std::string msg( "Trying to insert data point at "+data_ts.toString(Date::ISO)+" in while declaring it to be between "+date_start.toString(Date::ISO)+" and "+date_end.toString(Date::ISO));
+			throw InvalidArgumentException(msg, AT);
+		}
+
+		if (data_ts<buffer_start) { //the data simply fits at the start
+			ts_buffer[ii].insert(ts_buffer[ii].begin(), vecMeteo[ii]);
+			continue;
+		}
+		if (data_ts>buffer_end) { //the data simply fits to the end
+			ts_buffer[ii].push_back( vecMeteo[ii] );
+			continue;
+		}
+
+		const size_t insert_pos = IOUtils::seek(data_ts, ts_buffer[ii], false); //returns the first date >=
+		if (vecMeteo[ii].date!=ts_buffer[ii][insert_pos].date)
+			ts_buffer[ii].insert(ts_buffer[ii].begin()+insert_pos, vecMeteo[ii]); //insert takes place at element *before* insert_pos
+		else
+			ts_buffer[ii][insert_pos] = vecMeteo[ii]; //if the element already existed, replace it
+	}
+
+	ts_start = min(ts_start, date_start);
+	ts_end = max(ts_end, date_end);
 }
 
 void MeteoBuffer::push(const Date& date_start, const Date& date_end, const std::vector< METEO_SET >& vecMeteo)
@@ -100,7 +169,7 @@ void MeteoBuffer::push(const Date& date_start, const Date& date_end, const std::
 		throw IOException(ss.str(), AT);
 	}
 
-	for (size_t ii=0; ii<nrStationsBuffer; ii++) { //for all stations
+	for (size_t ii=0; ii<nrStationsPush; ii++) { //for all stations
 		if (ts_buffer[ii].empty() || vecMeteo[ii].empty())
 			continue;
 		if (ts_buffer[ii].front().meta.getHash()!=vecMeteo[ii].front().meta.getHash()) {
@@ -112,7 +181,7 @@ void MeteoBuffer::push(const Date& date_start, const Date& date_end, const std::
 	}
 
 	//now, do the append/merge
-	for (size_t ii=0; ii<nrStationsBuffer; ii++) { //for all stations
+	for (size_t ii=0; ii<nrStationsPush; ii++) { //for all stations
 		if (vecMeteo[ii].empty()) continue;
 
 		if (ts_buffer[ii].empty()) {
@@ -137,7 +206,7 @@ void MeteoBuffer::push(const Date& date_start, const Date& date_end, const std::
 		//there is some overlap, only copy data that does NOT overlap
 		if (data_start<buffer_start) {
 			const size_t pos = IOUtils::seek(buffer_start, vecMeteo[ii], false); //returns the first date >=
-			ts_buffer[ii].insert(ts_buffer[ii].begin(), vecMeteo[ii].begin(), vecMeteo[ii].begin()+pos-1);
+			ts_buffer[ii].insert(ts_buffer[ii].begin(), vecMeteo[ii].begin(), vecMeteo[ii].begin()+pos);
 		}
 		if (data_end>buffer_end) {
 			size_t pos = IOUtils::seek(buffer_end, vecMeteo[ii], false); //returns the first date >=
@@ -163,13 +232,13 @@ double MeteoBuffer::getAvgSamplingRate() const
 	const size_t nr_stations = ts_buffer.size();
 	double sum = 0;
 	for (size_t ii=0; ii<nr_stations; ii++){ //loop over all stations
-		if(!ts_buffer[ii].empty()) {
+		if (!ts_buffer[ii].empty()) {
 			const std::vector<MeteoData>& curr_station = ts_buffer[ii];
 			const double days = curr_station.back().date.getJulian() - curr_station.front().date.getJulian();
 
 			//add the average sampling rate for this station
 			const size_t nr_data_pts = ts_buffer[ii].size();
-			if(days>0.) sum += (double)(nr_data_pts-1) / days; //the interval story: 2 points define 1 interval!
+			if (days>0.) sum += (double)(nr_data_pts-1) / days; //the interval story: 2 points define 1 interval!
 		}
 	}
 	if (sum > 0.){
@@ -208,7 +277,7 @@ const std::string MeteoBuffer::toString() const
 	os << "<MeteoBuffer>\n";
 
 	os << "Buffer content (" << ts_buffer.size() << " stations)\n";
-	for(size_t ii=0; ii<ts_buffer.size(); ii++) {
+	for (size_t ii=0; ii<ts_buffer.size(); ii++) {
 		if (!ts_buffer[ii].empty()){
 			os << std::setw(10) << ts_buffer[ii].front().meta.stationID << " = "
 			   << ts_buffer[ii].front().date.toString(Date::ISO) << " - "
@@ -262,7 +331,7 @@ bool GridBuffer::get(Grid2DObject& grid, const std::string& grid_hash, std::stri
 
 bool GridBuffer::get(Grid2DObject& grid, const MeteoGrids::Parameters& parameter, const Date& date) const
 {
-	const string grid_hash = date.toString(Date::ISO)+"::"+MeteoGrids::getParameterName(parameter);
+	const std::string grid_hash( date.toString(Date::ISO)+"::"+MeteoGrids::getParameterName(parameter) );
 	return get(grid, grid_hash);
 }
 
@@ -299,8 +368,8 @@ void GridBuffer::push(const DEMObject& grid, const std::string& grid_hash)
 {
 	if (max_grids==0) return;
 
-	if(IndexBufferedDEMs.size() >= max_grids) { //we need to remove the oldest grid
-		const string tmp_hash = IndexBufferedDEMs.front();
+	if (IndexBufferedDEMs.size() >= max_grids) { //we need to remove the oldest grid
+		const std::string tmp_hash( IndexBufferedDEMs.front() );
 		mapBufferedDEMs.erase( mapBufferedDEMs.find( tmp_hash ) );
 		//swap followed by pop_back is faster than erase()
 		swap( IndexBufferedDEMs.front(), IndexBufferedDEMs.back() );
@@ -314,8 +383,8 @@ void GridBuffer::push(const Grid2DObject& grid, const std::string& grid_hash, co
 {
 	if (max_grids==0) return;
 
-	if(IndexBufferedGrids.size() >= max_grids) { //we need to remove the oldest grid
-		const string tmp_hash = IndexBufferedGrids.front();
+	if (IndexBufferedGrids.size() >= max_grids) { //we need to remove the oldest grid
+		const std::string tmp_hash( IndexBufferedGrids.front() );
 		mapBufferedGrids.erase( mapBufferedGrids.find( tmp_hash ) );
 		mapBufferedInfos.erase( mapBufferedInfos.find( tmp_hash ) );
 		//swap followed by pop_back is faster than erase()
@@ -330,7 +399,6 @@ void GridBuffer::push(const Grid2DObject& grid, const std::string& grid_hash, co
 void GridBuffer::push(const Grid2DObject& grid, const std::string& grid_hash)
 {
 	if (max_grids==0) return;
-	
 	push(grid, grid_hash, "");
 }
 
@@ -338,7 +406,7 @@ void GridBuffer::push(const Grid2DObject& grid, const MeteoGrids::Parameters& pa
 {
 	if (max_grids==0) return;
 	
-	const string grid_hash = date.toString(Date::ISO)+"::"+MeteoGrids::getParameterName(parameter);
+	const std::string grid_hash( date.toString(Date::ISO)+"::"+MeteoGrids::getParameterName(parameter) );
 	push(grid, grid_hash, "");
 }
 

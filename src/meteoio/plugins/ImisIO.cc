@@ -16,8 +16,16 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <meteoio/plugins/ImisIO.h>
+#include <meteoio/IOUtils.h>
+#include <meteoio/IOExceptions.h>
 #include <meteoio/meteoLaws/Meteoconst.h>
+#include <meteoio/meteoLaws/Atmosphere.h> //for p_sea to p_local conversion
 #include <meteoio/MathOptim.h>
+
+#include <sstream>
+#include <set>
+#include <iostream>
+#include <ctime>
 
 using namespace std;
 using namespace oracle;
@@ -50,12 +58,26 @@ namespace mio {
  * - DBPASS: password to use when connecting to the database
  * - STATION#: station code for the given number #
  * - USEANETZ: use ANETZ stations to provide precipitations for normal IMIS stations. Almost each IMIS station is associated with one or two ANETZ stations and does a weighted average to get what should be its local precipitations if no local precipitation has been found (either nodata or 0).
- * - USE_IMIS_PSUM: if set to false (default), all IMIS precipitation will be deleted (since IMIS stations don't have heated rain gauges, their precipitation measurements are not good in winter conditions). If set to true, the precipitation measurements will be accepted from IMIS stations. In this case, it is strongly advised to apply the filter FilterUnheatedPSUM to detect snow melting in the rain gauge.
+ * - USE_IMIS_PSUM: if set to false (default), all IMIS precipitation will be deleted (since IMIS stations don't have heated rain gauges, their precipitation measurements are not good in winter conditions). If set to true, the precipitation measurements will be accepted from IMIS stations. In this case, it is strongly advised to apply the filter FilterUnheatedPSUM to detect snow melting in the rain gauge. ANETZ stations are unaffected (their precipitation is always used).
  * - USE_SNOWPACK_PSUM: if set to true, the SNOWPACK simulated Snow Water Equivalent from the database will be used to compute PSUM. Data gaps greater than 3 hours on SWE will lead to unchanged psum while all data that can properly be computed will <b>overwrite</b> psum. (default=false)
  *
  * It is possible to use both USE_IMIS_PSUM and USE_SNOWPACK_PSUM to create composite PSUM (from SNOWPACK in the snow season and from IMIS otherwise).
  * In such a case, as soon as SNOWPACK SWE > 0, all previous PSUM data will be deleted (ie those potentially coming from IMIS_PSUM).
  * But if there is no SNOWPACK data, the IMIS measurements will be kept.
+ *
+ * @code
+ * [Input]
+ * METEO    = IMIS
+ * USEANETZ = true
+ * USE_IMIS_PSUM = true
+ * DBNAME   = sdbo
+ * DBUSER   = xxx
+ * DBPASS   = xxx
+ *
+ * STATION1 = WFJ2
+ * STATION2 = *SIO
+ * STATION3 = *MVE
+ * @endcode
  */
 
 const double ImisIO::plugin_nodata = -999.; ///< plugin specific nodata value
@@ -63,13 +85,13 @@ const double ImisIO::in_tz = 1.; ///< All IMIS data is in gmt+1, that is UTC+1 (
 
 const string ImisIO::sqlQueryStationIDs = "SELECT station_name, drift_stat_abk, drift_stao_nr FROM station2.v_snow_drift_standort WHERE application_code='snowpack' AND station_code=:1"; ///< Wind drift station meta data
 
-const string ImisIO::sqlQueryStationMetaData = "SELECT stao_name, stao_x, stao_y, stao_h FROM station2.standort WHERE stat_abk LIKE :1 AND stao_nr=:2"; ///< Snow station meta data
+const string ImisIO::sqlQueryStationMetaData = "SELECT stao_name, stao_x, stao_y, stao_h FROM station2.v_station_standort WHERE stat_abk LIKE :1 AND stao_nr=:2"; ///< Snow station meta data
 
-const string ImisIO::sqlQuerySensorDepths = "SELECT hts1_1, hts1_2, hts1_3 FROM station2.standort WHERE stat_abk LIKE :1 AND stao_nr=:2"; ///< Sensor depths at station
+const string ImisIO::sqlQuerySensorDepths = "SELECT hts1_1, hts1_2, hts1_3 FROM station2.v_station_standort WHERE stat_abk LIKE :1 AND stao_nr=:2"; ///< Sensor depths at station
 
-const string ImisIO::sqlQueryMeteoDataDrift = "SELECT TO_CHAR(a.datum, 'YYYY-MM-DD HH24:MI') AS thedate, a.ta, a.iswr, a.vw, a.dw, a.vw_max, a.rh, a.ilwr, a.hnw, a.tsg, a.tss, a.hs, a.rswr, b.vw AS vw_drift, b.dw AS dw_drift, a.ts1, a.ts2, a.ts3 FROM (SELECT * FROM ams.v_ams_raw WHERE stat_abk=:1 AND stao_nr=:2 AND datum>=:3 AND datum<=:4) a LEFT OUTER JOIN (SELECT case when to_char(datum,'MI')=40 then trunc(datum,'HH24')+0.5/24 else datum end as datum, vw, dw FROM ams.v_ams_raw WHERE stat_abk=:5 AND stao_nr=:6 AND datum>=:3 AND datum<=:4) b ON a.datum=b.datum ORDER BY thedate"; ///< C. Marty's Data query with wind drift station; gets wind from enet stations for imis snow station too! [2010-02-24]
+const string ImisIO::sqlQueryMeteoDataDrift = "SELECT TO_CHAR(a.datum, 'YYYY-MM-DD HH24:MI') AS thedate, a.ta, a.iswr, a.vw, a.dw, a.vw_max, a.rh, a.ilwr, a.hnw, a.tsg, a.tss, a.hs, a.rswr, a.ap, b.vw AS vw_drift, b.dw AS dw_drift, a.ts1, a.ts2, a.ts3 FROM (SELECT * FROM ams.v_ams_raw WHERE stat_abk=:1 AND stao_nr=:2 AND datum>=:3 AND datum<=:4) a LEFT OUTER JOIN (SELECT case when to_char(datum,'MI')=40 then trunc(datum,'HH24')+0.5/24 else datum end as datum, vw, dw FROM ams.v_ams_raw WHERE stat_abk=:5 AND stao_nr=:6 AND datum>=:3 AND datum<=:4) b ON a.datum=b.datum ORDER BY thedate"; ///< C. Marty's Data query with wind drift station; gets wind from enet stations for imis snow station too! [2010-02-24]
 
-const string ImisIO::sqlQueryMeteoData = "SELECT TO_CHAR(datum, 'YYYY-MM-DD HH24:MI') AS thedate, ta, iswr, vw, dw, vw_max, rh, ilwr, hnw, tsg, tss, hs, rswr, ts1, ts2, ts3 FROM ams.v_ams_raw WHERE stat_abk=:1 AND stao_nr=:2 AND datum>=:3 AND datum<=:4 ORDER BY thedate ASC"; ///< Data query without wind drift station
+const string ImisIO::sqlQueryMeteoData = "SELECT TO_CHAR(datum, 'YYYY-MM-DD HH24:MI') AS thedate, ta, iswr, vw, dw, vw_max, rh, ilwr, hnw, tsg, tss, hs, rswr, ap, ts1, ts2, ts3 FROM ams.v_ams_raw WHERE stat_abk=:1 AND stao_nr=:2 AND datum>=:3 AND datum<=:4 ORDER BY thedate ASC"; ///< Data query without wind drift station
 
 const string ImisIO::sqlQuerySWEData = "SELECT TO_CHAR(datum, 'YYYY-MM-DD HH24:MI') AS thedate, swe FROM snowpack.ams_pmod WHERE stat_abk=:1 AND stao_nr=:2 AND datum>=:3 AND datum<=:4 ORDER BY thedate ASC"; ///< Query SWE as calculated by SNOWPACK to feed into PSUM
 
@@ -80,96 +102,115 @@ bool ImisIO::initStaticData()
 {
 	//Associate string with AnetzData
 	//map[station ID] = (#stations, STA1, STA2, STA3, #coeffs, coeff1, coeff2, coeff3)
-	mapAnetz["AMD2"] = AnetzData(2,"*GLA","*SAE","",3,1.2417929,0.548411708,-0.0692799);
-	mapAnetz["ANV2"] = AnetzData(2,"*EVO","*MVE","",2,0.7920454,0.771111962,IOUtils::nodata);
-	mapAnetz["ANV3"] = AnetzData(1,"*EVO","","",1,1.6468,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["ARO2"] = AnetzData(2,"*EVO","*GSB","",2,0.9692294,0.218384531,IOUtils::nodata);
-	mapAnetz["ARO3"] = AnetzData(2,"*EVO","*ZER","",3,1.0748285,1.649860092,-0.0728015);
-	mapAnetz["BED2"] = AnetzData(2,"*PIO","*ULR","",3,0.9934869,1.047586006,-0.05489259);
-	mapAnetz["BED3"] = AnetzData(2,"*PIO","*ULR","",2,0.6999,0.4122,IOUtils::nodata);
-	mapAnetz["BER2"] = AnetzData(2,"*ROB","*COV","",3,1.4454061,0.558775717,-0.05063568);
-	mapAnetz["BER3"] = AnetzData(2,"*ROB","*COV","",2,0.378476,0.817976734,IOUtils::nodata);
-	mapAnetz["BEV2"] = AnetzData(2,"*SAM","*COV","",3,1.8237643,0.853292298,-0.33642156);
-	mapAnetz["BOG2"] = AnetzData(1,"*ROE","","",1,1.0795,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["BOR2"] = AnetzData(1,"*VIS","","",1,1.0662264,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["BOV2"] = AnetzData(2,"*GSB","*EVO","",2,0.3609309,0.934922978,IOUtils::nodata);
-	mapAnetz["CAM2"] = AnetzData(2,"*PIO","*COM","",2,0.750536,0.426864157,IOUtils::nodata);
-	mapAnetz["CHA2"] = AnetzData(2,"*AIG","*SIO","",2,0.7107216,0.99869915,IOUtils::nodata);
-	mapAnetz["CON2"] = AnetzData(2,"*SIO","*MVE","",3,3.5344378,1.952708399,-0.74509918);
-	mapAnetz["DAV2"] = AnetzData(2,"*WFJ","*DAV","",3,0.594108,1.091565634,-0.12150025);
-	mapAnetz["DAV3"] = AnetzData(2,"*WFJ","*DAV","",3,0.9266618,0.815816241,-0.06248703);
-	mapAnetz["DAV4"] = AnetzData(2,"*WFJ","*DAV","",3,0.9266618,0.815816241,-0.06248703);
-	mapAnetz["DAV5"] = AnetzData(2,"*WFJ","*DAV","",3,0.9266618,0.815816241,-0.06248703);
-	mapAnetz["DTR2"] = AnetzData(2,"*PIO","*COM","",2,0.0384,0.9731,IOUtils::nodata);
-	mapAnetz["DVF2"] = AnetzData(1,"*WFJ","","",1,1,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["ELM2"] = AnetzData(1,"*GLA","","",1,1.4798048,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["ELS2"] = AnetzData(2,"*ABO","*INT","",3,1.0886792,0.568730457,-0.07758286);
-	mapAnetz["FAE2"] = AnetzData(1,"*ABO","","",1,2.1132038,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["FIR2"] = AnetzData(2,"*INT","*GRH","",3,1.2416838,0.243226327,-0.02392287);
-	mapAnetz["FIS2"] = AnetzData(1,"*ABO","","",1,1.1991,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["FNH2"] = AnetzData(2,"*AIG","*GSB","",2,1.3949428,0.297933922,IOUtils::nodata);
-	mapAnetz["FOU2"] = AnetzData(1,"*GSB","","",1,0.8448844,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["FUL2"] = AnetzData(2,"*FEY","*AIG","",2,1.070156,0.587972864,IOUtils::nodata);
-	mapAnetz["FUS2"] = AnetzData(1,"*PIO","","",1,1.3557753,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["GAD2"] = AnetzData(2,"*ENG","*GUE","",3,0.9764334,0.814293499,-0.07074082);
-	mapAnetz["GAN2"] = AnetzData(2,"*ABO","*VIS","",2,0.520224,0.825813298,IOUtils::nodata);
-	mapAnetz["GLA2"] = AnetzData(1,"*GLA","","",1,1.7186314,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["GOM2"] = AnetzData(2,"*ULR","*GRH","",2,0.4413,0.4235,IOUtils::nodata);
-	mapAnetz["GOM3"] = AnetzData(2,"*ULR","*GRH","",2,0.3269755,0.62995601,IOUtils::nodata);
-	mapAnetz["GUT2"] = AnetzData(2,"*GRH","*ENG","",2,0.3977985,0.463100458,IOUtils::nodata);
-	mapAnetz["GUT3"] = AnetzData(2,"*GRH","*ENG","",2,0.3977985,0.463100458,IOUtils::nodata);
-	mapAnetz["HTR2"] = AnetzData(2,"*HIR","*COM","",2,0.8668,0.5939,IOUtils::nodata);
-	mapAnetz["HTR3"] = AnetzData(2,"*SBE","*COM","",2,1.3023275,-0.663411226,IOUtils::nodata);
-	mapAnetz["ILI2"] = AnetzData(1,"*AIG","","",1,1.2341516,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["JUL2"] = AnetzData(2,"*COV","*SAM","",2,0.4900961,0.871078269,IOUtils::nodata);
-	mapAnetz["KES2"] = AnetzData(2,"*SAM","*DAV","",2,0.847596,1.112635571,IOUtils::nodata);
-	mapAnetz["KLO2"] = AnetzData(1,"*DAV","","",1,1.585,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["KLO3"] = AnetzData(2,"*DAV","*WFJ","",3,0.8352,0.9493,-0.0526);
-	mapAnetz["LAU2"] = AnetzData(2,"*ABO","*SIO","",2,0.3037172,0.791695555,IOUtils::nodata);
-	mapAnetz["LUK2"] = AnetzData(2,"*DIS","*PIO","",3,0.8593029,0.378261758,0.85930291);
-	mapAnetz["MEI2"] = AnetzData(3,"*ENG","*GUE","*ALT",3,0.3882119,0.399244859,0.3298324);
-	mapAnetz["MES2"] = AnetzData(2,"*HIR","*COM","",2,1.3552818,-0.393843912,IOUtils::nodata);
-	mapAnetz["MUN2"] = AnetzData(1,"*VIS","","",1,0.8624804,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["NAR2"] = AnetzData(2,"*PIO","*COM","",3,0.4089981,0.873419792,-0.028464);
-	mapAnetz["NEN2"] = AnetzData(2,"*SIO","*EVO","",3,0.9352699,1.312867984,-0.14543389);
-	mapAnetz["OBM2"] = AnetzData(2,"*AIG","*MLS","",3,1.9413387,1.64250639,-0.37210579);
-	mapAnetz["OBW2"] = AnetzData(2,"*GRH","*ULR","",3,0.2471352,1.219258485,-0.02153657);
-	mapAnetz["OBW3"] = AnetzData(2,"*GRH","*ULR","",2,0.5274,0.4815,IOUtils::nodata);
-	mapAnetz["OFE2"] = AnetzData(1,"*SCU","","",1,1.8758744,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["ORT2"] = AnetzData(1,"*GLA","","",1,1.6214,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["OTT2"] = AnetzData(1,"*ABO","","",1,1.3759903,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["PAR2"] = AnetzData(1,"*WFJ","","",1,1.6252986,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["PUZ2"] = AnetzData(2,"*DIS","*GUE","",2,0.9481811,0.1490937,IOUtils::nodata);
-	mapAnetz["ROA2"] = AnetzData(2,"*INT","*NAP","",3,1.748338,0.574491521,-0.1670437);
-	mapAnetz["SAA2"] = AnetzData(2,"*ZER","*VIS","",3,0.6316695,1.210149675,-0.11760175);
-	mapAnetz["SAA3"] = AnetzData(1,"*VIS","","",1,1.2905,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["SCA2"] = AnetzData(2,"*ALT","*DIS","",2,0.8118627,0.360141586,IOUtils::nodata);
-	mapAnetz["SCA3"] = AnetzData(2,"*ALT","*GLA","",2,0.4768725,0.819642544,IOUtils::nodata);
-	mapAnetz["SCB2"] = AnetzData(2,"*ENG","*INT","",3,1.0535332,1.21234263,-0.1307221);
-	mapAnetz["SCH2"] = AnetzData(1,"*INT","","",1,1.54557,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["SHE2"] = AnetzData(1,"*INT","","",1,1.1065938,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["SIM2"] = AnetzData(2,"*COM","*SBE","",2,0.6861131,0.296215066,IOUtils::nodata);
-	mapAnetz["SLF2"] = AnetzData(1,"*WFJ","","",1,0.9585787,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["SMN2"] = AnetzData(1,"*SCU","","",1,0.6979953,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["SPN2"] = AnetzData(2,"*VIS","*ZER","",2,1.1049,1.4598,IOUtils::nodata);
-	mapAnetz["SPN3"] = AnetzData(1,"*VIS","","",1,1.0244902,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["STH2"] = AnetzData(2,"*PLF","*ABO","",3,1.1252659,0.893324895,-0.13194965);
-	mapAnetz["STN2"] = AnetzData(2,"*EVO","*MVE","",2,0.9042348,0.687519213,IOUtils::nodata);
-	mapAnetz["TAM2"] = AnetzData(2,"*VAD","*GLA","",2,0.6304286,0.738150034,IOUtils::nodata);
-	mapAnetz["TAM3"] = AnetzData(2,"*VAD","*GLA","",3,1.5515584,0.407868299,-0.0800763);
-	mapAnetz["TRU2"] = AnetzData(2,"*MVE","*VIS","",2,1.1359,0.6577,IOUtils::nodata);
-	mapAnetz["TUJ2"] = AnetzData(2,"*GUE","*DIS","",2,0.3636322,0.591777057,IOUtils::nodata);
-	mapAnetz["TUJ3"] = AnetzData(2,"*GUE","*DIS","",2,0.4742,0.7791,IOUtils::nodata);
-	mapAnetz["TUM2"] = AnetzData(1,"*DIS","","",1,1.752091,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["URS2"] = AnetzData(2,"*GUE","*GRH","",3,0.6847615,0.277707092,-0.03085219);
-	mapAnetz["VAL2"] = AnetzData(2,"*PIO","*GUE","",3,1.2130704,0.508735389,-0.02905053);
-	mapAnetz["VDS2"] = AnetzData(1,"*MVE","","",1,1.8282525,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["VIN2"] = AnetzData(1,"*SCU","","",1,0.8245,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["VLS2"] = AnetzData(2,"*DIS","*HIR","",2,0.5764952,0.613916765,IOUtils::nodata);
-	mapAnetz["WFJ2"] = AnetzData(1,"*WFJ","","",1,1.,IOUtils::nodata,IOUtils::nodata);
-	mapAnetz["ZER2"] = AnetzData(2,"*ZER","*EVO","",2,0.8707182,0.988158355,IOUtils::nodata);
-	mapAnetz["ZER4"] = AnetzData(2,"*ZER","*EVO","",2,0.8707182,0.988158355,IOUtils::nodata);
-	mapAnetz["ZNZ2"] = AnetzData(1,"*WFJ","","",1,0.9980525,IOUtils::nodata,IOUtils::nodata);
+	mapAnetz["ALI2"] = AnetzData(2, "*SIO", "*PUY", "", 3, 2.14, 1.72, -1.669);
+	mapAnetz["AMD2"] = AnetzData(2, "*SAE", "*HOE", "", 3, 0.684, 1.871, -0.519);
+	mapAnetz["ANV2"] = AnetzData(2, "*ZER", "*ABO", "", 3, 1.489, 1.225, -0.742);
+	mapAnetz["ANV3"] = AnetzData(2, "*VIS", "*ZER", "", 3, 1.214, 1.294, -0.579);
+	mapAnetz["ARO2"] = AnetzData(2, "*GSB", "*MVE", "", 3, 0.57, 1.518, -0.351);
+	mapAnetz["ARO3"] = AnetzData(2, "*GSB", "*ZER", "", 3, 0.552, 1.802, -0.399);
+	mapAnetz["BED2"] = AnetzData(2, "*GRH", "*ROE", "", 3, 0.852, 0.734, -0.233);
+	mapAnetz["BED3"] = AnetzData(2, "*GRH", "*ROE", "", 3, 0.845, 0.733, -0.227);
+	mapAnetz["BEL2"] = AnetzData(2, "*GRH", "*ULR", "", 3, 0.63, 1.12, -0.264);
+	mapAnetz["BER2"] = AnetzData(2, "*COV", "*BUF", "", 3, 1.105, 1.47, -0.5);
+	mapAnetz["BER3"] = AnetzData(2, "*COV", "*BUF", "", 3, 0.925, 1.298, -0.392);
+	mapAnetz["BEV2"] = AnetzData(2, "*COV", "*WFJ", "", 3, 0.764, 1.172, -0.335);
+	mapAnetz["BOG2"] = AnetzData(2, "*ROE", "*CIM", "", 3, 0.856, 0.838, -0.247);
+	mapAnetz["BOR2"] = AnetzData(2, "*GRH", "*ROE", "", 3, 1.262, 0.634, -0.253);
+	mapAnetz["BOV2"] = AnetzData(2, "*GSB", "*MVE", "", 3, 0.561, 1.356, -0.31);
+	mapAnetz["CAM2"] = AnetzData(2, "*GRH", "*ROE", "", 3, 0.839, 0.637, -0.174);
+	mapAnetz["CHA2"] = AnetzData(2, "*MVE", "*ABO", "", 3, 2.281, 1.638, -1.29);
+	mapAnetz["CON2"] = AnetzData(2, "*EVO", "*MVE", "", 3, 2.229, 1.603, -1.299);
+	mapAnetz["DAV2"] = AnetzData(2, "*COV", "*WFJ", "", 3, 0.976, 1.378, -0.495);
+	mapAnetz["DAV3"] = AnetzData(2, "*WFJ", "*SAM", "", 3, 1.162, 1.72, -0.701);
+	mapAnetz["DAV4"] = AnetzData(2, "*WFJ", "*SCU", "", 3, 1.333, 1.219, -0.605);
+	mapAnetz["DAV5"] = AnetzData(2, "*WFJ", "*SAM", "", 3, 1.133, 5.609, -2.096);
+	mapAnetz["DTR2"] = AnetzData(2, "*GUE", "*ROE", "", 3, 0.858, 0.631, -0.19);
+	mapAnetz["ELA2"] = AnetzData(2, "*COV", "*WFJ", "", 3, 0.736, 1.213, -0.336);
+	mapAnetz["ELM2"] = AnetzData(2, "*SAE", "*DIS", "", 3, 0.756, 1.311, -0.458);
+	mapAnetz["ELS2"] = AnetzData(2, "*INT", "*PLF", "", 3, 1.591, 1.78, -1.081);
+	mapAnetz["FAE2"] = AnetzData(2, "*ABO", "*INT", "", 3, 2.185, 1.93, -1.522);
+	mapAnetz["FIR2"] = AnetzData(2, "*PIL", "*GRH", "", 3, 1.067, 0.897, -0.382);
+	mapAnetz["FIS2"] = AnetzData(2, "*ABO", "*INT", "", 3, 2.04, 1.583, -1.18);
+	mapAnetz["FLU2"] = AnetzData(2, "*WFJ", "*COV", "", 3, 1.811, 1.262, -0.811);
+	mapAnetz["FNH2"] = AnetzData(2, "*GSB", "*SIO", "", 3, 0.481, 1.474, -0.276);
+	mapAnetz["FOU2"] = AnetzData(2, "*GSB", "*SIO", "", 3, 0.587, 1.522, -0.293);
+	mapAnetz["FRA2"] = AnetzData(2, "*GUE", "*ROE", "", 3, 0.876, 0.72, -0.217);
+	mapAnetz["FRA3"] = AnetzData(2, "*GUE", "*ROE", "", 3, 2.876, 0.801, -0.989);
+	mapAnetz["FUL2"] = AnetzData(2, "*GSB", "*AIG", "", 3, 0.848, 1.674, -0.533);
+	mapAnetz["FUS2"] = AnetzData(2, "*GRH", "*ROE", "", 3, 0.788, 0.726, -0.224);
+	mapAnetz["GAD2"] = AnetzData(2, "*PIL", "*GRH", "", 3, 1.105, 0.977, -0.375);
+	mapAnetz["GAN2"] = AnetzData(2, "*MVE", "*INT", "", 3, 1.698, 1.534, -1.025);
+	mapAnetz["GLA2"] = AnetzData(2, "*SAE", "*DIS", "", 3, 0.834, 1.664, -0.558);
+	mapAnetz["GOM2"] = AnetzData(2, "*ROE", "*ULR", "", 3, 0.576, 1.143, -0.246);
+	mapAnetz["GOM3"] = AnetzData(2, "*GRH", "*ULR", "", 3, 0.888, 1.037, -0.315);
+	mapAnetz["GRA2"] = AnetzData(2, "*PUY", "*AIG", "", 3, 1.613, 1.238, -0.741);
+	mapAnetz["GUT2"] = AnetzData(2, "*PIL", "*GRH", "", 3, 1.13, 1.129, -0.468);
+	mapAnetz["HTR2"] = AnetzData(2, "*SBE", "*DIS", "", 3, 0.831, 0.914, -0.219);
+	mapAnetz["HTR3"] = AnetzData(2, "*COV", "*AND", "", 3, 0.809, 0.786, -0.205);
+	mapAnetz["ILI2"] = AnetzData(2, "*SIO", "*PUY", "", 3, 1.404, 1.549, -0.86);
+	mapAnetz["JAU2"] = AnetzData(2, "*MVE", "*PLF", "", 3, 1.544, 2.101, -1.235);
+	mapAnetz["JUL2"] = AnetzData(2, "*DAV", "*COV", "", 3, 1.354, 0.783, -0.373);
+	mapAnetz["KES2"] = AnetzData(2, "*COV", "*WFJ", "", 3, 0.778, 1.244, -0.379);
+	mapAnetz["KLO2"] = AnetzData(2, "*WFJ", "*SCU", "", 3, 1.332, 1.034, -0.511);
+	mapAnetz["KLO3"] = AnetzData(2, "*WFJ", "*BUF", "", 3, 1.204, 1.456, -0.688);
+	mapAnetz["LAG2"] = AnetzData(2, "*COV", "*ROB", "", 3, 0.832, 0.963, -0.309);
+	mapAnetz["LAU2"] = AnetzData(2, "*ABO", "*PLF", "", 3, 1.524, 2.387, -1.417);
+	mapAnetz["LUK2"] = AnetzData(2, "*GRH", "*ROE", "", 3, 0.823, 0.645, -0.213);
+	mapAnetz["LUM2"] = AnetzData(2, "*ENG", "*SBE", "", 3, 1.56, 1.048, -0.459);
+	mapAnetz["MEI2"] = AnetzData(2, "*PIL", "*GRH", "", 3, 0.999, 0.851, -0.334);
+	mapAnetz["MES2"] = AnetzData(2, "*CIM", "*SBE", "", 3, 0.843, 0.91, -0.261);
+	mapAnetz["MLB2"] = AnetzData(2, "*WFJ", "*SAE", "", 3, 1.505, 0.818, -0.465);
+	mapAnetz["MUN2"] = AnetzData(2, "*ULR", "*ABO", "", 3, 1.158, 2.095, -0.688);
+	mapAnetz["MUO2"] = AnetzData(2, "*PIL", "*ENG", "", 3, 1.178, 1.628, -0.703);
+	mapAnetz["MUT2"] = AnetzData(2, "*CHU", "*GLA", "", 3, 1.706, 1.509, -0.947);
+	mapAnetz["NAR2"] = AnetzData(2, "*GUE", "*ROE", "", 3, 0.799, 0.703, -0.193);
+	mapAnetz["OBM2"] = AnetzData(2, "*MVE", "*WFJ", "", 3, 0.56, 0.003, -0.002);
+	mapAnetz["OBW2"] = AnetzData(2, "*GRH", "*ULR", "", 3, 0.756, 1.207, -0.303);
+	mapAnetz["OBW3"] = AnetzData(2, "*GRH", "*ROE", "", 3, 0.902, 0.707, -0.225);
+	mapAnetz["OFE2"] = AnetzData(2, "*BUF", "*SCU", "", 3, 1.722, 2.129, -1.113);
+	mapAnetz["ORT2"] = AnetzData(2, "*GLA", "*WAE", "", 3, 1.648, 1.542, -0.99);
+	mapAnetz["OTT2"] = AnetzData(2, "*MVE", "*PLF", "", 3, 1.856, 1.599, -1.046);
+	mapAnetz["PAR2"] = AnetzData(2, "*SCU", "*WFJ", "", 3, 1.467, 1.497, -0.752);
+	mapAnetz["PUZ2"] = AnetzData(2, "*GUE", "*ROE", "", 3, 0.869, 0.724, -0.227);
+	mapAnetz["ROA2"] = AnetzData(2, "*PIL", "*GRH", "", 3, 1.17, 0.845, -0.391);
+	mapAnetz["ROA4"] = AnetzData(1, "*GRH", "", "", 3, 1.412, IOUtils::nodata, IOUtils::nodata);
+	mapAnetz["ROT2"] = AnetzData(2, "*WFJ", "*SAM", "", 3, 1.161, 1.714, -0.813);
+	mapAnetz["SAA2"] = AnetzData(2, "*ZER", "*MVE", "", 3, 1.165, 1.233, -0.514);
+	mapAnetz["SAA3"] = AnetzData(2, "*EVO", "*VIS", "", 3, 1.922, 1.51, -1.051);
+	mapAnetz["SAA4"] = AnetzData(2, "*ZER", "*MVE", "", 3, 1.255, 1.122, -0.429);
+	mapAnetz["SCA2"] = AnetzData(2, "*PIL", "*GRH", "", 3, 1.081, 0.876, -0.321);
+	mapAnetz["SCA3"] = AnetzData(2, "*ENG", "*GLA", "", 3, 1.55, 1.649, -0.776);
+	mapAnetz["SCB2"] = AnetzData(2, "*PIL", "*GRH", "", 3, 1.009, 0.942, -0.383);
+	mapAnetz["SCH2"] = AnetzData(2, "*ABO", "*VIS", "", 3, 1.557, 1.629, -0.852);
+	mapAnetz["SHE2"] = AnetzData(2, "*NAP", "*INT", "", 3, 1.752, 1.628, -1.056);
+	mapAnetz["SIM2"] = AnetzData(2, "*GUE", "*ROE", "", 3, 0.743, 0.69, -0.196);
+	mapAnetz["SLF2"] = AnetzData(2, "*WFJ", "*BUF", "", 3, 1.391, 2.02, -1.061);
+	mapAnetz["SMN2"] = AnetzData(2, "*BUF", "*SCU", "", 3, 1.554, 2.108, -1.129);
+	mapAnetz["SPN2"] = AnetzData(2, "*ROE", "*VIS", "", 3, 0.772, 1.189, -0.327);
+	mapAnetz["SPN3"] = AnetzData(2, "*ZER", "*VIS", "", 3, 1.849, 1.157, -0.677);
+	mapAnetz["STH2"] = AnetzData(2, "*ABO", "*INT", "", 3, 1.821, 1.465, -1.047);
+	mapAnetz["STN2"] = AnetzData(2, "*MVE", "*ZER", "", 3, 2.036, 1.641, -1.218);
+	mapAnetz["TAM2"] = AnetzData(2, "*SAE", "*WFJ", "", 3, 1.101, 1.296, -0.396);
+	mapAnetz["TAM3"] = AnetzData(2, "*WFJ", "*GLA", "", 3, 1.225, 1.369, -0.629);
+	mapAnetz["TRU2"] = AnetzData(2, "*EVO", "*MVE", "", 3, 2.002, 1.52, -0.995);
+	mapAnetz["TUJ2"] = AnetzData(2, "*GRH", "*DIS", "", 3, 0.714, 0.99, -0.234);
+	mapAnetz["TUJ3"] = AnetzData(2, "*GRH", "*SBE", "", 3, 0.714, 0.662, -0.179);
+	mapAnetz["TUM2"] = AnetzData(2, "*GUE", "*SBE", "", 3, 0.791, 0.711, -0.193);
+	mapAnetz["URS2"] = AnetzData(2, "*GRH", "*ROE", "", 3, 0.842, 0.716, -0.205);
+	mapAnetz["VAL2"] = AnetzData(2, "*GUE", "*GRH", "", 3, 1.023, 1, -0.339);
+	mapAnetz["VIN2"] = AnetzData(2, "*BUF", "*SCU", "", 3, 1.744, 1.576, -0.963);
+	mapAnetz["VLS2"] = AnetzData(2, "*SBE", "*DIS", "", 3, 0.81, 1.015, -0.257);
+	mapAnetz["VST2"] = AnetzData(2, "*WFJ", "*VAD", "", 3, 1.254, 2.526, -1.169);
+	mapAnetz["YBR2"] = AnetzData(2, "*HOE", "*ENG", "", 3, 1.513, 1.67, -0.978);
+	mapAnetz["ZER2"] = AnetzData(2, "*ZER", "*MVE", "", 3, 1.239, 1.585, -0.766);
+	mapAnetz["ZER4"] = AnetzData(2, "*ZER", "*MVE", "", 3, 1.15, 1.51, -0.684);
+	mapAnetz["ZNZ2"] = AnetzData(2, "*COV", "*WFJ", "", 3, 1.047, 1.179, -0.457);
+	mapAnetz["GOR2"] = AnetzData(2, "*EVO", "*ZER", "", 3, 1.981, 1.653, -0.974);
+	mapAnetz["LHO2"] = AnetzData(2, "*GRH", "*ULR", "", 3, 0.964, 1.183, -0.31);
+	mapAnetz["NAS2"] = AnetzData(2, "*BUF", "*SCU", "", 3, 1.947, 2.751, -1.748);
+	mapAnetz["RNZ2"] = AnetzData(2, "*GUE", "*GRH", "", 3, 1.318, 1.191, -0.416);
+	mapAnetz["SEN2"] = AnetzData(1, "*WFJ", "", "", 3, 1.822, IOUtils::nodata, IOUtils::nodata);
+	mapAnetz["WFJ2"] = AnetzData(2, "*WFJ", "*CHU", "", 3, 1.852, 1.337, -0.813);
 
 	return true;
 }
@@ -201,66 +242,6 @@ ImisIO::ImisIO(const Config& cfgreader)
 	getDBParameters();
 }
 
-ImisIO::~ImisIO() throw()
-{
-	cleanup();
-}
-
-void ImisIO::read2DGrid(Grid2DObject&, const std::string&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ImisIO::read2DGrid(Grid2DObject&, const MeteoGrids::Parameters&, const Date&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ImisIO::readDEM(DEMObject&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ImisIO::readLanduse(Grid2DObject&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ImisIO::readAssimilationData(const Date&, Grid2DObject&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ImisIO::readPOI(std::vector<Coords>&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ImisIO::write2DGrid(const Grid2DObject&, const std::string&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ImisIO::write2DGrid(const Grid2DObject&, const MeteoGrids::Parameters&, const Date&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ImisIO::writeMeteoData(const std::vector< std::vector<MeteoData> >&,
-                            const std::string&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
 void ImisIO::openDBConnection(oracle::occi::Environment*& env, oracle::occi::Connection*& conn)
 {
 	env  = Environment::createEnvironment();// static OCCI function
@@ -272,7 +253,10 @@ void ImisIO::closeDBConnection(oracle::occi::Environment*& env, oracle::occi::Co
 	try {
 		if (conn != NULL)
 			env->terminateConnection(conn);
-		Environment::terminateEnvironment(env); // static OCCI function
+		if (env != NULL)
+			Environment::terminateEnvironment(env); // static OCCI function
+		conn = NULL;
+		env = NULL;
 	} catch (const exception&){
 		Environment::terminateEnvironment(env); // static OCCI function
 	}
@@ -288,9 +272,7 @@ void ImisIO::readStationData(const Date&, std::vector<StationData>& vecStation)
 
 		try {
 			openDBConnection(env, conn);
-
 			readStationMetaData(conn); //reads all the station meta data into the vecStationMetaData (member vector)
-
 			closeDBConnection(env, conn);
 		} catch (const exception& e){
 			closeDBConnection(env, conn);
@@ -307,31 +289,31 @@ void ImisIO::readStationData(const Date&, std::vector<StationData>& vecStation)
  */
 void ImisIO::readStationMetaData(oracle::occi::Connection*& conn)
 {
-	vector<string> vecStationID;
+	std::vector<std::string> vecStationID;
 	readStationIDs(vecStationID);
-
 
 	Statement *stmt = conn->createStatement();
 	for (size_t ii=0; ii<vecStationID.size(); ii++) {
 		// Retrieve the station IDs - this only needs to be done once per instance
-		string stat_abk, stao_nr, station_name;
+		std::string stat_abk, stao_nr, station_name;
 		parseStationID(vecStationID[ii], stat_abk, stao_nr);
-		vector<string> stnIDs;
-		string drift_stat_abk, drift_stao_nr;
-		getStationIDs(vecStationID[ii], sqlQueryStationIDs, stnIDs, stmt);
-		IOUtils::convertString(station_name, stnIDs.at(0));
-		IOUtils::convertString(drift_stat_abk, stnIDs.at(1));
-		IOUtils::convertString(drift_stao_nr, stnIDs.at(2));
-		const string drift_stationID = drift_stat_abk + drift_stao_nr;
-		if (!drift_stationID.empty()) {
+		
+		//Retrieve the drift station - this only needs to be done once per instance
+		std::vector<std::string> stnDrift;
+		std::string drift_stat_abk, drift_stao_nr;
+		getStationIDs(vecStationID[ii], sqlQueryStationIDs, stnDrift, stmt);
+		IOUtils::convertString(station_name, stnDrift.at(0));
+		IOUtils::convertString(drift_stat_abk, stnDrift.at(1));
+		IOUtils::convertString(drift_stao_nr, stnDrift.at(2));
+		const std::string drift_stationID( drift_stat_abk + drift_stao_nr );
+		if (!drift_stationID.empty())
 			mapDriftStation[vecStationID[ii]] = drift_stationID;
-		} else {
-			throw ConversionFailedException("Error! No drift station for station "+stat_abk+stao_nr, AT);
-		}
+		else
+			std::cerr << "[W] No drift station for station " << stat_abk << stao_nr << "\n";
 
 		// Retrieve the station meta data - this only needs to be done once per instance
-		vector<string> stationMetaData;
-		string stao_name;
+		std::vector<std::string> stationMetaData;
+		std::string stao_name;
 		getStationMetaData(stat_abk, stao_nr, sqlQueryStationMetaData, stationMetaData, stmt);
 		double east, north, alt;
 		IOUtils::convertString(stao_name, stationMetaData.at(0));
@@ -364,13 +346,14 @@ void ImisIO::readStationMetaData(oracle::occi::Connection*& conn)
 		}
 		Coords myCoord(coordin, coordinparam);
 		myCoord.setXY(east, north, alt);
-		vecStationMetaData.push_back(StationData(myCoord, vecStationID[ii], station_name));
+		vecStationMetaData.push_back( StationData(myCoord, vecStationID[ii], station_name) );
 	}
 	conn->terminateStatement(stmt);
 }
 
 /**
- * @brief This function breaks up the station name into two components (a string and a number e.g. KLO2 -> "KLO","2")
+ * @brief This function breaks up the station name into two components (a string and a number e.g. KLO2 -> "KLO","2"). For 
+ * Enet stations (such as *WFJ), the numeric part is asusmed to be 1 (ie: the automatic station).
  * @param stationID The full name of the station (e.g. "KLO2")
  * @param stName      The string part of the name  (e.g. "KLO")
  * @param stNumber    The integer part of the name (e.g. "2")
@@ -379,10 +362,10 @@ void ImisIO::parseStationID(const std::string& stationID, std::string& stat_abk,
 {
 	stat_abk = stationID.substr(0, stationID.length()-1); //The station name: e.g. KLO
 	stao_nr = stationID.substr(stationID.length()-1, 1); //The station number: e.g. 2
-	if(!std::isdigit(stao_nr[0])) {
+	if (!std::isdigit(stao_nr[0])) {
 		//the station is one of these non-imis stations that don't contain a number...
 		stat_abk = stationID;
-		stao_nr = "0";
+		stao_nr = "1";
 	}
 }
 
@@ -395,13 +378,13 @@ void ImisIO::readStationIDs(std::vector<std::string>& vecStationID)
 	vecStationID.clear();
 	cfg.getValues("STATION", "INPUT", vecStationID);
 
-	if(vecStationID.empty()) {
+	if (vecStationID.empty()) {
 		cerr << "\tNo stations specified for IMISIO... is this what you want?\n";
 	}
 }
 
 void ImisIO::readMeteoData(const Date& dateStart, const Date& dateEnd,
-                           std::vector< std::vector<MeteoData> >& vecMeteo, const size_t& stationindex)
+                           std::vector< std::vector<MeteoData> >& vecMeteo)
 {
 	Environment *env = NULL;
 	Connection *conn = NULL;
@@ -414,64 +397,46 @@ void ImisIO::readMeteoData(const Date& dateStart, const Date& dateEnd,
 		}
 
 		if (vecStationMetaData.empty()) { //if there are no stations -> return
-			if ((env != NULL) || (conn != NULL)) closeDBConnection(env, conn);
+			closeDBConnection(env, conn);
 			return;
 		}
 
-		size_t indexStart=0, indexEnd=vecStationMetaData.size();
-
-		//The following part decides whether all the stations are rebuffered or just one station
-		if (stationindex == IOUtils::npos) {
-			vecMeteo.clear();
-			vecMeteo.insert(vecMeteo.begin(), vecStationMetaData.size(), vector<MeteoData>());
-		} else {
-			if (stationindex < vecMeteo.size()) {
-				indexStart = stationindex;
-				indexEnd   = stationindex+1;
-			} else {
-				throw IndexOutOfBoundsException("You tried to access a stationindex in readMeteoData that is out of bounds", AT);
-			}
-		}
+		vecMeteo.clear();
+		vecMeteo.insert(vecMeteo.begin(), vecStationMetaData.size(), vector<MeteoData>());
 
 		if ((env == NULL) || (conn == NULL))
 			openDBConnection(env, conn);
 		stmt = conn->createStatement();
 
-		for (size_t ii=indexStart; ii<indexEnd; ii++) { //loop through relevant stations
+		//read the "raw" station data from db (ie pure imis data)
+		for (size_t ii=0; ii<vecStationMetaData.size(); ii++) { //loop through relevant stations
 			readData(dateStart, dateEnd, vecMeteo, ii, vecStationMetaData, env, stmt);
 		}
 
 		if (useAnetz) { //Important: we don't care about the metadata for ANETZ stations
-			vector<StationData> vecAnetzStation;       //holds the unique ANETZ stations that need to be read
-			vector< vector<MeteoData> > vecMeteoAnetz; //holds the meteo data of the ANETZ stations
-			map<string, size_t> mapAnetzNames;   //associates an ANETZ station with an index within vecMeteoAnetz
+			std::vector<StationData> vecAnetzStation;       //holds the unique ANETZ stations that need to be read
+			std::map<string, size_t> mapAnetzNames;   //associates an ANETZ station with an index within vecMeteoAnetz
+			findAnetzStations(mapAnetzNames, vecAnetzStation);
 
-			findAnetzStations(indexStart, indexEnd, mapAnetzNames, vecAnetzStation);
-			vecMeteoAnetz.insert(vecMeteoAnetz.begin(), vecAnetzStation.size(), vector<MeteoData>());
+			//read Anetz Data, convert it to PSUMs at XX:00 and XX:30
+			std::vector< std::vector< std::pair<Date, double> > > vecPsum( vecAnetzStation.size() );
+			vector< vector<MeteoData> > vecMeteoAnetz( vecAnetzStation.size() ); //holds the meteo data of the ANETZ stations
+			const Date AnetzStart( dateStart-1./24. ); //to be sure that we can resample the ANETZ data
+			const Date AnetzEnd( dateEnd+1./24. );
+			for (size_t ii=0; ii<vecAnetzStation.size(); ii++) {
+				readData(AnetzStart, AnetzEnd, vecMeteoAnetz, ii, vecAnetzStation, env, stmt);
+				computeAnetzPSUM(vecMeteoAnetz[ii], vecPsum[ii]);
+			}
 
-			//date_anetz_start/end must be changed to be a multiple of 6h before the original dateStart, dateEnd
-			Date date_anetz_start = Date(floor(dateStart.getJulian(true) * 4.0) / 4.0, 0.);
-			date_anetz_start.setTimeZone(in_tz);
-			Date date_anetz_end   = Date(floor(dateEnd.getJulian(true) * 4.0) / 4.0, 0.);
-			date_anetz_end.setTimeZone(in_tz);
-
-			//read Anetz Data
-			for (size_t ii=0; ii<vecAnetzStation.size(); ii++)
-				readData(date_anetz_start, dateEnd, vecMeteoAnetz, ii, vecAnetzStation, env, stmt);
-
-			//We got all the data, now calc psum for all ANETZ stations
-			vector< vector<double> > vec_of_psums; //6 hour accumulations of psum
-			calculatePsum(date_anetz_start, date_anetz_end, vecMeteoAnetz, vec_of_psums);
-
-			for (size_t ii=indexStart; ii<indexEnd; ii++){ //loop through relevant stations
-				const map<string,AnetzData>::const_iterator it = mapAnetz.find(vecStationMetaData.at(ii).getStationID());
+			for (size_t ii=0; ii<vecStationMetaData.size(); ii++){ //loop through relevant stations
+				const map<string,AnetzData>::const_iterator it = mapAnetz.find( vecStationMetaData.at(ii).getStationID() );
 				if (it != mapAnetz.end())
-					assimilateAnetzData(date_anetz_start, it->second, vec_of_psums, mapAnetzNames, ii, vecMeteo);
+					assimilateAnetzData(it->second, mapAnetzNames, vecPsum, ii, vecMeteo);
 			}
 		}
 
-		if(use_psum_snowpack) {
-			for (size_t ii=indexStart; ii<indexEnd; ii++) { //loop through relevant stations
+		if (use_psum_snowpack) {
+			for (size_t ii=0; ii<vecStationMetaData.size(); ii++) { //loop through relevant stations
 				readSWE(dateStart, dateEnd, vecMeteo, ii, vecStationMetaData, env, stmt);
 			}
 		}
@@ -480,142 +445,104 @@ void ImisIO::readMeteoData(const Date& dateStart, const Date& dateEnd,
 		closeDBConnection(env, conn);
 	} catch (const exception& e){
 		closeDBConnection(env, conn);
-		throw IOException("Oracle Error when reading stations' data: " + string(e.what()), AT); //Translation of OCCI exception to IOException
+		throw IOException("Oracle Error when reading stations' data: " + std::string(e.what()), AT); //Translation of OCCI exception to IOException
 	}
 }
 
-void ImisIO::assimilateAnetzData(const Date& dateStart, const AnetzData& ad,
-                                 const std::vector< std::vector<double> > vec_of_psums,
-                                 const std::map<std::string, size_t>& mapAnetzNames, const size_t& stationindex,
-                                 std::vector< std::vector<MeteoData> >& vecMeteo)
+//using the XX:00 and XX:30 Anetz precipi sums (in vecPsum), compute the regression for each timestep in vecMeteo for a given station
+void ImisIO::assimilateAnetzData(const AnetzData& ad,
+                                 const std::map<std::string, size_t>& mapAnetzNames, const std::vector< std::vector< std::pair<Date, double> > > &vecPsum,
+                                 const size_t& stationindex, std::vector< std::vector<MeteoData> >& vecMeteo)
 {
-	//Do coefficient calculation (getPSUM) for every single station and data point
-	vector<double> current_station_psum;
-	getAnetzPSUM(ad, mapAnetzNames, vec_of_psums, current_station_psum);
+	std::vector<size_t> vecAnetz( ad.nrOfAnetzStations ); //this will contain the index in vecMeteoAnetz
+	for (size_t jj=0; jj<ad.nrOfAnetzStations; jj++) { //loop over all associated anetz stations
+		const map<string, size_t>::const_iterator it = mapAnetzNames.find( ad.anetzstations[jj] );
+		if (it==mapAnetzNames.end())
+			throw NotFoundException("The ANETZ station '"+ad.anetzstations[jj]+"' could not be found", AT);
+		vecAnetz[jj] = (it->second);
+	}
 
-	size_t counter = 0;
-	Date current_slice_date = dateStart;
-	current_slice_date.setTimeZone(in_tz);
-	for (size_t jj=0; jj<vecMeteo[stationindex].size(); jj++){
-		while (vecMeteo[stationindex][jj].date > (current_slice_date+0.2485)){
-			counter++;
-			const double julian = floor((current_slice_date.getJulian(true) +0.25001) * 4.0) / 4.0;
-			current_slice_date = Date(julian, 0.);
-			current_slice_date.setTimeZone(in_tz);
+	std::vector<size_t> last_found( vecAnetz.size(), 0 ); //index of last found timestep in vecPsum
+	for (size_t ii=0; ii<vecMeteo[stationindex].size(); ii++){ //loop over all timesteps for the current station
+		const Date current_date( vecMeteo[stationindex][ii].date );
+
+		//collect the ANETZ psums for this station and timestep
+		std::vector<double> psum( vecAnetz.size(), IOUtils::nodata );
+		for (size_t jj=0; jj<vecAnetz.size(); jj++) { //loop over all contributing anetz stations
+			//find the current timestep in vecPsum
+			for (size_t kk=last_found[jj]; kk<vecPsum[vecAnetz[jj]].size(); kk++) {
+				const Date &anetz_date = vecPsum[vecAnetz[jj]][kk].first;
+				if (anetz_date >= current_date) { //time step was found
+					if (anetz_date == current_date) {
+						last_found[jj]=kk;
+						psum[jj] = vecPsum[vecAnetz[jj]][kk].second;
+					}
+					break;
+				}
+			}
 		}
 
-		if (counter >= current_station_psum.size()) { break; } //should never happen
+		//compute regression for the current point using the contributing stations
+		double sum = 0.;
+		if (ad.nrOfAnetzStations == ad.nrOfCoefficients){ //1, 2, or 3 ANETZ stations without interaction
+			for (size_t jj=0; jj<vecAnetz.size(); jj++){
+				if (psum[jj]==IOUtils::nodata) {
+					sum = IOUtils::nodata;
+					break;
+				}
+				sum += ad.coeffs[jj] * psum[jj];
+			}
+		} else { // Exactly two ANETZ stations with one interaction term
+			if (ad.nrOfCoefficients != 3)
+				throw IOException("Misconfiguration in ANETZ data", AT);
 
-		double& psum = vecMeteo[stationindex][jj](MeteoData::PSUM);
-		if ((psum == IOUtils::nodata) || (IOUtils::checkEpsilonEquality(psum, 0.0, 0.001))){
-			//replace by psum if there is no own value measured
-			psum = current_station_psum.at(counter);
+			if (psum[0]==IOUtils::nodata || psum[1]==IOUtils::nodata)
+				sum = IOUtils::nodata;
+			else {
+				sum =ad.coeffs[0] * psum[0] + ad.coeffs[1] * psum[1] + ad.coeffs[2] * psum[0] * psum[1];
+			}
 		}
+
+		//replace by ANETZ psum if there is no own value measured
+		double& md_psum = vecMeteo[stationindex][ii](MeteoData::PSUM);
+		if ((md_psum == IOUtils::nodata) || (IOUtils::checkEpsilonEquality(md_psum, 0.0, 0.001)))
+			md_psum = sum;
 	}
 }
 
-void ImisIO::getAnetzPSUM(const AnetzData& ad, const std::map<std::string, size_t>& mapAnetzNames,
-                         const std::vector< std::vector<double> >& vec_of_psums, std::vector<double>& psum)
+//we compute PSUM at XX:30 and (XX+1):30 from the XX:40 sums from Anetz
+void ImisIO::computeAnetzPSUM(std::vector<MeteoData> &vecMeteo, std::vector< std::pair<Date, double> > &vecPsum)
 {
-	vector<size_t> vecIndex; //this vector will hold up to three indexes for the Anetz stations (position in vec_of_psums)
-	for (size_t ii=0; ii<ad.nrOfAnetzStations; ii++){
-		const map<string, size_t>::const_iterator it = mapAnetzNames.find(ad.anetzstations[ii]);
-		vecIndex.push_back(it->second);
-	}
+	const size_t nr_meteo = vecMeteo.size();
+	for (size_t ii=0; ii<nr_meteo; ii++) {
+		//generate sum at XX:30
+		const double prev_psum = vecMeteo[ii](MeteoData::PSUM);
+		const Date datum_halfhour = Date::rnd(vecMeteo[ii].date, 1800, Date::DOWN);
+		if (prev_psum!=IOUtils::nodata)
+			vecPsum.push_back( std::make_pair(datum_halfhour, prev_psum*.5) ); //30 minute sum fully contained in the XX:40 sum
+		else
+			vecPsum.push_back( std::make_pair(datum_halfhour, IOUtils::nodata) );
 
-	if (ad.nrOfAnetzStations == ad.nrOfCoefficients){
-		//1, 2, or 3 ANETZ stations without interaction
-		for (size_t kk=0; kk<vec_of_psums.at(vecIndex.at(0)).size(); kk++){
-			double sum = 0.0;
-			for (size_t ii=0; ii<ad.nrOfCoefficients; ii++){
-				sum += ad.coeffs[ii] * vec_of_psums.at(vecIndex[ii])[kk];
-			}
-			psum.push_back(sum/12.0);
-		}
-	} else {
-		if (ad.nrOfCoefficients != 3)
-			throw IOException("Misconfiguration in ANETZ data", AT);
-
-		// Exactly two ANETZ stations with one interaction term
-		for (size_t kk=0; kk<vec_of_psums.at(vecIndex.at(0)).size(); kk++){
-			double sum = 0.0;
-			const double& psum0 = vec_of_psums.at(vecIndex.at(0))[kk];
-			const double& psum1 = vec_of_psums.at(vecIndex.at(1))[kk];
-			sum += ad.coeffs[0] * psum0;
-			sum += ad.coeffs[1] * psum1;
-			sum += ad.coeffs[2] * psum0 * psum1;
-
-			psum.push_back(sum/12.0);
-		}
+		//generate sum at (XX+1):00
+		const double next_psum = (ii<(nr_meteo-1))? vecMeteo[ii+1](MeteoData::PSUM) : IOUtils::nodata;
+		const Date datum = Date::rnd(vecMeteo[ii].date, 3600, Date::UP);
+		if (prev_psum!=IOUtils::nodata && next_psum!=IOUtils::nodata)
+			vecPsum.push_back( std::make_pair(datum, (prev_psum+next_psum*2.)/6.) );
+		else
+			vecPsum.push_back( std::make_pair(datum, IOUtils::nodata) );
 	}
 }
 
-void ImisIO::calculatePsum(const Date& dateStart, const Date& dateEnd,
-                           const std::vector< std::vector<MeteoData> >& vecMeteoAnetz,
-                           std::vector< std::vector<double> >& vec_of_psums)
-{
-	const unsigned int nr_of_slices = (unsigned int)((dateEnd.getJulian(true) - dateStart.getJulian(true) + 0.00001) * 4.0) + 1;
-
-	for (size_t ii=0; ii<vecMeteoAnetz.size(); ii++){
-		double tmp_psum = 0.0;
-		Date current_date = dateStart;
-		current_date.setTimeZone(in_tz);
-
-		vector<double> vec_current_station;
-		size_t counter_of_elements = 0;
-		for (size_t jj=0; jj<vecMeteoAnetz[ii].size(); jj++){
-			const Date& anetzdate = vecMeteoAnetz[ii][jj].date;
-			const double& psum = vecMeteoAnetz[ii][jj](MeteoData::PSUM);
-
-			if ((current_date < anetzdate) && ((current_date+0.25) > anetzdate)){
-				;
-			} else {
-				if ((counter_of_elements > 0) && (counter_of_elements < 6)) //this is mystical, but kind of a guess of the future
-					tmp_psum = tmp_psum * 6.0 / (double)counter_of_elements;
-
-				vec_current_station.push_back(tmp_psum);
-
-				current_date += 0.25;
-				tmp_psum = 0.0;
-				counter_of_elements = 0;
-			}
-
-			if (psum != IOUtils::nodata){
-				tmp_psum += psum;
-				counter_of_elements++;
-			}
-
-		}
-
-		if ((counter_of_elements > 0) && (counter_of_elements < 6)) //this is mystical, but kind of a guess of the future
-			tmp_psum = tmp_psum*6./static_cast<double>(counter_of_elements);
-
-		vec_current_station.push_back(tmp_psum);
-
-		for (size_t jj=vec_current_station.size(); jj<nr_of_slices; jj++){ //To fill up the vector
-			vec_current_station.push_back(0.0);
-		}
-
-		vec_of_psums.push_back(vec_current_station);
-	}
-
-	for (size_t ii=1; ii<vec_of_psums.size(); ii++){
-		if (vec_of_psums[ii].size() != vec_of_psums[ii-1].size())
-			throw IOException("Error while summing up the precipitation data for the ANETZ stations", AT);
-	}
-}
-
-void ImisIO::findAnetzStations(const size_t& indexStart, const size_t& indexEnd,
-                               std::map<std::string, size_t>& mapAnetzNames,
+void ImisIO::findAnetzStations(std::map<std::string, size_t>& mapAnetzNames,
                                std::vector<StationData>& vecAnetzStation)
 {
-	set<string> uniqueStations;
+	std::set<std::string> uniqueStations;
 
-	for (size_t ii=indexStart; ii<indexEnd; ii++){ //loop through stations
-		const map<string, AnetzData>::const_iterator it = mapAnetz.find(vecStationMetaData.at(ii).getStationID());
+	for (size_t ii=0; ii<vecStationMetaData.size(); ii++){ //loop through stations
+		const map<string, AnetzData>::const_iterator it = mapAnetz.find( vecStationMetaData.at(ii).getStationID() );
 		if (it != mapAnetz.end()){
 			for (size_t jj=0; jj<it->second.nrOfAnetzStations; jj++){
-				uniqueStations.insert(it->second.anetzstations[jj]);
+				uniqueStations.insert( it->second.anetzstations[jj] );
 			}
 		}
 	}
@@ -627,7 +554,7 @@ void ImisIO::findAnetzStations(const size_t& indexStart, const size_t& indexEnd,
 
 		StationData sd;
 		sd.stationID = *ii;
-		vecAnetzStation.push_back(sd);
+		vecAnetzStation.push_back( sd );
 	}
 }
 
@@ -647,7 +574,7 @@ void ImisIO::readData(const Date& dateStart, const Date& dateEnd, std::vector< s
 {
 	vecMeteo.at(stationindex).clear();
 
-	string stat_abk, stao_nr;
+	std::string stat_abk, stao_nr;
 	vector< vector<string> > vecResult;
 
 	// Moving back to the IMIS timezone (UTC+1)
@@ -657,32 +584,32 @@ void ImisIO::readData(const Date& dateStart, const Date& dateEnd, std::vector< s
 
 	//get data for one specific station
 	std::vector<std::string> vecHTS1;
-	parseStationID(vecStationIDs.at(stationindex).getStationID(), stat_abk, stao_nr);
+	parseStationID(vecStationIDs[stationindex].getStationID(), stat_abk, stao_nr);
 	getSensorDepths(stat_abk, stao_nr, sqlQuerySensorDepths, vecHTS1, stmt);
 	bool fullStation = getStationData(stat_abk, stao_nr, dateS, dateE, vecHTS1, vecResult, env, stmt);
 
 	MeteoData tmpmd;
 	tmpmd.meta = vecStationIDs.at(stationindex);
-	for (size_t ii=0; ii<vecResult.size(); ii++){
+	for (size_t ii=0; ii<vecResult.size(); ii++) {
 		parseDataSet(vecResult[ii], tmpmd, fullStation);
 		convertUnits(tmpmd);
 
 		//For IMIS stations the psum value is a rate (kg m-2 h-1), therefore we need to
 		//divide it by two to conjure the accumulated value for the half hour
-		if (tmpmd.meta.stationID.length() > 0){
-			if (tmpmd.meta.stationID[0] != '*') { //only consider IMIS stations (ie: not ANETZ)
-				if(use_imis_psum==false) {
+		if (tmpmd.meta.stationID.length() > 0) {
+			if (tmpmd.meta.stationID[0] != '*') { //only consider IMIS stations (ie: not ANETZ which simply go through)
+				if (use_imis_psum==false) {
 					tmpmd(MeteoData::PSUM) = IOUtils::nodata;
 				} else {
 					double& psum = tmpmd(MeteoData::PSUM);
-					if(psum!=IOUtils::nodata) {
-						psum /= 2.; //half hour accumulated value for IMIS stations only
+					if (psum!=IOUtils::nodata) {
+						psum *= .5; //half hour accumulated value for IMIS stations only
 					}
 				}
 			}
 		}
 
-		vecMeteo.at(stationindex).push_back(tmpmd); //Now insert tmpmd
+		vecMeteo[stationindex].push_back(tmpmd); //Now insert tmpmd
 	}
 }
 
@@ -710,7 +637,7 @@ void ImisIO::readSWE(const Date& dateStart, const Date& dateEnd, std::vector< st
 	dateE.setTimeZone(in_tz);
 
 	//build stat_abk and stao_nr from station name
-	string stat_abk, stao_nr;
+	std::string stat_abk, stao_nr;
 	parseStationID(vecStationIDs.at(stationindex).getStationID(), stat_abk, stao_nr);
 
 	const unsigned int max_row = static_cast<unsigned int>( Optim::ceil( (dateE.getJulian()-dateS.getJulian())*24.*2. ) ); //for prefetching
@@ -732,7 +659,7 @@ void ImisIO::readSWE(const Date& dateStart, const Date& dateEnd, std::vector< st
 		stmt->setDate(4, enddate);    // set 4th variable's value (end date)
 
 		ResultSet *rs = stmt->executeQuery(); // execute the statement stmt
-		const vector<MetaData> cols = rs->getColumnListMetaData();
+		const vector<MetaData> cols( rs->getColumnListMetaData() );
 
 		double prev_swe = IOUtils::nodata;
 		Date prev_date;
@@ -765,7 +692,8 @@ void ImisIO::readSWE(const Date& dateStart, const Date& dateEnd, std::vector< st
 				continue;
 			}
 
-			if ((curr_date.getJulian()-prev_date.getJulian())<=max_interval || curr_swe==0.) {
+			const double measurement_interval = curr_date.getJulian() - prev_date.getJulian();
+			if (measurement_interval<=max_interval && curr_swe>0.) { //keep previous PSUM if no snow on the ground
 				vecMeteo[stationindex][ii_serie](MeteoData::PSUM) = 0.;
 				//data not too far apart, so we accept it for Delta SWE
 				if (vecMeteo[stationindex][ii_serie].date==curr_date) {
@@ -818,8 +746,9 @@ void ImisIO::parseDataSet(const std::vector<std::string>& i_meteo, MeteoData& md
 	IOUtils::convertString(md(MeteoData::TSS),    i_meteo.at(10), std::dec);
 	IOUtils::convertString(md(MeteoData::HS),     i_meteo.at(11), std::dec);
 	IOUtils::convertString(md(MeteoData::RSWR),   i_meteo.at(12), std::dec);
+	IOUtils::convertString(md(MeteoData::P),   i_meteo.at(13), std::dec);
 
-	unsigned int ii = 13;
+	unsigned int ii = 14;
 	if (fullStation) {
 		if (!md.param_exists("VW_DRIFT")) md.addParameter("VW_DRIFT");
 		IOUtils::convertString(md("VW_DRIFT"), i_meteo.at(ii++), std::dec);
@@ -858,20 +787,20 @@ size_t ImisIO::getStationIDs(const std::string& station_code, const std::string&
 	vecStationIDs.clear();
 
 	try {
-		stmt->setSQL(sqlQuery);
+		stmt->setSQL( sqlQuery );
 		stmt->setString(1, station_code); // set 1st variable's value
 
 		ResultSet *rs = stmt->executeQuery();    // execute the statement stmt
-		const vector<MetaData> cols = rs->getColumnListMetaData();
+		const std::vector<MetaData> cols( rs->getColumnListMetaData() );
 
 		while (rs->next() == true) {
 			for (unsigned int ii=1; ii<=static_cast<unsigned int>(cols.size()); ii++) {
-				vecStationIDs.push_back(rs->getString(ii));
+				vecStationIDs.push_back( rs->getString(ii) );
 			}
 		}
 
 		if (vecStationIDs.size() < 3) { //if the station has not been found
-			string stat_abk, stao_nr;
+			std::string stat_abk, stao_nr;
 			parseStationID(station_code, stat_abk, stao_nr);
 			vecStationIDs.push_back(station_code);
 			vecStationIDs.push_back(stat_abk);
@@ -905,11 +834,11 @@ size_t ImisIO::getSensorDepths(const std::string& stat_abk, const std::string& s
 		stmt->setString(2, stao_nr);  // set 2nd variable's value
 
 		ResultSet *rs = stmt->executeQuery();    // execute the statement stmt
-		const vector<MetaData> cols = rs->getColumnListMetaData();
+		const std::vector<MetaData> cols( rs->getColumnListMetaData() );
 
 		while (rs->next() == true) {
 			for (unsigned int ii=1; ii<=static_cast<unsigned int>(cols.size()); ii++) {
-				vecHTS1.push_back(rs->getString(ii));
+				vecHTS1.push_back( rs->getString(ii) );
 			}
 		}
 
@@ -942,11 +871,11 @@ size_t ImisIO::getStationMetaData(const std::string& stat_abk, const std::string
 		stmt->setString(2, stao_nr);  // set 2nd variable's value
 
 		ResultSet *rs = stmt->executeQuery();    // execute the statement stmt
-		const vector<MetaData> cols = rs->getColumnListMetaData();
+		const std::vector<MetaData> cols( rs->getColumnListMetaData() );
 
 		while (rs->next() == true) {
 			for (unsigned int ii=1; ii<=static_cast<unsigned int>(cols.size()); ii++) {
-				vecMetaData.push_back(rs->getString(ii));
+				vecMetaData.push_back( rs->getString(ii) );
 			}
 		}
 
@@ -956,16 +885,16 @@ size_t ImisIO::getStationMetaData(const std::string& stat_abk, const std::string
 	}
 
 	const size_t nr_metadata = vecMetaData.size();
-	if(nr_metadata==0)
-			throw NoAvailableDataException("Station " + stat_abk+stao_nr + " not found in the database", AT);
-	if(nr_metadata<4)
+	if (nr_metadata==0)
+			throw NoDataException("Station " + stat_abk+stao_nr + " not found in the database", AT);
+	if (nr_metadata<4)
 			throw ConversionFailedException("Error while converting station meta data for station "+stat_abk+stao_nr, AT);
 	return nr_metadata;
 }
 
 /**
  * @brief Gets data from ams.v_ams_raw which is a table of SDB and
- * retrieves the temperature sensor depths from station2.standort \n
+ * retrieves the temperature sensor depths from station2.standort.
  * Each record returned are vector of strings which are pushed back in vecMeteoData.
  * @param stat_abk :     a string key of ams.v_ams_raw
  * @param stao_nr :      a string key of ams.v_ams_raw
@@ -984,15 +913,15 @@ bool ImisIO::getStationData(const std::string& stat_abk, const std::string& stao
 	bool fullStation = true;
 	const unsigned int max_row = static_cast<unsigned int>( Optim::ceil( (dateE.getJulian()-dateS.getJulian())*24.*2. ) ); //for prefetching
 	try {
-		const map<string, string>::const_iterator it = mapDriftStation.find(stat_abk+stao_nr);
+		const std::map<std::string, std::string>::const_iterator it = mapDriftStation.find(stat_abk+stao_nr);
 		if (it != mapDriftStation.end()) {
-			stmt->setSQL(sqlQueryMeteoDataDrift);
-			string drift_stat_abk, drift_stao_nr;
+			stmt->setSQL( sqlQueryMeteoDataDrift );
+			std::string drift_stat_abk, drift_stao_nr;
 			parseStationID(it->second, drift_stat_abk, drift_stao_nr);
 			stmt->setString(5, drift_stat_abk);
 			stmt->setString(6, drift_stao_nr);
 		} else {
-			stmt->setSQL(sqlQueryMeteoData);
+			stmt->setSQL( sqlQueryMeteoData );
 			fullStation = false;
 		}
 		stmt->setPrefetchRowCount(max_row);
@@ -1009,17 +938,17 @@ bool ImisIO::getStationData(const std::string& stat_abk, const std::string& stao
 		stmt->setDate(4, enddate);    // set 4th variable's value (end date)
 
 		ResultSet *rs = stmt->executeQuery(); // execute the statement stmt
-		const vector<MetaData> cols = rs->getColumnListMetaData();
+		const std::vector<MetaData> cols( rs->getColumnListMetaData() );
 
-		vector<string> vecData;
+		std::vector<std::string> vecData;
 		while (rs->next() == true) {
 			vecData.clear();
 			for (unsigned int ii=1; ii<=static_cast<unsigned int>(cols.size()); ii++) {
-				vecData.push_back(rs->getString(ii));
+				vecData.push_back( rs->getString(ii) );
 			}
 			if (fullStation) {
 				for (unsigned int ii=0; ii<static_cast<unsigned int>(vecHTS1.size()); ii++) {
-					vecData.push_back(vecHTS1.at(ii));
+					vecData.push_back( vecHTS1.at(ii) );
 				}
 			}
 			vecMeteoData.push_back(vecData);
@@ -1036,7 +965,7 @@ void ImisIO::convertSnowTemperature(MeteoData& meteo, const std::string& paramet
 {
 	if (meteo.param_exists(parameter)) {
 		const size_t idx = meteo.getParameterIndex(parameter);
-		if(meteo(idx)!=IOUtils::nodata)
+		if (meteo(idx)!=IOUtils::nodata)
 			meteo(idx) += Cst::t_water_freezing_pt; //C_TO_K
 	}
 }
@@ -1045,7 +974,7 @@ void ImisIO::convertSensorDepth(MeteoData& meteo, const std::string& parameter)
 {
 	if (meteo.param_exists(parameter)) {
 		const size_t idx = meteo.getParameterIndex(parameter);
-		if(meteo(idx)!=IOUtils::nodata)
+		if (meteo(idx)!=IOUtils::nodata)
 			meteo(idx) /= 100.; // centimetre to metre
 	}
 }
@@ -1054,7 +983,7 @@ void ImisIO::convertUnits(MeteoData& meteo)
 {
 	meteo.standardizeNodata(plugin_nodata);
 
-	//converts C to Kelvin, converts RH to [0,1]
+	//converts C to Kelvin, converts RH to [0,1], HS to m and P to Pa
 	double& ta = meteo(MeteoData::TA);
 	ta = IOUtils::C_TO_K(ta);
 
@@ -1071,6 +1000,10 @@ void ImisIO::convertUnits(MeteoData& meteo)
 	double& hs = meteo(MeteoData::HS);
 	if (hs != IOUtils::nodata)
 		hs /= 100.0;
+	
+	double& p = meteo(MeteoData::P);
+	if (p != IOUtils::nodata)
+		p *= 100. * Atmosphere::stdAirPressure(meteo.meta.position.getAltitude()) / Cst::std_press;
 
 	//convert extra parameters (if present) //HACK TODO: find a dynamic way...
 	convertSnowTemperature(meteo, "TS1");
@@ -1079,10 +1012,6 @@ void ImisIO::convertUnits(MeteoData& meteo)
 	convertSensorDepth(meteo, "HTS1");
 	convertSensorDepth(meteo, "HTS2");
 	convertSensorDepth(meteo, "HTS3");
-}
-
-void ImisIO::cleanup() throw()
-{
 }
 
 } //namespace

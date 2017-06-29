@@ -5,6 +5,7 @@ SET(dataClasses_sources
 	dataClasses/Grid2DObject.cc
 	dataClasses/Grid3DObject.cc
 	dataClasses/Date.cc
+	dataClasses/CoordsAlgorithms.cc
 	dataClasses/Coords.cc
 	dataClasses/DEMObject.cc
 	dataClasses/StationData.cc

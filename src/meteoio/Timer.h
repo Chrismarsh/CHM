@@ -17,8 +17,8 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __TIMER_H__
-#define __TIMER_H__
+#ifndef TIMER_H
+#define TIMER_H
 
 #if !defined _WIN32 && !defined __MINGW32__
 	#include <sys/resource.h>

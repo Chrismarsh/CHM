@@ -15,14 +15,13 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __IOMANAGER_H__
-#define __IOMANAGER_H__
+#ifndef IOMANAGER_H
+#define IOMANAGER_H
 
 #include <meteoio/DataGenerator.h>
 #include <meteoio/Meteo2DInterpolator.h>
 #include <meteoio/MeteoProcessor.h>
 #include <meteoio/dataClasses/MeteoData.h>
-#include <meteoio/dataClasses/Coords.h>
 #include <meteoio/TimeSeriesManager.h>
 #include <meteoio/GridsManager.h>
 
@@ -41,12 +40,16 @@ class IOManager {
 		//Legacy support to support functionality of the IOInterface superclass:
 		void read2DGrid(Grid2DObject& grid_out, const std::string& parameter="");
 		void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
+		void read3DGrid(Grid3DObject& grid_out, const std::string& i_filename="");
+		void read3DGrid(Grid3DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
 		void readDEM(DEMObject& dem_out);
 		void readAssimilationData(const Date& date_in, Grid2DObject& da_out);
 		void readLanduse(Grid2DObject& landuse_out);
 		void readPOI(std::vector<Coords>& pts);
 		void write2DGrid(const Grid2DObject& grid_in, const std::string& options="");
 		void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
+		void write3DGrid(const Grid3DObject& grid_out, const std::string& options="");
+		void write3DGrid(const Grid3DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
 		//end legacy support
 
 		size_t getStationData(const Date& date, STATIONS_SET& vecStation);
@@ -192,7 +195,7 @@ class IOManager {
 		 * This is convenient to clone an iomanager
 		 * @return new Config object as a copy of the internal Config
 		 */
-		const Config getConfig() const;
+		const Config getConfig() const {return cfg;}
 
 		const std::string toString() const;
 
@@ -207,18 +210,20 @@ class IOManager {
 		void add_to_points_cache(const Date& i_date, const METEO_SET& vecMeteo);
 
 		/**
-		 * @brief Clear the point cache. All resampled values are dismissed, will need to be recalculated.
+		 * @brief Clear the all cache. All raw, filtered and resampled values are dismissed, will need to be re-read and/or recalculated.
 		 */
 		void clear_cache();
 
 	private:
 		void initIOManager();
+		void load_virtual_meteo(const Date& i_date, METEO_SET& vecMeteo);
 
 		const Config cfg; ///< we keep this Config object as full copy, so the original one can get out of scope/be destroyed
 		IOHandler iohandler;
 		TimeSeriesManager tsmanager;
 		GridsManager gridsmanager;
 		Meteo2DInterpolator interpolator;
+		unsigned int vstations_refresh_rate, vstations_refresh_offset; ///< when using virtual stations, how often should the data be spatially re-interpolated?
 		bool downscaling; ///< Are we downscaling meteo grids instead of interpolating stations' data?
 		bool virtual_stations; ///< compute the meteo values at virtual stations
 };

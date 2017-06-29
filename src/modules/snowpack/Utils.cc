@@ -25,6 +25,7 @@
 
 #include <snowpack/Utils.h>
 #include <assert.h>
+#include <cstdio>
 
 using namespace std;
 using namespace mio;
@@ -74,7 +75,7 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 	} else {
 		currentdate = date_in.toString(Date::ISO);
 	}
-	//http://stackoverflow.com/a/20503077/410074
+//http://stackoverflow.com/a/20503077/410074
 	int len;
 	char * orig_msg;
 
@@ -90,8 +91,6 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 	va_start(argptr, format);
 	vsnprintf(orig_msg, len+1, format, argptr);
 	va_end(argptr);
-
-
 	//print message
 	//printf("¬"); //if we need multiline output, use a special char as bloc delimiter
 	if (strcmp(msg_type, "err") == 0) {
@@ -115,9 +114,6 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 		msg_ok=1;
 	}
 
-
-
-
 //	if (msg_ok) {
 //		vfprintf(stdout, format, argptr);
 //	} else {
@@ -125,7 +121,6 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 //	}
 
 	//fprintf(stdout, "\n");
-
 
 	// Clear ptr
 //	va_end(argptr);
@@ -168,29 +163,23 @@ bool booleanTime(const double& JulianDate, double days_between,
 
 /**
  * @brief Delete old output files (*.sno, *.ini) from outdir
- * @version 11.03
  * @param outdir Output dir
  * @param experiment Name of ongoing experiment
  * @param stationID
  * @param nSlopes Number of slopes treated
+ * @param vecExtension file extensions that have to be removed
  */
 void deleteOldOutputFiles(const std::string& outdir, const std::string& experiment,
-                          const std::string& stationID, const unsigned int& nSlopes)
+                          const std::string& stationID, const unsigned int& nSlopes,
+                          const std::vector<std::string>& vecExtension)
 {
-	vector<string> vecExtension;
-	vecExtension.push_back("met"); //Meteo data input
-	vecExtension.push_back("pro"); //Time series of modeled profile-type data
-	vecExtension.push_back("ini"); //Record of run configuration
-	vecExtension.push_back("sno"); //Snow-cover profile file (I/O)
-	const string exp = (experiment != "NO_EXP")? stationID + "_" + experiment : "";
-
+	const std::string exp = (experiment != "NO_EXP")? stationID + "_" + experiment : "";
 	unsigned int n_files;
-	
-	for (size_t ii=0; ii<vecExtension.size(); ii++){
-		const string ext = vecExtension[ii];
-		n_files = 0;
 
-		const string ftrunc = outdir + "/" + exp;
+	for (size_t ii=0; ii<vecExtension.size(); ii++){
+		const std::string ext( vecExtension[ii] );
+		n_files = 0;
+		const std::string ftrunc( outdir + "/" + exp );
 		if (ext == "ini") {
 			if (stationID != "IMIS") {
 				string fname;
@@ -217,7 +206,7 @@ void deleteOldOutputFiles(const std::string& outdir, const std::string& experime
 				} else {
 					fname = ftrunc + "." + ext;
 				}
-				if (ext == "sno") {
+				if (ext == "sno" || ext == "caaml" || ext == "haz") {
 					if (remove(fname.c_str()) == 0) {
 						n_files++;
 					}
@@ -228,7 +217,7 @@ void deleteOldOutputFiles(const std::string& outdir, const std::string& experime
 							prn_msg(__FILE__, __LINE__, "msg-", Date(), "No *.%s file(s) to erase", ext.c_str());
 						}
 					}
-				} else if ((jj == 0) && IOUtils::fileExists(fname)) {
+				} else if ((jj == 0) && FileUtils::fileExists(fname)) {
 					prn_msg(__FILE__, __LINE__, "msg-", Date(), "Data in *.%s file(s) may be overwritten", ext.c_str());
 				}
 			}
@@ -275,7 +264,7 @@ double getPerpSensorPosition(const bool& useSoilLayers, const double& z_vert, co
 	if (z_vert == IOUtils::nodata) {
 		return IOUtils::nodata;
 	} else if (!useSoilLayers && (z_vert < 0.)) {
-		return (MAX(Ground, hs_ref + z_vert * cos(SlopeAngle)));
+		return (std::max(Ground, hs_ref + z_vert * cos(SlopeAngle)));
 	} else {
 		return (Ground + z_vert * cos(SlopeAngle));
 	}
@@ -295,7 +284,7 @@ void averageFluxTimeSeries(const size_t& n_steps, const bool& useCanopyModel, Su
 	// Mean energy fluxes (W m-2), including albedo
 	Sdata.multiplyFluxes(1./nr_steps);
 
-	if (useCanopyModel) 
+	if (useCanopyModel)
 		Xdata.Cdata.multiplyFluxes(1./nr_steps);
 }
 
@@ -415,7 +404,7 @@ bool massBalanceCheck(const SnowStation& Xdata, const SurfaceFluxes& Sdata, doub
 	bool mass_error = true;
 	double tot_mass=0., tot_swe=0., dmassE=0.;
 	const double psum = Xdata.hn*Xdata.rho_hn;
-	double mass_change = psum - Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] + Sdata.mass[SurfaceFluxes::MS_RAIN] + Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] + Sdata.mass[SurfaceFluxes::MS_EVAPORATION] - MAX(0., Xdata.ErosionMass);
+	double mass_change = psum - Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] + Sdata.mass[SurfaceFluxes::MS_RAIN] + Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] + Sdata.mass[SurfaceFluxes::MS_EVAPORATION] - std::max(0., Xdata.ErosionMass);
 
 	// Actual mass of snowpack
 	for (size_t e=Xdata.SoilNode; e<Xdata.getNumberOfElements(); e++) {
@@ -471,7 +460,7 @@ double forcedErosion(const double hs, SnowStation& Xdata)
 		Xdata.resize(Xdata.getNumberOfElements() - 1);
 		nErode++;
 	}
-	Xdata.ErosionLevel = MIN(Xdata.getNumberOfElements()-1, Xdata.ErosionLevel);
+	Xdata.ErosionLevel = std::min(Xdata.getNumberOfElements()-1, Xdata.ErosionLevel);
 
 	return(massErode);
 }
@@ -568,8 +557,8 @@ void deflateInflate(const CurrentMeteo& Mdata, SnowStation& Xdata, double& dhs_c
 					age_fraction = 0.;
 				}
 				ddL = EMS[e].L
-				        * MAX(-0.9,
-			                 MIN(0.9, factor_corr * (1. - sqrt(age_fraction))));
+				        * std::max(-0.9,
+			                 std::min(0.9, factor_corr * (1. - sqrt(age_fraction))));
 			} else {
 				ddL = 0.;
 			}
@@ -580,12 +569,10 @@ void deflateInflate(const CurrentMeteo& Mdata, SnowStation& Xdata, double& dhs_c
 			EMS[e].M += ddL * EMS[e].Rho;
 			assert(EMS[e].M>=0.); //mass must be positive
 			EMS[e].L0 = EMS[e].L += ddL;
-			EMS[e].E  = EMS[e].dE = EMS[e].Ee = EMS[e].Ev = EMS[e].S = 0.0;
+			EMS[e].E  = EMS[e].Eps  = EMS[e].dEps = EMS[e].Eps_e = EMS[e].Eps_v = EMS[e].S = 0.0;
 		}
 		// Update the overall height
-		//cH_old    = Xdata.cH;
 		Xdata.cH  = NDS[nE].z + NDS[nE].u;
-		//Xdata.mH -= (cH_old - Xdata.cH);
 	} else {
 		return;
 	}

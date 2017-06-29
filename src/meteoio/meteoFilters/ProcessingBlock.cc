@@ -26,26 +26,29 @@
 #include <meteoio/meteoFilters/FilterMin.h>
 #include <meteoio/meteoFilters/FilterMax.h>
 #include <meteoio/meteoFilters/FilterMinMax.h>
-#include <meteoio/meteoFilters/FilterMeanAvg.h>
-#include <meteoio/meteoFilters/FilterMedianAvg.h>
-#include <meteoio/meteoFilters/FilterWindAvg.h>
+#include <meteoio/meteoFilters/FilterPotentialSW.h>
 #include <meteoio/meteoFilters/FilterStdDev.h>
 #include <meteoio/meteoFilters/FilterRate.h>
 #include <meteoio/meteoFilters/FilterUnheatedPSUM.h>
 #include <meteoio/meteoFilters/FilterTukey.h>
 #include <meteoio/meteoFilters/FilterMAD.h>
-#include <meteoio/meteoFilters/ProcButterworth.h>
+#include <meteoio/meteoFilters/ProcAggregate.h>
+#include <meteoio/meteoFilters/ProcIIR.h>
 #include <meteoio/meteoFilters/ProcUndercatch_WMO.h>
 #include <meteoio/meteoFilters/ProcUndercatch_Forland.h>
 #include <meteoio/meteoFilters/ProcUndercatch_Hamon.h>
 #include <meteoio/meteoFilters/ProcPSUMDistribute.h>
 #include <meteoio/meteoFilters/ProcUnventilatedT.h>
-#include <meteoio/meteoFilters/ProcUnshade.h>
+#include <meteoio/meteoFilters/ProcShade.h>
 #include <meteoio/meteoFilters/ProcAdd.h>
 #include <meteoio/meteoFilters/ProcMult.h>
 #include <meteoio/meteoFilters/ProcNoise.h>
 #include <meteoio/meteoFilters/ProcExpSmoothing.h>
 #include <meteoio/meteoFilters/ProcWMASmoothing.h>
+#include <meteoio/meteoFilters/FilterNoChange.h>
+#include <meteoio/meteoFilters/FilterTimeconsistency.h>
+#include <meteoio/meteoFilters/FilterOffsetsnowdepth.h>
+#include <meteoio/meteoFilters/FilterDeGrass.h>
 
 namespace mio {
 /**
@@ -84,6 +87,7 @@ namespace mio {
  *
  * @section processing_available Available processing elements
  * New filters can easily be developed. The filters that are currently available are the following:
+ * - NONE: this does nothing (this is useful in an \ref config_import "IMPORT" to overwritte previous filters);
  * - MIN: minimum check filter, see FilterMin
  * - MAX: maximum check filter, see FilterMax
  * - MIN_MAX: range check filter, see FilterMinMax
@@ -92,83 +96,105 @@ namespace mio {
  * - MAD: median absolute deviation, see FilterMAD
  * - TUKEY: Tukey53H spike detection, based on median, see FilterTukey
  * - UNHEATED_RAINGAUGE: detection of snow melting in a rain gauge, see FilterUnheatedPSUM
+ * - NO_CHANGE: reject data that changes too little (low variance), see FilterNoChange
+ * - TIME_CONSISTENCY: reject data that changes too much , see FilterTimeconsistency
+ * - DETECT_GRASS: detection of grass growing under the snow height sensor, see FilterDeGrass
+ * - POTENTIALSW: ensuring physically realistic incoming short wave radiation, see FilterPotentialSW
  *
  * Some data transformations are also supported besides filtering, both very basic and generic data transformations:
- * - SUPPR: delete data, see FilterSuppr
+ * - SUPPR: delete all or some data, see FilterSuppr
  * - ADD: adds a given offset to the data, see ProcAdd
  * - MULT: multiply the data by a given factor, see ProcMult
- * - NOISE: add noise to the data, see ProcNoise
+ * - NOISE: add to (or multiply by) randomly distributed noise, see ProcNoise
  *
  * As well as more specific data transformations:
  * - EXP_SMOOTHING: exponential smoothing of data, see ProcExpSmoothing
  * - WMA_SMOOTHING: weighted moving average smoothing of data, see ProcWMASmoothing
- * - BUTTERWORTH: low pass butterworth filter, see ProcButterworth
- * - MEDIAN_AVG: running median average over a given window, see FilterMedianAvg
- * - MEAN_AVG: running mean average over a given window, see FilterMeanAvg
- * - WIND_AVG: vector average over a given window, see FilterWindAvg (currently, getting both vw AND dw is broken)
+ * - IIR: Low Pass or High Pass critically damped filter, see ProcIIR
+ * - AGGREGATE: various data aggregation algorithms, see ProcAggregate
  * - UNDERCATCH_WMO: WMO rain gauge correction for undercatch, using various correction models, see ProcUndercatch_WMO
  * - UNDERCATCH_FORLAND: Forland1996 rain gauge correction for solid and liquid undercatch, using various correction models, see ProcUndercatch_Forland
  * - UNDERCATCH_HAMON: Hamon1973 rain gauge correction for undercatch, see ProcUndercatch_Hamon
  * - UNVENTILATED_T: unventilated temperature sensor correction, see ProcUnventilatedT
  * - PSUM_DISTRIBUTE: distribute accumulated precipitation over preceeding timesteps, see ProcPSUMDistribute
+ * - SHADE: apply a shading mask to the Incoming or Reflected Short Wave Radiation, see ProcShade
  *
  */
 
-ProcessingBlock* BlockFactory::getBlock(const std::string& blockname, const std::vector<std::string>& vec_args, const std::string& root_path)
+ProcessingBlock* BlockFactory::getBlock(const std::string& blockname, const std::vector<std::string>& vec_args, const Config& cfg)
 {
-	if (blockname == "SUPPR"){
-		return new FilterSuppr(vec_args, blockname);
-	} else if (blockname == "MIN"){
+	//the indenting is a little weird, this is in order to show the same groups as in the documentation above
+	
+	//normal filters
+	if (blockname == "MIN"){
 		return new FilterMin(vec_args, blockname);
 	} else if (blockname == "MAX"){
 		return new FilterMax(vec_args, blockname);
 	} else if (blockname == "MIN_MAX"){
 		return new FilterMinMax(vec_args, blockname);
-	} else if (blockname == "MEAN_AVG"){
-		return new FilterMeanAvg(vec_args, blockname);
-	} else if (blockname == "MEDIAN_AVG"){
-		return new FilterMedianAvg(vec_args, blockname);
-	} else if (blockname == "WIND_AVG"){
-		return new FilterWindAvg(vec_args, blockname);
-	} else if (blockname == "STD_DEV"){
-		return new FilterStdDev(vec_args, blockname);
 	} else if (blockname == "RATE"){
 		return new FilterRate(vec_args, blockname);
-	} else if (blockname == "TUKEY"){
-		return new FilterTukey(vec_args, blockname);
+	} else if (blockname == "STD_DEV"){
+		return new FilterStdDev(vec_args, blockname);
 	} else if (blockname == "MAD"){
 		return new FilterMAD(vec_args, blockname);
-	} else if (blockname == "BUTTERWORTH"){
-		return new ProcButterworth(vec_args, blockname);
+	} else if (blockname == "TUKEY"){
+		return new FilterTukey(vec_args, blockname);
 	} else if (blockname == "UNHEATED_RAINGAUGE"){
 		return new FilterUnheatedPSUM(vec_args, blockname);
+	} else if (blockname == "NO_CHANGE"){
+		return new FilterNoChange(vec_args, blockname);
+	} else if (blockname == "TIME_CONSISTENCY"){
+		return new FilterTimeconsistency(vec_args, blockname);
+	} else if (blockname == "OFFSNOW"){
+		return new FilterOffsetsnowdepth(vec_args, blockname);
+	} else if (blockname == "DETECT_GRASS"){
+		return new FilterDeGrass(vec_args, blockname);
+	} else if (blockname == "POTENTIALSW"){
+		return new FilterPotentialSW(vec_args, blockname);
+	}
+	
+	//general data transformations
+	else if (blockname == "SUPPR"){
+		return new FilterSuppr(vec_args, blockname, cfg.getConfigRootDir(), cfg.get("TIME_ZONE", "Input"));
+	} else if (blockname == "ADD"){
+		return new ProcAdd(vec_args, blockname, cfg.getConfigRootDir());
+	} else if (blockname == "MULT"){
+		return new ProcMult(vec_args, blockname, cfg.getConfigRootDir());
+	} else if (blockname == "NOISE"){
+		return new ProcNoise(vec_args, blockname);
+	}
+	
+	//more specific data transformations
+	else if (blockname == "EXP_SMOOTHING"){
+		return new ProcExpSmoothing(vec_args, blockname);
+	} else if (blockname == "WMA_SMOOTHING"){
+		return new ProcWMASmoothing(vec_args, blockname);
+	} else if (blockname == "IIR"){
+		return new ProcIIR(vec_args, blockname);
+	} else if (blockname == "AGGREGATE"){
+		return new ProcAggregate(vec_args, blockname);
 	} else if (blockname == "UNDERCATCH_WMO"){
 		return new ProcUndercatch_WMO(vec_args, blockname);
 	} else if (blockname == "UNDERCATCH_FORLAND"){
 		return new ProcUndercatch_Forland(vec_args, blockname);
 	} else if (blockname == "UNDERCATCH_HAMON"){
 		return new ProcUndercatch_Hamon(vec_args, blockname);
-	} else if (blockname == "PSUM_DISTRIBUTE"){
-		return new ProcPSUMDistribute(vec_args, blockname);
 	} else if (blockname == "UNVENTILATED_T"){
 		return new ProcUnventilatedT(vec_args, blockname);
-	} else if (blockname == "UNSHADE"){
-		return new ProcUnshade(vec_args, blockname);
-	} else if (blockname == "MULT"){
-		return new ProcMult(vec_args, blockname, root_path);
-	} else if (blockname == "ADD"){
-		return new ProcAdd(vec_args, blockname, root_path);
-	} else if (blockname == "NOISE"){
-		return new ProcNoise(vec_args, blockname);
-	} else if (blockname == "EXP_SMOOTHING"){
-		return new ProcExpSmoothing(vec_args, blockname);
-	} else if (blockname == "WMA_SMOOTHING"){
-		return new ProcWMASmoothing(vec_args, blockname);
+	} else if (blockname == "PSUM_DISTRIBUTE"){
+		return new ProcPSUMDistribute(vec_args, blockname);
+	} else if (blockname == "SHADE"){
+		return new ProcShade(vec_args, blockname, cfg);
 	} else {
 		throw IOException("The processing block '"+blockname+"' does not exist! " , AT);
 	}
 
 }
+
+const double ProcessingBlock::soil_albedo = .23; //grass
+const double ProcessingBlock::snow_albedo = .85; //snow
+const double ProcessingBlock::snow_thresh = .1; //if snow height greater than this threshold -> snow albedo
 
 ProcessingBlock::ProcessingBlock(const std::string& name) : properties(), block_name(name)
 {}
@@ -188,9 +214,9 @@ void ProcessingBlock::convert_args(const size_t& min_nargs, const size_t& max_na
 }
 
 bool ProcessingBlock::is_soft(std::vector<std::string>& vec_args) {
-	if (!vec_args.empty()){
-		if (vec_args.front() == "soft"){
-			vec_args.erase(vec_args.begin());
+	for (size_t ii=0; ii<vec_args.size(); ++ii) {
+		if (IOUtils::strToUpper( vec_args[ii] ) == "SOFT") {
+			vec_args.erase( vec_args.begin() + ii );
 			return true;
 		}
 	}
@@ -204,14 +230,12 @@ std::string ProcessingBlock::getName() const {
 
 void ProcessingBlock::readCorrections(const std::string& filter, const std::string& filename, const char& c_type, const double& init, std::vector<double> &corrections)
 {
-	if (!IOUtils::fileExists(filename)) throw FileAccessException(filename, AT); //prevent invalid filenames
-	errno = 0;
-	std::ifstream fin(filename.c_str(), std::ifstream::in);
+	std::ifstream fin( filename.c_str() );
 	if (fin.fail()) {
 		std::ostringstream ss;
 		ss << "Filter " << filter << ": ";
 		ss << "error opening file \"" << filename << "\", possible reason: " << std::strerror(errno);
-		throw FileAccessException(ss.str(), AT);
+		throw AccessException(ss.str(), AT);
 	}
 
 	if (c_type=='m') corrections.resize(12, init);
@@ -220,7 +244,7 @@ void ProcessingBlock::readCorrections(const std::string& filter, const std::stri
 	const size_t maxIndex = corrections.size();
 	const size_t minIndex = (c_type=='h')? 0 : 1;
 
-	char eoln = IOUtils::getEoln(fin); //get the end of line character for the file
+	const char eoln = FileUtils::getEoln(fin); //get the end of line character for the file
 
 	try {
 		size_t index, lcount=0;
@@ -233,7 +257,7 @@ void ProcessingBlock::readCorrections(const std::string& filter, const std::stri
 			IOUtils::trim(line);
 			if (line.empty()) continue;
 
-			std::istringstream iss(line);
+			std::istringstream iss( line );
 			iss.setf(std::ios::fixed);
 			iss.precision(std::numeric_limits<double>::digits10);
 			iss >> std::skipws >> index;

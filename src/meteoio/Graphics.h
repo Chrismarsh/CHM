@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __GRAPHICS_H__
-#define __GRAPHICS_H__
+#ifndef GRAPHICS_H
+#define GRAPHICS_H
 
 #include <meteoio/dataClasses/Array2D.h>
 
@@ -35,7 +35,7 @@ namespace mio {
  * @author Mathias Bavay
  * @date   2011-12-23
  */
-class legend {
+class Legend {
 	public:
 		/**
 		* @brief Constructor.
@@ -43,7 +43,7 @@ class legend {
 		* @param minimum start value of the legend
 		* @param maximum end value of the legend
 		*/
-		legend(const unsigned int &height, const double &minimum, const double &maximum);
+		Legend(const unsigned int &height, const double &minimum, const double &maximum);
 
 		/**
 		* @brief Get the actual width of the legend

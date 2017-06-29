@@ -15,7 +15,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "SASEIO.h"
+#include <meteoio/plugins/SASEIO.h>
 
 #ifdef _WIN32
 	#include <winsock.h>
@@ -80,8 +80,6 @@ SASEIO::SASEIO(const Config& cfgreader)
 	readConfig();
 }
 
-SASEIO::~SASEIO() throw() {}
-
 void SASEIO::readConfig()
 {
 	cfg.getValue("SASE_HOST", "Input", mysqlhost);
@@ -105,19 +103,19 @@ void SASEIO::readStationIDs(std::vector<std::string>& vecStationID) const
 void SASEIO::readStationMetaData()
 {
 	vecStationMetaData.clear();
-	vector<string> vecStationID;
+	std::vector<std::string> vecStationID;
 	readStationIDs(vecStationID);
 
 	for (size_t ii=0; ii<vecStationID.size(); ii++) {
 		// Retrieve the station IDs - this only needs to be done once per instance
-		string stat_abk, stao_nr;
+		std::string stat_abk, stao_nr;
 		parseStationID(vecStationID[ii], stat_abk, stao_nr);
 
 		// Retrieve the station meta data - this only needs to be done once per instance
-		vector<string> stationMetaData;
+		std::vector<std::string> stationMetaData;
 		getStationMetaData(stat_abk, stao_nr, MySQLQueryStationMetaData, stationMetaData);
 
-		string stao_name;
+		std::string stao_name;
 		double lat, longi, alt;
 		if (!IOUtils::convertString(stao_name, stationMetaData.at(0)))
 			throw ConversionFailedException("Invalid station name for station "+vecStationID[ii]+": "+stationMetaData.at(0), AT);
@@ -130,7 +128,7 @@ void SASEIO::readStationMetaData()
 
 		Coords location(coordin,coordinparam);
 		location.setLatLon(lat,longi,alt);
-		const string station_name = (!stao_name.empty())? vecStationID[ii] + ":" + stao_name : vecStationID[ii];
+		const std::string station_name = (!stao_name.empty())? vecStationID[ii] + ":" + stao_name : vecStationID[ii];
 
 		vecStationMetaData.push_back(StationData(location, vecStationID[ii], station_name));
 	}
@@ -147,9 +145,9 @@ void SASEIO::getStationMetaData(const std::string& stat_abk, const std::string& 
 		throw IOException("Could not initiate connection to Mysql server "+mysqlhost, AT);
 	}
 
-	std::string Query1(sqlQuery);
-	const std::string str1("STATION_NAME");
-	const std::string str2("STATION_NUMBER");
+	std::string Query1( sqlQuery );
+	const std::string str1( "STATION_NAME" );
+	const std::string str2( "STATION_NUMBER" );
 	Query1.replace(Query1.find(str1), str1.length(), stat_abk);// set 1st variable's value
 	Query1.replace(Query1.find(str2), str2.length(), stao_nr);// set 2nd variable's value
 	if (mysql_query(conn, Query1.c_str())) {
@@ -160,7 +158,7 @@ void SASEIO::getStationMetaData(const std::string& stat_abk, const std::string& 
 	const unsigned int column_no = mysql_num_fields(res);
 	std::string tmp_str;
 	MYSQL_ROW row;
-	while( ( row = mysql_fetch_row(res) ) != NULL ) {
+	while ( ( row = mysql_fetch_row(res) ) != NULL ) {
 		for (unsigned int ii=0; ii<column_no; ii++) {
 			IOUtils::convertString(tmp_str, row[ii]);
 			vecMetaData.push_back(tmp_str);
@@ -170,9 +168,9 @@ void SASEIO::getStationMetaData(const std::string& stat_abk, const std::string& 
 	mysql_close(conn);
 
 	const size_t nr_metadata = vecMetaData.size();
-	if(nr_metadata==0)
-		throw NoAvailableDataException("Station " + stat_abk+stao_nr + " not found in the database", AT);
-	if(nr_metadata<4)
+	if (nr_metadata==0)
+		throw NoDataException("Station " + stat_abk+stao_nr + " not found in the database", AT);
+	if (nr_metadata<4)
 		throw ConversionFailedException("Error while converting station meta data for station "+stat_abk+stao_nr, AT);
 }
 
@@ -180,41 +178,11 @@ void SASEIO::parseStationID(const std::string& stationID, std::string& stat_abk,
 {
 	stat_abk = stationID.substr(0, stationID.length()-1); //The station name: e.g. KLO
 	stao_nr = stationID.substr(stationID.length()-1, 1); //The station number: e.g. 2
-	if(!std::isdigit(stao_nr[0])) {
+	if (!std::isdigit(stao_nr[0])) {
 		//the station is one of these non-imis stations that don't contain a number...
 		stat_abk = stationID;
 		stao_nr = "0";
 	}
-}
-
-void SASEIO::read2DGrid(Grid2DObject& /*grid_out*/, const std::string& /*name_in*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void SASEIO::read2DGrid(Grid2DObject& /*grid_out*/, const MeteoGrids::Parameters& /*parameter*/, const Date& /*date*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void SASEIO::readDEM(DEMObject& /*dem_out*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void SASEIO::readLanduse(Grid2DObject& /*landuse_out*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void SASEIO::readAssimilationData(const Date& /*date_in*/, Grid2DObject& /*da_out*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
 }
 
 void SASEIO::readStationData(const Date&, std::vector<StationData>& vecStation)
@@ -225,26 +193,14 @@ void SASEIO::readStationData(const Date&, std::vector<StationData>& vecStation)
 }
 
 void SASEIO::readMeteoData(const Date& dateStart , const Date& dateEnd,
-                            std::vector<std::vector<MeteoData> >& vecMeteo,
-                            const size_t& stationindex)
+                            std::vector<std::vector<MeteoData> >& vecMeteo)
 {
 	if (vecStationMetaData.empty()) readStationMetaData();
-	size_t indexStart=0, indexEnd=vecStationMetaData.size();
 
-	//The following part decides whether all the stations are rebuffered or just one station
-	if (stationindex == IOUtils::npos) {
-		vecMeteo.clear();
-		vecMeteo.insert(vecMeteo.begin(), vecStationMetaData.size(), vector<MeteoData>());
-	} else {
-		if (stationindex < vecMeteo.size()) {
-			indexStart = stationindex;
-			indexEnd = stationindex+1;
-		} else {
-			throw IndexOutOfBoundsException("You tried to access a stationindex in readMeteoData that is out of bounds", AT);
-		}
-	}
+	vecMeteo.clear();
+	vecMeteo.insert(vecMeteo.begin(), vecStationMetaData.size(), vector<MeteoData>());
 
-	for (size_t ii=indexStart; ii<indexEnd; ii++) { //loop through relevant stations
+	for (size_t ii=0; ii<vecStationMetaData.size(); ii++) { //loop through relevant stations
 		readData(dateStart, dateEnd, vecMeteo, ii, vecStationMetaData);
 	}
 }
@@ -259,9 +215,9 @@ void SASEIO::readData(const Date& dateStart, const Date& dateEnd, std::vector< s
 	dateS.setTimeZone(in_dflt_TZ);
 	dateE.setTimeZone(in_dflt_TZ);
 
-	string stat_abk, stao_nr;
+	std::string stat_abk, stao_nr;
 	std::vector<std::string> vecHTS1;
-	vector< vector<string> > vecResult;
+	std::vector< std::vector<std::string> > vecResult;
 	parseStationID(vecMeta.at(stationindex).getStationID(), stat_abk, stao_nr);
 
 	getStationData(stat_abk, stao_nr, dateS, dateE, vecHTS1, vecResult);
@@ -301,7 +257,7 @@ void SASEIO::convertUnits(MeteoData& meteo)
 
 void SASEIO::parseDataSet(const std::vector<std::string>& i_meteo, MeteoData& md) const
 {
-	const string statID( md.meta.getStationID() );
+	const std::string statID( md.meta.getStationID() );
 
 	if (!IOUtils::convertString(md.date, i_meteo.at(0), in_dflt_TZ))
 		throw ConversionFailedException("Invalid timestamp for station "+statID+": "+i_meteo.at(0), AT);
@@ -342,15 +298,15 @@ bool SASEIO::getStationData(const std::string& stat_abk, const std::string& stao
 	std::replace( eDate.begin(), eDate.end(), 'T', ' ');
 
 	std::string Query2( MySQLQueryMeteoData );
-	const std::string str1("STATION_NAME");
-	const std::string str2("STATION_NUMBER");
-	const std::string str3("START_DATE");
-	const std::string str4("END_DATE");
+	const std::string str1( "STATION_NAME" );
+	const std::string str2( "STATION_NUMBER" );
+	const std::string str3( "START_DATE" );
+	const std::string str4( "END_DATE" );
 	Query2.replace( Query2.find(str1), str1.length(), stat_abk ); // set 1st variable's value
 	Query2.replace( Query2.find(str2), str2.length(), stao_nr ); // set 2nd variable's value
 	Query2.replace( Query2.find(str3), str3.length(), sDate ); // set 3rd variable's value
 	Query2.replace( Query2.find(str4), str4.length(), eDate ); // set 4th variable's value
-	//std::cout<<"Query:"<<Query2<<"\n";
+
 	MYSQL *conn2 = mysql_init(NULL);
 	if (!mysql_real_connect(conn2, mysqlhost.c_str(), mysqluser.c_str(), mysqlpass.c_str(), mysqldb.c_str(), 0, NULL, 0)) {
 		throw IOException("Could not initiate connection to Mysql server "+mysqlhost, AT);
@@ -363,11 +319,11 @@ bool SASEIO::getStationData(const std::string& stat_abk, const std::string& stao
 	MYSQL_RES *res2 = mysql_use_result(conn2);
 	const unsigned int column_no2 = mysql_num_fields(res2);
 	MYSQL_ROW row2;
-	while( ( row2= mysql_fetch_row(res2) ) != NULL ) {
-		vector<string> vecData;
+	while ( ( row2= mysql_fetch_row(res2) ) != NULL ) {
+		std::vector<std::string> vecData;
 		for (unsigned int ii=0; ii<column_no2; ii++) {
 			std::string row_02;
-				if(!row2[ii]){
+				if (!row2[ii]){
 					IOUtils::convertString(row_02,"-999.0");// HARD CODED :(
 				}else{
 					IOUtils::convertString(row_02, row2[ii]);
@@ -386,31 +342,5 @@ bool SASEIO::getStationData(const std::string& stat_abk, const std::string& stao
 	mysql_close(conn2);
 	return fullStation;
 }
-
-void SASEIO::writeMeteoData(const std::vector< std::vector<MeteoData> >& /*vecMeteo*/, const std::string&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void SASEIO::readPOI(std::vector<Coords>&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void SASEIO::write2DGrid(const Grid2DObject& /*grid_in*/, const std::string& /*name*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void SASEIO::write2DGrid(const Grid2DObject& /*grid_in*/, const MeteoGrids::Parameters& /*parameter*/, const Date& /*date*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void SASEIO::cleanup() throw() {}
 
 } //namespace

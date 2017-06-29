@@ -27,7 +27,7 @@ FilterMAD::FilterMAD(const std::vector<std::string>& vec_args, const std::string
 {
 	parse_args(vec_args);
 
-	//This is safe, but maybe too imprecise: //HACK: does not account for centering!
+	//This is safe, but maybe too imprecise
 	properties.time_before = min_time_span;
 	properties.time_after  = min_time_span;
 	properties.points_before = min_data_points;
@@ -40,12 +40,12 @@ void FilterMAD::process(const unsigned int& param, const std::vector<MeteoData>&
 	ovec = ivec;
 	for (size_t ii=0; ii<ovec.size(); ii++){ //for every element in ivec, get a window
 		double& value = ovec[ii](param);
-		if(value==IOUtils::nodata) continue;
+		if (value==IOUtils::nodata) continue;
 
 		size_t start, end;
-		if( get_window_specs(ii, ivec, start, end) ) {
+		if ( get_window_specs(ii, ivec, start, end) ) {
 			MAD_filter_point(ivec, param, start, end, value);
-		} else if(!is_soft) value = IOUtils::nodata;
+		} else if (!is_soft) value = IOUtils::nodata;
 	}
 }
 
@@ -54,19 +54,19 @@ void FilterMAD::MAD_filter_point(const std::vector<MeteoData>& ivec, const unsig
 	const double K = 1. / 0.6745;
 
 	std::vector<double> data( end-start+1 );
-	for(size_t ii=start; ii<=end; ii++) data[ii-start] = ivec[ii](param);
+	for (size_t ii=start; ii<=end; ii++) data[ii-start] = ivec[ii](param);
 
 	//Calculate MAD
 	const double median = Interpol1D::getMedian(data);
 	const double mad    = Interpol1D::getMedianAverageDeviation(data);
 
-	if( median==IOUtils::nodata || mad==IOUtils::nodata ) return;
+	if ( median==IOUtils::nodata || mad==IOUtils::nodata ) return;
 
 	const double sigma = mad * K;
 	const double upper_lim = median + 3.*sigma;
 	const double lower_lim = median - 3.*sigma;
 
-	if( (value>upper_lim) || (value<lower_lim) ) {
+	if ( (value>upper_lim) || (value<lower_lim) ) {
 		value = IOUtils::nodata;
 	}
 }

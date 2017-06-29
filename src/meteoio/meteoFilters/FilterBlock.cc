@@ -29,7 +29,7 @@ void FilterBlock::extract_dbl_vector(const unsigned int& param, const std::vecto
                                      std::vector<double>& ovec)
 {
 	ovec.resize( ivec.size() );
-	for(size_t ii=0; ii<ivec.size(); ii++) {
+	for (size_t ii=0; ii<ivec.size(); ii++) {
 		ovec[ii] = ivec[ii](param);
 	}
 }
@@ -38,7 +38,7 @@ void FilterBlock::extract_dbl_vector(const unsigned int& param, const std::vecto
                                      std::vector<double>& ovec)
 {
 	ovec.resize( ivec.size() );
-	for(size_t ii=0; ii<ivec.size(); ii++) {
+	for (size_t ii=0; ii<ivec.size(); ii++) {
 		ovec[ii] =  (*ivec[ii])(param);
 	}
 }

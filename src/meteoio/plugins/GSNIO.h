@@ -1,5 +1,5 @@
 /***********************************************************************************/
-/*  Copyright 2009 EPFL                                                            */
+/*  Copyright 2009 SLF                                                                                                                                */
 /***********************************************************************************/
 /* This file is part of MeteoIO.
     MeteoIO is free software: you can redistribute it and/or modify
@@ -15,13 +15,10 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __GSNIO_H__
-#define __GSNIO_H__
+#ifndef GSNIO_H
+#define GSNIO_H
 
-
-#include <meteoio/Config.h>
 #include <meteoio/IOInterface.h>
-#include <meteoio/IOUtils.h>
 
 #include <string>
 #include <vector>
@@ -47,34 +44,18 @@ class GSNIO : public IOInterface {
 		GSNIO(const GSNIO&);
 		GSNIO(const Config&);
 
-		virtual void read2DGrid(Grid2DObject& dem_out, const std::string& parameter="");
-		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
-		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
-
 		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
 		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector< std::vector<MeteoData> >& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
-
-		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo,
-		                            const std::string& name="");
-
-
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
-		virtual void readPOI(std::vector<Coords>& pts);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& name);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
+		                           std::vector< std::vector<MeteoData> >& vecMeteo);
 
 	private:
 		void convertUnits(MeteoData& meteo) const;
-		void buildStation(const std::string& id, const std::string& name, const double& lat, const double& lon,
+		bool buildStation(const std::string& vs_name, const std::string& full_name, const double& lat, const double& lon,
 		                  const double& alt, const double& slope_angle, const double& slope_azi, StationData &sd) const;
 		bool parseMetadata(std::stringstream& ss, StationData &sd, std::string &fields, std::string &units) const;
 		void readData(const Date& dateStart, const Date& dateEnd, std::vector<MeteoData>& vecMeteo, const size_t& stationindex);
 		void map_parameters(const std::string& fields, const std::string& units, MeteoData& md, std::vector<size_t>& index);
-		void parse_streamElement(const std::string& line, const std::vector<size_t>& index,
-		                         std::vector<MeteoData>& vecMeteo, MeteoData& tmpmeteo) const;
+		void parse_streamElement(const std::string& line, const std::vector<size_t>& index, MeteoData& tmpmeteo) const;
 
 		void initGSNConnection();
 		static size_t data_write(void* buf, size_t size, size_t nmemb, void* userp);

@@ -15,20 +15,17 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __METEO1DINTERPOLATOR_H__
-#define __METEO1DINTERPOLATOR_H__
+#ifndef METEO1DINTERPOLATOR_H
+#define METEO1DINTERPOLATOR_H
 
 #include <meteoio/dataClasses/MeteoData.h>
-#include <meteoio/dataClasses/StationData.h>
 #include <meteoio/Config.h>
-#include <meteoio/ResamplingAlgorithms.h>
-#include <meteoio/meteoFilters/ProcessingBlock.h>
+#include <meteoio/meteoResampling/ResamplingAlgorithms.h>
+#include <meteoio/meteoFilters/ProcessingBlock.h> //for ProcessingProperties
 
-#include <iostream>
 #include <string>
 #include <vector>
 #include <map>
-#include <utility>
 
 namespace mio {
 
@@ -77,9 +74,10 @@ class Meteo1DInterpolator {
  	private:
 		std::string getInterpolationForParameter(const std::string& parname, std::vector<std::string>& vecArguments) const;
 
+		std::map< std::string, ResamplingAlgorithms* > mapAlgorithms; //per parameter interpolation algorithms
 		const Config& cfg;
 		double window_size; ///< In seconds
-		std::map< std::string, ResamplingAlgorithms* > mapAlgorithms; //per parameter interpolation algorithms
+		bool enable_resampling; ///< easy way to turn resampling off
 };
 } //end namespace
 

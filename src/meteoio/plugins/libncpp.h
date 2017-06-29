@@ -15,11 +15,9 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __LIBNCPP_H__
-#define __LIBNCPP_H__
+#ifndef LIBNCPP_H
+#define LIBNCPP_H
 
-#include <meteoio/IOExceptions.h>
-#include <meteoio/IOUtils.h>
 #include <meteoio/dataClasses/Grid2DObject.h>
 
 #include <netcdf.h>
@@ -45,6 +43,8 @@ namespace ncpp {
 	//Adding attributes
 	void add_attribute(const int& ncid, const int& varid, const std::string& attr_name, const std::string& attr_value);
 	void add_attribute(const int& ncid, const int& varid, const std::string& attr_name, const double& attr_value);
+	std::string get_DimAttribute(const int& ncid, const std::string& dimname, const std::string& attr_name);
+	void get_VarAttribute(const int& ncid, const std::string& varname, const std::string& attr_name, std::string& attr_value);
 	void get_attribute(const int& ncid, const std::string& varname, const int& varid, const std::string& attr_name, std::string& attr_value);
 	void get_attribute(const int& ncid, const std::string& varname, const int& varid, const std::string& attr_name, double& attr_value);
 	bool check_attribute(const int& ncid, const int& varid, const std::string& attr_name);
@@ -60,6 +60,7 @@ namespace ncpp {
 	void read_value(const int& ncid, const std::string& varname, const int& varid, double& data);
 	void read_value(const int& ncid, const std::string& varname, const int& varid, const size_t& pos, double& data);
 	void read_data(const int& ncid, const std::string& varname, const int& varid, double*& data);
+	void read_wrf_latlon(const int& ncid, const int& latid, const int& lonid, const size_t& latlen, const size_t& lonlen, double*& lat, double*& lon);
 
 	//Writing data to NetCDF file
 	void write_data(const int& ncid, const std::string& varname, const int& varid, const double * const data);
@@ -70,11 +71,19 @@ namespace ncpp {
 	                const size_t& pos_start, const int * const data);
 
 	//Dealing with variables that have dimension NC_UNLIMITED
+	void get_unlimited_dimname(const int& ncid, std::string& dimname);
+	std::vector<mio::Date> get_wrf_Time(const int& ncid, const int& dimid, const size_t& dimlen);
+	bool get_dimensionMinMax(const int& ncid, const std::string& varname, double &min, double &max);
+	bool get_wrf_dimensionMinMax(const int& ncid, const std::string& varname, double &min, double &max);
 	bool get_recordMinMax(const int& ncid, const std::string& varname, const int& varid, double &min, double &max);
+	size_t find_record(const int& ncid, const std::string& varname, const double& data);
+	size_t find_wrf_record(const int& ncid, const std::string& varname, const double& data);
 	size_t find_record(const int& ncid, const std::string& varname, const int& varid, const double& data);
 	size_t add_record(const int& ncid, const std::string& varname, const int& varid, const double& data);
 	void write_record(const int& ncid, const std::string& varname, const int& varid, const size_t& pos,
 	                  const size_t& length, const double * const data);
+	void write_record(const int& ncid, const std::string& varname, const int& varid, const size_t& start_pos, 
+	                  const size_t& length, const int * const data);
 
 	//Dealing with variables and dimensions
 	bool check_dim_var(const int& ncid, const std::string& dimname);
@@ -86,11 +95,13 @@ namespace ncpp {
 	void get_dimension(const int& ncid, const std::string& dimname, int& dimid, size_t& dimlen);
 	void get_dimension(const int& ncid, const std::string& varname, const int& varid,
 	                   std::vector<int>& dimid, std::vector<int>& dim_varid, std::vector<std::string>& dimname, std::vector<size_t>& dimlen);
+	void get_wrf_dimension(const int& ncid, const std::string& varname, const int& varid,
+	                   std::vector<int>& dimid, std::vector<int>& dim_varid, std::vector<std::string>& dimname, std::vector<size_t>& dimlen);
 
 	//Wrappers to MeteoIO's data classes
 	void copy_grid(const std::string& coordin, const std::string& coordinparam, const size_t& latlen, const size_t& lonlen, const double * const lat, const double * const lon,
 	                          const double * const grid, const double& nodata, mio::Grid2DObject& grid_out);
-	double calculate_cellsize(const size_t& latlen, const size_t& lonlen, const double * const lat, const double * const lon,
+	double calculate_cellsize(const size_t& latlen, const size_t& lonlen, const double * const lat_array, const double * const lon_array,
 	                                          double& factor_x, double& factor_y);
 	void calculate_dimensions(const mio::Grid2DObject& grid, double*& lat_array, double*& lon_array);
 	void fill_grid_data(const mio::Grid2DObject& grid, double*& data);

@@ -24,7 +24,7 @@
  * Mutex mutex1;
  * ...
  * ...
- * for(int i = 0; i < 10; ++i)
+ * for (int i = 0; i < 10; ++i)
     {
         synchronized(mutex1)
         {
@@ -43,7 +43,7 @@
  *
  *
  */
-#define synchronized(M)  for(Lock M##_lock = M; M##_lock; M##_lock.setUnlock())
+#define synchronized(M)  for (Lock M##_lock = M; M##_lock; M##_lock.setUnlock())
 
 
 

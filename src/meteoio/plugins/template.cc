@@ -15,7 +15,7 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "template.h"
+#include <meteoio/plugins/template.h>
 
 using namespace std;
 
@@ -63,48 +63,18 @@ TEMPLATE::TEMPLATE(const Config& cfgreader) : cfg(cfgreader)
 
 TEMPLATE::~TEMPLATE() throw()
 {
-
+	//if there is no need to cleanup some pointers before exiting, do not even declare a destructor!
 }
 
 void TEMPLATE::read2DGrid(Grid2DObject& /*grid_out*/, const std::string& /*name_in*/)
 {
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void TEMPLATE::read2DGrid(Grid2DObject& /*grid_out*/, const MeteoGrids::Parameters& /*parameter*/, const Date& /*date*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void TEMPLATE::readDEM(DEMObject& /*dem_out*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void TEMPLATE::readLanduse(Grid2DObject& /*landuse_out*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void TEMPLATE::readAssimilationData(const Date& /*date_in*/, Grid2DObject& /*da_out*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void TEMPLATE::readStationData(const Date&, std::vector<StationData>& /*vecStation*/)
-{
+	//copy/paste from IOInterface.h the methods that are implemented by your plugin and fill-in the implementation
 	//Nothing so far
 	throw IOException("Nothing implemented here", AT);
 }
 
 void TEMPLATE::readMeteoData(const Date& /*dateStart*/, const Date& /*dateEnd*/,
-                             std::vector< std::vector<MeteoData> >& /*vecMeteo*/,
-                             const size_t&)
+                             std::vector< std::vector<MeteoData> >& /*vecMeteo*/)
 {
 	//Nothing so far
 	throw IOException("Nothing implemented here", AT);
@@ -137,51 +107,26 @@ void TEMPLATE::readMeteoData(const Date& /*dateStart*/, const Date& /*dateEnd*/,
 	 * StationData sd(point1, id, name);
 	 *
 	 * //then, we loop over all the available timestamps and fill the MeteoData
-	 * for(size_t step=0; step<nr_steps; step++) {
-	* //we read the date and put it in a Date object:
-	* Date date(julian, TZ_in); 						//from julian date and input timezone
+	 * for (size_t step=0; step<nr_steps; step++) {
+	* 	//we read the date and put it in a Date object:
+	* 	Date date(julian, TZ_in); 						//from julian date and input timezone
 	* 
-	* Date date;									//other possibility:
-	* IOUtils::convertString(date, timestamp, TZ_in); 	//from a text timestamp and input timezone
+	* 	Date date;									//other possibility:
+	* 	IOUtils::convertString(date, timestamp, TZ_in); 	//from a text timestamp and input timezone
 	* 
-	* MeteoData md(date, sd);						//create an empty MeteoData object initialized at a given date and station
-	* md(MeteoData::TA) = my_ta;					//add each field
-	* md(MeteoData::RH) = my_rh;					//of course, this could be done without relying on these "my_rh" intermediate variables!
-	* //etc
+	* 	MeteoData md(date, sd);						//create an empty MeteoData object initialized at a given date and station
+	* 	md(MeteoData::TA) = my_ta;					//add each field
+	* 	md(MeteoData::RH) = my_rh;					//of course, this could be done without relying on these "my_rh" intermediate variables!
+	* 	//etc
 	* 
-	* timeseries.push_back( md );					//add the MeteoData to the time vector
+	* 	timeseries.push_back( md );					//add the MeteoData to the time vector
 	 * }
 	 */
 }
 
-void TEMPLATE::writeMeteoData(const std::vector< std::vector<MeteoData> >& /*vecMeteo*/,
-                              const std::string&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void TEMPLATE::readPOI(std::vector<Coords>&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void TEMPLATE::write2DGrid(const Grid2DObject& /*grid_in*/, const std::string& /*name*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void TEMPLATE::write2DGrid(const Grid2DObject& /*grid_in*/, const MeteoGrids::Parameters& /*parameter*/, const Date& /*date*/)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
 void TEMPLATE::cleanup() throw()
 {
-
+	//if there is nothing to cleanup, remove this method
 }
 
 } //namespace

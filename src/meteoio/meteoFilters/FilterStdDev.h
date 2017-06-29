@@ -15,14 +15,12 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __FILTERSTDDEV_H__
-#define __FILTERSTDDEV_H__
+#ifndef FILTERSTDDEV_H
+#define FILTERSTDDEV_H
 
 #include <meteoio/meteoFilters/WindowedFilter.h>
-#include <meteoio/meteoStats/libinterpol1D.h>
 #include <vector>
 #include <string>
-#include <algorithm>
 
 namespace mio {
 

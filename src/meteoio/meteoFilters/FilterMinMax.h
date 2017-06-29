@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __FILTERMINMAX_H__
-#define __FILTERMINMAX_H__
+#ifndef FILTERMINMAX_H
+#define FILTERMINMAX_H
 
 //#define CALL_MEMBER_FN(object,ptrToMember)  ((object).*(ptrToMember))
 

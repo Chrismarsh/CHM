@@ -23,8 +23,8 @@
  * This is the header file to include for projects making use of libsnowpack
  */
 
-#ifndef __LIBSNOWPACK_H__
-#define __LIBSNOWPACK_H__
+#ifndef LIBSNOWPACK_H
+#define LIBSNOWPACK_H
 
 #include <snowpack/Constants.h>
 #include <snowpack/DataClasses.h>
@@ -39,6 +39,8 @@
 
 #include <snowpack/plugins/SnowpackIO.h>
 #include <snowpack/plugins/SnowpackIOInterface.h>
+#include <snowpack/plugins/AsciiIO.h> //for direct calls to AsciiIO
+#include <snowpack/plugins/SmetIO.h> //for direct calls to SmetIO
 
 #include <snowpack/snowpackCore/Aggregate.h>
 #include <snowpack/snowpackCore/Canopy.h>

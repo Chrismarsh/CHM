@@ -18,16 +18,62 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __CANOPY_H__
-#define __CANOPY_H__
+#ifndef CANOPY_H
+#define CANOPY_H
 
-#include <snowpack/Constants.h>
 #include <snowpack/DataClasses.h>
-#include <snowpack/Hazard.h>
-#include <snowpack/Utils.h>
-#include <snowpack/Laws_sn.h>
 
+#include <string>
 #include <fstream>
+
+/**
+ * @brief Computes interception of precipitation and radiation, and reduction of windspeed
+ * in a canopy layer above thesnow or soil surface.
+ * This has been published in Gouttevin, I., M. Lehning, T. Jonas, D. Gustafsson, and Meelis Mölder, 
+ * <i>"A two-layer canopy model with thermal inertia for an improved snowpack energy balance below needleleaf forest 
+ * (model SNOWPACK, version 3.2. 1, revision 741)."</i>, Geoscientific Model Development <b>8.8</b>, pp 2379-2398, 2015.
+ *
+ * @section canopy_modeling Canopy modeling
+ * -# 2layer canopy model:
+ *	- key: TWO_LAYER_CANOPY = true [Snowpack]
+ *	- logical in the code: Twolayercanopy
+ *	- content: canopy is divided into a trunk layer (interception radiations with factor sigftrunk) and
+ *		a leaf-layer (intercepting radiations with factor sigf). SW radiations reaching the ground are modified
+ *		accordingly. An energy balance is computed for each layer, producing leaf-layer and trunk layer
+ *		temperatures (TC and Ttrunk) that affect LW radiations to the ground.
+ *		Optionally, trunks can get direct solar insolation (important for sparse canopies), look for
+ *		CanClosDirTrunks in the code
+ *	- further details: Gouttevin et al. (2014): A two-layer canopy with thermal inertia for an improved modelling
+ *		of the sub-canopy snowpack energy-balance (in prep).
+ *
+ * -# canopy heat mass:
+ *	- key: CANOPY_HEAT_MASS = true [Snowpack]
+ *	- logical in the code: CanopyHeatMass
+ *	- content: the canopy gets an heat mass (whole, or separate between trunks and leaves if Twolayercanopy) that
+ *		adds a biomass heat flux term in the canopy energy balance.
+ *	- an additionnal parameter is now required in the input/station.snoold file : CanopyBasalArea (m2/m2),
+ *		to be placed after CanopyLeafAreaIndex. Example value for closed canopies like Alptal : 0.004.
+ *	- further details: Gouttevin et al. (2014): A two-layer canopy with thermal inertia for an improved modelling
+ *		of the sub-canopy snowpack energy-balance (in prep).
+ *
+ * -# forest-floor albedo:
+ *	- key: FORESTFLOOR_ALB = true [Snowpack]
+ *	- logical in the code: forestfloor_alb
+ *	- content: Litter falling on the forest floor can reduce albedo. This effect is currently parameterized
+ *		through an exponential decay of the albedo to a value of 0.3 with a time-constant of 7 days,
+ *		based on parameterizations commonly used in Land-Surface models.
+ *		There is room for improvement !
+ *
+ * @section canopy_comments Important comments:
+ *	- Snowpack can take precipitation phase (relying on the psum_ph variable) for applications such as the 
+ *	  SnowMIP experiments (Rutter et al., 2009).  
+ *	- an additionnal parameter is now required in the input/station.snoold file : CanopyBasalArea (m2/m2),
+ *	  to be placed after CanopyLeafAreaIndex.
+ *	- Some cleaning was done to suppressed outputs that can be easily derived from other outputs.
+ *	  There is now space for outputs specific to the 2layer model, which are written if variant = 2L_CANOPY in
+ *	  [SnowpackAdvanced] (Canopy::writeTimeSeriesAdd2LCanopy).
+ * 
+ */
 
 class Canopy {
 
@@ -36,7 +82,7 @@ class Canopy {
 
 		static void DumpCanopyData(std::ofstream &fout, const CanopyData *Cdata, const SurfaceFluxes *Sdata, const double cos_sl);
 		void runCanopyModel(CurrentMeteo &Mdata, SnowStation &Xdata, double roughness_length,
-		                    double height_of_wind_val, const bool& alpine3d=false);
+		                    double height_of_wind_val, const bool& adjust_VW_height=true);
 		static void writeTimeSeriesAdd2LCanopy(std::ofstream &fout, const CanopyData *Cdata);
 		static const double can_alb_dry, can_alb_wet, can_alb_snow, krnt_lai; //public constants
 
@@ -121,10 +167,10 @@ class Canopy {
 								  double& ce_canopy, double& ce_transpiration,
 								  double& ce_interception, double& ce_condensation);
 
-		void CanopyRadiationOutput(SnowStation& Xdata, CurrentMeteo& Mdata, double ac,
-								double *iswrac, double *rswrac,
-								double *iswrbc, double *rswrbc, double *ilwrac,
-								double *rlwrac, double *ilwrbc, double *rlwrbc,
+		void CanopyRadiationOutput(SnowStation& Xdata, const CurrentMeteo& Mdata, double ac,
+								double &iswrac, double &rswrac,
+								double &iswrbc, double &rswrbc, double &ilwrac,
+								double &rlwrac, double &ilwrbc, double &rlwrbc,
 								double CanopyClosureDirect, double RadFracDirect, double sigfdirect, double sigftrunkdirect);
 
 		static const double int_cap_snow, int_cap_rain, interception_timecoef;

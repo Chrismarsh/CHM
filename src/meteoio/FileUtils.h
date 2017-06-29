@@ -14,8 +14,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __FILEUTILS_H__
-#define __FILEUTILS_H__
+#ifndef FILEUTILS_H
+#define FILEUTILS_H
 
 #include <sstream>
 #include <string>
@@ -26,7 +26,7 @@
 #include <meteoio/dataClasses/Date.h>
 
 namespace mio {
-namespace IOUtils {
+namespace FileUtils {
 
 	/**
 	 * @brief Copies a files from one location to another
@@ -35,18 +35,20 @@ namespace IOUtils {
 	 * @param dest The filename of the file to copy to (will be created or overwritten)
 	 */
 	void copy_file(const std::string& src, const std::string& dest);
-
+	
 	/**
 	* @brief Build a list of file in a given directory.
 	* The matching is very primitive: it only looks for the substring "pattern" in the file names.
-	* If this substrings exists, the file matches.
+	* If this substrings exists, the file matches. In the case of recursive search, the filenames will be
+	* prefixed by their relative path based on the provided path.
 	* @param path directory containing the files
 	* @param dirlist list of matching file names
 	* @param pattern optional pattern that must be part of the file names
+	* @param isRecursive should the search recurse through sub-directories? (default: false)
 	*/
-	void readDirectory(const std::string& path, std::list<std::string>& dirlist, const std::string& pattern="");
+	void readDirectory(const std::string& path, std::list<std::string>& dirlist, const std::string& pattern="", const bool& isRecursive=false);
 
-	std::list<std::string> readDirectory(const std::string& path, const std::string& pattern="");
+	std::list<std::string> readDirectory(const std::string& path, const std::string& pattern="", const bool& isRecursive=false);
 
 	bool validFileAndPath(const std::string& filename);
 
@@ -166,7 +168,7 @@ namespace IOUtils {
 			std::vector< struct file_index > vecIndex;
 	};
 
-} //end namespace IOUtils
+} //end namespace FileUtils
 } //end namespace mio
 
 #endif

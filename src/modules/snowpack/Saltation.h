@@ -17,27 +17,17 @@
     You should have received a copy of the GNU General Public License
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __SALTATION_H__
-#define __SALTATION_H__
+#ifndef SALTATION_H
+#define SALTATION_H
 
-#include <snowpack/Utils.h>
 #include <meteoio/MeteoIO.h>
-#include <cmath>
+#include <string.h>
+
+#include <snowpack/SnowpackConfig.h>
 
 /**
- * @brief class Saltation
- * @author Michael Lehning \n Judith Doorschot
- * @version 9.x
- * @date    -
- * @bug     -
  * @brief This module contains the saltation model of Judith.
- * - 24.08.2000: The new very complicated model. Judith says that it is my fault, if it is wrong. I hope not ..... \n
- *               Make a separate routine to model saltation only.
- * - 26.04.2001: Finally, on the Friday evening before the Swiss Bike Masters event, where Michael was
- *               supposed to start, he also started to implement the last version of Judith's saltation
- *               model. The GRID man Tuan Anh (Nguyen) had arrived and smiled. \n
- * The Gaudergrat experiment GAUDEX was in good shape and almost everything was up and
- * running.
+ * @ingroup postprocessing
  */
 class Saltation {
 	public:
@@ -72,8 +62,6 @@ class Saltation {
 		static const double hs_frac, elas, angle_ej, ratio_ve_ustar, salt_height;
 		static const int strong, weak;
 };
-
-#include <snowpack/Constants.h>
 
 #endif
 

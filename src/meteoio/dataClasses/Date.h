@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __DATE_H__
-#define __DATE_H__
+#ifndef DATE_H
+#define DATE_H
 
 #include <meteoio/IOExceptions.h>
 
@@ -43,11 +43,33 @@ namespace mio {
  *
  * Please see Date::FORMATS for supported display formats and http://en.wikipedia.org/wiki/Julian_day for
  * the various date representation definitions. The following data representation are currently supported:
- * - julian date, see Date::getJulianDate
+ * - julian date, see Date::getJulian
  * - modified julian date, see Date::getModifiedJulianDate
  * - truncated julian date, see Date::getTruncatedJulianDate
  * - Unix date, see Date::getUnixDate
  * - Excel date, see Date::getExcelDate
+ *
+ * When parsing a string to extract a date, various string representations are supported (the timezone term {TZ} is optional \em if a
+ * fallback timezone is available, most probably as Input::TIME_ZONE in the configuration file):
+ * - <A HREF="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601</A> variations:
+ *     - YYYY-MM-DDThh:mm:ss{TZ}, for example 2017-02-02T12:35:00 in the fallback time zone
+ *     - YYYY-MM-DDThh:mm{TZ}, for example 2017-02-02T12:35+01:00
+ * - similar to ISO but without the 'T' marker (some systems wrongfuly reject it):
+ *     - YYYY-MM-DD hh:mm:ss{TZ}, for example 2017-02-02 11:35:00Z
+ *     - YYYY-MM-DD hh:mm{TZ}, for example 2017-02-02 12:35+01
+ * - simplified:
+ *     - YYYY-MM-DD{TZ}, for example 2017-02-01
+ *     - hh:mm{TZ}, for example 15:12+01:30
+ * - numeric:
+ *     - YYYYMMDDHHmmss{TZ}
+ *     - YYYYMMDDHHmm{TZ}
+ *     - YYYYMMDDHH{TZ}
+ * - relative, with keyword (in this case a fallback time zone must be available from somewhere else):
+ *     - NOW
+ *     - NOW±{offset} (the offset is in seconds), for example NOW+3600
+ *     - NOW±hh:mm (the offset is in hours and minutes), for example NOW-01:30
+ *
+ * The timezone information {TZ} is as laid out in Date::parseTimeZone.
  *
  * @ingroup data_str
  * @author Mathias Bavay
@@ -60,6 +82,7 @@ class Date {
 		typedef enum {
 			ISO, ///< ISO 8601 extended format combined date: YYYY-MM-DDTHH:mm:SS (fields might be dropped, in the least to the most significant order)
 			ISO_TZ, ///< ISO 8601 format (same as ISO) but with time zone specification
+			ISO_Z, ///< ISO 8601 format, forcing GMT and Zulu (Z) timezone specification
 			FULL, ///< ISO 8601 followed by the julian date (in parenthesis)
 			NUM, ///< ISO 8601 basic format date: YYYYMMDDHHmmSS (fields might be dropped, in the least to the most significant order)
 			DIN, ///<DIN5008 format: DD.MM.YYYY HH:MM
@@ -77,11 +100,11 @@ class Date {
 		static const int daysLeapYear[];
 		static const int daysNonLeapYear[];
 		static const double DST_shift;
-		static const float MJD_offset;
-		static const float RFC868_offset;
-		static const float Unix_offset;
-		static const float Excel_offset;
-		static const float Matlab_offset;
+		static const double MJD_offset;
+		static const double RFC868_offset;
+		static const double Unix_offset;
+		static const double Excel_offset;
+		static const double Matlab_offset;
 
 		Date();
 		Date(const double& julian_in, const double& in_timezone, const bool& in_dst=false);
@@ -103,7 +126,7 @@ class Date {
 		void setRFC868Date(const double& julian_in, const double& in_timezone, const bool& in_dst=false);
 		void setUnixDate(const time_t& in_time, const bool& in_dst=false);
 		void setExcelDate(const double excel_in, const double& in_timezone, const bool& in_dst=false);
-		void setMatlabDate(const double excel_in, const double& in_timezone, const bool& in_dst=false);
+		void setMatlabDate(const double matlab_in, const double& in_timezone, const bool& in_dst=false);
 		void setUndef(const bool& flag);
 
 		bool isUndef() const;
@@ -132,13 +155,15 @@ class Date {
 		int getJulianDayNumber(const bool& gmt=false) const;
 		bool isLeapYear() const;
 
+		static unsigned int mod(const double& julian, const unsigned int& seconds);
+		static unsigned int mod(const Date& indate, const unsigned int& seconds);
 		static double rnd(const double& julian, const unsigned int& precision, const RND& type=CLOSEST);
 		void rnd(const unsigned int& precision, const RND& type=CLOSEST);
 		static const Date rnd(const Date& indate, const unsigned int& precision, const RND& type=CLOSEST);
 		static double parseTimeZone(const std::string& timezone_iso);
 
 		static std::string printFractionalDay(const double& fractional);
-		const std::string toString(FORMATS type, const bool& gmt=false) const;
+		const std::string toString(const FORMATS& type, const bool& gmt=false) const;
 		const std::string toString() const;
 		friend std::iostream& operator<<(std::iostream& os, const Date& date);
 		friend std::iostream& operator>>(std::iostream& is, Date& date);

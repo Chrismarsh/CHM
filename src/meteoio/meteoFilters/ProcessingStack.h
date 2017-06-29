@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __PROCESSINGSTACK_H__
-#define __PROCESSINGSTACK_H__
+#ifndef PROCESSINGSTACK_H
+#define PROCESSINGSTACK_H
 
 #include <meteoio/meteoFilters/ProcessingBlock.h>
 #include <meteoio/Config.h>

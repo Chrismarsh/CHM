@@ -19,6 +19,7 @@
 */
 
 #include <snowpack/snowpackCore/Aggregate.h>
+#include <snowpack/Constants.h>
 
 /************************************************************
  * static section                                           *
@@ -96,13 +97,50 @@ bool Aggregate::joinSimilarLayers(const size_t& l_upper, std::vector<SnowProfile
 		if ( fabs(Pdata[l_upper].sphericity - Pdata[l_lower].sphericity) > diff_sp)
 			return false;
 
-		if (fabs(Pdata[l_upper].grain_size - Pdata[l_lower].grain_size) > MAX(diff_dg, diff_dg_rel * Pdata[l_upper].grain_size))
+		if (fabs(Pdata[l_upper].grain_size - Pdata[l_lower].grain_size) > std::max(diff_dg, diff_dg_rel * Pdata[l_upper].grain_size))
 			return false;
 	} else {
 		if (fabs(Pdata[l_upper].sphericity - Pdata[l_lower].sphericity) > diff_sp)
 			return false;
 
 		if (fabs(Pdata[l_upper].dendricity - Pdata[l_lower].dendricity) > diff_dd)
+			return false;
+	}
+
+	return true;
+}
+
+bool Aggregate::joinSimilarLayers(ElementData& Edata_upper, ElementData& Edata_lower)
+{
+	if ((Edata_upper.theta[WATER] < limit_dry) || (Edata_lower.theta[WATER] < limit_dry)) {
+		if (fabs(Edata_upper.theta[WATER] - Edata_lower.theta[WATER]) > limit_dry)
+			return false;
+	} else {
+		if (fabs(Edata_upper.theta[WATER] - Edata_lower.theta[WATER]) > diff_theta_w)
+			return false;
+	}
+
+	if (fabs(Edata_upper.depositionDate.getJulian() - Edata_lower.depositionDate.getJulian()) > diff_jul)
+		return false;
+
+	if (Edata_upper.mk != Edata_lower.mk)
+		return false;
+
+	// do not combine layers which are of quite different hardness 020917;Fz
+	if (fabs(Edata_upper.hard - Edata_lower.hard) > 1.0)
+		return false;
+
+	if ((Edata_upper.dd == 0) && (Edata_lower.dd == 0)){
+		if ( fabs(Edata_upper.sp - Edata_lower.sp) > diff_sp)
+			return false;
+
+		if (fabs(Edata_upper.rg - Edata_lower.rg) > std::max(diff_dg, diff_dg_rel * Edata_upper.rg))
+			return false;
+	} else {
+		if (fabs(Edata_upper.sp - Edata_lower.sp) > diff_sp)
+			return false;
+
+		if (fabs(Edata_upper.dd - Edata_lower.dd) > diff_dd)
 			return false;
 	}
 
@@ -157,9 +195,53 @@ bool Aggregate::mergeThinLayer(const size_t& l_lower, std::vector<SnowProfileLay
 	return true;
 }
 
+bool Aggregate::mergeThinLayer(ElementData& Edata_upper, ElementData& Edata_lower)
+{
+	size_t upper_mk=Edata_upper.mk%100;
+	size_t lower_mk=Edata_lower.mk%100;
+
+	// if a dry layer is involved
+	if ((Edata_lower.theta[WATER] < limit_dry) || (Edata_upper.theta[WATER] < limit_dry)){
+		// do not combine dry with moist layers
+		if (fabs(Edata_lower.theta[WATER] - Edata_upper.theta[WATER]) > limit_dry)
+			return false;
+
+		// do not combine layers which are of quite different age
+		if (fabs(Edata_lower.depositionDate.getJulian() - Edata_upper.depositionDate.getJulian()) > 2 * diff_jul)
+			return false;
+
+		// do not combine layers with different grain classes
+		if (lower_mk != upper_mk) {
+			return false;
+		}
+		// do not combine layers which are of quite different hardness
+		if (fabs(Edata_lower.hard - Edata_upper.hard) > 1.5) {
+			return false;
+		}
+	}
+	// for two wet layers
+	else {
+		if ((Edata_lower.rg < 0.75) || (Edata_lower.sp < 0.5) ||
+			(Edata_upper.rg < 0.75) || (Edata_upper.sp < 0.5)) {
+			if (Edata_lower.mk != Edata_upper.mk) {
+				return false;
+			}
+		}
+		else {
+			if (!( (lower_mk > 9 &&  lower_mk < 13) ||
+				(lower_mk > 19 &&  lower_mk < 23) )) {
+				//no need to test on l_upper since marker(lower) must be = marker(upper)
+				if (lower_mk != upper_mk)
+					return false;
+			}
+		}
+	}
+	return true;
+}
+
 /**
  * @brief Aggregate snow profile layers and compute the grain class
- * @note Leave top element untouched
+ * @note Leave top 5 elements untouched
  * @param Pdata A vector of SnowProfileLayer
  */
 size_t Aggregate::aggregate(std::vector<SnowProfileLayer>& Pdata)

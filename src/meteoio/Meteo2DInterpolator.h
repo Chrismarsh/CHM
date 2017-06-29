@@ -16,18 +16,16 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __METEO2DINTERPOLATOR_H__
-#define __METEO2DINTERPOLATOR_H__
+#ifndef METEO2DINTERPOLATOR_H
+#define METEO2DINTERPOLATOR_H
 
 #include <meteoio/TimeSeriesManager.h>
 #include <meteoio/Config.h>
 #include <meteoio/dataClasses/Buffer.h>
-#include <meteoio/dataClasses/Date.h>
 #include <meteoio/dataClasses/MeteoData.h>
 #include <meteoio/dataClasses/DEMObject.h>
-#include <meteoio/InterpolationAlgorithms.h>
+#include <meteoio/spatialInterpolations/InterpolationAlgorithms.h>
 
-#include <memory>
 #include <vector>
 #include <map>
 
@@ -104,6 +102,8 @@ class Meteo2DInterpolator {
 		* @brief Constructor.
 		*/
 		Meteo2DInterpolator(const Config& i_cfg, TimeSeriesManager& i_tsmanager, GridsManager& i_gridsmanager);
+		Meteo2DInterpolator(const Meteo2DInterpolator&);
+		Meteo2DInterpolator& operator=(const Meteo2DInterpolator&); ///<Assignement operator
 
 		~Meteo2DInterpolator();
 
@@ -153,6 +153,13 @@ class Meteo2DInterpolator {
 		                                std::vector<std::string>& vecArgs) const;
 
 		/**
+		 * @brief Returns the metadata associated with the configured virtual stations
+		 * @param date when to extract the virtual stations' metadata
+		 * @param vecStation a vector of stationdata for the configured virtual stations
+		 */
+		size_t getVirtualStationsMeta(const Date& date, STATIONS_SET& vecStation);
+
+		/**
 		 * @brief Compute point measurements from grids following a given computing strategy
 		 * @param strategy sampling/computing strategy
 		 * @param i_date when to compute the virtual stations
@@ -170,12 +177,13 @@ class Meteo2DInterpolator {
 		static size_t getAlgorithmsForParameter(const Config& cfg, const std::string& parname, std::vector<std::string>& vecAlgorithms);
 
 		size_t getVirtualStationsData(const Date& i_date, METEO_SET& vecMeteo);
+		size_t getVirtualStationsFromGrid(const Date& i_date, METEO_SET& vecMeteo);
 		void setAlgorithms();
-		void initVirtualStations();
+		void initVirtualStations(const bool& adjust_coordinates);
 
 		const Config& cfg; ///< Reference to Config object, initialized during construction
-		TimeSeriesManager& tsmanager; ///< Reference to TimeSeriesManager object, used for callbacks, initialized during construction
-		GridsManager& gridsmanager; ///< Reference to GridsManager object, used for callbacks, initialized during construction
+		TimeSeriesManager *tsmanager; ///< Reference to TimeSeriesManager object, used for callbacks, initialized during construction
+		GridsManager *gridsmanager; ///< Reference to GridsManager object, used for callbacks, initialized during construction
 		GridBuffer grid_buffer;
 
 		std::map< std::string, std::vector<InterpolationAlgorithm*> > mapAlgorithms; //per parameter interpolation algorithms
@@ -183,12 +191,10 @@ class Meteo2DInterpolator {
 		std::vector<size_t> v_params; ///< Parameters for virtual stations
 		std::vector<Coords> v_coords; ///< Coordinates for virtual stations
 		std::vector<StationData> v_stations; ///< metadata for virtual stations
-		std::map<Date, METEO_SET > virtual_point_cache;  ///< stores already resampled virtual data points
-
+		
 		bool algorithms_ready; ///< Have the algorithms objects been constructed?
 		bool use_full_dem; ///< use full dem for point-wise spatial interpolations
-		bool downscaling; ///< Are we downscaling meteo grids instead of interpolating stations' data?
-		bool virtual_stations; ///< compute the meteo values at virtual stations
+		bool use_internal_managers; ///< When using virtual stations or downsampling, the ts and grids managers need to be private
 };
 
 } //end namespace

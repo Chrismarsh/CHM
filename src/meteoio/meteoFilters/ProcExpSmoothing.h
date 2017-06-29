@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __PROCEXPSMOOTHING_H__
-#define __PROCEXPSMOOTHING_H__
+#ifndef PROCEXPSMOOTHING_H
+#define PROCEXPSMOOTHING_H
 
 #include <meteoio/meteoFilters/WindowedFilter.h>
 #include <vector>

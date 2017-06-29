@@ -15,11 +15,18 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "ARCIO.h"
+#include <meteoio/plugins/ARCIO.h>
+#include <meteoio/IOUtils.h>
+#include <meteoio/FileUtils.h>
+#include <meteoio/IOExceptions.h>
+
 #include <errno.h>
 #include <string.h>
 #include <algorithm>
 #include <limits>
+#include <sstream>
+#include <fstream>
+#include <iostream>
 
 using namespace std;
 
@@ -33,55 +40,8 @@ namespace mio {
  * - float header data has 3 digits precision
  * - all grid data is written as float (which might cause some trouble for some softwares)
  *
- * These specifications should reflect commonly accepted practise.
- *
- * Finally, the naming scheme for meteo grids should be: YYYY-MM-DDTHH.mm_{MeteoGrids::Parameters}.asc
- *
- * @section lus_format Land Use Format
- * The landuse codes are coming from PREVAH and have the format 1LLDC where:
- * - LL is the land use code as given in the table given below
- * - D is the soil depth
- * - C is the field capacity
- *
- * <center><table border="0">
- * <caption>PREVAH land cover codes</caption>
- * <tr><td>
- * <table border="1">
- * <tr><th>land use (vegetation)</th><th>Prevah land use classes</th></tr>
- * <tr><td>01</td><td>water</td></tr>
- * <tr><td>02</td><td>settlement</td></tr>
- * <tr><td>03</td><td>coniferous forest</td></tr>
- * <tr><td>04</td><td>decidous forest</td></tr>
- * <tr><td>05</td><td>mixed forest</td></tr>
- * <tr><td>06</td><td>cereals</td></tr>
- * <tr><td>07</td><td>pasture</td></tr>
- * <tr><td>08</td><td>bush</td></tr>
- * <tr><td>09</td><td>undefined</td></tr>
- * <tr><td>10</td><td>undefined</td></tr>
- * <tr><td>11</td><td>road</td></tr>
- * <tr><td>12</td><td>undefined</td></tr>
- * <tr><td>13</td><td>firn</td></tr>
- * <tr><td>14</td><td>bare ice</td></tr>
- * <tr><td>15</td><td>rock</td></tr>
- * </table></td><td><table border="1">
- * <tr><th>land use (vegetation)</th><th>Prevah land use classes</th></tr>
- * <tr><td>16</td><td>undefined</td></tr>
- * <tr><td>17</td><td>undefined</td></tr>
- * <tr><td>18</td><td>fruit</td></tr>
- * <tr><td>19</td><td>vegetables</td></tr>
- * <tr><td>20</td><td>wheat</td></tr>
- * <tr><td>21</td><td>alpine vegetation</td></tr>
- * <tr><td>22</td><td>wetlands</td></tr>
- * <tr><td>23</td><td>rough pasture</td></tr>
- * <tr><td>24</td><td>subalpine meadow</td></tr>
- * <tr><td>25</td><td>alpine meadow</td></tr>
- * <tr><td>26</td><td>bare soil vegetation</td></tr>
- * <tr><td>27</td><td>free</td></tr>
- * <tr><td>28</td><td>corn</td></tr>
- * <tr><td>29</td><td>grapes</td></tr>
- * <tr><td>30-99</td><td>undefined</td></tr>
- * </table></td></tr>
- * </table></center>
+ * These specifications should reflect commonly accepted practise. Finally, the naming scheme for meteo grids should be: 
+ * YYYY-MM-DDTHH.mm_{MeteoGrids::Parameters}.asc
  *
  * @section arc_units Units
  * The distances are assumed to be in meters.
@@ -97,12 +57,23 @@ namespace mio {
  * - A3D_VIEW: use Alpine3D's grid viewer naming scheme (default=false)? [Input] and [Output] sections.
  * - DEMFILE: for reading the data as a DEMObject
  * - LANDUSE: for interpreting the data as landuse codes
- * - DAPATH: path+prefix of file containing data assimilation grids (named with ISO 8601 basic date and .sca extension, example ./input/dagrids/sdp_200812011530.sca)
+ * - DAPATH: path+prefix of file containing data assimilation grids (named with ISO 8601 basic date and .sca extension,
+ * example ./input/dagrids/sdp_200812011530.sca)
+ *
+ * @code
+ * [Input]
+ * GRID2D     = ARC
+ * GRID2DPATH = ./input/surface-grids
+ *
+ * #reading ARC dem
+ * DEM     = ARC
+ * DEMFILE = ./input/surface-grids/Switzerland_1000m.asc
+ * @endcode
  */
 
 ARCIO::ARCIO(const std::string& configfile)
        : cfg(configfile),
-         fin(), fout(), coordin(), coordinparam(), coordout(), coordoutparam(),
+         coordin(), coordinparam(), coordout(), coordoutparam(),
          grid2dpath_in(), grid2dpath_out(), grid2d_ext_in(), grid2d_ext_out(),
          a3d_view_in(false), a3d_view_out(false)
 {
@@ -116,7 +87,7 @@ ARCIO::ARCIO(const std::string& configfile)
 
 ARCIO::ARCIO(const Config& cfgreader)
        : cfg(cfgreader),
-         fin(), fout(), coordin(), coordinparam(), coordout(), coordoutparam(),
+         coordin(), coordinparam(), coordout(), coordoutparam(),
          grid2dpath_in(), grid2dpath_out(), grid2d_ext_in(), grid2d_ext_out(),
          a3d_view_in(false), a3d_view_out(false)
 {
@@ -130,35 +101,19 @@ ARCIO::ARCIO(const Config& cfgreader)
 
 void ARCIO::getGridPaths() {
 	grid2dpath_in.clear(), grid2dpath_out.clear();
-	string tmp = cfg.get("GRID2D", "Input", IOUtils::nothrow);
-	if (tmp == "ARC") //keep it synchronized with IOHandler.cc for plugin mapping!!
+	const string grid_in = cfg.get("GRID2D", "Input", IOUtils::nothrow);
+	if (grid_in == "ARC") //keep it synchronized with IOHandler.cc for plugin mapping!!
 		cfg.getValue("GRID2DPATH", "Input", grid2dpath_in);
-	tmp.clear();
-	cfg.getValue("GRID2D", "Output", tmp, IOUtils::nothrow);
-	if (tmp == "ARC") //keep it synchronized with IOHandler.cc for plugin mapping!!
+	const string grid_out = cfg.get("GRID2D", "Output", IOUtils::nothrow);
+	if (grid_out == "ARC") //keep it synchronized with IOHandler.cc for plugin mapping!!
 		cfg.getValue("GRID2DPATH", "Output", grid2dpath_out);
 
 	grid2d_ext_in = ".asc";
 	cfg.getValue("GRID2DEXT", "Input", grid2d_ext_in, IOUtils::nothrow);
-	if(grid2d_ext_in=="none") grid2d_ext_in.clear();
+	if (grid2d_ext_in=="none") grid2d_ext_in.clear();
 	grid2d_ext_out = ".asc";
 	cfg.getValue("GRID2DEXT", "Output", grid2d_ext_out, IOUtils::nothrow);
-	if(grid2d_ext_out=="none") grid2d_ext_out.clear();
-}
-
-ARCIO::~ARCIO() throw()
-{
-	cleanup();
-}
-
-void ARCIO::cleanup() throw()
-{
-	if (fin.is_open()) {//close fin if open
-		fin.close();
-	}
-	if (fout.is_open()) {//close fout if open
-		fout.close();
-	}
+	if (grid2d_ext_out=="none") grid2d_ext_out.clear();
 }
 
 void ARCIO::read2DGrid_internal(Grid2DObject& grid_out, const std::string& full_name)
@@ -170,23 +125,23 @@ void ARCIO::read2DGrid_internal(Grid2DObject& grid_out, const std::string& full_
 	std::string line;
 	std::map<std::string, std::string> header; // A map to save key value pairs of the file header
 
-	if (!IOUtils::validFileAndPath(full_name)) throw InvalidFileNameException(full_name, AT);
-	if (!IOUtils::fileExists(full_name)) throw FileNotFoundException(full_name, AT);
+	if (!FileUtils::validFileAndPath(full_name)) throw InvalidNameException(full_name, AT);
+	if (!FileUtils::fileExists(full_name)) throw NotFoundException(full_name, AT);
 
-	fin.clear();
+	std::ifstream fin;
 	errno = 0;
 	fin.open (full_name.c_str(), ifstream::in);
 	if (fin.fail()) {
 		ostringstream ss;
 		ss << "Error opening file \"" << full_name << "\", possible reason: " << strerror(errno);
-		throw FileAccessException(ss.str(), AT);
+		throw AccessException(ss.str(), AT);
 	}
 
-	const char eoln = IOUtils::getEoln(fin); //get the end of line character for the file
+	const char eoln = FileUtils::getEoln(fin); //get the end of line character for the file
 
 	//Go through file, save key value pairs
 	try {
-		IOUtils::readKeyValueHeader(header, fin, 6, " ");
+		FileUtils::readKeyValueHeader(header, fin, 6, " ");
 		IOUtils::getValueForKey(header, "ncols", i_ncols);
 		IOUtils::getValueForKey(header, "nrows", i_nrows);
 		IOUtils::getValueForKey(header, "xllcorner", xllcorner);
@@ -203,7 +158,7 @@ void ARCIO::read2DGrid_internal(Grid2DObject& grid_out, const std::string& full_
 		if ((i_ncols==0) || (i_nrows==0)) {
 			throw IOException("Number of rows or columns in 2D Grid given is zero, in file: " + full_name, AT);
 		}
-		if((i_ncols<0) || (i_nrows<0)) {
+		if ((i_ncols<0) || (i_nrows<0)) {
 			throw IOException("Number of rows or columns in 2D Grid read as \"nodata\", in file: " + full_name, AT);
 		}
 		ncols = (size_t)i_ncols;
@@ -220,9 +175,10 @@ void ARCIO::read2DGrid_internal(Grid2DObject& grid_out, const std::string& full_
 		//Read one line after the other and parse values into Grid2DObject
 		for (size_t kk=nrows-1; (kk < nrows); kk--) {
 			getline(fin, line, eoln);
-			if(line.empty()) { //so we can tolerate empty lines
+			if (line.empty()) { //so we can tolerate empty lines
 				kk++; //to keep the same kk at the next iteration
 				nr_empty++;
+				if (nr_empty>1000) throw InvalidFormatException("Too many empty lines, most probably the file format is wrong (check the end-of-lines character!)", AT);
 				continue;
 			}
 			std::istringstream iss(line);
@@ -241,12 +197,12 @@ void ARCIO::read2DGrid_internal(Grid2DObject& grid_out, const std::string& full_
 			}
 		}
 	} catch(const std::exception& e) {
-		cleanup();
+		fin.close();
 		std::ostringstream msg;
 		msg << "[E] Error when reading ARC grid \"" << full_name << "\" : " << e.what();
 		throw InvalidFormatException(msg.str(), AT);
 	}
-	cleanup();
+	fin.close();
 }
 
 void ARCIO::read2DGrid(Grid2DObject& grid_out, const std::string& filename) {
@@ -265,7 +221,7 @@ void ARCIO::read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& par
 			ext="swr";
 		else if (parameter==MeteoGrids::ILWR)
 			ext="lwr";
-		else if(parameter==MeteoGrids::DEM)
+		else if (parameter==MeteoGrids::DEM)
 			ext="asc";
 		else {
 			ext = MeteoGrids::getParameterName(parameter);
@@ -302,41 +258,17 @@ void ARCIO::readAssimilationData(const Date& date_in, Grid2DObject& da_out)
 	read2DGrid_internal(da_out, filepath+"/"+dateStr+".sca");
 }
 
-void ARCIO::readStationData(const Date&, std::vector<StationData>&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ARCIO::readMeteoData(const Date&, const Date&, std::vector< std::vector<MeteoData> >&,
-                          const size_t&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ARCIO::writeMeteoData(const std::vector< std::vector<MeteoData> >&, const std::string&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
-void ARCIO::readPOI(std::vector<Coords>&)
-{
-	//Nothing so far
-	throw IOException("Nothing implemented here", AT);
-}
-
 void ARCIO::write2DGrid(const Grid2DObject& grid_in, const std::string& name)
 {
 	const std::string full_name = grid2dpath_out+"/"+name;
-	if (!IOUtils::validFileAndPath(full_name)) throw InvalidFileNameException(full_name,AT);
+	if (!FileUtils::validFileAndPath(full_name)) throw InvalidNameException(full_name,AT);
 	errno = 0;
+	std::ofstream fout;
 	fout.open(full_name.c_str(), ios::out);
 	if (fout.fail()) {
 		ostringstream ss;
 		ss << "Error opening file \"" << full_name << "\", possible reason: " << strerror(errno);
-		throw FileAccessException(ss.str(), AT);
+		throw AccessException(ss.str(), AT);
 	}
 
 	try {
@@ -355,7 +287,7 @@ void ARCIO::write2DGrid(const Grid2DObject& grid_in, const std::string& name)
 		fout << "cellsize " << setw(23-9) << setprecision(3) << grid_in.cellsize << "\n";
 		fout << "NODATA_value " << (int)(IOUtils::nodata) << "\n";
 
-		if(nrows>0) {
+		if (nrows>0) {
 			for (size_t kk=nrows; kk-->0; ) {
 				for (size_t ll=0; ll < ncols; ll++){
 					fout << grid_in(ll, kk) << " ";
@@ -365,17 +297,17 @@ void ARCIO::write2DGrid(const Grid2DObject& grid_in, const std::string& name)
 		}
 	} catch(...) {
 		cerr << "[E] error when writing ARC grid \"" << full_name << "\" " << AT << ": "<< endl;
-		cleanup();
+		fout.close();
 		throw;
 	}
 
-	cleanup();
+	fout.close();
 }
 
 void ARCIO::write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date)
 {
 	//the path will be added by write2DGrid
-	if(a3d_view_out) {
+	if (a3d_view_out) {
 		// the A3D grid viewer looks for the following extensions:
 		//sdp, tss, swr, lwr, swe, alb, wet
 		string ext;
@@ -385,7 +317,7 @@ void ARCIO::write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameter
 			ext="swr";
 		else if (parameter==MeteoGrids::ILWR)
 			ext="lwr";
-		else if(parameter==MeteoGrids::DEM)
+		else if (parameter==MeteoGrids::DEM)
 			ext="asc";
 		else {
 			ext = MeteoGrids::getParameterName(parameter);
@@ -395,7 +327,7 @@ void ARCIO::write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameter
 		dateStr.erase( dateStr.size()-2, string::npos); //remove the seconds
 		write2DGrid(grid_in, dateStr+"."+ext );
 	} else {
-		if(parameter==MeteoGrids::DEM || parameter==MeteoGrids::AZI || parameter==MeteoGrids::SLOPE) {
+		if (parameter==MeteoGrids::DEM || parameter==MeteoGrids::AZI || parameter==MeteoGrids::SLOPE) {
 			write2DGrid(grid_in, MeteoGrids::getParameterName(parameter) + grid2d_ext_out);
 		} else {
 			std::string date_str = date.toString(Date::ISO);

@@ -16,7 +16,9 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <meteoio/meteoFilters/FilterStdDev.h>
+#include <meteoio/meteoStats/libinterpol1D.h>
 #include <cmath>
+#include <algorithm>
 
 using namespace std;
 
@@ -41,26 +43,26 @@ void FilterStdDev::process(const unsigned int& param, const std::vector<MeteoDat
 	ovec = ivec;
 	for (size_t ii=0; ii<ovec.size(); ii++){ //for every element in ivec, get a window
 		double& value = ovec[ii](param);
-		if(value==IOUtils::nodata) continue;
+		if (value==IOUtils::nodata) continue;
 
 		//Calculate deviation
 		double mean     = IOUtils::nodata;
 		double std_dev  = IOUtils::nodata;
 
 		size_t start, end;
-		if( get_window_specs(ii, ivec, start, end) ) {
+		if ( get_window_specs(ii, ivec, start, end) ) {
 			getStat(ivec, param, start, end, std_dev, mean);
-		}  else if(!is_soft) {
+		}  else if (!is_soft) {
 			value = IOUtils::nodata;
 			continue;
 		}
 
-		if(mean==IOUtils::nodata) {
-			if(!is_soft) value = IOUtils::nodata;
+		if (mean==IOUtils::nodata) {
+			if (!is_soft) value = IOUtils::nodata;
 			continue;
 		}
 
-		if( value!=IOUtils::nodata && abs(value-mean)>sigma*std_dev) {
+		if ( value!=IOUtils::nodata && abs(value-mean)>sigma*std_dev) {
 			value = IOUtils::nodata;
 		}
 	}
@@ -72,24 +74,24 @@ void FilterStdDev::getStat(const std::vector<MeteoData>& ivec, const unsigned in
 	size_t count=0;
 	double sum=0.;
 
-	for(size_t ii=start; ii<=end; ii++) {
+	for (size_t ii=start; ii<=end; ii++) {
 		const double& value = ivec[ii](param);
-		if(value!=IOUtils::nodata) {
+		if (value!=IOUtils::nodata) {
 			sum += value;
 			count++;
 		}
 	}
 
-	if(count<=1) {
+	if (count<=1) {
 		mean = IOUtils::nodata;
 		stddev = IOUtils::nodata;
 	} else {
 		//compensated variance algorithm, see https://secure.wikimedia.org/wikipedia/en/wiki/Algorithms_for_calculating_variance
 		mean = sum/(double)count;
 		double sum2=0., sum3=0.;
-		for(size_t ii=start; ii<=end; ii++) {
+		for (size_t ii=start; ii<=end; ii++) {
 			const double& value = ivec[ii](param);
-			if(value!=IOUtils::nodata) {
+			if (value!=IOUtils::nodata) {
 				const double delta = value - mean;
 				sum2 += delta*delta;
 				sum3 += delta;

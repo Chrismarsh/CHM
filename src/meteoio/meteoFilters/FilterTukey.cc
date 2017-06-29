@@ -16,8 +16,10 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <meteoio/meteoFilters/FilterTukey.h>
+#include <meteoio/meteoStats/libinterpol1D.h>
 #include <meteoio/IOUtils.h>
 #include <cmath>
+#include <algorithm>
 
 using namespace std;
 
@@ -44,17 +46,17 @@ void FilterTukey::process(const unsigned int& param, const std::vector<MeteoData
 		double& value = ovec[ii](param);
 
 		size_t start, end;
-		if( get_window_specs(ii, ivec, start, end) ) {
+		if ( get_window_specs(ii, ivec, start, end) ) {
 			//Calculate std deviation
 			const double std_dev  = getStdDev(ivec, param, start, end);
 
 			const double u3 = getU3(ivec, ii, param);
-			if(std_dev!=IOUtils::nodata && u3!=IOUtils::nodata) {
-				if( abs(value-u3) > k*std_dev ) {
+			if (std_dev!=IOUtils::nodata && u3!=IOUtils::nodata) {
+				if ( abs(value-u3) > k*std_dev ) {
 					value = IOUtils::nodata;
 				}
-			} else if(!is_soft) value = IOUtils::nodata;
-		} else if(!is_soft) value = IOUtils::nodata;
+			} else if (!is_soft) value = IOUtils::nodata;
+		} else if (!is_soft) value = IOUtils::nodata;
 	}
 }
 
@@ -63,24 +65,24 @@ double FilterTukey::getStdDev(const std::vector<MeteoData>& ivec, const unsigned
 	size_t count=0;
 	double sum=0.;
 
-	for(size_t ii=start; ii<=end; ii++) {
+	for (size_t ii=start; ii<=end; ii++) {
 		const double& value = ivec[ii](param);
-		if(value!=IOUtils::nodata) {
+		if (value!=IOUtils::nodata) {
 			sum += value;
 			count++;
 		}
 	}
 
-	if(count<=1) {
+	if (count<=1) {
 		return IOUtils::nodata;
 	}
 
 	//compensated variance algorithm, see https://secure.wikimedia.org/wikipedia/en/wiki/Algorithms_for_calculating_variance
 	const double mean = sum/(double)count;
 	double sum2=0., sum3=0.;
-	for(size_t ii=start; ii<=end; ii++) {
+	for (size_t ii=start; ii<=end; ii++) {
 		const double& value = ivec[ii](param);
-		if(value!=IOUtils::nodata) {
+		if (value!=IOUtils::nodata) {
 			const double delta = value - mean;
 			sum2 += delta*delta;
 			sum3 += delta;
@@ -94,26 +96,26 @@ double FilterTukey::getStdDev(const std::vector<MeteoData>& ivec, const unsigned
 double FilterTukey::getU3(const std::vector<MeteoData>& ivec, const size_t& i, const unsigned int& param)
 {
 	//exit if we don't have the required data points
-	if( i<4 || i>=(ivec.size()-4) ) {
+	if ( i<4 || i>=(ivec.size()-4) ) {
 		return IOUtils::nodata;
 	}
 
 	//prepare intermediate variances
 	std::vector<double> u2;
-	for(char ii=-1; ii<=1; ii++) {
+	for (char ii=-1; ii<=1; ii++) {
 		std::vector<double> u1;
-		for(char jj=-1; jj<=1; jj++) {
+		for (char jj=-1; jj<=1; jj++) {
 			std::vector<double> u;
-			for(char kk=-2; kk<=2; kk++) {
+			for (char kk=-2; kk<=2; kk++) {
 				const size_t index = (i + (kk + jj + ii));
 				const double value = ivec[index](param);
-				if(value!=IOUtils::nodata)
+				if (value!=IOUtils::nodata)
 					u.push_back( value );
 			}
-			if(!u.empty())
+			if (!u.empty())
 				u1.push_back( Interpol1D::getMedian(u) );
 		}
-		if(!u1.empty())
+		if (!u1.empty())
 			u2.push_back( Interpol1D::getMedian(u1) );
 		else
 			u2.push_back( IOUtils::nodata );
@@ -123,20 +125,20 @@ double FilterTukey::getU3(const std::vector<MeteoData>& ivec, const size_t& i, c
 	//u3 = 1/4*( u2[0] + 2.*u2[1] + u2[2] )
 	double u3=0.;
 	size_t count=0;
-	if(u2[0]!=IOUtils::nodata) {
+	if (u2[0]!=IOUtils::nodata) {
 		u3 += u2[0];
 		count++;
 	}
-	if(u2[1]!=IOUtils::nodata) { //current timestep
+	if (u2[1]!=IOUtils::nodata) { //current timestep
 		u3 += u2[1]*2.;
 		count += 2;
 	}
-	if(u2[2]!=IOUtils::nodata) {
+	if (u2[2]!=IOUtils::nodata) {
 		u3 += u2[2];
 		count++;
 	}
 
-	if(count>0)
+	if (count>0)
 		return u3/((double)count);
 	else
 		return IOUtils::nodata;

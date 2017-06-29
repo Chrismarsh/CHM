@@ -144,6 +144,7 @@ template<class T> class Array2D {
 		void resize(const size_t& nx, const size_t& ny);
 		void resize(const size_t& nx, const size_t& ny, const T& init);
 		void size(size_t& nx, size_t& ny) const;
+		size_t size() const;
 		size_t getNx() const;
 		size_t getNy() const;
 
@@ -196,24 +197,24 @@ template<class T> class Array2D {
 		Array2D<T>& operator =(const T& value);
 
 		Array2D<T>& operator+=(const T& rhs);
-		const Array2D<T> operator+(const T& rhs);
+		const Array2D<T> operator+(const T& rhs) const;
 		Array2D<T>& operator+=(const Array2D<T>& rhs);
-		const Array2D<T> operator+(const Array2D<T>& rhs);
+		const Array2D<T> operator+(const Array2D<T>& rhs) const;
 
 		Array2D<T>& operator-=(const T& rhs);
-		const Array2D<T> operator-(const T& rhs);
+		const Array2D<T> operator-(const T& rhs) const;
 		Array2D<T>& operator-=(const Array2D<T>& rhs);
-		const Array2D<T> operator-(const Array2D<T>& rhs);
+		const Array2D<T> operator-(const Array2D<T>& rhs) const;
 
 		Array2D<T>& operator*=(const T& rhs);
-		const Array2D<T> operator*(const T& rhs);
+		const Array2D<T> operator*(const T& rhs) const;
 		Array2D<T>& operator*=(const Array2D<T>& rhs);
-		const Array2D<T> operator*(const Array2D<T>& rhs);
+		const Array2D<T> operator*(const Array2D<T>& rhs) const;
 
 		Array2D<T>& operator/=(const T& rhs);
-		const Array2D<T> operator/(const T& rhs);
+		const Array2D<T> operator/(const T& rhs) const;
 		Array2D<T>& operator/=(const Array2D<T>& rhs);
-		const Array2D<T> operator/(const Array2D<T>& rhs);
+		const Array2D<T> operator/(const Array2D<T>& rhs) const;
 
 		bool operator==(const Array2D<T>&) const; ///<Operator that tests for equality
 		bool operator!=(const Array2D<T>&) const; ///<Operator that tests for inequality
@@ -298,7 +299,7 @@ template<class T> void Array2D<T>::subset(const Array2D<T>& i_array2D, const siz
 {
 	if (((i_nx+i_ncols) > i_array2D.nx) || ((i_ny+i_nrows) > i_array2D.ny)) {
 		std::stringstream ss;
-		ss << "Trying to cut an array of size (" << nx << "," << ny << ") ";
+		ss << "Trying to cut an array of size (" << i_array2D.nx << "," << i_array2D.ny << ") ";
 		ss << "to size (" << i_ncols << "," << i_nrows << ") starting at (" << i_nx << "," << i_ny << ")";
 		throw IndexOutOfBoundsException(ss.str(), AT);
 	}
@@ -336,8 +337,8 @@ template<class T> void Array2D<T>::fill(const Array2D<T>& i_array2D, const size_
 	if ((i_ncols == 0) || (i_nrows == 0)) //the plane to copy has to make sense
 		throw IndexOutOfBoundsException("Filling an array with a null sized array!", AT);
 
-	for(size_t jj=i_ny; jj<(i_ny+i_nrows); jj++) {
-		for(size_t ii=i_nx; ii<(i_nx+i_ncols); ii++) {
+	for (size_t jj=i_ny; jj<(i_ny+i_nrows); jj++) {
+		for (size_t ii=i_nx; ii<(i_nx+i_ncols); ii++) {
 			const size_t ix = ii-i_nx;
 			const size_t iy = jj-i_ny;
 			operator()(ii,jj) = i_array2D(ix, iy);
@@ -346,16 +347,10 @@ template<class T> void Array2D<T>::fill(const Array2D<T>& i_array2D, const size_
 }
 
 template<class T> Array2D<T>::Array2D(const size_t& anx, const size_t& any, const T& init) :
-                  vecData(anx*any, init), nx(anx), ny(any), keep_nodata(true)
-{
-	//resize(anx,any,init);
-}
+                  vecData(anx*any, init), nx(anx), ny(any), keep_nodata(true) {}
 
 template<class T> Array2D<T>::Array2D(const size_t& anx, const size_t& any) :
-                  vecData(anx*any), nx(anx), ny(any), keep_nodata(true)
-{
-	//resize(anx,any);
-}
+                  vecData(anx*any), nx(anx), ny(any), keep_nodata(true) {}
 
 template<class T> void Array2D<T>::setKeepNodata(const bool i_keep_nodata) {
 	keep_nodata = i_keep_nodata;
@@ -384,6 +379,10 @@ template<class T> void Array2D<T>::size(size_t& anx, size_t& any) const {
 	any=ny;
 }
 
+template<class T> size_t Array2D<T>::size() const {
+	return nx*ny;
+}
+
 template<class T> size_t Array2D<T>::getNx() const {
 	return nx;
 }
@@ -404,7 +403,7 @@ template<class T> bool Array2D<T>::empty() const {
 template<class T> const std::string Array2D<T>::toString() const {
 	std::ostringstream os;
 	os << "<array2d>\n";
-	for(size_t jj=0; jj<ny; jj++) {
+	for (size_t jj=0; jj<ny; jj++) {
 		const size_t jnx = jj*nx;
 		for (size_t ii=0; ii<nx; ii++) {
 			os << vecData[ii+jnx] << " "; //COLUMN-MAJOR alignment
@@ -419,7 +418,7 @@ template<class P> std::iostream& operator<<(std::iostream& os, const Array2D<P>&
 	os.write(reinterpret_cast<const char*>(&array.keep_nodata), sizeof(array.keep_nodata));
 	os.write(reinterpret_cast<const char*>(&array.nx), sizeof(array.nx));
 	os.write(reinterpret_cast<const char*>(&array.ny), sizeof(array.ny));
-	os.write(reinterpret_cast<const char*>(&array.vecData[0]), (array.nx*array.ny)*sizeof(P));
+	os.write(reinterpret_cast<const char*>(&array.vecData[0]), static_cast<std::streamsize>(array.nx*array.ny*sizeof(P)));
 	return os;
 }
 
@@ -428,7 +427,7 @@ template<class P> std::iostream& operator>>(std::iostream& is, Array2D<P>& array
 	is.read(reinterpret_cast<char*>(&array.nx), sizeof(array.nx));
 	is.read(reinterpret_cast<char*>(&array.ny), sizeof(array.ny));
 	array.vecData.resize(array.nx*array.ny);
-	is.read(reinterpret_cast<char*>(&array.vecData[0]), (array.nx*array.ny)*sizeof(P)); //30 times faster than assign() or copy()
+	is.read(reinterpret_cast<char*>(&array.vecData[0]), static_cast<std::streamsize>(array.nx*array.ny*sizeof(P))); //30 times faster than assign() or copy()
 	return is;
 }
 
@@ -437,18 +436,18 @@ template<class T> T Array2D<T>::getMin() const {
 	T min = std::numeric_limits<T>::max();
 
 	const size_t nxy = ny*nx;
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++) {
 			const T val = vecData[jj];
-			if(val<min) min=val;
+			if (val<min) min=val;
 		}
 		return min;
 	} else {
 		for (size_t jj=0; jj<nxy; jj++) {
 			const T val = vecData[jj];
-			if(val!=IOUtils::nodata && val<min) min=val;
+			if (val!=IOUtils::nodata && val<min) min=val;
 		}
-		if(min!=std::numeric_limits<T>::max()) return min;
+		if (min!=std::numeric_limits<T>::max()) return min;
 		else return (T)IOUtils::nodata;
 	}
 }
@@ -458,18 +457,18 @@ template<class T> T Array2D<T>::getMax() const {
 	T max = -std::numeric_limits<T>::max();
 
 	const size_t nxy = ny*nx;
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++) {
 			const T val = vecData[jj];
-			if(val>max) max=val;
+			if (val>max) max=val;
 		}
 		return max;
 	} else {
 		for (size_t jj=0; jj<nxy; jj++) {
 			const T val = vecData[jj];
-			if(val!=IOUtils::nodata && val>max) max=val;
+			if (val!=IOUtils::nodata && val>max) max=val;
 		}
-		if(max!=-std::numeric_limits<T>::max()) return max;
+		if (max!=-std::numeric_limits<T>::max()) return max;
 		else return (T)IOUtils::nodata;
 	}
 }
@@ -479,23 +478,23 @@ template<class T> T Array2D<T>::getMean() const {
 	T mean = 0;
 	const size_t nxy = nx*ny;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++) {
 			const T val = vecData[jj];
 			mean += val;
 		}
-		if(nxy>0) return mean/(T)(nxy);
+		if (nxy>0) return mean/(T)(nxy);
 		else return (T)0;
 	} else {
 		size_t count = 0;
 		for (size_t jj=0; jj<nxy; jj++) {
 			const T val = vecData[jj];
-			if(val!=IOUtils::nodata) {
+			if (val!=IOUtils::nodata) {
 				mean += val;
 				count++;
 			}
 		}
-		if(count>0) return mean/(T)(count);
+		if (count>0) return mean/(T)(count);
 		else return (T)IOUtils::nodata;
 	}
 }
@@ -504,29 +503,29 @@ template<class T> size_t Array2D<T>::getCount() const
 {
 	const size_t nxy = nx*ny;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		return (size_t)nxy;
 	} else {
 		size_t count = 0;
 		for (size_t ii=0; ii<nxy; ii++) {
-			if(vecData[ii]!=IOUtils::nodata) count++;
+			if (vecData[ii]!=IOUtils::nodata) count++;
 		}
 		return count;
 	}
 }
 
 template<class T> void Array2D<T>::abs() {
-	if(std::numeric_limits<T>::is_signed) {
+	if (std::numeric_limits<T>::is_signed) {
 		const size_t nxy = nx*ny;
-		if(keep_nodata==false) {
+		if (keep_nodata==false) {
 			for (size_t ii=0; ii<nxy; ii++) {
 				T& val = vecData[ii];
-				if(val<0) val=-val;
+				if (val<0) val=-val;
 			}
 		} else {
 			for (size_t ii=0; ii<nxy; ii++) {
 				T& val = vecData[ii];
-				if(val<0 && val!=IOUtils::nodata) val=-val;
+				if (val<0 && val!=IOUtils::nodata) val=-val;
 			}
 		}
 	}
@@ -542,7 +541,7 @@ template<class T> const Array2D<T> Array2D<T>::getAbs() const {
 
 //arithmetic operators
 template<class T> bool Array2D<T>::checkEpsilonEquality(const Array2D<double>& rhs, const double& epsilon) const {
-	if(nx!=rhs.nx || ny!=rhs.ny) return false;
+	if (nx!=rhs.nx || ny!=rhs.ny) return false;
 
 	const size_t nxy = nx*ny;
 	for (size_t jj=0; jj<nxy; jj++)
@@ -551,12 +550,12 @@ template<class T> bool Array2D<T>::checkEpsilonEquality(const Array2D<double>& r
 	return true;
 }
 
-template<class T> bool Array2D<T>::checkEpsilonEquality(const Array2D<double>& rhs1, const Array2D<double>& rhs2, const double& epsilon) {
+template<class T> bool Array2D<T>::checkEpsilonEquality(const Array2D<double>& rhs1, const Array2D<double>& rhs2, const double& epsilon) { //static
 	return rhs1.checkEpsilonEquality(rhs2, epsilon);
 }
 
 template<class T> Array2D<T>& Array2D<T>::operator=(const Array2D<T>& source) {
-	if(this != &source) {
+	if (this != &source) {
 		keep_nodata = source.keep_nodata;
 		nx = source.nx;
 		ny = source.ny;
@@ -582,12 +581,12 @@ template<class T> Array2D<T>& Array2D<T>::operator+=(const Array2D<T>& rhs)
 
 	const size_t nxy = nx*ny;
 	//Add to every single member of the Array2D<T>
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++)
 			vecData[jj] += rhs(jj);
 	} else {
 		for (size_t jj=0; jj<nxy; jj++) {
-			if(vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
+			if (vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
 				vecData[jj] = IOUtils::nodata;
 			else
 				vecData[jj] += rhs(jj);
@@ -597,7 +596,7 @@ template<class T> Array2D<T>& Array2D<T>::operator+=(const Array2D<T>& rhs)
 	return *this;
 }
 
-template<class T> const Array2D<T> Array2D<T>::operator+(const Array2D<T>& rhs)
+template<class T> const Array2D<T> Array2D<T>::operator+(const Array2D<T>& rhs) const
 {
 	Array2D<T> result(*this); //make a copy
 	result += rhs; //already implemented
@@ -607,15 +606,17 @@ template<class T> const Array2D<T> Array2D<T>::operator+(const Array2D<T>& rhs)
 
 template<class T> Array2D<T>& Array2D<T>::operator+=(const T& rhs)
 {
+	if (rhs==0.) return *this;
+	
 	//Add to every single member of the Array2D<T>
 	const size_t nxy = nx*ny;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++)
 			vecData[jj] += rhs;
 	} else {
 		for (size_t jj=0; jj<nxy; jj++) {
-			if(vecData[jj]!=IOUtils::nodata)
+			if (vecData[jj]!=IOUtils::nodata)
 				vecData[jj] += rhs;
 		}
 	}
@@ -623,7 +624,7 @@ template<class T> Array2D<T>& Array2D<T>::operator+=(const T& rhs)
 	return *this;
 }
 
-template<class T> const Array2D<T> Array2D<T>::operator+(const T& rhs)
+template<class T> const Array2D<T> Array2D<T>::operator+(const T& rhs) const
 {
 	Array2D<T> result(*this);
 	result += rhs; //already implemented
@@ -643,12 +644,12 @@ template<class T> Array2D<T>& Array2D<T>::operator-=(const Array2D<T>& rhs)
 	//Substract to every single member of the Array2D<T>
 	const size_t nxy = nx*ny;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++)
 			vecData[jj] -= rhs(jj);
 	} else {
 		for (size_t jj=0; jj<nxy; jj++) {
-			if(vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
+			if (vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
 				vecData[jj] = IOUtils::nodata;
 			else
 				vecData[jj] -= rhs(jj);
@@ -658,7 +659,7 @@ template<class T> Array2D<T>& Array2D<T>::operator-=(const Array2D<T>& rhs)
 	return *this;
 }
 
-template<class T> const Array2D<T> Array2D<T>::operator-(const Array2D<T>& rhs)
+template<class T> const Array2D<T> Array2D<T>::operator-(const Array2D<T>& rhs) const
 {
 	Array2D<T> result(*this); //make a copy
 	result -= rhs; //already implemented
@@ -672,7 +673,7 @@ template<class T> Array2D<T>& Array2D<T>::operator-=(const T& rhs)
 	return *this;
 }
 
-template<class T> const Array2D<T> Array2D<T>::operator-(const T& rhs)
+template<class T> const Array2D<T> Array2D<T>::operator-(const T& rhs) const
 {
 	Array2D<T> result(*this);
 	result += -rhs; //already implemented
@@ -692,12 +693,12 @@ template<class T> Array2D<T>& Array2D<T>::operator*=(const Array2D<T>& rhs)
 	//Add to every single member of the Array2D<T>
 	const size_t nxy = nx*ny;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++)
 			vecData[jj] *= rhs(jj);
 	} else {
 		for (size_t jj=0; jj<nxy; jj++) {
-			if(vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
+			if (vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
 				vecData[jj] = IOUtils::nodata;
 			else
 				vecData[jj] *= rhs(jj);
@@ -707,7 +708,7 @@ template<class T> Array2D<T>& Array2D<T>::operator*=(const Array2D<T>& rhs)
 	return *this;
 }
 
-template<class T> const Array2D<T> Array2D<T>::operator*(const Array2D<T>& rhs)
+template<class T> const Array2D<T> Array2D<T>::operator*(const Array2D<T>& rhs) const
 {
 	Array2D<T> result(*this); //make a copy
 	result *= rhs; //already implemented
@@ -717,15 +718,17 @@ template<class T> const Array2D<T> Array2D<T>::operator*(const Array2D<T>& rhs)
 
 template<class T> Array2D<T>& Array2D<T>::operator*=(const T& rhs)
 {
+	if (rhs==1.) return *this;
+	
 	//Multiply to every single member of the Array2D<T>
 	const size_t nxy = nx*ny;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++)
 			vecData[jj] *= rhs;
 	} else {
 		for (size_t jj=0; jj<nxy; jj++) {
-			if(vecData[jj]!=IOUtils::nodata)
+			if (vecData[jj]!=IOUtils::nodata)
 				vecData[jj] *= rhs;
 		}
 	}
@@ -733,7 +736,7 @@ template<class T> Array2D<T>& Array2D<T>::operator*=(const T& rhs)
 	return *this;
 }
 
-template<class T> const Array2D<T> Array2D<T>::operator*(const T& rhs)
+template<class T> const Array2D<T> Array2D<T>::operator*(const T& rhs) const
 {
 	Array2D<T> result(*this);
 	result *= rhs; //already implemented
@@ -753,12 +756,12 @@ template<class T> Array2D<T>& Array2D<T>::operator/=(const Array2D<T>& rhs)
 	//Divide every single member of the Array2D<T>
 	const size_t nxy = nx*ny;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nxy; jj++)
 			vecData[jj] /= rhs(jj);
 	} else {
 		for (size_t jj=0; jj<nxy; jj++) {
-			if(vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
+			if (vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
 				vecData[jj] = IOUtils::nodata;
 			else
 				vecData[jj] /= rhs(jj);
@@ -768,7 +771,7 @@ template<class T> Array2D<T>& Array2D<T>::operator/=(const Array2D<T>& rhs)
 	return *this;
 }
 
-template<class T> const Array2D<T> Array2D<T>::operator/(const Array2D<T>& rhs)
+template<class T> const Array2D<T> Array2D<T>::operator/(const Array2D<T>& rhs) const
 {
 	Array2D<T> result(*this); //make a copy
 	result /= rhs; //already implemented
@@ -782,7 +785,7 @@ template<class T> Array2D<T>& Array2D<T>::operator/=(const T& rhs)
 	return *this;
 }
 
-template<class T> const Array2D<T> Array2D<T>::operator/(const T& rhs)
+template<class T> const Array2D<T> Array2D<T>::operator/(const T& rhs) const
 {
 	Array2D<T> result(*this);
 	result *= (1./rhs); //already implemented
@@ -793,12 +796,12 @@ template<class T> const Array2D<T> Array2D<T>::operator/(const T& rhs)
 template<class T> bool Array2D<T>::operator==(const Array2D<T>& in) const {
 	const size_t in_nx=in.getNx(), in_ny=in.getNy();
 
-	if(nx!=in_nx || ny!=in_ny)
+	if (nx!=in_nx || ny!=in_ny)
 		return false;
 
 	const size_t nxy = nx*ny;
-	for(size_t jj=0; jj<nxy; jj++)
-		if( !IOUtils::checkEpsilonEquality( vecData[jj] , in.vecData[jj], 1e-6) ) return false;
+	for (size_t jj=0; jj<nxy; jj++)
+		if ( !IOUtils::checkEpsilonEquality( vecData[jj] , in.vecData[jj], 1e-6) ) return false;
 
 	return true;
 }

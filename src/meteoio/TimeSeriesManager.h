@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __TIMESERIESMANAGER_H__
-#define __TIMESERIESMANAGER_H__
+#ifndef TIMESERIESMANAGER_H
+#define TIMESERIESMANAGER_H
 
 #include <meteoio/DataGenerator.h>
 #include <meteoio/MeteoProcessor.h>
@@ -82,6 +82,9 @@ class TimeSeriesManager {
 		void push_meteo_data(const IOUtils::ProcessingLevel& level, const Date& date_start, const Date& date_end,
 		                     const std::vector< METEO_SET >& vecMeteo);
 
+		void push_meteo_data(const IOUtils::ProcessingLevel& level, const Date& date_start, const Date& date_end,
+		                     const std::vector< MeteoData >& vecMeteo, const bool& invalidate_cache=true);
+
 		/**
 		 * @brief Set the desired ProcessingLevel of the TimeSeriesManager instance
 		 *        The processing level affects the way meteo data is read and processed
@@ -135,7 +138,37 @@ class TimeSeriesManager {
 		 * @brief Clear the point cache. All resampled values are dismissed, will need to be recalculated.
 		 */
 		void clear_cache();
+		
+		/**
+		 * @brief Returns a copy of the internal Config object.
+		 * This is convenient to clone an iomanager
+		 * @return new Config object as a copy of the internal Config
+		 */
+		const Config getConfig() const {return cfg;}
 
+		/**
+		 * @brief Returns a copy of the internal IOHandler object.
+		 * This is convenient to clone an iomanager
+		 * @return new IOHandler object as a copy of the internal IOHandler
+		 */
+		IOHandler& getIOHandler() const {return iohandler;}
+
+		/**
+		 * @brief Returns the begining of the raw buffer.
+		 * This is the start date of the <b>request</b> that was given to the IOHandler. If there was no data
+		 * at this date, then the date of the first data would be greater.
+		 * @return start date of the buffer
+		 */
+		Date getRawBufferStart() const {return raw_buffer.getBufferStart();}
+
+		/**
+		 * @brief Returns the end of the raw buffer.
+		 * This is the end date of the <b>request</b> that was given to the IOHandler. If there was no data
+		 * at this date, then the date of the last data would be less.
+		 * @return end date of the buffer
+		 */
+		Date getRawBufferEnd() const {return raw_buffer.getBufferEnd();}
+		
 	private:
 		void setDfltBufferProperties();
 		void fill_filtered_cache();

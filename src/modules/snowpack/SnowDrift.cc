@@ -19,6 +19,10 @@
 */
 
 #include <snowpack/SnowDrift.h>
+#include <snowpack/Hazard.h>
+#include <snowpack/Utils.h>
+
+#include <vector>
 #include <assert.h>
 
 using namespace mio;
@@ -150,7 +154,7 @@ void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, Sur
 	if (windward || alpine3d || erosion) {
 		double massErode=0.; // Mass loss due to erosion
 		if (fabs(forced_massErode) > Constants::eps2) {
-			massErode = MAX(0., -forced_massErode); //negative mass is erosion
+			massErode = std::max(0., -forced_massErode); //negative mass is erosion
 		} else {
 			const double ustar_max = (Mdata.vw>0.1) ? Mdata.ustar * Mdata.vw_drift / Mdata.vw : 0.; // Scale Mdata.ustar
 			try {
@@ -173,7 +177,7 @@ void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, Sur
 			Xdata.cH -= EMS[nE].L;
 			NDS[nE].hoar = 0.;
 			Xdata.ErosionMass = EMS[nE].M;
-			Xdata.ErosionLevel = MIN(nE-1, Xdata.ErosionLevel);
+			Xdata.ErosionLevel = std::min(nE-1, Xdata.ErosionLevel);
 			nErode++;
 			massErode -= EMS[nE].M;
 			forced_massErode = -massErode;
@@ -219,14 +223,14 @@ void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, Sur
 			// Add (negative) value stored in Xdata.ErosionMass
 			if (Xdata.ErosionMass < -Constants::eps)
 				virtuallyErodedMass -= Xdata.ErosionMass;
-			Sdata.mass[SurfaceFluxes::MS_WIND] = MIN(virtuallyErodedMass, EMS[Xdata.ErosionLevel].M); // use MS_WIND to carry virtually eroded mass
+			Sdata.mass[SurfaceFluxes::MS_WIND] = std::min(virtuallyErodedMass, EMS[Xdata.ErosionLevel].M); // use MS_WIND to carry virtually eroded mass
 			// Now keep track of mass that either did or did not lead to erosion of full layer
 			if (virtuallyErodedMass > EMS[Xdata.ErosionLevel].M) {
 				virtuallyErodedMass -= EMS[Xdata.ErosionLevel].M;
 				Xdata.ErosionLevel--;
 			}
 			Xdata.ErosionMass = -virtuallyErodedMass;
-			Xdata.ErosionLevel = MAX(Xdata.SoilNode, MIN(Xdata.ErosionLevel, nE-1));
+			Xdata.ErosionLevel = std::max(Xdata.SoilNode, std::min(Xdata.ErosionLevel, nE-1));
 		} else {
 			Xdata.ErosionMass = 0.;
 		}

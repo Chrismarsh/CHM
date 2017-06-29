@@ -17,7 +17,9 @@
 */
 
 #include <assert.h>
+#include <sstream>
 #include <cmath>
+#include <algorithm>
 #include <meteoio/meteoLaws/Atmosphere.h>
 #include <meteoio/meteoLaws/Meteoconst.h>
 #include <meteoio/meteoLaws/Sun.h>
@@ -34,10 +36,7 @@ namespace mio {
 double Atmosphere::blkBody_Emissivity(const double& lwr, const double& T) {
 	const double T2 = T*T;
 	const double ea = lwr / (Cst::stefan_boltzmann * (T2*T2));
-
-	if(ea > 1.0)
-		return 1.0;
-	return ea;
+	return std::min(ea, 1.);
 }
 
 /**
@@ -63,8 +62,8 @@ double Atmosphere::blkBody_Radiation(const double& ea, const double& T) {
 * @return standard pressure (Pa)
 */
 double Atmosphere::stdAirPressure(const double& altitude) {
-	const double expo = Cst::gravity / (Cst::dry_adiabatique_lapse_rate * Cst::gaz_constant_dry_air);
-	const double p = Cst::std_press * pow( 1. - ( (Cst::dry_adiabatique_lapse_rate * Cst::earth_R0 * altitude) / (Cst::std_temp * (Cst::earth_R0 + altitude)) ), expo );
+	static const double expo = Cst::gravity / (Cst::mean_adiabatique_lapse_rate * Cst::gaz_constant_dry_air);
+	const double p = Cst::std_press * pow( 1. - ( (Cst::mean_adiabatique_lapse_rate * Cst::earth_R0 * altitude) / (Cst::std_temp * (Cst::earth_R0 + altitude)) ), expo );
 	return p;
 }
 
@@ -111,10 +110,10 @@ double Atmosphere::waterVaporDensity(const double& Temperature, const double& Va
 */
 double Atmosphere::wetBulbTemperature(const double& T, const double& RH, const double& altitude)
 {
-	const double L = Cst::l_water_vaporization; //latent heat of vaporisation
-	const double mixing_ratio = Cst::gaz_constant_dry_air / Cst::gaz_constant_water_vapor;
+	static const double L = Cst::l_water_vaporization; //latent heat of vaporisation
+	static const double mixing_ratio = Cst::gaz_constant_dry_air / Cst::gaz_constant_water_vapor;
 	const double p = stdAirPressure(altitude);
-	const double Vp = waterSaturationPressure(T);
+	const double Vp = vaporSaturationPressure(T);
 
 	return ( T - (RH*Vp - Vp) * mixing_ratio * L / p / Cst::specific_heat_air );
 }
@@ -122,7 +121,8 @@ double Atmosphere::wetBulbTemperature(const double& T, const double& RH, const d
 /**
 * @brief Black Globe Temperature.
 * This is an estimation of the black globe temperature based on physical modeling as in
-* V. E. Dimiceli, S. F. Piltz and S. A. Amburn, <i>"Estimation of Black Globe Temperature for Calculation of the Wet Bulb Globe Temperature Index"</i> in World Congress on Engineering and Computer Science, <b>2</b>, 2011.
+* V. E. Dimiceli, S. F. Piltz and S. A. Amburn, <i>"Estimation of Black Globe Temperature for Calculation of the 
+* Wet Bulb Globe Temperature Index"</i> in World Congress on Engineering and Computer Science, <b>2</b>, 2011.
 * @param TA air temperature (K)
 * @param RH relative humidity (between 0 and 1)
 * @param VW wind velocity (m/s)
@@ -134,10 +134,10 @@ double Atmosphere::wetBulbTemperature(const double& T, const double& RH, const d
 double Atmosphere::blackGlobeTemperature(const double& TA, const double& RH, const double& VW, const double& iswr_dir, const double& iswr_diff, const double& cos_Z)
 {
 	const double S = iswr_dir + iswr_diff;
-	//const double a=1, b=1, c=1; //HACK: get real values!
+	//const double a=1, b=1, c=1; // get real values!
 	//const double h = a * pow(S, b) * pow(cos_Z, c);
-	const double h = 0.315; //personnal communication from S. Amburn
-	const double emissivity = 0.575 * pow(RH*waterSaturationPressure(TA), 1./7.);
+	static const double h = 0.315; //personnal communication from S. Amburn
+	const double emissivity = 0.575 * pow(RH*vaporSaturationPressure(TA), 1./7.);
 	const double B = S * (iswr_dir/(4.*Cst::stefan_boltzmann*cos_Z) + 1.2/Cst::stefan_boltzmann*iswr_diff) + emissivity*Optim::pow4(TA);
 	const double C = h * pow(VW, 0.58) / 5.3865e-8;
 
@@ -184,7 +184,7 @@ double Atmosphere::windLogProfile(const double& v_ref, const double& z_ref, cons
 */
 double Atmosphere::windChill(const double& TA, const double& VW)
 {
-	if(TA>(273.15+10.) || VW<5.) return TA; //not applicable in this case
+	if (TA>(Cst::t_water_freezing_pt+10.) || VW<5.) return TA; //not applicable in this case
 
 	const double t = IOUtils::K_TO_C(TA); //in Celsius
 	const double v = VW*3.6; //in km/h
@@ -205,15 +205,15 @@ double Atmosphere::windChill(const double& TA, const double& VW)
 */
 double Atmosphere::heatIndex(const double& TA, const double& RH)
 {
-	if(TA<(273.15+26.7) || RH<0.4) return TA; //not applicable in this case
+	if (TA<(Cst::t_water_freezing_pt+26.7) || RH<0.4) return TA; //not applicable in this case
 
 	const double t = IOUtils::K_TO_C(TA); //in Celsius
 	const double t2 = t*t;
 	const double rh = RH*100.; //in percent
 	const double rh2 = rh*rh;
 
-	const double c1=-8.784695, c2=1.61139411, c3=2.338549 , c4=-0.14611605;
-	const double c5=-1.2308094e-2 , c6=-1.6424828e-2 , c7=2.211732e-3 , c8=7.2546e-4, c9=-3.582e-6;
+	static const double c1=-8.784695, c2=1.61139411, c3=2.338549 , c4=-0.14611605;
+	static const double c5=-1.2308094e-2 , c6=-1.6424828e-2 , c7=2.211732e-3 , c8=7.2546e-4, c9=-3.582e-6;
 
 	const double HI = c1 + c2*t + c3*rh + c4*t*rh + c5*t2 + c6*rh2 + c7*t2*rh + c8*t*rh2 + c9*t2*rh2;
 
@@ -243,11 +243,13 @@ double Atmosphere::WBGT_index(const double& TA, const double& RH, const double& 
 }
 
 /**
-* @brief Standard water vapor saturation
+* @brief Standard water vapor saturation pressure.
+* See Murray, F. W., <i>"On the computation of saturation vapor pressure"</i>, 1966, J. Appl. Meteor., <b>6</b>, 203–204,
+* doi: 10.1175/1520-0450(1967)006<0203:OTCOSV>2.0.CO;2.
 * @param T air temperature (K)
 * @return standard water vapor saturation pressure (Pa)
 */
-double Atmosphere::waterSaturationPressure(const double& T) {
+double Atmosphere::vaporSaturationPressure(const double& T) {
 	double c2, c3; // varying constants
 
 	if ( T < Cst::t_water_triple_pt ) { // for a flat ice surface
@@ -294,7 +296,7 @@ double Atmosphere::saturatedVapourPressure(const double& T)
 * @return virtual temperature multiplying coefficient
 */
 double Atmosphere::virtualTemperatureFactor(const double& e, const double& p) {
-	const double epsilon = 0.622;
+	static const double epsilon = 0.622;
 	return 1. / (1.-(1.-epsilon)*e/p);
 }
 
@@ -309,13 +311,11 @@ double Atmosphere::virtualTemperatureFactor(const double& e, const double& p) {
  * @return clear sky emissivity
  */
 double Atmosphere::Brutsaert_emissivity(const double& RH, const double& TA) {
-	const double e0 = RH * waterSaturationPressure(TA); //water vapor pressure
+	const double e0 = RH * vaporSaturationPressure(TA); //water vapor pressure
 	const double e0_mBar = 0.01 * e0;
-	const double exponent = 1./7.;
+	static const double exponent = 1./7.;
 	const double ea = 1.24 * pow( (e0_mBar / TA), exponent);
-
-	if(ea>1.0) return 1.;
-	return ea;
+	return std::min(ea, 1.);
 }
 
 /**
@@ -347,9 +347,7 @@ double Atmosphere::Dilley_emissivity(const double& RH, const double& TA) {
 	const double ilwr_dilley = Dilley_ilwr(RH, TA);
 	const double ilwr_blkbody = blkBody_Radiation(1., TA);
 	const double ea = ilwr_dilley/ilwr_blkbody;
-
-	if(ea>1.0) return 1.;
-	return ea;
+	return std::min(ea, 1.);
 }
 
 /**
@@ -362,7 +360,7 @@ double Atmosphere::Dilley_emissivity(const double& RH, const double& TA) {
  * @return long wave radiation (W/m^2)
 */
 double Atmosphere::Dilley_ilwr(const double& RH, const double& TA) {
-	const double e0 = RH * waterSaturationPressure(TA) * 0.001; //water vapor pressure, kPa
+	const double e0 = RH * vaporSaturationPressure(TA) * 0.001; //water vapor pressure, kPa
 	const double w = 4650.*e0/TA; //precipitable water, Prata 1996
 
 	const double tmp = TA/Cst::t_water_triple_pt;
@@ -379,12 +377,10 @@ double Atmosphere::Dilley_ilwr(const double& RH, const double& TA) {
  * @return clear sky emissivity
 */
 double Atmosphere::Prata_emissivity(const double& RH, const double& TA) {
-	const double e0 = RH * waterSaturationPressure(TA) * 0.001; //water vapor pressure, kPa
+	const double e0 = RH * vaporSaturationPressure(TA) * 0.001; //water vapor pressure, kPa
 	const double w = 4650.*e0/TA; //precipitable water, Prata 1996
 	const double ea = 1. - (1.+w)*exp( -sqrt(1.2+3.*w) );
-
-	if(ea>1.0) return 1.;
-	return ea;
+	return std::min(ea, 1.);
 }
 
 /**
@@ -438,9 +434,7 @@ double Atmosphere::Clark_ilwr(const double& RH, const double& TA) {
 double Atmosphere::Tang_emissivity(const double& RH, const double& TA) {
 	const double Tdp = RhtoDewPoint(RH, TA, false);
 	const double ea = 0.754 + 0.0044 * (Tdp-Cst::t_water_triple_pt);
-
-	if(ea>1.0) return 1.;
-	return ea;
+	return std::min(ea, 1.);
 }
 
 /**
@@ -465,11 +459,9 @@ double Atmosphere::Tang_ilwr(const double& RH, const double& TA) {
  * @return clear sky emissivity
 */
 double Atmosphere::Idso_emissivity(const double& RH, const double& TA) {
-	const double e0 = RH * waterSaturationPressure(TA) * 0.0001; //water vapor pressure, mbar
+	const double e0 = RH * vaporSaturationPressure(TA) * 0.0001; //water vapor pressure, mbar
 	const double ea = 0.70 + 5.95e-5 * e0 * exp(1500./TA);
-
-	if(ea>1.0) return 1.;
-	return ea;
+	return std::min(ea, 1.);
 }
 
 /**
@@ -488,29 +480,27 @@ double Atmosphere::Idso_ilwr(const double& RH, const double& TA) {
 /**
 * @brief Evaluate the atmosphere emissivity from the water vapor pressure and cloudiness.
 * This is according to A. Omstedt, <i>"A coupled one-dimensional sea ice-ocean model applied to a semi-enclosed basin"</i>,
-* Tellus, <b>42 A</b>, 568-582, 1990, DOI:10.1034/j.1600-0870.1990.t01-3-00007.
+* Tellus, <b>42 A</b>, 568-582, 1990, DOI:10.1034/j.1600-0870.1990.t01-3-00007.x
 * @param RH relative humidity (between 0 and 1)
 * @param TA air temperature (K)
 * @param cloudiness cloudiness (between 0 and 1, 0 being clear sky)
 * @return emissivity (between 0 and 1)
 */
 double Atmosphere::Omstedt_emissivity(const double& RH, const double& TA, const double& cloudiness) {
-	const double e0 = RH * waterSaturationPressure(TA); //water vapor pressure
-	const double eps_w = 0.97;
-	const double a1 = 0.68;
-	const double a2 = 0.0036;
-	const double a3 = 0.18;
+	const double e0 = RH * vaporSaturationPressure(TA); //water vapor pressure
+	static const double eps_w = 0.97;
+	static const double a1 = 0.68;
+	static const double a2 = 0.0036;
+	static const double a3 = 0.18;
 
 	const double ea = (eps_w * (a1 + a2 * sqrt(e0)) * (1. + a3 * cloudiness * cloudiness)); //emissivity
-	if(ea > 1.0)
-		return 1.0;
-	return ea;
+	return std::min(ea, 1.);
 }
 
 /**
 * @brief Evaluate the long wave radiation from RH, TA and cloudiness.
 * This is according to A. Omstedt, <i>"A coupled one-dimensional sea ice-ocean model applied to a semi-enclosed basin"</i>,
-* Tellus, <b>42 A</b>, 568-582, 1990, DOI:10.1034/j.1600-0870.1990.t01-3-00007.
+* Tellus, <b>42 A</b>, 568-582, 1990, DOI:10.1034/j.1600-0870.1990.t01-3-00007.x
 * @param RH relative humidity (between 0 and 1)
 * @param TA air temperature (K)
 * @param cloudiness cloudiness (between 0 and 1, 0 being clear sky)
@@ -531,11 +521,11 @@ double Atmosphere::Omstedt_ilwr(const double& RH, const double& TA, const double
 * @return emissivity (between 0 and 1)
 */
 double Atmosphere::Konzelmann_emissivity(const double& RH, const double& TA, const double& cloudiness) {
-	const double ea = RH * waterSaturationPressure(TA); //screen-level water vapor pressure
-	const double exponent = 1./8.;
+	const double ea = RH * vaporSaturationPressure(TA); //screen-level water vapor pressure
+	static const double exponent = 1./8.;
 
 	const double epsilon_cs = 0.23 + 0.484*pow( ea/TA, exponent ); //clear sky emissivity
-	const double epsilon_oc = 0.952; //fully overcast sky emissivity
+	static const double epsilon_oc = 0.952; //fully overcast sky emissivity
 
 	const double weight = Optim::pow4(cloudiness); //weight for the weighted average between clear sky and overcast
 
@@ -558,21 +548,40 @@ double Atmosphere::Konzelmann_ilwr(const double& RH, const double& TA, const dou
 }
 
 /**
+ * @brief Evaluate the solar clearness index for a given cloudiness. 
+ * This uses the formula from Kasten and Czeplak -- <i>"Solar and terrestrial radiation
+ * dependent on the amount and type of cloud"</i>, Sol. Energy, <b>24</b>, 1980, pp 177-189.
+ * The solar index is defined as measured radiation / clear sky radiation, values
+ * outside of [0;1] will be truncated to [0;1].
+ * @param cloudiness in okta, between 0 and 1
+ * @return solar clearness index
+*/
+double Atmosphere::Kasten_clearness(const double& cloudiness) {
+	static const double b1 = 0.75, b2 = 3.4;
+	if (cloudiness<0. || cloudiness>1.) {
+		std::ostringstream ss;
+		ss << "Invalid cloudiness value: " << cloudiness << " (it should be between 0 and 1)";
+		throw InvalidArgumentException(ss.str(), AT);
+	}
+	const double clearness = 1. - b1*pow(cloudiness, b2);
+	return clearness;
+}
+
+/**
  * @brief Evaluate the cloudiness from a given solar index.
  * This uses the formula from Kasten and Czeplak -- <i>"Solar and terrestrial radiation
  * dependent on the amount and type of cloud"</i>, Sol. Energy, <b>24</b>, 1980, pp 177-189.
  * The solar index is defined as measured radiation / clear sky radiation, values
  * outside of [0;1] will be truncated to [0;1].
  * @param solarIndex solar index
- * @return cloudiness (between 0 and 1)
+ * @return cloudiness (in okta, between 0 and 1)
 */
 double Atmosphere::Kasten_cloudiness(const double& solarIndex) {
-	const double b1 = 0.75, b2 = 3.4;
+	static const double b1 = 0.75, b2 = 3.4;
 
-	if(solarIndex>1.) return 0.;
+	if (solarIndex>1.) return 0.;
 	const double cloudiness = pow((1.-solarIndex)/b1, 1./b2);
-	if(cloudiness>1.) return 1.;
-	return cloudiness;
+	return std::min(cloudiness, 1.);
 }
 
 /**
@@ -594,18 +603,18 @@ double Atmosphere::Kasten_cloudiness(const double& solarIndex) {
 double Atmosphere::Crawford_ilwr(const double& RH, const double& TA, const double& iswr_meas, const double& iswr_clear_sky, const unsigned char& month, const double& cloudiness)
 {
 	double clf;
-	if(cloudiness==IOUtils::nodata) {
-		if(iswr_meas<=0. || iswr_clear_sky<=0.)
+	if (cloudiness==IOUtils::nodata) {
+		if (iswr_meas<=0. || iswr_clear_sky<=0.)
 			return IOUtils::nodata;
 		clf = 1. - iswr_meas/iswr_clear_sky;  //cloud fraction estimate
-		if(clf<0.) clf=0.;
+		if (clf<0.) clf=0.;
 	} else {
-		if(cloudiness<0. || cloudiness>1.)
+		if (cloudiness<0. || cloudiness>1.)
 			return IOUtils::nodata;
 		clf = cloudiness;
 	}
 
-	const double e = RH * waterSaturationPressure(TA); //near surface water vapor pressure
+	const double e = RH * vaporSaturationPressure(TA); //near surface water vapor pressure
 	const double e_mBar = 0.01 * e;
 
 	const double epsilon = clf + (1.-clf) * (1.22 + 0.06*sin((month+2.)*Cst::PI/6.) ) * pow( (e_mBar/TA), 1./7.);
@@ -638,7 +647,7 @@ double Atmosphere::Crawford_ilwr(const double& lat, const double& lon, const dou
                                  const double& julian, const double& TZ,
                                  const double& RH, const double& TA, const double& ISWR, const double& cloudiness)
 {
-	if(TA==IOUtils::nodata || RH==IOUtils::nodata) {
+	if (TA==IOUtils::nodata || RH==IOUtils::nodata) {
 		return IOUtils::nodata;
 	}
 
@@ -646,8 +655,8 @@ double Atmosphere::Crawford_ilwr(const double& lat, const double& lon, const dou
 	int year, month, day;
 	date.getDate(year, month, day);
 
-	if(cloudiness==IOUtils::nodata) {
-		if(ISWR==IOUtils::nodata) return IOUtils::nodata;
+	if (cloudiness==IOUtils::nodata) {
+		if (ISWR==IOUtils::nodata) return IOUtils::nodata;
 
 		SunObject Sun(lat, lon, altitude, julian, TZ);
 		Sun.calculateRadiation(TA, RH, 0.5); //we force a terrain albedo of 0.5...
@@ -676,12 +685,12 @@ double Atmosphere::Crawford_ilwr(const double& lat, const double& lon, const dou
 double Atmosphere::Unsworth_ilwr(const double& RH, const double& TA, const double& iswr_meas, const double& iswr_clear_sky, const double& cloudiness)
 {
 	double c;
-	if(cloudiness!=IOUtils::nodata) {
-		if(cloudiness<0. || cloudiness>1.)
+	if (cloudiness!=IOUtils::nodata) {
+		if (cloudiness<0. || cloudiness>1.)
 			return IOUtils::nodata;
 		c = cloudiness;
 	} else {
-		if(iswr_meas<=0. || iswr_clear_sky<=0.)
+		if (iswr_meas<=0. || iswr_clear_sky<=0.)
 			return IOUtils::nodata;
 		c = Kasten_cloudiness(iswr_meas/iswr_clear_sky);
 	}
@@ -717,12 +726,12 @@ double Atmosphere::Unsworth_ilwr(const double& lat, const double& lon, const dou
                                  const double& julian, const double& TZ,
                                  const double& RH, const double& TA, const double& ISWR, const double& cloudiness)
 {
-	if(TA==IOUtils::nodata || RH==IOUtils::nodata) {
+	if (TA==IOUtils::nodata || RH==IOUtils::nodata) {
 		return IOUtils::nodata;
 	}
 
-	if(cloudiness==IOUtils::nodata) {
-		if(ISWR==IOUtils::nodata) return IOUtils::nodata;
+	if (cloudiness==IOUtils::nodata) {
+		if (ISWR==IOUtils::nodata) return IOUtils::nodata;
 
 		SunObject Sun(lat, lon, altitude, julian, TZ);
 		Sun.calculateRadiation(TA, RH, 0.5); //we force a terrain albedo of 0.5...
@@ -754,17 +763,17 @@ double Atmosphere::ILWR_parametrized(const double& lat, const double& lon, const
                                      const double& julian, const double& TZ,
                                      const double& RH, const double& TA, const double& ISWR, const double& cloudiness)
 {
-	const double iswr_thresh = 5.; //any iswr less than this is not considered as valid for Crawford
+	static const double iswr_thresh = 5.; //any iswr less than this is not considered as valid for Crawford
 	const double ND=IOUtils::nodata; //since we will do lots of comparisons with it...
 
-	if(RH!=ND && TA!=ND && cloudiness!=ND) {
+	if (RH!=ND && TA!=ND && cloudiness!=ND) {
 		return Omstedt_ilwr(RH, TA, cloudiness);
 	}
-	if(lat!=ND && lon!=ND && altitude!=ND && julian!=ND && TZ!=ND && RH!=ND && TA!=ND && ISWR!=ND && ISWR>iswr_thresh) {
+	if (lat!=ND && lon!=ND && altitude!=ND && julian!=ND && TZ!=ND && RH!=ND && TA!=ND && ISWR!=ND && ISWR>iswr_thresh) {
 		const double ilwr_p = Unsworth_ilwr(lat, lon, altitude, julian, TZ, RH, TA, ISWR);
-		if(ilwr_p!=ND) return ilwr_p; //it might have been that we could not compute (for low solar angles)
+		if (ilwr_p!=ND) return ilwr_p; //it might have been that we could not compute (for low solar angles)
 	}
-	if(RH!=ND && TA!=ND) {
+	if (RH!=ND && TA!=ND) {
 		return Brutsaert_ilwr(RH, TA);
 	}
 
@@ -782,12 +791,10 @@ double Atmosphere::RhtoDewPoint(double RH, double TA, const bool& force_water)
 {
 	TA = IOUtils::K_TO_C(TA);
 	double Es, E, Tdw, Tdi; //saturation and current water vapor pressure
-	const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
-	const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
-	const double Tfreeze = 0.;                          //freezing temperature
-	const double Tnucl = -16.0;                         //nucleation temperature
-	const double di = 1. / ((TA - Tnucl) * (TA - Tnucl) + 1e-6);     //distance to pure ice
-	const double dw = 1. / ((Tfreeze - TA) * (Tfreeze - TA) + 1e-6); //distance to pure water
+	static const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
+	static const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
+	static const double Tfreeze = 0.;                          //freezing temperature
+	static const double Tnucl = -16.0;                         //nucleation temperature
 
 	//in order to avoid getting NaN if RH=0
 	RH += 0.0001;
@@ -814,6 +821,8 @@ double Atmosphere::RhtoDewPoint(double RH, double TA, const bool& force_water)
 	E = RH * Es;
 	Tdw = ( Cw * log(E / Aw) ) / ( Bw - log(E / Aw) );
 
+	const double di = 1. / ((TA - Tnucl) * (TA - Tnucl) + 1e-6);     //distance to pure ice
+	const double dw = 1. / ((Tfreeze - TA) * (Tfreeze - TA) + 1e-6); //distance to pure water
 	return IOUtils::C_TO_K( (di / (di + dw) * Tdi + dw / (di + dw) * Tdw) );
 }
 
@@ -830,35 +839,25 @@ double Atmosphere::DewPointtoRh(double TD, double TA, const bool& force_water)
 	//TA, TD are in Kelvins, RH is returned between 0 and 1
 	TA = IOUtils::K_TO_C(TA);
 	TD = IOUtils::K_TO_C(TD);
-	double Es, E, Rhi, Rhw, Rh;                         //saturation and current water vapro pressure
-	const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
-	const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
-	const double Tfreeze = 0.;                          //freezing temperature
-	const double Tnucl = -16.0;                         //nucleation temperature
-	const double di = 1. / ((TA - Tnucl) * (TA - Tnucl) + 1e-6);     //distance to pure ice
-	const double dw = 1. / ((Tfreeze - TA) * (Tfreeze - TA) + 1e-6); //distance to pure water
+	static const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
+	static const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
+	static const double Tfreeze = 0.;                          //freezing temperature
+	static const double Tnucl = -16.0;                         //nucleation temperature
+	double Es, E, Rhi, Rhw;                         //saturation and current water vapro pressure
 
 	if (TA >= Tfreeze || force_water==true) {
 		//above freezing point, water
 		Es = Aw * exp( (Bw * TA) / (Cw + TA) );
 		E  = Aw * exp( (Bw * TD) / (Cw + TD) );
 		Rhw = (E / Es);
-		if (Rhw > 1.) {
-			return 1.;
-		} else {
-			return Rhw;
-		}
+		return std::min(Rhw, 1.);
 	}
 	if (TA < Tnucl) {
 		//below nucleation, ice
 		Es = Ai * exp( (Bi * TA) / (Ci + TA) );
 		E  = Ai * exp( (Bi * TD) / (Ci + TD) );
 		Rhi = (E / Es);
-		if (Rhi > 1.) {
-			return 1.;
-		} else {
-			return Rhi;
-		}
+		return std::min(Rhi, 1.);
 	}
 
 	//no clear state, we do a smooth interpolation between water and ice
@@ -870,29 +869,26 @@ double Atmosphere::DewPointtoRh(double TD, double TA, const bool& force_water)
 	E  = Aw * exp( (Bw * TD) / (Cw + TD) );
 	Rhw = E / Es;
 
-	Rh = (di / (di + dw) * Rhi + dw / (di + dw) * Rhw);
-	if(Rh > 1.) {
-		return 1.;
-	} else {
-		return Rh;
-	}
+	const double di = 1. / ((TA - Tnucl) * (TA - Tnucl) + 1e-6);     //distance to pure ice
+	const double dw = 1. / ((Tfreeze - TA) * (Tfreeze - TA) + 1e-6); //distance to pure water
+	const double Rh = (di / (di + dw) * Rhi + dw / (di + dw) * Rhw);
+	return std::min(Rh, 1.);
 }
 
 /**
 * @brief Calculate the relative Humidity (RH) from specific humidity.
 * @param altitude altitude over sea level (m)
 * @param TA air temperature (K)
-* @param qi specific humidity
+* @param qi specific humidity between 0 and 1
 * @return relative humidity between 0 and 1
 */
 double Atmosphere::specToRelHumidity(const double& altitude, const double& TA, const double& qi)
 {
-	const double SatVaporDensity = waterVaporDensity(TA, waterSaturationPressure(TA));
+	const double SatVaporDensity = waterVaporDensity(TA, vaporSaturationPressure(TA));
 	const double dryAir_density = stdDryAirDensity(altitude, TA);
 	const double RH = qi/(1.-qi) * dryAir_density/SatVaporDensity;
 
-	if(RH>1.) return 1.;
-	else return RH;
+	return std::min(RH, 1.);
 }
 
 /**
@@ -905,7 +901,7 @@ double Atmosphere::specToRelHumidity(const double& altitude, const double& TA, c
 double Atmosphere::relToSpecHumidity(const double& altitude, const double& TA, const double& RH)
 {
 	const double dryAir_density = stdDryAirDensity(altitude, TA);
-	const double SatVaporDensity = waterVaporDensity(TA, waterSaturationPressure(TA));
+	const double SatVaporDensity = waterVaporDensity(TA, vaporSaturationPressure(TA));
 	const double qi_inv = dryAir_density/(RH*SatVaporDensity) + 1.;
 
 	return 1./qi_inv;

@@ -85,7 +85,7 @@ void Iqbal_iswr::run(mesh_elem &face)
 
     // saturation vapor pressure in Pa
     //const double Ps = exp( 26.23 - 5416./ta ); //as used for the parametrization
-    const double Ps = mio::Atmosphere::waterSaturationPressure(ta);
+    const double Ps = mio::Atmosphere::vaporSaturationPressure(ta);
 
     // Leckner (1978) (in Iqbal (1983), p.94), reduced precipitable water
     const double w = 0.493 * rh * Ps / ta;

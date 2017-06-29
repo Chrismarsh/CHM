@@ -15,13 +15,11 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __GRID2DOBJECT_H__
-#define __GRID2DOBJECT_H__
+#ifndef GRID2DOBJECT_H
+#define GRID2DOBJECT_H
 
 #include <meteoio/dataClasses/Coords.h>
 #include <meteoio/dataClasses/Array2D.h>
-#include <meteoio/IOExceptions.h>
-#include <meteoio/IOUtils.h>
 
 #include <iostream>
 
@@ -99,9 +97,10 @@ class Grid2DObject {
 		* and (east,north)). Any point that is either invalid or outside the grid is removed from the vector.
 		* If the given point had a "NULL" projection, it will be set to the grid's.
 		* @param vec_points vector containing the coordinates to convert
+		* @param keep_invalid keep invalid coordinates? (default: false)
 		* @return false if invalid or external points had to be removed
 		*/
-		bool gridify(std::vector<Coords>& vec_points) const;
+		bool gridify(std::vector<Coords>& vec_points, const bool& keep_invalid=false) const;
 
 		/**
 		* @brief Set all variables in one go.
@@ -125,8 +124,15 @@ class Grid2DObject {
 		         const double& cellsize, const Coords& i_llcorner, const double& init);
 
 		void set(const Grid2DObject& i_grid, const double& init);
+		
+		/**
+		* @brief Rescale (bilinear resampling) the grid to match the given cell size.
+		* @param i_cellsize new value for cellsize
+		*/
+		void rescale(const double& i_cellsize);
 
 		void size(size_t& o_ncols, size_t& o_nrows) const;
+		size_t size() const;
 		size_t getNx() const;
 		size_t getNy() const;
 
@@ -155,7 +161,6 @@ class Grid2DObject {
 		* The classification is given by a list of growing thresholds, the 'clusters' are then a simple
 		* range of values. Each cluster comes with an 'id' that replaces the values of the points.
 		*
-		*
 		* @param thresholds (const std::vector<double>&) ordered list of thresholds representing a scale of values. Each level of this scale defines a cluster
 		* @param ids (const std::vector<double>&) clusters Ids to be used. clustersId.size()=thresholds.size()+1
 		* @return true if clusturization was succesfull
@@ -166,24 +171,24 @@ class Grid2DObject {
 		Grid2DObject& operator=(const double& value); ///<Assignement operator
 
 		Grid2DObject& operator+=(const double& rhs);
-		const Grid2DObject operator+(const double& rhs);
+		const Grid2DObject operator+(const double& rhs) const;
 		Grid2DObject& operator+=(const Grid2DObject& rhs);
-		const Grid2DObject operator+(const Grid2DObject& rhs);
+		const Grid2DObject operator+(const Grid2DObject& rhs) const;
 
 		Grid2DObject& operator-=(const double& rhs);
-		const Grid2DObject operator-(const double& rhs);
+		const Grid2DObject operator-(const double& rhs) const;
 		Grid2DObject& operator-=(const Grid2DObject& rhs);
-		const Grid2DObject operator-(const Grid2DObject& rhs);
+		const Grid2DObject operator-(const Grid2DObject& rhs) const;
 
 		Grid2DObject& operator*=(const double& rhs);
-		const Grid2DObject operator*(const double& rhs);
+		const Grid2DObject operator*(const double& rhs) const;
 		Grid2DObject& operator*=(const Grid2DObject& rhs);
-		const Grid2DObject operator*(const Grid2DObject& rhs);
+		const Grid2DObject operator*(const Grid2DObject& rhs) const;
 
 		Grid2DObject& operator/=(const double& rhs);
-		const Grid2DObject operator/(const double& rhs);
+		const Grid2DObject operator/(const double& rhs) const;
 		Grid2DObject& operator/=(const Grid2DObject& rhs);
-		const Grid2DObject operator/(const Grid2DObject& rhs);
+		const Grid2DObject operator/(const Grid2DObject& rhs) const;
 
 		bool operator==(const Grid2DObject& in) const; ///<Operator that tests for equality
 		bool operator!=(const Grid2DObject& in) const; ///<Operator that tests for inequality

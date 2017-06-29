@@ -18,13 +18,13 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __AGGREGATE_H__
-#define __AGGREGATE_H__
+#ifndef AGGREGATE_H
+#define AGGREGATE_H
 
 #include <snowpack/DataClasses.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
 #include <vector>
+
+#include <cstddef> //needed for size_t
 
 /**
  * @class Aggregate
@@ -36,11 +36,13 @@ class Aggregate {
 
 	public:
 		static size_t aggregate(std::vector<SnowProfileLayer>& Pdata);
+		static bool joinSimilarLayers(ElementData& Edata_upper, ElementData& Edata_lower);
+		static bool mergeThinLayer(ElementData& Edata_upper, ElementData& Edata_lower);
 
 	private:
 		static void shift(const size_t& nL_ini, std::vector<SnowProfileLayer>& Pdata);
-		static bool joinSimilarLayers(const size_t& e1, std::vector<SnowProfileLayer>& Pdata);
-		static bool mergeThinLayer(const size_t& e1, std::vector<SnowProfileLayer>& Pdata);
+		static bool joinSimilarLayers(const size_t& e_upper, std::vector<SnowProfileLayer>& Pdata);
+		static bool mergeThinLayer(const size_t& e_lower, std::vector<SnowProfileLayer>& Pdata);
 
 		static const double limit_dry;     ///< Distinguishes between dry and wet snow layers (1)
 		static const double diff_theta_w;  ///< Maximum water difference for aggregation (% by volume)

@@ -38,7 +38,7 @@ PROJECT_NAME           = MeteoIODoc
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         = MeteoIODoc-2.5.0
+PROJECT_NUMBER         = MeteoIODoc-2.6.1
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
@@ -756,9 +756,12 @@ WARN_LOGFILE           =
 
 INPUT                  = ./meteoio \
                          ./meteoio/dataClasses \
+                         ./meteoio/dataGenerators \
                          ./meteoio/plugins \
                          ./meteoio/meteoLaws \
                          ./meteoio/meteoFilters \
+                         ./meteoio/meteoResampling \
+                          ./meteoio/spatialInterpolations \
                          ./meteoio/meteoStats
 
 # This tag can be used to specify the character encoding of the source files
@@ -814,7 +817,7 @@ EXCLUDE_SYMLINKS       = NO
 # Note that the wildcards are matched against the file with absolute path, so to
 # exclude all test directories for example use the pattern */test/*
 
-EXCLUDE_PATTERNS       = */plugins/*template*
+EXCLUDE_PATTERNS       = */*template*
 
 # The EXCLUDE_SYMBOLS tag can be used to specify one or more symbol names
 # (namespaces, classes, functions, etc.) that should be excluded from the

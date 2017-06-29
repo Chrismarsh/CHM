@@ -15,10 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __SUNTAJECTORY_H__
-#define __SUNTAJECTORY_H__
-
-#include <meteoio/IOUtils.h>
+#ifndef SUNTAJECTORY_H
+#define SUNTAJECTORY_H
 
 namespace mio {
 
@@ -39,20 +37,21 @@ class SunTrajectory {
 
 		/** @brief Set the date and time
 		* if no timezone is specified, GMT is assumed
-		* @param _julian julian date in the time zone of interest
-		* @param TZ time zone
+		* @param i_julian julian date in the time zone of interest
+		* @param i_TZ time zone
 		*/
-		virtual void setDate(const double& _julian, const double& TZ=0.)=0;
-		virtual void setLatLon(const double& _latitude, const double& _longitude)=0;
-		virtual void setAll(const double& _latitude, const double& _longitude, const double& _julian, const double& TZ=0.)=0;
+		virtual void setDate(const double& i_julian, const double& i_TZ=0.)=0;
+		virtual void setLatLon(const double& i_latitude, const double& i_longitude)=0;
+		virtual void setAll(const double& i_latitude, const double& i_longitude, const double& i_julian, const double& i_TZ=0.)=0;
 		virtual void reset()=0;
 
 		///(see http://en.wikipedia.org/wiki/Horizontal_coordinate_system)
 		///please remember that zenith_angle = 90 - elevation
 		virtual void getHorizontalCoordinates(double& azimuth, double& elevation) const=0;
 		virtual void getHorizontalCoordinates(double& azimuth, double& elevation, double& eccentricity) const=0;
-		virtual void getDaylight(double& sunrise, double& sunset, double& daylight, const double& TZ=0.)=0;
-		virtual double getSolarTime(const double& TZ=0.) const;
+		virtual void getDaylight(double& sunrise, double& sunset, double& daylight)=0;
+		virtual double getSolarTime() const;
+		virtual double getSolarTimeOfDay() const;
 
 		///(http://en.wikipedia.org/wiki/Equatorial_coordinate_system)
 		virtual void getEquatorialCoordinates(double& right_ascension, double& declination)=0;
@@ -78,7 +77,7 @@ class SunTrajectory {
 		virtual void update()=0;
 
 	protected:
-		double julian_gmt; //TODO: we should keep TZ so sunrise/sunset are given in input TZ
+		double julian_gmt, TZ;
 		double latitude, longitude;
 		double SolarAzimuthAngle, SolarElevation; ///>this is the TRUE solar elevation, not the apparent one
 		double eccentricityEarth;
@@ -106,16 +105,16 @@ class SunMeeus : public SunTrajectory {
 		SunMeeus();
 		~SunMeeus() {}
 		SunMeeus(const double& i_latitude, const double& i_longitude);
-		SunMeeus(const double& i_latitude, const double& i_longitude, const double& i_julian, const double& TZ=0.);
+		SunMeeus(const double& i_latitude, const double& i_longitude, const double& i_julian, const double& i_TZ=0.);
 
-		void setDate(const double& i_julian, const double& TZ=0.);
+		void setDate(const double& i_julian, const double& i_TZ=0.);
 		void setLatLon(const double& i_latitude, const double& i_longitude);
-		void setAll(const double& i_latitude, const double& i_longitude, const double& i_julian, const double& TZ=0.);
+		void setAll(const double& i_latitude, const double& i_longitude, const double& i_julian, const double& i_TZ=0.);
 		void reset();
 
 		void getHorizontalCoordinates(double& azimuth, double& elevation) const;
 		void getHorizontalCoordinates(double& azimuth, double& elevation, double& eccentricity) const;
-		void getDaylight(double& sunrise, double& sunset, double& daylight, const double& TZ=0.);
+		void getDaylight(double& sunrise, double& sunset, double& daylight);
 		void getEquatorialSunVector(double& sunx, double& suny, double& sunz);
 		void getEquatorialCoordinates(double& right_ascension, double& declination);
 	private:

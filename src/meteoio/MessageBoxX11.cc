@@ -37,7 +37,7 @@ void MessageBoxX11( const char* title, const char* text ) {
 
 	/* Open a display */
 	Display* dpy = XOpenDisplay(0);
-	if(!dpy) return;
+	if (!dpy) return;
 
 	/* Get us a white and black color */
 	const int black = BlackPixel( dpy, DefaultScreen(dpy) );
@@ -72,7 +72,7 @@ void MessageBoxX11( const char* title, const char* text ) {
 	strncpy( temp, text, text_len );
 
 	char *pch = strtok( temp, "\n" );
-	while( pch!=NULL ) {
+	while ( pch!=NULL ) {
 		strvec = (char **)realloc( strvec, (strvec_size+1)*sizeof(char**) );
 		strvec[ strvec_size ] = (char *)malloc( strlen(pch)+1 );
 		strncpy( strvec[ strvec_size ], pch, strlen(pch)+1 );
@@ -83,11 +83,11 @@ void MessageBoxX11( const char* title, const char* text ) {
 
 	/* Compute the printed length and height of the longest and the tallest line */
 	XFontStruct* font = XQueryFont( dpy, XGContextFromGC(gc));
-	if(!font) return;
+	if (!font) return;
 
 	int length=0, height=0, direction, ascent, descent;
 	XCharStruct overall;
-	for( size_t i=0; i<strvec_size; ++i ) {
+	for ( size_t i=0; i<strvec_size; ++i ) {
 		XTextExtents( font, strvec[ i ], strlen(strvec[ i ]), &direction, &ascent, &descent, &overall );
 		length =  overall.width  >length ? overall.width    : length;
 		height = (ascent+descent)>height ? (ascent+descent) : height;
@@ -132,12 +132,12 @@ void MessageBoxX11( const char* title, const char* text ) {
 		XNextEvent( dpy, &e );
 		int offset = 0;
 
-		if( e.type == MotionNotify ) {
-			if( e.xmotion.x>=okX1 && e.xmotion.x<=okX2 && e.xmotion.y>=okY1 && e.xmotion.y<=okY2 ) {
-				if( !buttonFocus ) e.type = Expose;
+		if ( e.type == MotionNotify ) {
+			if ( e.xmotion.x>=okX1 && e.xmotion.x<=okX2 && e.xmotion.y>=okY1 && e.xmotion.y<=okY2 ) {
+				if ( !buttonFocus ) e.type = Expose;
 				buttonFocus = 1;
 			} else {
-				if( buttonFocus ) e.type = Expose;
+				if ( buttonFocus ) e.type = Expose;
 				buttonFocus = 0;
 				offset = 0;
 			}
@@ -146,11 +146,11 @@ void MessageBoxX11( const char* title, const char* text ) {
 		switch( e.type ) {
 			case ButtonPress:
 			case ButtonRelease:
-				if( e.xbutton.button!=Button1 ) break;
+				if ( e.xbutton.button!=Button1 ) break;
 
-				if( buttonFocus ) {
+				if ( buttonFocus ) {
 					offset = e.type==ButtonPress ? 1 : 0;
-					if( !offset ) run = 0;
+					if ( !offset ) run = 0;
 				} else {
 					offset = 0;
 				}
@@ -160,11 +160,11 @@ void MessageBoxX11( const char* title, const char* text ) {
 				XClearWindow( dpy, w );
 
 				/* Draw text lines */
-				for( size_t i=0; i<strvec_size; ++i )
+				for ( size_t i=0; i<strvec_size; ++i )
 				XDrawString( dpy, w, gc, 10, 10+height + height*i, strvec[i], strlen(strvec[i]) );
 
 				/* Draw OK button */
-				if( buttonFocus ) {
+				if ( buttonFocus ) {
 					XFillRectangle( dpy, w, gc, offset+okX1, offset+okY1, okX2-okX1, okY2-okY1 );
 					XSetForeground( dpy, gc, white );
 				} else {
@@ -176,7 +176,7 @@ void MessageBoxX11( const char* title, const char* text ) {
 
 				XDrawString( dpy, w, gc, offset+okBaseX, offset+okBaseY, "OK", 2 );
 
-				if( buttonFocus ) {
+				if ( buttonFocus ) {
 					XSetForeground( dpy, gc, black );
 				}
 
@@ -184,19 +184,19 @@ void MessageBoxX11( const char* title, const char* text ) {
 				break;
 
 			case KeyRelease:
-				if( XLookupKeysym( &e.xkey, 0 ) == XK_Escape ) run = 0;
+				if ( XLookupKeysym( &e.xkey, 0 ) == XK_Escape ) run = 0;
 				break;
 
 			case ClientMessage:
 				char *atom = XGetAtomName( dpy, e.xclient.message_type );
-				if( *atom == *wmDeleteWindow ) run = 0;
+				if ( *atom == *wmDeleteWindow ) run = 0;
 				XFree(atom);
 				break;
 		};
-	} while( run );
+	} while ( run );
 
 	/* Clean up */
-	for( size_t i=0; i<strvec_size; ++i ) free( strvec[i] );
+	for ( size_t i=0; i<strvec_size; ++i ) free( strvec[i] );
 	free( strvec );
 	XFreeGC( dpy, gc );
 	XDestroyWindow( dpy, w );

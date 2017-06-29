@@ -106,7 +106,7 @@ jdoubleArray __internalWrapper
 	double *cOptions = NULL;
 	std::vector<double> vecClusterThresholds;
 	std::vector<double> vecClusterIds;
-	if(bClusterization || bPolygonize){
+	if (bClusterization || bPolygonize){
 		cClusterThresholds = env->GetDoubleArrayElements(jClusterThresholds,&isCopyClusterThresholds);
 		cClusterIds = env->GetDoubleArrayElements(jClusterIds,&isCopyClusterIds);
 		int nb = (int)env->GetArrayLength(jClusterThresholds);
@@ -116,7 +116,7 @@ jdoubleArray __internalWrapper
 		for (int i = 0; i < nb; i++)
 			vecClusterIds.push_back(cClusterIds[i]);
 	}
-	if(bPolygonize){
+	if (bPolygonize){
 		cOptions = env->GetDoubleArrayElements(jVectorizingOptions,&isCopyOptions);
 	}
 
@@ -145,9 +145,9 @@ jdoubleArray __internalWrapper
 	const double msInterpolation = (tmpEnd - tmpStart)/1000.0;
 
 	tmpStart = clock(); //start
-	if(success)
+	if (success)
 		try {
-			if(bClusterization)
+			if (bClusterization)
 				p.clusterization(vecClusterThresholds, vecClusterIds);
 		}catch(...){
 			std::cerr << "Extra process failed " <<  std::endl;
@@ -185,7 +185,7 @@ jdoubleArray __internalWrapper
 	if (isCopyData == JNI_TRUE)
 		env->ReleaseDoubleArrayElements(jData, cData, JNI_ABORT);
 	//release if necessary :
-	if(bClusterization || bPolygonize){
+	if (bClusterization || bPolygonize){
 		if (isCopyClusterThresholds == JNI_TRUE)
 					env->ReleaseDoubleArrayElements(jClusterThresholds, cClusterThresholds, JNI_ABORT);
 		if (isCopyClusterIds == JNI_TRUE)
@@ -193,7 +193,7 @@ jdoubleArray __internalWrapper
 		vecClusterThresholds.clear();
 		vecClusterIds.clear();
 	}
-	if(bPolygonize){
+	if (bPolygonize){
 		if (isCopyOptions == JNI_TRUE)
 			env->ReleaseDoubleArrayElements(jVectorizingOptions, cOptions, JNI_ABORT);
 	}

@@ -42,9 +42,9 @@ void ProcWMASmoothing::process(const unsigned int& param, const std::vector<Mete
 		double& value = ovec[ii](param);
 
 		size_t start, end;
-		if( get_window_specs(ii, ivec, start, end) ) {
+		if ( get_window_specs(ii, ivec, start, end) ) {
 			value = calcWMASmoothing(ivec, param, start, end, ii);
-		} else if(!is_soft) value = IOUtils::nodata;
+		} else if (!is_soft) value = IOUtils::nodata;
 	}
 }
 
@@ -61,17 +61,17 @@ double ProcWMASmoothing::calcWMASmoothing(const std::vector<MeteoData>& ivec, co
 
 		//computing the average (centered window) or take the proper point (left or right window)
 		double val;
-		if(val1!=IOUtils::nodata && val2!=IOUtils::nodata) {
+		if (val1!=IOUtils::nodata && val2!=IOUtils::nodata) {
 			val = (val1+val2) * .5;
-		} else if(val1!=IOUtils::nodata) {
+		} else if (val1!=IOUtils::nodata) {
 			val = val1;
-		} else if(val2!=IOUtils::nodata) {
+		} else if (val2!=IOUtils::nodata) {
 			val = val2;
 		} else
 			val = IOUtils::nodata;
 
 		//compute the WMA contribution and normalization factor
-		if(val!=IOUtils::nodata) {
+		if (val!=IOUtils::nodata) {
 			const size_t weight = max_len-ii+1;
 			wma += static_cast<double>(weight)*val;
 			norm += weight;

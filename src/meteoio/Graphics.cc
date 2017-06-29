@@ -29,65 +29,65 @@ namespace mio {
 // Legend class
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-const double legend::bg_color = IOUtils::nodata-1;
-const double legend::text_color = IOUtils::nodata-2;
+const double Legend::bg_color = IOUtils::nodata-1;
+const double Legend::text_color = IOUtils::nodata-2;
 
-const unsigned int legend::char_width = 6;
-const unsigned int legend::char_height = 10;
+const unsigned int Legend::char_width = 6;
+const unsigned int Legend::char_height = 10;
 
-const unsigned int legend::text_chars_nb = 9; //each label will contain 9 chars
-const unsigned int legend::char_space = 1; //horizontal space between two chars
-const unsigned int legend::text_width = legend::text_chars_nb*(legend::char_width+legend::char_space); //whole text line
-const unsigned int legend::sample_width = legend::char_width*1; //color sample 2 chars wide
-const unsigned int legend::sample_text_space = 6; //width of the color sample
-const unsigned int legend::legend_plot_space = legend::char_width*1;
-const unsigned int legend::total_width = legend::legend_plot_space+legend::sample_width+legend::sample_text_space+legend::text_width;
+const unsigned int Legend::text_chars_nb = 9; //each label will contain 9 chars
+const unsigned int Legend::char_space = 1; //horizontal space between two chars
+const unsigned int Legend::text_width = Legend::text_chars_nb*(Legend::char_width+Legend::char_space); //whole text line
+const unsigned int Legend::sample_width = Legend::char_width*1; //color sample 2 chars wide
+const unsigned int Legend::sample_text_space = 6; //width of the color sample
+const unsigned int Legend::legend_plot_space = Legend::char_width*1;
+const unsigned int Legend::total_width = Legend::legend_plot_space+Legend::sample_width+Legend::sample_text_space+Legend::text_width;
 
-const unsigned int legend::interline = 5;
-const unsigned int legend::label_height = legend::char_height+legend::interline; //1 char + interline
-const unsigned int legend::nb_labels = 12+1; //every decile + 0 level
-const unsigned int legend::total_height = legend::nb_labels*legend::label_height+legend::interline;
+const unsigned int Legend::interline = 5;
+const unsigned int Legend::label_height = Legend::char_height+Legend::interline; //1 char + interline
+const unsigned int Legend::nb_labels = 12+1; //every decile + 0 level
+const unsigned int Legend::total_height = Legend::nb_labels*Legend::label_height+Legend::interline;
 
-const unsigned int legend::font_0[char_height][char_width] = {{0,0,1,1,0,0}, {0,1,0,0,1,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,1,0,0,1,0}, {0,0,1,1,0,0}};
-const unsigned int legend::font_1[char_height][char_width] = {{0,0,0,1,0,0}, {0,0,1,1,0,0}, {0,1,1,1,0,0}, {1,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}};
-const unsigned int legend::font_2[char_height][char_width] = {{0,1,1,1,1,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,0,0,1,1,0}, {0,0,1,1,0,0}, {0,1,1,0,0,0}, {1,1,0,0,0,0}, {1,1,1,1,1,1}};
-const unsigned int legend::font_3[char_height][char_width] = {{0,1,1,1,1,0}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,0,1,1,1,0}, {0,0,0,0,1,0}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,1,1,1,1,0}};
-const unsigned int legend::font_4[char_height][char_width] = {{0,0,0,1,1,0}, {0,0,1,1,1,0}, {0,1,1,1,1,0}, {1,1,0,1,1,0}, {1,0,0,1,1,0}, {1,1,1,1,1,1}, {0,0,0,1,1,0}, {0,0,0,1,1,0}, {0,0,0,1,1,0}, {0,0,1,1,1,1}};
-const unsigned int legend::font_5[char_height][char_width] = {{1,1,1,1,1,1}, {1,1,0,0,0,0}, {1,1,0,0,0,0}, {1,1,0,0,0,0}, {1,1,1,1,0,0}, {0,0,0,0,1,0}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {1,0,0,0,1,0}, {0,1,1,1,0,0}};
-const unsigned int legend::font_6[char_height][char_width] = {{0,1,1,1,1,0}, {1,1,0,0,1,0}, {1,1,0,0,0,0}, {1,1,0,0,0,0}, {1,1,1,1,0,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,1,1,0,0}};
-const unsigned int legend::font_7[char_height][char_width] = {{1,1,1,1,1,1}, {0,0,0,0,1,1}, {0,0,0,1,1,0}, {0,0,0,1,0,0}, {0,0,1,1,0,0}, {0,0,1,0,0,0}, {0,1,1,0,0,0}, {0,1,0,0,0,0}, {1,1,0,0,0,0}, {1,1,0,0,0,0}};
-const unsigned int legend::font_8[char_height][char_width] = {{0,0,1,1,0,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,1,1,0,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,1,1,0,0}};
-const unsigned int legend::font_9[char_height][char_width] = {{0,0,1,1,0,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,1,1,1,1}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,1,0,0,1,1}, {0,1,1,1,1,0}};
-const unsigned int legend::font_plus[char_height][char_width] = {{0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {1,1,1,1,1,1}, {1,1,1,1,1,1}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
-const unsigned int legend::font_minus[char_height][char_width] = {{0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {1,1,1,1,1,1}, {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
-const unsigned int legend::font_dot[char_height][char_width] = {{0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}};
-const unsigned int legend::font_E[char_height][char_width] = {{0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,1,1,1,0,0}, {1,1,0,0,1,0}, {1,1,1,1,1,0}, {1,1,0,0,0,0}, {1,1,0,0,1,0}, {0,1,1,1,0,0}};
+const unsigned int Legend::font_0[char_height][char_width] = {{0,0,1,1,0,0}, {0,1,0,0,1,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,1,0,0,1,0}, {0,0,1,1,0,0}};
+const unsigned int Legend::font_1[char_height][char_width] = {{0,0,0,1,0,0}, {0,0,1,1,0,0}, {0,1,1,1,0,0}, {1,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}};
+const unsigned int Legend::font_2[char_height][char_width] = {{0,1,1,1,1,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,0,0,1,1,0}, {0,0,1,1,0,0}, {0,1,1,0,0,0}, {1,1,0,0,0,0}, {1,1,1,1,1,1}};
+const unsigned int Legend::font_3[char_height][char_width] = {{0,1,1,1,1,0}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,0,1,1,1,0}, {0,0,0,0,1,0}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,1,1,1,1,0}};
+const unsigned int Legend::font_4[char_height][char_width] = {{0,0,0,1,1,0}, {0,0,1,1,1,0}, {0,1,1,1,1,0}, {1,1,0,1,1,0}, {1,0,0,1,1,0}, {1,1,1,1,1,1}, {0,0,0,1,1,0}, {0,0,0,1,1,0}, {0,0,0,1,1,0}, {0,0,1,1,1,1}};
+const unsigned int Legend::font_5[char_height][char_width] = {{1,1,1,1,1,1}, {1,1,0,0,0,0}, {1,1,0,0,0,0}, {1,1,0,0,0,0}, {1,1,1,1,0,0}, {0,0,0,0,1,0}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {1,0,0,0,1,0}, {0,1,1,1,0,0}};
+const unsigned int Legend::font_6[char_height][char_width] = {{0,1,1,1,1,0}, {1,1,0,0,1,0}, {1,1,0,0,0,0}, {1,1,0,0,0,0}, {1,1,1,1,0,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,1,1,0,0}};
+const unsigned int Legend::font_7[char_height][char_width] = {{1,1,1,1,1,1}, {0,0,0,0,1,1}, {0,0,0,1,1,0}, {0,0,0,1,0,0}, {0,0,1,1,0,0}, {0,0,1,0,0,0}, {0,1,1,0,0,0}, {0,1,0,0,0,0}, {1,1,0,0,0,0}, {1,1,0,0,0,0}};
+const unsigned int Legend::font_8[char_height][char_width] = {{0,0,1,1,0,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,1,1,0,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,1,1,0,0}};
+const unsigned int Legend::font_9[char_height][char_width] = {{0,0,1,1,0,0}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {1,1,0,0,1,1}, {0,0,1,1,1,1}, {0,0,0,0,1,1}, {0,0,0,0,1,1}, {0,1,0,0,1,1}, {0,1,1,1,1,0}};
+const unsigned int Legend::font_plus[char_height][char_width] = {{0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {1,1,1,1,1,1}, {1,1,1,1,1,1}, {0,0,1,1,0,0}, {0,0,1,1,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+const unsigned int Legend::font_minus[char_height][char_width] = {{0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {1,1,1,1,1,1}, {1,1,1,1,1,1}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}};
+const unsigned int Legend::font_dot[char_height][char_width] = {{0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,1,1,0,0}, {0,0,1,1,0,0}};
+const unsigned int Legend::font_E[char_height][char_width] = {{0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,0,0,0,0,0}, {0,1,1,1,0,0}, {1,1,0,0,1,0}, {1,1,1,1,1,0}, {1,1,0,0,0,0}, {1,1,0,0,1,0}, {0,1,1,1,0,0}};
 
 //create a legend of given height
 //if height is insufficient, we don't generate any content, only transparent pixels
-legend::legend(const unsigned int &height, const double &minimum, const double &maximum) : grid(total_width, height, IOUtils::nodata)
+Legend::Legend(const unsigned int &height, const double &minimum, const double &maximum) : grid(total_width, height, IOUtils::nodata)
 {
 	drawLegend(height, minimum, maximum);
 }
 
 //uniform division of the given range
-void legend::simpleLegend(const unsigned int &height, const double &minimum, const double &maximum)
+void Legend::simpleLegend(const unsigned int &height, const double &minimum, const double &maximum)
 {
 	grid.resize(total_width, height, IOUtils::nodata);
 	const double level_inc = (maximum-minimum)/(double)(nb_labels-1); //the infamous interval thing...
 
 	//vertically center legend in free space
-	if(height>=total_height) {
+	if (height>=total_height) {
 		const unsigned int free_space = height-total_height;
 		const unsigned int start_legend = free_space/2; //we will start from the bottom
 
 		//fill the background
-		for(unsigned int jj=start_legend; jj<(start_legend+total_height); jj++) {
-			for(unsigned int ii=0; ii<total_width; ii++)
+		for (unsigned int jj=start_legend; jj<(start_legend+total_height); jj++) {
+			for (unsigned int ii=0; ii<total_width; ii++)
 				grid(ii,jj) = bg_color;
 		}
 
-		for(unsigned int l=0; l<nb_labels; l++) {
+		for (unsigned int l=0; l<nb_labels; l++) {
 			const double level_val = level_inc*l+minimum;
 			const unsigned int px_row = l*label_height+start_legend;
 			writeLine(level_val, px_row);
@@ -96,7 +96,7 @@ void legend::simpleLegend(const unsigned int &height, const double &minimum, con
 }
 
 //this tries to properly round to legend min, max and steps so that it gets easier to follow
-void legend::smartLegend(const unsigned int &height, const double &minimum, const double &maximum)
+void Legend::smartLegend(const unsigned int &height, const double &minimum, const double &maximum)
 {
 	grid.resize(total_width, height, IOUtils::nodata);
 
@@ -104,7 +104,7 @@ void legend::smartLegend(const unsigned int &height, const double &minimum, cons
 	double min_norm=minimum, max_norm=maximum, decade_mult;
 	unsigned int step_norm, nb_labels_norm;
 
-	if(range>0.) {
+	if (range>0.) {
 		const double decade = floor(log10(range));
 		decade_mult = pow(10.,decade);
 		min_norm = floor(minimum/decade_mult*10.)/10., max_norm = ceil(maximum/decade_mult*10.)/10.; //between 0 & 10
@@ -112,9 +112,9 @@ void legend::smartLegend(const unsigned int &height, const double &minimum, cons
 		const double step = range_norm/nb_labels; //between 0 & 10 / number of labels -> between 0 & 1
 
 		//for precision issues, it is necessary to keep step_norm as an interger -> we will always use step_norm/10
-		if(step<=0.1) step_norm=1;
-		else if(step<=0.2) step_norm=2;
-		else if(step<=0.5) step_norm=5;
+		if (step<=0.1) step_norm=1;
+		else if (step<=0.2) step_norm=2;
+		else if (step<=0.5) step_norm=5;
 		else step_norm=10;
 
 		min_norm = round(min_norm/step_norm*10)*step_norm/10.;
@@ -127,40 +127,40 @@ void legend::smartLegend(const unsigned int &height, const double &minimum, cons
 	}
 
 	//vertically center legend in free space
-	const unsigned int smart_height = nb_labels_norm*legend::label_height+legend::interline;
-	if(height>=smart_height) {
+	const unsigned int smart_height = nb_labels_norm*Legend::label_height+Legend::interline;
+	if (height>=smart_height) {
 		const unsigned int free_space = height-smart_height;
 		const unsigned int start_legend = free_space/2; //we will start from the bottom
 
 		//fill the background
-		for(unsigned int jj=start_legend; jj<(start_legend+smart_height); jj++) {
-			for(unsigned int ii=0; ii<total_width; ii++)
+		for (unsigned int jj=start_legend; jj<(start_legend+smart_height); jj++) {
+			for (unsigned int ii=0; ii<total_width; ii++)
 				grid(ii,jj) = bg_color;
 		}
 
-		for(unsigned int l=0; l<nb_labels_norm; l++) {
+		for (unsigned int l=0; l<nb_labels_norm; l++) {
 			double level_val = (step_norm*l/10.+min_norm)*decade_mult;
-			if( fabs(level_val)<(range*1e-6) )level_val=0.; //to get a nice 0 at zero
+			if ( fabs(level_val)<(range*1e-6) )level_val=0.; //to get a nice 0 at zero
 			const unsigned int px_row = l*label_height+start_legend;
 			writeLine(level_val, px_row);
 		}
 	}
 }
 
-void legend::drawLegend(const unsigned int &height, const double &minimum, const double &maximum){
+void Legend::drawLegend(const unsigned int &height, const double &minimum, const double &maximum){
 	smartLegend(height, minimum, maximum);
 	//simpleLegend(height, minimum, maximum);
 }
 
-unsigned int legend::getLegendWidth() {
+unsigned int Legend::getLegendWidth() {
 	return total_width;
 }
 
-void legend::writeLine(const double& val, const unsigned int& px_row)
+void Legend::writeLine(const double& val, const unsigned int& px_row)
 {
 	std::ostringstream ss;
 	ss << std::setfill (' ') << std::setw(text_chars_nb) << std::left << val;
-	if(ss.str().size()>text_chars_nb) {
+	if (ss.str().size()>text_chars_nb) {
 		//the generated text is too long, so putting another constraint (ie setw is brain dead)
 		ss.str(std::string());
 		const unsigned int precision = text_chars_nb-6;
@@ -170,39 +170,39 @@ void legend::writeLine(const double& val, const unsigned int& px_row)
 	const unsigned int x_offset = legend_plot_space+sample_width+sample_text_space;
 
 	//write legend colored square
-	for(unsigned int j=(px_row+interline); j<(px_row+label_height); j++) {
-		for(unsigned int i=legend_plot_space; i<(legend_plot_space+sample_width); i++) {
+	for (unsigned int j=(px_row+interline); j<(px_row+label_height); j++) {
+		for (unsigned int i=legend_plot_space; i<(legend_plot_space+sample_width); i++) {
 			grid(i,j) = val;
 		}
 	}
 
-	for(size_t i=0; i<ss.str().size(); i++) {
+	for (size_t i=0; i<ss.str().size(); i++) {
 		const char c=ss.str()[i];
 		const unsigned int px_col = (unsigned int)i*(char_width+char_space)+x_offset;
-		if(c=='0') writeChar(font_0, px_col, px_row);
-		if(c=='1') writeChar(font_1, px_col, px_row);
-		if(c=='2') writeChar(font_2, px_col, px_row);
-		if(c=='3') writeChar(font_3, px_col, px_row);
-		if(c=='4') writeChar(font_4, px_col, px_row);
-		if(c=='5') writeChar(font_5, px_col, px_row);
-		if(c=='6') writeChar(font_6, px_col, px_row);
-		if(c=='7') writeChar(font_7, px_col, px_row);
-		if(c=='8') writeChar(font_8, px_col, px_row);
-		if(c=='9') writeChar(font_9, px_col, px_row);
-		if(c=='+') writeChar(font_plus, px_col, px_row);
-		if(c=='-') writeChar(font_minus, px_col, px_row);
-		if(c=='.') writeChar(font_dot, px_col, px_row);
-		if(c=='e') writeChar(font_E, px_col, px_row);
-		if(c=='E') writeChar(font_E, px_col, px_row);
+		if (c=='0') writeChar(font_0, px_col, px_row);
+		if (c=='1') writeChar(font_1, px_col, px_row);
+		if (c=='2') writeChar(font_2, px_col, px_row);
+		if (c=='3') writeChar(font_3, px_col, px_row);
+		if (c=='4') writeChar(font_4, px_col, px_row);
+		if (c=='5') writeChar(font_5, px_col, px_row);
+		if (c=='6') writeChar(font_6, px_col, px_row);
+		if (c=='7') writeChar(font_7, px_col, px_row);
+		if (c=='8') writeChar(font_8, px_col, px_row);
+		if (c=='9') writeChar(font_9, px_col, px_row);
+		if (c=='+') writeChar(font_plus, px_col, px_row);
+		if (c=='-') writeChar(font_minus, px_col, px_row);
+		if (c=='.') writeChar(font_dot, px_col, px_row);
+		if (c=='e') writeChar(font_E, px_col, px_row);
+		if (c=='E') writeChar(font_E, px_col, px_row);
 	}
 }
 
-void legend::writeChar(const unsigned int i_char[char_height][char_width], const unsigned int& px_col, const unsigned int& px_row)
+void Legend::writeChar(const unsigned int i_char[char_height][char_width], const unsigned int& px_col, const unsigned int& px_row)
 {
-	for(unsigned int jj=0; jj<char_height; jj++) {
-		for(unsigned int ii=0; ii<char_width; ii++) {
+	for (unsigned int jj=0; jj<char_height; jj++) {
+		for (unsigned int ii=0; ii<char_width; ii++) {
 			const unsigned int char_px = i_char[char_height-1-jj][ii]; //we need to swap vertically each char
-			if(char_px==0)
+			if (char_px==0)
 				grid(ii+px_col,jj+px_row+interline) = bg_color;
 			else
 				grid(ii+px_col,jj+px_row+interline) = text_color;
@@ -210,7 +210,7 @@ void legend::writeChar(const unsigned int i_char[char_height][char_width], const
 	}
 }
 
-const Array2D<double> legend::getLegend() const {
+const Array2D<double> Legend::getLegend() const {
 	return grid;
 }
 
@@ -229,7 +229,7 @@ void Color::RGBtoHSV(const double& r, const double& g, const double& b,
 
 	v = maximum;
 
-	if( maximum!=0 )
+	if ( maximum!=0 )
 		s = delta/maximum;
 	else { // r = g = b = 0 -> s = 0, v is undefined
 		s = 0;
@@ -237,21 +237,21 @@ void Color::RGBtoHSV(const double& r, const double& g, const double& b,
 		return;
 	}
 
-	if( r==maximum )
+	if ( r==maximum )
 		h = ( g - b ) / delta;		// between yellow & magenta
-	else if( g==maximum )
+	else if ( g==maximum )
 		h = 2 + ( b - r ) / delta;	// between cyan & yellow
 	else
 		h = 4 + ( r - g ) / delta;	// between magenta & cyan
 
 	h *= 60;				// degrees
-	if( h < 0 )
+	if ( h < 0 )
 		h += 360;
 }
 
 void Color::HSVtoRGB(const double& h, const double& s, const double& v, double &r, double &g, double &b)
 {
-	if( s==0 ) { //achromatic (grey)
+	if ( s==0 ) { //achromatic (grey)
 		r = g = b = v;
 		return;
 	}
@@ -306,7 +306,7 @@ Gradient::Gradient(const Gradient& c)
 
 Gradient& Gradient::operator=(const Gradient& source)
 {
-	if(this != &source) {
+	if (this != &source) {
 		min = source.min;
 		max = source.max;
 		delta = source.delta;
@@ -331,22 +331,22 @@ void Gradient::set(const Type& i_type, const double& i_min, const double& i_max,
 
 void Gradient::setModel(const Type& i_type)
 {
-	if(i_type==terrain) model = new gr_terrain(min, max, autoscale);
-	else if(i_type==slope) model = new gr_slope(min, max, autoscale);
-	else if(i_type==azi) model = new gr_azi(min, max, autoscale);
-	else if(i_type==heat) model = new gr_heat(min, max, autoscale);
-	else if(i_type==freeze) model = new gr_freeze(min, max, autoscale);
-	else if(i_type==blue) model = new gr_blue(min, max, autoscale);
-	else if(i_type==bluewhitered) model = new gr_bluewhitered(min, max, autoscale);
-	else if(i_type==whitetoblk) model = new gr_whitetoblk(min, max, autoscale);
-	else if(i_type==blktowhite) model = new gr_blktowhite(min, max, autoscale);
-	else if(i_type==blue_pink) model = new gr_blue_pink(min, max, autoscale);
-	else if(i_type==pastel) model = new gr_pastel(min, max, autoscale);
-	else if(i_type==bg_isomorphic) model = new gr_bg_isomorphic(min, max, autoscale);
+	if (i_type==terrain) model = new gr_terrain(min, max, autoscale);
+	else if (i_type==slope) model = new gr_slope(min, max, autoscale);
+	else if (i_type==azi) model = new gr_azi(min, max, autoscale);
+	else if (i_type==heat) model = new gr_heat(min, max, autoscale);
+	else if (i_type==freeze) model = new gr_freeze(min, max, autoscale);
+	else if (i_type==blue) model = new gr_blue(min, max, autoscale);
+	else if (i_type==bluewhitered) model = new gr_bluewhitered(min, max, autoscale);
+	else if (i_type==whitetoblk) model = new gr_whitetoblk(min, max, autoscale);
+	else if (i_type==blktowhite) model = new gr_blktowhite(min, max, autoscale);
+	else if (i_type==blue_pink) model = new gr_blue_pink(min, max, autoscale);
+	else if (i_type==pastel) model = new gr_pastel(min, max, autoscale);
+	else if (i_type==bg_isomorphic) model = new gr_bg_isomorphic(min, max, autoscale);
 }
 
 void Gradient::setNrOfLevels(const unsigned char& i_nr_unique_levels) {
-	if(i_nr_unique_levels<=reserved_idx) {
+	if (i_nr_unique_levels<=reserved_idx) {
 		ostringstream ss;
 		ss << "Insufficient number of colors requested for gradient: ask for more than ";
 		ss << reserved_idx << " colors!";
@@ -361,23 +361,23 @@ void Gradient::setNrOfLevels(const unsigned char& i_nr_unique_levels) {
 
 void Gradient::getColor(const double& val, unsigned char& r, unsigned char& g, unsigned char& b, bool& a) const
 {
-	if(model==NULL) {
+	if (model==NULL) {
 		throw UnknownValueException("Please set the color gradient before using it!", AT);
 	}
 
-	if(val==IOUtils::nodata) {
+	if (val==IOUtils::nodata) {
 		r=0; g=0; b=0; a=true;
 		return;
 	}
-	if(val==legend::bg_color) {
+	if (val==Legend::bg_color) {
 		r=channel_max_color-1; g=channel_max_color-1; b=channel_max_color-1; a=false;
 		return;
 	}
-	if(val==legend::text_color) {
+	if (val==Legend::text_color) {
 		r=0; g=0; b=0; a=false;
 		return;
 	}
-	if(autoscale && delta==0) { //constant data throughout the grid & autoscale are no friends...
+	if (autoscale && delta==0) { //constant data throughout the grid & autoscale are no friends...
 		r=g=b=channel_max_color/2; a=false;
 		return;
 	}
@@ -385,8 +385,8 @@ void Gradient::getColor(const double& val, unsigned char& r, unsigned char& g, u
 	a=false;
 	double r_d,g_d,b_d;
 	double val_norm;
-	if(autoscale && val<min) val_norm=0.;
-	else if(autoscale && val>max) val_norm=1.;
+	if (autoscale && val<min) val_norm=0.;
+	else if (autoscale && val>max) val_norm=1.;
 	else val_norm = (val-min)/delta;
 
 	model->getColor(val_norm, r_d, g_d, b_d);
@@ -397,25 +397,25 @@ void Gradient::getColor(const double& val, unsigned char& r, unsigned char& g, u
 
 void Gradient::getColor(const double& val, unsigned char& index) const
 {
-	if(model==NULL) {
+	if (model==NULL) {
 		throw UnknownValueException("Please set the color gradient before using it!", AT);
 	}
 
-	if(val==IOUtils::nodata) {
+	if (val==IOUtils::nodata) {
 		index = 0;
 		return;
 	}
-	if(val==legend::bg_color) {
+	if (val==Legend::bg_color) {
 		index = 1;
 		return;
 	}
-	if(val==legend::text_color) {
+	if (val==Legend::text_color) {
 		index = 2;
 		return;
 	}
-	if(delta==0) { //otherwise constant data throughout the grid makes a division by zero...
+	if (delta==0) { //otherwise constant data throughout the grid makes a division by zero...
 #ifndef NOSAFECHECKS
-		if((nr_unique_cols/2 + reserved_idx) > std::numeric_limits<unsigned char>::max()) {
+		if ((nr_unique_cols/2 + reserved_idx) > std::numeric_limits<unsigned char>::max()) {
 			std::ostringstream ss;
 			ss << "[E] Number of unique colors in gradient and/or reserved index too large to fit in index: ";
 			ss << (nr_unique_cols/2 + reserved_idx) << " when it should be at most " << std::numeric_limits<unsigned char>::max();
@@ -426,22 +426,22 @@ void Gradient::getColor(const double& val, unsigned char& index) const
 		return;
 	}
 
-	if(nr_unique_cols==0) {
+	if (nr_unique_cols==0) {
 		throw UnknownValueException("Please define the number of colors for indexed gradients!", AT);
 	}
 
 	//watch out!! the palette contains some reserved values at the begining
-	if(val<min) index=reserved_idx-2;
-	else if(val>max) index=reserved_idx-1;
+	if (val<min) index=reserved_idx-2;
+	else if (val>max) index=reserved_idx-1;
 	else index = static_cast<unsigned char>( static_cast<unsigned char>((val-min)/delta*(double)nr_unique_cols) + reserved_idx);
 }
 
 void Gradient::getPalette(std::vector<unsigned char> &palette, size_t &nr_colors) const
 {
-	if(model==NULL) {
+	if (model==NULL) {
 		throw UnknownValueException("Please set the color gradient before using it!", AT);
 	}
-	if(nr_unique_cols==0) {
+	if (nr_unique_cols==0) {
 		throw UnknownValueException("Please define the number of colors for indexed gradients!", AT);
 	}
 
@@ -469,7 +469,7 @@ void Gradient::getPalette(std::vector<unsigned char> &palette, size_t &nr_colors
 	palette.push_back( static_cast<unsigned char>(b_d*channel_max_color) );
 
 	//all normal colors
-	for(unsigned char ii=0; ii<=nr_unique_cols; ii++) {
+	for (unsigned char ii=0; ii<=nr_unique_cols; ii++) {
 		const double val_norm = (double)ii/(double)nr_unique_cols;
 		model->getColor(val_norm, r_d, g_d, b_d);
 		palette.push_back( static_cast<unsigned char>(r_d*channel_max_color) );
@@ -478,7 +478,7 @@ void Gradient::getPalette(std::vector<unsigned char> &palette, size_t &nr_colors
 	}
 
 	const size_t nr_entries = palette.size();
-	if((nr_entries%3) != 0) {
+	if ((nr_entries%3) != 0) {
 		std::ostringstream ss;
 		ss << "Error when creating color palette: " << nr_entries << " data points ";
 		ss << "for 3 channels palette is impossible! (colors are interlaced)";
@@ -492,23 +492,23 @@ double Gradient_model::getInterpol(const double& val, const std::vector<double>&
 {
 	const size_t nr = i_X.size();
 #ifndef NOSAFECHECKS
-	if(i_Y.size()!=nr) {
+	if (i_Y.size()!=nr) {
 		std::ostringstream ss;
 		ss << "For color gradients interpolations, both X and Y vectors must have the same size! ";
 		ss << "There are " << i_X.size() << " abscissa for " << i_Y.size() << " ordinates.";
 		throw IOException(ss.str(), AT);
 	}
-	if(nr==0) {
+	if (nr==0) {
 		throw IOException("Empty vector of control points for color gradient interpolation", AT);
 	}
 #endif
 
 	size_t i=0;
-	while(i<nr && i_X[i]<val) i++; //find index of first element greater than val
+	while (i<nr && i_X[i]<val) i++; //find index of first element greater than val
 
-	if(i==0) return i_Y[0];
-	if(i>=nr) return i_Y[ nr-1 ];
-	if(i_X[i]==val) return i_Y[i];
+	if (i==0) return i_Y[0];
+	if (i>=nr) return i_Y[ nr-1 ];
+	if (i_X[i]==val) return i_Y[i];
 
 	const double y = i_Y[i-1] + (val-i_X[i-1])/(i_X[i]-i_X[i-1]) * (i_Y[i]-i_Y[i-1]);
 	return y;
@@ -540,8 +540,8 @@ void gr_heat::getColor(const double &i_val, double &r, double &g, double &b) con
 {
 	//normalize the input for under and over range
 	double val=i_val;
-	if(val<0.) val=0.;
-	if(val>1.) val=1.;
+	if (val<0.) val=0.;
+	if (val>1.) val=1.;
 
 	const double h = 240. * (1.-val);
 	const double v = val*0.75+0.25;
@@ -563,13 +563,13 @@ gr_freeze::gr_freeze(const double& i_min, const double& i_max, const bool& /*i_a
 {
 	//we want the yellow/green step to always be at zero celsius
 	double begin=0., middle=0.5, end=1.;
-	if(i_min<0. && i_max>0.) {
+	if (i_min<0. && i_max>0.) {
 		const double range = i_max-i_min;
 		middle = -i_min / range;
-	} else if(i_min<=0. && i_max<=0.) {
+	} else if (i_min<=0. && i_max<=0.) {
 		middle = 1.;
 		end = 1000.;
-	} else if(i_min>=0. && i_max>=0.) {
+	} else if (i_min>=0. && i_max>=0.) {
 		begin = -1000.;
 		middle = 0.;
 	}
@@ -631,7 +631,7 @@ gr_pastel::gr_pastel(const double& /*i_min*/, const double& /*i_max*/, const boo
 }
 
 gr_terrain::gr_terrain(const double& /*i_min*/, const double& i_max, const bool& i_autoscale) {
-	if(i_autoscale) {
+	if (i_autoscale) {
 		X.push_back(0.); v_h.push_back(144.); v_s.push_back(.50); v_v.push_back(.39); //sea level, dark green
 		X.push_back(.25); v_h.push_back(46.); v_s.push_back(.54); v_v.push_back(.86); //yellow
 		X.push_back(.5); v_h.push_back(4.); v_s.push_back(.71); v_v.push_back(.53); //dark red
@@ -648,7 +648,7 @@ gr_terrain::gr_terrain(const double& /*i_min*/, const double& i_max, const bool&
 		X.push_back(.9); v_h.push_back(22.); v_s.push_back(.88); v_v.push_back(.41); //maroon, 2700m
 		X.push_back(.98333); v_h.push_back(22.); v_s.push_back(.36); v_v.push_back(.79); //light maroon, 2950m
 		X.push_back(1.); v_h.push_back(0.); v_s.push_back(0.); v_v.push_back(.7); //light gray == permanent snow line, 3000m
-		for(size_t ii=2; ii<X.size(); ii++) X[ii] = X[ii]*snow_line/i_max; //snow line is the reference
+		for (size_t ii=2; ii<X.size(); ii++) X[ii] = X[ii]*snow_line/i_max; //snow line is the reference
 
 		X.push_back(1.); v_h.push_back(0.); v_s.push_back(0.); v_v.push_back(.95); //almost white == fully glaciated line
 	}
@@ -666,7 +666,7 @@ gr_slope::gr_slope(const double& /*i_min*/, const double& /*i_max*/, const bool&
 }
 
 gr_azi::gr_azi(const double& /*i_min*/, const double& /*i_max*/, const bool& i_autoscale) {
-	if(i_autoscale) {
+	if (i_autoscale) {
 		X.push_back(0.); v_h.push_back(113.); v_s.push_back(.66); v_v.push_back(.91); //light green
 		X.push_back(1.); v_h.push_back(360.); v_s.push_back(.66); v_v.push_back(.91); //light red
 	} else {

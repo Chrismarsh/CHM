@@ -15,8 +15,8 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __CAAMLIO_H__
-#define __CAAMLIO_H__
+#ifndef CAAMLIO_H
+#define CAAMLIO_H
 
 #include <meteoio/MeteoIO.h>
 #include <snowpack/Constants.h>
@@ -68,11 +68,6 @@ class CaaMLIO : public SnowpackIOInterface {
 		void init(const SnowpackConfig& cfg);
 		void openIn_CAAML(const std::string& in_snowfile);
 		void closeIn_CAAML() throw();
-// 		bool parseStationData(const std::string& station_id, const xmlXPathContextPtr& xpathCtx, mio::StationData &sd);
-
-// 		bool parseCaamlData(const mio::Date& dateStart, const mio::Date& dateEnd, const std::string& station_id,
-// 		                    const mio::StationData& sd, const xmlXPathContextPtr& xpathCtx, std::vector<CaamlData> &vecCaaml) const;
-
 		void setBasicHeader(const SnowStation& Xdata, const std::string& fields, smet::SMETWriter& smet_writer) const;
 		void setSnoSmetHeader(const SnowStation& Xdata, const SN_SNOWSOIL_DATA& SSdata, const mio::Date& date, smet::SMETWriter& smet_writer) const;
 		void setFormatting(const size_t& nr_solutes, std::vector<int>& vec_width, std::vector<int>&  vec_precision) const;
@@ -80,11 +75,11 @@ class CaaMLIO : public SnowpackIOInterface {
 		std::string getFilenamePrefix(const std::string& fnam, const std::string& path, const bool addexp=true) const;
 		bool read_snocaaml(const std::string& snofilename, const std::string& stationID, SN_SNOWSOIL_DATA& SSdata);
 		void writeSnowFile(const std::string& snofilename, const mio::Date& date, const SnowStation& Xdata,
-		                   const ZwischenData& Zdata);
+		                   const bool aggregate);
 
 		const RunInfo info;
 		std::string i_snowpath, sw_mode, o_snowpath, experiment;
-		bool useSoilLayers, perp_to_slope;
+		bool useSoilLayers, perp_to_slope, aggregate_caaml;
 		/*static const*/ double in_tz; //plugin specific time zones
 		std::string snow_prefix, snow_ext; //for the file naming scheme
 		double caaml_nodata; //plugin specific no data value
@@ -107,13 +102,14 @@ class CaaMLIO : public SnowpackIOInterface {
 		void setCustomSnowSoil(SN_SNOWSOIL_DATA& Xdata);
 		bool getLayersDir();
 		LayerData xmlGetLayer(xmlNodePtr cur);
-		void getProfiles(const std::string path, size_t &len, std::vector<double> &depths, std::vector<double> &val);
-		void setProfileVal(std::vector<LayerData> &Layers, std::vector<size_t> len, std::vector<std::vector<double> > depths, std::vector<std::vector<double> > val);
+		void getProfiles(const std::string path, std::vector<double> &depths, std::vector<double> &val);
+		void setProfileVal(std::vector<LayerData> &Layers, std::vector<std::vector<double> > depths, std::vector<std::vector<double> > val);
 		void setCustomLayerData(LayerData &Layer);
 		void setDepositionDates(std::vector<LayerData> &Layers, const mio::Date);
 
 		void xmlWriteElement(const xmlTextWriterPtr writer, const char* name, const char* content, const char* att_name, const char* att_val);
-		void writeDate(const xmlTextWriterPtr writer, const mio::Date date);
+		// void writeDate(const xmlTextWriterPtr writer, const mio::Date date);
+		void writeDate(const xmlTextWriterPtr writer, const char* att_name, const char* att_val);
 		void writeCustomSnowSoil(const xmlTextWriterPtr writer, const SnowStation& Xdata);
 		void writeLayers(const xmlTextWriterPtr writer, const SnowStation& Xdata);
 		void writeCustomLayerData(const xmlTextWriterPtr writer, const ElementData& Edata, const NodeData& Ndata);
@@ -124,9 +120,11 @@ class CaaMLIO : public SnowpackIOInterface {
 		std::string lwc_valToCode(const double val);
 		double hardness_codeToVal(char* code);
 		std::string hardness_valToCode(const double code);
-		double* form_codeToVal(const char* code);
-		std::string form_valToCode(const int var);
-		std::string form_valToCode_old(const double* var);
+		void grainShape_codeToVal(const std::string& code, double &sp, double &dd, unsigned short int &mk);
+		std::string grainShape_valToAbbrev(const unsigned int var);
+		std::string grainShape_valToAbbrev_old(const double* var);
+
+		char layerDepthTopStr[10], layerThicknessStr[10], layerValStr[10], valueStr[10], dateStr[30];
 
 };
 

@@ -121,6 +121,7 @@ template<class T> class Array4D {
 		void resize(const size_t& anw, const size_t& anx, const size_t& any, const size_t& anz);
 		void resize(const size_t& anw, const size_t& anx, const size_t& any, const size_t& anz, const T& init);
 		void size(size_t& anw, size_t& anx, size_t& any, size_t& anz) const;
+		size_t size() const;
 		size_t getNw() const;
 		size_t getNx() const;
 		size_t getNy() const;
@@ -173,24 +174,24 @@ template<class T> class Array4D {
 		Array4D<T>& operator =(const T& value);
 
 		Array4D<T>& operator+=(const T& rhs);
-		const Array4D<T> operator+(const T& rhs);
+		const Array4D<T> operator+(const T& rhs) const;
 		Array4D<T>& operator+=(const Array4D<T>& rhs);
-		const Array4D<T> operator+(const Array4D<T>& rhs);
+		const Array4D<T> operator+(const Array4D<T>& rhs) const;
 
 		Array4D<T>& operator-=(const T& rhs);
-		const Array4D<T> operator-(const T& rhs);
+		const Array4D<T> operator-(const T& rhs) const;
 		Array4D<T>& operator-=(const Array4D<T>& rhs);
-		const Array4D<T> operator-(const Array4D<T>& rhs);
+		const Array4D<T> operator-(const Array4D<T>& rhs) const;
 
 		Array4D<T>& operator*=(const T& rhs);
-		const Array4D<T> operator*(const T& rhs);
+		const Array4D<T> operator*(const T& rhs) const;
 		Array4D<T>& operator*=(const Array4D<T>& rhs);
-		const Array4D<T> operator*(const Array4D<T>& rhs);
+		const Array4D<T> operator*(const Array4D<T>& rhs) const;
 
 		Array4D<T>& operator/=(const T& rhs);
-		const Array4D<T> operator/(const T& rhs);
+		const Array4D<T> operator/(const T& rhs) const;
 		Array4D<T>& operator/=(const Array4D<T>& rhs);
-		const Array4D<T> operator/(const Array4D<T>& rhs);
+		const Array4D<T> operator/(const Array4D<T>& rhs) const;
 
 		bool operator==(const Array4D<T>&) const; ///<Operator that tests for equality
 		bool operator!=(const Array4D<T>&) const; ///<Operator that tests for inequality
@@ -267,7 +268,7 @@ template<class T> void Array4D<T>::subset(const Array4D<T>& i_array4D,
 
 	if (((i_nw+i_sizeW) > i_array4D.nw) || ((i_nx+i_sizeX) > i_array4D.nx) || ((i_ny+i_sizeY) > i_array4D.ny) || ((i_nz+i_sizeZ) > i_array4D.nz)) {
 		std::stringstream ss;
-		ss << "Trying to cut an array of size ("<< nw << "," << nx << "," << ny << "," << nz << ") ";
+		ss << "Trying to cut an array of size ("<< i_array4D.nw << "," << i_array4D.nx << "," << i_array4D.ny << "," << i_array4D.nz << ") ";
 		ss << "to size (" << i_sizeW << "," << i_sizeX << "," << i_sizeY << "," << i_sizeZ << ") ";
 		ss << "starting at ("<< i_nw << "," << i_nx << "," << i_ny << "," << i_nz << ")";
 		throw IndexOutOfBoundsException(ss.str(), AT);
@@ -377,6 +378,10 @@ template<class T> void Array4D<T>::size(size_t& anw, size_t& anx, size_t& any, s
 	anz=nz;
 }
 
+template<class T> size_t Array4D<T>::size() const {
+	return nw*nx*ny*nz;
+}
+
 template<class T> size_t Array4D<T>::getNw() const {
 	return nw;
 }
@@ -409,7 +414,7 @@ template<class T> const std::string Array4D<T>::toString() const {
 		os << "dim4[" << ll << "]\n";
 		for (size_t kk=0; kk<nz; kk++) {
 			os << "depth[" << kk << "]\n";
-			for(size_t ii=0; ii<nx; ii++) {
+			for (size_t ii=0; ii<nx; ii++) {
 				for (size_t jj=0; jj<ny; jj++) {
 					os << operator()(ii,jj,kk,ll) << " ";
 				}
@@ -427,7 +432,7 @@ template<class P> std::iostream& operator<<(std::iostream& os, const Array4D<P>&
 	os.write(reinterpret_cast<const char*>(&array.ny), sizeof(array.ny));
 	os.write(reinterpret_cast<const char*>(&array.nz), sizeof(array.nz));
 	os.write(reinterpret_cast<const char*>(&array.nw), sizeof(array.nw));
-	os.write(reinterpret_cast<const char*>(&array.vecData[0]), array.nx*array.ny*array.nz*array.nw*sizeof(P));
+	os.write(reinterpret_cast<const char*>(&array.vecData[0]), static_cast<std::streamsize>(array.nx*array.ny*array.nz*array.nw*sizeof(P)));
 	return os;
 }
 
@@ -438,7 +443,7 @@ template<class P> std::iostream& operator>>(std::iostream& is, Array4D<P>& array
 	is.read(reinterpret_cast<char*>(&array.nz), sizeof(array.nz));
 	is.read(reinterpret_cast<char*>(&array.nw), sizeof(array.nw));
 	array.vecData.resize(array.nx*array.ny*array.nz*array.nw);
-	is.read(reinterpret_cast<char*>(&array.vecData[0]), array.nx*array.ny*array.nz*array.nw*sizeof(P)); //30 times faster than assign() or copy()
+	is.read(reinterpret_cast<char*>(&array.vecData[0]), static_cast<std::streamsize>(array.nx*array.ny*array.nz*array.nw*sizeof(P))); //30 times faster than assign() or copy()
 	return is;
 }
 
@@ -447,18 +452,18 @@ template<class T> T Array4D<T>::getMin() const {
 	T min = std::numeric_limits<T>::max();
 	const size_t nwyz = nwnxny*nz;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwyz; jj++) {
 			const T val = vecData[jj];
-			if(val<min) min=val;
+			if (val<min) min=val;
 		}
 		return min;
 	} else {
 		for (size_t jj=0; jj<nwyz; jj++) {
 			const T val = vecData[jj];
-			if(val!=IOUtils::nodata && val<min) min=val;
+			if (val!=IOUtils::nodata && val<min) min=val;
 		}
-		if(min!=std::numeric_limits<T>::max()) return min;
+		if (min!=std::numeric_limits<T>::max()) return min;
 		else return (T)IOUtils::nodata;
 	}
 }
@@ -468,18 +473,18 @@ template<class T> T Array4D<T>::getMax() const {
 	T max = -std::numeric_limits<T>::max();
 	const size_t nwyz = nwnxny*nz;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwyz; jj++) {
 			const T val = vecData[jj];
-			if(val>max) max=val;
+			if (val>max) max=val;
 		}
 		return max;
 	} else {
 		for (size_t jj=0; jj<nwyz; jj++) {
 			const T val = vecData[jj];
-			if(val!=IOUtils::nodata && val>max) max=val;
+			if (val!=IOUtils::nodata && val>max) max=val;
 		}
-		if(max!=-std::numeric_limits<T>::max()) return max;
+		if (max!=-std::numeric_limits<T>::max()) return max;
 		else return (T)IOUtils::nodata;
 	}
 }
@@ -489,23 +494,23 @@ template<class T> T Array4D<T>::getMean() const {
 	T mean = 0;
 	const size_t nwyz = nwnxny*nz;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwyz; jj++) {
 			const T val = vecData[jj];
 			mean += val;
 		}
-		if(nwyz>0) return mean/(T)(nwyz);
+		if (nwyz>0) return mean/(T)(nwyz);
 		else return (T)0;
 	} else {
 		size_t count = 0;
 		for (size_t jj=0; jj<nwyz; jj++) {
 			const T val = vecData[jj];
-			if(val!=IOUtils::nodata) {
+			if (val!=IOUtils::nodata) {
 				mean += val;
 				count++;
 			}
 		}
-		if(count>0) return mean/(T)(count);
+		if (count>0) return mean/(T)(count);
 		else return (T)IOUtils::nodata;
 	}
 }
@@ -514,29 +519,29 @@ template<class T> size_t Array4D<T>::getCount() const
 {
 	const size_t nwyz = nwnxny*nz;
 
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		return (size_t)nwyz;
 	} else {
 		size_t count = 0;
 		for (size_t ii=0; ii<nwyz; ii++) {
-			if(vecData[ii]!=IOUtils::nodata) count++;
+			if (vecData[ii]!=IOUtils::nodata) count++;
 		}
 		return count;
 	}
 }
 
 template<class T> void Array4D<T>::abs() {
-	if(std::numeric_limits<T>::is_signed) {
+	if (std::numeric_limits<T>::is_signed) {
 		const size_t nwyz = nwnxny*nz;
-		if(keep_nodata==false) {
+		if (keep_nodata==false) {
 			for (size_t jj=0; jj<nwyz; jj++) {
 				T& val = vecData[jj];
-				if(val<0) val=-val;
+				if (val<0) val=-val;
 			}
 		} else {
 			for (size_t jj=0; jj<nwyz; jj++) {
 				T& val = vecData[jj];
-				if(val<0 && val!=IOUtils::nodata) val=-val;
+				if (val<0 && val!=IOUtils::nodata) val=-val;
 			}
 		}
 	}
@@ -552,11 +557,11 @@ template<class T> const Array4D<T> Array4D<T>::getAbs() const {
 
 //arithmetic operators
 template<class T> bool Array4D<T>::checkEpsilonEquality(const Array4D<double>& rhs, const double& epsilon) const {
-	if(nw!=rhs.nw || nx!=rhs.nx || ny!=rhs.ny || nz!=rhs.nz) return false;
+	if (nw!=rhs.nw || nx!=rhs.nx || ny!=rhs.ny || nz!=rhs.nz) return false;
 
 	const size_t nwyz = nwnxny*nz;
 	for (size_t jj=0; jj<nwyz; jj++)
-		if(IOUtils::checkEpsilonEquality(vecData[jj], rhs.vecData[jj], epsilon)==false) return false;
+		if (IOUtils::checkEpsilonEquality(vecData[jj], rhs.vecData[jj], epsilon)==false) return false;
 
 	return true;
 }
@@ -566,7 +571,7 @@ template<class T> bool Array4D<T>::checkEpsilonEquality(const Array4D<double>& r
 }
 
 template<class T> Array4D<T>& Array4D<T>::operator=(const Array4D<T>& source) {
-	if(this != &source) {
+	if (this != &source) {
 		keep_nodata = source.keep_nodata;
 		nw = source.nw;
 		nx = source.nx;
@@ -595,13 +600,13 @@ template<class T> Array4D<T>& Array4D<T>::operator+=(const Array4D<T>& rhs)
 	}
 	//Add to every single member of the Array4D<T>
 	const size_t nwyz = nwnxny*nz;
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwyz; jj++) {
 			vecData[jj] += rhs(jj);
 		}
 	} else {
 		for (size_t jj=0; jj<nwyz; jj++) {
-			if(vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
+			if (vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
 				vecData[jj] = IOUtils::nodata;
 			else
 				vecData[jj] += rhs(jj);
@@ -611,7 +616,7 @@ template<class T> Array4D<T>& Array4D<T>::operator+=(const Array4D<T>& rhs)
 	return *this;
 }
 
-template<class T> const Array4D<T> Array4D<T>::operator+(const Array4D<T>& rhs)
+template<class T> const Array4D<T> Array4D<T>::operator+(const Array4D<T>& rhs) const
 {
 	Array4D<T> result(*this); //make a copy
 	result += rhs; //already implemented
@@ -621,15 +626,17 @@ template<class T> const Array4D<T> Array4D<T>::operator+(const Array4D<T>& rhs)
 
 template<class T> Array4D<T>& Array4D<T>::operator+=(const T& rhs)
 {
+	if (rhs==0.) return *this;
+	
 	//Add to every single member of the Array4D<T>
 	const size_t nwyz = nwnxny*nz;
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwyz; jj++) {
 			vecData[jj] += rhs;
 		}
 	} else {
 		for (size_t jj=0; jj<nwyz; jj++) {
-			if(vecData[jj]!=IOUtils::nodata)
+			if (vecData[jj]!=IOUtils::nodata)
 				vecData[jj] += rhs;
 		}
 	}
@@ -637,7 +644,7 @@ template<class T> Array4D<T>& Array4D<T>::operator+=(const T& rhs)
 	return *this;
 }
 
-template<class T> const Array4D<T> Array4D<T>::operator+(const T& rhs)
+template<class T> const Array4D<T> Array4D<T>::operator+(const T& rhs) const
 {
 	Array4D<T> result(*this);
 	result += rhs; //already implemented
@@ -656,13 +663,13 @@ template<class T> Array4D<T>& Array4D<T>::operator-=(const Array4D<T>& rhs)
 	}
 	//Substract to every single member of the Array4D<T>
 	const size_t nwyz = nwnxny*nz;
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwyz; jj++) {
 			vecData[jj] -= rhs(jj);
 		}
 	} else {
 		for (size_t jj=0; jj<nwyz; jj++) {
-			if(vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
+			if (vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
 				vecData[jj] = IOUtils::nodata;
 			else
 				vecData[jj] -= rhs(jj);
@@ -672,7 +679,7 @@ template<class T> Array4D<T>& Array4D<T>::operator-=(const Array4D<T>& rhs)
 	return *this;
 }
 
-template<class T> const Array4D<T> Array4D<T>::operator-(const Array4D<T>& rhs)
+template<class T> const Array4D<T> Array4D<T>::operator-(const Array4D<T>& rhs) const
 {
 	Array4D<T> result(*this); //make a copy
 	result -= rhs; //already implemented
@@ -686,7 +693,7 @@ template<class T> Array4D<T>& Array4D<T>::operator-=(const T& rhs)
 	return *this;
 }
 
-template<class T> const Array4D<T> Array4D<T>::operator-(const T& rhs)
+template<class T> const Array4D<T> Array4D<T>::operator-(const T& rhs) const
 {
 	Array4D<T> result(*this);
 	result += -rhs; //already implemented
@@ -705,13 +712,13 @@ template<class T> Array4D<T>& Array4D<T>::operator*=(const Array4D<T>& rhs)
 	}
 	//Multiply every single member of the Array4D<T>
 	const size_t nwxyz = nwnxny*nz;
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwxyz; jj++) {
 			vecData[jj] *= rhs(jj);
 		}
 	} else {
 		for (size_t jj=0; jj<nwxyz; jj++) {
-			if(vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
+			if (vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
 				vecData[jj] = IOUtils::nodata;
 			else
 				vecData[jj] *= rhs(jj);
@@ -721,7 +728,7 @@ template<class T> Array4D<T>& Array4D<T>::operator*=(const Array4D<T>& rhs)
 	return *this;
 }
 
-template<class T> const Array4D<T> Array4D<T>::operator*(const Array4D<T>& rhs)
+template<class T> const Array4D<T> Array4D<T>::operator*(const Array4D<T>& rhs) const
 {
 	Array4D<T> result(*this); //make a copy
 	result *= rhs; //already implemented
@@ -731,15 +738,17 @@ template<class T> const Array4D<T> Array4D<T>::operator*(const Array4D<T>& rhs)
 
 template<class T> Array4D<T>& Array4D<T>::operator*=(const T& rhs)
 {
+	if (rhs==1.) return *this;
+	
 	//Multiply every single member of the Array4D<T>
 	const size_t nwxyz = nwnxny*nz;
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwxyz; jj++) {
 			vecData[jj] *= rhs;
 		}
 	} else {
 		for (size_t jj=0; jj<nwxyz; jj++) {
-			if(vecData[jj]!=IOUtils::nodata)
+			if (vecData[jj]!=IOUtils::nodata)
 				vecData[jj] *= rhs;
 		}
 	}
@@ -747,7 +756,7 @@ template<class T> Array4D<T>& Array4D<T>::operator*=(const T& rhs)
 	return *this;
 }
 
-template<class T> const Array4D<T> Array4D<T>::operator*(const T& rhs)
+template<class T> const Array4D<T> Array4D<T>::operator*(const T& rhs) const
 {
 	Array4D<T> result(*this);
 	result *= rhs; //already implemented
@@ -766,13 +775,13 @@ template<class T> Array4D<T>& Array4D<T>::operator/=(const Array4D<T>& rhs)
 	}
 	//Divide every single member of the Array4D<T>
 	const size_t nwxyz = nwnxny*nz;
-	if(keep_nodata==false) {
+	if (keep_nodata==false) {
 		for (size_t jj=0; jj<nwxyz; jj++) {
 			vecData[jj] /= rhs(jj);
 		}
 	} else {
 		for (size_t jj=0; jj<nwxyz; jj++) {
-			if(vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
+			if (vecData[jj]==IOUtils::nodata || rhs(jj)==IOUtils::nodata)
 				vecData[jj] = IOUtils::nodata;
 			else
 				vecData[jj] /= rhs(jj);
@@ -782,7 +791,7 @@ template<class T> Array4D<T>& Array4D<T>::operator/=(const Array4D<T>& rhs)
 	return *this;
 }
 
-template<class T> const Array4D<T> Array4D<T>::operator/(const Array4D<T>& rhs)
+template<class T> const Array4D<T> Array4D<T>::operator/(const Array4D<T>& rhs) const
 {
 	Array4D<T> result(*this); //make a copy
 	result /= rhs; //already implemented
@@ -796,7 +805,7 @@ template<class T> Array4D<T>& Array4D<T>::operator/=(const T& rhs)
 	return *this;
 }
 
-template<class T> const Array4D<T> Array4D<T>::operator/(const T& rhs)
+template<class T> const Array4D<T> Array4D<T>::operator/(const T& rhs) const
 {
 	Array4D<T> result(*this);
 	result *= (1./rhs); //already implemented
@@ -807,12 +816,12 @@ template<class T> const Array4D<T> Array4D<T>::operator/(const T& rhs)
 template<class T> bool Array4D<T>::operator==(const Array4D<T>& in) const {
 	const size_t in_nx=in.getNx(), in_ny=in.getNy(), in_nz=in.getNz(), in_nw=in.getNw();
 
-	if(nx!=in_nx || ny!=in_ny || nz!=in_nz || nw!=in_nw)
+	if (nx!=in_nx || ny!=in_ny || nz!=in_nz || nw!=in_nw)
 		return false;
 
 	const size_t nwxyz = nx*ny*nz*nw;
-	for(size_t jj=0; jj<nwxyz; jj++)
-		if( !IOUtils::checkEpsilonEquality( vecData[jj] , in.vecData[jj], 1e-6) ) return false;
+	for (size_t jj=0; jj<nwxyz; jj++)
+		if ( !IOUtils::checkEpsilonEquality( vecData[jj] , in.vecData[jj], 1e-6) ) return false;
 
 	return true;
 }

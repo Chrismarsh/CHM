@@ -15,19 +15,17 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __SMETIO_H__
-#define __SMETIO_H__
+#ifndef SMETIO_H
+#define SMETIO_H
 
 #include <meteoio/IOInterface.h>
-#include <meteoio/Config.h>
 #include <meteoio/plugins/libsmet.h>
 
 #include <string>
+#include <vector>
 
 #ifdef _MSC_VER
-
 	#pragma warning(disable:4512) //we don't need any = operator!
-
 #endif
 
 namespace mio {
@@ -45,26 +43,15 @@ class SMETIO : public IOInterface {
 		SMETIO(const std::string& configfile);
 		SMETIO(const SMETIO&);
 		SMETIO(const Config& cfgreader);
-		~SMETIO() throw();
-
-		virtual void read2DGrid(Grid2DObject& grid_out, const std::string& parameter="");
-		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
-
-		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
 
 		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
 		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector< std::vector<MeteoData> >& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
+		                           std::vector< std::vector<MeteoData> >& vecMeteo);
 
 		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo,
 		                            const std::string& name="");
 
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
 		virtual void readPOI(std::vector<Coords>& pts);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& filename);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
 
 	private:
 		void read_meta_data(const smet::SMETReader& myreader, StationData& meta);
@@ -78,7 +65,8 @@ class SMETIO : public IOInterface {
 		size_t getNrOfParameters(const std::string& stationname, const std::vector<MeteoData>& vecMeteo);
 		void checkForUsedParameters(const std::vector<MeteoData>& vecMeteo, const size_t& nr_parameters, double& tz,
 		                            std::vector<bool>& vecParamInUse, std::vector<std::string>& vecColumnName);
-		void getFormatting(const size_t& param, int& prec, int& width);
+		static void getPlotProperties(const size_t& param, std::ostringstream &plot_units, std::ostringstream &plot_description, std::ostringstream &plot_color, std::ostringstream &plot_min, std::ostringstream &plot_max);
+		static void getFormatting(const size_t& param, int& prec, int& width);
 		double olwr_to_tss(const double& olwr);
 		void generateHeaderInfo(const StationData& sd, const bool& i_outputIsAscii, const bool& isConsistent,
 		                        const double& timezone, const size_t& nr_of_parameters,
@@ -92,10 +80,10 @@ class SMETIO : public IOInterface {
 		std::vector<smet::SMETReader> vec_smet_reader;
 		std::vector<std::string> vecFiles;  //read from the Config [Input] section
 		std::string outpath;                //read from the Config [Output] section
-		double in_dflt_TZ, out_dflt_TZ;     //default time zones
+		double out_dflt_TZ;     //default time zone
 		double plugin_nodata;
 		size_t nr_stations; //number of stations to read from
-		bool outputIsAscii, outputIsGzipped;//read from the Config [Output] section
+		bool outputIsAscii, outputPlotHeaders;//read from the Config [Output] section
 };
 
 } //namespace

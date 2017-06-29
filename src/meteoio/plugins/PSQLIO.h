@@ -1,5 +1,5 @@
 /***********************************************************************************/
-/*  Copyright 2009 WSL Institute for Snow and Avalanche Research    SLF-DAVOS      */
+/*  Copyright 2012 Mountain-eering Srl, Trento/Bolzano, Italy                      */
 /***********************************************************************************/
 /* This file is part of MeteoIO.
     MeteoIO is free software: you can redistribute it and/or modify
@@ -15,11 +15,10 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __PSQLIO_H__
-#define __PSQLIO_H__
+#ifndef PSQLIO_H
+#define PSQLIO_H
 
 #include <meteoio/IOInterface.h>
-#include <meteoio/Config.h>
 
 #include <libpq-fe.h>
 #include <string>
@@ -31,6 +30,7 @@ namespace mio {
  * @class PSQLIO
  * @brief This plugin connects to a generic PostgreSQL server to retrieve its meteorological data.
  *
+ * This plugin was funded by <A HREF="http://www.mountain-eering.com">Mountain-eering</A>.
  * @ingroup plugins
  * @author Thomas Egger
  * @date   2014-01-28
@@ -40,31 +40,18 @@ class PSQLIO : public IOInterface {
 		PSQLIO(const std::string& configfile);
 		PSQLIO(const PSQLIO&);
 		PSQLIO(const Config& cfg);
-		~PSQLIO() throw();
-
-		virtual void read2DGrid(Grid2DObject& grid_out, const std::string& parameter="");
-		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
-		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
+		
+		PSQLIO& operator=(const PSQLIO& in);
 
 		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
 		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector< std::vector<MeteoData> >& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
+		                           std::vector< std::vector<MeteoData> >& vecMeteo);
 
 		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo,
 		                            const std::string& name="");
 
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
-		virtual void readPOI(std::vector<Coords>& pts);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& filename);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
-
-		PSQLIO& operator=(const PSQLIO& in);
-
 	private:
 		void getParameters(const Config& cfg);
-		void create_shadow_map(const std::string& exclude_file);
 		void open_connection(const bool& input=true);
 		PGresult* sql_exec(const std::string& sqlcommand, const bool& input=true);
 		static bool replace(std::string& str, const std::string& from, const std::string& to);
@@ -95,7 +82,6 @@ class PSQLIO : public IOInterface {
 		std::vector<StationData> vecMeta;
 		std::vector<std::string> vecFixedStationID, vecMobileStationID;
 		std::string sql_meta, sql_data;
-		std::map< std::string, std::set<std::string> > shadowed_parameters;
 
 		static const double plugin_nodata; //plugin specific nodata value, e.g. -999
 };

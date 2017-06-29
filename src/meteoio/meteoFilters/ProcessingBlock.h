@@ -15,10 +15,11 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __PROCESSINGBLOCK_H__
-#define __PROCESSINGBLOCK_H__
+#ifndef PROCESSINGBLOCK_H
+#define PROCESSINGBLOCK_H
 
 #include <meteoio/dataClasses/MeteoData.h>
+#include <meteoio/Config.h>
 #include <vector>
 #include <string>
 #include <set>
@@ -75,18 +76,18 @@ class ProcessingBlock {
 
 		void convert_args(const size_t& min_nargs, const size_t& max_nargs,
 		                  const std::vector<std::string>& vec_args, std::vector<double>& dbl_args) const;
-
 		static bool is_soft(std::vector<std::string>& vec_args);
-
 		static void readCorrections(const std::string& filter, const std::string& filename, const char& c_type, const double& init, std::vector<double> &corrections);
 
 		ProcessingProperties properties;
 		const std::string block_name;
+
+		static const double soil_albedo, snow_albedo, snow_thresh; ///< parametrize the albedo from HS
 };
 
 class BlockFactory {
 	public:
-		static ProcessingBlock* getBlock(const std::string& blockname, const std::vector<std::string>& vec_args, const std::string& root_path);
+		static ProcessingBlock* getBlock(const std::string& blockname, const std::vector<std::string>& vec_args, const Config& cfg);
 };
 
 } //end namespace

@@ -17,33 +17,33 @@
     You should have received a copy of the GNU General Public License
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
+
+#include <cstddef> //needed for size_t
+
+#include <snowpack/snowpackCore/Metamorphism.h>
+#include <snowpack/Constants.h>
+#include <snowpack/Utils.h>
+#include <snowpack/snowpackCore/Snowpack.h>
+
+using namespace std;
+using namespace mio;
+
 /**
  * @file Metamorphism.cc
  * @brief This module contains the snow metamorphism routines of the SLF one-dimensional snowpack model \n
- * It represents a truly international research effort: Dr. Bob "Borolo" Brown of MONTANA STATE UNIVERSITY (USA)
- * provided a lot of the motivation and low temperature gradient micro-structure
- * physics; Dr. Michael "Give me a Girl" Lehning (GERMANY), when he was was not
- * busy on the telephone talking to his dentist in San Francisco, provided project
- * leadership, a sense of the practical and more importantly, the link to the
- * avalanche warning group, i.e. he told everybody what to do; Dr. Pramod Sataywali
- * "Porky" (INDIA) came up with the high temperature gradient micro-structure
- * routines, while, at the same time, missing his wife and child terribly, skiing
- * and dreaming of Indian spin bowlers. Dr. Perry Bartelt (PLANET PLUTO) was FORCED
- * to write the code and INTEGRATE it into a very sensible continuum mechanics
- * model, that works pretty well.  He does NOT accept any RESPONSIBLITY for the
- * VERY STRANGE physical contants that the Borolo Bob and Sataywali use: SNOW MICRO-
- * STRUCTURE is BULLSHIT, BULLSHIT, BULLSHIT, and more BULLSHIT.
- * Michael had written all the Metamorphism stuff up to document it and he started
- * to understand what Perry meant with his lines above and below. He started
- * cleaning the code the day he knew that Betty had received the price for the best
- * presentation and the most scientific content at the Innsbruck conference. He was
- * proud. The main task will be to get rid of all the trash in this routine such as
- * cgs thanks to Porky and use the functions that are already programmed such as
- * saturation vapor pressure. Of course, university professors can not know that
- * we need saturation vapor pressure not only for Metamorphism.......
+ * It represents a truly international research effort:
+ * Dr. Bob "Borolo" Brown of montana state university (USA) provided a lot of the motivation and
+ * low temperature gradient micro-structure physics;
+ * Dr. Michael provided project leadership, a sense of the practical and more importantly, the link to the
+ * avalanche warning group, i.e. he told everybody what to do;
+ * Dr. Pramod Sataywali (SASE, INDIA) came up with the high temperature gradient micro-structure
+ * routines;
+ * Dr. Perry Bartelt wrote the code and integrated it into a very sensible continuum mechanics
+ * model that works pretty well.
+ *
  * Definition of some of the essential variables:
  *
- * PRIMARY micro-structure parameters computed by Metamorphism routine:
+ * PRIMARY micro-structure parameters computed by the Metamorphism routine:
  *
  * - rb : bond radius in [mm]
  * - rg : grain radius in [mm]
@@ -74,47 +74,16 @@
  * These are the variables needed to compute these values of the
  * ElementData class within the snowStation class:
  * - theta[ICE]   : volumetric ice content (1)
- * - theta[WATER] : volumetric water  (1)
+ * - theta[WATER] : volumetric water (1)
  * - Te           : temperature (K)
  * - dTdZ         : temperature gradient (K m-1)
  * - dPdZ         : vapor pressure gradient (bar m-1)
  * - Rho          : bulk density (kg m-3)
  * - S            : overburden stress (Pa)
+ *
+ * The french metamorphism routines were written in November 1995 by Perry Bartelt
+ * and Martin Schneebeli.  They were first used in the 2d snowpack code haefeli.
  */
-/* The code is dedicated to Perry's heros:  General Vo Nguyen Giap, author of
-* "People's War, People's Army: The Viet Cong Insurrection Manual for
-* Underdeveloped Countries", which Perry is now using as a self-help guide to
-* to survive the SLF; the poets Allen Ginsberg and W.H. Auden and, of course,
-* Brooks Robinson, who Perry saw on a beautiful September day in 1971 hit two
-* journeyman singles to centerfield against the Cleveland Indians: I fell in love.
-* The works of these great men will be cited throughout the code. We begin with
-* the General: "Such was the essence of the strategic direction of the Dien Bien
-* Phu campaign and of the WINTER-SPRING campaign as a whole.  This direction drew
-* its inspiration from the principles of DYNAMISM, INITIATIVE, MOBILITY and
-* RAPIDITY of decision in face of NEW SITUATIONS.  Its main objective was the
-* DESTRUCTION of enemy MANPOWER.  It took full advantage of the CONTRADICTIONS in
-* which the enemy was involved and developed to the utmost the spirit of active
-* offensive of the revolutionary army. This CORRECT, CLEAR-SIGHTED and BOLD
-* strategy enabled us to deprive the enemy of all possiblility of retrieving the
-* initiative, and to create favourable conditions for us to fight a decisive battle
-* on a battlefield CHOSEN and PREPARED for by US.  This strategic direction ensured
-* the success of the whole WINTER-SPRING campaign which was CROWNED by the great
-* victory of DIEN BIEN PHU."
-                                                                                              |
-* This code is OUR Dien Bien Phu:    a victory against FRENCH imperialism,
-* JAPANESE fascism and AMERICAN interventionism, i.e bad French metamorphism
-* ideas, funny Japanese viscosity functions and, of course, bad American university
-* programmaying!!  (This guy has a serious problem, folks, criticizing the home of
-* the (DE)brave (d) and land of the free (BIE), or whatever that studpid phrase is
-* The french metamorphism routines were written in November 1995 by Perry Bartelt
-* and Martin Schneebeli.  They were first used in the 2d snowpack code haefeli.
-*/
-
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/snowpackCore/Snowpack.h>
-
-using namespace std;
-using namespace mio;
 
 /************************************************************
  * static section                                           *
@@ -166,8 +135,6 @@ bool Metamorphism::initStaticData()
 
 /**
  * @brief This routine estimates the cross sectional pore area
- * @author Charles Fierz
- * @date 2009-12-23
  * @param Edata
  * @return area (mm2)
  */
@@ -250,7 +217,7 @@ double Metamorphism::ddRate(const ElementData& Edata)
 	//dTdz >= 5.0:Ml: ori -4.0; set to -1.5e8 by Bellaire 2004, then to -3.5e8 2007;
 	const double ddDot = (dTdz < 5.0)? -3.0e8 * c :  -1.5e8 * f ;
 
-	return MAX(-1., ddDot);
+	return std::max(-1., ddDot);
 }
 
 /************************************************************
@@ -354,7 +321,7 @@ double Metamorphism::TGBondRate(const ElementData& Edata)
 	// micro temp gradient across bonds (K m-1)
 	const double TGradBond = Edata.k[TEMPERATURE] / Constants::conductivity_ice * A / (Constants::pi * rb*rb) * (-TGrad);       // (K m-1) NOTE Why take TGrad neg.?
 	double flux = -Constants::diffusion_coefficient_in_air / (Constants::gas_constant * Edata.Te*Edata.Te) * (Constants::lh_sublimation / (Constants::gas_constant * Edata.Te) - 1.) * TGradBond; // mass flux of vapor in the pore space - in cgs units
-	flux *= Atmosphere::waterSaturationPressure(Edata.Te); // (kg s-1 m-2)
+	flux *= Atmosphere::vaporSaturationPressure(Edata.Te); // (kg s-1 m-2)
 	// Bond radius growth rate (m s-1)
 	const double rbDot = flux / Constants::density_ice * Metamorphism::sa_g_fudge; // Bond radius growth rate (mm d-1)
 	// Convert to mm d-1
@@ -415,17 +382,17 @@ double Metamorphism::TGGrainRate(const ElementData& Edata, const double& Tbot, c
 		const double a1 = reg0 + reg1*(th_i * Constants::density_ice);
 		a  = a0 + a1*(gsz - new_snow_grain_size);
 	}
-	a  = MIN (a, hElem);
+	a  = std::min(a, hElem);
 
 	// Intra layer flux, where the direction of flow does not matter! Units: kg/(sm2)
 	double intraFlux =  fabs(Constants::diffusion_coefficient_in_snow / (Constants::gas_constant * Te*Te) * (Constants::lh_sublimation / (Constants::gas_constant * Te) - 1.) * gradT);
-	intraFlux *= Atmosphere::waterSaturationPressure(Te);
+	intraFlux *= Atmosphere::vaporSaturationPressure(Te);
 
 	// Layer to layer flux, where the direction of flow DOES matter! Units: kg/(sm2)
 	double botFlux = - Constants::diffusion_coefficient_in_snow / (Constants::gas_constant * Tbot*Tbot) * (Constants::lh_sublimation / (Constants::gas_constant * Tbot) - 1.) * gradTbot;
-	botFlux *= Atmosphere::waterSaturationPressure(Tbot);
+	botFlux *= Atmosphere::vaporSaturationPressure(Tbot);
 	double topFlux = - Constants::diffusion_coefficient_in_snow / (Constants::gas_constant * Ttop*Ttop) * (Constants::lh_sublimation / (Constants::gas_constant * Ttop) - 1.) * gradTtop;
-	topFlux *= Atmosphere::waterSaturationPressure(Ttop);
+	topFlux *= Atmosphere::vaporSaturationPressure(Ttop);
 	const double dFluxL2L = -(topFlux - botFlux); // Flux divergence due to L2L transport
 	// Compute the rate in m s-1
 	const double rgDot = 0.5 * ( (intraFlux + dFluxL2L * (a / hElem) ) * a*a) / (2.0 * Metamorphism::ba_g_fudge * Constants::density_ice * (new_snow_grain_size) * gsz);
@@ -436,7 +403,7 @@ double Metamorphism::TGGrainRate(const ElementData& Edata, const double& Tbot, c
 
 
 /**
- * @return Below  is Borolo Bob's ET bond growth rate routine.  Determines the bond or neck
+ * @return Below is Borolo Bob's ET bond growth rate routine.  Determines the bond or neck
  * growth for low temperature gradients. Called from the routine
  * mm_Metamorphism. Note that the growth rate is converted from mm s-1 to
  * mm d-1 before returning rbDot.
@@ -503,7 +470,7 @@ double Metamorphism::ETGrainRate(const ElementData& Edata)
  */
 double Metamorphism::PressureSintering(ElementData& Edata)
 {
-	if (Edata.theta[ICE] <= Snowpack::min_ice_content) {
+	if (Edata.theta[ICE] < Snowpack::min_ice_content) {
 		return 0.;
 	}
 	if (Edata.Te > Edata.melting_tk) {
@@ -511,7 +478,7 @@ double Metamorphism::PressureSintering(ElementData& Edata)
 	}
 
 	// Bond radius growth rate (mm s-1)
-	const double rbdot = -0.1 * Edata.rb * Edata.EvDot / Edata.neck2VolumetricStrain();
+	const double rbdot = -0.1 * Edata.rb * Edata.Eps_vDot / Edata.neck2VolumetricStrain();
 	// Convert from (mm s-1) to (mm d-1)
 	return D_TO_S(rbdot);
 }
@@ -567,8 +534,8 @@ void Metamorphism::metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& X
 		// Compute the pressure gradient (kinetic or equilibrium growth metamorphism??)
 		const double T1 = NDS[e].T; // Nodal temperature of element
 		const double T2 = NDS[e+1].T;// Nodal temperature of element
-		const double P1 = Atmosphere::waterSaturationPressure(T1); //Nodal pressure of element
-		const double P2 = Atmosphere::waterSaturationPressure(T2); //Nodal pressure of element
+		const double P1 = Atmosphere::vaporSaturationPressure(T1); //Nodal pressure of element
+		const double P2 = Atmosphere::vaporSaturationPressure(T2); //Nodal pressure of element
 		const double dPdZ = fabs((P2 - P1) / EMS[e].L) * 0.01;  //Vapor pressure gradient within element in hPa m-1
 
 		// Equilibrium growth rates for old dry snow
@@ -579,12 +546,18 @@ void Metamorphism::metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& X
 		// Since we need temperature gradients above and below the element we have to consider various cases for the kinetic grain growth
 		if ( e > 0 && e < nE-1 ) { // inner element
 			rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e-1].gradT, EMS[e+1].gradT);
-		} else if ( e == 0 ) {// bottom element: use twice EMS[e].gradT to avoid troubles if nE=1
-			rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e].gradT, EMS[e].gradT);
+		} else if ( e == 0 ) { // bottom element
+			if ( nE == 1 ) {
+				// bottom element: use EMS[e].gradT twice in case nE=1
+				rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e].gradT, EMS[e].gradT);
+			} else {
+				// bottom element in other cases
+				rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e].gradT, EMS[e+1].gradT);
+			}
 		} else {// top element
 			rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e-1].gradT, EMS[e].gradT);
 		}
-		rgDotMax = MAX(0.0, rgDotMax);
+		rgDotMax = std::max(0.0, rgDotMax);
 		rbDotMax = TGBondRate(EMS[e]);
 
 		if ( (EMS[e].theta[WATER] < 0.01) && (Mdata.vw > Metamorphism::wind_slab_vw) && ((NDS[nE].z - NDS[e].z < Metamorphism::wind_slab_depth) || e == nE-1) ) {
@@ -671,29 +644,29 @@ void Metamorphism::metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& X
 		const double dDay = S_TO_D(sn_dt);
 		// Update dendricity
 		EMS[e].dd += ddDot * dDay;
-		EMS[e].dd = MAX(0.0, MIN (1.0, EMS[e].dd));
+		EMS[e].dd = std::max(0.0, std::min(1.0, EMS[e].dd));
 		// Update sphericity
 		EMS[e].sp += spDot * dDay;
 		if ( (marker == 1) && (EMS[e].rg >= 0.4) ) {
-			EMS[e].sp = MAX(0.0, MIN(0.5, EMS[e].sp)); // Limit effect of rounding on dry faceted grains
+			EMS[e].sp = std::max(0.0, std::min(0.5, EMS[e].sp)); // Limit effect of rounding on dry faceted grains
 		} else {
-			EMS[e].sp = MAX(0.0, MIN(1.0, EMS[e].sp));
+			EMS[e].sp = std::max(0.0, std::min(1.0, EMS[e].sp));
 		}
 		// Update grain sizes ...
-		rgDot = MIN(rgDot, Metamorphism::max_grain_growth);
+		rgDot = std::min(rgDot, Metamorphism::max_grain_growth);
 		if ( marker != 3 ) {
 			EMS[e].rg += rgDot*dDay;
 		} else {
 			//HACK ... but do not allow surface hoar to grow and limit its size to layer thickness.
-			EMS[e].rg = MIN(EMS[e].rg, 0.5 * M_TO_MM(EMS[e].L));
+			EMS[e].rg = std::min(EMS[e].rg, 0.5 * M_TO_MM(EMS[e].L));
 		}
 		EMS[e].opticalEquivalentGrainSize();
 		// Update bond size and limit its growth to Metamorphism::bond_size_stop * EMS[e].rg
 		rbDotMax = (Metamorphism::bond_size_stop * EMS[e].rg - EMS[e].rb) / dDay;
-		rbDot = MAX(0., MIN(rbDot, rbDotMax));
+		rbDot = std::max(0., std::min(rbDot, rbDotMax));
 		EMS[e].rb += rbDot * dDay;
 		if ( marker == 3 ) { //HACK SH is only grain allowed to decrease its grain size!
-			EMS[e].rb = MIN(EMS[e].rb, Metamorphism::max_grain_bond_ratio * EMS[e].rg);
+			EMS[e].rb = std::min(EMS[e].rb, Metamorphism::max_grain_bond_ratio * EMS[e].rg);
 		}
 
 		// Compute proportion of grain bond growth due to pressure sintering
@@ -784,8 +757,8 @@ void Metamorphism::metamorphismNIED(const CurrentMeteo& Mdata, SnowStation& Xdat
 		// Compute the pressure gradient (kinetic or equilibrium growth metamorphism??)
 		const double T1 = NDS[e].T;
 		const double T2 = NDS[e+1].T;
-		const double P1 = Atmosphere::waterSaturationPressure(T1);
-		const double P2 = Atmosphere::waterSaturationPressure(T2);
+		const double P1 = Atmosphere::vaporSaturationPressure(T1);
+		const double P2 = Atmosphere::vaporSaturationPressure(T2);
 		const double dPdZ = fabs((P2 - P1) / EMS[e].L) * 0.01;  //  Result is in mbar m-1
 
 		// Equilibrium growth rates for old dry snow
@@ -796,12 +769,18 @@ void Metamorphism::metamorphismNIED(const CurrentMeteo& Mdata, SnowStation& Xdat
 		// Since we need temperature gradients above and below the element we have to consider various cases for the kinetic grain growth
 		if ( e > 0 && e < nE-1 ) { // inner element
 			rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e-1].gradT, EMS[e+1].gradT);
-		} else if ( e == 0 ) { // bottom element: use twice EMS[e].gradT to avoid troubles if nE=1
-			rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e].gradT, EMS[e].gradT);
-		} else { // top element
+		} else if ( e == 0 ) { // bottom element
+			if ( nE == 1 ) {
+				// bottom element: use EMS[e].gradT twice in case nE=1
+				rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e].gradT, EMS[e].gradT);
+			} else {
+				// bottom element in other cases
+				rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e].gradT, EMS[e+1].gradT);
+			}
+		} else {// top element
 			rgDotMax = TGGrainRate(EMS[e], T1, T2, EMS[e-1].gradT, EMS[e].gradT);
 		}
-		rgDotMax = MAX (0.0, rgDotMax);
+		rgDotMax = std::max(0.0, rgDotMax);
 		rbDotMax = TGBondRate(EMS[e]);
 
 		if ( (EMS[e].theta[WATER] < 0.01) && (Mdata.vw > Metamorphism::wind_slab_vw) && ((NDS[nE].z - NDS[e].z < Metamorphism::wind_slab_depth) || e == nE-1) ) {
@@ -843,7 +822,7 @@ void Metamorphism::metamorphismNIED(const CurrentMeteo& Mdata, SnowStation& Xdat
 					}
 					const double gradV=dPdZ*7.93E-4;  //NIED (H. Hirashima) hPa/m��kg/m2�ɕϊ�
 					const double DenFact = -0.136*EMS[e].Rho+4.56;
-					const double Diffus = MAX((2.23E-5*(1013.25/1013.25)*pow((EMS[e].Te)/273.15,1.78)),((0.78*(EMS[e].Te-273.15))+10.84)*1.0E-5); //NIED (H. Hirashima)
+					const double Diffus = std::max((2.23E-5*(1013.25/1013.25)*pow((EMS[e].Te)/273.15,1.78)),((0.78*(EMS[e].Te-273.15))+10.84)*1.0E-5); //NIED (H. Hirashima)
 					dhfDot = fabs(-DenFact*Diffus*gradV*(1.0-EMS[e].dhf));
 					if (fabs(EMS[e].gradT)<5.0) {
 						dhfDot=-60000000.*exp(-6000./EMS[e].Te)/86400.;  //NIED (H. Hirashima)
@@ -877,7 +856,7 @@ void Metamorphism::metamorphismNIED(const CurrentMeteo& Mdata, SnowStation& Xdat
 					spDot = CALL_MEMBER_FN(*this, mapSpRate[metamorphism_model])(EMS[e]);
 					const double gradV=dPdZ*7.93E-4; //NIED (H. Hirashima) //hPa/m��kg/m2�ɕϊ�
 					const double DenFact = -0.136*EMS[e].Rho+4.56;  //NIED (H. Hirashima)
-					const double Diffus = MAX((2.23E-5*(1013.25/1013.25)*pow((EMS[e].Te)/273.15,1.78)),((0.78*(EMS[e].Te-273.15))+10.84)*1.0E-5); //NIED (H. Hirashima)
+					const double Diffus = std::max((2.23E-5*(1013.25/1013.25)*pow((EMS[e].Te)/273.15,1.78)),((0.78*(EMS[e].Te-273.15))+10.84)*1.0E-5); //NIED (H. Hirashima)
 					dhfDot = fabs(-DenFact*Diffus*gradV*(1.0-EMS[e].dhf));
 					if ( fabs(EMS[e].gradT)<5.0 ) {
 						dhfDot=-500000000.0*exp(-6000.0/EMS[e].Te)*(5.-fabs(EMS[e].gradT))/86400.; //NIED (H. Hirashima)
@@ -885,12 +864,18 @@ void Metamorphism::metamorphismNIED(const CurrentMeteo& Mdata, SnowStation& Xdat
 					if ( dPdZ > Metamorphism::mm_tg_dpdz ) {
 						rbDot = TGBondRate( EMS[e] );
 						// Since we need temperature gradients above and below the element we have to be careful for the grain growth
-						if (e > 0 && e < nE-1) {
-							rgDot = TGGrainRate( EMS[e], T1, T2, EMS[e-1].gradT, EMS[e+1].gradT );
-						} else if ( e == 0 ) {
-							rgDot = TGGrainRate( EMS[e], T1, T2, EMS[e].gradT, EMS[e+1].gradT );
-						}	else {
-							rgDot = TGGrainRate( EMS[e], T1, T2, EMS[e-1].gradT, EMS[e].gradT );
+						if (e > 0 && e < nE-1) { // inner element
+							rgDot = TGGrainRate(EMS[e], T1, T2, EMS[e-1].gradT, EMS[e+1].gradT);
+						} else if ( e == 0 ) { // bottom element
+							if ( nE == 1 ) {
+								// bottom element: use EMS[e].gradT twice in case nE=1
+								rgDot = TGGrainRate(EMS[e], T1, T2, EMS[e].gradT, EMS[e].gradT);
+							} else {
+								// bottom element in other cases
+								rgDot = TGGrainRate(EMS[e], T1, T2, EMS[e].gradT, EMS[e+1].gradT);
+							}
+						} else {
+							rgDot = TGGrainRate(EMS[e], T1, T2, EMS[e-1].gradT, EMS[e].gradT);
 							// rgDot = mm_TGGrainRate( &EMS[e] );  Thorstens Formulation
 						}
 						if ( rgDot < 0.0 ) {
@@ -924,30 +909,30 @@ void Metamorphism::metamorphismNIED(const CurrentMeteo& Mdata, SnowStation& Xdat
 			}
 		}
 		EMS[e].dhf += dhfDot * sn_dt; //NIED (H. Hirashima) HACK //Fz use consistent units dDay instead of sn_dt
-		EMS[e].dhf = MAX(0.0, MIN(1.0, EMS[e].dhf)); //NIED (H. Hirashima)
+		EMS[e].dhf = std::max(0.0, std::min(1.0, EMS[e].dhf)); //NIED (H. Hirashima)
 		// Update dendricity
 		EMS[e].dd += ddDot * dDay;
-		EMS[e].dd = MAX (0.0, MIN (1.0, EMS[e].dd));
+		EMS[e].dd = std::max(0.0, std::min(1.0, EMS[e].dd));
 		// Update sphericity
 		EMS[e].sp += spDot * dDay;
 		if ( (marker == 1) && (EMS[e].rg >= 2.) ) { //NIED (H. Hirashima)
-			EMS[e].sp = MAX(0.0, MIN(0.5, EMS[e].sp)); // Limit effect of rounding on dry faceted grains
+			EMS[e].sp = std::max(0.0, std::min(0.5, EMS[e].sp)); // Limit effect of rounding on dry faceted grains
 		} else {
-			EMS[e].sp = MAX(0.0, MIN(1.0, EMS[e].sp));
+			EMS[e].sp = std::max(0.0, std::min(1.0, EMS[e].sp));
 		}
 		// Update grain sizes ...
 		//rgDotMax = Metamorphism::max_grain_growth;
-		rgDot = MIN(rgDot, Metamorphism::max_grain_growth);
+		rgDot = std::min(rgDot, Metamorphism::max_grain_growth);
 		if ( marker != 3 ) {
 			EMS[e].rg += rgDot*dDay;
 		} else {
 			// ... but do not allow surface hoar to grow and limit its size to layer thickness.
-			EMS[e].rg = MIN (EMS[e].rg, 0.5 * M_TO_MM(EMS[e].L));
+			EMS[e].rg = std::min(EMS[e].rg, 0.5 * M_TO_MM(EMS[e].L));
 		}
 		EMS[e].opticalEquivalentGrainSize();
 		// Update bond size
 		rbDotMax = (Metamorphism::bond_size_stop * EMS[e].rg - EMS[e].rb) / dDay;
-		rbDot = MAX (0., MIN (rbDot, rbDotMax));
+		rbDot = std::max(0., std::min(rbDot, rbDotMax));
 		EMS[e].rb += rbDot * dDay;
 		// Compute proportion of grain bond growth due to pressure sintering
 		if ( (EMS[e].dd < 0.005) && (rbDot > 0.) ) {

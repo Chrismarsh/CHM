@@ -45,30 +45,30 @@ void loadMeteoAndStationData(double* cMetadata, double* cData,
 		double p=IOUtils::nodata, psum=IOUtils::nodata, ta=IOUtils::nodata, rh=IOUtils::nodata;
 		double vw=IOUtils::nodata, dw=IOUtils::nodata, iswr=IOUtils::nodata, ilwr=IOUtils::nodata;
 		double tsg=IOUtils::nodata, tss=IOUtils::nodata, hs=IOUtils::nodata, rswr=IOUtils::nodata;
-		if(algorithm =="P"){
+		if (algorithm =="P"){
 			interpolation_type=MeteoData::P;
 			p=cData[nbDataPerStation*i];
-		} else if(algorithm =="PSUM" ){
+		} else if (algorithm =="PSUM" ){
 			interpolation_type=MeteoData::PSUM;
 			psum=cData[nbDataPerStation*i];
-		} else if(algorithm =="TA" ){
+		} else if (algorithm =="TA" ){
 			interpolation_type=MeteoData::TA;
 			ta=cData[nbDataPerStation*i];
-		} else if(algorithm =="RH" ) {
+		} else if (algorithm =="RH" ) {
 			interpolation_type=MeteoData::RH;
 			rh=cData[nbDataPerStation*i];
 			if (nbDataPerStation>1) ta=cData[nbDataPerStation*i+1];
-		} else if(algorithm =="VW" ){
+		} else if (algorithm =="VW" ){
 			interpolation_type=MeteoData::VW;
 			vw=cData[nbDataPerStation*i];
 			if (nbDataPerStation>1) dw=cData[nbDataPerStation*i+1];
-		} else if(algorithm =="DW" ){
+		} else if (algorithm =="DW" ){
 			interpolation_type=MeteoData::DW;
 			dw=cData[nbDataPerStation*i];
-		} else if(algorithm =="ISWR" ){
+		} else if (algorithm =="ISWR" ){
 			interpolation_type=MeteoData::ISWR;
 			iswr=cData[nbDataPerStation*i];
-		} else if(algorithm =="ILWR"){
+		} else if (algorithm =="ILWR"){
 			interpolation_type=MeteoData::ILWR;
 			ilwr=cData[nbDataPerStation*i];
 		} else {
@@ -102,7 +102,7 @@ void fulfillDoubleArray(const Grid2DObject&  p,
 	dest[4] = 1.; //reserved ...
 	dest[5] = 1.; //reserved ...
 
-	if(cellOrder == "llur"){
+	if (cellOrder == "llur"){
 		size_t knx = 6;
 		size_t iknx = 0;
 		for (size_t kk = 0; kk < p.nrows; kk++){
@@ -112,7 +112,7 @@ void fulfillDoubleArray(const Grid2DObject&  p,
 			iknx+=p.ncols;
 		}
 	}
-	else if(cellOrder == "urll" ){
+	else if (cellOrder == "urll" ){
 		size_t knx = (p.nrows-1)*p.ncols+6;
 		size_t iknx = 0;
 		for (size_t kk = p.nrows-1; kk >=0; kk--){
@@ -122,7 +122,7 @@ void fulfillDoubleArray(const Grid2DObject&  p,
 			iknx+=p.ncols;
 		}
 	}
-	else if(cellOrder == "lrul" ){
+	else if (cellOrder == "lrul" ){
 		size_t knx = 6;
 		size_t iknx = 0;
 		for (size_t kk = 0; kk < p.nrows; kk++){
@@ -132,7 +132,7 @@ void fulfillDoubleArray(const Grid2DObject&  p,
 			iknx+=p.ncols;
 		}
 	}
-	else if(cellOrder == "ullr"){
+	else if (cellOrder == "ullr"){
 		size_t knx = (p.nrows-1)*p.ncols+6;
 		size_t iknx = 0;
 		for (size_t kk = (signed)p.nrows-1; kk >=0; kk--){

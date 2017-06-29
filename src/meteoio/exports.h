@@ -16,8 +16,8 @@
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __EXPORTS_H__
-#define __EXPORTS_H__
+#ifndef EXPORTS_H
+#define EXPORTS_H
 
 // Generic helper definitions for shared library support
 #if defined _WIN32 || defined __MINGW32__ || defined __CYGWIN__

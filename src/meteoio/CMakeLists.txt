@@ -1,9 +1,32 @@
+INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/")
+
 INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/dataClasses/CMakeLists.txt")
 INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/plugins/CMakeLists.txt")
 INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/meteoLaws/CMakeLists.txt")
 INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/meteoStats/CMakeLists.txt")
 INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/meteoFilters/CMakeLists.txt")
+INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/meteoResampling/CMakeLists.txt")
+INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/spatialInterpolations/CMakeLists.txt")
+INCLUDE("${PROJECT_SOURCE_DIR}/src/meteoio/dataGenerators/CMakeLists.txt")
 
+IF(PROJ4)
+	FIND_PATH(LIBPROJ_INCLUDE_DIR "proj_api.h")
+	FIND_LIBRARY(LIBPROJ proj)
+	INCLUDE_DIRECTORIES(${LIBPROJ_INCLUDE_DIR})
+	IF(MSVC)
+		ADD_DEFINITIONS(/DPROJ4) #it looks like some VC++ versions don't support -D syntax
+	ELSE(MSVC)
+		ADD_DEFINITIONS(-DPROJ4)
+	ENDIF(MSVC)
+ENDIF(PROJ4)
+
+IF(DATA_QA)
+	IF(MSVC)
+		ADD_DEFINITIONS(/DDATA_QA) #it looks like some VC++ versions don't support -D syntax
+	ELSE(MSVC)
+		ADD_DEFINITIONS(-DDATA_QA)
+	ENDIF(MSVC)
+ENDIF(DATA_QA)
 
 SET(meteoio_sources
 	${dataClasses_sources}
@@ -18,29 +41,49 @@ SET(meteoio_sources
 	IOManager.cc
 	IOHandler.cc
 	MeteoProcessor.cc
-	ResamplingAlgorithms.cc
 	ResamplingAlgorithms2D.cc
-	InterpolationAlgorithms.cc
 	Meteo1DInterpolator.cc
 	Meteo2DInterpolator.cc
+	DataCreator.cc
 	DataGenerator.cc
-	GeneratorAlgorithms.cc
 	plugins/libsmet.cc
+	IOInterface.cc
+	${meteoResampling_sources}
+	${spatialInterpolations_sources}
 	${plugins_sources}
 	${meteoLaws_sources}
 	${meteoStats_sources}
 	${meteoFilters_sources}
+	${dataGenerators_sources}
 )
 
+set_source_files_properties(IOUtils.cc PROPERTIES COMPILE_FLAGS -Wno-date-time)
 
-#
-##shared library.
+IF(GUI_EXCEPTIONS)
+	IF(MSVC)
+		ADD_DEFINITIONS(/DMSG_BOX)
+	ELSE(MSVC)
+		ADD_DEFINITIONS(-DMSG_BOX)
+	ENDIF(MSVC)
+	IF(UNIX AND NOT APPLE AND NOT CYGWIN)
+		FIND_PACKAGE(X11)
+		IF(X11_FOUND)
+			INCLUDE_DIRECTORIES(SYSTEM ${X11_INCLUDE_DIR})
+			SET(GUI_LIBS ${X11_LIBRARIES})
+			LIST(APPEND meteoio_sources MessageBoxX11.cc)
+		ELSE(X11_FOUND)
+			SET(GUI_EXCEPTIONS) #unsets the variable
+		ENDIF(X11_FOUND)
+	ENDIF(UNIX AND NOT APPLE AND NOT CYGWIN)
+ENDIF(GUI_EXCEPTIONS)
+
+#shared library.
 #IF(BUILD_SHARED_LIBS)
 #	SET(SHAREDNAME ${PROJECT_NAME})
 #	ADD_LIBRARY(${SHAREDNAME} ${meteoio_sources})
 #	TARGET_LINK_LIBRARIES(${SHAREDNAME} ${plugin_libs} ${LIBPROJ} ${EXTRA_LINK_FLAGS} ${GUI_LIBS})
 #	SET_TARGET_PROPERTIES(${SHAREDNAME} PROPERTIES
-#		MACOSX_RPATH "${CMAKE_INSTALL_RPATH}"
+#		MACOSX_RPATH TRUE
 #		PREFIX "${LIBPREFIX}"
 #		LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
 #		ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
@@ -63,7 +106,7 @@ SET(meteoio_sources
 #	ADD_LIBRARY(${STATICNAME} STATIC ${meteoio_sources})
 #	TARGET_LINK_LIBRARIES(${STATICNAME} ${plugin_libs} ${LIBPROJ} ${EXTRA_LINK_FLAGS} ${GUI_LIBS})
 #	SET_TARGET_PROPERTIES(${STATICNAME} PROPERTIES
-#		MACOSX_RPATH "${CMAKE_INSTALL_RPATH}"
+#		MACOSX_RPATH TRUE
 #		PREFIX "${LIBPREFIX}"
 #		LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
 #		ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/lib"
@@ -77,4 +120,4 @@ SET(meteoio_sources
 #		ARCHIVE DESTINATION lib COMPONENT libraries
 #	)
 #ENDIF(BUILD_STATIC_LIBS)
-
+#

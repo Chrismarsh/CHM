@@ -15,11 +15,10 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __TEMPLATE_H__
-#define __TEMPLATE_H__
+#ifndef TEMPLATE_H
+#define TEMPLATE_H
 
 #include <meteoio/IOInterface.h>
-#include <meteoio/Config.h>
 
 #include <string>
 
@@ -40,23 +39,11 @@ class TEMPLATE : public IOInterface {
 		TEMPLATE(const Config& cfgreader);
 		~TEMPLATE() throw();
 
+		using IOInterface::read2DGrid; //to call before overwriding the method when NOT all the polymorphic call are implemented (see http://bojolais.livejournal.com/222428.html)
 		virtual void read2DGrid(Grid2DObject& grid_out, const std::string& parameter="");
-		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
-		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
-
-		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
+		
 		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd,
-		                           std::vector< std::vector<MeteoData> >& vecMeteo,
-		                           const size_t& stationindex=IOUtils::npos);
-
-		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo,
-		                            const std::string& name="");
-
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
-		virtual void readPOI(std::vector<Coords>& pts);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& filename);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
+		                           std::vector< std::vector<MeteoData> >& vecMeteo);
 
 	private:
 		void cleanup() throw();

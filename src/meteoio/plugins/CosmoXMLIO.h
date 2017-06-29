@@ -15,17 +15,12 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __CosmoXMLIO_H__
-#define __CosmoXMLIO_H__
+#ifndef CosmoXMLIO_H
+#define CosmoXMLIO_H
 
 #include <meteoio/IOInterface.h>
-#include <meteoio/Config.h>
-#include <meteoio/IOUtils.h>
-#include <meteoio/dataClasses/Coords.h>
-#include <meteoio/IOExceptions.h>
 
 #include <string>
-
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 
@@ -49,21 +44,8 @@ class CosmoXMLIO : public IOInterface {
 
 		CosmoXMLIO& operator=(const CosmoXMLIO&); ///<Assignement operator, required because of pointer member
 
-		virtual void read2DGrid(Grid2DObject& grid_out, const std::string& parameter="");
-		virtual void read2DGrid(Grid2DObject& grid_out, const MeteoGrids::Parameters& parameter, const Date& date);
-
-		virtual void readDEM(DEMObject& dem_out);
-		virtual void readLanduse(Grid2DObject& landuse_out);
-
 		virtual void readStationData(const Date& date, std::vector<StationData>& vecStation);
-		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd, std::vector< std::vector<MeteoData> >& vecMeteo, const size_t& stationindex=IOUtils::npos);
-
-		virtual void writeMeteoData(const std::vector< std::vector<MeteoData> >& vecMeteo, const std::string& name="");
-
-		virtual void readAssimilationData(const Date&, Grid2DObject& da_out);
-		virtual void readPOI(std::vector<Coords>& pts);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const std::string& filename);
-		virtual void write2DGrid(const Grid2DObject& grid_in, const MeteoGrids::Parameters& parameter, const Date& date);
+		virtual void readMeteoData(const Date& dateStart, const Date& dateEnd, std::vector< std::vector<MeteoData> >& vecMeteo);
 
 	private:
 		typedef enum METEOREADSTATUS { read_ok, read_continue, read_stop } MeteoReadStatus;
@@ -88,6 +70,7 @@ class CosmoXMLIO : public IOInterface {
 		bool use_model_loc; //for each station, use the model location instead of the true station location (default=true)
 
 		xmlDocPtr in_doc;
+		xmlParserCtxtPtr in_ctxt; //in case we had to use an alternate method for opening the file
 		xmlXPathContextPtr in_xpathCtx;
 		xmlCharEncoding in_encoding;
 
@@ -95,7 +78,8 @@ class CosmoXMLIO : public IOInterface {
 		static const xmlChar* xml_attribute;
 		static const xmlChar* xml_namespace;
 		static const xmlChar* xml_namespace_abrev;
-		static const std::string StationData_xpath, MeteoData_xpath;
+		static const char* StationData_xpath;
+		static const char* MeteoData_xpath;
 
 		std::string coordin, coordinparam; //projection parameters
 };
