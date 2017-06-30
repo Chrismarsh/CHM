@@ -1509,7 +1509,7 @@ void ReSolver1d::SolveRichardsEquation(SnowStation& Xdata, SurfaceFluxes& Sdata)
 			 		//Calculate the specific moisture capacity (which is derivative d.theta/d.h)
 					if(Se[i]<1.)	{	//No saturation
 						C[i]=alpha[i]*n[i]*m[i]*((theta_s[i]-theta_r[i])/Sc[i])*(pow((alpha[i]*fabs(h_np1_m[i])), (n[i]-1.)))*(pow(1.+pow((alpha[i]*fabs(h_np1_m[i])), n[i]), (-1.*m[i]-1.)));
-						if(isnan(C[i])) solver_result=-1;
+						if(std::isnan(C[i])) solver_result=-1;
 					} else {		//Saturation
 						C[i]=0.;
 					}
@@ -1918,7 +1918,7 @@ void ReSolver1d::SolveRichardsEquation(SnowStation& Xdata, SurfaceFluxes& Sdata)
 					} else {	//In case of DGTSV, solution is returned in r_mpfd2, overwriting original content.
 						delta_h[memstate%nmemstates][i]=r_mpfd2[i];
 					}
-					if(isnan(delta_h[memstate%nmemstates][i])==true || isinf(delta_h[memstate%nmemstates][i])==true) {
+					if(std::isnan(delta_h[memstate%nmemstates][i])==true || isinf(delta_h[memstate%nmemstates][i])==true) {
 						solver_result=-1;
 					}
 				}
