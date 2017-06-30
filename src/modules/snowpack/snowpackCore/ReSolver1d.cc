@@ -1918,7 +1918,7 @@ void ReSolver1d::SolveRichardsEquation(SnowStation& Xdata, SurfaceFluxes& Sdata)
 					} else {	//In case of DGTSV, solution is returned in r_mpfd2, overwriting original content.
 						delta_h[memstate%nmemstates][i]=r_mpfd2[i];
 					}
-					if(std::isnan(delta_h[memstate%nmemstates][i])==true || isinf(delta_h[memstate%nmemstates][i])==true) {
+					if(std::isnan(delta_h[memstate%nmemstates][i])==true || std::isinf(delta_h[memstate%nmemstates][i])==true) {
 						solver_result=-1;
 					}
 				}
