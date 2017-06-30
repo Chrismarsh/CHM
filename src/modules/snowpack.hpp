@@ -42,6 +42,8 @@ public:
         boost::shared_ptr<Stability> stability;
         mio::Config config;
         double cum_precip;
+
+        double sum_subl;
     };
 
     double sn_dt; // calculation step length

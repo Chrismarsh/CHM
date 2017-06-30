@@ -117,7 +117,8 @@ void Lehning_snowpack::run(mesh_elem &face)
         Mdata.ilwr     =  face->face_data("ilwr");
     }
 
-    Mdata.ea  = SnLaws::AirEmissivity(Mdata.ilwr, Mdata.ta, "default"); //atmospheric emissivity!
+    Mdata.ea =  mio::Atmosphere::blkBody_Emissivity(Mdata.ilwr, Mdata.ta); //follows apline3d
+//    Mdata.ea  = SnLaws::AirEmissivity(Mdata.ilwr, Mdata.ta, "default"); //atmospheric emissivity!
     // Note this is used later throughout the code line 673 in Snowpack.cc, dealing with the emissivity of the snowpack! (might be a bug).
     // Left the ea calculation here for now - NIC
 
@@ -148,27 +149,22 @@ void Lehning_snowpack::run(mesh_elem &face)
     Mdata.tss=  data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
 
     //setting this to tss is inline with Alpine3d if there is no soil node. However, it might make more sense to use a const ground temp?
-    Mdata.ts0 = 273.15-4.; //Mdata.tss;//
+    Mdata.ts0 = 273.15-4.; //Mdata.tss;
 
-//    Mdata.hs = mio::IOUtils::nodata;
+    Mdata.hs = mio::IOUtils::nodata; //follows alpine3d
 
     Mdata.diff      = face->face_data("iswr_diffuse");
     Mdata.dir_h     = face->face_data("iswr_direct");
     Mdata.elev      = face->face_data("solar_el")*mio::Cst::to_rad;
-
-//    Mdata.tss_a12h = Constants::undefined;
-//    Mdata.tss_a24h = Constants::undefined;
-//    Mdata.hs_a3h = Constants::undefined;
-//    Mdata.hs_rate = Constants::undefined;
 
     data->cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
     data->meteo->compMeteo(Mdata,*(data->Xdata),false); // no canopy model
 
     // To collect surface exchange data for output
     SurfaceFluxes surface_fluxes;
-    surface_fluxes.reset(false);
-    surface_fluxes.drift = 0.;
-    surface_fluxes.mass[SurfaceFluxes::MS_WIND] = 0.;
+//    surface_fluxes.reset(false);
+//    surface_fluxes.drift = 0.;
+//    surface_fluxes.mass[SurfaceFluxes::MS_WIND] = 0.;
 
 
     // Boundary condition (fluxes)
@@ -207,15 +203,16 @@ void Lehning_snowpack::run(mesh_elem &face)
         face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
         //    }
     } else{
-        set_all_nan_on_skip(face);
+       set_all_nan_on_skip(face);
     }
 
     //always write out 0 swe regardless of amount of swee
     face->set_face_data("swe",data->Xdata->swe);
     face->set_face_data("runoff",surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
 
-    face->set_face_data("sum_runoff",  face->face_data("sum_runoff") + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
-    face->set_face_data("sum_subl",  face->face_data("sum_subl") + surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION]);
+//    face->set_face_data("sum_runoff",  face->face_data("sum_runoff") + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
+    data->sum_subl +=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
+    face->set_face_data("sum_subl",   data->sum_subl );
 
 
 
@@ -248,7 +245,7 @@ void Lehning_snowpack::init(mesh domain)
         d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(global_param->dt() / 4)); // Hz. Number of met per hour
         d->config.addKey("MEAS_TSS", "Snowpack", "false");
 
-        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt() /60 ) ); //specified as  minutes
+        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt() / 60 ) ); //specified as  minutes
 
         d->Spackconfig = boost::make_shared<SnowpackConfig>(d->config);
 
@@ -275,9 +272,8 @@ void Lehning_snowpack::init(mesh domain)
         SSdata.meta.position.setAltitude(face->get_z());
 
         SSdata.meta.position.setXY(face->get_x(),face->get_y(),face->get_z());
+//        SSdata.meta.setSlope(mio::IOUtils::nodata,mio::IOUtils::nodata);//face->slope() ,face->aspect());
         SSdata.meta.setSlope(face->slope() ,face->aspect());
-        SSdata.meta.setSlope(face->slope() * 180./3.14159,face->aspect()* 180./3.14159);
-
 
         SSdata.HS_last = 0.; //cfg.get<double>("sno.HS_Last");
 
@@ -321,8 +317,8 @@ void Lehning_snowpack::init(mesh domain)
         d->meteo = boost::make_shared<Meteo>( (d->config));
         d->stability = boost::make_shared<Stability> ( (d->config), false);
 
-        face->set_face_data("sum_runoff",0);
-        face->set_face_data("sum_subl",0);
+        d->sum_subl = 0;
+
 
     }
 }
