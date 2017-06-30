@@ -193,7 +193,14 @@ find_package(Eigen3 REQUIRED)
 #endif()
 
 set( SPARSEHASH_ROOT "${CMAKE_BINARY_DIR}/lib/sparsehash")
-find_package(Sparsehash REQUIRED)
+find_package(Sparsehash)
+
+#sparsehash doesn't compile with gcc 4.6.x - 4.8.x because of this
+# https://bugs.launchpad.net/ubuntu/+source/gcc-4.6/+bug/1269803
+# so we need to optionally disable it
+if( SPARSEHASH_FOUND )
+    add_definitions(-DUSE_SPARSEHASH)
+endif()
 
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")

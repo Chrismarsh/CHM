@@ -17,7 +17,11 @@
 #include <boost/utility.hpp>
 #include <boost/tuple/tuple.hpp>
 
-#include <sparsehash/dense_hash_map>
+#ifdef USE_SPARSEHASH
+    #include <sparsehash/dense_hash_map>
+#else
+    #include <unordered_map>
+#endif
 #include <tbb/concurrent_vector.h>
 
 #include "regex_tokenizer.hpp"
@@ -210,9 +214,12 @@ public:
     double range_max(timeseries::iterator& start, timeseries::iterator& end, std::string variable);
     
 private:
-//    typedef tbb::concurrent_hash_map<std::string, variable_vec, crc_hash_compare> ts_hashmap;
-//    typedef std::unordered_map<std::string,variable_vec> ts_hashmap;
+
+#ifdef USE_SPARSEHASH
     typedef google::dense_hash_map<std::string,variable_vec> ts_hashmap;
+#else
+    typedef std::unordered_map<std::string,variable_vec> ts_hashmap;
+#endif
 
     // This is a hashmap interface, vector back end
     // "var1"        |     "var2"     |     "var3"   |      

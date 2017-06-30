@@ -2,8 +2,11 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 
-
-#include <sparsehash/dense_hash_map>
+#ifdef USE_SPARSEHASH
+    #include <sparsehash/dense_hash_map>
+#else
+    #include <unordered_map>
+#endif
 
 #include <tbb/concurrent_vector.h>
 #include <vector>
@@ -26,8 +29,7 @@ class timestep
 public:
     //two different. boost::variant solves this, but is very slow 
     // needs to be either a boost::posix_time or double, and is almost always a double
-//    typedef tbb::concurrent_vector< double > variable_vec;
-//    typedef tbb::concurrent_vector<  boost::posix_time::ptime > date_variable;
+
     typedef std::vector< double > variable_vec;
     typedef std::vector<  boost::posix_time::ptime > date_variable;
 
@@ -120,11 +122,12 @@ public:
 private:
     friend class timeseries;
 
-//    typedef tbb::concurrent_hash_map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
-   // typedef std::map<std::string, variable_vec::iterator, crc_hash_compare> itr_map;
-//    typedef std::unordered_map< std::string, variable_vec::iterator> itr_map;
-    typedef google::dense_hash_map<std::string, variable_vec::iterator> itr_map;
-//      typedef spp::sparse_hash_map<std::string, variable_vec::iterator> itr_map;
+#ifdef USE_SPARSEHASH
+    typedef google::dense_hash_map<std::string,variable_vec::iterator> itr_map;
+#else
+    typedef std::unordered_map<std::string,variable_vec::iterator> itr_map;
+#endif
+
     //holds the iterators for the current timestep. 
     //these are iterators into each vector in the variable hashmap
     itr_map _itrs; 

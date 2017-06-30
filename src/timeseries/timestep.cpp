@@ -12,7 +12,9 @@ timestep::timestep(const boost::shared_ptr<timestep> src)
 
 timestep::timestep()
 {
+#if USE_HASHMAP
    _itrs.set_empty_key("");
+#endif
 }
 
 timestep::~timestep()
