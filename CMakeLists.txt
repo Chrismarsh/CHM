@@ -204,7 +204,7 @@ find_package(Sparsehash)
 if( SPARSEHASH_FOUND )
     add_definitions(-DUSE_SPARSEHASH)
 else()
-    set(SPARSEHASH_INCLUDE_DIR "")
+    set(SPARSEHASH_INCLUDE_DIRS "")
 endif()
 
 find_package(tcmalloc)
