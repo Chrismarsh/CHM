@@ -183,6 +183,7 @@ if(OpenCL_FOUND)
         endif()
 else()
     add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
+    set(OPENCL_LIBRARIES)
 endif()
 
 find_package(Armadillo REQUIRED)
@@ -200,14 +201,17 @@ find_package(Sparsehash)
 # so we need to optionally disable it
 if( SPARSEHASH_FOUND )
     add_definitions(-DUSE_SPARSEHASH)
+else()
+    set(SPARSEHASH_INCLUDE_DIR)
 endif()
-
-
 
 find_package(tcmalloc)
 if(Tcmalloc_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
     set(Tcmalloc_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/gperftools/include")
+else()
+    set(Tcmalloc_INCLUDE_DIR)
+    set(Tcmalloc_LIBRARY)
 endif()
 find_package(ViennaCL REQUIRED)
 
