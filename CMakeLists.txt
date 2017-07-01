@@ -10,6 +10,8 @@ set(CMAKE_MACOSX_RPATH 1)
 set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
+#on gcc 4.6 or 4.8 sparsehash and tcmalloc do not build so can turn off with
+#cmake -DCMAKE_DISABLE_FIND_PACKAGE_tcmalloc=TRUE -DCMAKE_DISABLE_FIND_PACKAGE_Sparsehash=TRUE .
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
@@ -183,7 +185,7 @@ if(OpenCL_FOUND)
         endif()
 else()
     add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
-    set(OPENCL_LIBRARIES)
+    set(OPENCL_LIBRARIES "")
 endif()
 
 find_package(Armadillo REQUIRED)
@@ -202,7 +204,7 @@ find_package(Sparsehash)
 if( SPARSEHASH_FOUND )
     add_definitions(-DUSE_SPARSEHASH)
 else()
-    set(SPARSEHASH_INCLUDE_DIR)
+    set(SPARSEHASH_INCLUDE_DIR "")
 endif()
 
 find_package(tcmalloc)
@@ -210,8 +212,9 @@ if(Tcmalloc_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
     set(Tcmalloc_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/gperftools/include")
 else()
-    set(Tcmalloc_INCLUDE_DIR)
-    set(Tcmalloc_LIBRARY)
+
+    set(Tcmalloc_INCLUDE_DIR "")
+    set(Tcmalloc_LIBRARY "")
 endif()
 find_package(ViennaCL REQUIRED)
 
