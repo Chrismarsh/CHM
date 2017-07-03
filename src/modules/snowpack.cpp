@@ -272,8 +272,8 @@ void Lehning_snowpack::init(mesh domain)
         SSdata.meta.position.setAltitude(face->get_z());
 
         SSdata.meta.position.setXY(face->get_x(),face->get_y(),face->get_z());
-//        SSdata.meta.setSlope(mio::IOUtils::nodata,mio::IOUtils::nodata);//face->slope() ,face->aspect());
-        SSdata.meta.setSlope(face->slope() ,face->aspect());
+        SSdata.meta.setSlope(mio::IOUtils::nodata,mio::IOUtils::nodata);
+//        SSdata.meta.setSlope(face->slope() ,face->aspect());
 
         SSdata.HS_last = 0.; //cfg.get<double>("sno.HS_Last");
 
