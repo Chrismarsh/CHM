@@ -462,7 +462,9 @@ timeseries::timeseries()
     _rows = 0;
     _isOpen = false;
     _timeseries_length=0;
+#ifdef USE_SPARSEHASH
     _variables.set_empty_key("");
+#endif
 }
 
 
