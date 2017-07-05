@@ -153,6 +153,7 @@ void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, Sur
 	const bool erosion = snow_erosion && (Xdata.mH > (Xdata.Ground + Constants::eps)) && ((Xdata.mH + 0.02) < Xdata.cH);
 	if (windward || alpine3d || erosion) {
 		double massErode=0.; // Mass loss due to erosion
+
 		if (fabs(forced_massErode) > Constants::eps2) {
 			massErode = std::max(0., -forced_massErode); //negative mass is erosion
 		} else {

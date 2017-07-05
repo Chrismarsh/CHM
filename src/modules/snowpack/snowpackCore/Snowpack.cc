@@ -1638,7 +1638,7 @@ void Snowpack::compSnowFall(const CurrentMeteo& Mdata, SnowStation& Xdata, doubl
  * @param Sdata
  */
 void Snowpack::runSnowpackModel(CurrentMeteo Mdata, SnowStation& Xdata, double& cumu_precip,
-                                BoundCond& Bdata, SurfaceFluxes& Sdata)
+                                BoundCond& Bdata, SurfaceFluxes& Sdata, double mass_erode)
 {
 	// HACK -> couldn't the following objects be created once in init ?? (with only a reset method ??)
 	WaterTransport watertransport(cfg);
@@ -1673,7 +1673,12 @@ void Snowpack::runSnowpackModel(CurrentMeteo Mdata, SnowStation& Xdata, double& 
 			double tmp=0.;
 			snowdrift.compSnowDrift(Mdata, Xdata, Sdata, tmp);
 		} else
-			snowdrift.compSnowDrift(Mdata, Xdata, Sdata, cumu_precip);
+        {
+            double tmp = mass_erode;
+            snowdrift.compSnowDrift(Mdata, Xdata, Sdata, tmp);
+        }
+
+//			snowdrift.compSnowDrift(Mdata, Xdata, Sdata, cumu_precip);
 
 		const double sn_dt_bcu = sn_dt;		// Store original SNOWPACK time step
 		const double psum_bcu = Mdata.psum;	// Store original psum value

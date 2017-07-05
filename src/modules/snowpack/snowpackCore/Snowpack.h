@@ -42,7 +42,7 @@ class Snowpack {
 		Snowpack(const SnowpackConfig& i_cfg);
 
 		void runSnowpackModel(CurrentMeteo Mdata, SnowStation& Xdata, double& cumu_precip,
-		                      BoundCond& Bdata, SurfaceFluxes& Sdata);
+		                      BoundCond& Bdata, SurfaceFluxes& Sdata,double mass_erode);
 
 		void setUseSoilLayers(const bool& value);
 		const static double new_snow_albedo, min_ice_content;

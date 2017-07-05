@@ -21,6 +21,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     optional("frac_precip_rain_subcanopy");
     optional("iswr_subcanopy");
     optional("ilwr_subcanopy");
+    optional("drift_mass");
 
     provides("dQ");
     provides("swe");
@@ -160,6 +161,19 @@ void Lehning_snowpack::run(mesh_elem &face)
     data->cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
     data->meteo->compMeteo(Mdata,*(data->Xdata),false); // no canopy model
 
+    double mass_erode = 1e-10; //needs to be this small to 'trick' snowpack in alpine3d mode
+    if(has_optional("drift_mass"))
+    {
+
+        double mass = face->face_data("drift_mass");
+        mass = is_nan(mass) ? 0 : mass;
+
+        if(mass > 0)
+            Mdata.psum += mass;
+        else
+            mass_erode = -mass; // snowpack expects the mass erode to be positive
+    }
+
     // To collect surface exchange data for output
     SurfaceFluxes surface_fluxes;
 //    surface_fluxes.reset(false);
@@ -172,7 +186,7 @@ void Lehning_snowpack::run(mesh_elem &face)
 
     try
     {
-        data->sp->runSnowpackModel(Mdata, *(data->Xdata), data->cum_precip, Bdata,surface_fluxes);
+        data->sp->runSnowpackModel(Mdata, *(data->Xdata), data->cum_precip, Bdata,surface_fluxes,mass_erode);
         surface_fluxes.collectSurfaceFluxes(Bdata, *(data->Xdata), Mdata);
     }catch(std::exception& e)
     {
