@@ -2,10 +2,21 @@ cmake_minimum_required(VERSION 2.8)
 project(externalLib)
 include(ExternalProject)
 
-message(STATUS  "${CMAKE_BINARY_DIR}")
+message(STATUS "Binary = " ${CMAKE_BINARY_DIR})
 
 
-#define D_XOPEN_SOURCE for OSX
+ExternalProject_Add(
+    boost
+    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.62.0%2F&ts=1499468113&use_mirror=ayera
+    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
+    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost"
+    UPDATE_COMMAND ""
+    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j 10 install
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+)
+
+
 ExternalProject_Add(
         sparsehash
         GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
@@ -14,6 +25,7 @@ ExternalProject_Add(
         CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
         UPDATE_COMMAND ""
         BUILD_COMMAND make -j2 install
+        INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
 
 )
@@ -27,19 +39,70 @@ ExternalProject_Add(
         CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
         UPDATE_COMMAND ""
         BUILD_COMMAND make -j2 install
+        INSTALL_COMMAND ""
         BUILD_IN_SOURCE 1
 
 )
 
-#find_package(Eigen3)
-#if(NOT EIGEN3_INCLUDE_DIR)
-    message(STATUS "Downloading Eigen3")
-   ExternalProject_Add(
-           eigen3
-        HG_REPOSITORY https://bitbucket.org/eigen/eigen
- 	CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/eigen3 -DINCLUDE_INSTALL_DIR=${CMAKE_BINARY_DIR}/lib/eigen3
- 
-	BUILD_COMMAND make -j2 install            
-	BUILD_IN_SOURCE 0
+
+ExternalProject_Add(
+    eigen3
+    HG_REPOSITORY https://bitbucket.org/eigen/eigen
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/eigen3 -DINCLUDE_INSTALL_DIR=${CMAKE_BINARY_DIR}/lib/eigen3
+    UPDATE_COMMAND ""
+    BUILD_COMMAND make -j2 install
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 0
 )
-#endif()
+
+
+ExternalProject_Add(
+    armadillo
+    URL http://sourceforge.net/projects/arma/files/armadillo-7.950.1.tar.xz
+    UPDATE_COMMAND ""
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/armadillo
+    BUILD_COMMAND make -j4 install
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+)
+
+ExternalProject_Add(
+    ViennaCL
+    URL http://sourceforge.net/projects/viennacl/files/1.7.x/ViennaCL-1.7.1.tar.gz/download
+    UPDATE_COMMAND ""
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ViennaCL -DENABLE_CUDA=OFF -DENABLE_OPENMP=ON -DBUILD_EXAMPLES=OFF
+    BUILD_COMMAND make -j4 install
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+)
+
+
+ExternalProject_Add(
+    gsl
+    URL ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz
+    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gsl-prefix/src/gsl/configure --prefix=${CMAKE_BINARY_DIR}/lib/gsl
+    UPDATE_COMMAND ""
+    BUILD_COMMAND make -j2 install
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+)
+
+ExternalProject_Add(
+    VTK
+    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
+    UPDATE_COMMAND ""
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release
+    BUILD_COMMAND make -j4 install
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+)
+
+ExternalProject_Add(
+    CGAL
+    URL https://github.com/CGAL/cgal/releases/download/releases%2FCGAL-4.10/CGAL-4.10.tar.xz
+    UPDATE_COMMAND ""
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/cgal -DBoost_NO_SYSTEM_PATHS=TRUE -DBOOST_ROOT=${CMAKE_BINARY_DIR}/lib/boost
+    BUILD_COMMAND make -j4 install
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE 1
+)

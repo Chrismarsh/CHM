@@ -16,16 +16,23 @@ set (CHM_VERSION_MINOR 1)
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
 option(PV_FILTER "Build Paraview time filter"  OFF )
-option(test "Build all tests."  ON ) # Makes boolean 'test' available.
+option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
+set(Armadillo_DIR "/home/cmarsh/lib/armadillo-7.950.1/share/Armadillo/CMake")
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/home/cmarsh/lib/CGAL-4.10/lib64/")
+set(CGAL_DIR  /home/cmarsh/lib/CGAL-4.10/lib64/CGAL)
+set(ENV{GDAL_DIR} /home/cmarsh/lib/gdal-2.2.1)
+set(GSL_ROOT /home/cmarsh/lib/gsl/bin)
+set(VTK_DIR /home/cmarsh/lib/VTK-8.0.0/lib/cmake/vtk-8.0/)
 #the mio and snowpack includes behave odly if you don't do the Cmake_source_dir like below, so treat these differently than the rest.
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCEDIR}/CMake/")
 
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 #some machines need to be told where odd system libraries are, so put them here
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
 
 #for meton
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
@@ -189,7 +196,8 @@ else()
     set(OPENCL_LIBRARIES "")
 endif()
 
-find_package(Armadillo REQUIRED)
+find_package(Armadillo REQUIRED )# PATH /home/cmarsh/lib/armadillo-7.950.1/share/Armadillo/CMake NO_DEFAULT_PATH )
+
 set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
 message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")
 #find_package(Eigen3 REQUIRED)
@@ -233,6 +241,7 @@ find_package(Boost
              program_options
              REQUIRED)
 message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
+message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
 message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
