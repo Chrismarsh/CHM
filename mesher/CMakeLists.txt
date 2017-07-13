@@ -7,8 +7,9 @@ set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 find_package(CGAL REQUIRED)
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
-endif()
+
 include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
+endif()
 
 #ignore these two under Clion as CGAL will complain
 if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR

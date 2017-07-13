@@ -20,15 +20,19 @@ option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
-set(Armadillo_DIR "/home/cmarsh/lib/armadillo-7.950.1/share/Armadillo/CMake")
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "/home/cmarsh/lib/CGAL-4.10/lib64/")
-set(CGAL_DIR  /home/cmarsh/lib/CGAL-4.10/lib64/CGAL)
-set(ENV{GDAL_DIR} /home/cmarsh/lib/gdal-2.2.1)
-set(GSL_ROOT /home/cmarsh/lib/gsl/bin)
-set(VTK_DIR /home/cmarsh/lib/VTK-8.0.0/lib/cmake/vtk-8.0/)
+set(Armadillo_DIR "${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake")
+set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+set(ENV{GDAL_DIR} "${CMAKE_BINARY_DIR}/lib/gdal")
+set(GSL_ROOT "${CMAKE_BINARY_DIR}/lib/gsl/bin")
+set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
+set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
+set(TBB_INSTALL_DIR /cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/tbb/2017.2.132/tbb)
+# TBB_INSTALL_DIR or $ENV{TBB21_INSTALL_DIR} or $ENV{TBB_INSTALL_DIR}
+# TBB_INCLUDE_DIRS, where to find task_scheduler_init.h, etc.
 #the mio and snowpack includes behave odly if you don't do the Cmake_source_dir like below, so treat these differently than the rest.
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCEDIR}/CMake/")
 
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 #some machines need to be told where odd system libraries are, so put them here
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
@@ -38,11 +42,12 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
 
 ## Any custom boost path. Few of the hpc systems have out of date boost libs
-set(Boost_NO_SYSTEM_PATHS FALSE)
+set(Boost_NO_SYSTEM_PATHS TRUE)
 if (Boost_NO_SYSTEM_PATHS)
 #    set(BOOST_ROOT "/opt/boost/boost_1_61_0")
-    set(BOOST_ROOT "/home/cbm038/boost_1_63_0")
-    set(BOOST_ROOT "/usr/local/Cellar/boost/1.62.0")
+#    set(BOOST_ROOT "/home/cbm038/boost_1_63_0")
+#    set(BOOST_ROOT "/usr/local/Cellar/boost/1.62.0")
+set(BOOST_ROOT "${CMAKE_BINARY_DIR}/lib/boost")
 endif()
 
 
@@ -51,6 +56,12 @@ endif()
 macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
+
+
+#things covered by the superbuild
+# super build things we are missing
+configure_file(CMakeLists_external.txt.in
+        ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
 
 # lovely CMake script to integrate git hashes
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
@@ -113,8 +124,8 @@ set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 find_package(CGAL REQUIRED)
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
+    include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 endif()
-include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
 #remove this flag as it destroys the build on -O1 and spams warnings, #thankscgal
 remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
@@ -168,10 +179,6 @@ if(OPENMP_FOUND AND CMAKE_BUILD_TYPE MATCHES Release)
 endif()
 
 
-#things covered by the superbuild
-# super build things we are missing
-configure_file(CMakeLists_external.txt.in
-        ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
 
 if(MATLAB)
     #for matlab to run you need csh installed
@@ -196,7 +203,7 @@ else()
     set(OPENCL_LIBRARIES "")
 endif()
 
-find_package(Armadillo REQUIRED )# PATH /home/cmarsh/lib/armadillo-7.950.1/share/Armadillo/CMake NO_DEFAULT_PATH )
+find_package(Armadillo REQUIRED  PATH ${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake NO_DEFAULT_PATH )
 
 set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
 message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")

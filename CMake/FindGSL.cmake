@@ -59,6 +59,7 @@ else( WIN32 AND NOT CYGWIN AND NOT MSYS )
     find_program( GSL_CONFIG_EXECUTABLE gsl-config
       /usr/bin/
       /usr/local/bin
+      ${GSL_ROOT}
     )
      
     if( GSL_CONFIG_EXECUTABLE ) 

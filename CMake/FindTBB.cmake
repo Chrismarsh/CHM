@@ -81,7 +81,7 @@ endif (WIN32)
 if (UNIX)
 
 #       set(_TBB_DEFAULT_INSTALL_DIR "/opt/intel/tbb" "/usr/local/include" "/usr/include")
-        set(_TBB_DEFAULT_INSTALL_DIR "/opt/intel/tbb")
+set(_TBB_DEFAULT_INSTALL_DIR "/opt/intel/tbb" /cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/tbb/2017.2.132/tbb)
       
         set(_TBB_LIB_NAME "tbb")
         set(_TBB_LIB_NAME "tbb")

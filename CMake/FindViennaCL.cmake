@@ -12,7 +12,7 @@ SET(VIENNACL_INCLUDE_SEARCH_PATHS
         /opt/viennacl/include
         /opt/Viennacl/include
         /opt/ViennaCL/include
-        $ENV{VIENNACL_HOME}
+	${VCL_ROOT}/include
         )
 
 SET(VIENNACL_FOUND OFF)
