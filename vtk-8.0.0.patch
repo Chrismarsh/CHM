@@ -1,0 +1,11 @@
+--- VTK-8.0.0/ThirdParty/libproj4/vtklibproj4/src/projects.orig.h	2017-07-10 13:09:22.757343447 -0400
++++ VTK-8.0.0/ThirdParty/libproj4/vtklibproj4/src/projects.h	2017-07-10 13:09:48.065344551 -0400
+@@ -81,7 +81,7 @@
+ #endif
+ 	/* prototype hypot for systems where absent */
+ #ifndef _WIN32
+-extern double hypot(double, double);
++extern double hypot(double, double) __THROW;
+ #endif
+ 
+ #ifdef _WIN32_WCE
