@@ -2,9 +2,45 @@ cmake_minimum_required(VERSION 2.8)
 project(externalLib)
 include(ExternalProject)
 
-    message(STATUS "Binary = " ${CMAKE_BINARY_DIR})
+#these should always be built and downloaded
+    ExternalProject_Add(
+	    sparsehash
+	    GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
+	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/sparsehash
+
+	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
+	    UPDATE_COMMAND ""
+	    BUILD_COMMAND make -j10
+	    INSTALL_COMMAND make install
+	    BUILD_IN_SOURCE 1
+
+	    )
 
 
+    ExternalProject_Add(
+	    gperftools
+	    GIT_REPOSITORY https://github.com/gperftools/gperftools
+	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
+
+	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
+	    UPDATE_COMMAND ""
+	    BUILD_COMMAND make -j10
+	    INSTALL_COMMAND make install
+	    BUILD_IN_SOURCE 1
+
+	    )
+
+
+    ExternalProject_Add(
+	    eigen3
+	    HG_REPOSITORY https://bitbucket.org/eigen/eigen
+	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/eigen3 -DINCLUDE_INSTALL_DIR=${CMAKE_BINARY_DIR}/lib/eigen3
+	    UPDATE_COMMAND ""
+	    BUILD_COMMAND make -j10
+	    INSTALL_COMMAND make install
+	    BUILD_IN_SOURCE 0
+	    )
+if(SUPERBUILD)
     ExternalProject_Add(
 	    gsl
 	    URL ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz
@@ -26,44 +62,6 @@ include(ExternalProject)
 	    BUILD_IN_SOURCE 1
 	    )
 
-
-    ExternalProject_Add(
-	    sparsehash
-	    GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
-	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/sparsehash
-
-	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
-	    UPDATE_COMMAND ""
-	    BUILD_COMMAND make -j10 
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 1
-
-	    )
-
-
-    ExternalProject_Add(
-	    gperftools
-	    GIT_REPOSITORY https://github.com/gperftools/gperftools
-	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
-
-	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
-	    UPDATE_COMMAND ""
-	    BUILD_COMMAND make -j10 
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 1
-
-	    )
-
-
-    ExternalProject_Add(
-	    eigen3
-	    HG_REPOSITORY https://bitbucket.org/eigen/eigen
-	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/eigen3 -DINCLUDE_INSTALL_DIR=${CMAKE_BINARY_DIR}/lib/eigen3
-	    UPDATE_COMMAND ""
-	    BUILD_COMMAND make -j10 
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 0
-	    )
 
 
     ExternalProject_Add(
@@ -120,4 +118,4 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
-
+endif()
