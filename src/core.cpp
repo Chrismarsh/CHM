@@ -928,7 +928,25 @@ void core::init(int argc, char **argv)
 
 
     auto log_start_time = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
+
+    //get any command line options
+    auto cmdl_options = config_cmdl_options(argc, argv);
+
+    //see if we are getting passed a path for our config file. If so, we need to append this path to
+    //any config files we are about to read in the main config file.
+
+    //do this here though as we need cwd_dir for the log output path
+    boost::filesystem::path path(cmdl_options.get<0>());
+    cwd_dir = path.parent_path();
+
+    std::string log_dir = "log";
+    auto log_path = cwd_dir / log_dir;
     std::string log_name = "CHM_" + log_start_time + ".log";
+
+    boost::filesystem::create_directories(log_path);
+
+    //fully qualified path + fname to use in the ofstream calls
+    log_name =      (log_path / log_name ).string();
 
     _log_sink = boost::make_shared<text_sink>();
     text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
@@ -986,15 +1004,6 @@ void core::init(int argc, char **argv)
     gsl_set_error_handler_off();
 
 
-
-    //get any command line options
-    auto cmdl_options = config_cmdl_options(argc, argv);
-
-    //see if we are getting passed a path for our config file. If so, we need to append this path to
-    //any config files we are about to read in the main config file.
-
-    boost::filesystem::path path(cmdl_options.get<0>());
-    cwd_dir = path.parent_path();
 
 
     pt::ptree cfg;
