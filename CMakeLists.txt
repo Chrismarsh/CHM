@@ -10,9 +10,6 @@ set(CMAKE_MACOSX_RPATH 1)
 set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
-#on gcc 4.6 or 4.8 sparsehash and tcmalloc do not build so can turn off with
-#cmake -DCMAKE_DISABLE_FIND_PACKAGE_tcmalloc=TRUE -DCMAKE_DISABLE_FIND_PACKAGE_Sparsehash=TRUE .
-
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
 option(PV_FILTER "Build Paraview time filter"  OFF )
@@ -20,6 +17,8 @@ option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
+
+#enable with cmake -DSUPERBUILD=TRUE .
 if(SUPERBUILD)
     set(Armadillo_DIR "${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake")
     set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
@@ -27,29 +26,20 @@ if(SUPERBUILD)
     set(GSL_ROOT "${CMAKE_BINARY_DIR}/lib/gsl/bin")
     set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
     set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
-    set(TBB_INSTALL_DIR /cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/tbb/2017.2.132/tbb)
-    # TBB_INSTALL_DIR or $ENV{TBB21_INSTALL_DIR} or $ENV{TBB_INSTALL_DIR}
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+    set(Boost_NO_SYSTEM_PATHS TRUE)
     set(BOOST_ROOT "${CMAKE_BINARY_DIR}/lib/boost")
 endif()
 
+## Any custom boost path.
+#set(Boost_NO_SYSTEM_PATHS TRUE)
+#set(BOOST_ROOT "/opt/boost/boost_1_61_0")
+
+
+#    Super build doesn't do TBB at the moment. If a custom location is needed, specify here
+#set(TBB_INSTALL_DIR /cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/tbb/2017.2.132/tbb)
+
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
-#some machines need to be told where odd system libraries are, so put them here
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_osx/")
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_fedora/")
-
-#for meton
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake_meton/")
-
-## Any custom boost path. Few of the hpc systems have out of date boost libs
-set(Boost_NO_SYSTEM_PATHS FALSE)
-if (Boost_NO_SYSTEM_PATHS)
-#    set(BOOST_ROOT "/opt/boost/boost_1_61_0")
-#    set(BOOST_ROOT "/home/cbm038/boost_1_63_0")
-#    set(BOOST_ROOT "/usr/local/Cellar/boost/1.62.0")
-set(BOOST_ROOT "${CMAKE_BINARY_DIR}/lib/boost")
-endif()
-
 
 #########
 # Helper macro that removes cxx flag flags
@@ -63,16 +53,18 @@ endmacro()
 configure_file(CMakeLists_external.txt.in
         ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
 
-# lovely CMake script to integrate git hashes
-# http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
-# Get the current working branch
 
+#Trigger superbuild
+#If superbuild is not needed, we still need to build sparsehash, gperftools, and eigen3
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 execute_process(COMMAND ${CMAKE_COMMAND} --build .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 
 
+# lovely CMake script to integrate git hashes
+# http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
+# Get the current working branch
 # Generate gitrevision.hh if Git is available
 # and the .git directory is present
 # this is the case when the software is checked out from a Git repo
