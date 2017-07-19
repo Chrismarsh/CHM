@@ -622,6 +622,10 @@ def main():
                         if 'classifier' in data:
                             output = data['classifier'](output)
                         params[key].append(output)
+
+                        # we want to write actual NaN to vtu for better displaying
+                        if output == -9999:
+                            output = float('nan')
                         vtu_cells['[param] ' + key].InsertNextTuple1(output)
 
                     for key, data in initial_conditions.iteritems():
@@ -630,6 +634,10 @@ def main():
                             output = data['classifier'](output)
 
                         ics[key].append(output)
+
+                        # we want to write actual NaN to vtu for better displaying
+                        if output == -9999:
+                            output = float('nan')
                         vtu_cells['[ic] ' + key].InsertNextTuple1(output)
 
                     layer.CreateFeature(feature)
