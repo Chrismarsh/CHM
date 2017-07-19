@@ -177,6 +177,9 @@ def main():
         output_param_fname = os.path.basename(data['file'])
         output_param_fname = os.path.splitext(output_param_fname)[0]
 
+        if gdal.Open(data['file']).GetProjection() == '':
+            print "Parameter " + data['file'] + " must have spatial reference information."
+            exit(1)
 
         # force all the paramter files to have the same extent as the input DEM
         subprocess.check_call([estr % (
@@ -190,6 +193,8 @@ def main():
             print 'Error: Unable to open raster for: %s' % key
             exit(1)
 
+
+
     for key, data in initial_conditions.iteritems():
         if initial_conditions[key]['method'] == 'mode':
             estr = exec_str + 'mode'
@@ -199,6 +204,10 @@ def main():
         #we need to handle a path being passed in
         output_ic_fname = os.path.basename(data['file'])
         output_ic_fname = os.path.splitext(output_ic_fname)[0]
+
+        if gdal.Open(data['file']).GetProjection() == '':
+            print "IC " + data['file'] + " must have spatial reference information."
+            exit(1)
 
         # force all the initial condition files to have the same extent as the input DEM
         subprocess.check_call([estr % (
