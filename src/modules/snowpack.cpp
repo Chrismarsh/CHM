@@ -256,7 +256,7 @@ void Lehning_snowpack::init(mesh domain)
         d->config.addKey("SW_MODE","Snowpack","BOTH");
         d->config.addKey("HEIGHT_OF_WIND_VALUE","Snowpack","2");
         d->config.addKey("HEIGHT_OF_METEO_VALUES","Snowpack","2");
-        d->config.addKey("ATMOSPHERIC_STABILITY","Snowpack","MO_MICHLMAYRMONIN_OBUKHOV");
+        d->config.addKey("ATMOSPHERIC_STABILITY","Snowpack","MO_MICHLMAYR");
         d->config.addKey("ROUGHNESS_LENGTH","Snowpack","0.001");
         d->config.addKey("CHANGE_BC","Snowpack","false");
         d->config.addKey("THRESH_CHANGE_BC","Snowpack","-1.0");
