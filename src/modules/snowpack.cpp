@@ -268,7 +268,7 @@ void Lehning_snowpack::init(mesh domain)
         //default values for
         //	"SnowpackAdvanced": { }
         d->config.addKey("MAX_NUMBER_MEAS_TEMPERATURES","SnowpackAdvanced","1");
-        d->config.addKey("ALPINE3D","SnowpackAdvanced","true");
+        d->config.addKey("ALPINE3D","SnowpackAdvanced","true"); //must be true for any blowing snow module
         d->config.addKey("SNOW_EROSION","SnowpackAdvanced","false");
         d->config.addKey("MEAS_INCOMING_LONGWAVE","SnowpackAdvanced","true");
         d->config.addKey("THRESH_RAIN","SnowpackAdvanced","2");

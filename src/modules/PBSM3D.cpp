@@ -433,7 +433,6 @@ void PBSM3D::run(mesh domain)
             }
             //Li and Pomeroy 2000
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
-//            double l = PhysConst::kappa * (cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
             double w = 1.1*10e7*pow(rm,1.8);
             double c2 = 1;
             double dc = 1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
@@ -569,7 +568,10 @@ void PBSM3D::run(mesh domain)
             } else if (z == nLayer - 1)// top z layer
             {
                 //(kg/m^2/s)/(m/s)  ---->  kg/m^3
-                double cprecip = face->face_data("p_snow")/global_param->dt()/w;
+                double cprecip = 0; //face->face_data("p_snow")/global_param->dt()/w;
+
+//                face->set_face_data("p_snow",0);
+//                face->set_face_data("p",0);
 
                 if (udotm[3] > 0)
                 {
@@ -592,8 +594,7 @@ void PBSM3D::run(mesh domain)
                     C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
                 }
 
-                face->set_face_data("p_snow",0);
-                face->set_face_data("p",0);
+
             } else //middle layers
             {
                 if (udotm[3] > 0)
