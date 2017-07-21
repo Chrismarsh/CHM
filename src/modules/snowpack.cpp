@@ -240,6 +240,42 @@ void Lehning_snowpack::init(mesh domain)
 
         auto d = face->make_module_data<Lehning_snowpack::data>(ID);
 
+
+        //setup critical keys.
+        //overwrite the user if a dangerous key is set
+        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(global_param->dt() / 4)); // Hz. Number of met per hour
+        d->config.addKey("MEAS_TSS", "Snowpack", "false");
+
+        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt() / 60 ) ); //specified as  minutes
+
+        //default values for
+        //	"Snowpack": { }
+
+        d->config.addKey("MEAS_TSS","Snowpack","false");
+        d->config.addKey("ENFORCE_MEASURED_SNOW_HEIGHTS","Snowpack","false");
+        d->config.addKey("SW_MODE","Snowpack","BOTH");
+        d->config.addKey("HEIGHT_OF_WIND_VALUE","Snowpack","2");
+        d->config.addKey("HEIGHT_OF_METEO_VALUES","Snowpack","2");
+        d->config.addKey("ATMOSPHERIC_STABILITY","Snowpack","MO_MICHLMAYRMONIN_OBUKHOV");
+        d->config.addKey("ROUGHNESS_LENGTH","Snowpack","0.001");
+        d->config.addKey("CHANGE_BC","Snowpack","false");
+        d->config.addKey("THRESH_CHANGE_BC","Snowpack","-1.0");
+        d->config.addKey("SNP_SOIL","Snowpack","false");
+        d->config.addKey("SOIL_FLUX","Snowpack","false");
+        d->config.addKey("GEO_HEAT","Snowpack","0.06");
+        d->config.addKey("CANOPY","Snowpack","false");
+
+        //default values for
+        //	"SnowpackAdvanced": { }
+        d->config.addKey("MAX_NUMBER_MEAS_TEMPERATURES","SnowpackAdvanced","1");
+        d->config.addKey("ALPINE3D","SnowpackAdvanced","true");
+        d->config.addKey("SNOW_EROSION","SnowpackAdvanced","false");
+        d->config.addKey("MEAS_INCOMING_LONGWAVE","SnowpackAdvanced","true");
+        d->config.addKey("THRESH_RAIN","SnowpackAdvanced","2");
+        d->config.addKey("THRESH_RAIN_RANGE","SnowpackAdvanced","2");
+        d->config.addKey("WATERTRANSPORTMODEL_SNOW","SnowpackAdvanced","BUCKET");
+        d->config.addKey("VARIANT","SnowpackAdvanced","DEFAULT");
+
         // because we use our own config, we need to do the conversion
         //format is same key-val pairs that snowpack expects, case sensitive
         /**
@@ -254,13 +290,6 @@ void Lehning_snowpack::init(mesh domain)
             }
         }
 
-        //setup critical keys.
-        //overwrite the user if a dangerous key is set
-        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(global_param->dt() / 4)); // Hz. Number of met per hour
-        d->config.addKey("MEAS_TSS", "Snowpack", "false");
-
-        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt() / 60 ) ); //specified as  minutes
-
         d->Spackconfig = boost::make_shared<SnowpackConfig>(d->config);
 
 
@@ -269,20 +298,20 @@ void Lehning_snowpack::init(mesh domain)
         //addSpecial keys goes here to deal with Antarctica, canopy, and detect grass
 
         SN_SNOWSOIL_DATA SSdata;
-        SSdata.SoilAlb = cfg.get<double>("sno.SoilAlbedo");
+        SSdata.SoilAlb = cfg.get<double>("sno.SoilAlbedo",0.09);
         SSdata.Albedo = SSdata.SoilAlb; // following snowpacks' no snow default.
-        SSdata.BareSoil_z0 = cfg.get<double>("sno.BareSoil_z0");
+        SSdata.BareSoil_z0 = cfg.get<double>("sno.BareSoil_z0",0.2);
         if (SSdata.BareSoil_z0 == 0.)
         {
             LOG_WARNING << "[snowpack] BareSoil_z0 == 0, set to 0.2";
             SSdata.BareSoil_z0 = 0.2;
         }
 
-        SSdata.WindScalingFactor= cfg.get<double>("sno.WindScalingFactor");
-        SSdata.TimeCountDeltaHS = cfg.get<double>("sno.TimeCountDeltaHS");
+        SSdata.WindScalingFactor= cfg.get<double>("sno.WindScalingFactor",1);
+        SSdata.TimeCountDeltaHS = cfg.get<double>("sno.TimeCountDeltaHS",0.0);
 
 
-        SSdata.meta.stationName = cfg.get<std::string>("sno.station_name");
+        SSdata.meta.stationName = cfg.get<std::string>("sno.station_name","chm");
         SSdata.meta.position.setAltitude(face->get_z());
 
         SSdata.meta.position.setXY(face->get_x(),face->get_y(),face->get_z());
@@ -314,11 +343,11 @@ void Lehning_snowpack::init(mesh domain)
 
 
 
-        SSdata.Canopy_Height = cfg.get<double>("sno.CanopyHeight");
-        SSdata.Canopy_LAI = cfg.get<double>("sno.CanopyLeafAreaIndex");
-        SSdata.Canopy_Direct_Throughfall = cfg.get<double>("sno.CanopyDirectThroughfall");
+        SSdata.Canopy_Height = cfg.get<double>("sno.CanopyHeight",0);
+        SSdata.Canopy_LAI = cfg.get<double>("sno.CanopyLeafAreaIndex",0);
+        SSdata.Canopy_Direct_Throughfall = cfg.get<double>("sno.CanopyDirectThroughfall",1);
 
-        SSdata.ErosionLevel = cfg.get<double>("sno.ErosionLevel");
+        SSdata.ErosionLevel = cfg.get<double>("sno.ErosionLevel",0);
 
         d->Xdata = boost::make_shared<SnowStation>(false,false);
         d->Xdata->initialize(SSdata,0);
