@@ -217,17 +217,22 @@ void PBSM3D::run(mesh domain)
         double tau_t_f = 0.2;
 
         double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.1.225; // air density, fix for T dependenc
-        double u_star_t = pow(tau_t_f/rho_f,0.5); //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
+
+
+        //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
+        //double u_star_t = pow(tau_t_f/rho_f,0.5);
+
+        //Pomeroy and Li, 2000
+        // Eqn 7
+
+        double T = face->face_data("t");
+        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T;
+
+
         double Qsalt = 0;
         double c_salt = 0;
 
-        //ensure we can have snow saltation
 
-        double thresh_A = .18;
-        double g = 9.81;
-        double _d = 0.48e-3; //d in paper
-        double u_star_saltation = u_star_t;//thresh_A*sqrt((rho_p-rho_f)/(rho_f)*_d*g); // threshold for saltation to begin
-//        double t = face->face_data("t");
         double c_salt_fetch_big;
 //        face->set_face_data("u*_th",u_star_saltation);
 
