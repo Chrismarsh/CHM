@@ -192,7 +192,8 @@ if(OpenCL_FOUND)
         endif()
 else()
     add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
-    set(OPENCL_LIBRARIES "")
+    set(OPENCL_LIBRARIES "") ##zero these out so we can use them later without trouble
+    set(OPENCL_INCLUDE_DIRS "")
 endif()
 
 #armadillo is a bit funny fix later
