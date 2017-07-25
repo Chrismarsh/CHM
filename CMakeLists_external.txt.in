@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(externalLib)
 include(ExternalProject)
-
+message(STATUS "external=${CMAKE_BINARY_DIR}")
 #these should always be built and downloaded
     ExternalProject_Add(
 	    sparsehash
@@ -16,20 +16,20 @@ include(ExternalProject)
 
 	    )
 
-
+if(USE_TCMALLOC)
     ExternalProject_Add(
 	    gperftools
 	    GIT_REPOSITORY https://github.com/gperftools/gperftools
 	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
 
-	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
+	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools --disable-cpu-profiler  --disable-heap-profiler --disable-heap-checker
 	    UPDATE_COMMAND ""
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 
-	    )
-
+	    ) 
+endif()
 
     ExternalProject_Add(
 	    eigen3
@@ -40,6 +40,7 @@ include(ExternalProject)
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 0
 	    )
+
 if(SUPERBUILD)
     ExternalProject_Add(
 	    gsl
@@ -53,7 +54,7 @@ if(SUPERBUILD)
 
     ExternalProject_Add(
 	    boost
-	    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz?r=https%3A%2F%2Fsourceforge.net%2Fprojects%2Fboost%2Ffiles%2Fboost%2F1.62.0%2F&ts=1499468113&use_mirror=ayera
+	    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz
 	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
 	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost"
 	    UPDATE_COMMAND ""
@@ -113,9 +114,20 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 	    URL http://download.osgeo.org/gdal/2.2.1/gdal-2.2.1.tar.gz
 	    UPDATE_COMMAND ""
 	    PATCH_COMMAND patch -p1 < ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch
-	    CONFIGURE_COMMAND  ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal
+	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal
 	    BUILD_COMMAND make -j10  
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
-endif()
+
+    ExternalProject_Add(
+    	proj4
+	GIT_REPOSITORY https://github.com/OSGeo/proj.4
+	UPDATE_COMMAND ""
+	CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/autogen.sh COMMAND ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
+	BUILD_COMMAND make -j10
+	INSTALL_COMMAND make install
+	BUILD_IN_SOURCE 1
+    )
+
+ endif()

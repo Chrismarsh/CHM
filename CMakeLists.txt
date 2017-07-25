@@ -17,6 +17,8 @@ option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
+set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
+set(USE_TCMALLOC TRUE CACHE BOOL "use tcmalloc from gperftools ")
 
 #enable with cmake -DSUPERBUILD=TRUE .
 if(SUPERBUILD)
@@ -29,11 +31,12 @@ if(SUPERBUILD)
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
     set(Boost_NO_SYSTEM_PATHS TRUE)
     set(BOOST_ROOT "${CMAKE_BINARY_DIR}/lib/boost")
+    set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
 endif()
 
 ## Any custom boost path.
 #set(Boost_NO_SYSTEM_PATHS TRUE)
-#set(BOOST_ROOT "/opt/boost/boost_1_61_0")
+#set(BOOST_ROOT "/home/cbm038/boost_1_63_0")
 
 
 #    Super build doesn't do TBB at the moment. If a custom location is needed, specify here
@@ -47,18 +50,20 @@ macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
+configure_file(gdal-2.2.1.patch lib/gdal-2.2.1.patch COPYONLY)
+configure_file(vtk-8.0.0.patch lib/vtk-8.0.0.patch COPYONLY)
 
 #things covered by the superbuild
 # super build things we are missing
 configure_file(CMakeLists_external.txt.in
-        ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
+    ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
 
 
 #Trigger superbuild
 #If superbuild is not needed, we still need to build sparsehash, gperftools, and eigen3
-execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+execute_process(COMMAND ${CMAKE_COMMAND} -DSUPERBUILD=${SUPERBUILD} -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
-execute_process(COMMAND ${CMAKE_COMMAND} --build .
+execute_process(COMMAND ${CMAKE_COMMAND}  --build .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 
 
@@ -197,7 +202,7 @@ endif()
 
 #armadillo is a bit funny fix later
 if(SUPERBUILD)
-find_package(Armadillo REQUIRED  PATH ${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake NO_DEFAULT_PATH )
+	find_package(Armadillo REQUIRED  PATH ${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake NO_DEFAULT_PATH )
 else()
     find_package(Armadillo REQUIRED)
 endif()
@@ -251,7 +256,9 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 find_package(GDAL 2.1 REQUIRED)
-
+find_package(PROJ4 REQUIRED) #gdal dependency, only need to link against it 
+    
+    
 find_package (Threads REQUIRED)
 
 find_package(TBB REQUIRED)

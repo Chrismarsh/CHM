@@ -3,6 +3,8 @@ SET(VIENNACL_WITH_OPENCL FALSE)
 #original source for this Cmake find file is
 #https://github.com/naibaf7/libdnn/blob/master/cmake/Modules/FindViennaCL.cmake
 SET(VIENNACL_INCLUDE_SEARCH_PATHS
+
+	${VCL_ROOT}/include
         .
         ..
         ../ViennaCL
@@ -12,7 +14,6 @@ SET(VIENNACL_INCLUDE_SEARCH_PATHS
         /opt/viennacl/include
         /opt/Viennacl/include
         /opt/ViennaCL/include
-	${VCL_ROOT}/include
         )
 
 SET(VIENNACL_FOUND OFF)
