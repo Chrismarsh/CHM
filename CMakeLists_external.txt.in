@@ -113,7 +113,7 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 	    URL http://download.osgeo.org/gdal/2.2.1/gdal-2.2.1.tar.gz
 	    UPDATE_COMMAND ""
 	    PATCH_COMMAND patch -p1 < ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch
-	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal
+	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal
 	    BUILD_COMMAND make -j10  
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
