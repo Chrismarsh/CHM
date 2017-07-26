@@ -24,7 +24,7 @@ set(USE_TCMALLOC TRUE CACHE BOOL "use tcmalloc from gperftools ")
 if(SUPERBUILD)
     set(Armadillo_DIR "${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake")
     set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
-    set(GDAL_ROOT "${CMAKE_BINARY_DIR}/lib/gdal")
+    set(ENV{GDAL_ROOT} "${CMAKE_BINARY_DIR}/lib/gdal")  #this one really does have to be ENV
     set(GSL_ROOT "${CMAKE_BINARY_DIR}/lib/gsl/bin")
     set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
     set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
