@@ -24,7 +24,7 @@ set(USE_TCMALLOC TRUE CACHE BOOL "use tcmalloc from gperftools ")
 if(SUPERBUILD)
     set(Armadillo_DIR "${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake")
     set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
-    set(ENV{GDAL_DIR} "${CMAKE_BINARY_DIR}/lib/gdal")
+    set(GDAL_ROOT "${CMAKE_BINARY_DIR}/lib/gdal")
     set(GSL_ROOT "${CMAKE_BINARY_DIR}/lib/gsl/bin")
     set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
     set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
@@ -33,6 +33,8 @@ if(SUPERBUILD)
     set(BOOST_ROOT "${CMAKE_BINARY_DIR}/lib/boost")
     set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
 endif()
+
+#set(VCL_ROOT "/Users/chris/Downloads/ViennaCL/")
 
 ## Any custom boost path.
 #set(Boost_NO_SYSTEM_PATHS TRUE)
@@ -118,7 +120,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
-find_package(CGAL REQUIRED)
+find_package(CGAL REQUIRED HINTS ${CGAL_DIR})
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
     include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
@@ -182,14 +184,15 @@ if(MATLAB)
     find_package(Matlab REQUIRED)
 endif()
 
-if(OPENMP_FOUND)
-    message(STATUS "Enabling ViennaCL with OpenCL")
-    add_definitions(-DVIENNACL_WITH_OPENMP)
-endif()
+
 
 find_package(OpenCL)
 if(OpenCL_FOUND)
     message(STATUS "Enabling ViennaCL with OpenCL")
+    if(OPENMP_FOUND)
+        message(STATUS "Enabling ViennaCL with OpenCL")
+        add_definitions(-DVIENNACL_WITH_OPENMP)
+    endif()
     add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
     add_definitions(-DVIENNACL_WITH_OPENCL)
         if(APPLE)
@@ -201,20 +204,11 @@ else()
     set(OPENCL_INCLUDE_DIRS "")
 endif()
 
-#armadillo is a bit funny fix later
-if(SUPERBUILD)
-	find_package(Armadillo REQUIRED  PATH ${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake NO_DEFAULT_PATH )
-else()
-    find_package(Armadillo REQUIRED)
-endif()
+find_package(Armadillo REQUIRED  HINTS ${Armadillo_DIR} )
+
 
 set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
 message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")
-#find_package(Eigen3 REQUIRED)
-#if(NOT EIGEN3_INCLUDE_DIR)
-#    set(Eigen3_DIR "${CMAKE_BINARY_DIR}/lib/eigen3")
-#    find_package(Eigen3 REQUIRED)
-#endif()
 
 set( SPARSEHASH_ROOT "${CMAKE_BINARY_DIR}/lib/sparsehash")
 find_package(Sparsehash)
@@ -228,16 +222,18 @@ else()
     set(SPARSEHASH_INCLUDE_DIRS "")
 endif()
 
+set(Tcmalloc_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/gperftools/include")
 find_package(tcmalloc)
-if(Tcmalloc_FOUND)
+if(Tcmalloc_FOUND)  #gperftools may not compile on machines w/o nanosleep so we need to optionall disable if it fails to compile
+    message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
-    set(Tcmalloc_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/gperftools/include")
 else()
-
     set(Tcmalloc_INCLUDE_DIR "")
     set(Tcmalloc_LIBRARY "")
 endif()
-find_package(ViennaCL REQUIRED)
+
+find_package(ViennaCL REQUIRED HINTS ${VCL_ROOT})
+message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
 find_package(Boost
              1.60.0
@@ -256,8 +252,8 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(GDAL 2.1 REQUIRED)
-find_package(PROJ4 REQUIRED) #gdal dependency, only need to link against it 
+find_package(GDAL 2.1 REQUIRED )
+find_package(PROJ4 REQUIRED) #gdal dependency, only need to link against it
     
     
 find_package (Threads REQUIRED)
@@ -276,7 +272,7 @@ if(PV_FILTER)
     FIND_PACKAGE(ParaView REQUIRED)
     INCLUDE(${PARAVIEW_USE_FILE})
 else()
-    find_package(VTK REQUIRED)
+    find_package(VTK REQUIRED HINTS ${VTK_DIR})
     include(${VTK_USE_FILE})
 endif()
 

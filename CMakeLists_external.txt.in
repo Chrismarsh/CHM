@@ -22,8 +22,7 @@ if(USE_TCMALLOC)
 	    GIT_REPOSITORY https://github.com/gperftools/gperftools
 	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
 
-	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools --disable-cpu-profiler  --disable-heap-profiler --disable-heap-checker
-	    UPDATE_COMMAND ""
+	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools 	    UPDATE_COMMAND ""
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
