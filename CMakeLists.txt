@@ -232,7 +232,7 @@ else()
     set(Tcmalloc_LIBRARY "")
 endif()
 
-find_package(ViennaCL REQUIRED HINTS ${VCL_ROOT})
+find_package(ViennaCL 1.7.1 REQUIRED HINTS ${VCL_ROOT})
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
 find_package(Boost
