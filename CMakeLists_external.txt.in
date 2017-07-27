@@ -42,6 +42,17 @@ endif()
 
 if(SUPERBUILD)
     ExternalProject_Add(
+	    boost
+	    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz
+	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
+	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost"
+	    UPDATE_COMMAND ""
+	    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j 10
+	    INSTALL_COMMAND ./b2 install
+	    BUILD_IN_SOURCE 1
+	    )
+
+    ExternalProject_Add(
 	    gsl
 	    URL ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz
 	    CONFIGURE_COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/lib/gsl
@@ -51,16 +62,7 @@ if(SUPERBUILD)
 	    BUILD_IN_SOURCE 1)
 
 
-    ExternalProject_Add(
-	    boost
-	    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz
-	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
-	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost"
-	    UPDATE_COMMAND ""
-	    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j 10 
-	    INSTALL_COMMAND ./b2 install 
-	    BUILD_IN_SOURCE 1
-	    )
+
 
 
 
@@ -76,7 +78,7 @@ if(SUPERBUILD)
 
     ExternalProject_Add(
 	    ViennaCL
-	    URL http://sourceforge.net/projects/viennacl/files/1.7.x/ViennaCL-1.7.1.tar.gz/download
+	    URL http://sourceforge.net/projects/viennacl/files/1.7.x/ViennaCL-1.7.0.tar.gz/download
 	    UPDATE_COMMAND ""
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ViennaCL -DENABLE_CUDA=OFF -DENABLE_OPENMP=ON -DBUILD_EXAMPLES=OFF
 	    BUILD_COMMAND make -j10 
@@ -90,7 +92,7 @@ if(SUPERBUILD)
 	    VTK
 	    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
 	    UPDATE_COMMAND ""
-	    PATCH_COMMAND patch -p1  < ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch 
+	    #PATCH_COMMAND patch -p1  < ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release
 	    BUILD_COMMAND make -j10 
 	    INSTALL_COMMAND make install
@@ -105,6 +107,7 @@ if(SUPERBUILD)
 	    BUILD_COMMAND make -j10 
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
+	    DEPENDS boost
 	    )
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 
