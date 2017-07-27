@@ -52,8 +52,8 @@ macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
-configure_file(gdal-2.2.1.patch lib/gdal-2.2.1.patch COPYONLY)
-configure_file(vtk-8.0.0.patch lib/vtk-8.0.0.patch COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/gdal-2.2.1.patch ${CMAKE_BINARY_DIR}/lib/gdal-2.2.1.patch COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/vtk-8.0.0.patch ${CMAKE_BINARY_DIR}/lib/vtk-8.0.0.patch COPYONLY)
 
 #things covered by the superbuild
 # super build things we are missing
@@ -184,24 +184,24 @@ if(MATLAB)
     find_package(Matlab REQUIRED)
 endif()
 
-
+if(OPENMP_FOUND)
+    message(STATUS "Enabling ViennaCL with OpenMP")
+    add_definitions(-DVIENNACL_WITH_OPENMP)
+endif()
 
 find_package(OpenCL)
-if(OpenCL_FOUND)
+if(OPENCL_FOUND)
     message(STATUS "Enabling ViennaCL with OpenCL")
-    if(OPENMP_FOUND)
-        message(STATUS "Enabling ViennaCL with OpenCL")
-        add_definitions(-DVIENNACL_WITH_OPENMP)
-    endif()
+
     add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
     add_definitions(-DVIENNACL_WITH_OPENCL)
-        if(APPLE)
-             set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
-        endif()
+    if(APPLE)
+       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
+    endif()
 else()
     add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
-    set(OPENCL_LIBRARIES "") ##zero these out so we can use them later without trouble
-    set(OPENCL_INCLUDE_DIRS "")
+    unset(OPENCL_LIBRARIES CACHE) ##zero these out so we can use them later without trouble
+    unset(OPENCL_INCLUDE_DIRS CACHE)
 endif()
 
 find_package(Armadillo REQUIRED  HINTS ${Armadillo_DIR} )
