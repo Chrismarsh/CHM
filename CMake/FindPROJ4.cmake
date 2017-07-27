@@ -1,38 +1,37 @@
-# Copyright 2012 by Kitware, Inc. All Rights Reserved. Please refer to
-# KITWARE_LICENSE.TXT for licensing information, or contact General Counsel,
-# Kitware, Inc., 28 Corporate Drive, Clifton Park, NY 12065.
-
-# Locate the system installed PROJ
+###############################################################################
+# CMake module to search for PROJ.4 library
 #
-# The following variables will guide the build:
+# PROJ4_ROOT = install prefix to search
+
+# On success, the macro sets the following variables:
+# PROJ4_FOUND       = if the library found
+# PROJ4_LIBRARY     = full path to the library
+# PROJ4_INCLUDE_DIR = where to find the library headers
+# also defined, but not for general use are
+# PROJ4_LIBRARY, where to find the PROJ.4 library.
 #
-# PROJ4_ROOT        - Set to the install prefix of the PROJ library
+# Copyright (c) 2009 Mateusz Loskot <mateusz@loskot.net>
 #
-# The following variables will be set:
+# Redistribution and use is allowed according to the terms of the BSD license.
+# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
-# PROJ4_FOUND       - Set to true if PROJ can be found
-# PROJ4_INCLUDE_DIR - The path to the PROJ header files
-# PROJ4_LIBRARY     - The full path to the PROJ library
+###############################################################################
 
-if( PROJ4_DIR )
-    find_package( PROJ NO_MODULE )
-elseif( NOT PROJ4_FOUND )
+FIND_PATH(PROJ4_INCLUDE_DIR proj_api.h
+        PATHS ${PROJ4_ROOT}/include
+        DOC "Path to PROJ.4 library include directory")
 
-    # Backup the previous root path
-    if(PROJ4_ROOT)
-	set(_CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH})
-	set(CMAKE_FIND_ROOT_PATH ${PROJ4_ROOT})
-	set(_PROJ4_ROOT_OPTS ONLY_CMAKE_FIND_ROOT_PATH)
-    endif()
+SET(PROJ4_NAMES ${PROJ4_NAMES} proj proj_i)
+FIND_LIBRARY(PROJ4_LIBRARY
+        NAMES ${PROJ4_NAMES}
+        PATHS ${PROJ4_ROOT}/lib
+        DOC "Path to PROJ.4 library file")
 
-    find_path( PROJ4_INCLUDE_DIR proj_api.h ${_PROJ4_ROOT_OPTS})
-    find_library( PROJ4_LIBRARY proj ${_PROJ4_ROOT_OPTS})
+# Handle the QUIETLY and REQUIRED arguments and set SPATIALINDEX_FOUND to TRUE
+# if all listed variables are TRUE
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(PROJ4 DEFAULT_MSG PROJ4_LIBRARY PROJ4_INCLUDE_DIR)
 
-    # Restore the original root path
-    if(PROJ4_ROOT)
-	set(CMAKE_FIND_ROOT_PATH ${CMAKE_FIND_ROOT_PATH})
-    endif()
-
-    include( FindPackageHandleStandardArgs )
-    FIND_PACKAGE_HANDLE_STANDARD_ARGS( PROJ4 PROJ4_INCLUDE_DIR PROJ4_LIBRARY )
-endif()
+IF(PROJ4_FOUND)
+    SET(PROJ4_LIBRARIES ${PROJ4_LIBRARY})
+ENDIF()
