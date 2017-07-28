@@ -61,11 +61,6 @@ if(SUPERBUILD)
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1)
 
-
-
-
-
-
     ExternalProject_Add(
 	    armadillo
 	    URL http://sourceforge.net/projects/arma/files/armadillo-7.950.1.tar.xz
@@ -78,7 +73,7 @@ if(SUPERBUILD)
 
     ExternalProject_Add(
 	    ViennaCL
-	    URL http://sourceforge.net/projects/viennacl/files/1.7.x/ViennaCL-1.7.0.tar.gz/download
+	    URL https://downloads.sourceforge.net/project/viennacl/1.7.x/ViennaCL-1.7.1.tar.gz
 	    UPDATE_COMMAND ""
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ViennaCL -DENABLE_CUDA=OFF -DENABLE_OPENMP=ON -DBUILD_EXAMPLES=OFF
 	    BUILD_COMMAND make -j10 
