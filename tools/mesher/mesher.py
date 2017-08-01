@@ -102,8 +102,6 @@ def main():
         except:
             pass
 
-
-
     # figure out what srs out input is in, we will reproject everything to this
     # if hasattr(X, 'EPSG'):
     #     EPSG = X.EPSG
@@ -655,12 +653,9 @@ def main():
     #if the simplify_tol is too large, we can end up with a triangle that is entirely outside of the domain
     if len(invalid_nodes) > 0:
         print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
-        print 'This will have occured if an entire triangle is outside of the domain. There is no way to reconstruct this.'
-        print 'Try reducing simplify_tol'
+        print 'This will have occurred if an entire triangle is outside of the domain. There is no way to reconstruct this triangle.'
+        print 'Try reducing simplify_tol.'
         raise
-
-
-
 
     vtu.SetPoints(vtu_points)
     vtu.SetCells(vtk.VTK_TRIANGLE,vtu_triangles)
