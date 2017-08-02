@@ -5,11 +5,13 @@ import json
 import os
 import numpy as np
 import scipy.stats.mstats as sp
+import scipy.interpolate as sp_interp
 import sys
 import shutil
 import imp
 import vtk
-
+import itertools
+import collections
 gdal.UseExceptions()  # Enable errors
 
 
@@ -79,6 +81,22 @@ def main():
     use_input_prj = False
     if hasattr(X,'use_input_prj'):
         use_input_prj=X.use_input_prj
+
+    #should we do smoothing of the input DEM to great a more smooth mesh
+    do_smoothing = False
+    if hasattr(X, 'do_smoothing'):
+        do_smoothing = X.do_smoothing
+
+    #smoothing can resample the input DEM, this is the amount it scales by
+    scaling_factor = 2.0
+    if hasattr(X, 'smoothing_scaling_factor'):
+        scaling_factor = X.smoothing_scaling_factor
+
+    #number of iterations to smooth over, each smoothing using cubic spline,
+    # and resamples by iter * scaling_factor for each iteration
+    max_smooth_iter = 1
+    if hasattr(X, 'max_smooth_iter'):
+        max_smooth_iter = X.max_smooth_iter
     ########################################################
 
     base_name = os.path.basename(dem_filename)
@@ -135,10 +153,18 @@ def main():
     # subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs "EPSG:%d"' % (
     #     dem_filename, base_dir + base_name + '_projected.tif', EPSG)], shell=True)
 
-    subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs \"%s\"' % (
-        dem_filename, base_dir + base_name + '_projected.tif', srs_out.ExportToProj4())], shell=True)
 
-    src_ds = gdal.Open(base_dir + base_name + '_projected.tif')
+    # Get into the projected coordinate space
+
+    if do_smoothing:
+        output_file_name = '_projected_0.tif'
+    else:
+        output_file_name = '_projected.tif'
+
+    subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -t_srs \"%s\"' % (
+        dem_filename, base_dir + base_name + output_file_name, srs_out.ExportToProj4())], shell=True)
+
+    src_ds = gdal.Open(base_dir + base_name + output_file_name)
 
     if src_ds is None:
         print 'Unable to open %s' % dem_filename
@@ -159,6 +185,34 @@ def main():
     else:
         min_area = abs(
             pixel_width * pixel_height)  # if the user doesn't specify, then limit to the underlying resolution. No point going past this!
+
+    if do_smoothing:
+        for iter in range(max_smooth_iter):
+
+            in_name = base_dir + base_name + '_projected_%d.tif' % (iter)
+            out_name = base_dir + base_name +'_projected_%d.tif' % (iter + 1)
+
+            if iter+1 == max_smooth_iter: #last iteration, change output
+                out_name = base_dir + base_name + '_projected.tif'
+
+            subprocess.check_call(['gdalwarp %s %s -overwrite -dstnodata -9999 -r cubicspline -tr %f %f' % (
+                in_name, out_name, abs(pixel_width) / scaling_factor,
+                abs(pixel_height) / scaling_factor)], shell=True)
+
+            scaling_factor *= (iter+1)
+
+
+
+    # now, reopen the file
+    src_ds = gdal.Open(base_dir + base_name + '_projected.tif')
+    gt = src_ds.GetGeoTransform()
+    # x,y origin
+    xmin = gt[0]
+    ymax = gt[3]
+
+    pixel_width = gt[1]
+    pixel_height = gt[5]
+
 
     xmax = xmin + pixel_width * src_ds.RasterXSize
     ymin = ymax + pixel_height * src_ds.RasterYSize  # pixel_height is negative
@@ -227,6 +281,8 @@ def main():
     # read all elevation data. Might be worth changing to the for-loop approach we use below so we don't have to read in all into ram.
     # some raster
     Z = dem.ReadAsArray()
+
+
 
     # set all the non-nodata values to our mask value
     Z[Z != dem.GetNoDataValue()] = 1
@@ -577,30 +633,31 @@ def main():
                             if verbose:
                                 print 'replaced invalid with ' + str(mesh['mesh']['vertex'][v2])
                             invalid_nodes = [x for x in invalid_nodes if x != v2]  # remove from out invalid nodes list.
-
                     mesh['mesh']['elem'].append([v0, v1, v2])
 
                     ring = ogr.Geometry(ogr.wkbLinearRing)
                     ring.AddPoint(mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1])
                     ring.AddPoint(mesh['mesh']['vertex'][v1][0], mesh['mesh']['vertex'][v1][1])
                     ring.AddPoint(mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1])
-                    ring.AddPoint(mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1])  # add again to complete the ring.
+                    ring.AddPoint(mesh['mesh']['vertex'][v0][0],
+                                  mesh['mesh']['vertex'][v0][1])  # add again to complete the ring.
 
-                    vtu_points.SetPoint(v0, mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1], mesh['mesh']['vertex'][v0][2])
-                    vtu_points.SetPoint(v1, mesh['mesh']['vertex'][v1][0], mesh['mesh']['vertex'][v1][1], mesh['mesh']['vertex'][v1][2])
-                    vtu_points.SetPoint(v2, mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1], mesh['mesh']['vertex'][v2][2])
-
+                    vtu_points.SetPoint(v0, mesh['mesh']['vertex'][v0][0], mesh['mesh']['vertex'][v0][1],
+                                        mesh['mesh']['vertex'][v0][2])
+                    vtu_points.SetPoint(v1, mesh['mesh']['vertex'][v1][0], mesh['mesh']['vertex'][v1][1],
+                                        mesh['mesh']['vertex'][v1][2])
+                    vtu_points.SetPoint(v2, mesh['mesh']['vertex'][v2][0], mesh['mesh']['vertex'][v2][1],
+                                        mesh['mesh']['vertex'][v2][2])
 
                     triangle = vtk.vtkTriangle()
-                    triangle.GetPointIds().SetId(0,v0)
-                    triangle.GetPointIds().SetId(1,v1)
-                    triangle.GetPointIds().SetId(2,v2)
+                    triangle.GetPointIds().SetId(0, v0)
+                    triangle.GetPointIds().SetId(1, v1)
+                    triangle.GetPointIds().SetId(2, v2)
 
                     vtu_triangles.InsertNextCell(triangle)
-                    vtu_cells['Elevation'].InsertNextTuple1( (mesh['mesh']['vertex'][v0][2] +
+                    vtu_cells['Elevation'].InsertNextTuple1((mesh['mesh']['vertex'][v0][2] +
                                                              mesh['mesh']['vertex'][v1][2] +
-                                                             mesh['mesh']['vertex'][v2][2])/3.)
-
+                                                             mesh['mesh']['vertex'][v2][2]) / 3.)
 
                     tpoly = ogr.Geometry(ogr.wkbPolygon)
                     tpoly.AddGeometry(ring)
@@ -608,7 +665,6 @@ def main():
                     feature = ogr.Feature(layer.GetLayerDefn())
                     feature.SetField('triangle', int(items[0]) - 1)
                     feature.SetGeometry(tpoly)
-
 
                     if is_geographic:
                         # wkt_out = "PROJCS[\"North_America_Albers_Equal_Area_Conic\",     GEOGCS[\"GCS_North_American_1983\",         DATUM[\"North_American_Datum_1983\",             SPHEROID[\"GRS_1980\",6378137,298.257222101]],         PRIMEM[\"Greenwich\",0],         UNIT[\"Degree\",0.017453292519943295]],     PROJECTION[\"Albers_Conic_Equal_Area\"],     PARAMETER[\"False_Easting\",0],     PARAMETER[\"False_Northing\",0],     PARAMETER[\"longitude_of_center\",-96],     PARAMETER[\"Standard_Parallel_1\",20],     PARAMETER[\"Standard_Parallel_2\",60],     PARAMETER[\"latitude_of_center\",40],     UNIT[\"Meter\",1],     AUTHORITY[\"EPSG\",\"102008\"]]";
@@ -649,13 +705,65 @@ def main():
 
                     layer.CreateFeature(feature)
                     i = i + 1
-
-    #if the simplify_tol is too large, we can end up with a triangle that is entirely outside of the domain
+                    # if the simplify_tol is too large, we can end up with a triangle that is entirely outside of the domain
     if len(invalid_nodes) > 0:
         print 'Length of invalid nodes after correction= ' + str(len(invalid_nodes))
         print 'This will have occurred if an entire triangle is outside of the domain. There is no way to reconstruct this triangle.'
         print 'Try reducing simplify_tol.'
         raise
+
+    #optionally smooth the mesh
+    #this can likely be removed, but is here is the newly added cubic filtering of the input dem is deemed not enough
+    # smooth = False
+    # if smooth:
+    #     for i in range(10):
+    #         for neigh,face in itertools.izip(mesh['mesh']['neigh'], mesh['mesh']['elem']):
+    #
+    #             new_z = []
+    #             #recompute z value of each vertex of current face using neighbours
+    #             for vertex_id in face:
+    #
+    #                 #vertex we need to update
+    #                 vertex = mesh['mesh']['vertex'][vertex_id]
+    #
+    #                 neigh_verts_x = []
+    #                 neigh_verts_y = []
+    #                 neigh_verts_z = []
+    #
+    #                 #each n-th neighbour id of our face
+    #                 for n in neigh:
+    #                     if n != -1:  #only actual neighbours
+    #                         neigh_face = mesh['mesh']['elem'][n]
+    #
+    #                         #each vertex in the neighbour face
+    #                         for neigh_vertex in neigh_face:
+    #                             v = mesh['mesh']['vertex'][neigh_vertex]
+    #                             if not np.allclose(v, vertex):
+    #                                 neigh_verts_x.append(v[0])
+    #                                 neigh_verts_y.append(v[1])
+    #                                 neigh_verts_z.append(v[2])
+    #
+    #                 d = collections.OrderedDict.fromkeys(zip(neigh_verts_x, neigh_verts_y,neigh_verts_z))
+    #                 neigh_verts_x = [k[0] for k in d]
+    #                 neigh_verts_y = [k[1] for k in d]
+    #                 neigh_verts_z = [k[2] for k in d]
+    #
+    #                 #if we have enough points, interpolated
+    #                 z=0
+    #                 # if( len(neigh_verts_x) == 5):
+    #                 #     interp = sp_interp.interp2d(neigh_verts_x,neigh_verts_y,neigh_verts_z,'linear')
+    #                 #     z = interp(vertex[0],vertex[1])[0]
+    #                 # else:
+    #                 #     #try the average?
+    #                 z = np.mean(neigh_verts_z)
+    #                 new_z.append(z)
+    #
+    #             for nz,vertex_id in itertools.izip(new_z,face):
+    #                 mesh['mesh']['vertex'][vertex_id][2] = nz
+
+
+
+
 
     vtu.SetPoints(vtu_points)
     vtu.SetCells(vtk.VTK_TRIANGLE,vtu_triangles)
