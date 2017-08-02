@@ -680,6 +680,7 @@ void triangulation::write_vtu(std::string file_name)
 
     vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
     writer->SetFileName(file_name.c_str());
+    writer->SetCompressorType( vtkXMLUnstructuredGridWriter::CompressorType::ZLIB);
 #if VTK_MAJOR_VERSION <= 5
     writer->SetInput(_vtk_unstructuredGrid);
 #else
