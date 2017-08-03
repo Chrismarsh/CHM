@@ -85,7 +85,7 @@ def main():
     filename, file_extension = os.path.splitext(input_path)
     is_pvd = False
     pvd = [input_path] # if not given a pvd file, make this iterable for the below code
-    if file_extension == 'pvd':
+    if file_extension == '.pvd':
         print 'Detected pvd file, processing all linked vtu files'
         is_pvd = True
         pvd = ET.parse(input_path)
