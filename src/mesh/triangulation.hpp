@@ -642,6 +642,8 @@ public:
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
 	boost::shared_ptr<Tree> dD_tree;
 
+    void write_param_to_vtu(bool write_param);
+
     bool _terrain_deformed;
 
     /**
@@ -669,6 +671,9 @@ private:
 	//holds the vectors we use to create the vtu file
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > vectors;
+
+    //should we write parameters to the vtu file?
+    bool _write_parameters_to_vtu;
 
     // min and max elevations
     double _min_z;

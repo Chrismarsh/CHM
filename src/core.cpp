@@ -733,11 +733,12 @@ void core::config_output(const pt::ptree &value)
         {
             out.type = output_info::mesh;
 
-            auto fname = itr.second.get<std::string>("base_name");
+            auto fname = itr.second.get<std::string>("base_name","output");
             auto f = msh_path / fname;
             boost::filesystem::create_directories(f.parent_path());
             out.fname = f.string();
 
+            _mesh->write_param_to_vtu( itr.second.get("write_parameters",true) ) ;
 
             try
             {

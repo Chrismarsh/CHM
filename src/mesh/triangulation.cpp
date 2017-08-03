@@ -77,6 +77,11 @@ std::string triangulation::proj4()
     return _srs_wkt;
 }
 
+void triangulation::write_param_to_vtu(bool write_param)
+{
+    _write_parameters_to_vtu = write_param;
+}
+
 bool triangulation::is_geographic()
 {
     return _is_geographic;
@@ -563,18 +568,34 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data[v]->SetName(v.c_str());
     }
 
-    auto params = this->face(0)->parameters();
-    for(auto& v: params)
+    if(_write_parameters_to_vtu)
     {
-        data["[param] " + v] = vtkSmartPointer<vtkFloatArray>::New();
-        data["[param] " + v]->SetName(("[param] " + v).c_str());
-    }
+        auto params = this->face(0)->parameters();
+        for (auto &v: params)
+        {
+            data["[param] " + v] = vtkSmartPointer<vtkFloatArray>::New();
+            data["[param] " + v]->SetName(("[param] " + v).c_str());
+        }
 
-    auto ics = this->face(0)->initial_conditions();
-    for(auto& v: ics)
-    {
-        data["[ic] " + v] = vtkSmartPointer<vtkFloatArray>::New();
-        data["[ic] " + v]->SetName(("[ic] " + v).c_str());
+        auto ics = this->face(0)->initial_conditions();
+        for(auto& v: ics)
+        {
+            data["[ic] " + v] = vtkSmartPointer<vtkFloatArray>::New();
+            data["[ic] " + v]->SetName(("[ic] " + v).c_str());
+        }
+
+        //handle elevation/aspect/slope
+        data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["Elevation"]->SetName("Elevation");
+
+        data["Slope"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["Slope"]->SetName("Slope");
+
+        data["Aspect"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["Aspect"]->SetName("Aspect");
+
+        data["Area"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["Area"]->SetName("Area");
     }
     auto vec = this->face(0)->vectors();
     for(auto& v: vec)
@@ -583,20 +604,6 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         vectors[v]->SetName(v.c_str());
         vectors[v]->SetNumberOfComponents(3);
     }
-
-    //handle elevation/aspect/slope
-    data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
-    data["Elevation"]->SetName("Elevation");
-
-    data["Slope"] = vtkSmartPointer<vtkFloatArray>::New();
-    data["Slope"]->SetName("Slope");
-
-    data["Aspect"] = vtkSmartPointer<vtkFloatArray>::New();
-    data["Aspect"]->SetName("Aspect");
-
-    data["Area"] = vtkSmartPointer<vtkFloatArray>::New();
-    data["Area"]->SetName("Area");
-
 }
 
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)
@@ -626,26 +633,33 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
             data[v]->InsertTuple1(i,d);
         }
-        for(auto& v: params)
+        if(_write_parameters_to_vtu)
         {
-            double d = fit->get_parameter(v);
-            if(d == -9999.)
+            for (auto &v: params)
             {
-                d = nan("");
+                double d = fit->get_parameter(v);
+                if (d == -9999.)
+                {
+                    d = nan("");
+                }
+                data["[param] " + v]->InsertTuple1(i, d);
             }
-            data["[param] " +  v]->InsertTuple1(i,d);
-        }
 
-        for(auto& v: ics)
-        {
-            double d = fit->get_initial_condition(v);
-            if(d == -9999.)
+            for (auto &v: ics)
             {
-                d = nan("");
+                double d = fit->get_initial_condition(v);
+                if (d == -9999.)
+                {
+                    d = nan("");
+                }
+                data["[ic] " + v]->InsertTuple1(i, d);
             }
-            data["[ic] "+ v]->InsertTuple1(i,d);
-        }
 
+            data["Elevation"]->InsertTuple1(i,fit->get_z());
+            data["Slope"]->InsertTuple1(i,fit->slope());
+            data["Aspect"]->InsertTuple1(i,fit->aspect());
+            data["Area"]->InsertTuple1(i,fit->get_area());
+        }
         for(auto& v: vecs)
         {
             Vector_3 d = fit->face_vector(v);
@@ -653,10 +667,6 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             vectors[v]->InsertTuple3(i,d.x(),d.y(),d.z());
         }
 
-        data["Elevation"]->InsertTuple1(i,fit->get_z());
-        data["Slope"]->InsertTuple1(i,fit->slope());
-        data["Aspect"]->InsertTuple1(i,fit->aspect());
-        data["Area"]->InsertTuple1(i,fit->get_area());
 
     }
 
@@ -680,7 +690,7 @@ void triangulation::write_vtu(std::string file_name)
 
     vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
     writer->SetFileName(file_name.c_str());
-    writer->SetCompressorType( vtkXMLUnstructuredGridWriter::CompressorType::ZLIB);
+//    writer->SetCompressorType( vtkXMLUnstructuredGridWriter::CompressorType::ZLIB);
 #if VTK_MAJOR_VERSION <= 5
     writer->SetInput(_vtk_unstructuredGrid);
 #else
