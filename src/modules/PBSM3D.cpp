@@ -435,9 +435,9 @@ void PBSM3D::run(mesh domain)
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
             double w = 1.1*10e7*pow(rm,1.8);
             double c2 = 1;
-            double dc = 1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
-
-            snow_diffusion_const=dc;
+            double dc = 1; //1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
+            
+            snow_diffusion_const= dc;
             face->set_face_data("Km_coeff",dc);
             //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
             K[3] = K[4] = snow_diffusion_const * ustar * l;
@@ -620,7 +620,6 @@ void PBSM3D::run(mesh domain)
         } // end z iter
     } //end face iter
 
-
     //setup the compressed matrix on the compute device, if available
     viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
     viennacl::copy(C,vl_C);
@@ -635,10 +634,11 @@ void PBSM3D::run(mesh domain)
 
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::linalg::gmres_tag gmres_tag(1e-16, 500, 30);
+    viennacl::linalg::gmres_tag gmres_tag(1e-8, 500, 30);
     viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
