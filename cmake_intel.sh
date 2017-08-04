@@ -1,6 +1,6 @@
 #!/bin/bash
 
 source /opt/intel/bin/compilervars.sh intel64
-cmake -D CMAKE_CXX_COMPILER=icpc -D CMAKE_C_COMPILER=icc .
+cmake -DCMAKE_CXX_COMPILER=icpc -DCMAKE_C_COMPILER=icc .
 
 
