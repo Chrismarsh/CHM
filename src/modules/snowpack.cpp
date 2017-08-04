@@ -38,7 +38,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     provides("iswr_out");
     provides("R_n");
     provides("runoff");
-
+    provides("mass_snowpack_removed");
     provides("sum_runoff");
     provides("sum_subl");
 
@@ -161,7 +161,8 @@ void Lehning_snowpack::run(mesh_elem &face)
     data->cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
     data->meteo->compMeteo(Mdata,*(data->Xdata),false); // no canopy model
 
-    double mass_erode = 1e-10; //needs to be this small to 'trick' snowpack in alpine3d mode
+    double mass_erode = 0;
+
     if(has_optional("drift_mass"))
     {
 
@@ -169,9 +170,16 @@ void Lehning_snowpack::run(mesh_elem &face)
         mass = is_nan(mass) ? 0 : mass;
 
         if(mass > 0)
+        {
+
             Mdata.psum += mass;
+            data->cum_precip  += Mdata.psum;
+            Mdata.psum_ph = 0;
+        }
         else
-            mass_erode = -mass; // snowpack expects the mass erode to be positive
+        {
+            mass_erode = mass; // snowpack expects the mass erode to be negative
+        }
     }
 
     // To collect surface exchange data for output
@@ -188,17 +196,18 @@ void Lehning_snowpack::run(mesh_elem &face)
     {
         data->sp->runSnowpackModel(Mdata, *(data->Xdata), data->cum_precip, Bdata,surface_fluxes,mass_erode);
         surface_fluxes.collectSurfaceFluxes(Bdata, *(data->Xdata), Mdata);
-    }catch(std::exception& e)
+    }catch(...) //std::exception& e
     {
-        LOG_DEBUG << e.what();
+//        LOG_DEBUG << e.what();
         auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+") ID = " + std::to_string(face->cell_id);
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snowpack died. Triangle center = "+details));
     }
 
 
+
     if(data->Xdata->swe > 0)
     {
-        face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
+
         face->set_face_data("T_s",Mdata.tss); //-mio::Cst::t_water_freezing_pt
         face->set_face_data("T_s_0",Mdata.tss);
         face->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
@@ -218,10 +227,13 @@ void Lehning_snowpack::run(mesh_elem &face)
         //    }
     } else{
        set_all_nan_on_skip(face);
+
     }
 
     //always write out 0 swe regardless of amount of swee
     face->set_face_data("swe",data->Xdata->swe);
+    face->set_face_data("mass_snowpack_removed",data->Xdata->ErosionMass);
+    face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
     face->set_face_data("runoff",surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
 
 //    face->set_face_data("sum_runoff",  face->face_data("sum_runoff") + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);

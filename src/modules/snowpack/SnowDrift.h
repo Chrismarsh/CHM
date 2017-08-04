@@ -27,6 +27,7 @@
 #include <snowpack/DataClasses.h>
 #include <snowpack/SnowpackConfig.h>
 
+#include <algorithm>
 class Saltation;
 
 /**
