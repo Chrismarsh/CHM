@@ -201,8 +201,6 @@ def main():
 
             scaling_factor *= (iter+1)
 
-
-
     # now, reopen the file
     src_ds = gdal.Open(base_dir + base_name + '_projected.tif')
     gt = src_ds.GetGeoTransform()
@@ -245,8 +243,6 @@ def main():
             print 'Error: Unable to open raster for: %s' % key
             exit(1)
 
-
-
     for key, data in initial_conditions.iteritems():
         if initial_conditions[key]['method'] == 'mode':
             estr = exec_str + 'mode'
@@ -281,8 +277,6 @@ def main():
     # read all elevation data. Might be worth changing to the for-loop approach we use below so we don't have to read in all into ram.
     # some raster
     Z = dem.ReadAsArray()
-
-
 
     # set all the non-nodata values to our mask value
     Z[Z != dem.GetNoDataValue()] = 1
