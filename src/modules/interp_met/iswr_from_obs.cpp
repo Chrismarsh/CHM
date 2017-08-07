@@ -60,6 +60,9 @@ void iswr_from_obs::run(mesh_elem &face)
     double split_dir = iswr_observed * scalarFractionDirect;
     double split_diff = iswr_observed - split_dir;
 
+    split_dir = std::max(0.0,split_dir);
+    split_diff = std::max(0.0,split_diff);
+
     face->set_face_data("iswr_direct_no_slope",split_dir);
     face->set_face_data("iswr_diffuse_no_slope",split_diff);
     face->set_face_data("iswr_observed",iswr_observed);

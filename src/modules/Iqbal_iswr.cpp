@@ -164,6 +164,8 @@ void Iqbal_iswr::run(mesh_elem &face)
     double cf = face->face_data("cloud_frac");
     double dir = R_direct  * (0.6 + 0.2*cos_zenith) * (1.0-cf);
 
+    dir = std::max(0.0,dir);
+    R_diffuse = std::max(0.0,R_diffuse);
 
     face->set_face_data("iswr_direct_no_slope",dir);
     face->set_face_data("iswr_diffuse_no_slope",R_diffuse);

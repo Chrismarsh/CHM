@@ -77,6 +77,9 @@ void iswr::run(mesh_elem& face)
     double swr =  angle * face->face_data("iswr_direct_no_slope");
     double diff = face->face_data("iswr_diffuse_no_slope");
 
+    swr = std::max(0.0, swr);
+    diff = std::max(0.0,diff);
+
     face->set_face_data("iswr_direct",swr );
     face->set_face_data("iswr_diffuse",diff );
     face->set_face_data("iswr", swr + diff );

@@ -88,9 +88,9 @@ void Lehning_snowpack::run(mesh_elem &face)
 
 
     if(has_optional("iswr_subcanopy")) {
-        Mdata.iswr     =  face->face_data("iswr_subcanopy");
+        Mdata.iswr     =  std::max(0.0,face->face_data("iswr_subcanopy"));
     } else {
-        Mdata.iswr     =  face->face_data("iswr");
+        Mdata.iswr     =  std::max(0.0,face->face_data("iswr"));
     }
 
     // If  Snowpack, "SW_MODE" : "BOTH"  then rswr and iswr needs to be definined.
@@ -102,12 +102,12 @@ void Lehning_snowpack::run(mesh_elem &face)
         //measured albedo in snowpack will be fed from an albedo model
         //in the config 'both' will enable this
         Mdata.mAlbedo   =  face->face_data("snow_albedo");
-        Mdata.rswr      =  face->face_data("snow_albedo") * Mdata.iswr;
+        Mdata.rswr      =  std::max(0.0,face->face_data("snow_albedo") * Mdata.iswr);
 
     }
     else
     {
-        Mdata.rswr = data->Xdata->Albedo * Mdata.iswr;
+        Mdata.rswr = std::max(0.0,data->Xdata->Albedo * Mdata.iswr);
         Mdata.mAlbedo = Constants::undefined; //this will trigger calculating a paramaterized albedo
     }
 
