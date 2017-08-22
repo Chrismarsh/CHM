@@ -34,7 +34,7 @@ if(SUPERBUILD)
     set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
 endif()
 
-#set(VCL_ROOT "/Users/chris/Downloads/ViennaCL/")
+#set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
 
 ## Any custom boost path.
 #set(Boost_NO_SYSTEM_PATHS TRUE)
@@ -120,7 +120,12 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
-find_package(CGAL REQUIRED HINTS ${CGAL_DIR})
+if(SUPERBUILD)
+    find_package(CGAL REQUIRED HINTS ${CGAL_DIR})
+else()
+    find_package(CGAL REQUIRED)
+endif()
+
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
     include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
@@ -141,7 +146,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 ")
     endif()
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG")
 else()
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
@@ -167,16 +172,14 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 
-find_package(OpenMP)
 
-if(OPENMP_FOUND AND CMAKE_BUILD_TYPE MATCHES Release)
-    if(USE_OMP)
-        if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #osx Clang doesn't have mainline support for openmp
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-        endif()
+if(USE_OMP)
+    find_package(OpenMP)
+    if(OPENMP_FOUND AND CMAKE_BUILD_TYPE MATCHES Release AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #osx Clang doesn't have mainline support for openmp
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        add_definitions(-DVIENNACL_WITH_OPENMP)
     endif()
 endif()
-
 
 
 if(MATLAB)
@@ -184,14 +187,9 @@ if(MATLAB)
     find_package(Matlab REQUIRED)
 endif()
 
-if(OPENMP_FOUND)
-    message(STATUS "Enabling ViennaCL with OpenMP")
-    add_definitions(-DVIENNACL_WITH_OPENMP)
-endif()
-
 find_package(OpenCL)
 if(OPENCL_FOUND)
-    message(STATUS "Enabling ViennaCL with OpenCL")
+    message(STATUS "Enabling ViennaCL with OpenCL, vcl_scalar_type=float")
 
     add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
     add_definitions(-DVIENNACL_WITH_OPENCL)
@@ -204,8 +202,11 @@ else()
     unset(OPENCL_INCLUDE_DIRS CACHE)
 endif()
 
-find_package(Armadillo REQUIRED  HINTS ${Armadillo_DIR} )
-
+if(SUPERBUILD)
+    find_package(Armadillo REQUIRED  HINTS ${Armadillo_DIR} )
+else()
+    find_package(Armadillo REQUIRED)
+endif()
 
 set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
 message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")
@@ -232,7 +233,12 @@ else()
     set(Tcmalloc_LIBRARY "")
 endif()
 
-find_package(ViennaCL 1.7.1 REQUIRED HINTS ${VCL_ROOT})
+if(SUPERBUILD)
+    find_package(ViennaCL 1.7.1 REQUIRED HINTS ${VCL_ROOT})
+else()
+    find_package(ViennaCL 1.7.1 REQUIRED)
+endif()
+
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
 find_package(Boost
@@ -253,9 +259,9 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 find_package(GDAL 2.1 REQUIRED )
+
 find_package(PROJ4 REQUIRED) #gdal dependency, only need to link against it
-    
-    
+
 find_package (Threads REQUIRED)
 
 find_package(TBB REQUIRED)
@@ -264,7 +270,6 @@ find_package(GSL REQUIRED)
 
 find_package(Curses REQUIRED)
 
-#find_package(Sundials REQUIRED)
 
 #if we are building the plugin we need to compile against paraview (which brings in VTK)
 #otherwise use just VTK. You cannot link against both at the same time
@@ -272,11 +277,13 @@ if(PV_FILTER)
     FIND_PACKAGE(ParaView REQUIRED)
     INCLUDE(${PARAVIEW_USE_FILE})
 else()
-    find_package(VTK REQUIRED HINTS ${VTK_DIR})
+    if(SUPERBUILD)
+        find_package(VTK REQUIRED HINTS ${VTK_DIR})
+    else()
+        find_package(VTK REQUIRED)
+    endif()
     include(${VTK_USE_FILE})
 endif()
-
-
 
 # add a target to generate API documentation with Doxygen
 # generate this via 'make doc'
@@ -308,7 +315,6 @@ add_subdirectory(src)
 if (test)
     message(STATUS "Tests enabled. Run with make check")
     enable_testing()
-#    ADD_SUBDIRECTORY (src/tests)
 endif()
 
 if(PV_FILTER)
