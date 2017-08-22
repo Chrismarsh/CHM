@@ -62,7 +62,7 @@ void PBSM3D::init(mesh domain)
     if(settling_velocity > 0)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be negative"));
 
-    snow_diffusion_const = cfg.get("snow_diffusion_const",0.3); // Beta * K, this is beta and scales the eddy diffusivity
+    snow_diffusion_const = cfg.get("snow_diffusion_const",0.8); // Beta * K, this is beta and scales the eddy diffusivity
     do_sublimation = cfg.get("do_sublimation",true);
     do_lateral_diff = cfg.get("do_lateral_diff",true);
     eps = cfg.get("smooth_coeff",820);
@@ -435,10 +435,12 @@ void PBSM3D::run(mesh domain)
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
             double w = 1.1*10e7*pow(rm,1.8);
             double c2 = 1;
-            double dc = 1; //1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
-            
-            snow_diffusion_const= dc;
-            face->set_face_data("Km_coeff",dc);
+
+            // This is causing numerical stability issues, so for the moment disable
+//            double dc =1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
+//            snow_diffusion_const= dc;
+
+            face->set_face_data("Km_coeff",snow_diffusion_const);
             //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
             K[3] = K[4] = snow_diffusion_const * ustar * l;
 
@@ -456,7 +458,7 @@ void PBSM3D::run(mesh domain)
             double scale = u_z / length;
 
             uvw *= scale;
-            uvw(2) = -w;//settling_velocity; //settling velocity,
+            uvw(2) = -w; //settling_velocity;
 
             //holds wind dot face normal
             double udotm[5];
