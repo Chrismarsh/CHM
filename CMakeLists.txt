@@ -16,7 +16,7 @@ option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
-option(BUILD_VTK "Build a custom version of VTK" OFF)
+option(BUILD_VTK "Build a custom version of VTK" ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
 set(USE_TCMALLOC TRUE CACHE BOOL "use tcmalloc from gperftools ")
