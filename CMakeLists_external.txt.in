@@ -3,41 +3,54 @@ project(externalLib)
 include(ExternalProject)
 
 
-    #these should always be built and downloaded
-    ExternalProject_Add(
-	    sparsehash
-	    GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
-	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/sparsehash
+#these should always be built and downloaded
+ExternalProject_Add(
+    sparsehash
+    GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
+    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/sparsehash
 
-	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
+    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
+    UPDATE_COMMAND ""
+    BUILD_COMMAND make -j10
+    INSTALL_COMMAND make install
+    BUILD_IN_SOURCE 1
+    )
+
+if(USE_TCMALLOC)
+    ExternalProject_Add(
+        gperftools
+        GIT_REPOSITORY https://github.com/gperftools/gperftools
+        INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
+
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools 	    UPDATE_COMMAND ""
+        BUILD_COMMAND make -j10
+        INSTALL_COMMAND make install
+        BUILD_IN_SOURCE 1
+            )
+endif()
+
+ExternalProject_Add(
+    eigen3
+    URL http://bitbucket.org/eigen/eigen/get/3.3.4.tar.bz2
+    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/eigen3 -DINCLUDE_INSTALL_DIR=${CMAKE_BINARY_DIR}/lib/eigen3
+    UPDATE_COMMAND ""
+    BUILD_COMMAND make -j10
+    INSTALL_COMMAND make install
+    BUILD_IN_SOURCE 0
+    )
+
+if(SUPERBUILD OR BUILD_VTK)
+    ExternalProject_Add(
+	    VTK
+	    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
 	    UPDATE_COMMAND ""
+	    #PATCH_COMMAND patch -p1  < ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch
+	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
-
-    if(USE_TCMALLOC)
-        ExternalProject_Add(
-            gperftools
-            GIT_REPOSITORY https://github.com/gperftools/gperftools
-            INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
-
-            CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools 	    UPDATE_COMMAND ""
-            BUILD_COMMAND make -j10
-            INSTALL_COMMAND make install
-            BUILD_IN_SOURCE 1
-                )
-    endif()
-
-    ExternalProject_Add(
-	    eigen3
-	    URL http://bitbucket.org/eigen/eigen/get/3.3.4.tar.bz2
-	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/eigen3 -DINCLUDE_INSTALL_DIR=${CMAKE_BINARY_DIR}/lib/eigen3
-	    UPDATE_COMMAND ""
-	    BUILD_COMMAND make -j10
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 0
-	    )
+endif()
 
 #these are the -DSUPERBUILD=TRUE builds
 if(SUPERBUILD)
@@ -81,16 +94,6 @@ if(SUPERBUILD)
 	    BUILD_IN_SOURCE 1
 	    )
 
-    ExternalProject_Add(
-	    VTK
-	    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
-	    UPDATE_COMMAND ""
-	    #PATCH_COMMAND patch -p1  < ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch
-	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release
-	    BUILD_COMMAND make -j10 
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 1
-	    )
 
     ExternalProject_Add(
 	    CGAL

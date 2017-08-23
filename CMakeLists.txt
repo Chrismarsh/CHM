@@ -19,6 +19,12 @@ option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
 set(USE_TCMALLOC TRUE CACHE BOOL "use tcmalloc from gperftools ")
+set(BUILD_VTK FALSE CACHE BOOL "Build a custom version of VTK")
+
+#To avoid issues #104, newer VTK version needs to be used. Until VTK7+ becomes available in the LTS/&c releases, allow for easily building a new VTK
+if(SUPERBUILD OR BUILD_VTK)
+    set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
+endif()
 
 #enable with cmake -DSUPERBUILD=TRUE .
 if(SUPERBUILD)
@@ -26,7 +32,6 @@ if(SUPERBUILD)
     set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
     set(ENV{GDAL_ROOT} "${CMAKE_BINARY_DIR}/lib/gdal")  #this one really does have to be ENV
     set(GSL_ROOT "${CMAKE_BINARY_DIR}/lib/gsl/bin")
-    set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
     set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
     set(Boost_NO_SYSTEM_PATHS TRUE)
