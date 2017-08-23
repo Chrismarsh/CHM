@@ -16,11 +16,10 @@ option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
-option(BUILD_VTK "Build a custom version of VTK" ON)
+option(BUILD_VTK "Build a custom version of VTK" OFF)
+option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
-set(USE_TCMALLOC TRUE CACHE BOOL "use tcmalloc from gperftools ")
-
 
 #To avoid issues #104, newer VTK version needs to be used. Until VTK7+ becomes available in the LTS/&c releases, allow for easily building a new VTK
 if(SUPERBUILD OR BUILD_VTK)
@@ -69,7 +68,7 @@ configure_file(CMakeLists_external.txt.in
 
 #Trigger superbuild
 #If superbuild is not needed, we still need to build sparsehash, gperftools, and eigen3
-execute_process(COMMAND ${CMAKE_COMMAND} -DSUPERBUILD=${SUPERBUILD} -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
+execute_process(COMMAND ${CMAKE_COMMAND} -DBUILD_VTK=${BUILD_VTK} -DSUPERBUILD=${SUPERBUILD} -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 execute_process(COMMAND ${CMAKE_COMMAND}  --build .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
@@ -283,12 +282,21 @@ if(PV_FILTER)
     FIND_PACKAGE(ParaView REQUIRED)
     INCLUDE(${PARAVIEW_USE_FILE})
 else()
+
+    #N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
+    #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
+    # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
     if(SUPERBUILD OR BUILD_VTK)
-        find_package(VTK 7 REQUIRED HINTS ${VTK_DIR})
+        find_package(VTK REQUIRED HINTS ${VTK_DIR})
     else()
-        find_package(VTK 7 REQUIRED)
+        find_package(VTK REQUIRED)
     endif()
     include(${VTK_USE_FILE})
+
+    if(${VTK_MAJOR_VERSION} LESS_EQUAL 6)
+        #https://github.com/Chrismarsh/CHM/issues/104
+        message( FATAL_ERROR "VTK > 6 is required. VTK6 likely has a problem with CHM -- please see Issue #104." )
+    endif()
 endif()
 
 # add a target to generate API documentation with Doxygen

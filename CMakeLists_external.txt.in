@@ -40,7 +40,7 @@ ExternalProject_Add(
     )
 
 #for whatever reason, this has to use ${BUILD_VTK} and not BUILD_VTK otherwise it evaluates false.
-#if(${BUILD_VTK} OR SUPERBUILD )
+if(BUILD_VTK OR SUPERBUILD )
     ExternalProject_Add(
 	    VTK
 	    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
@@ -51,7 +51,7 @@ ExternalProject_Add(
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
-#endif()
+endif()
 
 #these are the -DSUPERBUILD=TRUE builds
 if( SUPERBUILD)
