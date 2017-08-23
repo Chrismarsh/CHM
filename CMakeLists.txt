@@ -44,7 +44,7 @@ endif()
 
 ## Any custom boost path.
 #set(Boost_NO_SYSTEM_PATHS TRUE)
-set(BOOST_ROOT "/opt/boost_1_62_0")
+#set(BOOST_ROOT "/opt/boost_1_62_0")
 
 
 #    Super build doesn't do TBB at the moment. If a custom location is needed, specify here
