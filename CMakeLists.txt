@@ -293,7 +293,7 @@ else()
     endif()
     include(${VTK_USE_FILE})
 
-    if(${VTK_MAJOR_VERSION} LESS_EQUAL 6)
+    if(VTK_MAJOR_VERSION LESS 7)
         #https://github.com/Chrismarsh/CHM/issues/104
         message( FATAL_ERROR "VTK > 6 is required. VTK6 likely has a problem with CHM -- please see Issue #104." )
     endif()
