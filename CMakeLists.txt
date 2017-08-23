@@ -16,10 +16,11 @@ option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
+option(BUILD_VTK "Build a custom version of VTK" ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
 set(USE_TCMALLOC TRUE CACHE BOOL "use tcmalloc from gperftools ")
-set(BUILD_VTK FALSE CACHE BOOL "Build a custom version of VTK")
+
 
 #To avoid issues #104, newer VTK version needs to be used. Until VTK7+ becomes available in the LTS/&c releases, allow for easily building a new VTK
 if(SUPERBUILD OR BUILD_VTK)
@@ -43,7 +44,7 @@ endif()
 
 ## Any custom boost path.
 #set(Boost_NO_SYSTEM_PATHS TRUE)
-#set(BOOST_ROOT "/home/cbm038/boost_1_63_0")
+set(BOOST_ROOT "/opt/boost_1_62_0")
 
 
 #    Super build doesn't do TBB at the moment. If a custom location is needed, specify here
@@ -283,9 +284,9 @@ if(PV_FILTER)
     INCLUDE(${PARAVIEW_USE_FILE})
 else()
     if(SUPERBUILD OR BUILD_VTK)
-        find_package(VTK REQUIRED 7 HINTS ${VTK_DIR})
+        find_package(VTK 7 REQUIRED HINTS ${VTK_DIR})
     else()
-        find_package(VTK REQUIRED 7)
+        find_package(VTK 7 REQUIRED)
     endif()
     include(${VTK_USE_FILE})
 endif()

@@ -39,7 +39,8 @@ ExternalProject_Add(
     BUILD_IN_SOURCE 0
     )
 
-if(SUPERBUILD OR BUILD_VTK)
+#for whatever reason, this has to use ${BUILD_VTK} and not BUILD_VTK otherwise it evaluates false.
+if(${BUILD_VTK} OR SUPERBUILD )
     ExternalProject_Add(
 	    VTK
 	    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
@@ -53,7 +54,7 @@ if(SUPERBUILD OR BUILD_VTK)
 endif()
 
 #these are the -DSUPERBUILD=TRUE builds
-if(SUPERBUILD)
+if( SUPERBUILD)
     ExternalProject_Add(
 	    boost
 	    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz
