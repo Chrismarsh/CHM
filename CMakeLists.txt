@@ -295,7 +295,7 @@ else()
 
     if(VTK_MAJOR_VERSION LESS 7)
         #https://github.com/Chrismarsh/CHM/issues/104
-        message( FATAL_ERROR "VTK > 6 is required. VTK6 likely has a problem with CHM -- please see Issue #104." )
+        message( FATAL_ERROR "VTK > 6 is required, please see issue #104. You can build a compatible VTK using -DBUILD_VTK=ON." )
     endif()
 endif()
 
