@@ -82,14 +82,15 @@ public:
     // Beta * K, this is beta and scales the eddy diffusivity
     double snow_diffusion_const ;
     double l__max; // vertical mixing length (m)
-
+    bool rouault_diffusion_coeff; //use the spatially variable diffusivity coefficient of Rouault 1991
+    
     double settling_velocity;
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.
     bool limit_mass; // do not saltate more snow than what exists in a cell.
     bool do_sublimation; // should we have a sink sublimation term?
     bool do_lateral_diff; // should have lateral diffusion
-
+    
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
     double min_mass_for_trans;
@@ -107,6 +108,7 @@ public:
 
         size_t cell_id;
 
+        double CanopyHeight;
 
         //saltation height
         double hs;

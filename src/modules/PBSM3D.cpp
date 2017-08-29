@@ -62,12 +62,20 @@ void PBSM3D::init(mesh domain)
     if(settling_velocity > 0)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be negative"));
 
-    snow_diffusion_const = cfg.get("snow_diffusion_const",0.8); // Beta * K, this is beta and scales the eddy diffusivity
+
     do_sublimation = cfg.get("do_sublimation",true);
     do_lateral_diff = cfg.get("do_lateral_diff",true);
     eps = cfg.get("smooth_coeff",820);
     limit_mass= cfg.get("limit_mass",true);
     min_mass_for_trans = cfg.get("min_mass_for_trans",10);
+
+    snow_diffusion_const = cfg.get("snow_diffusion_const",0.5); // Beta * K, this is beta and scales the eddy diffusivity
+    rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",true);
+
+    if(rouault_diffusion_coeff)
+    {
+        LOG_WARNING << "rouault_diffusion_coef overrides const snow_diffusion_const values.";
+    }
 
     n_non_edge_tri = 0;
 #pragma omp parallel for
@@ -77,6 +85,14 @@ void PBSM3D::init(mesh domain)
 
 
         auto d = face->make_module_data<data>(ID);
+
+        if(face->has_parameter("landcover"))
+        {
+            int LC = face->get_parameter("landcover");
+            d->CanopyHeight = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
+        } else{
+            d->CanopyHeight = 0;
+        }
 
         auto& m = d->m;
         //edge unit normals
@@ -224,7 +240,6 @@ void PBSM3D::run(mesh domain)
 
         //Pomeroy and Li, 2000
         // Eqn 7
-
         double T = face->face_data("t");
         double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T;
 
@@ -239,12 +254,16 @@ void PBSM3D::run(mesh domain)
         double swe = face->face_data("swe"); // mm   -->    kg/m^2
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
+        double snow_depth = face->face_data("snowdepthavg");
 //        face->set_face_data("ustar",ustar);
 
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if( ustar > u_star_saltation && swe > min_mass_for_trans)
+
+        if( ustar > u_star_saltation &&
+                swe > min_mass_for_trans &&
+                snow_depth >= d->CanopyHeight )
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
@@ -437,8 +456,12 @@ void PBSM3D::run(mesh domain)
             double c2 = 1;
 
             // This is causing numerical stability issues, so for the moment disable
-//            double dc =1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
-//            snow_diffusion_const= dc;
+            if(rouault_diffusion_coeff)
+            {
+                double dc =1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
+                snow_diffusion_const= dc;
+            }
+
 
             face->set_face_data("Km_coeff",snow_diffusion_const);
             //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
