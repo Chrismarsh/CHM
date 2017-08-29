@@ -29,6 +29,7 @@ public:
     ~scale_wind_vert();
     virtual void init(mesh domain);
     virtual void run(mesh domain);
+    bool ignore_canopy;
     //virtual void init(mesh domain);
     struct d: public face_info
     {

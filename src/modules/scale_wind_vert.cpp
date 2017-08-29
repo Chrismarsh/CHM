@@ -32,6 +32,8 @@ void scale_wind_vert::init(mesh domain)
         data->interp.init(interp_alg::tpspline,3,{{"reuse_LU","true"}});
     }
 
+    ignore_canopy = cfg.get("ignore_canopy",false);
+
 }
 
 void scale_wind_vert::run(mesh domain)
@@ -48,7 +50,7 @@ void scale_wind_vert::run(mesh domain)
 
         double Z_CanTop = 0;
 
-        if (face->has_parameter("landcover"))
+        if (!ignore_canopy && face->has_parameter("landcover"))
         {
             int LC = face->get_parameter("landcover");
             Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
@@ -83,7 +85,7 @@ void scale_wind_vert::run(mesh domain)
         /////
 
         // If a Canopy exists
-        if (Z_CanTop > 0.0)
+        if (!ignore_canopy && Z_CanTop > 0.0)
         {
             // Get Canopy/Surface info
 
