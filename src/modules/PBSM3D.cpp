@@ -66,8 +66,8 @@ void PBSM3D::init(mesh domain)
     do_sublimation = cfg.get("do_sublimation",true);
     do_lateral_diff = cfg.get("do_lateral_diff",true);
     eps = cfg.get("smooth_coeff",820);
-    limit_mass= cfg.get("limit_mass",true);
-    min_mass_for_trans = cfg.get("min_mass_for_trans",10);
+    limit_mass= cfg.get("limit_mass",false);
+    min_mass_for_trans = cfg.get("min_mass_for_trans",0);
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.5); // Beta * K, this is beta and scales the eddy diffusivity
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",true);
@@ -173,6 +173,7 @@ void PBSM3D::run(mesh domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
+        auto id = face->cell_id;
         auto d = face->get_module_data<data>(ID);
         auto& m = d->m;
 
@@ -248,7 +249,7 @@ void PBSM3D::run(mesh domain)
         double c_salt = 0;
 
 
-        double c_salt_fetch_big;
+        double c_salt_fetch_big=0;
 //        face->set_face_data("u*_th",u_star_saltation);
 
         double swe = face->face_data("swe"); // mm   -->    kg/m^2
@@ -260,10 +261,13 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-
+         if(id == 23376)
+         {
+             LOG_DEBUG << "hi";
+         }
         if( ustar > u_star_saltation &&
-                swe > min_mass_for_trans &&
-                snow_depth >= d->CanopyHeight )
+                swe > min_mass_for_trans /*&&
+                snow_depth >= d->CanopyHeight*/ )
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
