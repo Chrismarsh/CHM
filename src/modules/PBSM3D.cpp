@@ -72,6 +72,8 @@ void PBSM3D::init(mesh domain)
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.5); // Beta * K, this is beta and scales the eddy diffusivity
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",true);
 
+    enable_veg = cfg.get("enable_veg",true);
+
     if(rouault_diffusion_coeff)
     {
         LOG_WARNING << "rouault_diffusion_coef overrides const snow_diffusion_const values.";
@@ -261,13 +263,9 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-         if(id == 23376)
-         {
-             LOG_DEBUG << "hi";
-         }
         if( ustar > u_star_saltation &&
-                swe > min_mass_for_trans /*&&
-                snow_depth >= d->CanopyHeight*/ )
+                swe > min_mass_for_trans &&
+                (enable_veg && snow_depth >= d->CanopyHeight ) )
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;

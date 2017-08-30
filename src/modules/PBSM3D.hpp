@@ -90,6 +90,7 @@ public:
     bool limit_mass; // do not saltate more snow than what exists in a cell.
     bool do_sublimation; // should we have a sink sublimation term?
     bool do_lateral_diff; // should have lateral diffusion
+    bool enable_veg; // should we consider vegetation ?
     
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
