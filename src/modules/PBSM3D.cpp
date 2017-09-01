@@ -34,7 +34,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("saltation_mass");
 
     provides("hs");
-//    provides("ustar");
+    provides("ustar");
 
     provides("csalt");
     provides("c_salt_fetch_big");
