@@ -35,6 +35,8 @@ PBSM3D::PBSM3D(config_file cfg)
 
     provides("hs");
     provides("ustar");
+    provides("l");
+
 
     provides("csalt");
     provides("c_salt_fetch_big");
@@ -460,6 +462,7 @@ void PBSM3D::run(mesh domain)
             }
             //Li and Pomeroy 2000
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
+            face->set_face_data("l",l);
             double w = 1.1*10e7*pow(rm,1.8);
             double c2 = 1;
 
