@@ -33,6 +33,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("suspension_mass");
     provides("saltation_mass");
 
+    provides("w");
     provides("hs");
     provides("ustar");
     provides("l");
@@ -72,7 +73,7 @@ void PBSM3D::init(mesh domain)
     min_mass_for_trans = cfg.get("min_mass_for_trans",0);
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.5); // Beta * K, this is beta and scales the eddy diffusivity
-    rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",true);
+    rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",false);
 
     enable_veg = cfg.get("enable_veg",true);
 
@@ -86,8 +87,6 @@ void PBSM3D::init(mesh domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-
-
         auto d = face->make_module_data<data>(ID);
 
         if(face->has_parameter("landcover") && enable_veg)
@@ -217,18 +216,9 @@ void PBSM3D::run(mesh domain)
         d->hs = hs;
         face->set_face_data("hs",hs);
 
-        // Assuming no horizontal diffusion of blowing snow. Thus the below section does not need to be computed
-        // If we add in horizontal diffusion (not sure why), then this will have to be computed on a per-layer basis.
-
         //eddy diffusivity (m^2/s)
         // 0,1,2 will all be K = 0, as no horizontal diffusion process
         double K[5] = {0, 0, 0, 0, 0};
-
-        //zero this face element out
-        for (int z = 0; z < nLayer; ++z)
-        {
-            face->set_face_data("K" + std::to_string(z), 0);
-        }
 
         // holds A_ * K_ / h_
         // _0 -> _2 are the horizontal sides
@@ -239,12 +229,7 @@ void PBSM3D::run(mesh domain)
 
         double t = face->face_data("t")+273.15;
 
-        // m/s threshold shear stress for aerodynamic entrainment
-        //0.2m/s as per Figure 2 Doorschot, J. J. J., & Lehning, M. (2002). Equilibrium saltation: Mass fluxes, aerodynamic entrainment, and dependence on grain properties. Boundary-Layer Meteorology, 104(1), 111–130. http://doi.org/10.1023/A:1015516420286
-        double tau_t_f = 0.2;
-
-        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.1.225; // air density, fix for T dependenc
-
+        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.1.225; // air density, fix for T dependency
 
         //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
         //double u_star_t = pow(tau_t_f/rho_f,0.5);
@@ -293,14 +278,14 @@ void PBSM3D::run(mesh domain)
             }
 
             c_salt_fetch_big = c_salt;
-            double fetch_ref = 500;
-            double mu = 3.0;
 
             //use the exp decay of Liston, eq 10
             //95% of max saltation occurs at fetch = 500m
             //Liston, G., & Sturm, M. (1998). A snow-transport model for complex terrain. Journal of Glaciology.
             if(fetch < 500)
             {
+                double fetch_ref = 500;
+                double mu = 3.0;
                 c_salt *= 1.0-exp(-mu * fetch/fetch_ref);
             }
             //mean wind speed in the saltation layer
@@ -312,41 +297,41 @@ void PBSM3D::run(mesh domain)
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
             //in the triangle. I
-            double salt=0;
-            double udotm[3];
-            double A = face->get_area();
-            double E[3];
-            for(int j=0; j<3; ++j)
-            {
-                E[j]=face->edge_length(j);
-                udotm[j] = arma::dot(uvw, m[j]);
-                salt += -.5000000000*E[j]*Qsalt*udotm[j]/A;
-            }
-
-            //https://www.wolframalpha.com/input/?i=(m*(kg%2Fm%5E3*(m%2Fs)*m)%2Fm%5E2)*s
-            salt = std::fabs(salt) *  global_param->dt(); // ->kg/m^2
-
-            face->set_face_data("salt_limit",salt);
-
-            //Figure out the max we can transport, ie total mass in cell
-            if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
-            {
-
-                //back out what the max conc should be based on our swe
-                //units: ((kg/m^2)*m^2)/( s*m*(m/s)*m ) -> kg/m^3
-                c_salt = -2.*swe*A/(uhs*hs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2]));
-
-                Qsalt = c_salt * uhs * hs;
-                if(is_nan(c_salt)) //shoouldn't happen but....
-                {
-                    c_salt = 0;
-                    Qsalt = 0;
-                }
-
-
-//                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt << " triangle="<<i;
-//                LOG_DEBUG << "Avail mass = " << swe << ", would have salted =  " << salt;
-            }
+//            double salt=0;
+//            double udotm[3];
+//            double A = face->get_area();
+//            double E[3];
+//            for(int j=0; j<3; ++j)
+//            {
+//                E[j]=face->edge_length(j);
+//                udotm[j] = arma::dot(uvw, m[j]);
+//                salt += -.5000000000*E[j]*Qsalt*udotm[j]/A;
+//            }
+//
+//            //https://www.wolframalpha.com/input/?i=(m*(kg%2Fm%5E3*(m%2Fs)*m)%2Fm%5E2)*s
+//            salt = std::fabs(salt) *  global_param->dt(); // ->kg/m^2
+//
+//            face->set_face_data("salt_limit",salt);
+//
+//            //Figure out the max we can transport, ie total mass in cell
+//            if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
+//            {
+//
+//                //back out what the max conc should be based on our swe
+//                //units: ((kg/m^2)*m^2)/( s*m*(m/s)*m ) -> kg/m^3
+//                c_salt = -2.*swe*A/(uhs*hs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2]));
+//
+//                Qsalt = c_salt * uhs * hs;
+//                if(is_nan(c_salt)) //shoouldn't happen but....
+//                {
+//                    c_salt = 0;
+//                    Qsalt = 0;
+//                }
+//
+//
+////                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt << " triangle="<<i;
+////                LOG_DEBUG << "Avail mass = " << swe << ", would have salted =  " << salt;
+//            }
         }
 
         // can use for point scale plume testing.
@@ -417,9 +402,6 @@ void PBSM3D::run(mesh domain)
                 return result;
             };
 
-            double guess = t;
-            double factor = 1;
-            int digits = std::numeric_limits<double>::digits - 3;
             double min = 200;
             double max = 300;
             boost::uintmax_t max_iter=500;
@@ -464,19 +446,21 @@ void PBSM3D::run(mesh domain)
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
             face->set_face_data("l",l);
             double w = 1.1*10e7*pow(rm,1.8);
-            double c2 = 1;
-
+            face->set_face_data("w",w);
             // This is causing numerical stability issues, so for the moment disable
-            if(rouault_diffusion_coeff)
+
+            if (rouault_diffusion_coeff)
             {
-                double dc =1.0/(1.0+(c2*w*w)/(1.56*ustar*ustar));
-                snow_diffusion_const= dc;
+                double c2 = 1.0;
+                double dc = 1.0 / (1.0 + (c2 * w * w) / (1.56 * ustar * ustar));
+                snow_diffusion_const = dc;
             }
 
 
-            face->set_face_data("Km_coeff",snow_diffusion_const);
-            //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
-            K[3] = K[4] = snow_diffusion_const * ustar * l;
+            face->set_face_data("Km_coeff", snow_diffusion_const);
+
+             //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
+             K[3] = K[4] = snow_diffusion_const * ustar * l;
 
 
 //            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
@@ -682,7 +666,6 @@ void PBSM3D::run(mesh domain)
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
         double Qsusp = 0;
-        double Qsubl = 0;
         double hs = d->hs;
 
         double u2 = face->face_data("U_2m_above_srf");
