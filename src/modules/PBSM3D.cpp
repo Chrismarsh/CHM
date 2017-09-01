@@ -88,7 +88,7 @@ void PBSM3D::init(mesh domain)
 
         auto d = face->make_module_data<data>(ID);
 
-        if(face->has_parameter("landcover"))
+        if(face->has_parameter("landcover") && enable_veg)
         {
             int LC = face->get_parameter("landcover");
             d->CanopyHeight = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
@@ -222,6 +222,12 @@ void PBSM3D::run(mesh domain)
         // 0,1,2 will all be K = 0, as no horizontal diffusion process
         double K[5] = {0, 0, 0, 0, 0};
 
+        //zero this face element out
+        for (int z = 0; z < nLayer; ++z)
+        {
+            face->set_face_data("K" + std::to_string(z), 0);
+        }
+
         // holds A_ * K_ / h_
         // _0 -> _2 are the horizontal sides
         // _3 -> is the top of the prism
@@ -258,14 +264,14 @@ void PBSM3D::run(mesh domain)
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
         double snow_depth = face->face_data("snowdepthavg");
-//        face->set_face_data("ustar",ustar);
+        face->set_face_data("ustar",ustar);
 
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
         if( ustar > u_star_saltation &&
                 swe > min_mass_for_trans &&
-                (enable_veg && snow_depth >= d->CanopyHeight ) )
+                snow_depth >= d->CanopyHeight  )
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
