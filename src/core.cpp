@@ -723,7 +723,7 @@ void core::config_output(const pt::ptree &value)
             points->InsertNextPoint ( out.face->get_x(), out.face->get_y(), out.face->get_z() );
             labels->InsertNextValue(out.name);
 
-            LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./3.14159 << " aspect:" << out.face->aspect() * 180./3.14159;
+            LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./M_PI << " aspect:" << out.face->aspect() * 180./M_PI;
 
             out.face->_debug_name = out.name; //out_type holds the station name
             out.face->_debug_ID = ID;

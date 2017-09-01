@@ -10,7 +10,7 @@ namespace math
             // http://stackoverflow.com/questions/1125144/how-do-i-find-the-lat-long-that-is-x-km-north-of-a-given-lat-long
             double Latitude = src.y();
             double Longitude = src.x();
-            double PI = 3.1415926;
+            double PI = M_PI;
             double DegreesToRadians = PI / 180.0;
             double RadiansToDegrees = 180.0/PI;
 
@@ -49,7 +49,7 @@ namespace math
 
         double distance_latlong(Point_3 pt1, Point_3 pt2)
         {
-            double PI = 3.1415926;
+            double PI = M_PI;
             double DegreesToRadians = PI / 180.0;
 
             double lat1=pt1.y() * DegreesToRadians;

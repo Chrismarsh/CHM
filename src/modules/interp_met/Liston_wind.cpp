@@ -129,7 +129,7 @@ void Liston_wind::init(mesh domain)
 
 void Liston_wind::run(mesh domain)
 {
-    double PI = 3.14159;
+
 
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
@@ -233,13 +233,13 @@ void Liston_wind::run(mesh domain)
 
         W = std::max(W,0.1);
         face->set_face_data("U_R", W);
-        face->set_face_data("vw_dir", theta * 180.0 / 3.14159);
+        face->set_face_data("vw_dir", theta * 180.0 / M_PI);
 
 
-        Vector_2 v = math::gis::bearing_to_cartesian(theta* 180.0 / 3.14159);
+        Vector_2 v = math::gis::bearing_to_cartesian(theta* 180.0 / M_PI);
         Vector_3 v3(-v.x(),-v.y(), 0); //negate as direction it's blowing instead of where it is from!!
 
-        face->set_face_data("vw_dir_divergence",dirdiff* 180.0 / 3.14159);
+        face->set_face_data("vw_dir_divergence",dirdiff* 180.0 / M_PI);
         face->set_face_vector("wind_direction",v3);
 
     }
