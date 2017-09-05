@@ -449,18 +449,18 @@ void PBSM3D::run(mesh domain)
             face->set_face_data("w",w);
             // This is causing numerical stability issues, so for the moment disable
 
+
+            double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
             if (rouault_diffusion_coeff)
             {
                 double c2 = 1.0;
                 double dc = 1.0 / (1.0 + (c2 * w * w) / (1.56 * ustar * ustar));
-                snow_diffusion_const = dc;
+                diffusion_coeff = dc;     //nope, snow_diffusion_const is shared, use a new
             }
-
-
-            face->set_face_data("Km_coeff", snow_diffusion_const);
+            face->set_face_data("Km_coeff", diffusion_coeff);
 
              //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
-             K[3] = K[4] = snow_diffusion_const * ustar * l;
+             K[3] = K[4] = diffusion_coeff * ustar * l;
 
 
 //            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
