@@ -37,7 +37,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("hs");
     provides("ustar");
     provides("l");
-
+    provides("z0");
 
     provides("csalt");
     provides("c_salt_fetch_big");
@@ -93,8 +93,10 @@ void PBSM3D::init(mesh domain)
         {
             int LC = face->get_parameter("landcover");
             d->CanopyHeight = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
+            d->LAI = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
         } else{
             d->CanopyHeight = 0;
+            d->LAI = 0;
         }
 
         auto& m = d->m;
@@ -187,6 +189,14 @@ void PBSM3D::run(mesh domain)
         //get wind from the face
         double phi = face->face_data("vw_dir");
         double u2 = face->face_data("U_2m_above_srf");
+
+        double swe = face->face_data("swe"); // mm   -->    kg/m^2
+        swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
+
+        double snow_depth = face->face_data("snowdepthavg");
+        snow_depth = is_nan(snow_depth) ? 0: snow_depth;
+
+
         double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
 //        face->set_face_data("u10",u10);
 
@@ -198,11 +208,44 @@ void PBSM3D::run(mesh domain)
         uvw(1) = vwind.y(); //U_y
         uvw(2) = 0;
 
+
+        // -------
+        // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
+
+        // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
+
+        double height_diff =d->CanopyHeight - snow_depth;
+        height_diff = std::min(0.0,height_diff);
+
+        double lambda = d->LAI / 2.0 * (height_diff);
+        auto z0Fn = [&](double z0) -> double
+        {
+            //This formulation has the following coeffs built in for efficiency;
+            // c_2 = 1.6;
+            // c_3 = 0.07519;
+            // c_4 - 0.5;
+            double result = (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2)/(2*9.81)+.5*lambda;
+            return result;
+        };
+
+        double min = 0.0001;
+        double max = 10;
+        boost::uintmax_t max_iter=500;
+        boost::math::tools::eps_tolerance<double> tol(30);
+        auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
+        d->z0 = r.first + (r.second - r.first)/2;
+        d->z0 = std::max(0.001,d->z0);
         //solve for ustar as perturbed by blowing snow
         //  not 100% sure this should be done w/o blowing snow. Might need to revisit this
-        double ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
+//        double ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
+
+        double ustar = u2*k/log(2.0/d->z0);
         ustar = std::max(0.1,ustar);
-        d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
+        face->set_face_data("z0",d->z0);
+//        d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
+
+
+        // ------------------
 
         //depth of saltation layer
         double hs = 0;
@@ -247,28 +290,26 @@ void PBSM3D::run(mesh domain)
         double c_salt_fetch_big=0;
 //        face->set_face_data("u*_th",u_star_saltation);
 
-        double swe = face->face_data("swe"); // mm   -->    kg/m^2
-        swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
-
-        double snow_depth = face->face_data("snowdepthavg");
         face->set_face_data("ustar",ustar);
 
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
         if( ustar > u_star_saltation &&
-                swe > min_mass_for_trans &&
-                snow_depth >= d->CanopyHeight  )
+                swe > min_mass_for_trans /*&&
+                snow_depth >= d->CanopyHeight*/  )
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
             face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
             face->set_face_data("is_drifting",1);
-            //Pomeroy 1990
 
-            //it's not really clear what the u_star_t is, but I think it's actually the threshold.
-//            c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_t*u_star_t) / (ustar * ustar));
-            c_salt = rho_f / (3.29 * ustar) * (1.0 - (u_star_saltation*u_star_saltation) / (ustar * ustar));
+            //Pomeroy and Li 2000, eqn 8
+            double Beta = 170.0;
+            double ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
+
+            //Pomeroy 1990
+            c_salt = rho_f / (3.29 * ustar) * (1.0 - (ustar_n*ustar_n)/(ustar * ustar) -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
 
             // occasionally happens to happen at low wind speeds where the parameterization breaks.
             // hasn't happened since changed this to the threshold velocity though...

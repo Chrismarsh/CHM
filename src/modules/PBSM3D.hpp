@@ -110,6 +110,7 @@ public:
         size_t cell_id;
 
         double CanopyHeight;
+        double LAI;
 
         //saltation height
         double hs;
