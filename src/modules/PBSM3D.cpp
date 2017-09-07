@@ -217,34 +217,37 @@ void PBSM3D::run(mesh domain)
         double height_diff =d->CanopyHeight - snow_depth;
         height_diff = std::min(0.0,height_diff);
 
+        double ustar = 0;
         double lambda = d->LAI / 2.0 * (height_diff);
-        auto z0Fn = [&](double z0) -> double
+        if (lambda == 0)
         {
-            //This formulation has the following coeffs built in for efficiency;
-            // c_2 = 1.6;
-            // c_3 = 0.07519;
-            // c_4 - 0.5;
-            double result = (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2)/(2*9.81)+.5*lambda;
-            return result;
-        };
+             ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
+             d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
+        }
+        else
+        {
+            auto z0Fn = [&](double z0) -> double
+            {
+                //This formulation has the following coeffs built in for efficiency;
+                // c_2 = 1.6;
+                // c_3 = 0.07519;
+                // c_4 - 0.5;
+                double result = (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2)/(2*9.81)+.5*lambda;
+                return result;
+            };
 
-        double min = 0.0001;
-        double max = 10;
-        boost::uintmax_t max_iter=500;
-        boost::math::tools::eps_tolerance<double> tol(30);
-        auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
-        d->z0 = r.first + (r.second - r.first)/2;
-        d->z0 = std::max(0.001,d->z0);
-        //solve for ustar as perturbed by blowing snow
-        //  not 100% sure this should be done w/o blowing snow. Might need to revisit this
-//        double ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
+            double min = 0.0001;
+            double max = 10;
+            boost::uintmax_t max_iter=500;
+            boost::math::tools::eps_tolerance<double> tol(30);
+            auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
+            d->z0 = r.first + (r.second - r.first)/2;
+            d->z0 = std::max(0.001,d->z0);
 
-        double ustar = u2*k/log(2.0/d->z0);
-        ustar = std::max(0.1,ustar);
+            ustar = u2*PhysConst::kappa/log(2.0/d->z0);
+            ustar = std::max(0.1,ustar);
+        }
         face->set_face_data("z0",d->z0);
-//        d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
-
-
         // ------------------
 
         //depth of saltation layer

@@ -170,7 +170,7 @@ void MS_wind::run(mesh domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        face->set_face_data("U_R",face->get_module_data<data>(ID)->temp_u );
+        face->set_face_data("U_R", std::max(0.1,face->get_module_data<data>(ID)->temp_u) );
     }
 }
 

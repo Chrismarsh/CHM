@@ -91,7 +91,7 @@ bool timestep::has(const std::string &variable)
 
 double timestep::get(const std::string &variable)
 {
-#ifdef DEBUG
+#ifdef SAFE_CHECKS
     auto res = _itrs.find(variable);
     if(res == _itrs.end())
         BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
@@ -105,7 +105,7 @@ void timestep::set(const std::string &variable, const double &value)
 {
     //this is slower than just getting the value, but it prevents subtle bugs where
     // a module tries to create a variable it didn't allocate in a provides call
-#ifdef DEBUG
+#ifdef SAFE_CHECKS
     auto res = _itrs.find(variable);
     if(res == _itrs.end())
         BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
