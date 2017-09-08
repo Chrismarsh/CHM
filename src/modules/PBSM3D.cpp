@@ -38,6 +38,8 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("ustar");
     provides("l");
     provides("z0");
+    provides("lambda");
+    provides("LAI");
 
     provides("csalt");
     provides("c_salt_fetch_big");
@@ -215,38 +217,48 @@ void PBSM3D::run(mesh domain)
         // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
 
         double height_diff =d->CanopyHeight - snow_depth;
-        height_diff = std::min(0.0,height_diff);
+//        height_diff = std::max(0.0,height_diff);
 
         double ustar = 0;
         double lambda = d->LAI / 2.0 * (height_diff);
-        if (lambda == 0)
-        {
-             ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
-             d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
-        }
-        else
-        {
+        face->set_face_data("LAI",d->LAI);
+        face->set_face_data("lambda",lambda);
+//        if (lambda == 0)
+//        {
+//             ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
+//             d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
+//        }
+//        else
+//        {
             auto z0Fn = [&](double z0) -> double
             {
-                //This formulation has the following coeffs built in for efficiency;
+                //This formulation has the following coeffs built in
                 // c_2 = 1.6;
                 // c_3 = 0.07519;
                 // c_4 - 0.5;
-                double result = (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2)/(2*9.81)+.5*lambda;
-                return result;
+                return (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2.0)/(2.0*9.81)+.5*lambda-z0;
             };
 
             double min = 0.0001;
-            double max = 10;
+            double max = 1.340640092;
             boost::uintmax_t max_iter=500;
-            boost::math::tools::eps_tolerance<double> tol(30);
+//            boost::math::tools::eps_tolerance<double> tol(60);
+
+        auto tol = [](double a, double b) -> bool
+        {
+            LOG_DEBUG << (fabs(a-b) < 1e-8);
+            return fabs(a-b) < 1e-8;
+        };
+
+
             auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
-            d->z0 = r.first + (r.second - r.first)/2;
-            d->z0 = std::max(0.001,d->z0);
+            d->z0 = r.first + (r.second - r.first) / 2;
+
+            d->z0 = std::max(0.0001,d->z0);
 
             ustar = u2*PhysConst::kappa/log(2.0/d->z0);
             ustar = std::max(0.1,ustar);
-        }
+//        }
         face->set_face_data("z0",d->z0);
         // ------------------
 
@@ -450,8 +462,9 @@ void PBSM3D::run(mesh domain)
             double max = 300;
             boost::uintmax_t max_iter=500;
             boost::math::tools::eps_tolerance<double> tol(30);
-            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol, max_iter);
-            double Ts = r.first + (r.second - r.first)/2;
+
+//            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol, max_iter);max_iter
+            double Ts = 273;//r.first + (r.second - r.first)/2;
 
             //now use equation 13 with our solved Ts to compute dm/dt(z)
             double dmdtz = 2.0 * M_PI * rm * lambda_t / Ls * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000

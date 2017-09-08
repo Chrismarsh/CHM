@@ -1,5 +1,5 @@
 #pragma once
-
+#define BOOST_MATH_INSTRUMENT
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
