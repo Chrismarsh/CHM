@@ -44,7 +44,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("csalt");
     provides("c_salt_fetch_big");
 
-//    provides("u*_th");
+    provides("u*_n");
 
     provides("drift_mass"); //kg/m^2
     provides("Qsusp");
@@ -216,13 +216,15 @@ void PBSM3D::run(mesh domain)
 
         // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
 
-        double height_diff =d->CanopyHeight - snow_depth;
-//        height_diff = std::max(0.0,height_diff);
+        double height_diff = d->CanopyHeight - snow_depth;
+        height_diff = std::max(0.0,height_diff); //don't allow negative differences in height
 
-        double ustar = 0;
+        double ustar = 1.3;
         double lambda = d->LAI / 2.0 * (height_diff);
         face->set_face_data("LAI",d->LAI);
         face->set_face_data("lambda",lambda);
+
+        //if lambda is 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
 //        if (lambda == 0)
 //        {
 //             ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
@@ -230,35 +232,50 @@ void PBSM3D::run(mesh domain)
 //        }
 //        else
 //        {
-            auto z0Fn = [&](double z0) -> double
-            {
-                //This formulation has the following coeffs built in
-                // c_2 = 1.6;
-                // c_3 = 0.07519;
-                // c_4 - 0.5;
-                return (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2.0)/(2.0*9.81)+.5*lambda-z0;
-            };
+        auto z0Fn = [&](double z0) -> double
+        {
+            //This formulation has the following coeffs built in
+            // c_2 = 1.6;
+            // c_3 = 0.07519;
+            // c_4 - 0.5;
+            return (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2.0)/(2.0*9.81)+.5*lambda-z0;
+        };
 
-            double min = 0.0001;
-            double max = 1.340640092;
-            boost::uintmax_t max_iter=500;
-//            boost::math::tools::eps_tolerance<double> tol(60);
+        double min = 0.0001;
+        double max = 1;
+        boost::uintmax_t max_iter=500;
 
+
+        d->no_saltation = false;
         auto tol = [](double a, double b) -> bool
         {
-            LOG_DEBUG << (fabs(a-b) < 1e-8);
             return fabs(a-b) < 1e-8;
         };
 
-
+        try {
             auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
             d->z0 = r.first + (r.second - r.first) / 2;
-
-            d->z0 = std::max(0.0001,d->z0);
-
             ustar = u2*PhysConst::kappa/log(2.0/d->z0);
-            ustar = std::max(0.1,ustar);
-//        }
+        }
+        catch(...)
+        {
+            // for cases of large LAI, the above will not converge withing the min/max given
+            // this will trap that error, and sets that cell to have no saltation,
+            // however re calculate the zo and ustar as if tehre was no vegetation.
+            // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
+            // in ares of trees.
+            d->no_saltation = true;
+
+
+            ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
+            d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
+        }
+
+
+        d->z0 = std::max(0.0001,d->z0);
+        ustar = std::max(0.1,ustar);
+
+
         face->set_face_data("z0",d->z0);
         // ------------------
 
@@ -311,7 +328,10 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
         if( ustar > u_star_saltation &&
-                swe > min_mass_for_trans /*&&
+                swe > min_mass_for_trans &&
+                !d->no_saltation
+
+            /*&&
                 snow_depth >= d->CanopyHeight*/  )
         {
 
@@ -322,8 +342,8 @@ void PBSM3D::run(mesh domain)
             //Pomeroy and Li 2000, eqn 8
             double Beta = 170.0;
             double ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
-
-            //Pomeroy 1990
+            face->set_face_data("u*_n",ustar_n);
+            //Pomeroy 1992, eqn 12
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (ustar_n*ustar_n)/(ustar * ustar) -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
 
             // occasionally happens to happen at low wind speeds where the parameterization breaks.

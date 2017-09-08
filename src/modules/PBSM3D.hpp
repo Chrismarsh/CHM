@@ -1,5 +1,5 @@
 #pragma once
-#define BOOST_MATH_INSTRUMENT
+//#define BOOST_MATH_INSTRUMENT
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
@@ -116,6 +116,9 @@ public:
         double hs;
 
         bool is_edge;
+
+        //used to flag the large vegetation areas or other via landcover types to not do any saltation at this point.
+        bool no_saltation;
 
         double z0;
     };
