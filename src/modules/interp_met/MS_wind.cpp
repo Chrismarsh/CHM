@@ -47,7 +47,7 @@ void MS_wind::run(mesh domain)
 
             double theta = s->get("vw_dir") * M_PI / 180.;
 
-            auto f = s->get_closest_face();
+            auto f = s->closest_face();
             //figure out which lookup map we need
             int d = int(theta*180/M_PI/45.);
             if (d == 0) d = 8;
