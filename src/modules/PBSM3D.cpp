@@ -484,8 +484,8 @@ void PBSM3D::run(mesh domain)
             boost::uintmax_t max_iter=500;
             boost::math::tools::eps_tolerance<double> tol(30);
 
-//            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol, max_iter);max_iter
-            double Ts = 273;//r.first + (r.second - r.first)/2;
+            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol, max_iter);max_iter
+            double Ts = r.first + (r.second - r.first)/2;
 
             //now use equation 13 with our solved Ts to compute dm/dt(z)
             double dmdtz = 2.0 * M_PI * rm * lambda_t / Ls * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
