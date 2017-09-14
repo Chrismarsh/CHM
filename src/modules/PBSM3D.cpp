@@ -224,53 +224,48 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("LAI",d->LAI);
         face->set_face_data("lambda",lambda);
 
+
         //if lambda is 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-//        if (lambda == 0)
-//        {
-//             ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
-//             d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
-//        }
-//        else
-//        {
-        auto z0Fn = [&](double z0) -> double
-        {
-            //This formulation has the following coeffs built in
-            // c_2 = 1.6;
-            // c_3 = 0.07519;
-            // c_4 - 0.5;
-            return (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2.0)/(2.0*9.81)+.5*lambda-z0;
-        };
+        if (lambda < 1e-1 || swe < 1) {
+            ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
+            d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
+        } else {
+            auto z0Fn = [&](double z0) -> double {
+                //This formulation has the following coeffs built in
+                // c_2 = 1.6;
+                // c_3 = 0.07519;
+                // c_4 - 0.5;
+                return (1.6 * 0.7519e-1) * pow(.41 * u2 / log(2.0 / z0), 2.0) / (2.0 * 9.81) + .5 * lambda - z0;
+            };
 
-        double min = 0.0001;
-        double max = 1;
-        boost::uintmax_t max_iter=500;
+            double min = 0.0001;
+            double max = 1;
+            boost::uintmax_t max_iter = 500;
 
 
-        d->no_saltation = false;
-        auto tol = [](double a, double b) -> bool
-        {
-            return fabs(a-b) < 1e-8;
-        };
+            d->no_saltation = false;
+            auto tol = [](double a, double b) -> bool {
+                return fabs(a - b) < 1e-8;
+            };
 
-        try {
-            auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
-            d->z0 = r.first + (r.second - r.first) / 2;
-            ustar = u2*PhysConst::kappa/log(2.0/d->z0);
+            try {
+                auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
+                d->z0 = r.first + (r.second - r.first) / 2;
+                ustar = u2 * PhysConst::kappa / log(2.0 / d->z0);
+            }
+            catch (...) {
+                // for cases of large LAI, the above will not converge within the min/max given
+                // this will trap that error, and sets that cell to have no saltation,
+                // however re calculate the zo and ustar as if tehre was no vegetation.
+                // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
+                // in ares of trees.
+                d->no_saltation = true;
+
+
+                ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
+                d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
+            }
         }
-        catch(...)
-        {
-            // for cases of large LAI, the above will not converge withing the min/max given
-            // this will trap that error, and sets that cell to have no saltation,
-            // however re calculate the zo and ustar as if tehre was no vegetation.
-            // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
-            // in ares of trees.
-            d->no_saltation = true;
-
-
-            ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
-            d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
-        }
-
 
         d->z0 = std::max(0.0001,d->z0);
         ustar = std::max(0.1,ustar);
@@ -341,7 +336,13 @@ void PBSM3D::run(mesh domain)
 
             //Pomeroy and Li 2000, eqn 8
             double Beta = 170.0;
-            double ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
+            double ustar_n = 0;
+
+            if (snow_depth < d->CanopyHeight)
+            {
+                ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
+            }
+
             face->set_face_data("u*_n",ustar_n);
             //Pomeroy 1992, eqn 12
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (ustar_n*ustar_n)/(ustar * ustar) -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
@@ -665,10 +666,10 @@ void PBSM3D::run(mesh domain)
             } else if (z == nLayer - 1)// top z layer
             {
                 //(kg/m^2/s)/(m/s)  ---->  kg/m^3
-                double cprecip = 0; //face->face_data("p_snow")/global_param->dt()/w;
+                double cprecip = face->face_data("p_snow")/global_param->dt()/w;
 
-//                face->set_face_data("p_snow",0);
-//                face->set_face_data("p",0);
+                face->set_face_data("p_snow",0);
+                face->set_face_data("p",0);
 
                 if (udotm[3] > 0)
                 {
