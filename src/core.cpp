@@ -384,7 +384,8 @@ void core::config_forcing(pt::ptree &value)
             points->InsertNextPoint(s->x(), s->y(), s->z());
             labels->SetValue(i,station_name );
         }
-
+        auto cf = _mesh->find_closest_face(s->x(),s->y());
+        s->set_closest_face(cf);
         std::string file = itr.second.get<std::string>("file");
         auto f = cwd_dir / file;
         s->open(f.string());

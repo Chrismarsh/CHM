@@ -7,6 +7,7 @@
 
 #include "timeseries.hpp"
 
+#include "triangulation.hpp"
 
 /**
 * \class station
@@ -154,6 +155,18 @@ public:
      */
     void tofile(std::string file);
 
+    /**
+     * Obtain the triangle that is closest to this station
+     * @return
+     */
+    mesh_elem closest_face();
+
+    /**
+     * Set the face that the station is closest to
+     * @param face
+     */
+    void set_closest_face(mesh_elem face);
+
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:
@@ -163,6 +176,7 @@ private:
         double _x;
         double _y;
         double _z;
+        mesh_elem _face; // holds the face that the station is closet to
    
 };
 
