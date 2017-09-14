@@ -19,7 +19,7 @@ PBSM3D::PBSM3D(config_file cfg)
 
 //    provides("u10");
     provides("is_drifting");
-    provides("salt_limit");
+//    provides("salt_limit");
 
     nLayer=cfg.get("nLayer",5);
     for(int i=0; i<nLayer;++i)
@@ -30,8 +30,8 @@ PBSM3D::PBSM3D(config_file cfg)
 
     provides("Km_coeff");
     provides("Qsusp_pbsm");
-    provides("suspension_mass");
-    provides("saltation_mass");
+//    provides("suspension_mass");
+//    provides("saltation_mass");
 
     provides("w");
     provides("hs");
@@ -370,7 +370,7 @@ void PBSM3D::run(mesh domain)
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
-            face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
+//            face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
             //in the triangle. I
@@ -765,7 +765,7 @@ void PBSM3D::run(mesh domain)
 
         }
         face->set_face_data("Qsusp",Qsusp);
-        face->set_face_data("suspension_mass",total_mass);
+//        face->set_face_data("suspension_mass",total_mass);
 
 
     }
