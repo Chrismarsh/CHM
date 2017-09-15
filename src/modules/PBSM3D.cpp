@@ -96,11 +96,11 @@ void PBSM3D::init(mesh domain)
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
 
-        if(face->has_parameter("landcover") && enable_veg)
+        if(face->has_vegetation() && enable_veg)
         {
-            int LC = face->get_parameter("landcover");
-            d->CanopyHeight = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
-            d->LAI = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
+            ;
+            d->CanopyHeight = face->veg_attribute("CanopyHeight");
+            d->LAI = face->veg_attribute("LAI");
         } else{
             d->CanopyHeight = 0;
             d->LAI = 0;

@@ -50,10 +50,10 @@ void scale_wind_vert::run(mesh domain)
 
         double Z_CanTop = 0;
 
-        if (!ignore_canopy && face->has_parameter("landcover"))
+        if (!ignore_canopy && face->has_vegetation())
         {
-            int LC = face->get_parameter("landcover");
-            Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
+
+            Z_CanTop = face->veg_attribute("CanopyHeight");
         }
         double Z_CanBot = Z_CanTop /
                           2.0; //global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".TrunkHeight"); // TODO: HARDCODED until we get from obs
@@ -89,9 +89,9 @@ void scale_wind_vert::run(mesh domain)
         {
             // Get Canopy/Surface info
 
-            int LC = face->get_parameter("landcover");
+
             //assume we have LAI, otherwise it will cleanly bail if we don't
-            double LAI = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
+            double LAI = face->veg_attribute("LAI");
             const double alpha = LAI; // attenuation coefficient introduced by Inoue (1963) and increases with canopy density
 
             // If snowdepth is below the Canopy Top
