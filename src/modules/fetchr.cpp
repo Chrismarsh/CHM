@@ -40,11 +40,10 @@ void fetchr::run(mesh_elem& face)
     double wind_dir = face->face_data("vw_dir") ;
 
     //if we are using vegetation and the current face is covered in veg, set the fetch to 0
-    if(incl_veg && face->has_parameter("landcover"))
+    if(incl_veg && face->has_vegetation())
     {
-        int me_LC = face->get_parameter("landcover");
 
-        double me_Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(me_LC) + ".CanopyHeight");
+        double me_Z_CanTop = face->veg_attribute("CanopyHeight");
         if(me_Z_CanTop > 1) // 1m might be too high?
         {
             face->set_face_data("fetch", 0);
@@ -61,10 +60,10 @@ void fetchr::run(mesh_elem& face)
         auto f = face->find_closest_face(wind_dir, distance);
 
         double Z_CanTop = 0;
-        if (incl_veg && f->has_parameter("landcover"))
+        if (incl_veg && f->has_vegetation())
         {
-            int LC = f->get_parameter("landcover");
-            Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
+
+            Z_CanTop = face->veg_attribute("CanopyHeight");
         }
 
         //include canopy height if available

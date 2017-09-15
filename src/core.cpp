@@ -472,6 +472,7 @@ void core::config_parameters(pt::ptree &value)
     }
 
     this->_global->parameters = value.get_child(""); //get root
+
 }
 
 void core::config_meshes(const pt::ptree &value)
@@ -482,6 +483,8 @@ void core::config_meshes(const pt::ptree &value)
 #else
     _mesh = boost::make_shared<triangulation>();
 #endif
+
+    _mesh->_global = _global;
 
     std::string mesh_path = value.get<std::string>("mesh");
     LOG_DEBUG << "Found mesh:" << mesh_path;

@@ -564,14 +564,12 @@ void Simple_Canopy::init(mesh domain)
         auto d = face->make_module_data<Simple_Canopy::data>(ID);
 
         // Check if Canopy exists at this face/triangle
-        if(face->has_parameter("landcover"))
+        if(face->has_vegetation() )
         {
-            int LC = face->get_parameter("landcover");
-
             // Get Canopy type (CRHM canop classifcation: Canopy, Clearing, or Gap)
-            d->canopyType       = global_param->parameters.get<int>("landcover." + std::to_string(LC) + ".canopyType");
-            d->CanopyHeight     = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
-            d->LAI              = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
+            d->canopyType       = face->veg_attribute("canopyType");
+            d->CanopyHeight     = face->veg_attribute("CanopyHeight");
+            d->LAI              = face->veg_attribute("LAI");
             d->rain_load        = 0.0;
             d->Snow_load        = 0.0;
             d->cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
