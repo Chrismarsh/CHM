@@ -91,7 +91,10 @@ public:
     bool do_sublimation; // should we have a sink sublimation term?
     bool do_lateral_diff; // should have lateral diffusion
     bool enable_veg; // should we consider vegetation ?
-    
+
+    viennacl::compressed_matrix<vcl_scalar_type>  vl_C;
+    viennacl::vector<vcl_scalar_type> rhs;
+
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
     double min_mass_for_trans;

@@ -85,6 +85,11 @@ void PBSM3D::init(mesh domain)
     }
 
     n_non_edge_tri = 0;
+
+    //use this to build the sparsity pattern
+    size_t ntri = domain->number_of_faces();
+    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -160,7 +165,41 @@ void PBSM3D::init(mesh domain)
 
         face->set_face_data("sum_drift",0);
 
+        // iterate over the vertical layers
+        for (int z = 0; z < nLayer; ++z)
+        {
+            size_t idx = ntri * z + face->cell_id;
+            for (int f = 0; f < 3; f++)
+            {
+                if (d->face_neigh[f])
+                {
+                    size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                    C[idx][idx] = -9999;
+                    C[idx][nidx] = -9999;
+                } else
+                {
+                    C[idx][idx] = -9999;
+                }
+            }
+            if (z == 0)
+            {
+                C[idx][idx] = -9999;
+                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
+            } else //middle layers
+            {
+                C[idx][idx] = -9999;
+                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
+            }
+        }
     }
+
+    auto size = vl_C.nnz();
+    viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
+    // wrap:
+    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix::size_type(size+1), 0, 1);
+    // write:
+    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix::size_type(size+1), vl_C.memory_context());
+}
 }
 
 void PBSM3D::run(mesh domain)
