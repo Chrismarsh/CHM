@@ -17,10 +17,16 @@
 #pragma once
 
 #include "interpolation.h"
+
+
+#include "station.hpp"
+#include "global.hpp"
+
+
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
 
-#include "global.hpp"
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -116,7 +122,6 @@ struct face_info
 //fwd decl
 class segmented_AABB;
 class triangulation;
-
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
@@ -476,9 +481,6 @@ typedef CGAL::Search_traits_adapter<Point_and_face,
 typedef CGAL::Orthogonal_k_neighbor_search<Traits>          K_neighbor_search;
 typedef K_neighbor_search::Tree                             Tree;
 typedef K_neighbor_search::Distance                         Distance;
-
-
-
 
 /**
 *

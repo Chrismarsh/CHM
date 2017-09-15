@@ -12,7 +12,7 @@ station::station()
     _y = 0;
     _z = 0.0;
     _obs = NULL;
-    _face = nullptr;
+    _face = 0;
 
 }
 
@@ -24,15 +24,15 @@ station::station(std::string ID, double x, double y, double elevation)
     _z = elevation;
     _obs = new timeseries();
     _itr = _obs->begin();
-    _face = nullptr;
+    _face = 0;
 
 }
 
-mesh_elem station::closest_face()
+size_t station::closest_face()
 {
     return _face;
 }
-void station::set_closest_face(mesh_elem face)
+void station::set_closest_face(size_t face)
 {
     _face = face;
 }

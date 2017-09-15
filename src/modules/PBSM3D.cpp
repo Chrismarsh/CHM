@@ -193,12 +193,13 @@ void PBSM3D::init(mesh domain)
         }
     }
 
+    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
     auto size = vl_C.nnz();
     viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
     // wrap:
-    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix::size_type(size+1), 0, 1);
+    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::size_type(size+1), 0, 1);
     // write:
-    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix::size_type(size+1), vl_C.memory_context());
+    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::size_type(size+1), host_ctx);
 }
 }
 
