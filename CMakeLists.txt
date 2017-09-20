@@ -98,10 +98,6 @@ execute_process(
         OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-configure_file(
-        mesher/version.h.in
-        mesher/version.h
-)
 
 configure_file(
         src/version.h.in
@@ -334,4 +330,5 @@ endif()
 if(PV_FILTER)
     add_subdirectory(pv_filter)
 endif()
+
 
