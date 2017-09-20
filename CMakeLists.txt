@@ -335,5 +335,3 @@ if(PV_FILTER)
     add_subdirectory(pv_filter)
 endif()
 
-add_subdirectory(mesher)
-
