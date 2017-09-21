@@ -48,6 +48,10 @@ def main():
     # Grab variables
     input_path = X.input_path
 
+    if os.path.isdir(input_path):
+        print('ERROR: Either a pvd or vtu file must be specified.')
+        exit(-1)
+
     variables = X.variables
     parameters = []
     if hasattr(X,'parameters'):
