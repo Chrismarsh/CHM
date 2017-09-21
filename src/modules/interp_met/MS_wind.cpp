@@ -30,7 +30,6 @@ void MS_wind::init(mesh domain)
 void MS_wind::run(mesh domain)
 {
 
-
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
 
@@ -48,7 +47,7 @@ void MS_wind::run(mesh domain)
 
             double theta = s->get("vw_dir") * M_PI / 180.;
 
-            auto f = domain->find_closest_face(s->x(),s->y());
+            auto f = domain->face(s->closest_face());
             //figure out which lookup map we need
             int d = int(theta*180/M_PI/45.);
             if (d == 0) d = 8;

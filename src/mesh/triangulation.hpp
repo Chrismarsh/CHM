@@ -17,8 +17,15 @@
 #pragma once
 
 #include "interpolation.h"
+
+
+#include "station.hpp"
+#include "global.hpp"
+
+
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
+
 
 #include <iostream>
 #include <fstream>
@@ -115,7 +122,6 @@ struct face_info
 //fwd decl
 class segmented_AABB;
 class triangulation;
-
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
@@ -267,6 +273,10 @@ public:
     * \param data Data
     */
     void set_face_data(const std::string& variable, double data);
+
+    bool has_vegetation();
+
+    double veg_attribute(const std::string &variable);
 
     /**
      * Sets the vector for the given variable.
@@ -438,6 +448,7 @@ private:
     //const so we can't modify the domain via this as thar be dragons
     triangulation* _domain;
 
+
     boost::shared_ptr<Point_3> _center;
     boost::shared_ptr<Vector_3> _normal;
 
@@ -470,9 +481,6 @@ typedef CGAL::Search_traits_adapter<Point_and_face,
 typedef CGAL::Orthogonal_k_neighbor_search<Traits>          K_neighbor_search;
 typedef K_neighbor_search::Tree                             Tree;
 typedef K_neighbor_search::Distance                         Distance;
-
-
-
 
 /**
 *
@@ -657,12 +665,17 @@ public:
      * @return
      */
     double max_z();
+
+    //Point to the global object that contains paramter information.
+    boost::shared_ptr<global> _global;
 private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
 	int _UTM_zone;
+
+
 
 	std::string _srs_wkt;
 	//holds the vtk ugrid if we are outputing to vtk formats
@@ -799,7 +812,7 @@ private:
 };
 
 
-template < class Gt, class Fb >
+template < class Gt, class Fb>
 bool face<Gt, Fb>::has_parameter(std::string key)
 {
     return _parameters.find( key ) != _parameters.end();
@@ -1178,6 +1191,34 @@ double face<Gt, Fb>::face_data(const std::string& variable)
 {
     return _itr->get(variable);
 }
+
+template < class Gt, class Fb >
+bool  face<Gt, Fb>::has_vegetation()
+{
+    if (has_parameter("landcover") )
+        return true;
+    if (has_parameter("canopyType"))
+        return true;
+
+    return false;
+}
+template < class Gt, class Fb >
+double face<Gt, Fb>::veg_attribute(const std::string &variable)
+{
+    double result = 0;
+    if(has_parameter("landcover"))
+    {
+        int LC = get_parameter("landcover");
+        auto param = _domain->_global->parameters;
+        result = param.get<int>("landcover." + std::to_string(LC) + "."+variable);
+    }
+    else
+    {
+        result = get_parameter(variable);
+    }
+
+    return result;
+};
 
 template < class Gt, class Fb>
 Vector_3 face<Gt, Fb>::face_vector(const std::string& variable)

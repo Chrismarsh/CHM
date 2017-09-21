@@ -19,7 +19,7 @@ PBSM3D::PBSM3D(config_file cfg)
 
 //    provides("u10");
     provides("is_drifting");
-    provides("salt_limit");
+//    provides("salt_limit");
 
     nLayer=cfg.get("nLayer",5);
     for(int i=0; i<nLayer;++i)
@@ -30,8 +30,8 @@ PBSM3D::PBSM3D(config_file cfg)
 
     provides("Km_coeff");
     provides("Qsusp_pbsm");
-    provides("suspension_mass");
-    provides("saltation_mass");
+//    provides("suspension_mass");
+//    provides("saltation_mass");
 
     provides("w");
     provides("hs");
@@ -85,17 +85,22 @@ void PBSM3D::init(mesh domain)
     }
 
     n_non_edge_tri = 0;
+
+    //use this to build the sparsity pattern
+    size_t ntri = domain->number_of_faces();
+    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
 
-        if(face->has_parameter("landcover") && enable_veg)
+        if(face->has_vegetation() && enable_veg)
         {
-            int LC = face->get_parameter("landcover");
-            d->CanopyHeight = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
-            d->LAI = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".LAI");
+            ;
+            d->CanopyHeight = face->veg_attribute("CanopyHeight");
+            d->LAI = face->veg_attribute("LAI");
         } else{
             d->CanopyHeight = 0;
             d->LAI = 0;
@@ -160,7 +165,42 @@ void PBSM3D::init(mesh domain)
 
         face->set_face_data("sum_drift",0);
 
+        // iterate over the vertical layers
+        for (int z = 0; z < nLayer; ++z)
+        {
+            size_t idx = ntri * z + face->cell_id;
+            for (int f = 0; f < 3; f++)
+            {
+                if (d->face_neigh[f])
+                {
+                    size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                    C[idx][idx] = -9999;
+                    C[idx][nidx] = -9999;
+                } else
+                {
+                    C[idx][idx] = -9999;
+                }
+            }
+            if (z == 0)
+            {
+                C[idx][idx] = -9999;
+                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
+            } else //middle layers
+            {
+                C[idx][idx] = -9999;
+                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
+            }
+        }
     }
+
+    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
+    auto size = vl_C.nnz();
+    viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
+    // wrap:
+    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::size_type(size+1), 0, 1);
+    // write:
+    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::size_type(size+1), host_ctx);
+}
 }
 
 void PBSM3D::run(mesh domain)
@@ -224,53 +264,48 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("LAI",d->LAI);
         face->set_face_data("lambda",lambda);
 
+
         //if lambda is 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-//        if (lambda == 0)
-//        {
-//             ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
-//             d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
-//        }
-//        else
-//        {
-        auto z0Fn = [&](double z0) -> double
-        {
-            //This formulation has the following coeffs built in
-            // c_2 = 1.6;
-            // c_3 = 0.07519;
-            // c_4 - 0.5;
-            return (1.6*0.7519e-1)*pow(.41*u2/log(2.0/z0),2.0)/(2.0*9.81)+.5*lambda-z0;
-        };
+        if (lambda < 1e-1 || swe < 1) {
+            ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
+            d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
+        } else {
+            auto z0Fn = [&](double z0) -> double {
+                //This formulation has the following coeffs built in
+                // c_2 = 1.6;
+                // c_3 = 0.07519;
+                // c_4 - 0.5;
+                return (1.6 * 0.7519e-1) * pow(.41 * u2 / log(2.0 / z0), 2.0) / (2.0 * 9.81) + .5 * lambda - z0;
+            };
 
-        double min = 0.0001;
-        double max = 1;
-        boost::uintmax_t max_iter=500;
+            double min = 0.0001;
+            double max = 1;
+            boost::uintmax_t max_iter = 500;
 
 
-        d->no_saltation = false;
-        auto tol = [](double a, double b) -> bool
-        {
-            return fabs(a-b) < 1e-8;
-        };
+            d->no_saltation = false;
+            auto tol = [](double a, double b) -> bool {
+                return fabs(a - b) < 1e-8;
+            };
 
-        try {
-            auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
-            d->z0 = r.first + (r.second - r.first) / 2;
-            ustar = u2*PhysConst::kappa/log(2.0/d->z0);
+            try {
+                auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
+                d->z0 = r.first + (r.second - r.first) / 2;
+                ustar = u2 * PhysConst::kappa / log(2.0 / d->z0);
+            }
+            catch (...) {
+                // for cases of large LAI, the above will not converge within the min/max given
+                // this will trap that error, and sets that cell to have no saltation,
+                // however re calculate the zo and ustar as if tehre was no vegetation.
+                // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
+                // in ares of trees.
+                d->no_saltation = true;
+
+
+                ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
+                d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
+            }
         }
-        catch(...)
-        {
-            // for cases of large LAI, the above will not converge withing the min/max given
-            // this will trap that error, and sets that cell to have no saltation,
-            // however re calculate the zo and ustar as if tehre was no vegetation.
-            // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
-            // in ares of trees.
-            d->no_saltation = true;
-
-
-            ustar = -.2000000000*u2/gsl_sf_lambert_Wm1(-0.1107384167e-1*u2);
-            d->z0 = std::max(0.001,0.1203 * ustar * ustar / (2.0*9.81));
-        }
-
 
         d->z0 = std::max(0.0001,d->z0);
         ustar = std::max(0.1,ustar);
@@ -341,7 +376,13 @@ void PBSM3D::run(mesh domain)
 
             //Pomeroy and Li 2000, eqn 8
             double Beta = 170.0;
-            double ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
+            double ustar_n = 0;
+
+            if (snow_depth < d->CanopyHeight)
+            {
+                ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
+            }
+
             face->set_face_data("u*_n",ustar_n);
             //Pomeroy 1992, eqn 12
             c_salt = rho_f / (3.29 * ustar) * (1.0 - (ustar_n*ustar_n)/(ustar * ustar) -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
@@ -369,7 +410,7 @@ void PBSM3D::run(mesh domain)
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
-            face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
+//            face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
             //in the triangle. I
@@ -483,8 +524,8 @@ void PBSM3D::run(mesh domain)
             boost::uintmax_t max_iter=500;
             boost::math::tools::eps_tolerance<double> tol(30);
 
-//            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol, max_iter);max_iter
-            double Ts = 273;//r.first + (r.second - r.first)/2;
+            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol, max_iter);//max_iter
+            double Ts = r.first + (r.second - r.first)/2;
 
             //now use equation 13 with our solved Ts to compute dm/dt(z)
             double dmdtz = 2.0 * M_PI * rm * lambda_t / Ls * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
@@ -665,10 +706,10 @@ void PBSM3D::run(mesh domain)
             } else if (z == nLayer - 1)// top z layer
             {
                 //(kg/m^2/s)/(m/s)  ---->  kg/m^3
-                double cprecip = 0; //face->face_data("p_snow")/global_param->dt()/w;
+                double cprecip = face->face_data("p_snow")/global_param->dt()/w;
 
-//                face->set_face_data("p_snow",0);
-//                face->set_face_data("p",0);
+                face->set_face_data("p_snow",0);
+                face->set_face_data("p",0);
 
                 if (udotm[3] > 0)
                 {
@@ -764,7 +805,7 @@ void PBSM3D::run(mesh domain)
 
         }
         face->set_face_data("Qsusp",Qsusp);
-        face->set_face_data("suspension_mass",total_mass);
+//        face->set_face_data("suspension_mass",total_mass);
 
 
     }

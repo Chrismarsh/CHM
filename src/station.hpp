@@ -7,7 +7,6 @@
 
 #include "timeseries.hpp"
 
-
 /**
 * \class station
 *
@@ -16,6 +15,13 @@
 * Allows the station to represent a timeseries that has a location (x,y), an elevation, and a station ID.
 * As well, it wraps the iterators of the timeserires instance allowing for easy stepping and access.
 */
+//namespace CGAL
+//{
+//    class Exact_predicates_inexact_constructions_kernel;
+//}
+
+
+
 class station : boost::noncopyable
 {
 public:
@@ -154,6 +160,18 @@ public:
      */
     void tofile(std::string file);
 
+    /**
+     * Obtain the triangle id that is closest to this station
+     * @return
+     */
+    size_t closest_face();
+
+    /**
+     * Set the face id that the station is closest to
+     * @param face
+     */
+    void set_closest_face(size_t face);
+
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:
@@ -163,6 +181,13 @@ private:
         double _x;
         double _y;
         double _z;
+
+
+    // There is a circular reference that is created when station knows about the triangulation
+    // I could not get it to properly compile the mesh_elem reference
+    // So this stores the id, which we can easily look up in domain modules
+    // Perhaps rethink this if it becomes a problem later
+        size_t _face; // holds the face that the station is closet to
    
 };
 

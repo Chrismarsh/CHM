@@ -12,6 +12,7 @@ station::station()
     _y = 0;
     _z = 0.0;
     _obs = NULL;
+    _face = 0;
 
 }
 
@@ -23,9 +24,18 @@ station::station(std::string ID, double x, double y, double elevation)
     _z = elevation;
     _obs = new timeseries();
     _itr = _obs->begin();
+    _face = 0;
 
 }
 
+size_t station::closest_face()
+{
+    return _face;
+}
+void station::set_closest_face(size_t face)
+{
+    _face = face;
+}
 void station::open(std::string file)
 {
     try

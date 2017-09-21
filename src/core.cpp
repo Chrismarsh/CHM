@@ -384,7 +384,8 @@ void core::config_forcing(pt::ptree &value)
             points->InsertNextPoint(s->x(), s->y(), s->z());
             labels->SetValue(i,station_name );
         }
-
+        auto cf = _mesh->find_closest_face(s->x(),s->y());
+        s->set_closest_face(cf->cell_id);
         std::string file = itr.second.get<std::string>("file");
         auto f = cwd_dir / file;
         s->open(f.string());
@@ -472,6 +473,7 @@ void core::config_parameters(pt::ptree &value)
     }
 
     this->_global->parameters = value.get_child(""); //get root
+
 }
 
 void core::config_meshes(const pt::ptree &value)
@@ -482,6 +484,8 @@ void core::config_meshes(const pt::ptree &value)
 #else
     _mesh = boost::make_shared<triangulation>();
 #endif
+
+    _mesh->_global = _global;
 
     std::string mesh_path = value.get<std::string>("mesh");
     LOG_DEBUG << "Found mesh:" << mesh_path;

@@ -26,6 +26,7 @@ namespace pt = boost::property_tree;
 
 #include <CGAL/Euclidean_distance.h>
 
+class station;
 /**
  * Basin wide parameters such as transmissivity, solar elevation, solar aspect, etc.
  * 

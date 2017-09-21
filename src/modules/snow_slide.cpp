@@ -182,10 +182,10 @@ void snow_slide::init(mesh domain)
         auto d = face->make_module_data<snow_slide::data>(ID);
 
         double Z_CanTop;
-        if(face->has_parameter("landcover") )
+        if(face->has_vegetation())
         {
-            int LC   = face->get_parameter("landcover");
-            Z_CanTop = global_param->parameters.get<double>("landcover." + std::to_string(LC) + ".CanopyHeight");
+
+            Z_CanTop = face->veg_attribute("CanopyHeight");
         } else {
             Z_CanTop = 0.0;
         }
