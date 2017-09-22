@@ -87,8 +87,8 @@ void PBSM3D::init(mesh domain)
     n_non_edge_tri = 0;
 
     //use this to build the sparsity pattern
-    size_t ntri = domain->number_of_faces();
-    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
+//    size_t ntri = domain->number_of_faces();
+//    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -165,41 +165,41 @@ void PBSM3D::init(mesh domain)
 
         face->set_face_data("sum_drift",0);
 
-        // iterate over the vertical layers
-        for (int z = 0; z < nLayer; ++z)
-        {
-            size_t idx = ntri * z + face->cell_id;
-            for (int f = 0; f < 3; f++)
-            {
-                if (d->face_neigh[f])
-                {
-                    size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-                    C[idx][idx] = -9999;
-                    C[idx][nidx] = -9999;
-                } else
-                {
-                    C[idx][idx] = -9999;
-                }
-            }
-            if (z == 0)
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
-            } else //middle layers
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
-            }
-        }
-    }
-
-    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
-    auto size = vl_C.nnz();
-    viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
-    // wrap:
-    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::size_type(size+1), 0, 1);
-    // write:
-    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::size_type(size+1), host_ctx);
+//        // iterate over the vertical layers
+//        for (int z = 0; z < nLayer; ++z)
+//        {
+//            size_t idx = ntri * z + face->cell_id;
+//            for (int f = 0; f < 3; f++)
+//            {
+//                if (d->face_neigh[f])
+//                {
+//                    size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+//                    C[idx][idx] = -9999;
+//                    C[idx][nidx] = -9999;
+//                } else
+//                {
+//                    C[idx][idx] = -9999;
+//                }
+//            }
+//            if (z == 0)
+//            {
+//                C[idx][idx] = -9999;
+//                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
+//            } else //middle layers
+//            {
+//                C[idx][idx] = -9999;
+//                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
+//            }
+//        }
+//    }
+//
+//    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
+//    auto size = vl_C.nnz();
+//    viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
+//    // wrap:
+//    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::size_type(size+1), 0, 1);
+//    // write:
+//    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::size_type(size+1), host_ctx);
 }
 }
 
@@ -706,11 +706,11 @@ void PBSM3D::run(mesh domain)
             } else if (z == nLayer - 1)// top z layer
             {
                 //(kg/m^2/s)/(m/s)  ---->  kg/m^3
-                double cprecip = face->face_data("p_snow")/global_param->dt()/w;
+                double cprecip = 0;//face->face_data("p_snow")/global_param->dt()/w;
 
-                face->set_face_data("p_snow",0);
+//                face->set_face_data("p_snow",0);
                 face->set_face_data("p",0);
-
+//
                 if (udotm[3] > 0)
                 {
                     C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
