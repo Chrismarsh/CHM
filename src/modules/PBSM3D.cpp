@@ -266,7 +266,7 @@ void PBSM3D::run(mesh domain)
 
 
         //if lambda is 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-        if (lambda < 1e-1 || swe < 1) {
+        if (lambda < 1e-1 || swe < 1 || !enable_veg) {
             ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
             d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
         } else {
