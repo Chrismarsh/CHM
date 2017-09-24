@@ -30,6 +30,7 @@ PBSM3D::PBSM3D(config_file cfg)
 
     provides("Km_coeff");
     provides("Qsusp_pbsm");
+    provides("no_saltation");
 //    provides("suspension_mass");
 //    provides("saltation_mass");
 
@@ -265,7 +266,7 @@ void PBSM3D::run(mesh domain)
 
 
         //if lambda is 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-        if (lambda < 1e-1 || swe < 1 || !enable_veg) {
+        if (lambda < 1e-1 ||  enable_veg == false) {
             ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
             d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
         } else {
@@ -281,7 +282,6 @@ void PBSM3D::run(mesh domain)
             double max = 1;
             boost::uintmax_t max_iter = 500;
 
-
             d->no_saltation = false;
             auto tol = [](double a, double b) -> bool {
                 return fabs(a - b) < 1e-8;
@@ -295,18 +295,17 @@ void PBSM3D::run(mesh domain)
             catch (...) {
                 // for cases of large LAI, the above will not converge within the min/max given
                 // this will trap that error, and sets that cell to have no saltation,
-                // however re calculate the zo and ustar as if tehre was no vegetation.
+                // however re calculate the zo and ustar as if there was no vegetation.
                 // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
                 // in ares of trees.
                 d->no_saltation = true;
-
 
                 ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
                 d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
             }
         }
 
-        d->z0 = std::max(0.0001,d->z0);
+        d->z0 = std::max(0.001,d->z0);
         ustar = std::max(0.1,ustar);
 
 
@@ -361,9 +360,14 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
+        if(d->no_saltation)
+        {
+            face->set_face_data("no_saltation",1);
+        }
+
         if( ustar > u_star_saltation &&
-                swe > min_mass_for_trans &&
-                !d->no_saltation)
+               swe > min_mass_for_trans &&
+                d->no_saltation == false)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
