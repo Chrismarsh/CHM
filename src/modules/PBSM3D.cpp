@@ -98,7 +98,6 @@ void PBSM3D::init(mesh domain)
 
         if(face->has_vegetation() && enable_veg)
         {
-            ;
             d->CanopyHeight = face->veg_attribute("CanopyHeight");
             d->LAI = face->veg_attribute("LAI");
         } else{
@@ -363,7 +362,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
         if( ustar > u_star_saltation &&
-               swe > min_mass_for_trans &&
+                swe > min_mass_for_trans &&
                 !d->no_saltation)
         {
 
@@ -707,7 +706,7 @@ void PBSM3D::run(mesh domain)
 
 //                face->set_face_data("p_snow",0);
 //                face->set_face_data("p",0);
-//
+
                 if (udotm[3] > 0)
                 {
                     C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
