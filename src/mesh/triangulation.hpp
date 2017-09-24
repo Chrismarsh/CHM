@@ -1210,7 +1210,7 @@ double face<Gt, Fb>::veg_attribute(const std::string &variable)
     {
         int LC = get_parameter("landcover");
         auto param = _domain->_global->parameters;
-        result = param.get<int>("landcover." + std::to_string(LC) + "."+variable);
+        result = param.get<double>("landcover." + std::to_string(LC) + "."+variable);
     }
     else
     {
