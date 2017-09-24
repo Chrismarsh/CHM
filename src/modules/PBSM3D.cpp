@@ -378,7 +378,7 @@ void PBSM3D::run(mesh domain)
             double Beta = 170.0;
             double ustar_n = 0;
 
-            if (snow_depth < d->CanopyHeight)
+            if (snow_depth < d->CanopyHeight && !enable_veg)
             {
                 ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
             }
