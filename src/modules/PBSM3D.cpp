@@ -363,11 +363,8 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
         if( ustar > u_star_saltation &&
-                swe > min_mass_for_trans &&
-                !d->no_saltation
-
-            /*&&
-                snow_depth >= d->CanopyHeight*/  )
+               swe > min_mass_for_trans &&
+                !d->no_saltation)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
@@ -709,7 +706,7 @@ void PBSM3D::run(mesh domain)
                 double cprecip = 0;//face->face_data("p_snow")/global_param->dt()/w;
 
 //                face->set_face_data("p_snow",0);
-                face->set_face_data("p",0);
+//                face->set_face_data("p",0);
 //
                 if (udotm[3] > 0)
                 {
