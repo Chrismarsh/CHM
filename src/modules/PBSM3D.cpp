@@ -31,6 +31,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("Km_coeff");
     provides("Qsusp_pbsm");
     provides("no_saltation");
+    provides("height_diff");
 //    provides("suspension_mass");
 //    provides("saltation_mass");
 
@@ -256,9 +257,11 @@ void PBSM3D::run(mesh domain)
 
         // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
 
+
+
         double height_diff = d->CanopyHeight - snow_depth;
         height_diff = std::max(0.0,height_diff); //don't allow negative differences in height
-
+        face->set_face_data("height_diff",height_diff);
         double ustar = 1.3;
         double lambda = d->LAI / 2.0 * (height_diff);
         face->set_face_data("LAI",d->LAI);
@@ -378,7 +381,7 @@ void PBSM3D::run(mesh domain)
             double Beta = 170.0;
             double ustar_n = 0;
 
-            if (snow_depth < d->CanopyHeight && !enable_veg)
+            if (snow_depth < d->CanopyHeight && enable_veg)
             {
                 ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
             }
