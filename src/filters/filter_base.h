@@ -17,9 +17,13 @@ public:
     virtual void process(boost::shared_ptr<station> station){};
     bool is_nan(double variable)
     {
-        if( std::fabs(variable - -9999.0) < 1e-5)
+        if( variable == -9999.0)
             return true;
+
         if( std::isnan(variable) )
+            return true;
+
+        if( std::isinf(variable) )
             return true;
 
         return false;
