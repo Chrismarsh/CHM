@@ -1199,6 +1199,8 @@ bool  face<Gt, Fb>::has_vegetation()
         return true;
     if (has_parameter("canopyType"))
         return true;
+    if (has_parameter("CanopyHeight"))
+        return true;
 
     return false;
 }

@@ -88,6 +88,9 @@ void PBSM3D::init(mesh domain)
 
     n_non_edge_tri = 0;
 
+
+
+
     //use this to build the sparsity pattern
 //    size_t ntri = domain->number_of_faces();
 //    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
@@ -98,6 +101,10 @@ void PBSM3D::init(mesh domain)
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
 
+        if(!face->has_vegetation() && enable_veg)
+        {
+            LOG_ERROR << "Vegetation is enabled, but no vegetation parameter was found.";
+        }
         if(face->has_vegetation() && enable_veg)
         {
             d->CanopyHeight = face->veg_attribute("CanopyHeight");
@@ -105,6 +112,7 @@ void PBSM3D::init(mesh domain)
         } else{
             d->CanopyHeight = 0;
             d->LAI = 0;
+            enable_veg = false;
         }
 
         auto& m = d->m;
