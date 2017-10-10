@@ -30,7 +30,7 @@ PBSM3D::PBSM3D(config_file cfg)
 
     provides("Km_coeff");
     provides("Qsusp_pbsm");
-    provides("no_saltation");
+    provides("saltation");
     provides("height_diff");
 //    provides("suspension_mass");
 //    provides("saltation_mass");
@@ -265,8 +265,6 @@ void PBSM3D::run(mesh domain)
 
         // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
 
-
-
         double height_diff = d->CanopyHeight - snow_depth;
         height_diff = std::max(0.0,height_diff); //don't allow negative differences in height
         face->set_face_data("height_diff",height_diff);
@@ -275,7 +273,7 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("LAI",d->LAI);
         face->set_face_data("lambda",lambda);
 
-
+        d->saltation = true;
         //if lambda is 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
         if (lambda < 1e-1 ||  enable_veg == false) {
             ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
@@ -293,7 +291,7 @@ void PBSM3D::run(mesh domain)
             double max = 1;
             boost::uintmax_t max_iter = 500;
 
-            d->no_saltation = false;
+
             auto tol = [](double a, double b) -> bool {
                 return fabs(a - b) < 1e-8;
             };
@@ -306,10 +304,10 @@ void PBSM3D::run(mesh domain)
             catch (...) {
                 // for cases of large LAI, the above will not converge within the min/max given
                 // this will trap that error, and sets that cell to have no saltation,
-                // however re calculate the zo and ustar as if there was no vegetation.
+                // however re calculate the z0 and ustar as if there was no vegetation.
                 // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
                 // in ares of trees.
-                d->no_saltation = true;
+                d->saltation = false;
 
                 ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
                 d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
@@ -317,8 +315,7 @@ void PBSM3D::run(mesh domain)
         }
 
         d->z0 = std::max(0.001,d->z0);
-        ustar = std::max(0.1,ustar);
-
+        ustar = std::max(0.01,ustar);
 
         face->set_face_data("z0",d->z0);
         // ------------------
@@ -371,14 +368,14 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("is_drifting",0);
         face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
-        if(d->no_saltation)
+        if(!d->saltation)
         {
-            face->set_face_data("no_saltation",1);
+            face->set_face_data("saltation",1);
         }
 
         if( ustar > u_star_saltation &&
                swe > min_mass_for_trans &&
-                d->no_saltation == false)
+                d->saltation)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
@@ -386,17 +383,19 @@ void PBSM3D::run(mesh domain)
             face->set_face_data("is_drifting",1);
 
             //Pomeroy and Li 2000, eqn 8
-            double Beta = 170.0;
+            double Beta =  202.0; //170.0;
             double ustar_n = 0;
 
             if (snow_depth < d->CanopyHeight && enable_veg)
             {
-                ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
+                double m = 0.16;
+                //this is ustar_n / ustar
+                ustar_n = sqrt(m*Beta*lambda)*pow(1.0+m* Beta*lambda,-0.5); //MacDonald 2009 eq 3;
             }
 
             face->set_face_data("u*_n",ustar_n);
-            //Pomeroy 1992, eqn 12
-            c_salt = rho_f / (3.29 * ustar) * (1.0 - (ustar_n*ustar_n)/(ustar * ustar) -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
+            //Pomeroy 1992, eqn 12, see note above for ustar_n calc
+            c_salt = rho_f / (3.29 * ustar) * (1.0 - ustar_n*ustar_n -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
 
             // occasionally happens to happen at low wind speeds where the parameterization breaks.
             // hasn't happened since changed this to the threshold velocity though...

@@ -121,7 +121,7 @@ public:
         bool is_edge;
 
         //used to flag the large vegetation areas or other via landcover types to not do any saltation at this point.
-        bool no_saltation;
+        bool saltation;
 
         double z0;
     };
