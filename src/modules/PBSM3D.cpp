@@ -30,7 +30,7 @@ PBSM3D::PBSM3D(config_file cfg)
 
     provides("Km_coeff");
     provides("Qsusp_pbsm");
-    provides("saltation");
+    provides("inhibit_saltation");
     provides("height_diff");
 //    provides("suspension_mass");
 //    provides("saltation_mass");
@@ -245,6 +245,7 @@ void PBSM3D::run(mesh domain)
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
         double snow_depth = face->face_data("snowdepthavg");
+
         snow_depth = is_nan(snow_depth) ? 0: snow_depth;
 
 
@@ -280,6 +281,7 @@ void PBSM3D::run(mesh domain)
         //     i.e, what you'd expect for crop stubble where it was derived.
         // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0, and effectively allow wind to blow snow out of the vegetation
         // 3) Once lambda is close to 0, just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
+
 
 
         //if lambda is -> 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
@@ -389,7 +391,7 @@ void PBSM3D::run(mesh domain)
 
         if(!d->saltation)
         {
-            face->set_face_data("saltation",1);
+            face->set_face_data("inhibit_saltation",1);
         }
 
         if( ustar > u_star_saltation &&
