@@ -265,32 +265,51 @@ void PBSM3D::run(mesh domain)
 
         // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
 
-        double height_diff = d->CanopyHeight - snow_depth;
-        height_diff = std::max(0.0,height_diff); //don't allow negative differences in height
+        double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);//don't allow negative differences in height
         face->set_face_data("height_diff",height_diff);
-        double ustar = 1.3;
-        double lambda = d->LAI / 2.0 * (height_diff);
+        double ustar = 1.3; //placeholder
+        double lambda = 0.5 * d->LAI / d->CanopyHeight * (height_diff);
         face->set_face_data("LAI",d->LAI);
         face->set_face_data("lambda",lambda);
 
         d->saltation = true;
-        //if lambda is 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-        if (lambda < 1e-1 ||  enable_veg == false) {
+
+        // The strategy here is as follows:
+        // 1) Wait for vegetation to fill up until it is within 30 cm of the top
+        //     then we can apply Pomeroy and Li 2000 eqn 4 to calculate a z0. This param doesn't seem to work for exposed veg > 30 cm
+        //     i.e, what you'd expect for crop stubble where it was derived.
+        // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0, and effectively allow wind to blow snow out of the vegetation
+        // 3) Once lambda is close to 0, just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
+
+
+        //if lambda is -> 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
+        // or if we have disabled veg, just use the non-veg param
+        // or if we are still filling it up, calculate a 'sane' zo/ustar and just disable saltation in this triangle.
+        if (height_diff < 0.05  ||  height_diff > 0.3 || !enable_veg)
+        {
             ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
             d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
-        } else {
+            lambda = 0;
+
+            if( height_diff > 0.3 && enable_veg)
+            {
+                //just disable saltation
+                d->saltation = false;
+            }
+        }
+        else  /*if( height_diff < 0.3)*/
+        {
             auto z0Fn = [&](double z0) -> double {
                 //This formulation has the following coeffs built in
                 // c_2 = 1.6;
                 // c_3 = 0.07519;
                 // c_4 - 0.5;
-                return (1.6 * 0.7519e-1) * pow(.41 * u2 / log(2.0 / z0), 2.0) / (2.0 * 9.81) + .5 * lambda - z0;
+                return (1.6 * 0.7519e-1) * pow(.41 * u2 / log(2.0 / z0), 2.0) / (2.0 * 9.81) +  lambda - z0;  //0.5
             };
 
             double min = 0.0001;
             double max = 1;
             boost::uintmax_t max_iter = 500;
-
 
             auto tol = [](double a, double b) -> bool {
                 return fabs(a - b) < 1e-8;
@@ -386,12 +405,12 @@ void PBSM3D::run(mesh domain)
             double Beta =  202.0; //170.0;
             double ustar_n = 0;
 
-            if (snow_depth < d->CanopyHeight && enable_veg)
-            {
+//            if (snow_depth < d->CanopyHeight && enable_veg)
+//            {
                 double m = 0.16;
                 //this is ustar_n / ustar
                 ustar_n = sqrt(m*Beta*lambda)*pow(1.0+m* Beta*lambda,-0.5); //MacDonald 2009 eq 3;
-            }
+//            }
 
             face->set_face_data("u*_n",ustar_n);
             //Pomeroy 1992, eqn 12, see note above for ustar_n calc
