@@ -92,8 +92,8 @@ void PBSM3D::init(mesh domain)
 
 
     //use this to build the sparsity pattern
-//    size_t ntri = domain->number_of_faces();
-//    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
+    size_t ntri = domain->number_of_faces();
+    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -174,42 +174,49 @@ void PBSM3D::init(mesh domain)
 
         face->set_face_data("sum_drift",0);
 
-//        // iterate over the vertical layers
-//        for (int z = 0; z < nLayer; ++z)
-//        {
-//            size_t idx = ntri * z + face->cell_id;
-//            for (int f = 0; f < 3; f++)
-//            {
-//                if (d->face_neigh[f])
-//                {
-//                    size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-//                    C[idx][idx] = -9999;
-//                    C[idx][nidx] = -9999;
-//                } else
-//                {
-//                    C[idx][idx] = -9999;
-//                }
-//            }
-//            if (z == 0)
-//            {
-//                C[idx][idx] = -9999;
-//                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
-//            } else //middle layers
-//            {
-//                C[idx][idx] = -9999;
-//                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
-//            }
-//        }
-//    }
-//
-//    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
-//    auto size = vl_C.nnz();
-//    viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
-//    // wrap:
-//    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::size_type(size+1), 0, 1);
-//    // write:
-//    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::size_type(size+1), host_ctx);
-}
+        // iterate over the vertical layers
+        for (int z = 0; z < nLayer; ++z)
+        {
+            size_t idx = ntri * z + face->cell_id;
+            for (int f = 0; f < 3; f++)
+            {
+                if (d->face_neigh[f])
+                {
+                    size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                    C[idx][idx] = -9999;
+                    C[idx][nidx] = -9999;
+                } else
+                {
+                    C[idx][idx] = -9999;
+                }
+            }
+
+            if (z == 0)
+            {
+                C[idx][idx] = -9999;
+                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
+            } else if (z == nLayer - 1)
+            {
+                C[idx][idx] = -9999;
+                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
+
+            }
+            else //middle layers
+            {
+                C[idx][idx] = -9999;
+                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
+                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
+            }
+        }
+    }
+
+
+    
+    viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
+    
+    b.resize(ntri * nLayer);
+
+
 }
 
 void PBSM3D::run(mesh domain)
@@ -219,8 +226,17 @@ void PBSM3D::run(mesh domain)
 
     //vcl_scalar_type is defined in the main CMakeLists.txt file.
     // Some GPUs do not have double precision so the run will fail if the wrong precision is used
-    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
-    std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
+//    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
+//    std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
+
+    //zero CSR vector in vl_C
+    auto size = vl_C.nnz();
+    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(size+1), 0, 1);
+    // write:
+    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(size+1), viennacl::traits::context(vl_C));
+
+    //zero-fill RHS
+    b.clear();
 
     //ice density
     double rho_p = PhysConst::rho_ice;
@@ -640,8 +656,8 @@ void PBSM3D::run(mesh domain)
             //to ensure that they are inited to zero so we can call the += operator w/o issue below. Only needs to be done for the diagonal elements
             //as the rest are straight assignments and not +=
 
-            if( C[idx].find(idx) == C[idx].end() )
-                C[idx][idx] = 0.0;
+//            if( C[idx].find(idx) == C[idx].end() )
+//                vl_C(idx,idx) = 0.0;
             b[idx] = 0;
             double V = face->get_area()  * v_edge_height;
 
@@ -657,43 +673,43 @@ void PBSM3D::run(mesh domain)
                     if (d->face_neigh[f])
                     {
                         size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-                        if( C[idx].find(nidx) == C[idx].end() )
-                            C[idx][nidx] = 0.0;
+//                        if( C[idx].find(nidx) == C[idx].end() )
+//                            vl_C(idx,nidx) = 0.0;
 
-                       C[idx][idx]  += V*csubl-d->A[f]*udotm[f]-alpha[f];
-                       C[idx][nidx] += alpha[f];
+                       vl_C(idx,idx)  += V*csubl-d->A[f]*udotm[f]-alpha[f];
+                       vl_C(idx,nidx) += alpha[f];
 
                     }
                     else
                     {
                         //no mass in
-//                       C[idx][idx] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+//                       vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
                         //allow mass in
-//                        C[idx][idx] += V*csubl-d->A[f]*udotm[f];
+//                        vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f];
 
-                        C[idx][idx] += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
+                        vl_C(idx,idx) += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
                     }
                 } else
                 {
                     if (d->face_neigh[f])
                     {
                         size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-                        if( C[idx].find(nidx) == C[idx].end() )
-                            C[idx][nidx] = 0.0;
+//                        if( C[idx].find(nidx) == C[idx].end() )
+//                            vl_C(idx,nidx) = 0.0;
 
-                        C[idx][idx] += V*csubl-alpha[f];
-                        C[idx][nidx] += -d->A[f]*udotm[f]+alpha[f];
+                        vl_C(idx,idx) += V*csubl-alpha[f];
+                        vl_C(idx,nidx) += -d->A[f]*udotm[f]+alpha[f];
                     }
                     else
                     {
                         //No mass in
-//                        C[idx][idx] += V*csubl-alpha[f];
+//                        vl_C(idx,idx) += V*csubl-alpha[f];
 
                         //allow mass in
-//                        C[idx][idx] += -.99*d->A[f]*udotm[f]+csubl*V;
+//                        vl_C(idx,idx) += -.99*d->A[f]*udotm[f]+csubl*V;
 
-                        C[idx][idx] += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
+                        vl_C(idx,idx) += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
                     }
                 }
             }
@@ -701,13 +717,13 @@ void PBSM3D::run(mesh domain)
 
 
             //init to zero the vertical component
-            if( z != nLayer -1 &&
-                C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
-                C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
-
-            if(z!=0 &&
-               C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
-                C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
+//            if( z != nLayer -1 &&
+//                C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
+//                vl_C(idx,ntri * (z + 1) + face->cell_id) = 0.0;
+//
+//            if(z!=0 &&
+//               C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
+//                vl_C(idx,ntri * (z - 1) + face->cell_id) = 0.0;
 
 
 
@@ -718,21 +734,21 @@ void PBSM3D::run(mesh domain)
                 double alpha4 = d->A[4] * K[4] / (hs/2.0 + v_edge_height/2.0);
 
                 //bottom face, no advection
-//                C[idx][idx] += V*csubl-alpha4;
+//                vl_C(idx,idx) += V*csubl-alpha4;
 //                b[idx] += -alpha4*c_salt;
 
                 //includes advection term
-                C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha4;
+                vl_C(idx,idx) += V*csubl-d->A[4]*udotm[4]-alpha4;
                 b[idx] += -alpha4*c_salt;
 
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+                    vl_C(idx,idx) += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    vl_C(idx,ntri * (z + 1) + face->cell_id) += alpha[3];
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
+                    vl_C(idx,idx) += V*csubl-alpha[3];
+                    vl_C(idx,ntri * (z + 1) + face->cell_id) += -d->A[3]*udotm[3]+alpha[3];
                 }
             } else if (z == nLayer - 1)// top z layer
             {
@@ -744,23 +760,23 @@ void PBSM3D::run(mesh domain)
 
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    vl_C(idx,idx) += V*csubl-d->A[3]*udotm[3]-alpha[3];
                     b[idx] += -alpha[3] * cprecip;
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[3];
+                    vl_C(idx,idx) += V*csubl-alpha[3];
                     b[idx] += d->A[3]*cprecip*udotm[3] - alpha[3] * cprecip;
                 }
 
                 if (udotm[4] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+                    vl_C(idx,idx) += V*csubl-d->A[4]*udotm[4]-alpha[4];
+                    vl_C(idx,ntri * (z - 1) + face->cell_id) += alpha[4];
 
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
+                    vl_C(idx,idx) += V*csubl-alpha[4];
+                    vl_C(idx,ntri * (z - 1) + face->cell_id) += -d->A[4]*udotm[4]+alpha[4];
                 }
 
 
@@ -768,32 +784,32 @@ void PBSM3D::run(mesh domain)
             {
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+                    vl_C(idx,idx) += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    vl_C(idx,ntri * (z + 1) + face->cell_id) += alpha[3];
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
+                    vl_C(idx,idx) += V*csubl-alpha[3];
+                    vl_C(idx,ntri * (z + 1) + face->cell_id) += -d->A[3]*udotm[3]+alpha[3];
                 }
 
                 if (udotm[4] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+                    vl_C(idx,idx) += V*csubl-d->A[4]*udotm[4]-alpha[4];
+                    vl_C(idx,ntri * (z - 1) + face->cell_id) += alpha[4];
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
+                    vl_C(idx,idx) += V*csubl-alpha[4];
+                    vl_C(idx,ntri * (z - 1) + face->cell_id) += -d->A[4]*udotm[4]+alpha[4];
                 }
             }
         } // end z iter
     } //end face iter
 
     //setup the compressed matrix on the compute device, if available
-    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
-    viennacl::copy(C,vl_C);
-    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
-    viennacl::copy(b,rhs);
+//    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
+//    viennacl::copy(C,vl_C);
+//    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
+//    viennacl::copy(b,rhs);
 
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
@@ -804,7 +820,7 @@ void PBSM3D::run(mesh domain)
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
     viennacl::linalg::gmres_tag gmres_tag(1e-8, 500, 30);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, gmres_tag, chow_patel_ilu);
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 

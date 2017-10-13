@@ -93,7 +93,7 @@ public:
     bool enable_veg; // should we consider vegetation ?
 
     viennacl::compressed_matrix<vcl_scalar_type>  vl_C;
-    viennacl::vector<vcl_scalar_type> rhs;
+    viennacl::vector<vcl_scalar_type> b;
 
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
