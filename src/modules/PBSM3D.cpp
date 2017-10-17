@@ -510,11 +510,8 @@ void PBSM3D::run(mesh domain)
         double rh = face->face_data("rh")/100.;
         double RH = rh*100.;
         double es = mio::Atmosphere::saturatedVapourPressure(t);
-        double ea = rh * es / 1000.; // e in kpa
-        double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
-        //specific humidity of the air at air temp
-        double q = 0.633*ea/P;
-
+        double ea = rh * es / 1000.; // ea needs to be in kpa
+ 
         double v = 1.88*10e-5; //kinematic viscosity of air, below eqn 13 Pomeroy 1993
 
         //vapour pressure, Pa
