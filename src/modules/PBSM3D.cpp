@@ -562,7 +562,7 @@ void PBSM3D::run(mesh domain)
              * The *1000 and /1000 are important unit conversions. Doesn't quite match the harder paper, but Phil assures me it is correct.
              */
             double mw = 0.01801528 * 1000.0; //[kg/mol]  ---> g/mol
-            double R = 8.31441 /1000.0; // [J mol-1 K-1]
+            double R = 8.31441;// /1000.0; // [J mol-1 K-1]
 
             double rho = (mw * ea) / (R*t);
 
