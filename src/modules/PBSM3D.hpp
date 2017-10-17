@@ -95,6 +95,8 @@ public:
     viennacl::compressed_matrix<vcl_scalar_type>  vl_C;
     viennacl::vector<vcl_scalar_type> b;
 
+    double debug_output;
+
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
     double min_mass_for_trans;
@@ -124,6 +126,11 @@ public:
         bool saltation;
 
         double z0;
+
+        double Tsguess;
+        double z0Fnguess;
+
+        double sum_drift;
     };
 
 };
