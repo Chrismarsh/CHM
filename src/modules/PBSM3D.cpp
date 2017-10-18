@@ -1,6 +1,15 @@
 #include "PBSM3D.hpp"
 
-
+//starting at row_start until row_end find offset for col
+inline unsigned int offset(const unsigned int& row_start,const unsigned int& row_end,const unsigned int const * col_buffer, const unsigned int& col)
+{
+    for(unsigned int i=row_start; i < row_end; ++i)
+    {
+        if( col_buffer[i] == col)
+            return i;
+    }
+    return -1; //wrap it and index garbage
+}
 PBSM3D::PBSM3D(config_file cfg)
         :module_base(parallel::domain)
 {
@@ -251,6 +260,11 @@ void PBSM3D::run(mesh domain)
 
     //ice density
     double rho_p = PhysConst::rho_ice;
+
+    //get row buffer
+    unsigned int const * row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
+    unsigned int const * col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
+    vcl_scalar_type* elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -678,12 +692,10 @@ void PBSM3D::run(mesh domain)
             //lateral
             size_t idx = ntri*z + face->cell_id;
 
-            //I'm unclear as to what the map inits the double value to.  I assume undef'd like always, so this is called
-            //to ensure that they are inited to zero so we can call the += operator w/o issue below. Only needs to be done for the diagonal elements
-            //as the rest are straight assignments and not +=
-
-//            if( C[idx].find(idx) == C[idx].end() )
-//                vl_C(idx,idx) = 0.0;
+            //[idx][idx]
+            size_t idx_idx_off = offset(row_buffer[idx],
+                                row_buffer[idx+1],
+                                col_buffer, idx);
             b[idx] = 0;
             double V = face->get_area()  * v_edge_height;
 
@@ -696,14 +708,18 @@ void PBSM3D::run(mesh domain)
             {
                 if(udotm[f] > 0)
                 {
+
                     if (d->face_neigh[f])
                     {
                         size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-//                        if( C[idx].find(nidx) == C[idx].end() )
-//                            vl_C(idx,nidx) = 0.0;
 
-                       vl_C(idx,idx)  += V*csubl-d->A[f]*udotm[f]-alpha[f];
-                       vl_C(idx,nidx) += alpha[f];
+                        elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+
+                        size_t idx_nidx_off = offset(row_buffer[idx],
+                                            row_buffer[idx+1],
+                                            col_buffer, nidx);
+
+                        elements[ idx_nidx_off ] += alpha[f];
 
                     }
                     else
@@ -714,18 +730,22 @@ void PBSM3D::run(mesh domain)
                         //allow mass in
 //                        vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f];
 
-                        vl_C(idx,idx) += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
+
+                        elements[ idx_idx_off ] += 0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
+
                     }
                 } else
                 {
                     if (d->face_neigh[f])
                     {
                         size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-//                        if( C[idx].find(nidx) == C[idx].end() )
-//                            vl_C(idx,nidx) = 0.0;
 
-                        vl_C(idx,idx) += V*csubl-alpha[f];
-                        vl_C(idx,nidx) += -d->A[f]*udotm[f]+alpha[f];
+                        size_t idx_nidx_off = offset(row_buffer[idx],
+                                                     row_buffer[idx+1],
+                                                     col_buffer, nidx);
+
+                        elements[ idx_idx_off ] +=V*csubl-alpha[f];
+                        elements[ idx_nidx_off ]  += -d->A[f]*udotm[f]+alpha[f];
                     }
                     else
                     {
@@ -735,22 +755,12 @@ void PBSM3D::run(mesh domain)
                         //allow mass in
 //                        vl_C(idx,idx) += -.99*d->A[f]*udotm[f]+csubl*V;
 
-                        vl_C(idx,idx) += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
+
+                        elements[ idx_idx_off ] += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
+
                     }
                 }
             }
-
-
-
-            //init to zero the vertical component
-//            if( z != nLayer -1 &&
-//                C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
-//                vl_C(idx,ntri * (z + 1) + face->cell_id) = 0.0;
-//
-//            if(z!=0 &&
-//               C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
-//                vl_C(idx,ntri * (z - 1) + face->cell_id) = 0.0;
-
 
 
             //vertical layers
@@ -764,17 +774,23 @@ void PBSM3D::run(mesh domain)
 //                b[idx] += -alpha4*c_salt;
 
                 //includes advection term
-                vl_C(idx,idx) += V*csubl-d->A[4]*udotm[4]-alpha4;
+                elements[ idx_idx_off ] += V*csubl-d->A[4]*udotm[4]-alpha4;
+
                 b[idx] += -alpha4*c_salt;
+
+                //ntri * (z + 1) + face->cell_id
+                size_t idx_nidx_off = offset(row_buffer[idx],
+                                             row_buffer[idx+1],
+                                             col_buffer, ntri * (z + 1) + face->cell_id);
 
                 if (udotm[3] > 0)
                 {
-                    vl_C(idx,idx) += V*csubl-d->A[3]*udotm[3]-alpha[3];
-                    vl_C(idx,ntri * (z + 1) + face->cell_id) += alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    elements[ idx_nidx_off ] += alpha[3];
                 } else
                 {
-                    vl_C(idx,idx) += V*csubl-alpha[3];
-                    vl_C(idx,ntri * (z + 1) + face->cell_id) += -d->A[3]*udotm[3]+alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-alpha[3];
+                    elements[ idx_nidx_off ] += -d->A[3]*udotm[3]+alpha[3];
                 }
             } else if (z == nLayer - 1)// top z layer
             {
@@ -786,46 +802,58 @@ void PBSM3D::run(mesh domain)
 
                 if (udotm[3] > 0)
                 {
-                    vl_C(idx,idx) += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-d->A[3]*udotm[3]-alpha[3];
                     b[idx] += -alpha[3] * cprecip;
                 } else
                 {
-                    vl_C(idx,idx) += V*csubl-alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-alpha[3];
                     b[idx] += d->A[3]*cprecip*udotm[3] - alpha[3] * cprecip;
                 }
 
+                //ntri * (z - 1) + face->cell_id
+                size_t idx_nidx_off = offset(row_buffer[idx],
+                                             row_buffer[idx+1],
+                                             col_buffer, ntri * (z - 1) + face->cell_id);
                 if (udotm[4] > 0)
                 {
-                    vl_C(idx,idx) += V*csubl-d->A[4]*udotm[4]-alpha[4];
-                    vl_C(idx,ntri * (z - 1) + face->cell_id) += alpha[4];
+                    elements[ idx_idx_off ] += V*csubl-d->A[4]*udotm[4]-alpha[4];
+                    elements[ idx_nidx_off ] += alpha[4];
 
                 } else
                 {
-                    vl_C(idx,idx) += V*csubl-alpha[4];
-                    vl_C(idx,ntri * (z - 1) + face->cell_id) += -d->A[4]*udotm[4]+alpha[4];
+                    elements[ idx_idx_off ] += V*csubl-alpha[4];
+                    elements[ idx_nidx_off ] += -d->A[4]*udotm[4]+alpha[4];
                 }
 
 
             } else //middle layers
             {
+                //ntri * (z + 1) + face->cell_id
+                size_t idx_nidx_off = offset(row_buffer[idx],
+                                             row_buffer[idx+1],
+                                             col_buffer, ntri * (z + 1) + face->cell_id);
+
                 if (udotm[3] > 0)
                 {
-                    vl_C(idx,idx) += V*csubl-d->A[3]*udotm[3]-alpha[3];
-                    vl_C(idx,ntri * (z + 1) + face->cell_id) += alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    elements[ idx_nidx_off ] += alpha[3];
                 } else
                 {
-                    vl_C(idx,idx) += V*csubl-alpha[3];
-                    vl_C(idx,ntri * (z + 1) + face->cell_id) += -d->A[3]*udotm[3]+alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-alpha[3];
+                    elements[ idx_nidx_off ] += -d->A[3]*udotm[3]+alpha[3];
                 }
 
+                idx_nidx_off = offset(row_buffer[idx],
+                                      row_buffer[idx+1],
+                                      col_buffer, ntri * (z - 1) + face->cell_id);
                 if (udotm[4] > 0)
                 {
-                    vl_C(idx,idx) += V*csubl-d->A[4]*udotm[4]-alpha[4];
-                    vl_C(idx,ntri * (z - 1) + face->cell_id) += alpha[4];
+                    elements[ idx_idx_off ] += V*csubl-d->A[4]*udotm[4]-alpha[4];
+                    elements[ idx_nidx_off ]  += alpha[4];
                 } else
                 {
-                    vl_C(idx,idx) += V*csubl-alpha[4];
-                    vl_C(idx,ntri * (z - 1) + face->cell_id) += -d->A[4]*udotm[4]+alpha[4];
+                    elements[ idx_idx_off ] += V*csubl-alpha[4];
+                    elements[ idx_nidx_off ]  += -d->A[4]*udotm[4]+alpha[4];
                 }
             }
         } // end z iter
