@@ -695,16 +695,22 @@ void core::config_output(const pt::ptree &value)
             try
             {
                 out.modVeg = itr.second.get<bool>("modVeg");
-                out.modcanopyType = itr.second.get<int>("modcanopyType");
-                out.modLAI = itr.second.get<double>("modLAI");
-                out.modCanopyHeight = itr.second.get<double>("modCanopyHeight");
-
-                // Call X to modify the current mesh
-
             }
             catch(const pt::ptree_error &e)
             {
                 // Do nothing, not required, default is false.
+            }
+
+            if(out.modVeg) {
+                try {
+                    out.modcanopyType = itr.second.get<int>("modcanopyType");
+                    out.modLAI = itr.second.get<double>("modLAI");
+                    out.modCanopyHeight = itr.second.get<double>("modCanopyHeight");
+                }
+                catch(const pt::ptree_error &e)
+                {
+                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing modified Vegetation parameters for " + out.name));
+                }
             }
 
             //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
