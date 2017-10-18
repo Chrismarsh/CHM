@@ -1,7 +1,7 @@
 #include "PBSM3D.hpp"
 
 //starting at row_start until row_end find offset for col
-inline unsigned int offset(const unsigned int& row_start,const unsigned int& row_end,const unsigned int const * col_buffer, const unsigned int& col)
+inline unsigned int offset(const unsigned int& row_start,const unsigned int& row_end,const unsigned int  * col_buffer, const unsigned int& col)
 {
     for(unsigned int i=row_start; i < row_end; ++i)
     {
@@ -262,9 +262,9 @@ void PBSM3D::run(mesh domain)
     double rho_p = PhysConst::rho_ice;
 
     //get row buffer
-    unsigned int const * row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
-    unsigned int const * col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
-    vcl_scalar_type* elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
+    unsigned int const* row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
+    unsigned int const* col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
+    vcl_scalar_type*    elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -731,7 +731,7 @@ void PBSM3D::run(mesh domain)
 //                        vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f];
 
 
-                        elements[ idx_idx_off ] += 0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
+                        elements[ idx_idx_off ] += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
 
                     }
                 } else
