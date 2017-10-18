@@ -189,19 +189,19 @@ if(MATLAB)
 endif()
 
 find_package(OpenCL)
-#if(OPENCL_FOUND)
-#    message(STATUS "Enabling ViennaCL with OpenCL, vcl_scalar_type=float")
-#
-#    add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
-#    add_definitions(-DVIENNACL_WITH_OPENCL)
-#    if(APPLE)
-#       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
-#    endif()
-#else()
+if(OPENCL_FOUND)
+    message(STATUS "Enabling ViennaCL with OpenCL, vcl_scalar_type=float")
+
+    add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
+    add_definitions(-DVIENNACL_WITH_OPENCL)
+    if(APPLE)
+       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
+    endif()
+else()
     add_definitions(-Dvcl_scalar_type=float) #might as well default to double precision if no OpenCL device found.
     unset(OPENCL_LIBRARIES CACHE) ##zero these out so we can use them later without trouble
     unset(OPENCL_INCLUDE_DIRS CACHE)
-#endif()
+endif()
 
 if(SUPERBUILD)
     find_package(Armadillo REQUIRED  HINTS ${Armadillo_DIR} )

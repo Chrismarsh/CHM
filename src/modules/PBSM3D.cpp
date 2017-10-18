@@ -107,8 +107,6 @@ void PBSM3D::init(mesh domain)
     n_non_edge_tri = 0;
 
 
-
-
     //use this to build the sparsity pattern
     size_t ntri = domain->number_of_faces();
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
@@ -235,7 +233,7 @@ void PBSM3D::init(mesh domain)
     viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
     
     b.resize(ntri * nLayer);
-
+    nnz = vl_C.nnz();
 
 }
 
@@ -246,14 +244,17 @@ void PBSM3D::run(mesh domain)
 
     //vcl_scalar_type is defined in the main CMakeLists.txt file.
     // Some GPUs do not have double precision so the run will fail if the wrong precision is used
-//    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
-//    std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
+
+    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
+    vl_C.switch_memory_context(host_ctx);
+
+
 
     //zero CSR vector in vl_C
-    auto size = vl_C.nnz();
-    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(size+1), 0, 1);
+
+    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), 0, 1);
     // write:
-    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(size+1), viennacl::traits::context(vl_C));
+    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), viennacl::traits::context(vl_C));
 
     //zero-fill RHS
     b.clear();
@@ -865,6 +866,9 @@ void PBSM3D::run(mesh domain)
 //    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
 //    viennacl::copy(b,rhs);
 
+    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
+    vl_C.switch_memory_context(gpu_ctx);
+ 
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
     chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps
