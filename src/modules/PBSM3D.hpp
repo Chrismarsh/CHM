@@ -92,8 +92,9 @@ public:
     bool do_lateral_diff; // should have lateral diffusion
     bool enable_veg; // should we consider vegetation ?
 
+    double nnz; //number none zero
     viennacl::compressed_matrix<vcl_scalar_type>  vl_C;
-    viennacl::vector<vcl_scalar_type> rhs;
+    viennacl::vector<vcl_scalar_type> b;
 
     double debug_output;
 
