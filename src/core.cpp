@@ -692,6 +692,21 @@ void core::config_output(const pt::ptree &value)
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output " + out.name + " coordinate is invalid."));
             }
 
+            try
+            {
+                out.modVeg = itr.second.get<bool>("modVeg");
+                out.modcanopyType = itr.second.get<int>("modcanopyType");
+                out.modLAI = itr.second.get<double>("modLAI");
+                out.modCanopyHeight = itr.second.get<double>("modCanopyHeight");
+
+                // Call X to modify the current mesh
+
+            }
+            catch(const pt::ptree_error &e)
+            {
+                // Do nothing, not required, default is false.
+            }
+
             //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
             if(!_mesh->is_geographic())
             {
@@ -731,6 +746,15 @@ void core::config_output(const pt::ptree &value)
 
             out.face->_debug_name = out.name; //out_type holds the station name
             out.face->_debug_ID = ID;
+
+            // If modVeg is true, modify with specified vegetation parameters
+            if(out.modVeg) {
+                LOG_DEBUG << "Updating vegetation parameters for " << out_type << ".";
+                out.face->set_parameter("LAI", out.modLAI);
+                out.face->set_parameter("canopyType", out.modcanopyType);
+                out.face->set_parameter("CanopyHeight", out.modCanopyHeight);
+            }
+
             ++ID;
         }
         else if (out_type == "mesh")
