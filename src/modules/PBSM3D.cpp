@@ -42,6 +42,7 @@ PBSM3D::PBSM3D(config_file cfg)
             provides("K" + std::to_string(i));
             provides("c" + std::to_string(i));
             provides("rm" + std::to_string(i));
+            provides("csubl"+ std::to_string(i));
         }
 
         provides("Km_coeff");
@@ -65,6 +66,10 @@ PBSM3D::PBSM3D(config_file cfg)
 
         provides("u*_th");
         provides("u*_n");
+
+        provides("dm/dt");
+        provides("mm");
+        provides("Qsubl");
     }
 
     provides("drift_mass"); //kg/m^2
@@ -245,8 +250,10 @@ void PBSM3D::run(mesh domain)
     //vcl_scalar_type is defined in the main CMakeLists.txt file.
     // Some GPUs do not have double precision so the run will fail if the wrong precision is used
 
+#ifdef VIENNACL_WITH_OPENCL
     viennacl::context host_ctx(viennacl::MAIN_MEMORY);
     vl_C.switch_memory_context(host_ctx);
+#endif
 
 
 
@@ -570,7 +577,7 @@ void PBSM3D::run(mesh domain)
             if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
+            double omega = 1.1*10e7 * pow(rm,1.8); //eqn 15
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
             double Re = 2.0*rm*Vr / v; //eqn 12
@@ -593,20 +600,18 @@ void PBSM3D::run(mesh domain)
              * The *1000 and /1000 are important unit conversions. Doesn't quite match the harder paper, but Phil assures me it is correct.
              */
             double mw = 0.01801528 * 1000.0; //[kg/mol]  ---> g/mol
-            double R = 8.31441;// /1000.0; // [J mol-1 K-1]
+            double R = 8.31441/1000.0; // [J mol-1 K-1]
 
             double rho = (mw * ea) / (R*t);
 
             //use Harder 2013 (A.5) Formulation, but Pa formulation for e
-            auto fx = [&](double Ti)
+            auto fx = [=](double Ti)
             {
                 return boost::math::make_tuple(
-
-                        /* Main fn*/
-                        D*L*(mw*e(T,RH)/(R*(T+273.15))-611.0*mw*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15)))/lambda_t,
-                        /* 1st derivative*/
-                        D*L*(-611.0*mw*(17.3/(237.3+Ti)-17.3*Ti/pow(237.3+Ti,2.0))*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15))+611.0*mw*exp(17.3*Ti/(237.3+Ti))/(R*pow(Ti+273.15,2.0)))/lambda_t-1.0);
+                        T+D*L*(rho/(1000.0)-.611*mw*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15)*(1000.0)))/lambda_t-Ti,
+                        D*L*(-0.6110000000e-3*mw*(17.3/(237.3+Ti)-17.3*Ti/pow(237.3+Ti,2))*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15))+0.6110000000e-3*mw*exp(17.3*Ti/(237.3+Ti))/(R*pow(Ti+273.15,2)))/lambda_t-1);
             };
+
 
             double guess = T;
             double min = -50;
@@ -619,13 +624,15 @@ void PBSM3D::run(mesh domain)
             double Ts = Ti+273.15; //dmdtz expects in K
 
             //now use equation 13 with our solved Ts to compute dm/dt(z)
-            double dmdtz = 2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
+            double dmdtz = 2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - (t+273.15));  //eqn 13 in Pomeroy and Li 2000
+            if(debug_output) face->set_face_data("dm/dt",dmdtz);
 
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
             double mm_alpha = 4.08 + 12.6*cz; //24
             double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
-
+            if(debug_output) face->set_face_data("mm",mm);
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
+            if(debug_output) face->set_face_data("csubl"+std::to_string(z),dmdtz);
             //compute alpha and K for edges
             if(do_lateral_diff)
             {
@@ -700,6 +707,10 @@ void PBSM3D::run(mesh domain)
             b[idx] = 0;
             double V = face->get_area()  * v_edge_height;
 
+            //the sink term is added on for each edge check, which isn't right and ends up double counting it
+            //so / by 5 for csubl and V so it's not 5x counted.
+            csubl /= 5.0;
+            V/=5.0;
             if(!do_sublimation)
             {
                 csubl = 0.0;
@@ -866,8 +877,10 @@ void PBSM3D::run(mesh domain)
 //    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
 //    viennacl::copy(b,rhs);
 
+#ifdef VIENNACL_WITH_OPENCL
     viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
     vl_C.switch_memory_context(gpu_ctx);
+#endif
  
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
@@ -894,6 +907,8 @@ void PBSM3D::run(mesh domain)
         double u2 = face->face_data("U_2m_above_srf");
 
         double total_mass = 0;
+
+        double Qsubl=0;
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
@@ -908,8 +923,11 @@ void PBSM3D::run(mesh domain)
 
             if(debug_output) face->set_face_data("c"+std::to_string(z),c);
 
+            Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
+
         }
          face->set_face_data("Qsusp",Qsusp);
+        face->set_face_data("Qsubl",Qsubl);
         // face->set_face_data("suspension_mass",total_mass);
 
 
