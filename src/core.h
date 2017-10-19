@@ -257,6 +257,7 @@ protected:
             face = nullptr;
             name = "";
             modVeg = false;
+            modLandCover = -9999;
             modcanopyType = -9999;
             modLAI = -9999;
             modCanopyHeight = -9999;
@@ -284,6 +285,7 @@ protected:
         timeseries ts;
         size_t frequency;
         bool modVeg;
+        int modLandCover;
         int modcanopyType;
         double modLAI;
         double modCanopyHeight;

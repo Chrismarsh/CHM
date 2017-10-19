@@ -693,7 +693,14 @@ void core::config_output(const pt::ptree &value)
             }
 
             // Check if user provided veg parameters for this output cell.
-            out.modVeg = itr.second.get("modVeg",false);
+            out.modLandCover = itr.second.get("modLandCover",-9999); // Landcover classfication method
+            out.modVeg = itr.second.get("modVeg",false); // Distributed veg parameter mapping method
+
+            // Check user did not try to use both methods
+            if(out.modVeg & (out.modLandCover!=-9999)){
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Cannot set both modLandCover AND modVeg."));
+            }
+
             if(out.modVeg) {
                 try
                 {
@@ -753,6 +760,12 @@ void core::config_output(const pt::ptree &value)
                 out.face->set_parameter("LAI", out.modLAI);
                 out.face->set_parameter("canopyType", out.modcanopyType);
                 out.face->set_parameter("CanopyHeight", out.modCanopyHeight);
+            }
+
+            // if modLandCover is set, modify landcover type of current cell
+            if(out.modLandCover!=-9999) {
+                LOG_DEBUG << "Updating vegetation landcover for " << out_type << ".";
+                out.face->set_parameter("landcover", out.modLandCover);
             }
 
             ++ID;
