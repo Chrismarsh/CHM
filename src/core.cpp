@@ -692,17 +692,11 @@ void core::config_output(const pt::ptree &value)
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output " + out.name + " coordinate is invalid."));
             }
 
-            try
-            {
-                out.modVeg = itr.second.get<bool>("modVeg");
-            }
-            catch(const pt::ptree_error &e)
-            {
-                // Do nothing, not required, default is false.
-            }
-
+            // Check if user provided veg parameters for this output cell.
+            out.modVeg = itr.second.get("modVeg",false);
             if(out.modVeg) {
-                try {
+                try
+                {
                     out.modcanopyType = itr.second.get<int>("modcanopyType");
                     out.modLAI = itr.second.get<double>("modLAI");
                     out.modCanopyHeight = itr.second.get<double>("modCanopyHeight");
