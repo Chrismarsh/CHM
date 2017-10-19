@@ -923,11 +923,11 @@ void PBSM3D::run(mesh domain)
 
             if(debug_output) face->set_face_data("c"+std::to_string(z),c);
 
-//            Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
+            if(debug_output) Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
 
         }
          face->set_face_data("Qsusp",Qsusp);
-        face->set_face_data("Qsubl",Qsubl);
+        if(debug_output) face->set_face_data("Qsubl",Qsubl);
         // face->set_face_data("suspension_mass",total_mass);
 
 
