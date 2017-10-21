@@ -325,7 +325,7 @@ void core::config_forcing(pt::ptree &value)
     insrs.SetWellKnownGeogCS("WGS84");
 
     OGRSpatialReference outsrs;
-    outsrs.importFromProj4(_mesh->proj4().c_str());
+    auto err = outsrs.importFromProj4(_mesh->proj4().c_str());
 
     OGRCoordinateTransformation* coordTrans =  nullptr;
 
@@ -1243,10 +1243,77 @@ void core::init(int argc, char **argv)
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
 
-    //ensure all the stations have the same start and end times
-    // per-timestep agreeent happens during runtime.
     auto start_time = _global->_stations.at(0)->date_timeseries().at(0);
     auto end_time = _global->_stations.at(0)->date_timeseries().back();
+
+    //if the user gives both a custom start and end time, don't bother with this.
+    //this does assume the user knows what they are doing and subsets a time period that is correct
+    //if they do not, the sanity check after this period that double checks consistent timestepping will catch it
+    if(!_start_ts && !_end_ts)
+    {
+        // find the latest start time and the earliest end time
+        for (size_t i = 0; i < _global->_stations.size(); ++i)
+        {
+            auto tmp = _global->_stations.at(i)->date_timeseries().at(0);
+
+            if (tmp > start_time)
+                start_time = tmp;
+
+            tmp = _global->_stations.at(i)->date_timeseries().back();
+            if (tmp < end_time)
+                end_time = tmp;
+        }
+    }
+    if (!_start_ts)
+    {
+        _start_ts = new boost::posix_time::ptime(start_time);
+    }
+    else if(*_start_ts < start_time)
+    {
+        std::stringstream ss;
+        ss << "User specified start time starts before the most continuous start time of all input forcing files . ";
+        ss << " User start date: " << *_start_ts;
+        ss << " Continous start date: " << start_time;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+    }
+    if (!_end_ts)
+    {
+        _end_ts = new boost::posix_time::ptime(end_time);
+    }
+    else if(*_end_ts > end_time)
+    {
+        std::stringstream ss;
+        ss << "User specified end time ends after the most continuous end time of all input forcing files . ";
+        ss << " User end date: " << *_end_ts;
+        ss << " Continous end date: " << end_time;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+    }
+
+
+    if( *_start_ts > *_end_ts)
+    {
+        std::stringstream ss;
+        ss << "Start time is after endtime. ";
+        ss << " Start date: " << *_start_ts;
+        ss << " End date: " << *_end_ts;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+    }
+
+    LOG_DEBUG << "Subsetting station timeseries";
+
+#pragma omp for
+    for(size_t i = 0; i < _global->_stations.size(); ++i)
+    {
+        _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
+        _global->_stations.at(i)->reset_itrs();
+        auto s= _global->_stations.at(i);
+         LOG_VERBOSE << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
+    }
+
+    //ensure all the stations have the same start and end times
+    // per-timestep agreeent happens during runtime.
+    start_time = _global->_stations.at(0)->date_timeseries().at(0);
+    end_time = _global->_stations.at(0)->date_timeseries().back();
 
 
     for (size_t i = 1; //on purpose to skip first station
@@ -1272,34 +1339,6 @@ void core::init(int argc, char **argv)
     _global->_dt = dt.total_seconds();
     LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
 
-    if (!_start_ts)
-    {
-        _start_ts = new boost::posix_time::ptime(start_time);
-    }
-    if (!_end_ts)
-    {
-        _end_ts = new boost::posix_time::ptime(end_time);
-    }
-
-    if( *_start_ts > *_end_ts)
-    {
-        std::stringstream ss;
-        ss << "Start time is after endtime. ";
-        ss << " Start date: " << *_start_ts;
-        ss << " End date: " << *_end_ts;
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
-    }
-
-    LOG_DEBUG << "Subsetting station statations";
-    //for (auto &s : _global->_stations)
-#pragma omp for
-    for(size_t i = 0; i < _global->_stations.size(); ++i)
-    {
-        _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
-        _global->_stations.at(i)->reset_itrs();
-
-       // LOG_DEBUG << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
-    }
 
 
     //setup output timeseries sinks
