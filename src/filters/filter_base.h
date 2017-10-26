@@ -15,7 +15,19 @@ public:
     filter_base(){};
     virtual ~filter_base(){};
     virtual void process(boost::shared_ptr<station> station){};
+    bool is_nan(double variable)
+    {
+        if( variable == -9999.0)
+            return true;
 
+        if( std::isnan(variable) )
+            return true;
+
+        if( std::isinf(variable) )
+            return true;
+
+        return false;
+    }
     /**
      * Configuration file. If filter does not need one, then this will contain nothing
      */

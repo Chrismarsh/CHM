@@ -23,8 +23,11 @@ void scale_wind_speed::process(boost::shared_ptr<station> station)
     station->reset_itrs();
     do{
         double U_F          = station->now().get(var); // Here wind u [m/s] at Z_U
-
-        double U_R          = Atmosphere::log_scale_wind(U_F, Z_F, Z_R, 0); // Assume 0 snow depth
+        double U_R = -9999;
+        if(!is_nan(U_F))
+        {
+            U_R          = Atmosphere::log_scale_wind(U_F, Z_F, Z_R, 0); // Assume 0 snow depth
+        }
 
         station->now().set("U_R",U_R);
 

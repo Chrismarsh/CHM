@@ -155,17 +155,36 @@ void snobal::init(mesh domain)
                 sbal->T_s_l = -15. + FREEZE;
                 sbal->z_s = face->get_initial_condition("swe") / sbal->rho;
 
-
             }
         }
-        
+
         sbal->init_snow();
 
         //in point mode, the entire mesh still exists, but no timeseries has been allocated for the faces
         //thus this segfaults. This should be fixed
-//        face->set_face_data("swe",sbal->m_s);
 
-        //////
+        if (face->has_initial_condition("swe") &&  !is_nan(face->get_initial_condition("swe")))
+        {
+            face->set_face_data("swe", sbal->m_s);
+            face->set_face_data("R_n", sbal->R_n);
+            face->set_face_data("H", sbal->H);
+            face->set_face_data("E", sbal->L_v_E);
+            face->set_face_data("G", sbal->G);
+            face->set_face_data("M", sbal->M);
+            face->set_face_data("dQ", sbal->delta_Q);
+            face->set_face_data("cc", sbal->cc_s);
+            face->set_face_data("T_s", sbal->T_s);
+            face->set_face_data("T_s_0", sbal->T_s_0);
+            face->set_face_data("iswr_net", sbal->S_n);
+            face->set_face_data("isothermal", sbal->isothermal);
+            face->set_face_data("ilwr_out", sbal->R_n - sbal->S_n - sbal->I_lw);
+            face->set_face_data("snowmelt_int", 0);
+            face->set_face_data("sum_melt", g->sum_melt);
+            face->set_face_data("sum_snowpack_runoff", g->sum_runoff);
+
+            face->set_face_data("snowdepthavg", sbal->z_s);
+        }
+
         
 
     }

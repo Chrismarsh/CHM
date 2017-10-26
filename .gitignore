@@ -40,3 +40,5 @@ err.xml
 /CMake_fedora/*
 /cmake-build-debug/*
 /cmake-build-release/*
+
+node_modules/

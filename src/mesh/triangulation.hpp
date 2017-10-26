@@ -1199,6 +1199,8 @@ bool  face<Gt, Fb>::has_vegetation()
         return true;
     if (has_parameter("canopyType"))
         return true;
+    if (has_parameter("CanopyHeight"))
+        return true;
 
     return false;
 }
@@ -1210,7 +1212,7 @@ double face<Gt, Fb>::veg_attribute(const std::string &variable)
     {
         int LC = get_parameter("landcover");
         auto param = _domain->_global->parameters;
-        result = param.get<int>("landcover." + std::to_string(LC) + "."+variable);
+        result = param.get<double>("landcover." + std::to_string(LC) + "."+variable);
     }
     else
     {

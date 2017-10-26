@@ -22,7 +22,15 @@ void macdonald_undercatch::process(boost::shared_ptr<station> station)
     do{
         double data = station->now().get(var);
         double u = station->now().get("u");
-        data = data * (1.010 * exp(-0.09*u));
+        //trap missing data, just ignore it.
+        if( !is_nan(data) && !is_nan(u))
+        {
+            data = data * (1.010 * exp(-0.09*u));
+        } else
+        {
+            data = -9999;
+        }
+
         station->now().set(var,data);
     }while(station->next());
 }

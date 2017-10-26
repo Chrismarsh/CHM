@@ -1,6 +1,15 @@
 #include "PBSM3D.hpp"
 
-
+//starting at row_start until row_end find offset for col
+inline unsigned int offset(const unsigned int& row_start,const unsigned int& row_end,const unsigned int  * col_buffer, const unsigned int& col)
+{
+    for(unsigned int i=row_start; i < row_end; ++i)
+    {
+        if( col_buffer[i] == col)
+            return i;
+    }
+    return -1; //wrap it and index garbage
+}
 PBSM3D::PBSM3D(config_file cfg)
         :module_base(parallel::domain)
 {
@@ -10,6 +19,7 @@ PBSM3D::PBSM3D(config_file cfg)
     depends("t");
     depends("rh");
 
+
     depends("p_snow");
     depends("p");
 //    provides("p");
@@ -17,41 +27,56 @@ PBSM3D::PBSM3D(config_file cfg)
 
     optional("fetch");
 
+
+    debug_output=cfg.get("debug_output",false);
+
 //    provides("u10");
     provides("is_drifting");
 //    provides("salt_limit");
 
-    nLayer=cfg.get("nLayer",5);
-    for(int i=0; i<nLayer;++i)
+    if(debug_output)
     {
-        provides("K"+std::to_string(i));
-        provides("c"+std::to_string(i));
+        nLayer = cfg.get("nLayer", 5);
+        for (int i = 0; i < nLayer; ++i)
+        {
+            provides("K" + std::to_string(i));
+            provides("c" + std::to_string(i));
+            provides("rm" + std::to_string(i));
+            provides("csubl"+ std::to_string(i));
+        }
+
+        provides("Km_coeff");
+        provides("Qsusp_pbsm");
+        provides("inhibit_saltation");
+        provides("height_diff");
+        provides("suspension_mass");
+        provides("saltation_mass");
+        provides("Ti");
+
+        provides("w");
+        provides("hs");
+        provides("ustar");
+        provides("l");
+        provides("z0");
+        provides("lambda");
+        provides("LAI");
+
+        provides("csalt");
+        provides("c_salt_fetch_big");
+
+        provides("u*_th");
+        provides("u*_n");
+
+        provides("dm/dt");
+        provides("mm");
+        provides("Qsubl");
     }
-
-    provides("Km_coeff");
-    provides("Qsusp_pbsm");
-//    provides("suspension_mass");
-//    provides("saltation_mass");
-
-    provides("w");
-    provides("hs");
-    provides("ustar");
-    provides("l");
-    provides("z0");
-    provides("lambda");
-    provides("LAI");
-
-    provides("csalt");
-    provides("c_salt_fetch_big");
-
-    provides("u*_n");
 
     provides("drift_mass"); //kg/m^2
     provides("Qsusp");
     provides("Qsalt");
 
     provides("sum_drift");
-
 }
 
 void PBSM3D::init(mesh domain)
@@ -86,6 +111,7 @@ void PBSM3D::init(mesh domain)
 
     n_non_edge_tri = 0;
 
+
     //use this to build the sparsity pattern
     size_t ntri = domain->number_of_faces();
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
@@ -95,15 +121,21 @@ void PBSM3D::init(mesh domain)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
+        d->Tsguess = 273.0;
+        d->z0Fnguess = 0.01;
 
+        if(!face->has_vegetation() && enable_veg)
+        {
+            LOG_ERROR << "Vegetation is enabled, but no vegetation parameter was found.";
+        }
         if(face->has_vegetation() && enable_veg)
         {
-            ;
             d->CanopyHeight = face->veg_attribute("CanopyHeight");
             d->LAI = face->veg_attribute("LAI");
         } else{
             d->CanopyHeight = 0;
             d->LAI = 0;
+            enable_veg = false;
         }
 
         auto& m = d->m;
@@ -162,8 +194,8 @@ void PBSM3D::init(mesh domain)
             ++n_non_edge_tri;
         }
 
+        d->sum_drift = 0;
 
-        face->set_face_data("sum_drift",0);
 
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
@@ -181,26 +213,33 @@ void PBSM3D::init(mesh domain)
                     C[idx][idx] = -9999;
                 }
             }
+
             if (z == 0)
             {
                 C[idx][idx] = -9999;
                 C[idx][ntri * (z + 1) + face->cell_id] = -9999;
-            } else //middle layers
+            } else if (z == nLayer - 1)
             {
                 C[idx][idx] = -9999;
+                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
+
+            }
+            else //middle layers
+            {
+                C[idx][idx] = -9999;
+                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
                 C[idx][ntri * (z - 1) + face->cell_id] = -9999;
             }
         }
     }
 
-    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
-    auto size = vl_C.nnz();
+
+    
     viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
-    // wrap:
-    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::size_type(size+1), 0, 1);
-    // write:
-    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::size_type(size+1), host_ctx);
-}
+    
+    b.resize(ntri * nLayer);
+    nnz = vl_C.nnz();
+
 }
 
 void PBSM3D::run(mesh domain)
@@ -210,11 +249,30 @@ void PBSM3D::run(mesh domain)
 
     //vcl_scalar_type is defined in the main CMakeLists.txt file.
     // Some GPUs do not have double precision so the run will fail if the wrong precision is used
-    std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
-    std::vector<vcl_scalar_type> b(ntri * nLayer , 0.0);
+
+#ifdef VIENNACL_WITH_OPENCL
+    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
+    vl_C.switch_memory_context(host_ctx);
+#endif
+
+
+
+    //zero CSR vector in vl_C
+
+    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), 0, 1);
+    // write:
+    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), viennacl::traits::context(vl_C));
+
+    //zero-fill RHS
+    b.clear();
 
     //ice density
     double rho_p = PhysConst::rho_ice;
+
+    //get row buffer
+    unsigned int const* row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
+    unsigned int const* col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
+    vcl_scalar_type*    elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -236,11 +294,12 @@ void PBSM3D::run(mesh domain)
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
         double snow_depth = face->face_data("snowdepthavg");
+
         snow_depth = is_nan(snow_depth) ? 0: snow_depth;
 
 
         double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
-//        face->set_face_data("u10",u10);
+        // face->set_face_data("u10",u10);
 
         Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
 
@@ -256,62 +315,80 @@ void PBSM3D::run(mesh domain)
 
         // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
 
-        double height_diff = d->CanopyHeight - snow_depth;
-        height_diff = std::max(0.0,height_diff); //don't allow negative differences in height
+        double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);//don't allow negative differences in height
+        if(debug_output) face->set_face_data("height_diff",height_diff);
+        double ustar = 1.3; //placeholder
+        double lambda = 0.5 * d->LAI / d->CanopyHeight * (height_diff);
+        if(debug_output) face->set_face_data("LAI",d->LAI);
+        if(debug_output) face->set_face_data("lambda",lambda);
 
-        double ustar = 1.3;
-        double lambda = d->LAI / 2.0 * (height_diff);
-        face->set_face_data("LAI",d->LAI);
-        face->set_face_data("lambda",lambda);
+        d->saltation = true;
+
+        // The strategy here is as follows:
+        // 1) Wait for vegetation to fill up until it is within 30 cm of the top
+        //     then we can apply Pomeroy and Li 2000 eqn 4 to calculate a z0. This param doesn't seem to work for exposed veg > 30 cm
+        //     i.e, what you'd expect for crop stubble where it was derived.
+        // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0, and effectively allow wind to blow snow out of the vegetation
+        // 3) Once lambda is close to 0, just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
 
 
-        //if lambda is 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-        if (lambda < 1e-1 || swe < 1) {
+
+        //if lambda is -> 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
+        // or if we have disabled veg, just use the non-veg param
+        // or if we are still filling it up, calculate a 'sane' zo/ustar and just disable saltation in this triangle.
+        if (height_diff < 0.05  ||  height_diff > 0.3 || !enable_veg)
+        {
             ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
             d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
-        } else {
+            lambda = 0;
+
+            if( height_diff > 0.3 && enable_veg)
+            {
+                //just disable saltation
+                d->saltation = false;
+            }
+        }
+        else  /*if( height_diff < 0.3)*/
+        {
             auto z0Fn = [&](double z0) -> double {
                 //This formulation has the following coeffs built in
                 // c_2 = 1.6;
                 // c_3 = 0.07519;
                 // c_4 - 0.5;
-                return (1.6 * 0.7519e-1) * pow(.41 * u2 / log(2.0 / z0), 2.0) / (2.0 * 9.81) + .5 * lambda - z0;
+                return (1.6 * 0.7519e-1) * pow(.41 * u2 / log(2.0 / z0), 2.0) / (2.0 * 9.81) +  lambda - z0;  //0.5
             };
 
             double min = 0.0001;
             double max = 1;
             boost::uintmax_t max_iter = 500;
 
-
-            d->no_saltation = false;
             auto tol = [](double a, double b) -> bool {
                 return fabs(a - b) < 1e-8;
             };
 
             try {
-                auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
+//                auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
+                auto r = boost::math::tools::bracket_and_solve_root(z0Fn,d->z0Fnguess,2.0,false,tol,max_iter);
                 d->z0 = r.first + (r.second - r.first) / 2;
                 ustar = u2 * PhysConst::kappa / log(2.0 / d->z0);
             }
             catch (...) {
                 // for cases of large LAI, the above will not converge within the min/max given
                 // this will trap that error, and sets that cell to have no saltation,
-                // however re calculate the zo and ustar as if tehre was no vegetation.
+                // however re calculate the z0 and ustar as if there was no vegetation.
                 // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
                 // in ares of trees.
-                d->no_saltation = true;
-
+                d->saltation = false;
 
                 ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
                 d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
             }
         }
 
-        d->z0 = std::max(0.0001,d->z0);
-        ustar = std::max(0.1,ustar);
+        d->z0 = std::max(0.001,d->z0);
+        ustar = std::max(0.01,ustar);
 
-
-        face->set_face_data("z0",d->z0);
+        if(debug_output) face->set_face_data("z0",d->z0);
         // ------------------
 
         //depth of saltation layer
@@ -324,7 +401,7 @@ void PBSM3D::run(mesh domain)
         //pomeroy
         hs = 0.08436*pow(ustar,1.27);
         d->hs = hs;
-        face->set_face_data("hs",hs);
+        if(debug_output) face->set_face_data("hs",hs);
 
         //eddy diffusivity (m^2/s)
         // 0,1,2 will all be K = 0, as no horizontal diffusion process
@@ -355,37 +432,41 @@ void PBSM3D::run(mesh domain)
 
 
         double c_salt_fetch_big=0;
-//        face->set_face_data("u*_th",u_star_saltation);
+        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
 
-        face->set_face_data("ustar",ustar);
+        if(debug_output) face->set_face_data("ustar",ustar);
 
-        face->set_face_data("is_drifting",0);
-        face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
+        if(debug_output) face->set_face_data("is_drifting",0);
+        if(debug_output) face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
+
+        if(!d->saltation && debug_output)
+        {
+             face->set_face_data("inhibit_saltation",1);
+        }
 
         if( ustar > u_star_saltation &&
-                swe > min_mass_for_trans &&
-                !d->no_saltation
-
-            /*&&
-                snow_depth >= d->CanopyHeight*/  )
+               swe > min_mass_for_trans &&
+                d->saltation)
         {
 
             double pbsm_qsusp = pow(u10,4.13)/674100.0;
-            face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
-            face->set_face_data("is_drifting",1);
+            if(debug_output) face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+            if(debug_output) face->set_face_data("is_drifting",1);
 
             //Pomeroy and Li 2000, eqn 8
-            double Beta = 170.0;
+            double Beta =  202.0; //170.0;
             double ustar_n = 0;
 
-            if (snow_depth < d->CanopyHeight)
-            {
-                ustar_n = ustar * sqrt(Beta*lambda)*pow(1.0+Beta*lambda,-0.5);
-            }
+//            if (snow_depth < d->CanopyHeight && enable_veg)
+//            {
+                double m = 0.16;
+                //this is ustar_n / ustar
+                ustar_n = sqrt(m*Beta*lambda)*pow(1.0+m* Beta*lambda,-0.5); //MacDonald 2009 eq 3;
+//            }
 
-            face->set_face_data("u*_n",ustar_n);
-            //Pomeroy 1992, eqn 12
-            c_salt = rho_f / (3.29 * ustar) * (1.0 - (ustar_n*ustar_n)/(ustar * ustar) -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
+            if(debug_output) face->set_face_data("u*_n",ustar_n);
+            //Pomeroy 1992, eqn 12, see note above for ustar_n calc
+            c_salt = rho_f / (3.29 * ustar) * (1.0 - ustar_n*ustar_n -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
 
             // occasionally happens to happen at low wind speeds where the parameterization breaks.
             // hasn't happened since changed this to the threshold velocity though...
@@ -410,7 +491,7 @@ void PBSM3D::run(mesh domain)
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
-//            face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
+            // face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
             //in the triangle. I
@@ -428,7 +509,7 @@ void PBSM3D::run(mesh domain)
 //            //https://www.wolframalpha.com/input/?i=(m*(kg%2Fm%5E3*(m%2Fs)*m)%2Fm%5E2)*s
 //            salt = std::fabs(salt) *  global_param->dt(); // ->kg/m^2
 //
-//            face->set_face_data("salt_limit",salt);
+            // face->set_face_data("salt_limit",salt);
 //
 //            //Figure out the max we can transport, ie total mass in cell
 //            if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
@@ -460,19 +541,22 @@ void PBSM3D::run(mesh domain)
 //        }
 
 
-        face->set_face_data("csalt", c_salt);
-        face->set_face_data("c_salt_fetch_big", c_salt_fetch_big);
+        if(debug_output) face->set_face_data("csalt", c_salt);
+        if(debug_output) face->set_face_data("c_salt_fetch_big", c_salt_fetch_big);
         face->set_face_data("Qsalt", Qsalt);
 
         double rh = face->face_data("rh")/100.;
-
+        double RH = rh*100.;
         double es = mio::Atmosphere::saturatedVapourPressure(t);
-        double ea = rh * es / 1000.; // e in kpa
-        double P = mio::Atmosphere::stdAirPressure(face->get_z())/1000.;// kpa //might be a better fun for this
-        //specific humidity of the air at air temp
-        double q = 0.633*ea/P;
+        double ea = rh * es / 1000.; // ea needs to be in kpa
+ 
+        double v = 1.88*10e-5; //kinematic viscosity of air, below eqn 13 Pomeroy 1993
 
-        double v = 1.88*pow(10.,-5.); //kinematic viscosity of air
+        //vapour pressure, Pa
+        auto e = [](double T,double RH)
+        {
+            return RH/100.*611.0*exp(17.3*T/(237.3+T)); //Pa
+        };
 
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
@@ -490,8 +574,10 @@ void PBSM3D::run(mesh domain)
             //these are from
             // Pomeroy, J. W., D. M. Gray, and P. G. Landine (1993), The prairie blowing snow model: characteristics, validation, operation, J. Hydrol., 144(1–4), 165–192.
             double rm = 4.6e-5 * pow(cz,-0.258); // eqn 18, mean particle size
+            if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
+
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
+            double omega = 1.1*10e7 * pow(rm,1.8); //eqn 15
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
             double Re = 2.0*rm*Vr / v; //eqn 12
@@ -499,42 +585,54 @@ void PBSM3D::run(mesh domain)
             double Nu, Sh;
             Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);
 
-            double D = 2.06*10.0e-5*pow(t/(273.0),1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998
+            //define above, T is in C, t is in K
 
-            double lambda_t = 0.000063*(t-273.15)+0.00673; // J/(kmol K) thermal conductivity looks like this is degC, not K. order of magnitude off if K, eqn 11 text Pomeroy 1993 (PBSM paper)
-            double Ls = 2.838e6; // latent heat of sublimation, eqn 11 pomeroy 1993 (PBSM) text
-            double rho_a = mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.
+            // (A.6)
+            double D = 2.06 * 10e-5 * pow(t/273.15,1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998 or Harder 2013 A.6
 
+            // (A.9)
+            double lambda_t = 0.000063 * t + 0.00673; // J/(kmol K) thermal conductivity, user Harder 2013 A.9, Pomeroy's is off by an order of magnitude, this matches this https://www.engineeringtoolbox.com/air-properties-d_156.html
 
-            //Kelliher, F., R. Leuning, and E. Schulze (1993), Evaporation and canopy characteristics of coniferous forests and grasslands, Oecologia, 95, 153–163. [online] Available from: http://www.springerlink.com/index/N18088W380247W3P.pdf (Accessed 12 February 2013)
-            //eqn 13
-            auto Tsfn = [&](double Ts) -> double
+            // (A.10) (A.11)
+            double L = 1000.0 * (2834.1 - 0.29 *T - 0.004*T*T); // T in C
+
+            /*
+             * The *1000 and /1000 are important unit conversions. Doesn't quite match the harder paper, but Phil assures me it is correct.
+             */
+            double mw = 0.01801528 * 1000.0; //[kg/mol]  ---> g/mol
+            double R = 8.31441/1000.0; // [J mol-1 K-1]
+
+            double rho = (mw * ea) / (R*t);
+
+            //use Harder 2013 (A.5) Formulation, but Pa formulation for e
+            auto fx = [=](double Ti)
             {
-                double es_Ts = mio::Atmosphere::saturatedVapourPressure(Ts);
-                double ea_ts = 1. * es_Ts /1000.; //kpa
-
-                //specific humidity of the particle at the particle temp
-                double qTs = 0.633*ea_ts/P;
-                double result = (D*Sh*Ls*q*rho_a-D*Sh*Ls*qTs*rho_a+Nu*t*lambda_t)/(lambda_t*Nu)-Ts;
-                return result;
+                return boost::math::make_tuple(
+                        T+D*L*(rho/(1000.0)-.611*mw*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15)*(1000.0)))/lambda_t-Ti,
+                        D*L*(-0.6110000000e-3*mw*(17.3/(237.3+Ti)-17.3*Ti/pow(237.3+Ti,2))*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15))+0.6110000000e-3*mw*exp(17.3*Ti/(237.3+Ti))/(R*pow(Ti+273.15,2)))/lambda_t-1);
             };
 
-            double min = 200;
-            double max = 300;
-            boost::uintmax_t max_iter=500;
-            boost::math::tools::eps_tolerance<double> tol(30);
 
-            auto r = boost::math::tools::toms748_solve(Tsfn, min, max, tol, max_iter);//max_iter
-            double Ts = r.first + (r.second - r.first)/2;
+            double guess = T;
+            double min = -50;
+            double max = 0;
+            int digits = 6;
+
+            double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
+            if(debug_output) face->set_face_data("Ti",Ti);
+
+            double Ts = Ti+273.15; //dmdtz expects in K
 
             //now use equation 13 with our solved Ts to compute dm/dt(z)
-            double dmdtz = 2.0 * M_PI * rm * lambda_t / Ls * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
+            double dmdtz = 2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - (t+273.15));  //eqn 13 in Pomeroy and Li 2000
+            if(debug_output) face->set_face_data("dm/dt",dmdtz);
 
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
             double mm_alpha = 4.08 + 12.6*cz; //24
             double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
-
+            if(debug_output) face->set_face_data("mm",mm);
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
+            if(debug_output) face->set_face_data("csubl"+std::to_string(z),dmdtz);
             //compute alpha and K for edges
             if(do_lateral_diff)
             {
@@ -543,17 +641,17 @@ void PBSM3D::run(mesh domain)
                     auto neigh = face->neighbor(a);
                     alpha[a] = d->A[a];
 
-                    //if we have a neighbour, use the distance
-                    if (neigh != nullptr)
-                    {
-                        alpha[a] /= math::gis::distance(face->center(), neigh->center());
-
-                    } else
-                    {
-                        //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
-                        alpha[a] /= 5.0 * math::gis::distance(face->center(), face->vertex(0)->point());
-
-                    }
+//                    //if we have a neighbour, use the distance
+//                    if (neigh != nullptr)
+//                    {
+//                        alpha[a] /= math::gis::distance(face->center(), neigh->center());
+//
+//                    } else
+//                    {
+//                        //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
+//                        alpha[a] /= 5.0 * math::gis::distance(face->center(), face->vertex(0)->point());
+//
+//                    }
 
                     //do just very low horz diffusion for numerics
                      K[a] =  0.00001;    //PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * 2. * ustar);
@@ -562,11 +660,9 @@ void PBSM3D::run(mesh domain)
             }
             //Li and Pomeroy 2000
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
-            face->set_face_data("l",l);
+            if(debug_output) face->set_face_data("l",l);
             double w = 1.1*10e7*pow(rm,1.8);
-            face->set_face_data("w",w);
-            // This is causing numerical stability issues, so for the moment disable
-
+            if(debug_output) face->set_face_data("w",w);
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
             if (rouault_diffusion_coeff)
@@ -575,15 +671,14 @@ void PBSM3D::run(mesh domain)
                 double dc = 1.0 / (1.0 + (c2 * w * w) / (1.56 * ustar * ustar));
                 diffusion_coeff = dc;     //nope, snow_diffusion_const is shared, use a new
             }
-            face->set_face_data("Km_coeff", diffusion_coeff);
+            if(debug_output) face->set_face_data("Km_coeff", diffusion_coeff);
 
              //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
              K[3] = K[4] = diffusion_coeff * ustar * l;
 
-
 //            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
 
-            face->set_face_data("K"+std::to_string(z), K[3] );
+            if(debug_output) face->set_face_data("K"+std::to_string(z), K[3] );
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
             //bottom
@@ -605,15 +700,17 @@ void PBSM3D::run(mesh domain)
             //lateral
             size_t idx = ntri*z + face->cell_id;
 
-            //I'm unclear as to what the map inits the double value to.  I assume undef'd like always, so this is called
-            //to ensure that they are inited to zero so we can call the += operator w/o issue below. Only needs to be done for the diagonal elements
-            //as the rest are straight assignments and not +=
-
-            if( C[idx].find(idx) == C[idx].end() )
-                C[idx][idx] = 0.0;
+            //[idx][idx]
+            size_t idx_idx_off = offset(row_buffer[idx],
+                                row_buffer[idx+1],
+                                col_buffer, idx);
             b[idx] = 0;
             double V = face->get_area()  * v_edge_height;
 
+            //the sink term is added on for each edge check, which isn't right and ends up double counting it
+            //so / by 5 for csubl and V so it's not 5x counted.
+            csubl /= 5.0;
+            V/=5.0;
             if(!do_sublimation)
             {
                 csubl = 0.0;
@@ -623,61 +720,59 @@ void PBSM3D::run(mesh domain)
             {
                 if(udotm[f] > 0)
                 {
+
                     if (d->face_neigh[f])
                     {
                         size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-                        if( C[idx].find(nidx) == C[idx].end() )
-                            C[idx][nidx] = 0.0;
 
-                       C[idx][idx]  += V*csubl-d->A[f]*udotm[f]-alpha[f];
-                       C[idx][nidx] += alpha[f];
+                        elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+
+                        size_t idx_nidx_off = offset(row_buffer[idx],
+                                            row_buffer[idx+1],
+                                            col_buffer, nidx);
+
+                        elements[ idx_nidx_off ] += alpha[f];
 
                     }
                     else
                     {
                         //no mass in
-//                       C[idx][idx] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+//                       vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
                         //allow mass in
-//                        C[idx][idx] += V*csubl-d->A[f]*udotm[f];
+//                        vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f];
 
-                        C[idx][idx] += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
+
+                        elements[ idx_idx_off ] += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
+
                     }
                 } else
                 {
                     if (d->face_neigh[f])
                     {
                         size_t nidx = ntri * z + face->neighbor(f)->cell_id;
-                        if( C[idx].find(nidx) == C[idx].end() )
-                            C[idx][nidx] = 0.0;
 
-                        C[idx][idx] += V*csubl-alpha[f];
-                        C[idx][nidx] += -d->A[f]*udotm[f]+alpha[f];
+                        size_t idx_nidx_off = offset(row_buffer[idx],
+                                                     row_buffer[idx+1],
+                                                     col_buffer, nidx);
+
+                        elements[ idx_idx_off ] +=V*csubl-alpha[f];
+                        elements[ idx_nidx_off ]  += -d->A[f]*udotm[f]+alpha[f];
                     }
                     else
                     {
                         //No mass in
-//                        C[idx][idx] += V*csubl-alpha[f];
+//                        vl_C(idx,idx) += V*csubl-alpha[f];
 
                         //allow mass in
-//                        C[idx][idx] += -.99*d->A[f]*udotm[f]+csubl*V;
+//                        vl_C(idx,idx) += -.99*d->A[f]*udotm[f]+csubl*V;
 
-                        C[idx][idx] += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
+
+                        elements[ idx_idx_off ] += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
+
                     }
                 }
             }
-
-
-
-            //init to zero the vertical component
-            if( z != nLayer -1 &&
-                C[idx].find(ntri * (z + 1) + face->cell_id) == C[idx].end() )
-                C[idx][ntri * (z + 1) + face->cell_id] = 0.0;
-
-            if(z!=0 &&
-               C[idx].find(ntri * (z - 1) + face->cell_id) == C[idx].end() )
-                C[idx][ntri * (z - 1) + face->cell_id] = 0.0;
-
 
 
             //vertical layers
@@ -687,83 +782,106 @@ void PBSM3D::run(mesh domain)
                 double alpha4 = d->A[4] * K[4] / (hs/2.0 + v_edge_height/2.0);
 
                 //bottom face, no advection
-//                C[idx][idx] += V*csubl-alpha4;
+//                vl_C(idx,idx) += V*csubl-alpha4;
 //                b[idx] += -alpha4*c_salt;
 
                 //includes advection term
-                C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha4;
+                elements[ idx_idx_off ] += V*csubl-d->A[4]*udotm[4]-alpha4;
+
                 b[idx] += -alpha4*c_salt;
+
+                //ntri * (z + 1) + face->cell_id
+                size_t idx_nidx_off = offset(row_buffer[idx],
+                                             row_buffer[idx+1],
+                                             col_buffer, ntri * (z + 1) + face->cell_id);
 
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    elements[ idx_nidx_off ] += alpha[3];
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-alpha[3];
+                    elements[ idx_nidx_off ] += -d->A[3]*udotm[3]+alpha[3];
                 }
             } else if (z == nLayer - 1)// top z layer
             {
                 //(kg/m^2/s)/(m/s)  ---->  kg/m^3
-                double cprecip = face->face_data("p_snow")/global_param->dt()/w;
+                double cprecip = 0;//face->face_data("p_snow")/global_param->dt()/w;
 
-                face->set_face_data("p_snow",0);
-                face->set_face_data("p",0);
+                // face->set_face_data("p_snow",0);
+                // face->set_face_data("p",0);
 
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-d->A[3]*udotm[3]-alpha[3];
                     b[idx] += -alpha[3] * cprecip;
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-alpha[3];
                     b[idx] += d->A[3]*cprecip*udotm[3] - alpha[3] * cprecip;
                 }
 
+                //ntri * (z - 1) + face->cell_id
+                size_t idx_nidx_off = offset(row_buffer[idx],
+                                             row_buffer[idx+1],
+                                             col_buffer, ntri * (z - 1) + face->cell_id);
                 if (udotm[4] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+                    elements[ idx_idx_off ] += V*csubl-d->A[4]*udotm[4]-alpha[4];
+                    elements[ idx_nidx_off ] += alpha[4];
 
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
+                    elements[ idx_idx_off ] += V*csubl-alpha[4];
+                    elements[ idx_nidx_off ] += -d->A[4]*udotm[4]+alpha[4];
                 }
 
 
             } else //middle layers
             {
+                //ntri * (z + 1) + face->cell_id
+                size_t idx_nidx_off = offset(row_buffer[idx],
+                                             row_buffer[idx+1],
+                                             col_buffer, ntri * (z + 1) + face->cell_id);
+
                 if (udotm[3] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[3]*udotm[3]-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-d->A[3]*udotm[3]-alpha[3];
+                    elements[ idx_nidx_off ] += alpha[3];
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[3];
-                    C[idx][ntri * (z + 1) + face->cell_id] += -d->A[3]*udotm[3]+alpha[3];
+                    elements[ idx_idx_off ] += V*csubl-alpha[3];
+                    elements[ idx_nidx_off ] += -d->A[3]*udotm[3]+alpha[3];
                 }
 
+                idx_nidx_off = offset(row_buffer[idx],
+                                      row_buffer[idx+1],
+                                      col_buffer, ntri * (z - 1) + face->cell_id);
                 if (udotm[4] > 0)
                 {
-                    C[idx][idx] += V*csubl-d->A[4]*udotm[4]-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += alpha[4];
+                    elements[ idx_idx_off ] += V*csubl-d->A[4]*udotm[4]-alpha[4];
+                    elements[ idx_nidx_off ]  += alpha[4];
                 } else
                 {
-                    C[idx][idx] += V*csubl-alpha[4];
-                    C[idx][ntri * (z - 1) + face->cell_id] += -d->A[4]*udotm[4]+alpha[4];
+                    elements[ idx_idx_off ] += V*csubl-alpha[4];
+                    elements[ idx_nidx_off ]  += -d->A[4]*udotm[4]+alpha[4];
                 }
             }
         } // end z iter
     } //end face iter
 
     //setup the compressed matrix on the compute device, if available
-    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
-    viennacl::copy(C,vl_C);
-    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
-    viennacl::copy(b,rhs);
+//    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
+//    viennacl::copy(C,vl_C);
+//    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
+//    viennacl::copy(b,rhs);
 
+#ifdef VIENNACL_WITH_OPENCL
+    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
+    vl_C.switch_memory_context(gpu_ctx);
+#endif
+ 
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
     chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps
@@ -773,7 +891,7 @@ void PBSM3D::run(mesh domain)
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
     viennacl::linalg::gmres_tag gmres_tag(1e-8, 500, 30);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, rhs, gmres_tag, chow_patel_ilu);
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 
@@ -789,6 +907,8 @@ void PBSM3D::run(mesh domain)
         double u2 = face->face_data("U_2m_above_srf");
 
         double total_mass = 0;
+
+        double Qsubl=0;
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
@@ -801,11 +921,14 @@ void PBSM3D::run(mesh domain)
 
             total_mass += c * v_edge_height * face->get_area();
 
-            face->set_face_data("c"+std::to_string(z),c);
+            if(debug_output) face->set_face_data("c"+std::to_string(z),c);
+
+            if(debug_output) Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
 
         }
-        face->set_face_data("Qsusp",Qsusp);
-//        face->set_face_data("suspension_mass",total_mass);
+         face->set_face_data("Qsusp",Qsusp);
+        if(debug_output) face->set_face_data("Qsubl",Qsubl);
+        // face->set_face_data("suspension_mass",total_mass);
 
 
     }
@@ -910,9 +1033,9 @@ void PBSM3D::run(mesh domain)
         mass = qdep * global_param->dt();// kg/m^2*s *dt -> kg/m^2
 
         face->set_face_data("drift_mass", mass);
+        d->sum_drift += mass;
 
-        double sum_drift = face->face_data("sum_drift");
-        face->set_face_data("sum_drift", sum_drift + mass);
+        face->set_face_data("sum_drift", d->sum_drift);
 
 
     }

@@ -92,8 +92,11 @@ public:
     bool do_lateral_diff; // should have lateral diffusion
     bool enable_veg; // should we consider vegetation ?
 
+    double nnz; //number none zero
     viennacl::compressed_matrix<vcl_scalar_type>  vl_C;
-    viennacl::vector<vcl_scalar_type> rhs;
+    viennacl::vector<vcl_scalar_type> b;
+
+    double debug_output;
 
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
@@ -121,9 +124,14 @@ public:
         bool is_edge;
 
         //used to flag the large vegetation areas or other via landcover types to not do any saltation at this point.
-        bool no_saltation;
+        bool saltation;
 
         double z0;
+
+        double Tsguess;
+        double z0Fnguess;
+
+        double sum_drift;
     };
 
 };
