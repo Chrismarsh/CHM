@@ -112,9 +112,12 @@ void PBSM3D::init(mesh domain)
     n_non_edge_tri = 0;
 
 
-    //use this to build the sparsity pattern
+    //use this to build the sparsity pattern for suspension matrix
     size_t ntri = domain->number_of_faces();
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
+
+    //sparsity pattern for drift
+    std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -176,6 +179,8 @@ void PBSM3D::init(mesh domain)
         //which faces have neighbours? Ie, are we an edge?
         for (int a = 0; a < 3; ++a)
         {
+            A[i][i] = -9999;
+
             auto neigh = face->neighbor(a);
             if (neigh == nullptr)
             {
@@ -185,6 +190,8 @@ void PBSM3D::init(mesh domain)
             else
             {
                 d->face_neigh[a] = true;
+
+                A[i][neigh->cell_id] = -9999;
             }
 
         }
@@ -195,6 +202,7 @@ void PBSM3D::init(mesh domain)
         }
 
         d->sum_drift = 0;
+
 
 
         // iterate over the vertical layers
@@ -236,9 +244,12 @@ void PBSM3D::init(mesh domain)
 
     
     viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
-    
+    viennacl::copy(A,vl_A); // copy A -> vl_A, sets up the sparsity pattern
+
     b.resize(ntri * nLayer);
+    bb.resize(ntri);
     nnz = vl_C.nnz();
+    nnz_drift = vl_A.nnz();
 
 }
 
@@ -253,12 +264,14 @@ void PBSM3D::run(mesh domain)
 #ifdef VIENNACL_WITH_OPENCL
     viennacl::context host_ctx(viennacl::MAIN_MEMORY);
     vl_C.switch_memory_context(host_ctx);
+    vl_A.switch_memory_context(host_ctx);
+
+    b.switch_memory_context(host_ctx);
+    bb.switch_memory_context(host_ctx);
 #endif
 
 
-
     //zero CSR vector in vl_C
-
     viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), 0, 1);
     // write:
     init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), viennacl::traits::context(vl_C));
@@ -872,14 +885,10 @@ void PBSM3D::run(mesh domain)
     } //end face iter
 
     //setup the compressed matrix on the compute device, if available
-//    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
-//    viennacl::copy(C,vl_C);
-//    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
-//    viennacl::copy(b,rhs);
-
 #ifdef VIENNACL_WITH_OPENCL
     viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
     vl_C.switch_memory_context(gpu_ctx);
+    b.switch_memory_context(gpu_ctx);
 #endif
  
     // configuration of preconditioner:
@@ -933,8 +942,18 @@ void PBSM3D::run(mesh domain)
 
     }
 
-    std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
-    std::vector<vcl_scalar_type> bb(ntri, 0.0);
+    //get row buffer
+    unsigned int const* A_row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
+    unsigned int const* A_col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
+    vcl_scalar_type*    A_elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
+
+    //zero CSR vector in vl_A
+    viennacl::vector_base<unsigned int> init_temporaryA(vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), 0, 1);
+    // write:
+    init_temporaryA = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), viennacl::traits::context(vl_A));
+
+    //zero fill RHS for drift
+    bb.clear();
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -969,9 +988,11 @@ void PBSM3D::run(mesh domain)
 
         double V = face->get_area();
 
-        if (A[i].find(i) == A[i].end())
-            A[i][i] = 0.0;
 
+        //[i][i]
+        size_t i_i_off = offset(A_row_buffer[i],
+                                A_row_buffer[i+1],
+                                A_col_buffer, i);
 
         for (int j = 0; j < 3; j++)
         {
@@ -982,13 +1003,15 @@ void PBSM3D::run(mesh domain)
                 auto Qsj = neigh->face_data("Qsalt") + face->face_data("Qsalt");
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
 
-                if (A[i].find(neigh->cell_id) == A[i].end())
-                    A[i][neigh->cell_id] = 0.0;
-
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                A[i][i] += V + eps * E[j] / dx[j];
-                A[i][neigh->cell_id] += - eps * E[j] / dx[j];
+                A_elements[i_i_off] += V + eps * E[j] / dx[j];
+
+                //[i][neigh->cell_id]
+                size_t i_ni_off = offset(A_row_buffer[i],
+                                        A_row_buffer[i+1],
+                                        A_col_buffer, neigh->cell_id);
+                A_elements[i_ni_off] += - eps * E[j] / dx[j];
                 bb[i] += - E[j] * Qt * udotm[j];
 
             } else
@@ -996,27 +1019,26 @@ void PBSM3D::run(mesh domain)
                 auto Qtj = 2. * face->face_data("Qsusp"); // const flux across, 0 -> drifts!!!
                 auto Qsj = 2. * face->face_data("Qsalt");
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
-                A[i][i]  += V;
+                A_elements[i_i_off] += V;
                 bb[i] += -E[j] * Qt * udotm[j];
             }
-
         }
 
 
 
     } // end face itr
 
-
-    viennacl::compressed_matrix<vcl_scalar_type>  vl_A(ntri, ntri);
-    viennacl::copy(A,vl_A);
-    viennacl::vector<vcl_scalar_type> rhs_bb(ntri);
-    viennacl::copy(bb,rhs_bb);
-
+//setup the compressed matrix on the compute device, if available
+#ifdef VIENNACL_WITH_OPENCL
+//    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);  <--- already defined above
+    vl_A.switch_memory_context(gpu_ctx);
+    bb.switch_memory_context(gpu_ctx);
+#endif
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, gmres_tag,chow_patel_ilu2);
+    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, gmres_tag,chow_patel_ilu2);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
 
@@ -1026,7 +1048,7 @@ void PBSM3D::run(mesh domain)
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
 
-        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i]; //d->is_edge ||
+        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
 
         double mass = 0;
 
