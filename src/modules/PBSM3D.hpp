@@ -92,9 +92,16 @@ public:
     bool do_lateral_diff; // should have lateral diffusion
     bool enable_veg; // should we consider vegetation ?
 
+
+    // this is the suspension transport matrix
     double nnz; //number none zero
     viennacl::compressed_matrix<vcl_scalar_type>  vl_C;
     viennacl::vector<vcl_scalar_type> b;
+
+    //this is the drift matrix
+    double nnz_drift; //number none zero
+    viennacl::compressed_matrix<vcl_scalar_type>  vl_A;
+    viennacl::vector<vcl_scalar_type> bb;
 
     double debug_output;
 
