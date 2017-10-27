@@ -42,6 +42,7 @@ PBSM3D::PBSM3D(config_file cfg)
             provides("K" + std::to_string(i));
             provides("c" + std::to_string(i));
             provides("rm" + std::to_string(i));
+            provides("csubl"+ std::to_string(i));
         }
 
         provides("Km_coeff");
@@ -65,6 +66,10 @@ PBSM3D::PBSM3D(config_file cfg)
 
         provides("u*_th");
         provides("u*_n");
+
+        provides("dm/dt");
+        provides("mm");
+        provides("Qsubl");
     }
 
     provides("drift_mass"); //kg/m^2
@@ -107,9 +112,12 @@ void PBSM3D::init(mesh domain)
     n_non_edge_tri = 0;
 
 
-    //use this to build the sparsity pattern
+    //use this to build the sparsity pattern for suspension matrix
     size_t ntri = domain->number_of_faces();
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
+
+    //sparsity pattern for drift
+    std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -171,6 +179,8 @@ void PBSM3D::init(mesh domain)
         //which faces have neighbours? Ie, are we an edge?
         for (int a = 0; a < 3; ++a)
         {
+            A[i][i] = -9999;
+
             auto neigh = face->neighbor(a);
             if (neigh == nullptr)
             {
@@ -180,6 +190,8 @@ void PBSM3D::init(mesh domain)
             else
             {
                 d->face_neigh[a] = true;
+
+                A[i][neigh->cell_id] = -9999;
             }
 
         }
@@ -190,6 +202,7 @@ void PBSM3D::init(mesh domain)
         }
 
         d->sum_drift = 0;
+
 
 
         // iterate over the vertical layers
@@ -231,9 +244,12 @@ void PBSM3D::init(mesh domain)
 
     
     viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
-    
+    viennacl::copy(A,vl_A); // copy A -> vl_A, sets up the sparsity pattern
+
     b.resize(ntri * nLayer);
+    bb.resize(ntri);
     nnz = vl_C.nnz();
+    nnz_drift = vl_A.nnz();
 
 }
 
@@ -245,13 +261,17 @@ void PBSM3D::run(mesh domain)
     //vcl_scalar_type is defined in the main CMakeLists.txt file.
     // Some GPUs do not have double precision so the run will fail if the wrong precision is used
 
+#ifdef VIENNACL_WITH_OPENCL
     viennacl::context host_ctx(viennacl::MAIN_MEMORY);
     vl_C.switch_memory_context(host_ctx);
+    vl_A.switch_memory_context(host_ctx);
 
+    b.switch_memory_context(host_ctx);
+    bb.switch_memory_context(host_ctx);
+#endif
 
 
     //zero CSR vector in vl_C
-
     viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), 0, 1);
     // write:
     init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), viennacl::traits::context(vl_C));
@@ -570,7 +590,7 @@ void PBSM3D::run(mesh domain)
             if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
+            double omega = 1.1*10e7 * pow(rm,1.8); //eqn 15
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
             double Re = 2.0*rm*Vr / v; //eqn 12
@@ -593,20 +613,18 @@ void PBSM3D::run(mesh domain)
              * The *1000 and /1000 are important unit conversions. Doesn't quite match the harder paper, but Phil assures me it is correct.
              */
             double mw = 0.01801528 * 1000.0; //[kg/mol]  ---> g/mol
-            double R = 8.31441;// /1000.0; // [J mol-1 K-1]
+            double R = 8.31441/1000.0; // [J mol-1 K-1]
 
             double rho = (mw * ea) / (R*t);
 
             //use Harder 2013 (A.5) Formulation, but Pa formulation for e
-            auto fx = [&](double Ti)
+            auto fx = [=](double Ti)
             {
                 return boost::math::make_tuple(
-
-                        /* Main fn*/
-                        D*L*(mw*e(T,RH)/(R*(T+273.15))-611.0*mw*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15)))/lambda_t,
-                        /* 1st derivative*/
-                        D*L*(-611.0*mw*(17.3/(237.3+Ti)-17.3*Ti/pow(237.3+Ti,2.0))*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15))+611.0*mw*exp(17.3*Ti/(237.3+Ti))/(R*pow(Ti+273.15,2.0)))/lambda_t-1.0);
+                        T+D*L*(rho/(1000.0)-.611*mw*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15)*(1000.0)))/lambda_t-Ti,
+                        D*L*(-0.6110000000e-3*mw*(17.3/(237.3+Ti)-17.3*Ti/pow(237.3+Ti,2))*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15))+0.6110000000e-3*mw*exp(17.3*Ti/(237.3+Ti))/(R*pow(Ti+273.15,2)))/lambda_t-1);
             };
+
 
             double guess = T;
             double min = -50;
@@ -619,13 +637,15 @@ void PBSM3D::run(mesh domain)
             double Ts = Ti+273.15; //dmdtz expects in K
 
             //now use equation 13 with our solved Ts to compute dm/dt(z)
-            double dmdtz = 2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - t);  //eqn 13 in Pomeroy and Li 2000
+            double dmdtz = 2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - (t+273.15));  //eqn 13 in Pomeroy and Li 2000
+            if(debug_output) face->set_face_data("dm/dt",dmdtz);
 
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
             double mm_alpha = 4.08 + 12.6*cz; //24
             double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
-
+            if(debug_output) face->set_face_data("mm",mm);
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
+            if(debug_output) face->set_face_data("csubl"+std::to_string(z),dmdtz);
             //compute alpha and K for edges
             if(do_lateral_diff)
             {
@@ -700,6 +720,10 @@ void PBSM3D::run(mesh domain)
             b[idx] = 0;
             double V = face->get_area()  * v_edge_height;
 
+            //the sink term is added on for each edge check, which isn't right and ends up double counting it
+            //so / by 5 for csubl and V so it's not 5x counted.
+            csubl /= 5.0;
+            V/=5.0;
             if(!do_sublimation)
             {
                 csubl = 0.0;
@@ -861,13 +885,11 @@ void PBSM3D::run(mesh domain)
     } //end face iter
 
     //setup the compressed matrix on the compute device, if available
-//    viennacl::compressed_matrix<vcl_scalar_type>  vl_C(ntri * nLayer, ntri * nLayer);
-//    viennacl::copy(C,vl_C);
-//    viennacl::vector<vcl_scalar_type> rhs(ntri * nLayer);
-//    viennacl::copy(b,rhs);
-
+#ifdef VIENNACL_WITH_OPENCL
     viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
     vl_C.switch_memory_context(gpu_ctx);
+    b.switch_memory_context(gpu_ctx);
+#endif
  
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
@@ -894,6 +916,8 @@ void PBSM3D::run(mesh domain)
         double u2 = face->face_data("U_2m_above_srf");
 
         double total_mass = 0;
+
+        double Qsubl=0;
         for (int z = 0; z<nLayer;++z)
         {
             double c = x[ntri * z + face->cell_id];
@@ -908,15 +932,28 @@ void PBSM3D::run(mesh domain)
 
             if(debug_output) face->set_face_data("c"+std::to_string(z),c);
 
+            if(debug_output) Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
+
         }
          face->set_face_data("Qsusp",Qsusp);
+        if(debug_output) face->set_face_data("Qsubl",Qsubl);
         // face->set_face_data("suspension_mass",total_mass);
 
 
     }
 
-    std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
-    std::vector<vcl_scalar_type> bb(ntri, 0.0);
+    //get row buffer
+    unsigned int const* A_row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
+    unsigned int const* A_col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
+    vcl_scalar_type*    A_elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
+
+    //zero CSR vector in vl_A
+    viennacl::vector_base<unsigned int> init_temporaryA(vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), 0, 1);
+    // write:
+    init_temporaryA = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), viennacl::traits::context(vl_A));
+
+    //zero fill RHS for drift
+    bb.clear();
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -951,9 +988,11 @@ void PBSM3D::run(mesh domain)
 
         double V = face->get_area();
 
-        if (A[i].find(i) == A[i].end())
-            A[i][i] = 0.0;
 
+        //[i][i]
+        size_t i_i_off = offset(A_row_buffer[i],
+                                A_row_buffer[i+1],
+                                A_col_buffer, i);
 
         for (int j = 0; j < 3; j++)
         {
@@ -964,13 +1003,15 @@ void PBSM3D::run(mesh domain)
                 auto Qsj = neigh->face_data("Qsalt") + face->face_data("Qsalt");
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
 
-                if (A[i].find(neigh->cell_id) == A[i].end())
-                    A[i][neigh->cell_id] = 0.0;
-
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                A[i][i] += V + eps * E[j] / dx[j];
-                A[i][neigh->cell_id] += - eps * E[j] / dx[j];
+                A_elements[i_i_off] += V + eps * E[j] / dx[j];
+
+                //[i][neigh->cell_id]
+                size_t i_ni_off = offset(A_row_buffer[i],
+                                        A_row_buffer[i+1],
+                                        A_col_buffer, neigh->cell_id);
+                A_elements[i_ni_off] += - eps * E[j] / dx[j];
                 bb[i] += - E[j] * Qt * udotm[j];
 
             } else
@@ -978,27 +1019,26 @@ void PBSM3D::run(mesh domain)
                 auto Qtj = 2. * face->face_data("Qsusp"); // const flux across, 0 -> drifts!!!
                 auto Qsj = 2. * face->face_data("Qsalt");
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
-                A[i][i]  += V;
+                A_elements[i_i_off] += V;
                 bb[i] += -E[j] * Qt * udotm[j];
             }
-
         }
 
 
 
     } // end face itr
 
-
-    viennacl::compressed_matrix<vcl_scalar_type>  vl_A(ntri, ntri);
-    viennacl::copy(A,vl_A);
-    viennacl::vector<vcl_scalar_type> rhs_bb(ntri);
-    viennacl::copy(bb,rhs_bb);
-
+//setup the compressed matrix on the compute device, if available
+#ifdef VIENNACL_WITH_OPENCL
+//    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);  <--- already defined above
+    vl_A.switch_memory_context(gpu_ctx);
+    bb.switch_memory_context(gpu_ctx);
+#endif
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, rhs_bb, gmres_tag,chow_patel_ilu2);
+    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, gmres_tag,chow_patel_ilu2);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
 
@@ -1008,7 +1048,7 @@ void PBSM3D::run(mesh domain)
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
 
-        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i]; //d->is_edge ||
+        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
 
         double mass = 0;
 

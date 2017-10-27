@@ -145,15 +145,17 @@ public:
    * @param file The file to open
   **/
     void init(int argc, char **argv);
-    void config_options(const pt::ptree &value);
-    void config_modules(const pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
-    void config_meshes(const pt::ptree& value);
+    void config_options( pt::ptree &value);
+    void config_modules( pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
+    void config_meshes( pt::ptree& value);
     void config_forcing(pt::ptree& value);
-    void config_module_overrides(const pt::ptree& value);
+    void config_module_overrides( pt::ptree& value);
     void config_parameters(pt::ptree &value);
-    void config_matlab(const pt::ptree& value);
-    void config_output(const pt::ptree& value);
-    void config_global(const pt::ptree& value);
+    void config_matlab( pt::ptree& value);
+    void config_output(pt::ptree& value);
+    void config_global( pt::ptree& value);
+
+    void _find_and_insert_subjson(pt::ptree& value);
 
     // .first = config file to use
     // .second = extra options, if any.

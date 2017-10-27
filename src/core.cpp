@@ -20,9 +20,11 @@ core::~core()
     LOG_DEBUG << "Finished";
 }
 
-void core::config_options(const pt::ptree &value)
+void core::config_options( pt::ptree &value)
 {
     LOG_DEBUG << "Found options section";
+
+    _find_and_insert_subjson(value);
 
     //setup debugging level, default to debug if not specified
     std::string s = value.get("debug_level", "debug");
@@ -176,8 +178,9 @@ void core::config_options(const pt::ptree &value)
 
 }
 
-void core::config_module_overrides(const pt::ptree &value)
+void core::config_module_overrides( pt::ptree &value)
 {
+    _find_and_insert_subjson(value);
     LOG_DEBUG << "Found dependency override section";
     for (auto &itr : value)
     {
@@ -190,7 +193,7 @@ void core::config_module_overrides(const pt::ptree &value)
     }
 }
 
-void core::config_modules(const pt::ptree &value, const pt::ptree &config, std::vector<std::string> remove,
+void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector<std::string> remove,
                           std::vector<std::string> add)
 {
     LOG_DEBUG << "Found modules section";
@@ -271,6 +274,8 @@ void core::config_forcing(pt::ptree &value)
     _global->_utc_offset = value.get("UTC_offset",0);
     LOG_DEBUG << "Applying UTC offset to ALL forcing files. UTC+" << std::to_string(_global->_utc_offset);
 
+    _find_and_insert_subjson(value);
+
     size_t nstations=0;
     timer c; c.tic();
     for (auto &itr : value)
@@ -278,31 +283,9 @@ void core::config_forcing(pt::ptree &value)
 
         if(itr.first != "UTC_offset")
         {
-            if (itr.second.data().find(".json") != std::string::npos)
-            {
-                auto dir = cwd_dir / itr.second.data();
-
-                auto cfg = read_json(dir.string());
-
-                for (auto &jtr : cfg)
-                {
-                    //If an external file is provided, don't allow further sub json files. That is a rabbit hole that isn't worth dealing with.
-                    if (jtr.second.data().find(".json") != std::string::npos)
-                    {
-                        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
-                                "An included forcing json file cannot contain json sub-files."));
-                    }
-
-                    std::string station_name = jtr.first.data();
-                    forcings.push_back(make_pair(station_name, cfg.get_child(station_name)));
-                    ++nstations;
-                }
-            } else
-            {
-                std::string station_name = itr.first.data();
-                forcings.push_back(make_pair(station_name, value.get_child(station_name)));
-                ++nstations;
-            }
+            std::string station_name = itr.first.data();
+            forcings.push_back(make_pair(station_name, value.get_child(station_name)));
+            ++nstations;
         }
     }
 
@@ -325,7 +308,7 @@ void core::config_forcing(pt::ptree &value)
     insrs.SetWellKnownGeogCS("WGS84");
 
     OGRSpatialReference outsrs;
-    outsrs.importFromProj4(_mesh->proj4().c_str());
+    auto err = outsrs.importFromProj4(_mesh->proj4().c_str());
 
     OGRCoordinateTransformation* coordTrans =  nullptr;
 
@@ -459,6 +442,7 @@ void core::config_parameters(pt::ptree &value)
     LOG_DEBUG << "Found parameter mapping section";
 
     //replace any references to external files with the file contents
+    //we can't use _find_and_insert_subjson(value); as this needs to be handled slightly differently
     for(auto &itr : value)
     {
         if(itr.second.data().find(".json") != std::string::npos)
@@ -476,7 +460,7 @@ void core::config_parameters(pt::ptree &value)
 
 }
 
-void core::config_meshes(const pt::ptree &value)
+void core::config_meshes( pt::ptree &value)
 {
     LOG_DEBUG << "Found meshes sections.";
 #ifdef MATLAB
@@ -486,6 +470,8 @@ void core::config_meshes(const pt::ptree &value)
 #endif
 
     _mesh->_global = _global;
+
+    _find_and_insert_subjson(value);
 
     std::string mesh_path = value.get<std::string>("mesh");
     LOG_DEBUG << "Found mesh:" << mesh_path;
@@ -594,7 +580,7 @@ void core::config_meshes(const pt::ptree &value)
 
 }
 
-void core::config_matlab(const pt::ptree &value)
+void core::config_matlab( pt::ptree &value)
 {
     LOG_DEBUG << "Found matlab section";
 #ifdef MATLAB
@@ -623,7 +609,7 @@ void core::config_matlab(const pt::ptree &value)
 #endif
 }
 
-void core::config_output(const pt::ptree &value)
+void core::config_output(pt::ptree &value)
 {
     LOG_DEBUG << "Found output section";
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
@@ -648,7 +634,8 @@ void core::config_output(const pt::ptree &value)
     boost::filesystem::create_directories(pts_path);
     boost::filesystem::create_directories(msh_path);
 
-    //loop over the list of matlab options
+    _find_and_insert_subjson(value);
+
     for (auto &itr : value)
     {
         output_info out;
@@ -837,7 +824,7 @@ void core::config_output(const pt::ptree &value)
 
 }
 
-void core::config_global(const pt::ptree &value)
+void core::config_global( pt::ptree &value)
 {
     LOG_DEBUG << "Found global section";
 
@@ -1280,10 +1267,77 @@ void core::init(int argc, char **argv)
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
 
-    //ensure all the stations have the same start and end times
-    // per-timestep agreeent happens during runtime.
     auto start_time = _global->_stations.at(0)->date_timeseries().at(0);
     auto end_time = _global->_stations.at(0)->date_timeseries().back();
+
+    //if the user gives both a custom start and end time, don't bother with this.
+    //this does assume the user knows what they are doing and subsets a time period that is correct
+    //if they do not, the sanity check after this period that double checks consistent timestepping will catch it
+    if(!_start_ts && !_end_ts)
+    {
+        // find the latest start time and the earliest end time
+        for (size_t i = 0; i < _global->_stations.size(); ++i)
+        {
+            auto tmp = _global->_stations.at(i)->date_timeseries().at(0);
+
+            if (tmp > start_time)
+                start_time = tmp;
+
+            tmp = _global->_stations.at(i)->date_timeseries().back();
+            if (tmp < end_time)
+                end_time = tmp;
+        }
+    }
+    if (!_start_ts)
+    {
+        _start_ts = new boost::posix_time::ptime(start_time);
+    }
+    else if(*_start_ts < start_time)
+    {
+        std::stringstream ss;
+        ss << "User specified start time starts before the most continuous start time of all input forcing files . ";
+        ss << " User start date: " << *_start_ts;
+        ss << " Continous start date: " << start_time;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+    }
+    if (!_end_ts)
+    {
+        _end_ts = new boost::posix_time::ptime(end_time);
+    }
+    else if(*_end_ts > end_time)
+    {
+        std::stringstream ss;
+        ss << "User specified end time ends after the most continuous end time of all input forcing files . ";
+        ss << " User end date: " << *_end_ts;
+        ss << " Continous end date: " << end_time;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+    }
+
+
+    if( *_start_ts > *_end_ts)
+    {
+        std::stringstream ss;
+        ss << "Start time is after endtime. ";
+        ss << " Start date: " << *_start_ts;
+        ss << " End date: " << *_end_ts;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+    }
+
+    LOG_DEBUG << "Subsetting station timeseries";
+
+#pragma omp for
+    for(size_t i = 0; i < _global->_stations.size(); ++i)
+    {
+        _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
+        _global->_stations.at(i)->reset_itrs();
+        auto s= _global->_stations.at(i);
+         LOG_VERBOSE << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
+    }
+
+    //ensure all the stations have the same start and end times
+    // per-timestep agreeent happens during runtime.
+    start_time = _global->_stations.at(0)->date_timeseries().at(0);
+    end_time = _global->_stations.at(0)->date_timeseries().back();
 
 
     for (size_t i = 1; //on purpose to skip first station
@@ -1309,34 +1363,6 @@ void core::init(int argc, char **argv)
     _global->_dt = dt.total_seconds();
     LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
 
-    if (!_start_ts)
-    {
-        _start_ts = new boost::posix_time::ptime(start_time);
-    }
-    if (!_end_ts)
-    {
-        _end_ts = new boost::posix_time::ptime(end_time);
-    }
-
-    if( *_start_ts > *_end_ts)
-    {
-        std::stringstream ss;
-        ss << "Start time is after endtime. ";
-        ss << " Start date: " << *_start_ts;
-        ss << " End date: " << *_end_ts;
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
-    }
-
-    LOG_DEBUG << "Subsetting station statations";
-    //for (auto &s : _global->_stations)
-#pragma omp for
-    for(size_t i = 0; i < _global->_stations.size(); ++i)
-    {
-        _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
-        _global->_stations.at(i)->reset_itrs();
-
-       // LOG_DEBUG << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
-    }
 
 
     //setup output timeseries sinks
@@ -1409,6 +1435,42 @@ void core::init(int argc, char **argv)
 
     }
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+}
+
+void core::_find_and_insert_subjson(pt::ptree& value)
+{
+    std::vector<std::string> keys_to_remove; //probably can't remove a node without invalidating the iterator. so mark it and remove it later.
+    //replace any references to external files with the file contents
+    for(auto &itr : value)
+    {
+        if(itr.second.data().find(".json") != std::string::npos)
+        {
+            auto dir =  cwd_dir / itr.second.data();
+
+            auto cfg = read_json(dir.string());
+            std::string key = itr.first.data();
+            keys_to_remove.push_back(key);
+
+            for (auto &jtr : cfg)
+            {
+                //If an external file is provided, don't allow further sub json files. That is a rabbit hole that isn't worth dealing with.
+                if (jtr.second.data().find(".json") != std::string::npos)
+                {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
+                        "An included json file cannot contain json sub-files."));
+                }
+
+                std::string point_name = jtr.first.data();
+                //replace the string config name with that config file
+                value.put_child(point_name, jtr.second);
+            }
+        }
+    }
+
+    for(auto& itr : keys_to_remove)
+    {
+        value.erase(itr);
+    }
 }
 
 void core::_determine_module_dep()
