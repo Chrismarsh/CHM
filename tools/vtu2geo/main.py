@@ -227,8 +227,13 @@ def main():
                     variables.append(name)
 
             for v in variables:
-                data = cd.GetArray(v).GetTuple(i)
-                feature.SetField(str(v), float(data[0]))
+                try:
+                    data = cd.GetArray(v).GetTuple(i)
+                    feature.SetField(str(v), float(data[0]))
+                except:
+                    print "Variable %s not present in mesh" %(v)
+                    raise
+
 
             if parameters is not None:
                 for p in parameters:
