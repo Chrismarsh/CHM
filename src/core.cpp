@@ -1447,6 +1447,29 @@ void core::_determine_module_dep()
 
     std::set<std::string> graphviz_vars;
 
+    std::list<std::string> all_provides;
+
+    bool overwrite_found = false;
+    //make sure modules cannot override another module's output
+    for (auto &m1 : _modules)
+    {
+        for (auto &m2 : _modules)
+        {
+            if(m1.first->ID == m2.first->ID )
+                continue;
+
+            auto itr = std::find_first_of (m1.first->provides()->begin(), m1.first->provides()->end(),
+                                           m2.first->provides()->begin(), m2.first->provides()->end());
+            if( itr != m1.first->provides()->end() )
+            {
+                LOG_ERROR << "Module " << m1.first->ID << " and " << m2.first->ID << " both provide variable " << *itr;
+            }
+        }
+    }
+
+    if(overwrite_found)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("A module's provides overwrites another module's provides. This is not allowed."));
+
     //loop through each module
     for (auto &module : _modules)
     {

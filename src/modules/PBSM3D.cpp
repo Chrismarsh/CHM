@@ -51,7 +51,7 @@ PBSM3D::PBSM3D(config_file cfg)
         provides("height_diff");
         provides("suspension_mass");
         provides("saltation_mass");
-        provides("Ti");
+//        provides("Ti");
 
         provides("w");
         provides("hs");
@@ -632,7 +632,7 @@ void PBSM3D::run(mesh domain)
             int digits = 6;
 
             double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
-            if(debug_output) face->set_face_data("Ti",Ti);
+//            if(debug_output) face->set_face_data("Ti",Ti);
 
             double Ts = Ti+273.15; //dmdtz expects in K
 
