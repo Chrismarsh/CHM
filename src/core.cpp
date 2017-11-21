@@ -1462,6 +1462,7 @@ void core::_determine_module_dep()
                                            m2.first->provides()->begin(), m2.first->provides()->end());
             if( itr != m1.first->provides()->end() )
             {
+                overwrite_found=true;
                 LOG_ERROR << "Module " << m1.first->ID << " and " << m2.first->ID << " both provide variable " << *itr;
             }
         }
