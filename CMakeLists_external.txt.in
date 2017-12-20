@@ -40,7 +40,7 @@ ExternalProject_Add(
     )
 
 #for whatever reason, this has to use ${BUILD_VTK} and not BUILD_VTK otherwise it evaluates false.
-if(BUILD_VTK OR SUPERBUILD )
+if(BUILD_VTK)
     ExternalProject_Add(
 	    VTK
 	    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
@@ -53,8 +53,7 @@ if(BUILD_VTK OR SUPERBUILD )
 	    )
 endif()
 
-#these are the -DSUPERBUILD=TRUE builds
-if( SUPERBUILD)
+if( BUILD_BOOST)
     ExternalProject_Add(
 	    boost
 	    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz
@@ -65,7 +64,9 @@ if( SUPERBUILD)
 	    INSTALL_COMMAND ./b2 install
 	    BUILD_IN_SOURCE 1
 	    )
+endif()
 
+if(BUILD_GSL)
     ExternalProject_Add(
 	    gsl
 	    URL ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz
@@ -74,7 +75,9 @@ if( SUPERBUILD)
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1)
+endif()
 
+if(BUILD_ARMADILLO)
     ExternalProject_Add(
 	    armadillo
 	    URL http://sourceforge.net/projects/arma/files/armadillo-7.950.1.tar.xz
@@ -84,7 +87,8 @@ if( SUPERBUILD)
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
-
+endif()
+if(BUILD_VIENNACL)
     ExternalProject_Add(
 	    ViennaCL
 	    URL https://downloads.sourceforge.net/project/viennacl/1.7.x/ViennaCL-1.7.1.tar.gz
@@ -94,8 +98,9 @@ if( SUPERBUILD)
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
+endif()
 
-
+if(BUILD_CGAL)
     ExternalProject_Add(
 	    CGAL
 	    URL https://github.com/CGAL/cgal/releases/download/releases%2FCGAL-4.10/CGAL-4.10.tar.xz
@@ -106,8 +111,10 @@ if( SUPERBUILD)
 	    BUILD_IN_SOURCE 1
 	    DEPENDS boost
 	    )
-LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+    LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+endif()
 
+if(BUILD_GDAL)
     ExternalProject_Add(
 	    GDAL
 	    URL http://download.osgeo.org/gdal/2.2.1/gdal-2.2.1.tar.gz
@@ -118,7 +125,9 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
+endif()
 
+if(BUILD_PROJ4)
     ExternalProject_Add(
     	proj4
         URL http://download.osgeo.org/proj/proj-4.8.0.tar.gz

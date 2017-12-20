@@ -21,21 +21,52 @@ option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
 
-#To avoid issues #104, newer VTK version needs to be used. Until VTK7+ becomes available in the LTS/&c releases, allow for easily building a new VTK
-if(SUPERBUILD OR BUILD_VTK)
-    set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
-endif()
 
 #enable with cmake -DSUPERBUILD=TRUE .
 if(SUPERBUILD)
+    set(BUILD_ARMADILLO TRUE)
+    set(BUILD_CGAL TRUE)
+    set(BUILD_GDAL TRUE)
+    set(BUILD_GSL TRUE)
+    set(BUILD_VIENNACL TRUE)
+    set(BUILD_BOOST TRUE)
+    set(BUILD_PROJ4 TRUE)
+endif()
+
+if(BUILD_ARMADILLO)
     set(Armadillo_DIR "${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake")
+endif()
+
+if(BUILD_CGAL)
     set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+
+        #this is defined in the BUILD_CGAL step
+  #  LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+endif()
+
+if(BUILD_GDAL)
     set(ENV{GDAL_ROOT} "${CMAKE_BINARY_DIR}/lib/gdal")  #this one really does have to be ENV
+endif()
+
+if(BUILD_GSL)
     set(GSL_ROOT "${CMAKE_BINARY_DIR}/lib/gsl/bin")
+endif()
+
+if(BUILD_VIENNACL)
     set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
-    LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+endif()
+
+#To avoid issues #104, newer VTK version needs to be used. Until VTK7+ becomes available in the LTS/&c releases, allow for easily building a new VTK
+if(BUILD_VTK)
+    set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
+endif()
+
+if(BUILD_BOOST)
     set(Boost_NO_SYSTEM_PATHS TRUE)
     set(BOOST_ROOT "${CMAKE_BINARY_DIR}/lib/boost")
+endif()
+
+if(BUILD_PROJ4)
     set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
 endif()
 
@@ -68,7 +99,17 @@ configure_file(CMakeLists_external.txt.in
 
 #Trigger superbuild
 #If superbuild is not needed, we still need to build sparsehash, gperftools, and eigen3
-execute_process(COMMAND ${CMAKE_COMMAND} -DBUILD_VTK=${BUILD_VTK} -DSUPERBUILD=${SUPERBUILD} -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
+execute_process(COMMAND ${CMAKE_COMMAND}
+        -DBUILD_VTK=${BUILD_VTK}
+        -DBUILD_ARMADILLO=${BUILD_ARMADILLO}
+        -DBUILD_CGAL=${BUILD_CGAL}
+        -DBUILD_GDAL=${BUILD_GDAL}
+        -DBUILD_GSL=${BUILD_GSL}
+        -DBUILD_VIENNACL=${BUILD_VIENNACL}
+        -DBUILD_BOOST=${BUILD_BOOST}
+        -DBUILD_PROJ4=${BUILD_PROJ4}
+
+        -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 execute_process(COMMAND ${CMAKE_COMMAND}  --build .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
