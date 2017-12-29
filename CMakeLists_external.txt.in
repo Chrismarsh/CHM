@@ -114,6 +114,20 @@ if(BUILD_CGAL)
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 endif()
 
+if(BUILD_PROJ4)
+    ExternalProject_Add(
+    	proj4
+        URL http://download.osgeo.org/proj/proj-4.8.0.tar.gz
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
+        BUILD_COMMAND make -j10
+        INSTALL_COMMAND make install
+        BUILD_IN_SOURCE 1
+    )
+
+ endif()
+
+
 if(BUILD_GDAL)
     ExternalProject_Add(
 	    GDAL
@@ -127,15 +141,3 @@ if(BUILD_GDAL)
 	    )
 endif()
 
-if(BUILD_PROJ4)
-    ExternalProject_Add(
-    	proj4
-        URL http://download.osgeo.org/proj/proj-4.8.0.tar.gz
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/autogen.sh COMMAND ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
-        BUILD_COMMAND make -j10
-        INSTALL_COMMAND make install
-        BUILD_IN_SOURCE 1
-    )
-
- endif()

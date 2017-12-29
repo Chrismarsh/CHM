@@ -300,9 +300,8 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(GDAL 2.1 REQUIRED )
-
 find_package(PROJ4 REQUIRED) #gdal dependency, only need to link against it
+find_package(GDAL 2.1 REQUIRED )
 
 find_package (Threads REQUIRED)
 
