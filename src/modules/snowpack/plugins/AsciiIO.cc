@@ -747,7 +747,7 @@ void AsciiIO::writeSnowCover(const mio::Date& date, const SnowStation& Xdata,
 	string snofilename = getFilenamePrefix(Xdata.meta.getStationID().c_str(), o_snowpath) + ".snoold";
 	if (forbackup){
 		stringstream ss;
-		ss << (int)(date.getJulian() + 0.5);
+//		ss << (int)(date.getJulian() + 0.5);
 		snofilename += ss.str();
 	}
 
