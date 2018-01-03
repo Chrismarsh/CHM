@@ -185,7 +185,7 @@ void deleteOldOutputFiles(const std::string& outdir, const std::string& experime
 				string fname;
 				if (nSlopes>1) {
 					stringstream ss;
-					ss << nSlopes-1;
+//					ss << nSlopes-1;
 					fname = ftrunc + "-" + ss.str() + "." + ext;
 				} else {
 					fname = ftrunc + "." + ext;
@@ -201,7 +201,7 @@ void deleteOldOutputFiles(const std::string& outdir, const std::string& experime
 				string fname;
 				if (jj > 0) {
 					stringstream ss;
-					ss << jj;
+//					ss << jj;
 					fname = ftrunc + ss.str() + "." + ext;
 				} else {
 					fname = ftrunc + "." + ext;
