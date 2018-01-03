@@ -46,6 +46,7 @@ endif()
 
 if(BUILD_GDAL)
     set(ENV{GDAL_ROOT} "${CMAKE_BINARY_DIR}/lib/gdal")  #this one really does have to be ENV
+    set(BUILD_PROJ4 TRUE) #build our own proj4 if we are building gdal
 endif()
 
 if(BUILD_GSL)

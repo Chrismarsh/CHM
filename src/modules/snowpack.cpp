@@ -30,7 +30,10 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     provides("n_nodes");
     provides("n_elem");
     provides("snowdepthavg");
-    provides("snow_albedo");
+
+    if(!has_optional("snow_albedo"))
+        provides("snow_albedo");
+
     provides("H");
     provides("E");
     provides("G");
@@ -221,10 +224,11 @@ void Lehning_snowpack::run(mesh_elem &face)
         face->set_face_data("ilwr_out",surface_fluxes.lw_out);
         face->set_face_data("iswr_out",surface_fluxes.sw_out);
         face->set_face_data("dQ",surface_fluxes.dIntEnergy);
-//    if(!has_optional("snow_albedo"))
-//    {
-        face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
-        //    }
+        if(!has_optional("snow_albedo"))
+        {
+            face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
+        }
+        
     } else{
        set_all_nan_on_skip(face);
 
