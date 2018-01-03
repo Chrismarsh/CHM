@@ -2358,7 +2358,7 @@ const std::string SnowStation::toString() const
 	os << meta.toString();
 	os << setprecision(4);
 	//os << fixed;
-	os << nElems << " element(s) and " << nNodes << " node(s).";
+//	os << nElems << " element(s) and " << nNodes << " node(s).";
 	if(useSoilLayers)
 		os << " Soil=true";
 	else
@@ -2585,21 +2585,21 @@ std::iostream& operator<<(std::iostream& os, const CurrentMeteo& data)
 
 	const size_t s_ts = data.ts.size();
 	os.write(reinterpret_cast<const char*>(&s_ts), sizeof(size_t));
-	for (size_t ii=0; ii<s_ts; ii++) os << data.ts[ii];
+//	for (size_t ii=0; ii<s_ts; ii++) os << data.ts[ii];
 
 	const size_t s_zv_ts = data.zv_ts.size();
 	os.write(reinterpret_cast<const char*>(&s_zv_ts), sizeof(size_t));
-	for (size_t ii=0; ii<s_zv_ts; ii++) os << data.zv_ts[ii];
+//	for (size_t ii=0; ii<s_zv_ts; ii++) os << data.zv_ts[ii];
 
 	const size_t s_conc = data.conc.size();
 	os.write(reinterpret_cast<const char*>(&s_conc), sizeof(size_t));
-	for (size_t ii=0; ii<s_conc; ii++) os << data.conc[ii];
+//	for (size_t ii=0; ii<s_conc; ii++) os << data.conc[ii];
 
 	os.write(reinterpret_cast<const char*>(&data.rho_hn), sizeof(data.rho_hn));
 
 	const size_t s_fixedPositions = data.fixedPositions.size();
 	os.write(reinterpret_cast<const char*>(&s_fixedPositions), sizeof(size_t));
-	for (size_t ii=0; ii<s_fixedPositions; ii++) os << data.fixedPositions[ii];
+//	for (size_t ii=0; ii<s_fixedPositions; ii++) os << data.fixedPositions[ii];
 
 	os.write(reinterpret_cast<const char*>(&data.minDepthSubsurf), sizeof(data.minDepthSubsurf));
 	os.write(reinterpret_cast<const char*>(&data.maxNumberMeasTemperatures), sizeof(data.maxNumberMeasTemperatures));
@@ -2798,15 +2798,15 @@ const std::string SurfaceFluxes::toString() const
 	os << "Mass change: hoar=" << hoar << " drift=" << drift << " snow_depth_correction=" << dhs_corr << "\n";
 	os << "Snow: mRho_hn=" << mRho_hn << " cRho_hn=" << cRho_hn << "\n";
 
-	os << mass.size() << " mass fluxes: ";
-	for (unsigned int ii=1; ii<mass.size(); ii++) {
-		os << mass[ii] << " ";
-	}
+//	os << mass.size() << " mass fluxes: ";
+//	for (unsigned int ii=1; ii<mass.size(); ii++) {
+//		os << mass[ii] << " ";
+//	}
 	os << "\n";
-	os << load.size() << " solutes fluxes: ";
-	for (unsigned int ii=1; ii<load.size(); ii++) {
-		os << load[ii] << " ";
-	}
+//	os << load.size() << " solutes fluxes: ";
+//	for (unsigned int ii=1; ii<load.size(); ii++) {
+//		os << load[ii] << " ";
+//	}
 	os << "\n";
 	os << "</SurfaceFluxes>\n";
 
@@ -2917,7 +2917,7 @@ const std::string LayerData::toString() const
 	os << depositionDate.toString(mio::Date::ISO) << "\n";
 	os << "\theight:" << hl << " (" << ne << "elements) at " << tl << "K\n";
 	os << "\tvolumetric contents: " << phiIce << " ice, " << phiWater << " water, " << phiVoids << " voids, ";
-	os << phiSoil << " soil, total = " << phiIce+phiWater+phiVoids+phiSoil << "%\n";
+//	os << phiSoil << " soil, total = " << phiIce+phiWater+phiVoids+phiSoil << "%\n";
 	os << "\tSoil properties: " << SoilRho << " kg/m^3, " << SoilK << " W/(m*K), " << SoilC << " J/K\n";
 	os << "\tSoil microstructure: rg=" << rg << " sp=" << sp << " dd=" << dd << " rb=" << rb << " mk=" << mk << "\n";
 	os << "\tStability: surface hoar=" << hr << " kg/m^2, stress rate=" << CDot << " Pa/s, metamo=" << metamo << "\n";
