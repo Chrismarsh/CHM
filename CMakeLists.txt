@@ -21,6 +21,7 @@ option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
 
+set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
 #enable with cmake -DSUPERBUILD=TRUE .
 if(SUPERBUILD)
@@ -192,6 +193,9 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAFE_CHECKS")
 else()
 
+    if(ENABLE_SAFE_CHECKS)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAFE_CHECKS")
+    endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
 endif()
 
