@@ -3,7 +3,9 @@
 Lehning_snowpack::Lehning_snowpack(config_file cfg)
         : module_base(parallel::data)
 {
-    depends("iswr");
+    depends("iswr_diffuse");
+    depends("iswr_direct");
+//    depends("iswr");
     depends("ilwr");
     depends("rh");
     depends("t");
@@ -12,7 +14,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     depends("p");
     depends("frac_precip_rain");
 
-    optional("snow_albedo");
+    depends("snow_albedo");
 
     // Optional subcanopy variables if a canopy module is included (used if exist)
     optional("ta_subcanopy");
@@ -31,8 +33,8 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     provides("n_elem");
     provides("snowdepthavg");
 
-    if(!has_optional("snow_albedo"))
-        provides("snow_albedo");
+//    if(!has_optional("snow_albedo"))
+//        provides("snow_albedo");
 
     provides("H");
     provides("E");
@@ -100,19 +102,19 @@ void Lehning_snowpack::run(mesh_elem &face)
     // If an external albedo is not used, a parametrized one is used. but rswr and iswr both must be defined.
     // If "SW_MODE" : "INCOMING", is used, then mAlbedo needs to be undefined to trigger the appropriate rswr and albedo calculations.
     // rswr must still be set, but we use the garbage that is in Xdata instead.
-    if(has_optional("snow_albedo"))
-    {
+//    if(has_optional("snow_albedo"))
+//    {
         //measured albedo in snowpack will be fed from an albedo model
         //in the config 'both' will enable this
         Mdata.mAlbedo   =  face->face_data("snow_albedo");
         Mdata.rswr      =  std::max(0.0,face->face_data("snow_albedo") * Mdata.iswr);
 
-    }
-    else
-    {
-        Mdata.rswr = std::max(0.0,data->Xdata->Albedo * Mdata.iswr);
-        Mdata.mAlbedo = Constants::undefined; //this will trigger calculating a paramaterized albedo
-    }
+//    }
+//    else
+//    {
+//        Mdata.rswr = std::max(0.0,data->Xdata->Albedo * Mdata.iswr);
+//        Mdata.mAlbedo = Constants::undefined; //this will trigger calculating a paramaterized albedo
+//    }
 
 
     if(has_optional("ilwr_subcanopy")) {
@@ -224,10 +226,10 @@ void Lehning_snowpack::run(mesh_elem &face)
         face->set_face_data("ilwr_out",surface_fluxes.lw_out);
         face->set_face_data("iswr_out",surface_fluxes.sw_out);
         face->set_face_data("dQ",surface_fluxes.dIntEnergy);
-        if(!has_optional("snow_albedo"))
-        {
+//        if(!has_optional("snow_albedo"))
+//        {
             face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
-        }
+//        }
         
     } else{
        set_all_nan_on_skip(face);
