@@ -964,7 +964,7 @@ void core::init(int argc, char **argv)
                     % expr::format_named_scope("Scope",
                                                keywords::format = "%n:%l",
                                                keywords::iteration = expr::reverse,
-                                               keywords::depth = 1)
+                                               keywords::depth = 2)
                     % expr::attr<log_level>("Severity")
                     % expr::smessage
             );
