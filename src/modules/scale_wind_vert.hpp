@@ -28,7 +28,15 @@ public:
     
     ~scale_wind_vert();
     virtual void init(mesh domain);
+
+    //this module can swap between a domain parallel and a data parallel state
+    ///domain parallel allows for blending through vegetation to avoid sharp gradietns that can complicate blowing snow, &c.
     virtual void run(mesh domain);
+    virtual void run(mesh_elem &face);
+
+    //scales the windspeed at a single triangle
+    void point_scale(mesh_elem &face);
+
     bool ignore_canopy;
     //virtual void init(mesh domain);
     struct d: public face_info

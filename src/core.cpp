@@ -121,10 +121,12 @@ void core::config_options( pt::ptree &value)
         point_mode.enable = true;
         point_mode.forcing = pm.get<std::string>("forcing");
         point_mode.output  = pm.get<std::string>("output");
+        _global->_is_point_mode = true;
     }
     catch(pt::ptree_bad_path &e)
     {
         point_mode.enable = false; // we don't have point_mode
+
     }
 
     auto notify_sh = value.get_optional<std::string>("notification_script");

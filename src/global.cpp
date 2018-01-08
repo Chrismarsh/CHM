@@ -4,6 +4,7 @@ global::global()
 {
     first_time_step = true;
     _utc_offset = 0;
+    _is_point_mode = false;
 }
 
 bool global::is_geographic()
@@ -46,11 +47,6 @@ uint64_t global::posix_time_int()
     boost::posix_time::time_duration duration = _current_date - epoch;
     return duration.total_seconds();
 }
-
-
-
-
-
 
 std::string global::get_variable(std::string variable)
 {
@@ -118,7 +114,12 @@ std::vector< boost::shared_ptr<station> > global::nearest_station(double x, doub
 
 }
 
-std::vector< boost::shared_ptr<station> >global::stations()
+std::vector< boost::shared_ptr<station> > global::stations()
 {
     return _stations;
+}
+
+bool  global::is_point_mode()
+{
+    return _is_point_mode;
 }

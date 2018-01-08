@@ -65,6 +65,7 @@ private:
     int _dt; //seconds
     bool _is_geographic;
 
+    bool _is_point_mode;
 
     //if radius selection for stations is chosen this holds that
     double radius;
@@ -73,6 +74,8 @@ private:
 public:
 
     boost::function< std::vector< boost::shared_ptr<station> > ( double, double) > get_stations;
+
+    bool is_point_mode();
 
     //approximate UTC offset
     int _utc_offset;
