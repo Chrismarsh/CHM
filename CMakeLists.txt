@@ -70,6 +70,7 @@ endif()
 
 if(BUILD_PROJ4)
     set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
+    set(${CMAKE_BINARY_DIR}/lib/proj4)
 endif()
 
 #set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
@@ -90,8 +91,8 @@ macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
-configure_file(${CMAKE_SOURCE_DIR}/gdal-2.2.1.patch ${CMAKE_BINARY_DIR}/lib/gdal-2.2.1.patch COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/vtk-8.0.0.patch ${CMAKE_BINARY_DIR}/lib/vtk-8.0.0.patch COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/gdal-2.2.1.patch ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/vtk-8.0.0.patch ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch COPYONLY)
 
 #things covered by the superbuild
 # super build things we are missing

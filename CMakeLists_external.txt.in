@@ -39,14 +39,35 @@ ExternalProject_Add(
     BUILD_IN_SOURCE 0
     )
 
-#for whatever reason, this has to use ${BUILD_VTK} and not BUILD_VTK otherwise it evaluates false.
+#GDAL depends on this. If we are building proj4, we need to turn off the VTK proj4
+if(BUILD_PROJ4)
+    ExternalProject_Add(
+    	proj4
+        URL http://download.osgeo.org/proj/proj-4.8.0.tar.gz
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
+        BUILD_COMMAND make -j10
+        INSTALL_COMMAND make install
+        BUILD_IN_SOURCE 1
+    )
+endif()
+
 if(BUILD_VTK)
+
+    set(SYSTEM_libproj4 FALSE)
+
+    #turn off vtk's proj4 so we don't conflict with our build copy
+    if(BUILD_PROJ4)
+        set(ENV{LIBPROJ4_DIR} "${CMAKE_BINARY_DIR}/lib/proj4")
+        set(SYSTEM_libproj4 TRUE)
+    endif()
+
     ExternalProject_Add(
 	    VTK
 	    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
 	    UPDATE_COMMAND ""
 	    #PATCH_COMMAND patch -p1  < ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch
-	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release
+	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release -DVTK_USE_SYSTEM_libproj4=${BUILD_VTK_PROJ4}
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
@@ -114,19 +135,6 @@ if(BUILD_CGAL)
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 endif()
 
-if(BUILD_PROJ4)
-    ExternalProject_Add(
-    	proj4
-        URL http://download.osgeo.org/proj/proj-4.8.0.tar.gz
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
-        BUILD_COMMAND make -j10
-        INSTALL_COMMAND make install
-        BUILD_IN_SOURCE 1
-    )
-
- endif()
-
 
 if(BUILD_GDAL)
     ExternalProject_Add(
@@ -134,7 +142,12 @@ if(BUILD_GDAL)
 	    URL http://download.osgeo.org/gdal/2.2.1/gdal-2.2.1.tar.gz
 	    UPDATE_COMMAND ""
 	    PATCH_COMMAND patch -p1 < ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch
-	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal
+
+	    #occasionally GDAL doesn't correctly detect this, so can enable if required
+	    #http://osgeo-org.1560.x6.nabble.com/gdal-dev-sprintf-different-exception-specified-td5340324.html
+	    #CONFIGURE_COMMAND CXXFLAGS=-DDONT_DEPRECATE_SPRINTF ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4
+
+	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4
 	    BUILD_COMMAND make -j10  
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
