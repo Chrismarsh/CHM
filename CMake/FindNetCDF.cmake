@@ -58,7 +58,7 @@ macro (NetCDF_check_interface lang header libs)
   endif (NETCDF_${lang})
 endmacro (NetCDF_check_interface)
 
-NetCDF_check_interface (CXX netcdfcpp.h netcdf_c++)
+NetCDF_check_interface (CXX netcdfcpp.h netcdf_c++4)
 NetCDF_check_interface (F77 netcdf.inc  netcdff)
 NetCDF_check_interface (F90 netcdf.mod  netcdff)
 
