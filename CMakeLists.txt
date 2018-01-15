@@ -317,6 +317,8 @@ find_package(GSL REQUIRED)
 
 find_package(Curses REQUIRED)
 
+set(NETCDF_CXX "YES")
+find_package(NetCDF REQUIRED)
 
 #if we are building the plugin we need to compile against paraview (which brings in VTK)
 #otherwise use just VTK. You cannot link against both at the same time

@@ -2,6 +2,8 @@
 
 #define BOOST_SPIRIT_THREADSAFE
 
+#include <netcdf>
+
 //vtk includes
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
