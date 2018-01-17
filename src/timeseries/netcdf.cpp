@@ -4,7 +4,7 @@
 
 netcdf::netcdf()
 {
-
+    _is_open = false;
 }
 netcdf::~netcdf()
 {
@@ -19,8 +19,9 @@ void netcdf::open(const std::string& file)
 
     if(coord_vars.size() > 1)
     {
-
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Too many coordinate variables."));
     }
+
     for(auto itr: _data.getCoordVars())
     {
         _datetime_field = itr.first;
@@ -50,16 +51,19 @@ void netcdf::open(const std::string& file)
     {
         LOG_DEBUG << "Found epoch offset = hours";
         _timestep = boost::posix_time::hours(1);
+        dt_unit = "hours";
     }
     else if( epoch.find("minutes") != std::string::npos )
     {
         LOG_DEBUG << "Found epoch offset = minutes";
         _timestep = boost::posix_time::minutes(1);
+        dt_unit = "minutes";
     }
     else if(( epoch.find("seconds") != std::string::npos ))
     {
         LOG_DEBUG << "Found epoch offset = seconds";
         _timestep = boost::posix_time::seconds(1);
+        dt_unit = "seconds";
 
     } else
     {
@@ -85,9 +89,29 @@ void netcdf::open(const std::string& file)
     LOG_DEBUG << "NetCDF end is " << _end;
     LOG_DEBUG << "NetCDF timestep is " << _timestep;
 
+    auto dims = _data.getDims();
+    for(auto itr : dims)
+    {
+        if(itr.first == "xgrid_0")
+            xgrid = itr.second.getSize();
+        else if(itr.first == "ygrid_0")
+            ygrid = itr.second.getSize();
+    }
+
+    LOG_DEBUG << "NetCDF grid is " << xgrid << " (x) by " << ygrid << " (y)";
+
+    //build up the datetime vector so we can easily use it later
+    _datetime.resize(_datetime_length);
+    for(size_t i=0; i<_datetime_length;i++)
+    {
+        _datetime[i] = _start + _timestep*i;
+    }
 }
 
-
+netcdf::datevec netcdf::get_datevec()
+{
+    return _datetime;
+}
 boost::posix_time::time_duration netcdf::get_dt()
 {
     return _timestep;
@@ -100,4 +124,67 @@ boost::posix_time::ptime netcdf::get_start()
 boost::posix_time::ptime netcdf::get_end()
 {
     return _end;
+}
+
+std::set<std::string> netcdf::get_variable_names()
+{
+    std::set<std::string> var_names;
+    auto vars = _data.getVars();
+    for(auto itr: vars)
+    {
+        auto name = itr.first;
+        var_names.insert(name);
+    }
+
+    return var_names;
+}
+
+netcdf::data get_lat()
+{
+    return get_data("gridlat_0",0);
+}
+netcdf::data get_long()
+{
+    return get_data("gridlon_0",0);
+}
+size_t netcdf::get_xsize()
+{
+    return xgrid;
+}
+size_t netcdf::get_ysize()
+{
+    return ygrid;
+}
+
+netcdf::data netcdf::get_data(std::string var, size_t timestep)
+{
+    std::vector<size_t> startp, countp;
+    startp.push_back(0);
+    startp.push_back(0);
+    startp.push_back(0);
+
+    countp.push_back(1);
+    countp.push_back(ygrid);
+    countp.push_back(xgrid);
+
+    // Read the data one record at a time.
+    startp[0] = timestep;
+
+    auto vars = _data.getVars();
+
+    netcdf::data array(boost::extents[ygrid][xgrid]);
+
+    auto itr = vars.find(var);
+    itr->second.getVar(startp,countp, array.data());
+
+    return array;
+}
+
+netcdf::data netcdf::get_data(std::string var, boost::posix_time::ptime timestep)
+{
+    auto diff = timestep - _start; // a duration
+
+    auto offset = diff.total_seconds() / _timestep.total_seconds();
+
+    return get_data(var, offset);
 }

@@ -282,69 +282,50 @@ void core::config_forcing(pt::ptree &value)
     //need to determine if we have been given a netcdf file
     _use_netcdf = value.get("use_netcdf",false);
 
+    size_t nstations = 0;
+    timer c;
+    netcdf nc;
     //we need to treat this very differently than the txt files
     if(_use_netcdf)
     {
+        LOG_DEBUG << "Found NetCDF file";
         std::string file = value.get<std::string>("file");
 
-        netcdf nc;
+        // core needs to setup all the stations as timeseries doens't know what to do with a full netcdf file.
+
         nc.open(file);
 
+        auto tptime = nc.get_data("t",  boost::posix_time::time_from_string("2018-Jan-05 03:00:00"));
 
-
-        //https://github.com/Unidata/netcdf-cxx4/blob/master/examples/sfc_pres_temp_rd.cpp
-
-
-
-//        auto vars = obs.getVars();
-//        for(auto itr: vars)
-//        {
-//            auto name = itr.first;
-//
-//            LOG_DEBUG << "var = " << itr.first;
-//
-//        }
-//
-//
-//        auto dims = obs.getDims();
-//        for(auto itr : dims)
-//        {
-//            LOG_DEBUG << "dim = " << itr.first << " name = " << itr.second.getName() << " size = " << itr.second.getSize();
-//        }
-
-
-    }
-
-
-    size_t nstations=0;
-    timer c; c.tic();
-    for (auto &itr : value)
+        nstations = nc.get_xsize() * nc.get_ysize();
+    } else
     {
-        if(itr.first != "UTC_offset")
+        for (auto &itr : value)
         {
-            std::string station_name = itr.first.data();
-            forcings.push_back(make_pair(station_name, value.get_child(station_name)));
-            ++nstations;
+            if(itr.first != "UTC_offset")
+            {
+                std::string station_name = itr.first.data();
+                forcings.push_back(make_pair(station_name, value.get_child(station_name)));
+                ++nstations;
+            }
         }
+        LOG_DEBUG << "Found # stations = " <<  nstations;
     }
 
-    LOG_DEBUG << "Found # stations = " <<  nstations;
-    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
-
-    LOG_DEBUG << "Reading forcing file data";
-    c.tic();
-
-    if (nstations != forcings.size())
-    {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Something has gone wrong in forcing file read."));
-    }
 
     _global->_stations.resize(nstations);
-
     tbb::concurrent_vector<  boost::shared_ptr<station> > pstations;
 
     OGRSpatialReference insrs;
-    insrs.SetWellKnownGeogCS("WGS84");
+
+    if(_use_netcdf)
+    {
+        insrs.SetWellKnownGeogCS("WGS84");
+    } else
+    {
+        insrs.SetWellKnownGeogCS("WGS84");
+    }
+
 
     OGRSpatialReference outsrs;
     auto err = outsrs.importFromProj4(_mesh->proj4().c_str());
@@ -355,87 +336,146 @@ void core::config_forcing(pt::ptree &value)
         coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
     labels->SetNumberOfValues(nstations);
-//#pragma omp parallel for
-    //TODO: this dead locks, not sure why
-    for(size_t i =0; i < nstations; ++i)
+
+    LOG_DEBUG << "Reading forcing file data";
+    c.tic();
+
+    if(_use_netcdf)
     {
-        auto& itr = forcings.at(i);
+        auto lat = nc.get_lat();
+        auto lon = nc.get_lon();
 
-        std::string station_name = itr.first;//.data(); n
+        auto variables = nc.get_variable_names();
+        auto date_vec  = nc.get_datevec();
 
-        boost::shared_ptr<station> s = boost::make_shared<station>();
-
-        s->ID(station_name);
-
-        double longitude=0;
-        double latitude=0;
-        try
+        for(size_t y = 0; y< nc.get_ysize();y++)
         {
-            longitude = itr.second.get<double>("longitude");
-            latitude = itr.second.get<double>("latitude");
-        }catch(boost::property_tree::ptree_bad_path& e)
-        {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " missing lat/long coordinate."));
+            for(size_t x = 0; x < nc.get_xsize(); x++)
+            {
+                boost::shared_ptr<station> s = boost::make_shared<station>();
+                std::string station_name = std::to_string(y*x); // these don't really have names
+                s->ID( station_name );
 
+                double longitude= lon[y][x];
+                double latitude= lat[y][x];
+
+                //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
+                if(!_mesh->is_geographic())
+                {
+                    if(!coordTrans->Transform(1, &longitude, &latitude))
+                    {
+                        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + station_name + ": unable to convert coordinates to mesh format."));
+                    }
+                }
+
+                s->x(longitude);
+                s->y(latitude);
+                double elevation = 1000;
+                s->z(elevation);
+
+                s->raw_timeseries()->init(variables,date_vec);
+
+            }
         }
 
+        //initialize the timeseries
+        for(size_t i = 0; i < nstations; i++)
+        {
 
-        if( (latitude > 90 || latitude < -90) ||
+
+        }
+    } else
+    {
+        if (nstations != forcings.size())
+        {
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Something has gone wrong in forcing file read."));
+        }
+
+        //#pragma omp parallel for
+        //TODO: this dead locks, not sure why
+        for(size_t i =0; i < nstations; ++i)
+        {
+            auto& itr = forcings.at(i);
+
+            std::string station_name = itr.first;//.data(); n
+
+            boost::shared_ptr<station> s = boost::make_shared<station>();
+
+            s->ID(station_name);
+
+            double longitude=0;
+            double latitude=0;
+            try
+            {
+                longitude = itr.second.get<double>("longitude");
+                latitude = itr.second.get<double>("latitude");
+            }catch(boost::property_tree::ptree_bad_path& e)
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " missing lat/long coordinate."));
+
+            }
+
+            if( (latitude > 90 || latitude < -90) ||
                 (longitude > 180 || longitude < -180) )
-        {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " coordinate is invalid."));
-        }
-
-        //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
-        if(!_mesh->is_geographic())
-        {
-            if(!coordTrans->Transform(1, &longitude, &latitude))
             {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + station_name + ": unable to convert coordinates to mesh format."));
-            }
-        }
-
-        s->x(longitude);
-        s->y(latitude);
-
-        double elevation = itr.second.get<double>("elevation");
-        s->z(elevation);
-
-        if(_output_station_ptv)
-        {
-            points->InsertNextPoint(s->x(), s->y(), s->z());
-            labels->SetValue(i,station_name );
-        }
-        auto cf = _mesh->find_closest_face(s->x(),s->y());
-        s->set_closest_face(cf->cell_id);
-        std::string file = itr.second.get<std::string>("file");
-        auto f = cwd_dir / file;
-        s->open(f.string());
-
-
-        try
-        {
-            auto filter_section = itr.second.get_child("filter");
-
-            for (auto &jtr: filter_section)
-            {
-                auto name = jtr.first.data();
-
-                boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
-
-                filter->process(s);
-                s->reset_itrs(); // reset all the internal iterators
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " coordinate is invalid."));
             }
 
-        } catch (pt::ptree_bad_path &e)
-        {
-            //ignore
+            //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
+            if(!_mesh->is_geographic())
+            {
+                if(!coordTrans->Transform(1, &longitude, &latitude))
+                {
+                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + station_name + ": unable to convert coordinates to mesh format."));
+                }
+            }
+
+            s->x(longitude);
+            s->y(latitude);
+
+            double elevation = itr.second.get<double>("elevation");
+            s->z(elevation);
+
+            if(_output_station_ptv)
+            {
+                points->InsertNextPoint(s->x(), s->y(), s->z());
+                labels->SetValue(i,station_name );
+            }
+            auto cf = _mesh->find_closest_face(s->x(),s->y());
+            s->set_closest_face(cf->cell_id);
+            std::string file = itr.second.get<std::string>("file");
+            auto f = cwd_dir / file;
+            s->open(f.string());
+
+
+            try
+            {
+                auto filter_section = itr.second.get_child("filter");
+
+                for (auto &jtr: filter_section)
+                {
+                    auto name = jtr.first.data();
+
+                    boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
+
+                    filter->process(s);
+                    s->reset_itrs(); // reset all the internal iterators
+                }
+
+            } catch (pt::ptree_bad_path &e)
+            {
+                //ignore
+            }
+
+            pstations.push_back(s);
         }
-
-        pstations.push_back(s);
-
 
     }
+
+
+
+
+
 
     delete coordTrans;
 
