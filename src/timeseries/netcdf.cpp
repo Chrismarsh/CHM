@@ -15,18 +15,23 @@ void netcdf::open(const std::string& file)
     _data.open(file.c_str(), netCDF::NcFile::read);
 
     //gem netcdf files have 1 coordinate, datetime
+
     auto coord_vars = _data.getCoordVars();
+    _datetime_field = "datetime";
+    _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
 
-    if(coord_vars.size() > 1)
-    {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Too many coordinate variables."));
-    }
 
-    for(auto itr: _data.getCoordVars())
-    {
-        _datetime_field = itr.first;
-        _datetime_length = itr.second.getDim(_datetime_field).getSize();
-    }
+//
+//    if(coord_vars.size() > 1)
+//    {
+//        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Too many coordinate variables."));
+//    }
+//
+//    for(auto itr: _data.getCoordVars())
+//    {
+//        _datetime_field = itr.first;
+//        _datetime_length = itr.second.getDim(_datetime_field).getSize();
+//    }
 
     netCDF::NcVar times = _data.getVar(_datetime_field);
     if(times.getType().getName() != "int64")
@@ -75,10 +80,28 @@ void netcdf::open(const std::string& file)
 
     if(strs.size() != 4)
     {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Epoch did not split into 4 sections, unknown units/ Epoch as read was: " + epoch));
+
+        //might be in iso format (2017-08-13T01:00:00)
+
+        if(strs.size() != 3)
+        {
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Epoch did not split properlys, unknown units/ Epoch as read was: " + epoch));
+        }
+
+        //If it's 3, means there is a T b/w date and time, remove it.
+
+        std::string s = strs[2];
+        s.replace(s.find("T"),1," ");
+
+        _start = boost::posix_time::time_from_string(s);
+
+    }
+    else
+    {
+        _start = boost::posix_time::time_from_string(strs[2]+" "+strs[3]);
     }
 
-    _start = boost::posix_time::time_from_string(strs[2]+" "+strs[3]);
+
     LOG_DEBUG << "NetCDF epoch is " << _start;
 
     //get our dt, assuming constant dt throughout the nc file
