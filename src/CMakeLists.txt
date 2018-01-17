@@ -106,6 +106,7 @@ set(CHM_SRCS
 		timeseries/timestep.cpp
 		timeseries/timeseries.cpp
 		timeseries/daily.cpp
+		timeseries/netcdf.cpp
 
 		utility/crc_hash_compare.cpp
 		utility/regex_tokenizer.cpp
@@ -117,8 +118,10 @@ set(CHM_SRCS
 		${METEOIO_SRCS}
         math/coordinates.cpp
 
-		CACHE INTERNAL "" FORCE
-		)
+
+
+
+		CACHE INTERNAL "" FORCE)
 
 
 set (HEADER_FILES

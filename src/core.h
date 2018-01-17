@@ -2,7 +2,7 @@
 
 #define BOOST_SPIRIT_THREADSAFE
 
-#include <netcdf>
+
 
 //vtk includes
 #include <vtkPolyData.h>
@@ -69,6 +69,7 @@ namespace po = boost::program_options;
 #include "readjson.hpp"
 #include "version.h"
 #include "math/coordinates.hpp"
+#include "timeseries/netcdf.hpp"
 
 struct vertex{
     std::string name;
@@ -219,7 +220,9 @@ protected:
     std::vector< std::vector < module> > _chunked_modules;
     std::vector< std::pair<std::string,std::string> > _overrides;
     boost::shared_ptr<global> _global;
-    
+
+    bool _use_netcdf; // flag if we are using netcdf. If we are, it enables incremental reads of the netcdf file for speed.
+
     //calculates the order modules are to be run in
     void _determine_module_dep();
 

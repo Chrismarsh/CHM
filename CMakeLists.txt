@@ -317,8 +317,10 @@ find_package(GSL REQUIRED)
 
 find_package(Curses REQUIRED)
 
+set(NETCDF_INCLUDES "/Users/chris/Documents/PhD/code/netcdf/netcdf-cxx/include")
+set(NETCDF_LIBRARIES "/Users/chris/Documents/PhD/code/netcdf/netcdf-cxx/lib/libnetcdf-cxx4.dylib")
 set(NETCDF_CXX "YES")
-find_package(NetCDF REQUIRED)
+#find_package(NetCDF REQUIRED)
 message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 
 #if we are building the plugin we need to compile against paraview (which brings in VTK)

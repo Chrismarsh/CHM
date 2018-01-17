@@ -13,6 +13,7 @@ core::core()
     //default logging level
     _log_level = debug;
     _output_station_ptv = true;
+    _use_netcdf=false;
 }
 
 core::~core()
@@ -278,11 +279,47 @@ void core::config_forcing(pt::ptree &value)
 
     _find_and_insert_subjson(value);
 
+    //need to determine if we have been given a netcdf file
+    _use_netcdf = value.get("use_netcdf",false);
+
+    //we need to treat this very differently than the txt files
+    if(_use_netcdf)
+    {
+        std::string file = value.get<std::string>("file");
+
+        netcdf nc;
+        nc.open(file);
+
+
+
+        //https://github.com/Unidata/netcdf-cxx4/blob/master/examples/sfc_pres_temp_rd.cpp
+
+
+
+//        auto vars = obs.getVars();
+//        for(auto itr: vars)
+//        {
+//            auto name = itr.first;
+//
+//            LOG_DEBUG << "var = " << itr.first;
+//
+//        }
+//
+//
+//        auto dims = obs.getDims();
+//        for(auto itr : dims)
+//        {
+//            LOG_DEBUG << "dim = " << itr.first << " name = " << itr.second.getName() << " size = " << itr.second.getSize();
+//        }
+
+
+    }
+
+
     size_t nstations=0;
     timer c; c.tic();
     for (auto &itr : value)
     {
-
         if(itr.first != "UTC_offset")
         {
             std::string station_name = itr.first.data();
