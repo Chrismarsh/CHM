@@ -30,17 +30,20 @@ public:
 
     size_t get_xsize();
     size_t get_ysize();
-
+    size_t get_ntimesteps();
     //returns the lat grid
     data get_lat();
 
     //returns the long grid
-    data get_long();
+    data get_lon();
+
+    //gets z information
+    data get_z();
 
     data get_data(std::string var, size_t timestep);
     data get_data(std::string var, boost::posix_time::ptime timestep);
 
-    netcdf::datevec get_datevec();
+    date_vec get_datevec();
 
 private:
 

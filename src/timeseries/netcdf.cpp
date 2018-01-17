@@ -108,7 +108,12 @@ void netcdf::open(const std::string& file)
     }
 }
 
-netcdf::datevec netcdf::get_datevec()
+size_t netcdf::get_ntimesteps()
+{
+    return _datetime_length;
+}
+
+netcdf::date_vec netcdf::get_datevec()
 {
     return _datetime;
 }
@@ -126,24 +131,36 @@ boost::posix_time::ptime netcdf::get_end()
     return _end;
 }
 
+netcdf::data netcdf::get_z()
+{
+    return get_data("HGT_P0_L1_GST0",0);
+}
+
 std::set<std::string> netcdf::get_variable_names()
 {
     std::set<std::string> var_names;
     auto vars = _data.getVars();
+
+    std::vector<std::string> exclude = {"HGT_P0_L1_GST0","gridlat_0","gridlon_0"};
+
     for(auto itr: vars)
     {
-        auto name = itr.first;
-        var_names.insert(name);
+        auto v = itr.first;
+        //don't return the above variables as they are geo-spatial vars
+        if (std::find(exclude.begin(), exclude.end(), v) == exclude.end())
+        {
+            var_names.insert(v);
+        }
     }
 
     return var_names;
 }
 
-netcdf::data get_lat()
+netcdf::data netcdf::get_lat()
 {
     return get_data("gridlat_0",0);
 }
-netcdf::data get_long()
+netcdf::data netcdf::get_lon()
 {
     return get_data("gridlon_0",0);
 }

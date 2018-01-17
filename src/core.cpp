@@ -315,6 +315,7 @@ void core::config_forcing(pt::ptree &value)
 
     _global->_stations.resize(nstations);
     tbb::concurrent_vector<  boost::shared_ptr<station> > pstations;
+    pstations.resize(nstations);
 
     OGRSpatialReference insrs;
 
@@ -344,6 +345,7 @@ void core::config_forcing(pt::ptree &value)
     {
         auto lat = nc.get_lat();
         auto lon = nc.get_lon();
+        auto z = nc.get_z();
 
         auto variables = nc.get_variable_names();
         auto date_vec  = nc.get_datevec();
@@ -352,9 +354,9 @@ void core::config_forcing(pt::ptree &value)
         {
             for(size_t x = 0; x < nc.get_xsize(); x++)
             {
-                boost::shared_ptr<station> s = boost::make_shared<station>();
-                std::string station_name = std::to_string(y*x); // these don't really have names
-                s->ID( station_name );
+
+                size_t index = x + y * nc.get_xsize();
+                std::string station_name = std::to_string(index); // these don't really have names
 
                 double longitude= lon[y][x];
                 double latitude= lat[y][x];
@@ -368,22 +370,47 @@ void core::config_forcing(pt::ptree &value)
                     }
                 }
 
-                s->x(longitude);
-                s->y(latitude);
-                double elevation = 1000;
-                s->z(elevation);
 
+                double elevation = z[y][x];
+
+                //this ctor will init an empty timeseries for us
+                boost::shared_ptr<station> s = boost::make_shared<station>(station_name, longitude, latitude, elevation);
                 s->raw_timeseries()->init(variables,date_vec);
+                s->reset_itrs();
 
+                pstations[index] = s; //index this linear array as if it were 2D to make the next section easier
+//                pstations.push_back(s);
             }
         }
 
-        //initialize the timeseries
-        for(size_t i = 0; i < nstations; i++)
+        for(size_t t=0;nc.get_ntimesteps(); t++)
         {
+            for(auto& itr: variables)
+            {
+                auto data = nc.get_data(itr,t);
 
+                for(size_t y = 0; y< nc.get_ysize();y++)
+                {
+                    for (size_t x = 0; x < nc.get_xsize(); x++)
+                    {
+                        size_t index = x + y * nc.get_xsize();
+                        auto s = pstations[index];
 
+                        //sanity check that we are getting the right station for this xy pair
+                        if(s->ID() != std::to_string(index))
+                        {
+                            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
+                        }
+
+                        double d = data[y][x];
+                        s->now().set(itr, d);
+                        s->next(); //inc internal iterators
+                    }
+                }
+            }
         }
+
+
     } else
     {
         if (nstations != forcings.size())
@@ -436,17 +463,9 @@ void core::config_forcing(pt::ptree &value)
             double elevation = itr.second.get<double>("elevation");
             s->z(elevation);
 
-            if(_output_station_ptv)
-            {
-                points->InsertNextPoint(s->x(), s->y(), s->z());
-                labels->SetValue(i,station_name );
-            }
-            auto cf = _mesh->find_closest_face(s->x(),s->y());
-            s->set_closest_face(cf->cell_id);
             std::string file = itr.second.get<std::string>("file");
             auto f = cwd_dir / file;
             s->open(f.string());
-
 
             try
             {
@@ -472,25 +491,27 @@ void core::config_forcing(pt::ptree &value)
 
     }
 
+    for(size_t i = 0; i<nstations;i++)
+    {
+        auto s = pstations[i];
+        if(_output_station_ptv)
+        {
+            points->InsertNextPoint(s->x(), s->y(), s->z());
+            labels->SetValue(i, s->ID() );
+        }
+        auto cf = _mesh->find_closest_face(s->x(),s->y());
+        s->set_closest_face(cf->cell_id);
 
-
-
+        //do a few things behind _global's back for efficiency.
+//        auto s = pstations.at(i);
+        _global->_stations.at(i) = s;
+        _global->_dD_tree.insert(boost::make_tuple(global::Kernel::Point_2(s->x(), s->y()), s));
+    }
 
 
     delete coordTrans;
 
-    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
-    LOG_DEBUG << "Building dD spatial search tree";
-    c.tic();
-
-    //do a few things behind _global's back for efficiency.
-    for(size_t i =0; i < nstations; ++i)
-    {
-        auto s = pstations.at(i);
-        _global->_stations.at(i) = s;
-        _global->_dD_tree.insert(boost::make_tuple(global::Kernel::Point_2(s->x(), s->y()), s));
-    }
-    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+    LOG_DEBUG << "Took " << c.toc<s>() << "s";
 
     LOG_DEBUG << "Finished reading stations";
 
