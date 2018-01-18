@@ -284,7 +284,7 @@ void core::config_forcing(pt::ptree &value)
 
     size_t nstations = 0;
     timer c;
-    netcdf nc;
+
     //we need to treat this very differently than the txt files
     if(_use_netcdf)
     {
@@ -294,9 +294,6 @@ void core::config_forcing(pt::ptree &value)
         // core needs to setup all the stations as timeseries doens't know what to do with a full netcdf file.
 
         nc.open(file);
-
-        auto tptime = nc.get_data("t",  boost::posix_time::time_from_string("2018-Jan-05 03:00:00"));
-
         nstations = nc.get_xsize() * nc.get_ysize();
     } else
     {
@@ -350,6 +347,7 @@ void core::config_forcing(pt::ptree &value)
         auto variables = nc.get_variable_names();
         auto date_vec  = nc.get_datevec();
 
+        LOG_DEBUG << "Initializing datastructure";
         for(size_t y = 0; y< nc.get_ysize();y++)
         {
             for(size_t x = 0; x < nc.get_xsize(); x++)
@@ -383,32 +381,7 @@ void core::config_forcing(pt::ptree &value)
             }
         }
 
-        for(size_t t=0;nc.get_ntimesteps(); t++)
-        {
-            for(auto& itr: variables)
-            {
-                auto data = nc.get_data(itr,t);
-
-                for(size_t y = 0; y< nc.get_ysize();y++)
-                {
-                    for (size_t x = 0; x < nc.get_xsize(); x++)
-                    {
-                        size_t index = x + y * nc.get_xsize();
-                        auto s = pstations[index];
-
-                        //sanity check that we are getting the right station for this xy pair
-                        if(s->ID() != std::to_string(index))
-                        {
-                            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
-                        }
-
-                        double d = data[y][x];
-                        s->now().set(itr, d);
-                        s->next(); //inc internal iterators
-                    }
-                }
-            }
-        }
+        LOG_DEBUG << "Done";
 
 
     } else
@@ -1571,6 +1544,13 @@ void core::_determine_module_dep()
     if(overwrite_found)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("A module's provides overwrites another module's provides. This is not allowed."));
 
+    //build a list of variables provided by the met files, culling duplicate variables from multiple stations.
+    for (size_t i = 0; i < _global->_stations.size(); i++)
+    {
+        auto vars = _global->_stations.at(i)->list_variables();
+        _provided_var_met_files.insert(vars.begin(), vars.end());
+    }
+
     //loop through each module
     for (auto &module : _modules)
     {
@@ -1708,7 +1688,7 @@ void core::_determine_module_dep()
         {
             if (itr.second == 0)
             {
-                ss << "Missing inter-module dependencies for module [" << module.first->ID << "]: " << itr.first;
+                ss << "Missing inter-module dependencies for module [" << module.first->ID << "]: " << itr.first << "\n";
                 missing_depends = true;
             }
 
@@ -1729,13 +1709,7 @@ void core::_determine_module_dep()
         }
 
 
-        LOG_DEBUG << "size " << _global->_stations.size();
-        //build a list of variables provided by the met files, culling duplicate variables from multiple stations.
-        for (size_t i = 0; i < _global->_stations.size(); i++)
-        {
-            auto vars = _global->_stations.at(i)->list_variables();
-            _provided_var_met_files.insert(vars.begin(), vars.end());
-        }
+
 
         //check this modules met dependencies, bail if we are missing any.
         for (auto &depend_met_var : *(module.first->depends_from_met()))
@@ -2002,6 +1976,34 @@ void core::run()
                 LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
             }
 
+//            for(size_t t=0;nc.get_ntimesteps(); t++)
+//            {
+
+            LOG_DEBUG << "Lazy load netcdf data start";
+            for(auto& itr: _global->_stations.at(0)->list_variables() )
+            {
+                auto data = nc.get_data(itr,t);
+
+                for(size_t y = 0; y< nc.get_ysize();y++)
+                {
+                    for (size_t x = 0; x < nc.get_xsize(); x++)
+                    {
+                        size_t index = x + y * nc.get_xsize();
+                        auto s = _global->_stations.at(index);
+
+                        //sanity check that we are getting the right station for this xy pair
+                        if(s->ID() != std::to_string(index))
+                        {
+                            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
+                        }
+
+                        double d = data[y][x];
+                        s->now().set(itr, d);
+                    }
+                }
+            }
+//            }
+            LOG_DEBUG << "Done lazy load";
 
             std::stringstream ss;
             ss << _global->posix_time();

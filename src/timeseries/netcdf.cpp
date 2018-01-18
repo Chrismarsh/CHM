@@ -107,7 +107,7 @@ void netcdf::open(const std::string& file)
     //get our dt, assuming constant dt throughout the nc file
     _timestep *= dt[1]-dt[0];
 
-    _end = _start + _timestep*_datetime_length;
+    _end = _start + _timestep * dt[_datetime_length-1];
 
     LOG_DEBUG << "NetCDF end is " << _end;
     LOG_DEBUG << "NetCDF timestep is " << _timestep;
@@ -129,6 +129,8 @@ void netcdf::open(const std::string& file)
     {
         _datetime[i] = _start + _timestep*i;
     }
+//    LOG_DEBUG << _end;
+//    LOG_DEBUG << _datetime[_datetime_length-1];
 }
 
 size_t netcdf::get_ntimesteps()
@@ -164,7 +166,7 @@ std::set<std::string> netcdf::get_variable_names()
     std::set<std::string> var_names;
     auto vars = _data.getVars();
 
-    std::vector<std::string> exclude = {"HGT_P0_L1_GST0","gridlat_0","gridlon_0"};
+    std::vector<std::string> exclude = {"HGT_P0_L1_GST0","gridlat_0","gridlon_0","xgrid_0","ygrid_0"};
 
     for(auto itr: vars)
     {

@@ -208,6 +208,10 @@ protected:
 
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
+
+    //if we use netcdf, store it here
+    netcdf nc;
+
     
 #ifdef MATLAB
     //matlab engine
