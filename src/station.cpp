@@ -141,9 +141,9 @@ std::string station::ID()
 std::ostream &operator<<(std::ostream &strm, const station &s)
 {
     if (s._obs)
-        return strm << "ID=" << s._ID << " (x,y,z)=(" << s._x << "," << s._y << "," << s._z << ") ," << "forcing=" << s._obs->get_opened_file();
+        return strm  << std::fixed<< "ID=" << s._ID << " (x,y,z)=(" << s._x << "," << s._y << "," << s._z << ") ," << "forcing=" << s._obs->get_opened_file();
     else
-        return strm << "ID=" << s._ID << "; (x,y,z)=(" << s._x << "," << s._y << "," << s._z << "); " << "forcing=Not opened";
+        return strm << std::fixed << "ID=" << s._ID << "; (x,y,z)=(" << s._x << "," << s._y << "," << s._z << "); " << "forcing=Not opened";
 }
 void station::tofile(std::string file)
 {

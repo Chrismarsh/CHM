@@ -198,6 +198,45 @@ size_t netcdf::get_ysize()
     return ygrid;
 }
 
+double netcdf::get_lat(size_t x, size_t y)
+{
+    return get_data("gridlat_0",0,x,y);
+}
+double netcdf::get_lon(size_t x, size_t y)
+{
+    return get_data("gridlon_0",0,x,y);
+}
+
+double netcdf::get_z(size_t x, size_t y)
+{
+    return get_data("HGT_P0_L1_GST0",0,x,y);
+}
+
+
+double netcdf::get_data(std::string var, size_t timestep, size_t x, size_t y)
+{
+    std::vector<size_t> startp, countp;
+    startp.push_back(0);
+    startp.push_back(y);
+    startp.push_back(x);
+
+    countp.push_back(1);
+    countp.push_back(1);
+    countp.push_back(1);
+
+    // Read the data one record at a time.
+    startp[0] = timestep;
+
+    auto vars = _data.getVars();
+
+    double val=-9999;
+
+    auto itr = vars.find(var);
+    itr->second.getVar(startp,countp, &val);
+
+    return val;
+}
+
 netcdf::data netcdf::get_data(std::string var, size_t timestep)
 {
     std::vector<size_t> startp, countp;
@@ -214,12 +253,14 @@ netcdf::data netcdf::get_data(std::string var, size_t timestep)
 
     auto vars = _data.getVars();
 
+    double d[485][685];
     netcdf::data array(boost::extents[ygrid][xgrid]);
 
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, array.data());
+    itr->second.getVar(startp,countp, d);
 
-    return array;
+     return array;
 }
 
 netcdf::data netcdf::get_data(std::string var, boost::posix_time::ptime timestep)

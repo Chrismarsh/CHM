@@ -340,26 +340,44 @@ void core::config_forcing(pt::ptree &value)
 
     if(_use_netcdf)
     {
-        auto lat = nc.get_lat();
-        auto lon = nc.get_lon();
-        auto z = nc.get_z();
+
 
         auto variables = nc.get_variable_names();
         auto date_vec  = nc.get_datevec();
 
+        ofstream xyz_orig;
+        xyz_orig.open("stations_orig.csv");
+
+        xyz_orig << std::fixed << "lon" <<"," << "lat" << std::endl;
+
+        ofstream xyz;
+        xyz.open("stations.csv");
+        xyz << std::fixed << "lon" <<"," << "lat" << std::endl;
         LOG_DEBUG << "Initializing datastructure";
-        for(size_t y = 0; y< nc.get_ysize();y++)
+        LOG_DEBUG << "Grid is (y)" <<  nc.get_ysize() << " by (x)" << nc.get_xsize();
+
+          for(size_t y = 0; y< nc.get_ysize();y++)
         {
             for(size_t x = 0; x < nc.get_xsize(); x++)
             {
 
+                auto lat = nc.get_lat(x,y);
+                auto lon = nc.get_lon(x,y);
+                auto z = nc.get_z(x,y);
+
                 size_t index = x + y * nc.get_xsize();
                 std::string station_name = std::to_string(index); // these don't really have names
 
-                double longitude= lon[y][x];
-                double latitude= lat[y][x];
+                double latitude = lat;//lon[y][x];
+                double longitude  = lon;//lat[y][x];
+              //  LOG_DEBUG << std::fixed <<  "long="<<longitude<<"\tlat="<<latitude;
+                if(index == 485)
+                {
+                    LOG_DEBUG << std::fixed << "485) lat=" << latitude << "long="<<longitude;
+                }
+                xyz_orig << std::fixed << longitude <<"," <<latitude << std::endl;
 
-                //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
+                            //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
                 if(!_mesh->is_geographic())
                 {
                     if(!coordTrans->Transform(1, &longitude, &latitude))
@@ -368,19 +386,23 @@ void core::config_forcing(pt::ptree &value)
                     }
                 }
 
+//                LOG_DEBUG << std::fixed <<  "long="<<longitude<<"\tlat="<<latitude;
+                double elevation = z;//z[y][x];
 
-                double elevation = z[y][x];
+                xyz << std::fixed << longitude <<"," <<latitude << std::endl;
 
                 //this ctor will init an empty timeseries for us
                 boost::shared_ptr<station> s = boost::make_shared<station>(station_name, longitude, latitude, elevation);
                 s->raw_timeseries()->init(variables,date_vec);
                 s->reset_itrs();
 
+//                LOG_DEBUG << *s;
                 pstations[index] = s; //index this linear array as if it were 2D to make the next section easier
 //                pstations.push_back(s);
             }
         }
 
+        xyz.close();
         LOG_DEBUG << "Done";
 
 

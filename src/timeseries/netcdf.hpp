@@ -33,15 +33,19 @@ public:
     size_t get_ntimesteps();
     //returns the lat grid
     data get_lat();
+    double get_lat(size_t x, size_t y);
 
     //returns the long grid
     data get_lon();
+    double get_lon(size_t x, size_t y);
 
     //gets z information
     data get_z();
+    double get_z(size_t x, size_t y);
 
     data get_data(std::string var, size_t timestep);
     data get_data(std::string var, boost::posix_time::ptime timestep);
+    double get_data(std::string var, size_t timestep, size_t x, size_t y);
 
     date_vec get_datevec();
 

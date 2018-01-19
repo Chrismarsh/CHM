@@ -22,6 +22,7 @@ namespace pt = boost::property_tree;
 #include <CGAL/Fuzzy_sphere.h>
 #include <CGAL/Search_traits_2.h>
 #include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/Splitters.h>
 
 
 #include <CGAL/Euclidean_distance.h>
@@ -46,10 +47,19 @@ class global
             CGAL::Nth_of_tuple_property_map<0, Point_and_station>,
             Traits_base>                                              Traits;
 
-    typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
-    typedef CGAL::Kd_tree<Traits> Tree;
 
-    typedef CGAL::Orthogonal_k_neighbor_search<Traits> Neighbor_search;
+    typedef CGAL::Fair<Traits> Splitter;
+
+    typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
+
+    typedef CGAL::Kd_tree<Traits,Splitter> Tree;
+
+    typedef CGAL::Orthogonal_k_neighbor_search <
+             Traits,
+             typename CGAL::internal::Spatial_searching_default_distance<Traits>::type,
+            Splitter > Neighbor_search;
+//    Sliding_midpoint
+//    typedef CGAL::Orthogonal_k_neighbor_search<Traits> Neighbor_search;
 
      //want to let core modify date time, etc without showing a public interface. 
     //This is because global gets passed to all modules and a rogue module could do something dumb
