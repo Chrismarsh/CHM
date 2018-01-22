@@ -47,6 +47,15 @@ public:
     data get_data(std::string var, boost::posix_time::ptime timestep);
     double get_var(std::string var, size_t timestep, size_t x, size_t y);
 
+    /**
+     * Some data, such as lat/long do not have a time component are only 2 data. This allows loading those data.
+     * @param var
+     * @return
+     */
+    data get_var2D(std::string var);
+
+    double get_var2D(std::string var, size_t x, size_t y);
+
     date_vec get_datevec();
 
 private:
