@@ -84,6 +84,11 @@ double station::get(std::string variable)
     return _itr->get(variable);
 }
 
+void station::add_variable(std::string var)
+{
+    raw_timeseries()->init_new_variable(var);
+    reset_itrs();
+}
 void station::reset_itrs()
 {
     _itr = _obs->begin();

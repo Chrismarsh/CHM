@@ -135,6 +135,11 @@ public:
     */
     timeseries::date_vec date_timeseries();
 
+    /**
+     * Adds a new variable to the underlying timeseries. Invalidates all internal iterators and resets them to the beging of the timeseries
+     * @param var Variable name to add
+     */
+    void add_variable(std::string var);
 
     /**
     * Returns the underlying timeseries
