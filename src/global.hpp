@@ -47,12 +47,14 @@ class global
             CGAL::Nth_of_tuple_property_map<0, Point_and_station>,
             Traits_base>                                              Traits;
 
-
-    typedef CGAL::Fair<Traits> Splitter;
+    //Sliding_midpoint
+    typedef CGAL::Sliding_fair<Traits> Splitter;
 
     typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
 
     typedef CGAL::Kd_tree<Traits,Splitter> Tree;
+
+//    typedef CGAL::Kd_tree<Traits> Tree;
 
     typedef CGAL::Orthogonal_k_neighbor_search <
              Traits,

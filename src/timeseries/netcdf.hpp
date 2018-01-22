@@ -45,7 +45,7 @@ public:
 
     data get_data(std::string var, size_t timestep);
     data get_data(std::string var, boost::posix_time::ptime timestep);
-    double get_data(std::string var, size_t timestep, size_t x, size_t y);
+    double get_var(std::string var, size_t timestep, size_t x, size_t y);
 
     date_vec get_datevec();
 

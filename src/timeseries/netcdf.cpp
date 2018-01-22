@@ -129,8 +129,7 @@ void netcdf::open(const std::string& file)
     {
         _datetime[i] = _start + _timestep*i;
     }
-//    LOG_DEBUG << _end;
-//    LOG_DEBUG << _datetime[_datetime_length-1];
+
 }
 
 size_t netcdf::get_ntimesteps()
@@ -183,11 +182,43 @@ std::set<std::string> netcdf::get_variable_names()
 
 netcdf::data netcdf::get_lat()
 {
-    return get_data("gridlat_0",0);
+    // lat / long doesn't have a time dimension, so have to use a different read size
+    std::vector<size_t> startp, countp;
+
+    startp.push_back(1);
+    startp.push_back(1);
+
+    countp.push_back(ygrid);
+    countp.push_back(xgrid);
+
+    auto vars = _data.getVars();
+
+    netcdf::data array(boost::extents[ygrid][xgrid]);
+    auto itr = vars.find("gridlat_0");
+    itr->second.getVar(startp,countp, array.data());
+
+    return array;
+
 }
 netcdf::data netcdf::get_lon()
 {
-    return get_data("gridlon_0",0);
+    // lat / long doesn't have a time dimension, so have to use a different read size
+    std::vector<size_t> startp, countp;
+
+    startp.push_back(1);
+    startp.push_back(1);
+
+    countp.push_back(ygrid);
+    countp.push_back(xgrid);
+
+    auto vars = _data.getVars();
+
+    netcdf::data array(boost::extents[ygrid][xgrid]);
+    auto itr = vars.find("gridlon_0");
+    itr->second.getVar(startp,countp, array.data());
+
+    return array;
+
 }
 size_t netcdf::get_xsize()
 {
@@ -200,20 +231,55 @@ size_t netcdf::get_ysize()
 
 double netcdf::get_lat(size_t x, size_t y)
 {
-    return get_data("gridlat_0",0,x,y);
+
+    // lat / long doesn't have a time dimension, so have to use a different read size
+    std::vector<size_t> startp, countp;
+    startp.push_back(y);
+    startp.push_back(x);
+
+
+    countp.push_back(1);
+    countp.push_back(1);
+
+    auto vars = _data.getVars();
+
+    double val=-9999;
+
+    auto itr = vars.find("gridlat_0");
+    itr->second.getVar(startp,countp, &val);
+
+    return val;
+
 }
 double netcdf::get_lon(size_t x, size_t y)
 {
-    return get_data("gridlon_0",0,x,y);
+    // lat / long doesn't have a time dimension, so have to use a different read size
+    std::vector<size_t> startp, countp;
+
+    startp.push_back(y);
+    startp.push_back(x);
+
+    countp.push_back(1);
+    countp.push_back(1);
+
+    auto vars = _data.getVars();
+
+    double val=-9999;
+
+    auto itr = vars.find("gridlon_0");
+    itr->second.getVar(startp,countp, &val);
+
+    return val;
+
 }
 
 double netcdf::get_z(size_t x, size_t y)
 {
-    return get_data("HGT_P0_L1_GST0",0,x,y);
+    return get_var("HGT_P0_L1_GST0", 0, x, y);
 }
 
 
-double netcdf::get_data(std::string var, size_t timestep, size_t x, size_t y)
+double netcdf::get_var(std::string var, size_t timestep, size_t x, size_t y)
 {
     std::vector<size_t> startp, countp;
     startp.push_back(0);
@@ -253,12 +319,12 @@ netcdf::data netcdf::get_data(std::string var, size_t timestep)
 
     auto vars = _data.getVars();
 
-    double d[485][685];
+
     netcdf::data array(boost::extents[ygrid][xgrid]);
 
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, array.data());
-    itr->second.getVar(startp,countp, d);
+
 
      return array;
 }

@@ -340,8 +340,6 @@ void core::config_forcing(pt::ptree &value)
 
     if(_use_netcdf)
     {
-
-
         auto variables = nc.get_variable_names();
         auto date_vec  = nc.get_datevec();
 
@@ -356,7 +354,7 @@ void core::config_forcing(pt::ptree &value)
         LOG_DEBUG << "Initializing datastructure";
         LOG_DEBUG << "Grid is (y)" <<  nc.get_ysize() << " by (x)" << nc.get_xsize();
 
-          for(size_t y = 0; y< nc.get_ysize();y++)
+        for(size_t y = 0; y< nc.get_ysize();y++)
         {
             for(size_t x = 0; x < nc.get_xsize(); x++)
             {
@@ -365,16 +363,22 @@ void core::config_forcing(pt::ptree &value)
                 auto lon = nc.get_lon(x,y);
                 auto z = nc.get_z(x,y);
 
+
                 size_t index = x + y * nc.get_xsize();
                 std::string station_name = std::to_string(index); // these don't really have names
 
                 double latitude = lat;//lon[y][x];
                 double longitude  = lon;//lat[y][x];
-              //  LOG_DEBUG << std::fixed <<  "long="<<longitude<<"\tlat="<<latitude;
-                if(index == 485)
-                {
-                    LOG_DEBUG << std::fixed << "485) lat=" << latitude << "long="<<longitude;
-                }
+
+//                auto latgrid = nc.get_lat();
+//                auto longrid = nc.get_lon();
+//                LOG_DEBUG << std::fixed <<  "individual call long="<<longitude<<"\tlat="<<latitude;
+//                LOG_DEBUG << std::fixed <<  "array call long="<<longrid[y][x]<<"\tlat="<<latgrid[y][x];
+
+//                if(index == 485)
+//                {
+//                    LOG_DEBUG << std::fixed << "485) lat=" << latitude << "long="<<longitude;
+//                }
                 xyz_orig << std::fixed << longitude <<"," <<latitude << std::endl;
 
                             //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
@@ -397,7 +401,7 @@ void core::config_forcing(pt::ptree &value)
                 s->reset_itrs();
 
 //                LOG_DEBUG << *s;
-                pstations[index] = s; //index this linear array as if it were 2D to make the next section easier
+                pstations.at(index) = s; //index this linear array as if it were 2D to make the next section easier
 //                pstations.push_back(s);
             }
         }
@@ -2019,12 +2023,14 @@ void core::run()
                             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
                         }
 
+
                         double d = data[y][x];
                         s->now().set(itr, d);
+
                     }
                 }
             }
-//            }
+
             LOG_DEBUG << "Done lazy load";
 
             std::stringstream ss;
