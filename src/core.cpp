@@ -1095,6 +1095,9 @@ void core::init(int argc, char **argv)
     gsl_set_error_handler_off();
 
 
+#ifdef _OPENMP
+    LOG_DEBUG << "Built with OpenMP support, #threads = " << omp_get_max_threads();
+#endif
 
 
     pt::ptree cfg;
@@ -1483,20 +1486,21 @@ void core::init(int argc, char **argv)
     c.tic();
 
 
-    for (auto& itr : _chunked_modules)
+    for (auto& itr : _modules)
     {
-        for (auto &jtr : itr)
-        {
+
             ompException oe;
             oe.Run([&]
                    {
-                       jtr->init(_mesh);
+                       itr.first->init(_mesh);
                    });
             oe.Rethrow();
-        }
-
     }
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+
+    //we do this here now because init is allowing a module to chance its mide and declar itself
+    // data parallel or domain parallel after the fact.
+    _schedule_modules();
 }
 
 void core::_find_and_insert_subjson(pt::ptree& value)
@@ -1902,6 +1906,10 @@ void core::_determine_module_dep()
 
 
 
+}
+
+void core::_schedule_modules()
+{
     //organize modules into sorted parallel data/domain chunks
     size_t chunks = 1; //will be 1 behind actual number as we are using this for an index
     size_t chunk_itr = 0;
@@ -1939,12 +1947,6 @@ void core::_determine_module_dep()
         }
         chunks++;
     }
-
-#ifdef _OPENMP
-    LOG_DEBUG << "Built with OpenMP support, #threads = " << omp_get_max_threads();
-#endif
-
-
 }
 
 void core::run()

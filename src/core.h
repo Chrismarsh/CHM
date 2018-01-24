@@ -158,6 +158,10 @@ public:
     void config_output(pt::ptree& value);
     void config_global( pt::ptree& value);
 
+    /**
+     * Determines the order modules need to be scheduleled in to maximize parallelism
+     */
+    void _schedule_modules();
     void _find_and_insert_subjson(pt::ptree& value);
 
     // .first = config file to use
