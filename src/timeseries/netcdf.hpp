@@ -65,6 +65,7 @@ private:
     std::string _lat, _lon; //name of lat and long fields
     size_t xgrid, ygrid;
 
+    std::set<std::string> _variable_names; //set of variables this nc file provides
 
     size_t _datetime_length; //number of records
 

@@ -293,7 +293,15 @@ void core::config_forcing(pt::ptree &value)
 
         // core needs to setup all the stations as timeseries doens't know what to do with a full netcdf file.
 
-        nc.open(file);
+        try
+        {
+            nc.open(file);
+        }catch(netCDF::exceptions::NcException& e)
+        {
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
+        }
+
+
         nstations = nc.get_xsize() * nc.get_ysize();
     } else
     {
@@ -395,8 +403,9 @@ void core::config_forcing(pt::ptree &value)
                     //ignore bad path, means we don't have a filter
                 }
 
-
-                pstations.at(index) = s; //index this linear array as if it were 2D to make the next section easier
+                //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
+                //it will allow us to pull out the station for a specific x,y more easily.
+                pstations.at(index) = s;
 
             }
         }
@@ -469,8 +478,11 @@ void core::config_forcing(pt::ptree &value)
 
                     boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
                     filter->init(s);
-                    filter->process(s);
-                    s->reset_itrs(); // reset all the internal iterators
+
+                    //save this filter to run later
+                    //each station is associated with a list of filters to run
+                    _txtmet_filters[s->ID()].push_back(filter);
+
                 }
 
             } catch (pt::ptree_bad_path &e)
@@ -478,14 +490,16 @@ void core::config_forcing(pt::ptree &value)
                 //ignore
             }
 
-            pstations.push_back(s);
+            pstations.at(i) = s;
+
         }
 
     }
 
     for(size_t i = 0; i<nstations;i++)
     {
-        auto s = pstations[i];
+        auto s = pstations.at(i);
+        LOG_DEBUG << *s;
         if(_output_station_ptv)
         {
             points->InsertNextPoint(s->x(), s->y(), s->z());
@@ -2000,7 +2014,8 @@ void core::run()
             if(_use_netcdf)
             {
                 LOG_DEBUG << "Lazy load netcdf data start";
-                for (auto &itr: _global->_stations.at(0)->list_variables())
+                // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
+                for (auto &itr: nc.get_variable_names() )
                 {
                     auto data = nc.get_data(itr, t);
 
@@ -2027,7 +2042,8 @@ void core::run()
                 }
 
                 //do 1 step of the filters. Filters do not have depends!!
-#pragma parallel for
+                //asume every filter is run everywhere with the same parameters
+                #pragma parallel for
                 for(size_t i = 0; i < _global->number_of_stations();i++)
                 {
                     auto s = _global->stations().at(i);
@@ -2037,9 +2053,25 @@ void core::run()
                     }
                 }
 
-
-
                 LOG_DEBUG << "Done lazy load";
+            }
+            else
+            {
+                //do 1 step of the filters. Filters do not have depends!!
+                #pragma parallel for
+                for(size_t i = 0; i < _global->number_of_stations();i++)
+                {
+                    auto s = _global->stations().at(i);
+
+                    //get the list of filters to run for this station
+                    auto filters = _txtmet_filters[s->ID()];
+
+                    for(auto filt : filters)
+                    {
+                        filt->process(s);
+                    }
+
+                }
             }
 
             std::stringstream ss;

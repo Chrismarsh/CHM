@@ -231,10 +231,14 @@ protected:
 
     bool _use_netcdf; // flag if we are using netcdf. If we are, it enables incremental reads of the netcdf file for speed.
 
-    //we if we use netcdf, we need to save the filters and run it once every timestep.
+    //if we use netcdf, we need to save the filters and run it once every timestep.
     std::map<std::string, boost::shared_ptr<filter_base> > _netcdf_filters;
 
-            //calculates the order modules are to be run in
+    //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
+    //and run it on a per-station config.
+    std::map<std::string, std::vector<boost::shared_ptr<filter_base>> > _txtmet_filters;
+
+    //calculates the order modules are to be run in
     void _determine_module_dep();
 
     interp_alg _interpolation_method;

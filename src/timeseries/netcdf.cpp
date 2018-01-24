@@ -20,7 +20,6 @@ void netcdf::open(const std::string& file)
     _datetime_field = "datetime";
     _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
 
-
 //
 //    if(coord_vars.size() > 1)
 //    {
@@ -162,22 +161,24 @@ netcdf::data netcdf::get_z()
 
 std::set<std::string> netcdf::get_variable_names()
 {
-    std::set<std::string> var_names;
-    auto vars = _data.getVars();
-
-    std::vector<std::string> exclude = {"HGT_P0_L1_GST0","gridlat_0","gridlon_0","xgrid_0","ygrid_0"};
-
-    for(auto itr: vars)
+    if(_variable_names.empty())
     {
-        auto v = itr.first;
-        //don't return the above variables as they are geo-spatial vars
-        if (std::find(exclude.begin(), exclude.end(), v) == exclude.end())
+        auto vars = _data.getVars();
+
+        std::vector<std::string> exclude = {"HGT_P0_L1_GST0", "gridlat_0", "gridlon_0", "xgrid_0", "ygrid_0"};
+
+        for (auto itr: vars)
         {
-            var_names.insert(v);
+            auto v = itr.first;
+            //don't return the above variables as they are geo-spatial vars
+            if (std::find(exclude.begin(), exclude.end(), v) == exclude.end())
+            {
+                _variable_names.insert(v);
+            }
         }
     }
 
-    return var_names;
+    return _variable_names;
 }
 
 netcdf::data netcdf::get_var2D(std::string var)
