@@ -231,11 +231,14 @@ protected:
 
     bool _use_netcdf; // flag if we are using netcdf. If we are, it enables incremental reads of the netcdf file for speed.
 
-    //calculates the order modules are to be run in
+    //we if we use netcdf, we need to save the filters and run it once every timestep.
+    std::map<std::string, boost::shared_ptr<filter_base> > _netcdf_filters;
+
+            //calculates the order modules are to be run in
     void _determine_module_dep();
 
     interp_alg _interpolation_method;
-        
+
     //holds a unique list of all variables provided by all the met files;
     std::set<std::string> _provided_var_met_files;
     //unique list of all variables provided by all the modules

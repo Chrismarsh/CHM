@@ -343,14 +343,7 @@ void core::config_forcing(pt::ptree &value)
         auto variables = nc.get_variable_names();
         auto date_vec  = nc.get_datevec();
 
-        ofstream xyz_orig;
-        xyz_orig.open("stations_orig.csv");
 
-        xyz_orig << std::fixed << "lon" <<"," << "lat" << std::endl;
-
-        ofstream xyz;
-        xyz.open("stations.csv");
-        xyz << std::fixed << "lon" <<"," << "lat" << std::endl;
         LOG_DEBUG << "Initializing datastructure";
         LOG_DEBUG << "Grid is (y)" <<  nc.get_ysize() << " by (x)" << nc.get_xsize();
 
@@ -359,29 +352,15 @@ void core::config_forcing(pt::ptree &value)
             for(size_t x = 0; x < nc.get_xsize(); x++)
             {
 
-                auto lat = nc.get_lat(x,y);
-                auto lon = nc.get_lon(x,y);
-                auto z = nc.get_z(x,y);
+                double latitude = nc.get_lat(x,y);
+                double longitude  = nc.get_lon(x,y);
 
+                auto z = nc.get_z(x,y);
 
                 size_t index = x + y * nc.get_xsize();
                 std::string station_name = std::to_string(index); // these don't really have names
 
-                double latitude = lat;//lon[y][x];
-                double longitude  = lon;//lat[y][x];
-
-//                auto latgrid = nc.get_lat();
-//                auto longrid = nc.get_lon();
-//                LOG_DEBUG << std::fixed <<  "individual call long="<<longitude<<"\tlat="<<latitude;
-//                LOG_DEBUG << std::fixed <<  "array call long="<<longrid[y][x]<<"\tlat="<<latgrid[y][x];
-
-//                if(index == 485)
-//                {
-//                    LOG_DEBUG << std::fixed << "485) lat=" << latitude << "long="<<longitude;
-//                }
-                xyz_orig << std::fixed << longitude <<"," <<latitude << std::endl;
-
-                            //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
+                //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
                 if(!_mesh->is_geographic())
                 {
                     if(!coordTrans->Transform(1, &longitude, &latitude))
@@ -390,25 +369,37 @@ void core::config_forcing(pt::ptree &value)
                     }
                 }
 
-//                LOG_DEBUG << std::fixed <<  "long="<<longitude<<"\tlat="<<latitude;
-                double elevation = z;//z[y][x];
-
-                xyz << std::fixed << longitude <<"," <<latitude << std::endl;
+                double elevation = z;
 
                 //this ctor will init an empty timeseries for us
                 boost::shared_ptr<station> s = boost::make_shared<station>(station_name, longitude, latitude, elevation);
                 s->raw_timeseries()->init(variables,date_vec);
                 s->reset_itrs();
 
-//                LOG_DEBUG << *s;
+                try
+                {
+                    auto filter_section = value.get_child("filter");
+
+                    for (auto &jtr: filter_section)
+                    {
+                        auto name = jtr.first.data();
+
+                        boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
+                        filter->init(s);
+                        _netcdf_filters[name] = filter;
+
+                    }
+
+                } catch (pt::ptree_bad_path &e)
+                {
+                    //ignore bad path, means we don't have a filter
+                }
+
+
                 pstations.at(index) = s; //index this linear array as if it were 2D to make the next section easier
-//                pstations.push_back(s);
+
             }
         }
-
-        xyz.close();
-        LOG_DEBUG << "Done";
-
 
     } else
     {
@@ -418,7 +409,7 @@ void core::config_forcing(pt::ptree &value)
         }
 
         //#pragma omp parallel for
-        //TODO: this dead locks, not sure why
+        //TODO: this dead locks, not sure why <-- json reader isn't parallel safe
         for(size_t i =0; i < nstations; ++i)
         {
             auto& itr = forcings.at(i);
@@ -466,6 +457,8 @@ void core::config_forcing(pt::ptree &value)
             auto f = cwd_dir / file;
             s->open(f.string());
 
+            //filters with text timeseries behave differently than filters with the netcdf
+            //these will be run once, over the entire timeseries. netcdf will call the filters and run it on every lazyload.
             try
             {
                 auto filter_section = itr.second.get_child("filter");
@@ -475,7 +468,7 @@ void core::config_forcing(pt::ptree &value)
                     auto name = jtr.first.data();
 
                     boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
-
+                    filter->init(s);
                     filter->process(s);
                     s->reset_itrs(); // reset all the internal iterators
                 }
@@ -2004,36 +1997,50 @@ void core::run()
                 LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
             }
 
-//            for(size_t t=0;nc.get_ntimesteps(); t++)
-//            {
-
-            LOG_DEBUG << "Lazy load netcdf data start";
-            for(auto& itr: _global->_stations.at(0)->list_variables() )
+            if(_use_netcdf)
             {
-                auto data = nc.get_data(itr,t);
-
-                for(size_t y = 0; y< nc.get_ysize();y++)
+                LOG_DEBUG << "Lazy load netcdf data start";
+                for (auto &itr: _global->_stations.at(0)->list_variables())
                 {
-                    for (size_t x = 0; x < nc.get_xsize(); x++)
+                    auto data = nc.get_data(itr, t);
+
+                    for (size_t y = 0; y < nc.get_ysize(); y++)
                     {
-                        size_t index = x + y * nc.get_xsize();
-                        auto s = _global->_stations.at(index);
-
-                        //sanity check that we are getting the right station for this xy pair
-                        if(s->ID() != std::to_string(index))
+                        for (size_t x = 0; x < nc.get_xsize(); x++)
                         {
-                            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
+                            size_t index = x + y * nc.get_xsize();
+                            auto s = _global->_stations.at(index);
+
+                            //sanity check that we are getting the right station for this xy pair
+                            if (s->ID() != std::to_string(index))
+                            {
+                                BOOST_THROW_EXCEPTION(
+                                        forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
+                            }
+
+
+                            double d = data[y][x];
+                            s->now().set(itr, d);
+
                         }
-
-
-                        double d = data[y][x];
-                        s->now().set(itr, d);
-
                     }
                 }
-            }
 
-            LOG_DEBUG << "Done lazy load";
+                //do 1 step of the filters. Filters do not have depends!!
+#pragma parallel for
+                for(size_t i = 0; i < _global->number_of_stations();i++)
+                {
+                    auto s = _global->stations().at(i);
+                    for (auto &f : _netcdf_filters)
+                    {
+                        f.second->process(s);
+                    }
+                }
+
+
+
+                LOG_DEBUG << "Done lazy load";
+            }
 
             std::stringstream ss;
             ss << _global->posix_time();

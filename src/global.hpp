@@ -83,6 +83,8 @@ private:
     double radius;
     double N; // meters, radius for station search
 
+    double _n_stations; //total number of stations
+
 public:
 
     boost::function< std::vector< boost::shared_ptr<station> > ( double, double) > get_stations;
@@ -148,7 +150,12 @@ public:
 //    T get_parameter_value(std::string key);
 
     pt::ptree parameters;
-    
+
+    /**
+     * Total number of stations
+     * @return
+     */
+    size_t number_of_stations();
 };
 //
 //template<class T>

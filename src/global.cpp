@@ -123,3 +123,8 @@ bool  global::is_point_mode()
 {
     return _is_point_mode;
 }
+
+size_t global::number_of_stations()
+{
+    return _stations.size();
+}

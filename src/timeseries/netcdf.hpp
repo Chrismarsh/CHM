@@ -61,7 +61,6 @@ public:
 private:
 
     netCDF::NcFile _data; // main netcdf file
-
     std::string _datetime_field; // name of the datetime field, the unlimited dimension
     std::string _lat, _lon; //name of lat and long fields
     size_t xgrid, ygrid;
