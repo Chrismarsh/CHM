@@ -32,6 +32,7 @@ if(SUPERBUILD)
     set(BUILD_VIENNACL TRUE  CACHE BOOL "Build ViennaCL")
     set(BUILD_BOOST TRUE  CACHE BOOL "Build Boost")
     set(BUILD_PROJ4 TRUE  CACHE BOOL "Build proj4")
+    set(BUILD_NETCDF TRUE CACHE BOOL "Build netCDF")
 endif()
 
 if(BUILD_ARMADILLO)
@@ -73,6 +74,11 @@ if(BUILD_PROJ4)
     set(${CMAKE_BINARY_DIR}/lib/proj4)
 endif()
 
+if(BUILD_NETCDF)
+    set(NETCDF_DIR "${CMAKE_BINARY_DIR}/lib/netcdf-c")
+  #  set(NETCDF_INCLUDES "${CMAKE_BINARY_DIR}/lib/include")
+ #   set(NETCDF_LIBRARIES "${CMAKE_BINARY_DIR}/lib/libnetcdf-cxx4.dylib")
+endif()
 #set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
 
 ## Any custom boost path.
@@ -111,6 +117,7 @@ execute_process(COMMAND ${CMAKE_COMMAND}
         -DBUILD_VIENNACL=${BUILD_VIENNACL}
         -DBUILD_BOOST=${BUILD_BOOST}
         -DBUILD_PROJ4=${BUILD_PROJ4}
+        -DBUILD_NETCDF=${BUILD_NETCDF}
 
         -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
@@ -186,11 +193,11 @@ remove_cxx_flag("-O3")
 #reset these back
 if (CMAKE_BUILD_TYPE MATCHES Debug)
 
-  #  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.7")
-  #      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0 -fno-inline") #new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
-  #  else()
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.7")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0 -fno-inline") #new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
+    else()
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0 -fno-inline -ggdb")
-   # endif()
+    endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAFE_CHECKS")
 else()
 
@@ -317,10 +324,10 @@ find_package(GSL REQUIRED)
 
 find_package(Curses REQUIRED)
 
-set(NETCDF_INCLUDES "/Users/chris/Documents/PhD/code/netcdf/netcdf-cxx/include")
-set(NETCDF_LIBRARIES "/Users/chris/Documents/PhD/code/netcdf/netcdf-cxx/lib/libnetcdf-cxx4.dylib")
+
 set(NETCDF_CXX "YES")
-#find_package(NetCDF REQUIRED)
+find_package(NetCDF REQUIRED)
+
 message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 
 #if we are building the plugin we need to compile against paraview (which brings in VTK)

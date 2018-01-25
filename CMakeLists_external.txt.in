@@ -154,3 +154,54 @@ if(BUILD_GDAL)
 	    )
 endif()
 
+if(BUILD_NETCDF)
+    #even if netcdf-c and hdf are installed, there are some API changes and incompatibilities. It is easier to just build it all from scratch.
+
+    #build HDF5 first
+    ExternalProject_Add(
+	    hdf5
+	    URL https://support.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.10.1.tar
+	    UPDATE_COMMAND ""
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5
+	    BUILD_COMMAND make -j10
+	    INSTALL_COMMAND make install
+	    BUILD_IN_SOURCE 0 #needs to be out of source build
+	    )
+
+
+        ExternalProject_Add(
+            netcdf-c
+            GIT_REPOSITORY https://github.com/Unidata/netcdf-c.git
+            UPDATE_COMMAND ""
+            DEPENDS hdf5
+            CONFIGURE_COMMAND bash autoreconf -if COMMAND ${CMAKE_BINARY_DIR}/lib/netcdf-c-prefix/src/netcdf-c/configure
+                      CPPFLAGS=-I${CMAKE_BINARY_DIR}/lib/hdf5/include
+                      LDFLAGS=-L${CMAKE_BINARY_DIR}/lib/hdf5/lib
+                       --prefix=${CMAKE_BINARY_DIR}/lib/netcdf-c
+                      --enable-netcdf-4 --enable-shared
+
+          #  CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5 -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
+         #               -DENABLE_NETCDF_4=ON -DBUILD_SHARED_LIBS=ON
+            BUILD_COMMAND make -j10
+            INSTALL_COMMAND make install
+            BUILD_IN_SOURCE 1
+        )
+
+
+        ExternalProject_Add(
+            netcdf-cxx
+            GIT_REPOSITORY https://github.com/Unidata/netcdf-cxx4.git
+            UPDATE_COMMAND ""
+            DEPENDS netcdf-c
+
+            #install this to the netcdf directory as that's where the cmake findnetcdf script is going to look
+            CMAKE_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/netcdf-c
+                        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
+
+            BUILD_COMMAND make -j10
+            INSTALL_COMMAND make install
+            BUILD_IN_SOURCE 1
+        )
+
+
+endif()
