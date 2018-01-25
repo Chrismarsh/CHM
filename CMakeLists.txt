@@ -76,6 +76,7 @@ endif()
 
 if(BUILD_NETCDF)
     set(NETCDF_DIR "${CMAKE_BINARY_DIR}/lib/netcdf-c")
+
   #  set(NETCDF_INCLUDES "${CMAKE_BINARY_DIR}/lib/include")
  #   set(NETCDF_LIBRARIES "${CMAKE_BINARY_DIR}/lib/libnetcdf-cxx4.dylib")
 endif()
