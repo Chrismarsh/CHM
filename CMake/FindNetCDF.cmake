@@ -59,9 +59,6 @@ set (NETCDF_C_LIBRARIES ${NETCDF_LIBRARY})
 set (NetCDF_libs "")
 set (NetCDF_includes "${NETCDF_INCLUDE_DIR}")
 
-message(STATUS "netcdf inc hint - ${NETCDF_INCLUDE_DIR}")
-message(STATUS "netcdf lib hint - ${NetCDF_lib_dirs}")
-
 get_filename_component (NetCDF_lib_dirs "${NETCDF_LIBRARY}" PATH)
 set (NETCDF_HAS_INTERFACES "YES") # will be set to NO if we're missing any interfaces
 
