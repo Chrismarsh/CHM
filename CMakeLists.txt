@@ -76,6 +76,7 @@ endif()
 
 if(BUILD_NETCDF)
     set(NETCDF_DIR "${CMAKE_BINARY_DIR}/lib/netcdf-c")
+    set(NETCDF_INCLUDE_DIR "${NETCDF_DIR}/include")
 endif()
 #set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
 
