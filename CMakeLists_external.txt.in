@@ -162,10 +162,16 @@ if(BUILD_NETCDF)
 	    hdf5
 	    URL https://support.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.10.1.tar
 	    UPDATE_COMMAND ""
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5
+        #CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5
+
+        ONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure
+                              --prefix=${CMAKE_BINARY_DIR}/lib/hdf5
+                              --enable-cxx --enable-shared --enable-unsupported
+
+
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 0 #needs to be out of source build
+	    BUILD_IN_SOURCE 1
 	    )
 
 
