@@ -147,7 +147,7 @@ if(BUILD_GDAL)
 	    #http://osgeo-org.1560.x6.nabble.com/gdal-dev-sprintf-different-exception-specified-td5340324.html
 	    #CONFIGURE_COMMAND CXXFLAGS=-DDONT_DEPRECATE_SPRINTF ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4
 
-	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4
+	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
 	    BUILD_COMMAND make -j10  
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
