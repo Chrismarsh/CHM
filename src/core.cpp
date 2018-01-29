@@ -507,7 +507,6 @@ void core::config_forcing(pt::ptree &value)
     for(size_t i = 0; i<nstations;i++)
     {
         auto s = pstations.at(i);
-        LOG_DEBUG << *s;
         if(_output_station_ptv)
         {
             points->InsertNextPoint(s->x(), s->y(), s->z());
