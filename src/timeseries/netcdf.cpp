@@ -249,7 +249,7 @@ double netcdf::get_lon(size_t x, size_t y)
 
 double netcdf::get_z(size_t x, size_t y)
 {
-    return get_var("HGT_P0_L1_GST0", 0, x, y);
+    return get_var("HGT_P0_L1_GST", 0, x, y);
 }
 
 
