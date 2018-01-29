@@ -164,10 +164,9 @@ if(BUILD_NETCDF)
 	    UPDATE_COMMAND ""
         #CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5
 
-        ONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure
                               --prefix=${CMAKE_BINARY_DIR}/lib/hdf5
                               --enable-cxx --enable-shared --enable-unsupported
-
 
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install

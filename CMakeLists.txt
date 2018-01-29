@@ -77,6 +77,13 @@ endif()
 if(BUILD_NETCDF)
     set(NETCDF_DIR "${CMAKE_BINARY_DIR}/lib/netcdf-c")
     set(NETCDF_INCLUDE_DIR "${NETCDF_DIR}/include")
+    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${NETCDF_DIR}")
+    set(ENV{HDF5_ROOT} "${CMAKE_BINARY_DIR}/lib/hdf5")
+
+    if(NOT BUILD_GDAL)
+        message(WARNING "You should do a GDAL build to avoid linking against system netCDF and HDF5.")
+    endif()
+
 endif()
 #set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
 
