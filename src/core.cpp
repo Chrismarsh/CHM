@@ -353,10 +353,16 @@ void core::config_forcing(pt::ptree &value)
             auto variables = nc.get_variable_names();
             auto date_vec = nc.get_datevec();
 
+
             LOG_DEBUG << "Grid is (y)" << nc.get_ysize() << " by (x)" << nc.get_xsize();
             LOG_DEBUG << "Initializing datastructure";
 
             c.tic();
+
+            auto lat = nc.get_lat();
+            auto lon = nc.get_lon();
+            auto e = nc.get_z();
+
             #pragma omp parallel for
             for (size_t y = 0; y < nc.get_ysize(); y++)
             {
@@ -364,16 +370,20 @@ void core::config_forcing(pt::ptree &value)
                 {
 
 
-                    double latitude = 0;
-                    double longitude = 0;
-                    double z = 0;
+                    double latitude = lat[y][x];
+                    double longitude = lon[y][x];
+                    double z = e[y][x];
 
-                    #pragma omp critical
-                    {
-                        latitude = nc.get_lat(x, y);
-                        longitude= nc.get_lon(x, y);
-                        z = nc.get_z(x, y);
-                    }
+//                    #pragma omp critical
+//                    {
+//                        latitude = nc.get_lat(x, y);
+//                        longitude= nc.get_lon(x, y);
+//                        z = nc.get_z(x, y);
+//                    }
+
+//                    LOG_DEBUG << "lat=" << latitude << "\tlong="<<longitude<<"\tz="<<z;
+//                    LOG_DEBUG << "lat=" << lat[y][x] << "\tlong="<<lon[y][x]<<"\tz="<<e[y][x];
+//                    LOG_DEBUG << "------------------------";
 
                     size_t index = x + y * nc.get_xsize();
                     std::string station_name = std::to_string(index); // these don't really have names
