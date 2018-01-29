@@ -348,66 +348,74 @@ void core::config_forcing(pt::ptree &value)
 
     if(_use_netcdf)
     {
-        auto variables = nc.get_variable_names();
-        auto date_vec  = nc.get_datevec();
-
-
-        LOG_DEBUG << "Initializing datastructure";
-        LOG_DEBUG << "Grid is (y)" <<  nc.get_ysize() << " by (x)" << nc.get_xsize();
-
-        for(size_t y = 0; y< nc.get_ysize();y++)
+        try
         {
-            for(size_t x = 0; x < nc.get_xsize(); x++)
+            auto variables = nc.get_variable_names();
+            auto date_vec = nc.get_datevec();
+
+
+            LOG_DEBUG << "Initializing datastructure";
+            LOG_DEBUG << "Grid is (y)" << nc.get_ysize() << " by (x)" << nc.get_xsize();
+
+            for (size_t y = 0; y < nc.get_ysize(); y++)
             {
-
-                double latitude = nc.get_lat(x,y);
-                double longitude  = nc.get_lon(x,y);
-
-                auto z = nc.get_z(x,y);
-
-                size_t index = x + y * nc.get_xsize();
-                std::string station_name = std::to_string(index); // these don't really have names
-
-                //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
-                if(!_mesh->is_geographic())
+                for (size_t x = 0; x < nc.get_xsize(); x++)
                 {
-                    if(!coordTrans->Transform(1, &longitude, &latitude))
+
+                    double latitude = nc.get_lat(x, y);
+                    double longitude = nc.get_lon(x, y);
+
+                    auto z = nc.get_z(x, y);
+
+                    size_t index = x + y * nc.get_xsize();
+                    std::string station_name = std::to_string(index); // these don't really have names
+
+                    //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
+                    if (!_mesh->is_geographic())
                     {
-                        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + station_name + ": unable to convert coordinates to mesh format."));
-                    }
-                }
-
-                double elevation = z;
-
-                //this ctor will init an empty timeseries for us
-                boost::shared_ptr<station> s = boost::make_shared<station>(station_name, longitude, latitude, elevation);
-                s->raw_timeseries()->init(variables,date_vec);
-                s->reset_itrs();
-
-                try
-                {
-                    auto filter_section = value.get_child("filter");
-
-                    for (auto &jtr: filter_section)
-                    {
-                        auto name = jtr.first.data();
-
-                        boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
-                        filter->init(s);
-                        _netcdf_filters[name] = filter;
-
+                        if (!coordTrans->Transform(1, &longitude, &latitude))
+                        {
+                            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
+                                    "Station=" + station_name + ": unable to convert coordinates to mesh format."));
+                        }
                     }
 
-                } catch (pt::ptree_bad_path &e)
-                {
-                    //ignore bad path, means we don't have a filter
+                    double elevation = z;
+
+                    //this ctor will init an empty timeseries for us
+                    boost::shared_ptr<station> s = boost::make_shared<station>(station_name, longitude, latitude,
+                                                                               elevation);
+                    s->raw_timeseries()->init(variables, date_vec);
+                    s->reset_itrs();
+
+                    try
+                    {
+                        auto filter_section = value.get_child("filter");
+
+                        for (auto &jtr: filter_section)
+                        {
+                            auto name = jtr.first.data();
+
+                            boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
+                            filter->init(s);
+                            _netcdf_filters[name] = filter;
+
+                        }
+
+                    } catch (pt::ptree_bad_path &e)
+                    {
+                        //ignore bad path, means we don't have a filter
+                    }
+
+                    //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
+                    //it will allow us to pull out the station for a specific x,y more easily.
+                    pstations.at(index) = s;
+
                 }
-
-                //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
-                //it will allow us to pull out the station for a specific x,y more easily.
-                pstations.at(index) = s;
-
             }
+        } catch(netCDF::exceptions::NcException& e)
+        {
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
         }
 
     } else
@@ -2017,7 +2025,7 @@ void core::run()
                 // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
                 for (auto &itr: nc.get_variable_names() )
                 {
-                    auto data = nc.get_data(itr, t);
+                    auto data = nc.get_var(itr, t);
 
                     for (size_t y = 0; y < nc.get_ysize(); y++)
                     {

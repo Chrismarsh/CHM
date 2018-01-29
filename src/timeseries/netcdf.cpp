@@ -156,7 +156,7 @@ boost::posix_time::ptime netcdf::get_end()
 
 netcdf::data netcdf::get_z()
 {
-    return get_data("HGT_P0_L1_GST0",0);
+    return get_var("HGT_P0_L1_GST0",0);
 }
 
 std::set<std::string> netcdf::get_variable_names()
@@ -277,7 +277,7 @@ double netcdf::get_var(std::string var, size_t timestep, size_t x, size_t y)
     return val;
 }
 
-netcdf::data netcdf::get_data(std::string var, size_t timestep)
+netcdf::data netcdf::get_var(std::string var, size_t timestep)
 {
     std::vector<size_t> startp, countp;
     startp.push_back(0);
@@ -303,11 +303,11 @@ netcdf::data netcdf::get_data(std::string var, size_t timestep)
      return array;
 }
 
-netcdf::data netcdf::get_data(std::string var, boost::posix_time::ptime timestep)
+netcdf::data netcdf::get_var(std::string var, boost::posix_time::ptime timestep)
 {
     auto diff = timestep - _start; // a duration
 
     auto offset = diff.total_seconds() / _timestep.total_seconds();
 
-    return get_data(var, offset);
+    return get_var(var, offset);
 }

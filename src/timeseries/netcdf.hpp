@@ -43,8 +43,8 @@ public:
     data get_z();
     double get_z(size_t x, size_t y);
 
-    data get_data(std::string var, size_t timestep);
-    data get_data(std::string var, boost::posix_time::ptime timestep);
+    data get_var(std::string var, size_t timestep);
+    data get_var(std::string var, boost::posix_time::ptime timestep);
     double get_var(std::string var, size_t timestep, size_t x, size_t y);
 
     /**
