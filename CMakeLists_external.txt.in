@@ -40,17 +40,6 @@ ExternalProject_Add(
     )
 
 #GDAL depends on this. If we are building proj4, we need to turn off the VTK proj4
-if(BUILD_PROJ4)
-    ExternalProject_Add(
-    	proj4
-        URL http://download.osgeo.org/proj/proj-4.8.0.tar.gz
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
-        BUILD_COMMAND make -j10
-        INSTALL_COMMAND make install
-        BUILD_IN_SOURCE 1
-    )
-endif()
 
 if(BUILD_VTK)
 
@@ -137,15 +126,27 @@ endif()
 
 
 if(BUILD_GDAL)
+
+    ExternalProject_Add(
+    	proj4
+        URL http://download.osgeo.org/proj/proj-4.9.3.tar.gz
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
+        BUILD_COMMAND make -j10
+        INSTALL_COMMAND make install
+        BUILD_IN_SOURCE 1
+    )
+
     ExternalProject_Add(
 	    GDAL
+	    DEPENDS proj4
 	    URL http://download.osgeo.org/gdal/2.2.1/gdal-2.2.1.tar.gz
 	    UPDATE_COMMAND ""
 	    PATCH_COMMAND patch -p1 < ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch
 
 	    #occasionally GDAL doesn't correctly detect this, so can enable if required
 	    #http://osgeo-org.1560.x6.nabble.com/gdal-dev-sprintf-different-exception-specified-td5340324.html
-	    #CONFIGURE_COMMAND CXXFLAGS=-DDONT_DEPRECATE_SPRINTF ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4
+	    # CXXFLAGS=-DDONT_DEPRECATE_SPRINTF
 
 	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
 	    BUILD_COMMAND make -j10  
