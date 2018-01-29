@@ -357,15 +357,23 @@ void core::config_forcing(pt::ptree &value)
             LOG_DEBUG << "Initializing datastructure";
             LOG_DEBUG << "Grid is (y)" << nc.get_ysize() << " by (x)" << nc.get_xsize();
 
+            #pragma omp parallel for
             for (size_t y = 0; y < nc.get_ysize(); y++)
             {
                 for (size_t x = 0; x < nc.get_xsize(); x++)
                 {
 
-                    double latitude = nc.get_lat(x, y);
-                    double longitude = nc.get_lon(x, y);
 
-                    auto z = nc.get_z(x, y);
+                    double latitude = 0;
+                    double longitude = 0;
+
+                    auto z = 0;
+                    #pragma omp critical
+                    {
+                        latitude = nc.get_lat(x, y);
+                        longitude= nc.get_lon(x, y);
+                        z = nc.get_z(x, y);
+                    }
 
                     size_t index = x + y * nc.get_xsize();
                     std::string station_name = std::to_string(index); // these don't really have names
@@ -2026,6 +2034,7 @@ void core::run()
                 {
                     auto data = nc.get_var(itr, t);
 
+                    #pragma omp parallel for
                     for (size_t y = 0; y < nc.get_ysize(); y++)
                     {
                         for (size_t x = 0; x < nc.get_xsize(); x++)
@@ -2050,7 +2059,7 @@ void core::run()
 
                 //do 1 step of the filters. Filters do not have depends!!
                 //asume every filter is run everywhere with the same parameters
-                #pragma parallel for
+                #pragma omp parallel for
                 for(size_t i = 0; i < _global->number_of_stations();i++)
                 {
                     auto s = _global->stations().at(i);
@@ -2065,7 +2074,7 @@ void core::run()
             else
             {
                 //do 1 step of the filters. Filters do not have depends!!
-                #pragma parallel for
+                #pragma omp parallel for
                 for(size_t i = 0; i < _global->number_of_stations();i++)
                 {
                     auto s = _global->stations().at(i);
