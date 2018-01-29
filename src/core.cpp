@@ -353,10 +353,10 @@ void core::config_forcing(pt::ptree &value)
             auto variables = nc.get_variable_names();
             auto date_vec = nc.get_datevec();
 
-
-            LOG_DEBUG << "Initializing datastructure";
             LOG_DEBUG << "Grid is (y)" << nc.get_ysize() << " by (x)" << nc.get_xsize();
+            LOG_DEBUG << "Initializing datastructure";
 
+            c.tic();
             #pragma omp parallel for
             for (size_t y = 0; y < nc.get_ysize(); y++)
             {
@@ -366,8 +366,8 @@ void core::config_forcing(pt::ptree &value)
 
                     double latitude = 0;
                     double longitude = 0;
+                    double z = 0;
 
-                    auto z = 0;
                     #pragma omp critical
                     {
                         latitude = nc.get_lat(x, y);
@@ -421,6 +421,8 @@ void core::config_forcing(pt::ptree &value)
 
                 }
             }
+            LOG_DEBUG << "Took " << c.toc<s>() << "s";
+
         } catch(netCDF::exceptions::NcException& e)
         {
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
