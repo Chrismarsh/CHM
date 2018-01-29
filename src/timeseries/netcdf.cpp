@@ -156,7 +156,7 @@ boost::posix_time::ptime netcdf::get_end()
 
 netcdf::data netcdf::get_z()
 {
-    return get_var("HGT_P0_L1_GST0",0);
+    return get_var("HGT_P0_L1_GST",0);
 }
 
 std::set<std::string> netcdf::get_variable_names()
@@ -165,7 +165,7 @@ std::set<std::string> netcdf::get_variable_names()
     {
         auto vars = _data.getVars();
 
-        std::vector<std::string> exclude = {"HGT_P0_L1_GST0", "gridlat_0", "gridlon_0", "xgrid_0", "ygrid_0"};
+        std::vector<std::string> exclude = {"HGT_P0_L1_GST", "gridlat_0", "gridlon_0", "xgrid_0", "ygrid_0"};
 
         for (auto itr: vars)
         {
@@ -185,8 +185,8 @@ netcdf::data netcdf::get_var2D(std::string var)
 {
     std::vector<size_t> startp, countp;
 
-    startp.push_back(1);
-    startp.push_back(1);
+    startp.push_back(0);
+    startp.push_back(0);
 
     countp.push_back(ygrid);
     countp.push_back(xgrid);
