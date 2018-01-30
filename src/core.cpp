@@ -355,14 +355,18 @@ void core::config_forcing(pt::ptree &value)
 
 
             LOG_DEBUG << "Grid is (y)" << nc.get_ysize() << " by (x)" << nc.get_xsize();
-            LOG_DEBUG << "Initializing datastructure";
 
+
+            LOG_DEBUG << "Loading lat/long grid...";
             c.tic();
 
             auto lat = nc.get_lat();
             auto lon = nc.get_lon();
             auto e = nc.get_z();
+            LOG_DEBUG << "Took " << c.toc<s>() << "s";
 
+            LOG_DEBUG << "Initializing datastructure";
+            c.tic();
             #pragma omp parallel for
             for (size_t y = 0; y < nc.get_ysize(); y++)
             {
@@ -2041,6 +2045,7 @@ void core::run()
             if(_use_netcdf)
             {
                 LOG_DEBUG << "Lazy load netcdf data start";
+                c.tic();
                 // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
                 for (auto &itr: nc.get_variable_names() )
                 {
@@ -2082,6 +2087,8 @@ void core::run()
                 }
 
                 LOG_DEBUG << "Done lazy load";
+                LOG_DEBUG << "Took " << c.toc<s>() << "s";
+
             }
             else
             {
