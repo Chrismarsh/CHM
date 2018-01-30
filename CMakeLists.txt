@@ -16,7 +16,7 @@ option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
-option(BUILD_VTK "Build a custom version of VTK" OFF)
+
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
@@ -33,6 +33,7 @@ if(SUPERBUILD)
     set(BUILD_BOOST TRUE  CACHE BOOL "Build Boost")
     set(BUILD_PROJ4 TRUE  CACHE BOOL "Build proj4")
     set(BUILD_NETCDF TRUE CACHE BOOL "Build netCDF")
+    set(BUILD_VTK TRUE CACHE BOOL "Build VTK")
 endif()
 
 if(BUILD_ARMADILLO)
@@ -320,6 +321,7 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 find_package(PROJ4 REQUIRED) #gdal dependency, only need to link against it
+message(STATUS "proj4 lib ${${PROJ4_LIBRARY}}")
 find_package(GDAL 2.1 REQUIRED )
 
 find_package (Threads REQUIRED)
