@@ -41,22 +41,29 @@ ExternalProject_Add(
 
 #GDAL depends on this. If we are building proj4, we need to turn off the VTK proj4
 
-if(BUILD_VTK)
-
-    set(SYSTEM_libproj4 FALSE)
-
-    #turn off vtk's proj4 so we don't conflict with our build copy
-    if(BUILD_PROJ4)
-        set(ENV{LIBPROJ4_DIR} "${CMAKE_BINARY_DIR}/lib/proj4")
-        set(SYSTEM_libproj4 TRUE)
-    endif()
-
+if(BUILD_PROJ4)
     ExternalProject_Add(
+    	proj4
+        URL http://download.osgeo.org/proj/proj-4.9.3.tar.gz
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
+        BUILD_COMMAND make -j10
+        INSTALL_COMMAND make install
+        BUILD_IN_SOURCE 1
+    )
+
+endif()
+
+if(BUILD_VTK)
+     ExternalProject_Add(
 	    VTK
+	    DEPENDS proj4
 	    URL http://www.vtk.org/files/release/8.0/VTK-8.0.0.tar.gz
 	    UPDATE_COMMAND ""
 	    #PATCH_COMMAND patch -p1  < ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch
-	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release -DVTK_USE_SYSTEM_libproj4=${SYSTEM_libproj4}
+	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release
+	                -DVTK_USE_SYSTEM_libproj4=ON
+	                -DLIBPROJ4_LIBRARIES=${CMAKE_BINARY_DIR}/lib/proj4/lib/libproj4.so -DLIBPROJ4_INCLUDE_DIR=${CMAKE_BINARY_DIR}/lib/proj4/include
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
@@ -119,23 +126,13 @@ if(BUILD_CGAL)
 	    BUILD_COMMAND make -j10 
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
-	    DEPENDS boost
+	    #DEPENDS boost
 	    )
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 endif()
 
 
 if(BUILD_GDAL)
-
-    ExternalProject_Add(
-    	proj4
-        URL http://download.osgeo.org/proj/proj-4.9.3.tar.gz
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
-        BUILD_COMMAND make -j10
-        INSTALL_COMMAND make install
-        BUILD_IN_SOURCE 1
-    )
 
     ExternalProject_Add(
 	    GDAL

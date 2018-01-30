@@ -62,6 +62,7 @@ endif()
 
 #To avoid issues #104, newer VTK version needs to be used. Until VTK7+ becomes available in the LTS/&c releases, allow for easily building a new VTK
 if(BUILD_VTK)
+    set(BUILD_PROJ4 TRUE)
     set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
 endif()
 
@@ -321,7 +322,6 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 find_package(PROJ4 REQUIRED) #gdal dependency, only need to link against it
-message(STATUS "proj4 lib ${${PROJ4_LIBRARY}}")
 find_package(GDAL 2.1 REQUIRED )
 
 find_package (Threads REQUIRED)
