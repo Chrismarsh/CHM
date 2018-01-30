@@ -367,27 +367,32 @@ void core::config_forcing(pt::ptree &value)
 
             LOG_DEBUG << "Initializing datastructure";
             c.tic();
-            #pragma omp parallel for
+
+// #pragma omp parallel for
+// hangs, unclear why, critical sections around the json and gdal calls don't seem to help
             for (size_t y = 0; y < nc.get_ysize(); y++)
             {
                 for (size_t x = 0; x < nc.get_xsize(); x++)
                 {
 
 
-                    double latitude = lat[y][x];
-                    double longitude = lon[y][x];
-                    double z = e[y][x];
+                    double latitude = 0;
+                    double longitude = 0 ;
+                    double z = 0;
 
-//                    #pragma omp critical
-//                    {
-//                        latitude = nc.get_lat(x, y);
-//                        longitude= nc.get_lon(x, y);
-//                        z = nc.get_z(x, y);
-//                    }
+                    latitude = lat[y][x];;
+                    longitude = lon[y][x];
+                    z = e[y][x];
+
+//                    latitude = nc.get_lat(x, y);
+//                    longitude = nc.get_lon(x, y);
+//                    z = nc.get_z(x, y);
+
 
 //                    LOG_DEBUG << "lat=" << latitude << "\tlong="<<longitude<<"\tz="<<z;
 //                    LOG_DEBUG << "lat=" << lat[y][x] << "\tlong="<<lon[y][x]<<"\tz="<<e[y][x];
 //                    LOG_DEBUG << "------------------------";
+
 
                     size_t index = x + y * nc.get_xsize();
                     std::string station_name = std::to_string(index); // these don't really have names
