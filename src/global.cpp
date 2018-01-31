@@ -114,7 +114,7 @@ std::vector< boost::shared_ptr<station> > global::nearest_station(double x, doub
 
 }
 
-std::vector< boost::shared_ptr<station> > global::stations()
+std::vector< boost::shared_ptr<station> >& global::stations()
 {
     return _stations;
 }

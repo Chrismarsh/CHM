@@ -34,6 +34,6 @@ private:
 public:
     scale_wind_speed();
     ~scale_wind_speed();
-    void init(boost::shared_ptr<station> station);
-    void process(boost::shared_ptr<station> station);
+    void init(boost::shared_ptr<station>& station);
+    void process(boost::shared_ptr<station>& station);
 };

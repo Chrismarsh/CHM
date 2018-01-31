@@ -145,7 +145,7 @@ public:
     std::vector< boost::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
 
 
-    std::vector< boost::shared_ptr<station> > stations();
+    std::vector< boost::shared_ptr<station> >& stations();
 //    template<class T>
 //    T get_parameter_value(std::string key);
 

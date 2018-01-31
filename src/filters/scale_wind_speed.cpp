@@ -12,7 +12,7 @@ scale_wind_speed::~scale_wind_speed()
 
 }
 
-void scale_wind_speed::init(boost::shared_ptr<station> station)
+void scale_wind_speed::init(boost::shared_ptr<station>& station)
 {
     //look at the config data to determine what we are modifying
     var = cfg.get<std::string>("variable");
@@ -22,7 +22,7 @@ void scale_wind_speed::init(boost::shared_ptr<station> station)
     // Initialize new wind speed at ref height variable
     station->add_variable("U_R");
 }
-void scale_wind_speed::process(boost::shared_ptr<station> station)
+void scale_wind_speed::process(boost::shared_ptr<station>& station)
 {
     double U_F = station->now().get(var); // Here wind u [m/s] at Z_U
     double U_R = -9999;

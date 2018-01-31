@@ -15,8 +15,8 @@ public:
     filter_base(){};
     virtual ~filter_base(){};
 
-    virtual void init(boost::shared_ptr<station> station){};
-    virtual void process(boost::shared_ptr<station> station){};
+    virtual void init(boost::shared_ptr<station>& station){};
+    virtual void process(boost::shared_ptr<station>& station){};
 
     bool is_nan(double variable)
     {
