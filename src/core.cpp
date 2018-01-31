@@ -2079,6 +2079,9 @@ void core::run()
                     }
                 }
 
+                LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";
+
+                c.tic();
                 //do 1 step of the filters. Filters do not have depends!!
                 //asume every filter is run everywhere with the same parameters
                 #pragma omp parallel for
@@ -2091,8 +2094,7 @@ void core::run()
                     }
                 }
 
-                LOG_DEBUG << "Done lazy load";
-                LOG_DEBUG << "Took " << c.toc<s>() << "s";
+                LOG_DEBUG << "Done filters [ " << c.toc<s>() << "s]";
 
             }
             else
