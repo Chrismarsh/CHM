@@ -48,7 +48,7 @@ class global
             Traits_base>                                              Traits;
 
     //Sliding_midpoint
-    typedef CGAL::Sliding_fair<Traits> Splitter;
+    typedef CGAL::Sliding_midpoint<Traits> Splitter;
 
     typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
 
