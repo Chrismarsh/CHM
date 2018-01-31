@@ -2049,7 +2049,7 @@ void core::run()
 
             if(_use_netcdf)
             {
-                LOG_DEBUG << "Lazy load netcdf data start";
+//                LOG_DEBUG << "Lazy load netcdf data start";
                 c.tic();
                 // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
                 for (auto &itr: nc.get_variable_names() )
@@ -2293,6 +2293,8 @@ void core::run()
 
             std::string s = std::to_string(std::lround(mt)) + (ms == true ? " ms" : "s");
             _ui.write_meantime(s);
+
+            LOG_DEBUG << "Avg timestep duration " << s;
 
             //we need it in seconds now
             if (ms)
