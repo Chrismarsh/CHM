@@ -40,6 +40,11 @@ void netcdf::create_variable1D( const std::string& var, size_t length)
 
 }
 
+netCDF::NcFile& netcdf::get_ncfile()
+{
+    return _data;
+}
+
 void netcdf::put_var1D(const std::string& var, size_t index, double value)
 {
     auto vars = _data.getVars();

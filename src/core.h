@@ -311,7 +311,10 @@ protected:
 
     netcdf _savestate;
     bool _do_checkpoint; // should we check point?
+    bool _load_from_checkpoint; // are we loading from a checkpoint?
+    std::string _checkpoint_file;//file to load from
     size_t _checkpoint_feq; // frequency of checkpoints
+
 };
 
 

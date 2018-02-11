@@ -45,6 +45,7 @@ public:
     data get_z();
     double get_z(size_t x, size_t y);
 
+
     data get_var(std::string var, size_t timestep);
     data get_var(std::string var, boost::posix_time::ptime timestep);
     double get_var(std::string var, size_t timestep, size_t x, size_t y);
@@ -63,6 +64,8 @@ public:
 
     date_vec get_datevec();
 
+
+    netCDF::NcFile& get_ncfile();
 private:
 
     netCDF::NcFile _data; // main netcdf file

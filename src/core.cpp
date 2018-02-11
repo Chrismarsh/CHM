@@ -14,6 +14,7 @@ core::core()
     _log_level = debug;
     _output_station_ptv = true;
     _use_netcdf=false;
+    _load_from_checkpoint=false;
 }
 
 core::~core()
@@ -271,13 +272,7 @@ void core::config_checkpoint( pt::ptree& value)
 
     _do_checkpoint = value.get("enable",false);
 
-    if(!_do_checkpoint)
-        return;
-
-    //TODO: frequency of checkpoint
-
     //this uses the output path defined in config_output, so this must run after that.
-
     if(_do_checkpoint)
     {
         auto dir = "checkpoint";
@@ -293,7 +288,25 @@ void core::config_checkpoint( pt::ptree& value)
         _savestate.create( f.string());
 
         _checkpoint_feq = value.get("frequency",1);
+
+
     }
+
+    auto file = value.get_optional<std::string>("load_from");
+
+    if (file)
+    {
+        _load_from_checkpoint = true;
+
+        auto dir = "checkpoint";
+
+        boost::filesystem::path ckpt_path;
+        ckpt_path = cwd_dir / *file;
+
+        _checkpoint_file = ckpt_path.string();
+
+    }
+
 
 
 }
@@ -2235,6 +2248,8 @@ void core::run()
             // save the current state
             if(_do_checkpoint && (current_ts % _checkpoint_feq ==0) )
             {
+                LOG_DEBUG << "Snapshotting modules";
+                c.tic()l
                 for (auto &itr : _chunked_modules)
                 {
                     //module calls
@@ -2243,6 +2258,8 @@ void core::run()
                         jtr->checkpoint(_mesh, _savestate);
                     }
                 }
+                _savestate.get_ncfile().putAtt("restart_time",ss.str());
+                LOG_DEBUG << "Done snapshot [ " << c.toc<s>() << "s]";
             }
             for (auto &itr : _outputs)
             {
