@@ -10,6 +10,56 @@ netcdf::~netcdf()
 {
 
 }
+ void netcdf::add_dim1D(const std::string& var, size_t length)
+ {
+     auto nTri = _data.addDim(var, length);
+     _dimVector.push_back(nTri);
+ }
+void netcdf::create_variable1D( const std::string& var, size_t length)
+{
+    //only create the dim and variables once
+    try
+    {
+        add_dim1D("tri_id",length);
+
+    }
+    catch(netCDF::exceptions::NcNameInUse& e)
+    {
+
+    }
+
+    try
+    {
+        auto nc_var = _data.addVar(var.c_str(), netCDF::ncDouble, _dimVector);
+    }
+    catch(netCDF::exceptions::NcNameInUse& e)
+    {
+
+    }
+
+
+}
+
+void netcdf::put_var1D(const std::string& var, size_t index, double value)
+{
+    auto vars = _data.getVars();
+
+    auto itr = vars.find(var);
+
+    std::vector<size_t> startp,countp;
+    startp.push_back(index);
+    countp.push_back(1);
+
+
+    itr->second.putVar(startp,countp,&value);
+
+}
+
+void netcdf::create(const std::string& file)
+{
+    _data.open(file.c_str(), netCDF::NcFile::replace);
+
+}
 void netcdf::open(const std::string& file)
 {
     _data.open(file.c_str(), netCDF::NcFile::read);

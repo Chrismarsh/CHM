@@ -401,3 +401,64 @@ void snobal::run(mesh_elem &face)
 //    g->dead = 0;
 }
 
+void snobal::checkpoint(mesh domain,  netcdf& chkpt)
+{
+
+    chkpt.create_variable1D("snobal:m_s",domain->size_faces());
+    chkpt.create_variable1D("snobal:rho",domain->size_faces());
+    chkpt.create_variable1D("snobal:T_s",domain->size_faces());
+    chkpt.create_variable1D("snobal:T_s_0",domain->size_faces());
+    chkpt.create_variable1D("snobal:T_s_l",domain->size_faces());
+    chkpt.create_variable1D("snobal:z_s",domain->size_faces());
+
+//netcdf puts are not threadsafe.
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        snodata *g = face->get_module_data<snodata>(ID);
+        auto *sbal = &(g->data);
+
+        chkpt.put_var1D("snobal:m_s",i,sbal->m_s);
+        chkpt.put_var1D("snobal:rho",i,sbal->rho);
+        chkpt.put_var1D("snobal:T_s",i,sbal->T_s);
+        chkpt.put_var1D("snobal:T_s_0",i,sbal->T_s_0);
+        chkpt.put_var1D("snobal:T_s_l",i,sbal->T_s_l);
+        chkpt.put_var1D("snobal:z_s",i, sbal->m_s / sbal->rho);
+
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

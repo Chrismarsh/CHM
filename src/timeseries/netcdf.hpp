@@ -16,6 +16,7 @@ class netcdf
 
 public:
     typedef boost::multi_array<double,2> data;
+    typedef boost::multi_array<double,1> vec;
     typedef std::vector< boost::posix_time::ptime > date_vec;
 
     netcdf();
@@ -28,6 +29,7 @@ public:
     std::set<std::string> get_variable_names();
     void open(const std::string& file);
 
+    void create(const std::string& file);
     size_t get_xsize();
     size_t get_ysize();
     size_t get_ntimesteps();
@@ -47,6 +49,9 @@ public:
     data get_var(std::string var, boost::posix_time::ptime timestep);
     double get_var(std::string var, size_t timestep, size_t x, size_t y);
 
+    void add_dim1D(const std::string& var, size_t length);
+    void create_variable1D(const std::string& var,  size_t length);
+    void put_var1D(const std::string& var, size_t index, double value);
     /**
      * Some data, such as lat/long do not have a time component are only 2 data. This allows loading those data.
      * @param var
@@ -76,5 +81,9 @@ private:
     boost::posix_time::time_duration _timestep; // we will multiply this later to get proper offset
 
     bool _is_open;
+
+
+    //if we are creating variables
+    std::vector<netCDF::NcDim> _dimVector; //we need this dimension var to create new variables
 
 };

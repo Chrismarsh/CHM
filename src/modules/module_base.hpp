@@ -8,6 +8,7 @@ namespace pt = boost::property_tree;
 
 #include "triangulation.hpp"
 #include "global.hpp"
+#include "timeseries/netcdf.hpp"
 
 
 //Create a process modules group in the doxygen docs to add individual modules to
@@ -92,6 +93,17 @@ public:
     virtual ~module_base()
     {
         //nothing
+    };
+
+    /**
+     * Checkpoint (save state) the current module. By default this errors out if the modules does not support checkpointing.
+     * @param domain
+     * @param data
+     */
+    virtual void checkpoint(mesh domain, netcdf& chkpt)
+    {
+
+      //TODO: Add default check for the assumption that module does not support serialization
     };
 
     /**

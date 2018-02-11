@@ -157,6 +157,7 @@ public:
     void config_matlab( pt::ptree& value);
     void config_output(pt::ptree& value);
     void config_global( pt::ptree& value);
+    void config_checkpoint( pt::ptree& value);
 
     /**
      * Determines the order modules need to be scheduleled in to maximize parallelism
@@ -307,6 +308,10 @@ protected:
     bool _enable_ui;
     ui _ui;
     std::vector<output_info> _outputs;
+
+    netcdf _savestate;
+    bool _do_checkpoint; // should we check point?
+    size_t _checkpoint_feq; // frequency of checkpoints
 };
 
 

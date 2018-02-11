@@ -264,6 +264,39 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
     }
 }
 
+void core::config_checkpoint( pt::ptree& value)
+{
+    LOG_DEBUG << "Found checkpoint section";
+    _find_and_insert_subjson(value);
+
+    _do_checkpoint = value.get("enable",false);
+
+    if(!_do_checkpoint)
+        return;
+
+    //TODO: frequency of checkpoint
+
+    //this uses the output path defined in config_output, so this must run after that.
+
+    if(_do_checkpoint)
+    {
+        auto dir = "checkpoint";
+
+        boost::filesystem::path ckpt_path;
+
+        // Create empty folder
+        ckpt_path = o_path / dir;
+        boost::filesystem::create_directories(ckpt_path);
+
+        //this parses both the input and the output paths for the checkpoint.
+        auto f = ckpt_path / "checkpoint.nc";
+        _savestate.create( f.string());
+
+        _checkpoint_feq = value.get("frequency",1);
+    }
+
+
+}
 void core::config_forcing(pt::ptree &value)
 {
     LOG_DEBUG << "Found forcing section";
@@ -1317,6 +1350,14 @@ void core::init(int argc, char **argv)
         LOG_DEBUG << "Optional section parameter mapping not found";
     }
 
+    try
+    {
+        config_checkpoint(cfg.get_child("checkpoint"));
+    } catch (pt::ptree_bad_path &e)
+    {
+        LOG_DEBUG << "Optional section checkpoint not found";
+    }
+
 //#ifdef NOMATLAB
 //            config_matlab(value);
 //#endif
@@ -2191,6 +2232,18 @@ void core::run()
                 }
             }
 
+            // save the current state
+            if(_do_checkpoint && (current_ts % _checkpoint_feq ==0) )
+            {
+                for (auto &itr : _chunked_modules)
+                {
+                    //module calls
+                    for (auto &jtr : itr)
+                    {
+                        jtr->checkpoint(_mesh, _savestate);
+                    }
+                }
+            }
             for (auto &itr : _outputs)
             {
                 if (itr.type == output_info::output_type::mesh)
