@@ -931,9 +931,7 @@ void core::config_output(pt::ptree &value)
 
 void core::config_global( pt::ptree &value)
 {
-    LOG_DEBUG << "Found global section";
-
-
+    BOOST_THROW_EXCEPTION(no_modules_defined() << errstr_info("Global section is now deprecated. This does nothing, please remove from config file."));
 }
 
 core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
