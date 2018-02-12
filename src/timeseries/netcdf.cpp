@@ -55,8 +55,16 @@ void netcdf::put_var1D(const std::string& var, size_t index, double value)
     startp.push_back(index);
     countp.push_back(1);
 
+    try
+    {
+        itr->second.putVar(startp,countp,&value);
+    }
+    catch(netCDF::exceptions::NcBadId& e)
+    {
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Variable not initialized: " + var));
+    }
 
-    itr->second.putVar(startp,countp,&value);
+
 
 }
 
