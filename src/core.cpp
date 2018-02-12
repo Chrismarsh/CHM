@@ -270,7 +270,7 @@ void core::config_checkpoint( pt::ptree& value)
     LOG_DEBUG << "Found checkpoint section";
     _find_and_insert_subjson(value);
 
-    _do_checkpoint = value.get("enable",false);
+    _do_checkpoint = value.get("save_checkpoint",false);
 
     //this uses the output path defined in config_output, so this must run after that.
     if(_do_checkpoint)
@@ -292,19 +292,18 @@ void core::config_checkpoint( pt::ptree& value)
 
     }
 
-    auto file = value.get_optional<std::string>("load_from");
+    auto file = value.get_optional<std::string>("load_checkpoint_path");
 
     if (file)
     {
         _load_from_checkpoint = true;
-
-        auto dir = "checkpoint";
 
         boost::filesystem::path ckpt_path;
         ckpt_path = cwd_dir / *file;
 
         _checkpoint_file = ckpt_path.string();
 
+        _in_savestate.open(_checkpoint_file);
     }
 
 
@@ -341,7 +340,7 @@ void core::config_forcing(pt::ptree &value)
 
         try
         {
-            nc.open(file);
+            nc.open_GEM(file);
         }catch(netCDF::exceptions::NcException& e)
         {
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
@@ -1448,6 +1447,16 @@ void core::init(int argc, char **argv)
                 end_time = tmp;
         }
     }
+
+    // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
+    if(_load_from_checkpoint)
+    {
+        std::string timestr;
+        _in_savestate.get_ncfile().getAtt("restart_time").getValues(&timestr);
+        _start_ts = new boost::posix_time::ptime(boost::posix_time::time_from_string(timestr));
+        LOG_WARNING << "Loading from checkpoint. Overriding start time to match. New start time = " << _start_ts;
+    }
+
     if (!_start_ts)
     {
         _start_ts = new boost::posix_time::ptime(start_time);
@@ -1596,6 +1605,23 @@ void core::init(int argc, char **argv)
     //we do this here now because init is allowing a module to chance its mide and declar itself
     // data parallel or domain parallel after the fact.
     _schedule_modules();
+
+//load a checkpoint as the last thing we do before a run
+    if(_load_from_checkpoint  )
+    {
+        LOG_DEBUG << "Loading from checkpoint";
+        c.tic();
+        for (auto &itr : _chunked_modules)
+        {
+            //module calls
+            for (auto &jtr : itr)
+            {
+                jtr->load_checkpoint(_mesh, _in_savestate);
+            }
+        }
+
+        LOG_DEBUG << "Done loading snapshot [ " << c.toc<s>() << "s]";
+    }
 }
 
 void core::_find_and_insert_subjson(pt::ptree& value)
@@ -2101,7 +2127,6 @@ void core::run()
 
             if(_use_netcdf)
             {
-//                LOG_DEBUG << "Lazy load netcdf data start";
                 c.tic();
                 // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
                 for (auto &itr: nc.get_variable_names() )
@@ -2249,7 +2274,7 @@ void core::run()
             if(_do_checkpoint && (current_ts % _checkpoint_feq ==0) )
             {
                 LOG_DEBUG << "Snapshotting modules";
-                c.tic()l
+                c.tic();
                 for (auto &itr : _chunked_modules)
                 {
                     //module calls
@@ -2258,7 +2283,9 @@ void core::run()
                         jtr->checkpoint(_mesh, _savestate);
                     }
                 }
-                _savestate.get_ncfile().putAtt("restart_time",ss.str());
+                std::stringstream timestr;
+                timestr << _global->posix_time() + boost::posix_time::seconds(_global->_dt); // start from current TS + dt
+                _savestate.get_ncfile().putAtt("restart_time",timestr.str());
                 LOG_DEBUG << "Done snapshot [ " << c.toc<s>() << "s]";
             }
             for (auto &itr : _outputs)

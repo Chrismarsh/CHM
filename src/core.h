@@ -309,7 +309,8 @@ protected:
     ui _ui;
     std::vector<output_info> _outputs;
 
-    netcdf _savestate;
+    netcdf _savestate; //file to save to when checkpointing.
+    netcdf _in_savestate; // if we are loading from checkpoint
     bool _do_checkpoint; // should we check point?
     bool _load_from_checkpoint; // are we loading from a checkpoint?
     std::string _checkpoint_file;//file to load from

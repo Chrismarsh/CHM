@@ -27,7 +27,8 @@ public:
     boost::posix_time::ptime get_end();
 
     std::set<std::string> get_variable_names();
-    void open(const std::string& file);
+    void open_GEM(const std::string &file);
+    void open(const std::string &file);
 
     void create(const std::string& file);
     size_t get_xsize();
@@ -59,6 +60,7 @@ public:
      * @return
      */
     data get_var2D(std::string var);
+    double get_var1D(std::string var, size_t index);
 
     double get_var2D(std::string var, size_t x, size_t y);
 

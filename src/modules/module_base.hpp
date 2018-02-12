@@ -106,6 +106,12 @@ public:
       //TODO: Add default check for the assumption that module does not support serialization
     };
 
+    virtual void load_checkpoint(mesh domain, netcdf& chkpt)
+    {
+
+        //TODO: Add default check for the assumption that module does not support serialization
+    };
+
     /**
     * Needs to be implemented by each  data parallel module. This will be called and executed for each timestep
     * \param face The terrain element (triangle) to be worked upon for an element parallel domain

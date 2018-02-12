@@ -65,7 +65,11 @@ void netcdf::create(const std::string& file)
     _data.open(file.c_str(), netCDF::NcFile::replace);
 
 }
-void netcdf::open(const std::string& file)
+void netcdf::open(const std::string &file)
+{
+    _data.open(file.c_str(), netCDF::NcFile::read);
+}
+void netcdf::open_GEM(const std::string &file)
 {
     _data.open(file.c_str(), netCDF::NcFile::read);
 
@@ -234,6 +238,23 @@ std::set<std::string> netcdf::get_variable_names()
     }
 
     return _variable_names;
+}
+
+double netcdf::get_var1D(std::string var, size_t index)
+{
+    std::vector<size_t> startp, countp;
+
+    startp.push_back(index);
+    countp.push_back(1);
+
+
+    auto vars = _data.getVars();
+
+    auto itr = vars.find(var);
+    double data=-9999.0;
+    itr->second.getVar(startp,countp,&data);
+
+    return data;
 }
 
 netcdf::data netcdf::get_var2D(std::string var)

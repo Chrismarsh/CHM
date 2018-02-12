@@ -423,13 +423,30 @@ void snobal::checkpoint(mesh domain,  netcdf& chkpt)
         chkpt.put_var1D("snobal:T_s",i,sbal->T_s);
         chkpt.put_var1D("snobal:T_s_0",i,sbal->T_s_0);
         chkpt.put_var1D("snobal:T_s_l",i,sbal->T_s_l);
-        chkpt.put_var1D("snobal:z_s",i, sbal->m_s / sbal->rho);
+        chkpt.put_var1D("snobal:z_s",i, sbal->z_s);
 
     }
 
 }
 
+void snobal::load_checkpoint(mesh domain, netcdf& chkpt)
+{
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        snodata *g = face->get_module_data<snodata>(ID);
+        auto *sbal = &(g->data);
 
+        sbal->m_s = chkpt.get_var1D("snobal:m_s",i);
+        sbal->rho = chkpt.get_var1D("snobal:rho",i);
+        sbal->T_s = chkpt.get_var1D("snobal:T_s",i);
+        sbal->T_s_0 = chkpt.get_var1D("snobal:T_s_0",i);
+        sbal->T_s_l = chkpt.get_var1D("snobal:T_s_l",i);
+        sbal->z_s =  chkpt.get_var1D("snobal:z_s",i);
+
+        sbal->init_snow();
+    }
+}
 
 
 
