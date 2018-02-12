@@ -410,6 +410,14 @@ void snobal::checkpoint(mesh domain,  netcdf& chkpt)
     chkpt.create_variable1D("snobal:T_s_0",domain->size_faces());
     chkpt.create_variable1D("snobal:T_s_l",domain->size_faces());
     chkpt.create_variable1D("snobal:z_s",domain->size_faces());
+    chkpt.create_variable1D("snobal:h2o_sat",domain->size_faces());
+    chkpt.create_variable1D("snobal:max_h2o_vol",domain->size_faces());
+    chkpt.create_variable1D("snobal:sum_runoff",domain->size_faces());
+    chkpt.create_variable1D("snobal:sum_melt",domain->size_faces());
+    chkpt.create_variable1D("snobal:E_s_sum",domain->size_faces());
+    chkpt.create_variable1D("snobal:melt_sum",domain->size_faces());
+    chkpt.create_variable1D("snobal:ro_pred_sum",domain->size_faces());
+    chkpt.create_variable1D("snobal:h2o_total",domain->size_faces());
 
 //netcdf puts are not threadsafe.
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -424,7 +432,15 @@ void snobal::checkpoint(mesh domain,  netcdf& chkpt)
         chkpt.put_var1D("snobal:T_s_0",i,sbal->T_s_0);
         chkpt.put_var1D("snobal:T_s_l",i,sbal->T_s_l);
         chkpt.put_var1D("snobal:z_s",i, sbal->z_s);
+        chkpt.put_var1D("snobal:h2o_sat",i,sbal->h2o_sat);
+        chkpt.put_var1D("snobal:max_h2o_vol",i,sbal->max_h2o_vol);
 
+        chkpt.put_var1D("snobal:sum_runoff",i,g->sum_runoff);
+        chkpt.put_var1D("snobal:sum_melt",i,g->sum_melt);
+        chkpt.put_var1D("snobal:E_s_sum",i,sbal->E_s_sum);
+        chkpt.put_var1D("snobal:melt_sum",i,sbal->melt_sum);
+        chkpt.put_var1D("snobal:ro_pred_sum",i,sbal->ro_pred_sum);
+        chkpt.put_var1D("snobal:h2o_total",i,sbal->h2o_total);
     }
 
 }
@@ -443,6 +459,15 @@ void snobal::load_checkpoint(mesh domain, netcdf& chkpt)
         sbal->T_s_0 = chkpt.get_var1D("snobal:T_s_0",i);
         sbal->T_s_l = chkpt.get_var1D("snobal:T_s_l",i);
         sbal->z_s =  chkpt.get_var1D("snobal:z_s",i);
+        sbal->h2o_sat =  chkpt.get_var1D("snobal:h2o_sat",i);
+        sbal->max_h2o_vol = chkpt.get_var1D("snobal:max_h2o_vol",i);
+
+        g->sum_runoff = chkpt.get_var1D("snobal:sum_runoff",i);
+        g->sum_melt = chkpt.get_var1D("snobal:sum_melt",i);
+        sbal->E_s_sum = chkpt.get_var1D("snobal:E_s_sum",i);
+        sbal->melt_sum = chkpt.get_var1D("snobal:melt_sum",i);
+        sbal->ro_pred_sum = chkpt.get_var1D("snobal:ro_pred_sum",i);
+        sbal->h2o_total = chkpt.get_var1D("snobal:h2o_total",i);
 
         sbal->init_snow();
     }
