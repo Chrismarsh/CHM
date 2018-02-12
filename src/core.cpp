@@ -288,7 +288,7 @@ void core::config_checkpoint( pt::ptree& value)
         _savestate.create( f.string());
 
         _checkpoint_feq = value.get("frequency",1);
-
+        LOG_DEBUG << "Checkpointing every " << _checkpoint_feq << " timesteps.";
 
     }
 
@@ -1451,10 +1451,17 @@ void core::init(int argc, char **argv)
     // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
     if(_load_from_checkpoint)
     {
-        std::string timestr;
-        _in_savestate.get_ncfile().getAtt("restart_time").getValues(&timestr);
-        _start_ts = new boost::posix_time::ptime(boost::posix_time::time_from_string(timestr));
-        LOG_WARNING << "Loading from checkpoint. Overriding start time to match. New start time = " << _start_ts;
+        //better but is loading incorrectly, seems to be an off by one?
+//        std::string timestr;
+//        _in_savestate.get_ncfile().getAtt("restart_time").getValues(&timestr);
+
+        size_t t = 0;
+        _in_savestate.get_ncfile().getAtt("restart_time_sec").getValues(&t);
+
+///        _start_ts = new boost::posix_time::ptime(boost::posix_time::time_from_string(timestr));
+        _start_ts = new boost::posix_time::ptime(boost::posix_time::from_time_t(t));
+
+        LOG_WARNING << "Loading from checkpoint. Overriding start time to match. New start time = " << *_start_ts;
     }
 
     if (!_start_ts)
@@ -1492,6 +1499,18 @@ void core::init(int argc, char **argv)
         BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
     }
 
+    if( _global->_stations.at(0)->date_timeseries().size() == 1)
+    {
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
+    }
+    //figure out what our timestepping is. Needs to happen before we subset as we may end up with only 1 timestep
+    auto t0 = _global->_stations.at(0)->date_timeseries().at(0);
+    auto t1 = _global->_stations.at(0)->date_timeseries().at(1);
+    auto dt = (t1 - t0);
+    _global->_dt = dt.total_seconds();
+    LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
+
+
     LOG_DEBUG << "Subsetting station timeseries";
 
 #pragma omp for
@@ -1525,12 +1544,6 @@ void core::init(int argc, char **argv)
     //set interpolation algorithm
     _global->interp_algorithm = _interpolation_method;// interp_alg::tpspline;
 
-    //figure out what our timestepping is
-    auto t0 = _global->_stations.at(0)->date_timeseries().at(0);
-    auto t1 = _global->_stations.at(0)->date_timeseries().at(1);
-    auto dt = (t1 - t0);
-    _global->_dt = dt.total_seconds();
-    LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
 
 
 
@@ -2273,7 +2286,7 @@ void core::run()
             // save the current state
             if(_do_checkpoint && (current_ts % _checkpoint_feq ==0) )
             {
-                LOG_DEBUG << "Snapshotting modules";
+                LOG_DEBUG << "Checkpointing...";
                 c.tic();
                 for (auto &itr : _chunked_modules)
                 {
@@ -2284,9 +2297,16 @@ void core::run()
                     }
                 }
                 std::stringstream timestr;
+
                 timestr << _global->posix_time() + boost::posix_time::seconds(_global->_dt); // start from current TS + dt
+
+                //also write it out in seconds because netcdf is struggling with the string
+                uint64_t ts_sec = _global->posix_time_int()+_global->_dt;
+
                 _savestate.get_ncfile().putAtt("restart_time",timestr.str());
-                LOG_DEBUG << "Done snapshot [ " << c.toc<s>() << "s]";
+                _savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64,ts_sec);
+
+                LOG_DEBUG << "Done checkpoint [ " << c.toc<s>() << "s]";
             }
             for (auto &itr : _outputs)
             {

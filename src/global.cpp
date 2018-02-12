@@ -42,7 +42,6 @@ boost::posix_time::ptime global::posix_time()
 
 uint64_t global::posix_time_int()
 {
-
     const boost::posix_time::ptime epoch = boost::posix_time::from_time_t(0);
     boost::posix_time::time_duration duration = _current_date - epoch;
     return duration.total_seconds();
