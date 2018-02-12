@@ -15,6 +15,7 @@ core::core()
     _output_station_ptv = true;
     _use_netcdf=false;
     _load_from_checkpoint=false;
+    _do_checkpoint=false;
 }
 
 core::~core()
