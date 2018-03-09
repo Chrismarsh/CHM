@@ -1,6 +1,6 @@
 inputFile=$1 
  
-FPS=15 
+FPS=15
 WIDTH=1024 
  
 #Generate palette for better quality 

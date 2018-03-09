@@ -76,7 +76,7 @@
          integer rr
 
 ! Read DEM and vegetation map
-      open(21,file=topo_file)
+      open_GEM(21,file=topo_file)
       do j=1,6
 !        !skip
         read(21,*)
@@ -85,7 +85,7 @@
         read(21,*) (z(i,j),i=1,n)
       enddo
       close(21)
-      open(21,file=veg_file)
+      open_GEM(21,file=veg_file)
       do j=1,6
              !skip
            read(21,*)
@@ -119,7 +119,7 @@
         write(strdir,'(I0)') rr
         fname = trim(base) // trim(strdir) // trim(ext)
 
-        open(32,file=fname)
+        open_GEM(32,file=fname)
 
 ! Rotate topography to wind direction
         call ROTATE(n,z,r,zr)
@@ -161,7 +161,7 @@
         enddo ! End of windflow calculations
 
 ! Open met file and start loop over timesteps
-      open(21,file=met_file)
+      open_GEM(21,file=met_file)
       do step=1,nsteps
         if (mod(step,48).eq.0) 
      &     print 100, 100*step/nsteps
@@ -253,8 +253,8 @@
       close(21)
 
 ! Write final SWE and depth grids
-      open(31,file='SWE.txt')
-      open(33,file='depth.txt')
+      open_GEM(31,file='SWE.txt')
+      open_GEM(33,file='depth.txt')
       do j=1,n
         write(31, 101) (S(i,j),i=1,n)
  101  format(5f15.6)
@@ -326,7 +326,7 @@
       enddo
       endif
 
-      open(31,file='DEMsmooth.txt')
+      open_GEM(31,file='DEMsmooth.txt')
       do j=1,n
         write(31,109) (z(i,j),i=1,n)
 109   format(1f15.6)
@@ -567,9 +567,9 @@
       enddo
 
 ! Write normalized windspeed, sublimation and transport grids
-!      open(32,file='Windspeed_Normalized.txt')
-!      open(34,file='Sublimation.txt')
-!      open(36,file='Transport.txt')
+!      open_GEM(32,file='Windspeed_Normalized.txt')
+!      open_GEM(34,file='Sublimation.txt')
+!      open_GEM(36,file='Transport.txt')
 !      do j=1,n
 !        write(32, 103) (W(i,j),i=1,n)
 !103   format(1f15.6)
