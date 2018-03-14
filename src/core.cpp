@@ -2302,7 +2302,7 @@ void core::run()
                 timestr << _global->posix_time() + boost::posix_time::seconds(_global->_dt); // start from current TS + dt
 
                 //also write it out in seconds because netcdf is struggling with the string
-                uint64_t ts_sec = _global->posix_time_int()+_global->_dt;
+                unsigned long long int ts_sec = _global->posix_time_int()+_global->_dt;
 
                 _savestate.get_ncfile().putAtt("restart_time",timestr.str());
                 _savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64,ts_sec);
