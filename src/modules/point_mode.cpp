@@ -30,7 +30,7 @@ point_mode::point_mode(config_file cfg)
 
     // If U_2m_above_srf is provided, use it. Otherwise use U_R.
     if(U_2m_above_srf) {
-        depends_from_met("U_2m_above_srf");
+        depends_from_met("u");
         provides("U_2m_above_srf");
     }else if(U_R) {
         depends_from_met("U_R");
@@ -98,7 +98,7 @@ void point_mode::run(mesh_elem &face)
     }
     
     if(U_2m_above_srf) {
-        double su = global_param->stations().at(0)->get("U_2m_above_srf");
+        double su = global_param->stations().at(0)->get("u");
         su = std::max(su,0.1);
         face->set_face_data("U_2m_above_srf",su);
     } else if (U_R)

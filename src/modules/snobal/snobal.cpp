@@ -262,7 +262,7 @@ void snobal::run(mesh_elem &face)
     // Optional inputs if there is a canopy or not
     sbal->input_rec2.u = face->face_data("U_2m_above_srf");
 
-    sbal->input_rec2.T_g = -4+FREEZE; //TODO: FIx this with a gflux estimate
+    sbal->input_rec2.T_g = -15+FREEZE; //TODO: FIx this with a gflux estimate
     sbal->input_rec2.ro = 0.;
 
     if(global_param->first_time_step)

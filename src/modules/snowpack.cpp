@@ -143,7 +143,7 @@ void Lehning_snowpack::run(mesh_elem &face)
 
 
     //setup a single ground temp measurement
-//    mio::MeteoData soil_meas;
+    mio::MeteoData soil_meas;
 //    soil_meas.addParameter("HTS1");
 //    soil_meas.addParameter("TS1");
 //    soil_meas("HTS1") = -0.1;
@@ -155,7 +155,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     Mdata.tss=  data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
 
     //setting this to tss is inline with Alpine3d if there is no soil node. However, it might make more sense to use a const ground temp?
-    Mdata.ts0 = 273.15-4.; //Mdata.tss;
+    Mdata.ts0 = 273.15-15.; //Mdata.tss;
 
     Mdata.hs = mio::IOUtils::nodata; //follows alpine3d
 
@@ -223,8 +223,9 @@ void Lehning_snowpack::run(mesh_elem &face)
 
         face->set_face_data("G",surface_fluxes.qg0 == -999 ? 0 : surface_fluxes.qg0); //qg0 is the correct ground heatflux to match snowpack output. qg is just uninit
 
-        face->set_face_data("ilwr_out",surface_fluxes.lw_out);
-        face->set_face_data("iswr_out",surface_fluxes.sw_out);
+        face->set_face_data("ilwr_out",-surface_fluxes.lw_out); //these are actually positive!
+        face->set_face_data("iswr_out",-surface_fluxes.sw_out);
+
         face->set_face_data("dQ",surface_fluxes.dIntEnergy);
 //        if(!has_optional("snow_albedo"))
 //        {
