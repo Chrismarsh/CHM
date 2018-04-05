@@ -24,6 +24,8 @@ snobal::snobal(config_file cfg)
 
     depends("snow_albedo");
 
+    optional("T_g");
+
     // Optional avalanche variables
     optional("delta_avalanche_snowdepth");
     optional("delta_avalanche_mass");
@@ -39,6 +41,7 @@ snobal::snobal(config_file cfg)
     provides("cc");
     provides("T_s");
     provides("T_s_0");
+    provides("T_s_l");
     provides("dead");
     provides("iswr_net");
     provides("isothermal");
@@ -93,7 +96,7 @@ void snobal::init(mesh domain)
         sbal->z_T = cfg.get("z_T",2.6);
         sbal->z_u = cfg.get("z_u",2.96);
         sbal->z_g = cfg.get("z_g",0.1);
-        sbal->relative_hts = 1;  //docs are wrong. 1 == absolute
+        sbal->relative_hts = 0; // False (0) -- these are absolute heights, need to subtract the snow depth
 
         sbal->R_n_bar = 0.0;
         sbal->H_bar = 0.0;
@@ -175,6 +178,7 @@ void snobal::init(mesh domain)
             face->set_face_data("cc", sbal->cc_s);
             face->set_face_data("T_s", sbal->T_s);
             face->set_face_data("T_s_0", sbal->T_s_0);
+            face->set_face_data("T_s_l", sbal->T_s_l);
             face->set_face_data("iswr_net", sbal->S_n);
             face->set_face_data("isothermal", sbal->isothermal);
             face->set_face_data("ilwr_out", sbal->R_n - sbal->S_n - sbal->I_lw);
@@ -251,9 +255,9 @@ void snobal::run(mesh_elem &face)
 
     // Optional inputs if there is a canopy or not
     if(has_optional("iswr_subcanopy")) {
-        sbal->input_rec2.S_n = (1-albedo) * face->face_data("iswr_subcanopy");
+        sbal->input_rec2.S_n = (1.0-albedo) * face->face_data("iswr_subcanopy");
     } else {
-        sbal->input_rec2.S_n = (1-albedo) * face->face_data("iswr");
+        sbal->input_rec2.S_n = (1.0-albedo) * face->face_data("iswr");
     }
     sbal->input_rec2.I_lw = ilwr;
     sbal->input_rec2.T_a = t+FREEZE;
@@ -262,7 +266,12 @@ void snobal::run(mesh_elem &face)
     // Optional inputs if there is a canopy or not
     sbal->input_rec2.u = face->face_data("U_2m_above_srf");
 
-    sbal->input_rec2.T_g = -15+FREEZE; //TODO: FIx this with a gflux estimate
+    if(has_optional("T_g"))
+        sbal->input_rec2.T_g = face->face_data("T_g") + 273.15;
+    else
+        sbal->input_rec2.T_g = -10.0+FREEZE; //TODO: FIx this with a gflux estimate
+
+
     sbal->input_rec2.ro = 0.;
 
     if(global_param->first_time_step)
@@ -378,6 +387,7 @@ void snobal::run(mesh_elem &face)
     face->set_face_data("cc",sbal->cc_s);
     face->set_face_data("T_s",sbal->T_s);
     face->set_face_data("T_s_0",sbal->T_s_0);
+    face->set_face_data("T_s_l",sbal->T_s_l);
     face->set_face_data("iswr_net",sbal->S_n);
     face->set_face_data("isothermal",sbal->isothermal);
     face->set_face_data("ilwr_out", sbal->R_n - sbal->S_n - sbal->I_lw);
