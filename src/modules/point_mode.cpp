@@ -14,7 +14,7 @@ point_mode::point_mode(config_file cfg)
      vw_dir         = cfg.get("provide.vw_dir",true);
      iswr_diffuse   = cfg.get("provide.iswr_diffuse",false);
      iswr_direct    = cfg.get("provide.iswr_direct",false);
-
+     T_g    = cfg.get("provide.T_g",false);
 
     if(t)
     {
@@ -71,6 +71,12 @@ point_mode::point_mode(config_file cfg)
     {
         depends_from_met("iswr_direct");
         provides("iswr_direct");
+    }
+
+    if(T_g)
+    {
+        depends_from_met("T_g");
+        provides("T_g");
     }
 
 }
@@ -144,6 +150,12 @@ void point_mode::run(mesh_elem &face)
         double iswr_direct = global_param->stations().at(0)->get("iswr_direct");
         face->set_face_data("iswr_direct", iswr_direct);
 
+    }
+
+    if(T_g)
+    {
+        double T_g = global_param->stations().at(0)->get("T_g");
+        face->set_face_data("T_g", T_g);
     }
 
 }
