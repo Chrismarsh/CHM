@@ -86,7 +86,7 @@ macro (NetCDF_check_interface lang header libs)
 	    list (APPEND NetCDF_includes ${NETCDF_${lang}_INCLUDE_DIR})
 	else ()
 	    set (NETCDF_HAS_INTERFACES "NO")
-	    message (STATUS "Failed to find NetCDF interface for ${lang}")
+	   # message (STATUS "Failed to find NetCDF interface for ${lang}")
 	endif ()
     endif ()
 endmacro ()
@@ -103,7 +103,19 @@ list (FIND NetCDF_FIND_COMPONENTS "F90" _nextcomp)
 if (_nextcomp GREATER -1)
     set (NETCDF_F90 1)
 endif ()
-NetCDF_check_interface (CXX netcdf      netcdf-cxx4)
+
+# depending on the platform, and if we are building netcdf, the name changes. Try a few things before giving up.
+NetCDF_check_interface (CXX netcdf netcdf_c++4) # Fedora's naming
+
+if(NOT NETCDF_HAS_INTERFACES)
+	NetCDF_check_interface (CXX netcdf netcdf-cxx4) # if we build ourselves, it will be this
+endif()
+
+if(NOT NETCDF_HAS_INTERFACES)
+	message (STATUS "Failed to find NetCDF interface for ${lang}")
+endif()
+
+
 NetCDF_check_interface (F77 netcdf.inc  netcdff)
 NetCDF_check_interface (F90 netcdf.mod  netcdff)
 
