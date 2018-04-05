@@ -481,6 +481,13 @@ int sno::hle1(
     if(iter >= ITMAX || std::isinf(diff))
     {
         ier = -1;
+
+        //failed to converge, likely low winds, assume neutral
+        ustar = k * u / ltsm;
+        factor = k * ustar * dens;
+        *e = (qa - qs) * factor * av / ltsv;
+        *h = (ta - ts) * factor * cp * ah / ltsh;
+        ier = 0;
     }
     else
     {
@@ -2352,6 +2359,12 @@ void sno::_adj_snow(
     z_s += delta_z_s;
     m_s += delta_m_s;
 
+
+    if(m_s < 0 || z_s < 0)
+    {
+        m_s = cc_s = 0.0;
+        m_s_0 = cc_s_0 = 0.0;
+    }
     if (z_s != 0.0)
     {
         rho = m_s / z_s;
@@ -2503,5 +2516,4 @@ void sno::_adj_layers(void)
             cc_s_l = 0.0;
         }
     }
-
 }
