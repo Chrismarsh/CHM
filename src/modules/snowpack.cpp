@@ -3,14 +3,11 @@
 Lehning_snowpack::Lehning_snowpack(config_file cfg)
         : module_base(parallel::data)
 {
-    depends("iswr_diffuse");
-    depends("iswr_direct");
-//    depends("iswr");
+    depends("iswr");
     depends("ilwr");
     depends("rh");
     depends("t");
     depends("U_2m_above_srf");
-    depends("vw_dir");
     depends("p");
     depends("frac_precip_rain");
 
@@ -24,6 +21,8 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     optional("iswr_subcanopy");
     optional("ilwr_subcanopy");
     optional("drift_mass");
+
+    optional("T_g");
 
     provides("dQ");
     provides("swe");
@@ -84,12 +83,10 @@ void Lehning_snowpack::run(mesh_elem &face)
 
     Mdata.vw     =  face->face_data("U_2m_above_srf");
 
-    Mdata.dw     = face->face_data("vw_dir");
     Mdata.vw_max = mio::IOUtils::nodata;// TODO: fix md(MeteoData::VW_MAX);
 
     Mdata.vw_drift = Mdata.vw ;//mio::IOUtils::nodata;
     Mdata.dw_drift = Mdata.dw;//0;
-
 
 
     if(has_optional("iswr_subcanopy")) {
@@ -140,7 +137,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
 
-
+    Mdata.rho_hn = 100;
 
     //setup a single ground temp measurement
     mio::MeteoData soil_meas;
@@ -152,15 +149,17 @@ void Lehning_snowpack::run(mesh_elem &face)
 //    Mdata.ts.push_back(soil_meas("TS1"));
 //    Mdata.zv_ts.push_back(soil_meas("HTS1"));
 
-    Mdata.tss=  data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
-
+    Mdata.tss = data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
     //setting this to tss is inline with Alpine3d if there is no soil node. However, it might make more sense to use a const ground temp?
-    Mdata.ts0 = 273.15-15.; //Mdata.tss;
+    if(has_optional("T_g"))
+        Mdata.ts0 = face->face_data("T_g") + 273.15;
+    else
+        Mdata.ts0 =  273.15 - 15.0;//Mdata.tss;//data->Xdata->Ndata[0].T; //we use previous timestep value
+
+      //  273.15 - 15.; //Mdata.tss; //
+
 
     Mdata.hs = mio::IOUtils::nodata; //follows alpine3d
-
-    Mdata.diff      = face->face_data("iswr_diffuse");
-    Mdata.dir_h     = face->face_data("iswr_direct");
     Mdata.elev      = face->face_data("solar_el")*mio::Cst::to_rad;
 
     data->cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
