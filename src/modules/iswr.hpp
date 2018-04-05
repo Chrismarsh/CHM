@@ -39,6 +39,11 @@ class iswr : public module_base
 
 
         bool assume_no_slope;
+
+        // if we are using obs, then our obs implicitily have a cosine correction.
+        // This needs to be undo prior to the correction for slope
+        bool already_cosine_corrected;
+
 };
 
 /**

@@ -224,7 +224,7 @@ void Lehning_snowpack::run(mesh_elem &face)
 
         face->set_face_data("ilwr_out",-surface_fluxes.lw_out); //these are actually positive!
         face->set_face_data("iswr_out",-surface_fluxes.sw_out);
-
+        face->set_face_data("R_n", surface_fluxes.lw_net + (surface_fluxes.sw_in-surface_fluxes.sw_out) );
         face->set_face_data("dQ",surface_fluxes.dIntEnergy);
 //        if(!has_optional("snow_albedo"))
 //        {

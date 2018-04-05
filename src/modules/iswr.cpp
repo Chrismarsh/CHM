@@ -22,10 +22,16 @@ iswr::iswr(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
     assume_no_slope = cfg.get("no_slope",false);
+    already_cosine_corrected = cfg.get("already_cosine_corrected",false);
+
+
 }
 void iswr::run(mesh_elem& face)
 {
-    
+
+    if(global_param->is_point_mode() && !already_cosine_corrected)
+    LOG_ERROR << "Most observations implicitly have a cosine-correction built in by virtu of the flat-plane observation. "
+                 "When using point-mode, you probably want to set -c config.iswr.already_cosine_corrected:true";
 
     double A = face->face_data("solar_az") * mio::Cst::to_rad;
     double E = face->face_data("solar_el") * mio::Cst::to_rad;
@@ -74,7 +80,15 @@ void iswr::run(mesh_elem& face)
         }
     }
 
-    double swr =  angle * face->face_data("iswr_direct_no_slope");
+    double direct_beam = face->face_data("iswr_direct_no_slope");
+
+    //If we're using obs at a point, this should be set to true
+    if(already_cosine_corrected)
+    {
+        direct_beam = direct_beam / sin(E);
+    }
+
+    double swr =  angle * direct_beam;
     double diff = face->face_data("iswr_diffuse_no_slope");
 
     swr = std::max(0.0, swr);
