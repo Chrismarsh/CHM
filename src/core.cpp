@@ -2103,6 +2103,7 @@ void core::run()
 
     double meantime = 0;
     size_t current_ts = 0;
+    _global->timestep_counter = 0; //use this to pass the timestep info to the modules for easier debugging specific timesteps
     size_t max_ts = _global->_stations.at(0)->date_timeseries().size();
     bool done = false;
 
@@ -2398,6 +2399,7 @@ void core::run()
             meantime += timestep;
 
             current_ts++;
+            _global->timestep_counter++;
 
             double mt = meantime / current_ts;
             bool ms = true;

@@ -109,6 +109,7 @@ public:
     boost::posix_time::ptime posix_time();
     uint64_t posix_time_int();
 
+    size_t timestep_counter; // the timestep we are on, start = 0
 
     double station_search_radius;
     bool first_time_step;
