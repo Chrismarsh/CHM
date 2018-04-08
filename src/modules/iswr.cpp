@@ -30,8 +30,10 @@ void iswr::run(mesh_elem& face)
 {
 
     if(global_param->is_point_mode() && !already_cosine_corrected)
-    LOG_ERROR << "Most observations implicitly have a cosine-correction built in by virtu of the flat-plane observation. "
-                 "When using point-mode, you probably want to set -c config.iswr.already_cosine_corrected:true";
+    {
+        LOG_ERROR << "Most observations implicitly have a cosine-correction built in by virtu of the flat-plane observation. "
+                     "When using point-mode, you probably want to set -c config.iswr.already_cosine_corrected:true";
+    }
 
     double A = face->face_data("solar_az") * mio::Cst::to_rad;
     double E = face->face_data("solar_el") * mio::Cst::to_rad;
