@@ -265,6 +265,7 @@ void snobal::run(mesh_elem &face)
 
     // Optional inputs if there is a canopy or not
     sbal->input_rec2.u = face->face_data("U_2m_above_srf");
+    sbal->input_rec2.u = std::max(sbal->input_rec2.u,1.0);
 
     if(has_optional("T_g"))
         sbal->input_rec2.T_g = face->face_data("T_g") + 273.15;
@@ -305,7 +306,7 @@ void snobal::run(mesh_elem &face)
             sbal->percent_snow = face->face_data("frac_precip_snow");
         }
         sbal->rho_snow = 100.; //http://ccc.atmos.colostate.edu/pdfs/SnowDensity_BAMS.pdf
-        sbal->T_pp = t+FREEZE;
+        sbal->T_pp = std::min(t+FREEZE,0.0);
         sbal->stop_no_snow=0;
     }
     else

@@ -478,7 +478,7 @@ int sno::hle1(
                  ++iter < ITMAX);
     }
 
-    if(iter >= ITMAX || std::isinf(diff))
+    if(iter >= ITMAX || std::isinf(diff) ) // fall back to neutral
     {
         ier = -1;
 
