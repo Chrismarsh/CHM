@@ -172,8 +172,8 @@ public:
             std::vector<std::pair<std::string,std::string>>, //insert or overide config value
             std::vector<std::string>, //remove config value
             std::vector<std::string>, //remove module
-            std::vector<std::string>  // add module
-
+            std::vector<std::string>,  // add module
+            bool //legacy-log
     > cmdl_opt;
 
     cmdl_opt config_cmdl_options(int argc, char **argv);

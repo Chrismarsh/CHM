@@ -987,10 +987,14 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     std::string config_file = "";
     std::string start;
     std::string end;
+
+    bool legacy_log=false;
+    
     po::options_description desc("Allowed options.");
     desc.add_options()
             ("help", "This message")
             ("version,v", "Version number")
+            ("legacy-log,l",po::value<bool>(&legacy_log), "Legacy log output writes to CHM.log instead of a timestamped CHM_*.log in log/")
             ("config-file,f", po::value<std::string>(&config_file),
              "Configuration file to use. Can be passed without --config-file [-f] as well ")
             ("config,c", po::value<std::vector<std::string>>(), "Specifies a configuration parameter."
@@ -1069,7 +1073,13 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
         exit(1);
     }
 
-    return boost::make_tuple(config_file, config_extra, rm_config_extra, remove_module, add_module);
+
+    return boost::make_tuple(config_file, //0
+                             config_extra,  //1
+                             rm_config_extra,  //2
+                             remove_module,  //3
+                             add_module, //4
+                             legacy_log); //5
 }
 
 void core::init(int argc, char **argv)
@@ -1124,7 +1134,14 @@ void core::init(int argc, char **argv)
     boost::filesystem::create_directories(log_path);
 
     //fully qualified path + fname to use in the ofstream calls
-    log_name =      (log_path / log_name ).string();
+    if(cmdl_options.get<5 >()) //-legacy-log true option
+    {
+        log_name =  "CHM.log";
+    } 
+    else {
+        log_name =  (log_path / log_name ).string();
+    }
+   
 
     _log_sink = boost::make_shared<text_sink>();
     text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
