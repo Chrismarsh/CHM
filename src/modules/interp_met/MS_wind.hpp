@@ -20,12 +20,10 @@
 /**
 * \addtogroup modules
 * @{
-* \class Liston_wind
-* \brief Calculates wind speed and direction following Liston 2006
+* \class MS_wind
+* \brief Calculates wind speed and direction following Mason Sykes
 *
-* Calculates windspeeds using a terrain curvature following Liston 2006.
-* Defaults to 300 m distance. Configurable using "distance".
- * Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
+* Calculates windspeeds using the Mason Sykes wind speed from Essery 1999, using lookup map from DBSM
 * Depends:
 * - Wind at reference height "U_R" [m/s]
 * - Direction at reference height 'vw_dir' [degrees]
