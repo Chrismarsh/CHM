@@ -54,6 +54,7 @@ snobal::snobal(config_file cfg)
 void snobal::init(mesh domain)
 {
     drift_density = cfg.get("drift_density",300.);
+    const_T_g = cfg.get("const_T_g",-4.0);
 
     //store all of snobals global_param variables from this timestep to be used as ICs for the next timestep
     #pragma omp parallel for
@@ -270,7 +271,7 @@ void snobal::run(mesh_elem &face)
     if(has_optional("T_g"))
         sbal->input_rec2.T_g = face->face_data("T_g") + 273.15;
     else
-        sbal->input_rec2.T_g = -10.0+FREEZE; //TODO: FIx this with a gflux estimate
+        sbal->input_rec2.T_g = constsno_T_g+FREEZE;
 
 
     sbal->input_rec2.ro = 0.;

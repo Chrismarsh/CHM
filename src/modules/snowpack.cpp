@@ -154,10 +154,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     if(has_optional("T_g"))
         Mdata.ts0 = face->face_data("T_g") + 273.15;
     else
-        Mdata.ts0 =  273.15 - 15.0;//Mdata.tss;//data->Xdata->Ndata[0].T; //we use previous timestep value
-
-      //  273.15 - 15.; //Mdata.tss; //
-
+        Mdata.ts0 =  const_T_g + 273.15; //Mdata.tss <- is in line with Alpine3D, but this makes no sense. So use a const temp.
 
     Mdata.hs = mio::IOUtils::nodata; //follows alpine3d
     Mdata.elev      = face->face_data("solar_el")*mio::Cst::to_rad;
@@ -252,6 +249,8 @@ void Lehning_snowpack::run(mesh_elem &face)
 
 void Lehning_snowpack::init(mesh domain)
 {
+    const_T_g = cfg.get("const_T_g",-4.0);
+
     for(size_t i=0;i<domain->size_faces();i++)
     {
         auto face = domain->face(i);

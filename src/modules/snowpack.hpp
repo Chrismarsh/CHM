@@ -47,6 +47,7 @@ public:
     };
 
     double sn_dt; // calculation step length
+    double const_T_g; // constant ground temp, degC
 
 };
 
