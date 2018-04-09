@@ -209,7 +209,15 @@ void Lehning_snowpack::run(mesh_elem &face)
     if(data->Xdata->swe > 0)
     {
 
-        face->set_face_data("T_s",Mdata.tss); //-mio::Cst::t_water_freezing_pt
+        double bulk_T_s=0;
+        for(int i = 0; i < data->Xdata->getNumberOfElements(); ++i)
+        {
+            bulk_T_s += data->Xdata->Ndata[i].T;
+        }
+
+        bulk_T_s /= data->Xdata->getNumberOfElements();
+
+        face->set_face_data("T_s",bulk_T_s);
         face->set_face_data("T_s_0",Mdata.tss);
         face->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
         face->set_face_data("n_elem",data->Xdata->getNumberOfElements());
