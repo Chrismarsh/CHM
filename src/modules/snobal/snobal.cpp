@@ -271,7 +271,7 @@ void snobal::run(mesh_elem &face)
     if(has_optional("T_g"))
         sbal->input_rec2.T_g = face->face_data("T_g") + 273.15;
     else
-        sbal->input_rec2.T_g = constsno_T_g+FREEZE;
+        sbal->input_rec2.T_g = const_T_g+FREEZE;
 
 
     sbal->input_rec2.ro = 0.;
