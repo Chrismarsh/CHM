@@ -18,19 +18,19 @@ In this work, a new distributed model framework is presented that can examine a 
 # Features
 ## Spatial Scales
 CHM is applicable to multiple scales from the basin scale, to the provincial/state scale and beyond. It may also be applied at a single point-scale.
-![](/home/chris/Documents/PhD/code/CHM/wiki/scale.png)
+![](https://github.com/Chrismarsh/CHM/blob/master/wiki/scale.png)
 
 ## Visualization
 Output is in the vtu file format, allowing for visualization, analysis, and timeseries animation in Paraview
 
-![](/home/chris/Documents/PhD/code/CHM/wiki/paraview.png)
+![](https://github.com/Chrismarsh/CHM/blob/master/wiki/paraview.png)
 
 ## netCDF support
 Input meterology may be either in a standard ASCII file, or as a netCDF file allowing for ease of use when using climate model outputs. 
 
 The below figure shows virtual stations that correspond to the center of the 2.5 km GEM numerical weather prediction output in netCDF format.
 
-![](/home/chris/Documents/PhD/code/CHM/wiki/netcdf.png)
+![](https://github.com/Chrismarsh/CHM/blob/master/wiki/netcdf.png)
 ## Process representations 
 
  Process represetenation will be extented to include the entirety of the hydrological cycle. However, current representation includes mostly surface and cold regions processes
@@ -90,15 +90,15 @@ SnowCast is developed as part of ![Global Water Futures](https://gwf.usask.ca/) 
 
 ## Large extent
 Hourly solar radiation modelling for the territory of Yukon, Canada.
-![](/home/chris/Documents/PhD/code/CHM/wiki/yk_solar.gif)
+![](https://github.com/Chrismarsh/CHM/blob/master/wiki/yk_solar.gif)
 
 ## Point scale
 Comparison of CHM driving Snobal and Snowpack at the Upper Clearing site at Marmot Creek Research Basin in Alberta, Canada
-![](/home/chris/Documents/PhD/code/CHM/wiki/CHM_crhm_v_chm_v_obs_swe.png)
+![](https://github.com/Chrismarsh/CHM/blob/master/wiki/CHM_crhm_v_chm_v_obs_swe.png)
 
 ### Blowing snow 
 Comparison of blowing snow (left) versus no blowing snow (right) for a small sub-basin of Wolf Creek Reserach Basin, located in the Yukon, Canada.
-![](/home/chris/Documents/PhD/code/CHM/wiki/output_small.gif)
+![](https://github.com/Chrismarsh/CHM/blob/master/wiki/output_small.gif)
 
 # Publications
 The manuscript describing CHM is still in preperation, and is anticipated to be submited summer 2018.
