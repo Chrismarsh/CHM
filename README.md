@@ -3,6 +3,10 @@
 # The Canadian Hydrological Model 
 The Canadian Hydrological Model (CHM) is a novel modular unstructured mesh based approach for hydrological modelling. It can move between spatial scale, temporal scale, and spatial extents. It is designed for developing and testing process representations for hydrological models. 
 
+# Usage
+Details on how to use CHM, as well as more implimentation details, can be found in the [wiki](https://github.com/Chrismarsh/CHM/wiki)
+
+
 # Motivation
 Modelling of hydrological processes at any scale is hampered by large uncertainties in parameters and forcing data, incomplete process representations (the scientific conceptualization of a phenomena codified numerically), and arbitrary process representation selections and linkages (collectively ‘model structure’). There is also consistent difficulty or an inability to easily test and estimate the uncertainty due to variations in model structure, parameter values, number of parameters, forcing data requirements, and spatial discretization requirements (collectively ‘model complexity’). 
 
@@ -15,13 +19,17 @@ In this work, a new distributed model framework is presented that can examine a 
     * Incorporate existing code
     * Contribute to decision support systems
 
+
+# Publications
+The manuscript describing CHM is still in preperation, and is anticipated to be submited summer 2018.
+
 # Features
 ## Spatial Scales
 CHM is applicable to multiple scales from the basin scale, to the provincial/state scale and beyond. It may also be applied at a single point-scale.
 ![](https://github.com/Chrismarsh/CHM/blob/master/wiki/scale.png)
 
 ## Visualization
-Output is in the vtu file format, allowing for visualization, analysis, and timeseries animation in Paraview
+Output is in the vtu file format, allowing for visualization, analysis, and timeseries animation in ![ParaView](https://www.paraview.org/). Date-time support has been added to ParaView via an filter ![vtk-paraview-datetimefilter](https://github.com/Chrismarsh/vtk-paraview-datetimefilter).
 
 ![](https://github.com/Chrismarsh/CHM/blob/master/wiki/paraview.png)
 
@@ -42,7 +50,7 @@ The below figure shows virtual stations that correspond to the center of the 2.5
 |Soil  |   Frozen soil infiltration (Gray et al., 2001) |
 |Mass redistribution | PBSM3D (Marsh et al, 2018 in review); Snowslide (Bernhardt 2010) |
 
-Input meterology is spatially interpolated and down-sclaed from the input station or virtual-station (e.g., from numerical weather prediction) to produce a spatially distributed driving dataset. There are a number of ways to downscale these meterology.
+Input meterology is spatially interpolated and down-scaled from the input station or virtual-station (e.g., from numerical weather prediction) to produce a spatially distributed driving dataset. There are a number of ways to downscale these meterology.
 
 |Variable |     Type|
 | ------- | ------  |
@@ -84,7 +92,7 @@ subprocess.check_call(['./CHM %s %s %s %s %s' % (prj_path, cf1, cf2, cf3,cf4)], 
 
 # Demonstration
 ## SnowCast
-![SnowCast](www.snowcast.ca) is an experimental, daily data product that uses the Global Environmental Multiscale (GEM) model forecasts from Environment and Climate Change Canada (ECCC) to drive the Canadian Hydrological Model (CHM). Estimates of snowpack are provided over the a Bow River Basin, centered over Banff, Canada.
+![SnowCast](https://www.snowcast.ca) is an experimental, daily data product that uses the Global Environmental Multiscale (GEM) model forecasts from Environment and Climate Change Canada (ECCC) to drive the Canadian Hydrological Model (CHM). Estimates of snowpack are provided over the a Bow River Basin, centered over Banff, Canada.
 
 SnowCast is developed as part of ![Global Water Futures](https://gwf.usask.ca/) and the ![Centre for Hydrology](https://www.usask.ca/hydrology/), University of Saskatchewan. 
 
@@ -100,13 +108,8 @@ Comparison of CHM driving Snobal and Snowpack at the Upper Clearing site at Marm
 Comparison of blowing snow (left) versus no blowing snow (right) for a small sub-basin of Wolf Creek Reserach Basin, located in the Yukon, Canada.
 ![](https://github.com/Chrismarsh/CHM/blob/master/wiki/output_small.gif)
 
-# Publications
-The manuscript describing CHM is still in preperation, and is anticipated to be submited summer 2018.
 
 
-
-# Usage
-Details on how to use CHM can be found in the [wiki](https://github.com/Chrismarsh/CHM/wiki)
 
 
 
