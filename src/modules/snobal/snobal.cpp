@@ -1,3 +1,26 @@
+//
+// Canadian Hydrological Model - The Canadian Hydrological Model (CHM) is a novel
+// modular unstructured mesh based approach for hydrological modelling
+// Copyright (C) 2018 Christopher Marsh
+//
+// This file is part of Canadian Hydrological Model.
+//
+// Canadian Hydrological Model is free software: you can redistribute it and/or
+// modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Canadian Hydrological Model is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Canadian Hydrological Model.  If not, see
+// <http://www.gnu.org/licenses/>.
+//
+
 #include "snobal.hpp"
 
 snobal::snobal(config_file cfg)
@@ -295,7 +318,7 @@ void snobal::run(mesh_elem &face)
         p = face->face_data("p");
     }
 
-    if(p > 0)
+    if(p >= 0.00025) //0.25mm swe
     {
         sbal->precip_now = 1;
         sbal->m_pp = p;
@@ -307,7 +330,7 @@ void snobal::run(mesh_elem &face)
             sbal->percent_snow = face->face_data("frac_precip_snow");
         }
         sbal->rho_snow = 100.; //http://ccc.atmos.colostate.edu/pdfs/SnowDensity_BAMS.pdf
-        sbal->T_pp = std::min(t+FREEZE,0.0);
+        sbal->T_pp = t; //actually in C unlike everything else in the model!!  //+FREEZE;//std::min(t+FREEZE,0.0);
         sbal->stop_no_snow=0;
     }
     else

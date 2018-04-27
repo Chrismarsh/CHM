@@ -1,3 +1,26 @@
+//
+// Canadian Hydrological Model - The Canadian Hydrological Model (CHM) is a novel
+// modular unstructured mesh based approach for hydrological modelling
+// Copyright (C) 2018 Christopher Marsh
+//
+// This file is part of Canadian Hydrological Model.
+//
+// Canadian Hydrological Model is free software: you can redistribute it and/or
+// modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Canadian Hydrological Model is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Canadian Hydrological Model.  If not, see
+// <http://www.gnu.org/licenses/>.
+//
+
 #include "snowpack.hpp"
 
 Lehning_snowpack::Lehning_snowpack(config_file cfg)
@@ -45,6 +68,13 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     provides("mass_snowpack_removed");
     provides("sum_runoff");
     provides("sum_subl");
+    provides("sublimation");
+    provides("evap");
+
+    provides("MS_SWE");
+    provides("MS_WATER");
+    provides("MS_TOTALMASS");
+    provides("MS_SOIL_RUNOFF");
 
 }
 
@@ -136,7 +166,6 @@ void Lehning_snowpack::run(mesh_elem &face)
         Mdata.psum = face->face_data("p");
     }
 
-
     Mdata.rho_hn = 100;
 
     //setup a single ground temp measurement
@@ -205,6 +234,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
 
+    face->set_face_data("sublimation",surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION]);
 
     if(data->Xdata->swe > 0)
     {
@@ -246,13 +276,16 @@ void Lehning_snowpack::run(mesh_elem &face)
     face->set_face_data("mass_snowpack_removed",data->Xdata->ErosionMass);
     face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
     face->set_face_data("runoff",surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
-
+    face->set_face_data("evap",surface_fluxes.mass[SurfaceFluxes::MS_EVAPORATION]);
 //    face->set_face_data("sum_runoff",  face->face_data("sum_runoff") + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
     data->sum_subl +=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
     face->set_face_data("sum_subl",   data->sum_subl );
 
 
-
+    face->set_face_data("MS_SWE",surface_fluxes.mass[SurfaceFluxes::MS_SWE]);
+    face->set_face_data("MS_WATER",surface_fluxes.mass[SurfaceFluxes::MS_WATER]);
+    face->set_face_data("MS_TOTALMASS",surface_fluxes.mass[SurfaceFluxes::MS_TOTALMASS]);
+    face->set_face_data("MS_SOIL_RUNOFF",surface_fluxes.mass[SurfaceFluxes::MS_SOIL_RUNOFF]);
 }
 
 void Lehning_snowpack::init(mesh domain)
@@ -341,7 +374,8 @@ void Lehning_snowpack::init(mesh domain)
 
         SSdata.meta.position.setXY(face->get_x(),face->get_y(),face->get_z());
         SSdata.meta.setSlope(mio::IOUtils::nodata,mio::IOUtils::nodata);
-//        SSdata.meta.setSlope(face->slope() ,face->aspect());
+//        SSdata.meta.setSlope(face->slope() * ,face->aspect());
+//        SSdata.meta.setSlope(0,0);
 
         SSdata.HS_last = 0.; //cfg.get<double>("sno.HS_Last");
 
@@ -376,6 +410,7 @@ void Lehning_snowpack::init(mesh domain)
 
         d->Xdata = boost::make_shared<SnowStation>(false,false);
         d->Xdata->initialize(SSdata,0);
+//        d->Xdata->cos_sl = 1;
 //        d->Xdata->windward = false;
 //        d->Xdata->rho_hn = 0;
 //        d->Xdata->hn = 0;
