@@ -35,11 +35,11 @@ Modelling of hydrological processes at any scale is hampered by large uncertaint
 In this work, a new distributed model framework is presented that can examine a variety of process representations, process linkages and levels of model complexity. Algorithms can be easily interchanged, removed, and decoupled while preserving the underlying model framework. Thus, uncertainty propagation and subsequent feedbacks within the model structure can be quantified. Unstructured meshes represent the spatial heterogeneity of surface and sub-surface features in a computationally efficient manner and also decreases number of parameters and initial conditions. The parallel architecture allows for efficient uncertainty testing of parameter ranges. By utilizing unstructured meshes, fewer than 5% of the computational elements of high-resolution structured (raster) grids are usually necessary.  This preserves surface and sub-surface heterogeneity but results in fewer parameters and initial conditions.
 
 # Design goals
-    * Multi-scale, multi-physics, variable complexity and domain model
-    * Assessment of model structural, parameter, and data uncertainty
-    * Easily test multiple hypotheses, avoid rigid model structures
-    * Incorporate existing code
-    * Contribute to decision support systems
+* Multi-scale, multi-physics, variable complexity and domain model
+* Assessment of model structural, parameter, and data uncertainty
+* Easily test multiple hypotheses, avoid rigid model structures
+* Incorporate existing code
+* Contribute to decision support systems
 
 
 # Publications
