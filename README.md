@@ -3,6 +3,28 @@
 # The Canadian Hydrological Model 
 The Canadian Hydrological Model (CHM) is a novel modular unstructured mesh based approach for hydrological modelling. It can move between spatial scale, temporal scale, and spatial extents. It is designed for developing and testing process representations for hydrological models. 
 
+<!-- MarkdownTOC autolink="true" -->
+
+- [Usage](#usage)
+- [Motivation](#motivation)
+- [Design goals](#design-goals)
+- [Publications](#publications)
+- [Features](#features)
+    - [Spatial Scales](#spatial-scales)
+    - [Visualization](#visualization)
+    - [netCDF support](#netcdf-support)
+    - [Process representations](#process-representations)
+    - [Unstructured mesh](#unstructured-mesh)
+    - [Parallel computing](#parallel-computing)
+    - [Uncertainty analysis](#uncertainty-analysis)
+- [Demonstration](#demonstration)
+    - [SnowCast](#snowcast)
+    - [Large extent](#large-extent)
+    - [Point scale](#point-scale)
+    - [Blowing snow](#blowing-snow)
+
+<!-- /MarkdownTOC -->
+
 # Usage
 Details on how to use CHM, as well as more implimentation details, can be found in the [wiki](https://github.com/Chrismarsh/CHM/wiki)
 
@@ -104,7 +126,7 @@ Hourly solar radiation modelling for the territory of Yukon, Canada.
 Comparison of CHM driving Snobal and Snowpack at the Upper Clearing site at Marmot Creek Research Basin in Alberta, Canada
 ![](https://github.com/Chrismarsh/CHM/blob/master/wiki/CHM_crhm_v_chm_v_obs_swe.png)
 
-### Blowing snow 
+## Blowing snow 
 Comparison of blowing snow (left) versus no blowing snow (right) for a small sub-basin of Wolf Creek Reserach Basin, located in the Yukon, Canada.
 ![](https://github.com/Chrismarsh/CHM/blob/master/wiki/output_small.gif)
 
