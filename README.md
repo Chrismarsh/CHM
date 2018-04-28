@@ -113,7 +113,7 @@ subprocess.check_call(['./CHM %s %s %s %s %s' % (prj_path, cf1, cf2, cf3,cf4)], 
 
 # Demonstration
 ## SnowCast
-![SnowCast](https://www.snowcast.ca) is an experimental, daily data product that uses the Global Environmental Multiscale (GEM) model forecasts from Environment and Climate Change Canada (ECCC) to drive the Canadian Hydrological Model (CHM). Estimates of snowpack are provided over the a Bow River Basin, centered over Banff, Canada.
+![SnowCast](http://www.snowcast.ca) is an experimental, daily data product that uses the Global Environmental Multiscale (GEM) model forecasts from Environment and Climate Change Canada (ECCC) to drive the Canadian Hydrological Model (CHM). Estimates of snowpack are provided over the a Bow River Basin, centered over Banff, Canada.
 
 SnowCast is developed as part of ![Global Water Futures](https://gwf.usask.ca/) and the ![Centre for Hydrology](https://www.usask.ca/hydrology/), University of Saskatchewan. 
 
