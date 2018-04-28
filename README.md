@@ -1,4 +1,4 @@
-![](https://github.com/Chrismarsh/CHM/blob/master/wiki/mesh.png)
+![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/mesh.png)
 
 # The Canadian Hydrological Model 
 The Canadian Hydrological Model (CHM) is a novel modular unstructured mesh based approach for hydrological modelling. It can move between spatial scale, temporal scale, and spatial extents. It is designed for developing and testing process representations for hydrological models. 
@@ -47,19 +47,19 @@ The manuscript describing CHM is still in preperation, and is anticipated to be 
 # Features
 ## Spatial Scales
 CHM is applicable to multiple scales from the basin scale, to the provincial/state scale and beyond. It may also be applied at a single point-scale.
-![](https://github.com/Chrismarsh/CHM/blob/master/wiki/scale.png)
+![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/scale.png)
 
 ## Visualization
 Output is in the vtu file format, allowing for visualization, analysis, and timeseries animation in [ParaView](https://www.paraview.org/). Date-time support has been added to ParaView via an filter ![vtk-paraview-datetimefilter](https://github.com/Chrismarsh/vtk-paraview-datetimefilter).
 
-![](https://github.com/Chrismarsh/CHM/blob/master/wiki/paraview.png)
+![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/paraview.png)
 
 ## netCDF support
 Input meterology may be either in a standard ASCII file, or as a netCDF file allowing for ease of use when using climate model outputs. 
 
 The below figure shows virtual stations that correspond to the center of the 2.5 km GEM numerical weather prediction output in netCDF format.
 
-![](https://github.com/Chrismarsh/CHM/blob/master/wiki/netcdf.png)
+![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/netcdf.png)
 ## Process representations 
 
  Process represetenation will be extented to include the entirety of the hydrological cycle. However, current representation includes mostly surface and cold regions processes
@@ -119,15 +119,15 @@ SnowCast is developed as part of [Global Water Futures](https://gwf.usask.ca/) a
 
 ## Large extent
 Hourly solar radiation modelling for the territory of Yukon, Canada.
-![](https://github.com/Chrismarsh/CHM/blob/master/wiki/yk_solar.gif)
+![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/yk_solar.gif)
 
 ## Point scale
 Comparison of CHM driving Snobal and Snowpack at the Upper Clearing site at Marmot Creek Research Basin in Alberta, Canada
-![](https://github.com/Chrismarsh/CHM/blob/master/wiki/CHM_crhm_v_chm_v_obs_swe.png)
+![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/CHM_crhm_v_chm_v_obs_swe.png)
 
 ## Blowing snow 
 Comparison of blowing snow (left) versus no blowing snow (right) for a small sub-basin of Wolf Creek Reserach Basin, located in the Yukon, Canada.
-![](https://github.com/Chrismarsh/CHM/blob/master/wiki/output_small.gif)
+![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/output_small.gif)
 
 
 
