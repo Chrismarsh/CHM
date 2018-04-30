@@ -27,7 +27,7 @@ core::core()
 {
     BOOST_LOG_FUNCTION();
 
-    _enable_ui=true; //default to having a UI
+    _enable_ui=false; //default to no UI
     _start_ts = nullptr;
     _end_ts = nullptr;
     _per_triangle_timeseries = false;
@@ -384,6 +384,11 @@ void core::config_forcing(pt::ptree &value)
             }
         }
         LOG_DEBUG << "Found # stations = " <<  nstations;
+
+        if(nstations == 0)
+        {
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("No input forcing files found!"));
+        }
     }
 
 
