@@ -94,9 +94,9 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& face)
 
         double z = 0.;
         double z0 = face->get_z();
-//        double am = lapse;
-        double Td_z = -lapse*C*(z-z0) / B + Tdz0;
-//        double Td_z = (-am*(z-z0)*(C+Tdz0)/B+Tdz0)/(1+am*(z-z0)*(C+Tdz0)/(B*C));
+        double am = lapse;
+//        double Td_z = -lapse*C*(z-z0) / B + Tdz0;
+        double Td_z = (-am/B*(z-z0)*(C+Tdz0)/B+Tdz0)/(1+am*(z-z0)*(C+Tdz0)/(B*C));
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), Td_z ) );
     }
 
@@ -112,13 +112,13 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& face)
 
     double z0 = 0.;
     double z = face->get_z();
-//    double am = lapse;
-    double Td_z = -lapse*C*(z-z0) / B + Tdz0;
-//    double Td_z = (-am*(z-z0)*(C+Tdz0)/B+Tdz0)/(1+am*(z-z0)*(C+Tdz0)/(B*C));
+    double am = lapse;
+//    double Td_z = -lapse*C*(z-z0) / B + Tdz0;
+    double Td_z = (-am/B*(z-z0)*(C+Tdz0)/B+Tdz0)/(1+am*(z-z0)*(C+Tdz0)/(B*C));
 
     double rh = mio::Atmosphere::DewPointtoRh(Td_z+273.15,t,false);
 
-    face->set_face_data("rh",rh*100.0);
+    face->set_face_data("rh", rh*100.0);
     face->set_face_data("Td_lapse_rate",lapse);
 
 }

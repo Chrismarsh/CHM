@@ -120,6 +120,8 @@ module_base* module_factory::get(std::string ID, pt::ptree config)
             mod = new fetchr(config);
         else if (ID == "MS_wind")
             mod = new MS_wind(config);
+        else if (ID == "Cullen_monthly_llra_ta")
+            mod = newe Cullen_monthly_llra_ta(config);
     }
     catch(module_error& e)
     {
