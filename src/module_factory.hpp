@@ -78,7 +78,7 @@ namespace pt = boost::property_tree;
 #include "PBSM3D.hpp"
 #include "fetchr.hpp"
 #include "MS_wind.hpp"
-
+#include "Cullen_monthly_llra_ta.hpp"
 class module_factory
 {
 public:
