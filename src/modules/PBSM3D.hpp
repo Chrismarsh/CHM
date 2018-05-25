@@ -115,6 +115,7 @@ public:
     bool do_lateral_diff; // should have lateral diffusion
     bool enable_veg; // should we consider vegetation ?
 
+    bool use_exp_fetch; // Enable the Liston 2006 fetch instead of Essery, Li, Pomeroy 1999 probability function.
 
     // this is the suspension transport matrix
     double nnz; //number none zero

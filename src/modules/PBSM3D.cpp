@@ -48,8 +48,11 @@ PBSM3D::PBSM3D(config_file cfg)
 //    provides("p");
 //    provides("p_snow");
 
-    optional("fetch");
 
+
+    use_exp_fetch = cfg.get("use_exp_fetch",false);
+    if(use_exp_fetch)
+        depends("fetch");
 
     debug_output=cfg.get("debug_output",false);
 
@@ -516,12 +519,27 @@ void PBSM3D::run(mesh domain)
             //use the exp decay of Liston, eq 10
             //95% of max saltation occurs at fetch = 500m
             //Liston, G., & Sturm, M. (1998). A snow-transport model for complex terrain. Journal of Glaciology.
-            if(fetch < 500)
+            if(use_exp_fetch && fetch < 500)
             {
                 double fetch_ref = 500;
                 double mu = 3.0;
                 c_salt *= 1.0-exp(-mu * fetch/fetch_ref);
             }
+            else
+            {
+                // Essery, Li, and Pomeroy 1999
+                //Probability of blowing snow
+                double A = 24; // hours since last snowfall
+                double u_mean = 11.2 + 0.365*T + 0.00706*T*T+0.9*log(A); // eqn 10  T -> air temp, degC
+                double delta = 0.145*T + 0.00196*T*T+4.3;  //eqn 11
+                double Pu10 = 1.0/(1.0 + exp( (sqrt(M_PI)* (u_mean - u10 )) / delta ));
+
+                //decrease the saltation by the probability amount
+                c_salt *= Pu10;
+            }
+
+
+
             //mean wind speed in the saltation layer
             double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0,d->z0)/2.);
 
