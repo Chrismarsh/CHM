@@ -35,11 +35,15 @@ Harder_precip_phase::Harder_precip_phase(config_file cfg)
     provides("p_snow");
     provides("p_rain");
 
+    provides("p_snow_hours"); // hours since snowfall
+
     //     default values:
     //     b=2.630006;
     //     c=0.09336;
     b = cfg.get("const.b",2.630006);
     c = cfg.get("const.c",0.09336);
+
+    hours_since_snowfall = 0;
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
@@ -96,17 +100,26 @@ void Harder_precip_phase::run(mesh_elem& face)
 
     double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
 
-    double frTi = 1 / (1+b*pow(c,Ti));
+    double frTi = 1.0 / (1.0+b*pow(c,Ti));
 
     frTi = std::trunc(100.0*frTi) / 100.0; //truncate to 2 decimal positions
 
     face->set_face_data("Ti",Ti);
     face->set_face_data("frac_precip_rain",frTi);
-    face->set_face_data("frac_precip_snow",1-frTi);
+    face->set_face_data("frac_precip_snow",1.0-frTi);
 
     double p = face->face_data("p");
 
     face->set_face_data("p_rain", p * frTi);
-    face->set_face_data("p_snow", p * (1-frTi));
+    face->set_face_data("p_snow", p * (1.0-frTi));
+
+    if( p * (1.0-frTi) > 0) // it's snowing
+    {
+        hours_since_snowfall = 0; // reset
+    }
+    else
+    {
+        hours_since_snowfall += global_param->dt() / 3600.0 ; // dt(s) -> hr
+    }
 
 }

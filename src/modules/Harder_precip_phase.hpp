@@ -67,6 +67,8 @@ public:
     double b;
     double c;
 
+    double hours_since_snowfall;
+
 };
 
 /**
