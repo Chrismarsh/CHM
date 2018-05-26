@@ -325,7 +325,7 @@ void PBSM3D::run(mesh domain)
         auto& m = d->m;
 
         double fetch = 1000;
-        if(has_optional("fetch"))
+        if(use_exp_fetch)
             fetch = face->face_data("fetch");
 
         //get wind from the face
