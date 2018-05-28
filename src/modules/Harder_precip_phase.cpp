@@ -122,4 +122,6 @@ void Harder_precip_phase::run(mesh_elem& face)
         hours_since_snowfall += global_param->dt() / 3600.0 ; // dt(s) -> hr
     }
 
+    face->set_face_data("p_snow_hours",hours_since_snowfall);
+
 }
