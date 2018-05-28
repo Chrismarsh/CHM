@@ -535,7 +535,7 @@ void PBSM3D::run(mesh domain)
                 double A = face->face_data("p_snow_hours"); // hours since last snowfall
                 double u_mean = 11.2 + 0.365*T + 0.00706*T*T+0.9*log(A); // eqn 10  T -> air temp, degC
                 double delta = 0.145*T + 0.00196*T*T+4.3;  //eqn 11
-                double Pu10 = 1.0/(1.0 + exp( (sqrt(M_PI)* (u_mean - u10 )) / delta ));
+                double Pu10 = 1.0/(1.0 + exp( (sqrt(M_PI)* (u_mean - u10 )) / delta )); //eqn 12
 
                 //decrease the saltation by the probability amount
                 c_salt *= Pu10;
