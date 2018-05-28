@@ -544,10 +544,15 @@ void PBSM3D::run(mesh domain)
 
 
             //mean wind speed in the saltation layer
-            double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0,d->z0)/2.);
+//            double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0,d->z0)/2.);
+
+            //Pomeroy and Gray 1990
+            double uhs = 2.8 * u_star_saltation; //eqn 7
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
+
+
             // face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
