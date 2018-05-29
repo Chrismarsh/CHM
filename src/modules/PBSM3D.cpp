@@ -497,14 +497,12 @@ void PBSM3D::run(mesh domain)
 
             //Pomeroy and Li 2000, eqn 8
             double Beta =  202.0; //170.0;
-            double ustar_n = 0;
 
-//            if (snow_depth < d->CanopyHeight && enable_veg)
-//            {
-                double m = 0.16;
-                //this is ustar_n / ustar
-                ustar_n = sqrt(m*Beta*lambda)*pow(1.0+m* Beta*lambda,-0.5); //MacDonald 2009 eq 3;
-//            }
+            double m = 0.16;
+
+            //this is ustar_n / ustar
+            double ustar_n = sqrt(m*Beta*lambda)*pow(1.0+m* Beta*lambda,-0.5); //MacDonald 2009 eq 3;
+
 
             if(debug_output) face->set_face_data("u*_n",ustar_n);
             //Pomeroy 1992, eqn 12, see note above for ustar_n calc

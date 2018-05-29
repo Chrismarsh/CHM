@@ -43,7 +43,7 @@ Harder_precip_phase::Harder_precip_phase(config_file cfg)
     b = cfg.get("const.b",2.630006);
     c = cfg.get("const.c",0.09336);
 
-    hours_since_snowfall = 0;
+
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 
@@ -53,9 +53,18 @@ Harder_precip_phase::~Harder_precip_phase()
 {
 
 }
+void Harder_precip_phase::init(mesh domain)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->hours_since_snowfall = 0;
+    }
+}
 void Harder_precip_phase::run(mesh_elem& face)
 {
-
     double Ta = face->face_data("t")+273.15; //K
     double T =  face->face_data("t");
     double RH = face->face_data("rh");
@@ -113,15 +122,16 @@ void Harder_precip_phase::run(mesh_elem& face)
     face->set_face_data("p_rain", p * frTi);
     face->set_face_data("p_snow", p * (1.0-frTi));
 
+    auto d = face->get_module_data<data>(ID);
     if( p * (1.0-frTi) > 0) // it's snowing
     {
-        hours_since_snowfall = 0; // reset
+        d->hours_since_snowfall = 0; // reset
     }
     else
     {
-        hours_since_snowfall += global_param->dt() / 3600.0 ; // dt(s) -> hr
+        d->hours_since_snowfall  +=  (global_param->dt() / 3600.0) ; // dt(s) -> hr
     }
 
-    face->set_face_data("p_snow_hours",hours_since_snowfall);
+    face->set_face_data("p_snow_hours",d->hours_since_snowfall);
 
 }
