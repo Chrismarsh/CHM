@@ -62,7 +62,7 @@ PBSM3D::PBSM3D(config_file cfg)
 //    provides("u10");
     provides("is_drifting");
 //    provides("salt_limit");
-
+    provides("blowingsnow_probability");
     if(debug_output)
     {
         nLayer = cfg.get("nLayer", 5);
@@ -132,6 +132,8 @@ void PBSM3D::init(mesh domain)
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",false);
 
     enable_veg = cfg.get("enable_veg",true);
+
+    iterative_subl = cfg.get("iterative_subl",false);
 
     if(rouault_diffusion_coeff)
     {
@@ -486,6 +488,8 @@ void PBSM3D::run(mesh domain)
              face->set_face_data("inhibit_saltation",1);
         }
 
+        face->set_face_data("blowingsnow_probability",0); // default to 0%
+
         if( ustar > u_star_saltation &&
                swe > min_mass_for_trans &&
                 d->saltation)
@@ -534,17 +538,13 @@ void PBSM3D::run(mesh domain)
                 double u_mean = 11.2 + 0.365*T + 0.00706*T*T+0.9*log(A); // eqn 10  T -> air temp, degC
                 double delta = 0.145*T + 0.00196*T*T+4.3;  //eqn 11
                 double Pu10 = 1.0/(1.0 + exp( (sqrt(M_PI)* (u_mean - u10 )) / delta )); //eqn 12
+                face->set_face_data("blowingsnow_probability",Pu10);
 
                 //decrease the saltation by the probability amount
                 c_salt *= Pu10;
             }
 
-
-
-            //mean wind speed in the saltation layer
-//            double uhs = std::max(0.1,Atmosphere::log_scale_wind(u2, 2, hs, 0,d->z0)/2.);
-
-            //Pomeroy and Gray 1990
+            // wind speed in the saltation layer Pomeroy and Gray 1990
             double uhs = 2.8 * u_star_saltation; //eqn 7
 
             // kg/(m*s)
@@ -640,10 +640,10 @@ void PBSM3D::run(mesh domain)
             double omega = 1.1*10e7 * pow(rm,1.8); //eqn 15
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
-            double Re = 2.0*rm*Vr / v; //eqn 12
+            double Re = 2.0*rm*Vr / v; //eqn 13
 
             double Nu, Sh;
-            Nu = Sh = 1.79 + 0.606 * pow(Re,0.5);
+            Nu = Sh = 1.79 + 0.606 * pow(Re,0.5); //eqn 12
 
             //define above, T is in C, t is in K
 
@@ -651,47 +651,73 @@ void PBSM3D::run(mesh domain)
             double D = 2.06 * 10e-5 * pow(t/273.15,1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998 or Harder 2013 A.6
 
             // (A.9)
-            double lambda_t = 0.000063 * t + 0.00673; // J/(kmol K) thermal conductivity, user Harder 2013 A.9, Pomeroy's is off by an order of magnitude, this matches this https://www.engineeringtoolbox.com/air-properties-d_156.html
+            double lambda_t = 0.000063 * t + 0.00673; //  thermal conductivity, user Harder 2013 A.9, Pomeroy's is off by an order of magnitude, this matches this https://www.engineeringtoolbox.com/air-properties-d_156.html
 
             // (A.10) (A.11)
-            double L = 1000.0 * (2834.1 - 0.29 *T - 0.004*T*T); // T in C
+            double L = 1000.0 * (2834.1 - 0.29 *T - 0.004*T*T); // T in C  Latent heat of sublimation
 
-            /*
-             * The *1000 and /1000 are important unit conversions. Doesn't quite match the harder paper, but Phil assures me it is correct.
-             */
-            double mw = 0.01801528 * 1000.0; //[kg/mol]  ---> g/mol
-            double R = 8.31441/1000.0; // [J mol-1 K-1]
+            double dmdtz = 0;
 
-            double rho = (mw * ea) / (R*t);
-
-            //use Harder 2013 (A.5) Formulation, but Pa formulation for e
-            auto fx = [=](double Ti)
+            // use Pomeroy and Li 2000 iterative sol'n for Schmidt's equation
+            if(iterative_subl)
             {
-                return boost::math::make_tuple(
-                        T+D*L*(rho/(1000.0)-.611*mw*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15)*(1000.0)))/lambda_t-Ti,
-                        D*L*(-0.6110000000e-3*mw*(17.3/(237.3+Ti)-17.3*Ti/pow(237.3+Ti,2))*exp(17.3*Ti/(237.3+Ti))/(R*(Ti+273.15))+0.6110000000e-3*mw*exp(17.3*Ti/(237.3+Ti))/(R*pow(Ti+273.15,2)))/lambda_t-1);
-            };
+                /*
+                 * The *1000 and /1000 are important unit conversions. Doesn't quite match the harder paper, but Phil assures me it is correct.
+                 */
+                double mw = 0.01801528 * 1000.0; //[kg/mol]  ---> g/mol
+                double R = 8.31441 / 1000.0; // [J mol-1 K-1]
+
+                double rho = (mw * ea) / (R * t);
+
+                //use Harder 2013 (A.5) Formulation, but Pa formulation for e
+                auto fx = [=](double Ti)
+                {
+                    return boost::math::make_tuple(
+                            T + D * L * (rho / (1000.0) -
+                                         .611 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15) * (1000.0))) /
+                                lambda_t - Ti,
+                            D * L * (-0.6110000000e-3 * mw * (17.3 / (237.3 + Ti) - 17.3 * Ti / pow(237.3 + Ti, 2)) *
+                                     exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15)) +
+                                     0.6110000000e-3 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * pow(Ti + 273.15, 2))) /
+                            lambda_t - 1);
+                };
 
 
-            double guess = T;
-            double min = -50;
-            double max = 0;
-            int digits = 6;
+                double guess = T;
+                double min = -50;
+                double max = 0;
+                int digits = 6;
 
-            double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
-//            if(debug_output) face->set_face_data("Ti",Ti);
+                double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
+                double Ts = Ti + 273.15; //dmdtz expects in K
 
-            double Ts = Ti+273.15; //dmdtz expects in K
+                //now use equation 13 with our solved Ts to compute dm/dt(z)
+                dmdtz =
+                        2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - (t + 273.15));  //eqn 13 in Pomeroy and Li 2000
 
-            //now use equation 13 with our solved Ts to compute dm/dt(z)
-            double dmdtz = 2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - (t+273.15));  //eqn 13 in Pomeroy and Li 2000
-            if(debug_output) face->set_face_data("dm/dt",dmdtz);
+            }
+            else // Use PBSM. Eqn 11 Pomeroy, Gray, Ladine, 1993  "﻿The prairie blowing snow model: characteristics, validation, operation"
+            {
+                double M = 18.01; // molecular weight of water kg kmol-1
+                double R = 8313; // universal fas constant J mol-1 K-1
 
+                double sigma = (rh - 1.0)*(1.019+0.027*log(cz)); //undersaturation, Pomeroy and Li 2000, eqn 14
+
+                double rho = (M * ea) / (R * t); //saturation vapour density at t
+                // radiative energy absorebed by the particle -- take from CRHM's PBSM implimentation
+                double Qr = 0.9 * M_PI * sqrt(rm) * 120.0; // 120.0 = PBSM_constants::Qstar (Solar Radiation Input), no idea where 0.9 comes from
+
+                // eqn 11 in PGL 1993
+                dmdtz = Sh*rho*D*(6.283185308*Nu*R*rm*sigma*t*t*lambda_t-L*M*Qr+Qr*R*t)/(D*L*Sh*(L*M-R*t)*rho+lambda_t*t*t*Nu*R);
+            }
+            if (debug_output) face->set_face_data("dm/dt", dmdtz);
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
             double mm_alpha = 4.08 + 12.6*cz; //24
             double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
+
             if(debug_output) face->set_face_data("mm",mm);
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
+
             if(debug_output) face->set_face_data("csubl"+std::to_string(z),dmdtz);
             //compute alpha and K for edges
             if(do_lateral_diff)

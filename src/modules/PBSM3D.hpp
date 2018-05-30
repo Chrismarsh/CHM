@@ -116,6 +116,8 @@ public:
     bool enable_veg; // should we consider vegetation ?
     bool use_exp_fetch; // Enable the Liston 2006 fetch instead of Essery, Li, Pomeroy 1999 probability function.
 
+    bool iterative_subl; // if True, enables the iterative sublimation calculation as per Pomeroy and Li 2000
+
     // this is the suspension transport matrix
     double nnz; //number none zero
     viennacl::compressed_matrix<vcl_scalar_type>  vl_C;
