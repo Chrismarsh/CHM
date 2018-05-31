@@ -46,7 +46,8 @@
 * \class MS_wind
 * \brief Calculates wind speed and direction following Mason Sykes
 *
-* Calculates windspeeds using the Mason Sykes wind speed from Essery 1999, using lookup map from DBSM
+* Calculates windspeeds using the Mason Sykes wind speed from Essery 1999, using lookup map from DBSM.
+ * Calculates the speedup in the mean wind direction defined by all the stations
 * Depends:
 * - Wind at reference height "U_R" [m/s]
 * - Direction at reference height 'vw_dir' [degrees]
