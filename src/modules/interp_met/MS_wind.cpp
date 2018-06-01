@@ -77,8 +77,6 @@ double zonal2dir(double u, double v)
 void MS_wind::run(mesh domain)
 {
 
-
-
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -127,39 +125,34 @@ void MS_wind::run(mesh domain)
         // get the speedup for the interpolated direction
         double U_speedup = face->get_parameter("MS"+std::to_string(d) + "_U");
         double V_speedup = face->get_parameter("MS"+std::to_string(d) + "_V");
+        double W_speedup =  face->get_parameter("MS"+std::to_string(d));
 
+        // Speed up interpolated zonal_u & zonal_v
+        double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v) * W_speedup;
+        W = std::max(W,0.1);
+        face->set_face_data("W_speedup",W);
 
-        double speedup =  face->get_parameter("MS"+std::to_string(d));
-        double W_speedup = sqrt(zonal_u * zonal_u + zonal_v * zonal_v) * speedup;
-        face->set_face_data("W_speedup",W_speedup);
-
-        double w = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
-        // do the speedup   will this flip signs?
-        zonal_u *= U_speedup;
-        zonal_v *= V_speedup;
-
+        //Now recover a U and V from this to get a new direction
+        double U = U_speedup * W;
+        double V = V_speedup * W;
 
         // NEW wind direction after we do the U,V speedup
-        theta = zonal2dir(zonal_u,zonal_v);
+        theta = zonal2dir(U,V);
 
-        double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
-
-        W = std::max(W,0.1);
-        W = std::min(W,30.0);
         face->set_face_data("U_R", W);
         face->set_face_data("vw_dir", theta * 180.0 / M_PI);
 
-        face->set_face_data("zonal_u",zonal_u);
-        face->set_face_data("zonal_v",zonal_v);
+        face->set_face_data("zonal_u",U);
+        face->set_face_data("zonal_v",V);
 
         Vector_2 v_corr = math::gis::bearing_to_cartesian(theta* 180.0 / M_PI);
         Vector_3 v3(-v_corr.x(),-v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
         face->set_face_vector("wind_direction",v3);
 
 
-        Vector_2 v_orig = math::gis::bearing_to_cartesian(theta_orig* 180.0 / M_PI);
-        Vector_3 v3_orig(-v_orig.x(),-v_orig.y(), 0); //negate as direction it's blowing instead of where it is from!!
-        face->set_face_vector("wind_direction_original",v3_orig);
+//        Vector_2 v_orig = math::gis::bearing_to_cartesian(theta_orig* 180.0 / M_PI);
+//        Vector_3 v3_orig(-v_orig.x(),-v_orig.y(), 0); //negate as direction it's blowing instead of where it is from!!
+//        face->set_face_vector("wind_direction_original",v3_orig);
 
         face->set_face_data("vw_dir_orig", theta_orig * 180.0 / M_PI);
 
