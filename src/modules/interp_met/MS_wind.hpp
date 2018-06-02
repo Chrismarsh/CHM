@@ -76,6 +76,7 @@ public:
         interpolation interp_smoothing;
     };
     double distance;
+    bool use_ryan_dir;
 };
 
 /**
