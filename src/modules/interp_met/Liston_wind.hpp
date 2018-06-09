@@ -77,6 +77,7 @@ public:
         interpolation interp_smoothing;
     };
     double distance;
+    double Ww_coeff;
 };
 
 /**
