@@ -79,7 +79,7 @@ double zonal2dir(double u, double v)
 void MS_wind::run(mesh domain)
 {
 
-    if(use_ryan_dir)
+    if(!use_ryan_dir)
     {
 #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
