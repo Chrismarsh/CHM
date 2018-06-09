@@ -34,6 +34,7 @@ Liston_wind::Liston_wind(config_file cfg)
     provides("vw_dir");
     provides("vw_dir_divergence");
     distance = cfg.get<double>("distance",300);
+    Ww_coeff = cfg.get<double>("Ww_coeff",1.0);
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
@@ -222,10 +223,10 @@ void Liston_wind::run(mesh domain)
 
         double omega_c = face->get_parameter("Liston curvature");
 
-        double Ww = 1.0 + ys * omega_s + yc * omega_c;
+        double Ww = Ww_coeff + ys * omega_s + yc * omega_c;
 
         if(std::isnan(Ww))
-            Ww=1.0;
+            Ww=Ww_coeff;
 
         W = W * Ww;
 
