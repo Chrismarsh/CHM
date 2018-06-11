@@ -2457,7 +2457,7 @@ void core::run()
             std::string s = std::to_string(std::lround(mt)) + (ms == true ? " ms" : "s");
             _ui.write_meantime(s);
 
-            LOG_DEBUG << "Avg timestep duration " << s;
+
 
             //we need it in seconds now
             if (ms)
@@ -2470,6 +2470,7 @@ void core::run()
             pt = pt + boost::posix_time::seconds(mt * (max_ts - current_ts));
             _ui.write_time_estimate(boost::posix_time::to_simple_string(pt));
 
+            LOG_DEBUG << "Avg timestep duration " << s << "\tEstimated completion: " << boost::posix_time::to_simple_string(pt);
             _global->first_time_step = false;
 
 
