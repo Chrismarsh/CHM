@@ -51,6 +51,11 @@ scale_wind_vert::~scale_wind_vert()
 
 void scale_wind_vert::point_scale(mesh_elem &face)
 {
+    if (face->cell_id == 1248)
+    {
+        LOG_DEBUG << "Face found";
+    }
+
     // Get meteorological data for current face
     double U_R = face->face_data("U_R"); // Wind speed at reference height Z_R (m/s)
 
@@ -94,7 +99,7 @@ void scale_wind_vert::point_scale(mesh_elem &face)
     /////
 
     // If a Canopy exists
-    if (!ignore_canopy && Z_CanTop > 0.0)
+    if ( !ignore_canopy && (Z_CanTop > 0.0) && (Z_2m_above_srf <  Z_CanTop))
     {
         // Get Canopy/Surface info
 
@@ -114,10 +119,10 @@ void scale_wind_vert::point_scale(mesh_elem &face)
             // Scale Z_CanTop to Z_CanMid
             //double U_CanMid = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_CanMid, alpha);
 
-            // Scale Z_CanBot to Z_2m_above_srf
-            if (Z_2m_above_srf < Z_CanBot) // snow depth +2 below canopy bottom
+            // snowdepth is below bottom of canopy, scale bottom of canopy wind to surface
+            if (Z_2m_above_srf < Z_CanBot)
                 U_2m_above_srf = Atmosphere::log_scale_wind(U_CanBot, Z_CanBot, Z_2m_above_srf,
-                                                            snowdepthavg); // (U_start,Height_start,Height_end)
+                                                            snowdepthavg);
             else // snow depth +2 above canopy bottom
                 U_2m_above_srf = Atmosphere::exp_scale_wind(U_CanTop, Z_CanTop, Z_2m_above_srf, alpha);
         } else
