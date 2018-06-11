@@ -58,6 +58,13 @@ PBSM3D::PBSM3D(config_file cfg)
         depends("p_snow_hours");
 
     debug_output=cfg.get("debug_output",false);
+    use_R94_lambda = cfg.get("use_R94_lambda",true);
+
+    if(!use_R94_lambda)
+    {
+        N = cfg.get("N",1);
+        dv = cfg.get("dv",0.8);
+    }
 
 //    provides("u10");
     provides("is_drifting");
@@ -165,7 +172,12 @@ void PBSM3D::init(mesh domain)
         if(face->has_vegetation() && enable_veg)
         {
             d->CanopyHeight = face->veg_attribute("CanopyHeight");
-            d->LAI = face->veg_attribute("LAI");
+
+            //only grab LAI if we are using the R90 lambda formulation
+            if(use_R94_lambda)
+                d->LAI = face->veg_attribute("LAI");
+            else
+                d->LAI = 0;
         } else{
             d->CanopyHeight = 0;
             d->LAI = 0;
@@ -362,7 +374,14 @@ void PBSM3D::run(mesh domain)
         double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);//don't allow negative differences in height
         if(debug_output) face->set_face_data("height_diff",height_diff);
         double ustar = 1.3; //placeholder
-        double lambda = 0.5 * d->LAI / d->CanopyHeight * (height_diff);
+
+        double lambda = 0;
+        if(use_R94_lambda)
+            lambda = 0.5 * d->LAI * height_diff; // Raupach 1994
+        else
+            lambda = N*dv*height_diff; // Pomeroy formulation
+
+
         if(debug_output) face->set_face_data("LAI",d->LAI);
         if(debug_output) face->set_face_data("lambda",lambda);
 
