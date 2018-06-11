@@ -81,7 +81,7 @@ void MS_wind::run(mesh domain)
 
     if(!use_ryan_dir)
     {
-#pragma omp parallel for
+        #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
             auto face = domain->face(i);
@@ -163,7 +163,7 @@ void MS_wind::run(mesh domain)
         }
 
 
-#pragma omp parallel for
+        #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
 
@@ -181,7 +181,7 @@ void MS_wind::run(mesh domain)
             double new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
             face->get_module_data<data>(ID)->temp_u = new_u;
         }
-#pragma omp parallel for
+        #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
             auto face = domain->face(i);
