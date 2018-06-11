@@ -51,10 +51,10 @@ scale_wind_vert::~scale_wind_vert()
 
 void scale_wind_vert::point_scale(mesh_elem &face)
 {
-    if (face->cell_id == 1248)
-    {
-        LOG_DEBUG << "Face found";
-    }
+//    if (face->cell_id == 1248)
+//    {
+//        LOG_DEBUG << "Face found";
+//    }
 
     // Get meteorological data for current face
     double U_R = face->face_data("U_R"); // Wind speed at reference height Z_R (m/s)
