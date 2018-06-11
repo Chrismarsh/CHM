@@ -117,6 +117,10 @@ public:
     bool use_exp_fetch; // Enable the Liston 2006 fetch instead of Essery, Li, Pomeroy 1999 probability function.
 
     bool iterative_subl; // if True, enables the iterative sublimation calculation as per Pomeroy and Li 2000
+    bool use_R94_lambda; //use the ﻿Raupach 1990 lambda expression using LAI/2 instead of pomeroy stalk density
+
+    double N; //vegetation number density
+    double dv; //stalk diameter
 
     // this is the suspension transport matrix
     double nnz; //number none zero
