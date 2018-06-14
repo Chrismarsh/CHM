@@ -21,7 +21,7 @@ ENDFOREACH(f)
 set(FILTER_SRCS
 		filters/macdonald_undercatch.cpp
 		filters/scale_wind_speed.cpp
-
+		filters/goodison_undercatch.cpp
 		CACHE INTERNAL "" FORCE
 		)
 

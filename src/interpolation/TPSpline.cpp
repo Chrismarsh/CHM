@@ -66,13 +66,14 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
 
                     //none of the books and papers, despite citing Helena Mitášová, Lubos Mitáš seem to agree on the exact formula
                     //so I am following http://link.springer.com/article/10.1007/BF00893171#page-1
+                    // eqn 10
 
                     dij = (dij * weight / 2.0) * (dij * weight / 2.0);
 
                     //Chang 4th edition 2008 uses bessel_k0
                     //gsl_sf_bessel_K0
                     // and has a -0.5 weight out fron
-                    // Rd = -0.5/(pi*weight*weight)*( log(dij*weight/2.0) + c + gsl_sf_bessel_K0(dij*weight));
+//                     Rd = -0.5/(pi*weight*weight)*( log(dij*weight/2.0) + c + gsl_sf_bessel_K0(dij*weight));
 
                     //And Hengl and Evans in geomorphometry p.52 do not, but have some undefined omega_0/omega_1 weights
                     //it is all rather confusing. But this follows Mitášová exactly, and produces essentially the same answer
@@ -162,7 +163,7 @@ thin_plate_spline::thin_plate_spline()
 {
     pi          = 3.14159;
     c           = 0.577215; //euler constant
-    weight      = 0.01;
+    weight      = 1;
     size        = 0;
 
     reuse_LU    = false;
