@@ -114,7 +114,11 @@ public:
     bool do_sublimation; // should we have a sink sublimation term?
     bool do_lateral_diff; // should have lateral diffusion
     bool enable_veg; // should we consider vegetation ?
-    bool use_exp_fetch; // Enable the Liston 2006 fetch instead of Essery, Li, Pomeroy 1999 probability function.
+
+    bool use_PomLi_probability; // Use areal Pomeroy Li 2000 probability function.
+    bool use_exp_fetch; // Enable the exp Liston 2006 fetch
+    bool use_tanh_fetch; // Enable the tanh Pomeroy and Male 1986 fetch
+
 
     bool iterative_subl; // if True, enables the iterative sublimation calculation as per Pomeroy and Li 2000
     bool use_R94_lambda; //use the ﻿Raupach 1990 lambda expression using LAI/2 instead of pomeroy stalk density

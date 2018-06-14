@@ -50,9 +50,22 @@ PBSM3D::PBSM3D(config_file cfg)
 
 
 
+    //Determine if we want fetch, and if so, which one. Default is to use Pomeroy Tanh
+
+
     // if we use Liston fetch, we don't need hours since snowfall. If we use Essery 1999, then we need hours since snowfall
+    // we have to do this here so we can correctly setup the depends for module linking.
     use_exp_fetch = cfg.get("use_exp_fetch",false);
-    if(use_exp_fetch)
+    use_tanh_fetch = cfg.get("use_tanh_fetch",true);
+    use_PomLi_probability = cfg.get("use_PomLi_probability", false);
+
+    if(use_exp_fetch && use_tanh_fetch)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3d: Cannot specify both exp_fetch and tanh_fetch"));
+
+    if ( (use_exp_fetch && use_PomLi_probability) || (use_tanh_fetch && use_PomLi_probability)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3d: Cannot specify both exp_fetch/tanh_fetch and use_PomLi_probability"));
+
+    if(use_exp_fetch || use_tanh_fetch)
         depends("fetch");
     else
         depends("p_snow_hours");
@@ -339,7 +352,7 @@ void PBSM3D::run(mesh domain)
         auto& m = d->m;
 
         double fetch = 1000;
-        if(use_exp_fetch)
+        if(use_exp_fetch || use_tanh_fetch)
             fetch = face->face_data("fetch");
 
         //get wind from the face
@@ -548,6 +561,13 @@ void PBSM3D::run(mesh domain)
                 double fetch_ref = 500;
                 double mu = 3.0;
                 c_salt *= 1.0-exp(-mu * fetch/fetch_ref);
+            }
+            else if(use_tanh_fetch && fetch <= 300.) // use Pomeroy & Male 1986
+            {
+                double fetch_ref = 300;
+                double Lc = 0.5*tanh(0.1333333333e-1*fetch_ref-2.0)+0.5;
+
+                c_salt *= Lc;
             }
             else
             {
