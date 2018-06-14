@@ -21,21 +21,34 @@
  */
 
 #pragma once
+
 #include "filter_base.h"
-#include "logger.hpp"
-#include "exception.hpp"
-#include <string>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-namespace pt = boost::property_tree;
+#include <math.h>
 
-#include "macdonald_undercatch.h"
-#include "goodison_undercatch.h"
-#include "scale_wind_speed.h"
-class filter_factory
+
+/**
+ * \addtogroup filters
+ * @{
+ * \class goodison_undercatch
+ * \brief Computes undercatch correction
+ *
+ * Undercatch correction for a Nipher shielded guage via Goodison 1998
+ *
+ * Depends:
+ * - p [mm]
+ * - u [m/s]
+ *
+ * References:
+ * -
+ *
+ * **/
+class goodison_undercatch : public filter_base
 {
+private:
+    std::string var;
 public:
-    filter_base* get(std::string ID, pt::ptree config);
+    goodison_undercatch();
+    ~goodison_undercatch();
+    void init(boost::shared_ptr<station>& station);
+    void process(boost::shared_ptr<station>& station);
 };
-
-

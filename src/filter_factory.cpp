@@ -36,6 +36,8 @@ filter_base* filter_factory::get(std::string ID, pt::ptree config)
 
     if (ID == "macdonald_undercatch")
         filter = new macdonald_undercatch();
+    else if(ID == "goodison_undercatch")
+        filter = new goodison_undercatch();
     else if (ID == "scale_wind_speed")
         filter = new scale_wind_speed();
 
