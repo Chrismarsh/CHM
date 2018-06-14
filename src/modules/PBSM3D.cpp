@@ -62,7 +62,7 @@ PBSM3D::PBSM3D(config_file cfg)
     if(use_exp_fetch && use_tanh_fetch)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3d: Cannot specify both exp_fetch and tanh_fetch"));
 
-    if ( (use_exp_fetch && use_PomLi_probability) || (use_tanh_fetch && use_PomLi_probability)
+    if ( (use_exp_fetch && use_PomLi_probability) || (use_tanh_fetch && use_PomLi_probability) )
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3d: Cannot specify both exp_fetch/tanh_fetch and use_PomLi_probability"));
 
     if(use_exp_fetch || use_tanh_fetch)
