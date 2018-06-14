@@ -32,14 +32,14 @@
  * \class goodison_undercatch
  * \brief Computes undercatch correction
  *
- * Undercatch correction for a Nipher shielded guage via Goodison 1998
+ * Undercatch correction for a Nipher shielded guage via Goodison 1998 for solid precipitation 
  *
  * Depends:
  * - p [mm]
  * - u [m/s]
  *
  * References:
- * -
+ * - ﻿Goodison, B. E. (1998), WMO Solid Solid Precipitiation Measurement Intercomparison. https://globalcryospherewatch.org/bestpractices/docs/WMOtd872.pdf
  *
  * **/
 class goodison_undercatch : public filter_base
