@@ -47,15 +47,19 @@ void goodison_undercatch::process(boost::shared_ptr<station>& station)
     double data = station->now().get(var);
     double u = station->now().get("u");
     //trap missing data, just ignore it.
-    if( !is_nan(data) && !is_nan(u))
+    if(data != 0) //  CE * 0 will still be zero, but if u is NaN, we will NaN our precip, which we don't want if p = 0
     {
-        double CE = 100.00 - 0.44*u*u-1.98*u; // in %
-        CE /= 100.0; // fraction
-        data /= CE;
-    } else
-    {
-        data = -9999;
+        if( !is_nan(data) && !is_nan(u))
+        {
+            double CE = 100.00 - 0.44*u*u-1.98*u; // in %
+            CE /= 100.0; // fraction
+            data /= CE;
+        } else
+        {
+            data = -9999;
+        }
     }
+
 
     station->now().set(var,data);
 

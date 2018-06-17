@@ -60,7 +60,7 @@ void MS_wind::init(mesh domain)
     }
 }
 
-// Returns the azimuthal wind direction from zonal u,v in degree
+// Returns the azimuthal wind direction from zonal u,v in radians
 double zonal2dir(double u, double v)
 {
     // Liston 2006 formulation
