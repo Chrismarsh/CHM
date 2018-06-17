@@ -32,7 +32,7 @@
  * \class goodison_undercatch
  * \brief Computes undercatch correction
  *
- * Undercatch correction for a Nipher shielded guage via Goodison 1998 for solid precipitation 
+ * Undercatch correction for a Nipher shielded guage via Goodison 1998 for solid precipitation
  *
  * Depends:
  * - p [mm]
