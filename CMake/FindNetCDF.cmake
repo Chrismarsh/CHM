@@ -108,6 +108,7 @@ endif ()
 NetCDF_check_interface (CXX netcdf netcdf_c++4) # Fedora's naming
 
 if(NOT NETCDF_HAS_INTERFACES)
+	set (NETCDF_HAS_INTERFACES "YES") #has to be reset
 	NetCDF_check_interface (CXX netcdf netcdf-cxx4) # if we build ourselves, it will be this
 endif()
 
