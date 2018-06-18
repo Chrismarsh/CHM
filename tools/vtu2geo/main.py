@@ -40,19 +40,30 @@ def main():
         return
 
     # Get name of configuration file/module
-    configfile = sys.argv[-1]
+    configfile = sys.argv[1]
 
     # Load in configuration file as module
     X = imp.load_source('',configfile)
 
-    # Grab variables
-    input_path = X.input_path
+
+    # if a 2nd command line argument is present, it is the input_path so use that, otherwise try to use the one from passed script
+    input_path = ''
+    if len(sys.argv) == 3: # we have a 2nd CLI arg
+        input_path = sys.argv[2]
+        if(hasattr(X,'input_path')):
+            print 'Warning: Overwriting script defined input path with CL path'
+    elif hasattr(X,'input_path'):
+        input_path = X.input_path
+    else:
+        print('ERROR: No input path. A pvd or vtu file must be specified.')
+        exit(-1)
 
     if os.path.isdir(input_path):
         print('ERROR: Either a pvd or vtu file must be specified.')
         exit(-1)
 
     variables = X.variables
+
     parameters = []
     if hasattr(X,'parameters'):
         parameters = X.parameters
