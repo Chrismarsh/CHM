@@ -12,6 +12,7 @@ set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
+option(USE_OCL "Enable OpenCL with ViennaCL"  OFF )
 option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
@@ -250,8 +251,9 @@ if(MATLAB)
     find_package(Matlab REQUIRED)
 endif()
 
+
 find_package(OpenCL)
-if(OPENCL_FOUND)
+if(USE_OCL AND OPENCL_FOUND)
     message(STATUS "Enabling ViennaCL with OpenCL, vcl_scalar_type=float")
 
     add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
@@ -265,11 +267,13 @@ else()
     unset(OPENCL_INCLUDE_DIRS CACHE)
 endif()
 
+
 if(BUILD_ARMADILLO)
     find_package(Armadillo REQUIRED  HINTS ${Armadillo_DIR} )
 else()
     find_package(Armadillo REQUIRED)
 endif()
+
 
 set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
 message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")
