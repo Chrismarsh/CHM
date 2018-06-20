@@ -74,7 +74,6 @@ endif()
 
 if(BUILD_PROJ4)
     set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
-    set(${CMAKE_BINARY_DIR}/lib/proj4)
 endif()
 
 if(BUILD_NETCDF)
