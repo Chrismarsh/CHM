@@ -2334,7 +2334,8 @@ void sno::_advec(void)
 
     if (M < -1000)
     {
-        LOG_DEBUG << "WUUUUUUUT";
+        M=0;
+        //LOG_DEBUG << "WUUUUUUUT";
     }
 }
 
