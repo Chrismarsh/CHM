@@ -248,9 +248,12 @@ def main():
 
             if parameters is not None:
                 for p in parameters:
-                    data = cd.GetArray(p).GetTuple(i)
-                    feature.SetField(str(p), float(data[0]))
-
+                    try:
+                        data = cd.GetArray(p).GetTuple(i)
+                        feature.SetField(str(p), float(data[0]))
+                    except:
+                        print "Parameter %s not present in mesh" % (v)
+                        raise
             layer.CreateFeature(feature)
 
         x_min, x_max, y_min, y_max = layer.GetExtent()
