@@ -175,16 +175,20 @@ if(BUILD_NETCDF)
         ExternalProject_Add(
             netcdf-c
             GIT_REPOSITORY https://github.com/Unidata/netcdf-c.git
+            GIT_TAG e0dcb24  #v4.6.1
             UPDATE_COMMAND ""
             DEPENDS hdf5
-            CONFIGURE_COMMAND bash autoreconf -if COMMAND ${CMAKE_BINARY_DIR}/lib/netcdf-c-prefix/src/netcdf-c/configure
+
+
+            # looks like autoreconf -if  is no longer needed
+            CONFIGURE_COMMAND   ${CMAKE_BINARY_DIR}/lib/netcdf-c-prefix/src/netcdf-c/configure
                       CPPFLAGS=-I${CMAKE_BINARY_DIR}/lib/hdf5/include
                       LDFLAGS=-L${CMAKE_BINARY_DIR}/lib/hdf5/lib
-                       --prefix=${CMAKE_BINARY_DIR}/lib/netcdf-c
+                      --prefix=${CMAKE_BINARY_DIR}/lib/netcdf-c
                       --enable-netcdf-4 --enable-shared
 
           #  CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5 -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
-         #               -DENABLE_NETCDF_4=ON -DBUILD_SHARED_LIBS=ON
+          #              -DENABLE_NETCDF_4=ON -DBUILD_SHARED_LIBS=ON
             BUILD_COMMAND make -j10
             INSTALL_COMMAND make install
             BUILD_IN_SOURCE 1
