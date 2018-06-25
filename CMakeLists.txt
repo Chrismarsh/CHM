@@ -35,6 +35,7 @@ if(SUPERBUILD)
     set(BUILD_PROJ4 TRUE  CACHE BOOL "Build proj4")
     set(BUILD_NETCDF TRUE CACHE BOOL "Build netCDF")
     set(BUILD_VTK TRUE CACHE BOOL "Build VTK")
+    set(BUILD_TBB TRUE CACHE BOOL "Build Intel TBB")
 endif()
 
 if(BUILD_ARMADILLO)
@@ -329,19 +330,22 @@ find_package(GDAL 2.1 REQUIRED )
 
 find_package (Threads REQUIRED)
 
-#include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
-#include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBBuild.cmake)
-#tbb_get(TBB_ROOT tbb_root SOURCE_CODE)
-#tbb_build(TBB_ROOT ${tbb_root} CONFIG_DIR TBB_DIR)
+if(BUILD_TBB)
+    #this builds from source, but seems brittle and doesn't seem to be picked up correctly
+    #include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
+    #include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBBuild.cmake)
+    #tbb_get(TBB_ROOT tbb_root SOURCE_CODE)
+    #tbb_build(TBB_ROOT ${tbb_root} CONFIG_DIR TBB_DIR)
 
-#download the pre build TBB packages for the correct OS. Needs to be done here, as it doesn't seem to work in the _external cmake file
-include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
-tbb_get(TBB_ROOT tbb_root CONFIG_DIR TBB_DIR)
+    #download the pre build TBB packages for the correct OS. Needs to be done here, as it doesn't seem to work in the _external cmake file
+    include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
+    tbb_get(TBB_ROOT tbb_root CONFIG_DIR TBB_DIR)
 
-set(TBB_INSTALL_DIR ${tbb_root})
-#message(STATUS ${TBB_INSTALL_DIR})
+    set(TBB_INSTALL_DIR ${tbb_root})
+    #message(STATUS ${TBB_INSTALL_DIR})
+endif()
+
 find_package(TBB REQUIRED tbb)
-
 
 find_package(GSL REQUIRED)
 
