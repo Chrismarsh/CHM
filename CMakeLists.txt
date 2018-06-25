@@ -68,7 +68,7 @@ endif()
 #To avoid issues #104, newer VTK version needs to be used. Until VTK7+ becomes available in the LTS/&c releases, allow for easily building a new VTK
 if(BUILD_VTK)
     set(BUILD_PROJ4 TRUE)
-    set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.0")
+    set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.1")
 endif()
 
 if(BUILD_BOOST)
