@@ -42,7 +42,7 @@ if(BUILD_ARMADILLO)
 endif()
 
 if(BUILD_CGAL)
-    set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+    set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib/CGAL")
 
         #this is defined in the BUILD_CGAL step
   #  LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
