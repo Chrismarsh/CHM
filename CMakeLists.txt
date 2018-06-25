@@ -42,6 +42,9 @@ if(BUILD_ARMADILLO)
     set(Armadillo_DIR "${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake")
 endif()
 
+if(BUILD_TBB)
+    set(TBB_INSTALL_DIR "${CMAKE_BINARY_DIR}/lib/tbb")
+endif()
 if(BUILD_CGAL)
     set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib/CGAL")
 
@@ -94,10 +97,6 @@ endif()
 #set(Boost_NO_SYSTEM_PATHS TRUE)
 #set(BOOST_ROOT "/opt/boost_1_62_0")
 
-
-#    Super build doesn't do TBB at the moment. If a custom location is needed, specify here
-#set(TBB_INSTALL_DIR /cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/tbb/2017.2.132/tbb)
-
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 
 #########
@@ -127,6 +126,7 @@ execute_process(COMMAND ${CMAKE_COMMAND}
         -DBUILD_BOOST=${BUILD_BOOST}
         -DBUILD_PROJ4=${BUILD_PROJ4}
         -DBUILD_NETCDF=${BUILD_NETCDF}
+        -DBUILD_TBB=${BUILD_TBB}
 
         -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
@@ -330,20 +330,23 @@ find_package(GDAL 2.1 REQUIRED )
 
 find_package (Threads REQUIRED)
 
-if(BUILD_TBB)
-    #this builds from source, but seems brittle and doesn't seem to be picked up correctly
-    #include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
-    #include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBBuild.cmake)
-    #tbb_get(TBB_ROOT tbb_root SOURCE_CODE)
-    #tbb_build(TBB_ROOT ${tbb_root} CONFIG_DIR TBB_DIR)
-
-    #download the pre build TBB packages for the correct OS. Needs to be done here, as it doesn't seem to work in the _external cmake file
-    include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
-    tbb_get(TBB_ROOT tbb_root CONFIG_DIR TBB_DIR)
-
-    set(TBB_INSTALL_DIR ${tbb_root})
-    #message(STATUS ${TBB_INSTALL_DIR})
-endif()
+#if(BUILD_TBB)
+#    #this builds from source, but seems brittle and doesn't seem to be picked up correctly
+#    include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
+#    include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBBuild.cmake)
+#    tbb_get(TBB_ROOT tbb_root SOURCE_CODE)
+#    tbb_build(TBB_ROOT ${tbb_root} CONFIG_DIR TBB_DIR)
+#
+#    MESSAGE(STATUS ${CONFIG_DIR} )
+#    MESSAGE(STATUS ${tbb_root} )
+#    MESSAGE(STATUS ${TBB_DIR} )
+#    #download the pre build TBB packages for the correct OS. Needs to be done here, as it doesn't seem to work in the _external cmake file
+##    include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
+##    tbb_get(TBB_ROOT tbb_root CONFIG_DIR TBB_DIR)
+#
+#    set(TBB_INSTALL_DIR ${tbb_root})
+#    #message(STATUS ${TBB_INSTALL_DIR})
+#endif()
 
 find_package(TBB REQUIRED tbb)
 
