@@ -1,4 +1,6 @@
-cmake_minimum_required (VERSION 2.8)
+# Oddly specific minor version required for consistent IS_DIRECTORY behaviour as per
+# https://stackoverflow.com/a/23539626/410074
+cmake_minimum_required (VERSION 2.8.12.2)
 
 project (CHMprj)
 
@@ -44,12 +46,6 @@ endif()
 
 if(BUILD_TBB)
     set(TBB_INSTALL_DIR "${CMAKE_BINARY_DIR}/lib/tbb")
-endif()
-if(BUILD_CGAL)
-    set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib/CGAL")
-
-        #this is defined in the BUILD_CGAL step
-  #  LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 endif()
 
 if(BUILD_GDAL)
@@ -181,7 +177,16 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
+
 if(BUILD_CGAL)
+
+    # different linux machines build to either lib or lib64. Detect which it is and set the hint tot hat
+    if( IS_DIRECTORY "${CMAKE_BINARY_DIR}/lib/CGAL/lib/CGAL")
+        set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib/CGAL")
+     else()
+        set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
+    endif()
+
     find_package(CGAL REQUIRED HINTS ${CGAL_DIR})
 else()
     find_package(CGAL REQUIRED)
