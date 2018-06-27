@@ -163,7 +163,7 @@ thin_plate_spline::thin_plate_spline()
 {
     pi          = 3.14159;
     c           = 0.577215; //euler constant
-    weight      = 1;
+    weight      = 0.01;
     size        = 0;
 
     reuse_LU    = false;

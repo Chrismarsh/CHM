@@ -23,6 +23,7 @@
 
 #include <iostream>
 #include <string>
+#include <boost/filesystem.hpp>
 
 #define BOOST_SPIRIT_THREADSAFE
 
@@ -51,6 +52,8 @@ int main (int argc, char *argv[])
 
         return -1;
     }
+
+    boost::filesystem::copy(kernel.log_file_path,kernel.o_path / "CHM.log");
 
 	return 0;
 }

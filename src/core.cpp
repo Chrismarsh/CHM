@@ -1164,10 +1164,13 @@ void core::init(int argc, char **argv)
     //fully qualified path + fname to use in the ofstream calls
     if(cmdl_options.get<5 >()) //-legacy-log true option
     {
+
         log_name =  "CHM.log";
+        log_file_path = cwd_dir / log_name;
     } 
     else {
-        log_name =  (log_path / log_name ).string();
+        log_file_path = log_path / log_name;
+        log_name =  log_file_path.string();
     }
    
 
@@ -1456,6 +1459,8 @@ void core::init(int argc, char **argv)
         }
     }
 
+
+    pt::json_parser::write_json((o_path  / "config.json" ).string(),cfg); // output a full dump of the cfg, after all modifications, to the output directory
     _cfg = cfg;
 
     LOG_DEBUG << "Finished initialization";

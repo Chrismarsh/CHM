@@ -209,7 +209,8 @@ public:
     void run();
     void end();
     pt::ptree _cfg;
-
+    boost::filesystem::path o_path; //path to output folder
+    boost::filesystem::path log_file_path; // fully qualified path to the log file
 protected:
     //current level of the logger. Defaults to debug, but can be changed via configuration settings
     log_level _log_level;
@@ -218,9 +219,9 @@ protected:
     // e.g. CHM -f /some/other/path/CHM.json
     // then we need to affix every file IO (excep the log ?) with this path.
     boost::filesystem::path cwd_dir;
-    boost::filesystem::path o_path; //path to output folder
 
-    bool _output_station_ptv; //should we ouput the station ptv file? if we have no output section, then don't do this.
+
+    bool _output_station_ptv; //should we output the station ptv file? if we have no output section, then don't do this.
 
     //this is called via system call when the model is done to notify the user
     std::string _notification_script;
