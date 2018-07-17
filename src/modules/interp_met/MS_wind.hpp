@@ -27,6 +27,7 @@
 #include "triangulation.hpp"
 #include "module_base.hpp"
 #include "math/coordinates.hpp"
+#include <constants/Atmosphere.h>
 #include <cstdlib>
 #include <string>
 

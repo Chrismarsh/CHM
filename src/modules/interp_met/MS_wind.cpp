@@ -33,8 +33,8 @@ MS_wind::MS_wind(config_file cfg)
     provides("U_R");
     provides("W_speedup");
     provides("vw_dir");
-    provides("zonal_u");
-    provides("zonal_v");
+    provides("2m_zonal_u");
+    provides("2m_zonal_v");
 
     provides("interp_zonal_u");
     provides("interp_zonal_v");
@@ -98,6 +98,11 @@ void MS_wind::run(mesh domain)
                 double W = s->get("U_R");
                 W = std::max(W, 0.1);
 
+                W = Atmosphere::log_scale_wind(W,
+                                               Atmosphere::Z_U_R,  // UR is at our reference height
+                                               2.0,  // MS assumes a 2m wind speed
+                                               0); // no canopy, no snow, but uses a snow roughness
+
                 double zonal_u = -W * sin(theta);
                 double zonal_v = -W * cos(theta);
 
@@ -143,11 +148,17 @@ void MS_wind::run(mesh domain)
             // NEW wind direction after we do the U,V speedup
             theta = zonal2dir(U, V);
 
+            //go back from 2m to reference
+            W = Atmosphere::log_scale_wind(W,
+                                           2.0,  // MS assumes a 2m wind speed
+                                           Atmosphere::Z_U_R,  // UR is at our reference height
+                                           0); // no canopy, no snow, but uses a snow roughness
+
             face->set_face_data("U_R", W);
             face->set_face_data("vw_dir", theta * 180.0 / M_PI);
 
-            face->set_face_data("zonal_u", U);
-            face->set_face_data("zonal_v", V);
+            face->set_face_data("2m_zonal_u", U); // these are still 2m
+            face->set_face_data("2m_zonal_v", V);
 
             Vector_2 v_corr = math::gis::bearing_to_cartesian(theta * 180.0 / M_PI);
             Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
@@ -214,6 +225,10 @@ void MS_wind::run(mesh domain)
 
                 double W = s->get("U_R") / speedup;
                 W = std::max(W, 0.1);
+                W = Atmosphere::log_scale_wind(W,
+                                               Atmosphere::Z_U_R,  // UR is at our reference height
+                                               2.0,  // MS assumes a 2m wind speed
+                                               0); // no canopy, no snow, but uses a snow roughness
 
 
                 double zonal_u = -W * sin(theta);
@@ -294,6 +309,13 @@ void MS_wind::run(mesh domain)
 
             W = std::max(W,0.1);
             W = std::min(W,30.0);
+
+            W = Atmosphere::log_scale_wind(W,
+                                           2.0,  // MS assumes a 2m wind speed
+                                           Atmosphere::Z_U_R,  // UR is at our reference height
+                                           0); // no canopy, no snow, but uses a snow roughness
+
+
             face->set_face_data("U_R", W);
             face->set_face_data("vw_dir", theta * 180.0 / M_PI);
 

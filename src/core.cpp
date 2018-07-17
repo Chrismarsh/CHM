@@ -2226,22 +2226,28 @@ void core::run()
                 c.tic();
                 //do 1 step of the filters. Filters do not have depends!!
                 //asume every filter is run everywhere with the same parameters
+                ompException oe;
                 #pragma omp parallel for
                 for(size_t i = 0; i < _global->number_of_stations();i++)
                 {
                     auto s = _global->stations().at(i);
-                    for (auto &f : _netcdf_filters)
-                    {
-                        f.second->process(s);
-                    }
+                    oe.Run([&]
+                           {
+                               for (auto &f : _netcdf_filters)
+                               {
+                                   f.second->process(s);
+                               }
+                           });
                 }
-
+                oe.Rethrow();
                 LOG_DEBUG << "Done filters [ " << c.toc<s>() << "s]";
 
             }
             else
             {
                 //do 1 step of the filters. Filters do not have depends!!
+                ompException oe;
+                
                 #pragma omp parallel for
                 for(size_t i = 0; i < _global->number_of_stations();i++)
                 {
@@ -2250,12 +2256,15 @@ void core::run()
                     //get the list of filters to run for this station
                     auto filters = _txtmet_filters[s->ID()];
 
-                    for(auto filt : filters)
-                    {
-                        filt->process(s);
-                    }
-
+                    oe.Run([&]
+                           {
+                               for (auto filt : filters)
+                               {
+                                   filt->process(s);
+                               }
+                           });
                 }
+                oe.Rethrow();
             }
 
             std::stringstream ss;
