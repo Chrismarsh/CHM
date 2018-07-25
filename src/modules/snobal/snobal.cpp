@@ -120,7 +120,7 @@ void snobal::init(mesh domain)
         sbal->z_T = cfg.get("z_T",2.6);
         sbal->z_u = cfg.get("z_u",2.96);
         sbal->z_g = cfg.get("z_g",0.1);
-        sbal->relative_hts = 0; // False (0) -- these are absolute heights, need to subtract the snow depth
+        sbal->relative_hts = 1; // True (1) -- relative to the snow surface via scale_wind_speed which takes into account snowdepth.
 
         sbal->R_n_bar = 0.0;
         sbal->H_bar = 0.0;
