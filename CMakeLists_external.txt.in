@@ -200,7 +200,10 @@ if(BUILD_NETCDF)
 
           #  CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5 -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
           #              -DENABLE_NETCDF_4=ON -DBUILD_SHARED_LIBS=ON
-            BUILD_COMMAND make -j10
+
+          # With 4.6.1, there appears to be a parallel make regression that causes, randomly compilation failure
+          # https://github.com/Unidata/netcdf-c/issues/896#issuecomment-382823731
+            BUILD_COMMAND make
             INSTALL_COMMAND make install
             BUILD_IN_SOURCE 1
         )
