@@ -154,7 +154,6 @@ void point_mode::run(mesh_elem &face)
     {
         double silwr = global_param->stations().at(0)->get("Qli");
         face->set_face_data("ilwr", silwr);
-
     }
     if(iswr)
     {
@@ -180,6 +179,12 @@ void point_mode::run(mesh_elem &face)
         double T_g = global_param->stations().at(0)->get("T_g");
         face->set_face_data("T_g", T_g);
     }
+
+
+    face->set_parameter("svf",
+                            cfg.get("override.svf",
+                                        face->get_parameter("ssvf") )
+    );
 
 }
 
