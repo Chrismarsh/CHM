@@ -127,7 +127,7 @@ if(BUILD_CGAL)
 	    BUILD_COMMAND make -j10 
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
-	    #DEPENDS boost
+	    DEPENDS boost
 	    )
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
 endif()
