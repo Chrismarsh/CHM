@@ -112,6 +112,10 @@ void uniform_wind::run(mesh domain)
         W = std::max(W,0.1);
         face->set_face_data("U_R", W);
         face->set_face_data("vw_dir", corrected_theta * 180.0 / M_PI);
+
+        Vector_2 v_corr = math::gis::bearing_to_cartesian(corrected_theta * 180.0 / M_PI);
+        Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
+        face->set_face_vector("wind_direction", v3);
     }
 
 
