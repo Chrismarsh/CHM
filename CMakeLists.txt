@@ -28,7 +28,7 @@ option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
-set(BUILD_ParaView TRUE CACHE BOOL "Build Paraview and PV date-time filter")
+set(BUILD_ParaView FALSE CACHE BOOL "Build Paraview and PV date-time filter")
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
