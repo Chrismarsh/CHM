@@ -1,6 +1,4 @@
-# Oddly specific minor version required for consistent IS_DIRECTORY behaviour as per
-# https://stackoverflow.com/a/23539626/410074
-cmake_minimum_required (VERSION 2.8.12.2)
+cmake_minimum_required (VERSION 3.12)
 
 # In CMake 3.12 and above the find_package(<PackageName>) command now searches prefixes specified by the <PackageName>_ROOT CMake variable and the <PackageName>_ROOT environment variable.
 #https://cmake.org/cmake/help/latest/policy/CMP0074.html
@@ -61,7 +59,7 @@ if(BUILD_GDAL)
 endif()
 
 if(BUILD_GSL)
-    set(GSL_ROOT "${CMAKE_BINARY_DIR}/lib/gsl/bin")
+    set(GSL_ROOT_DIR "${CMAKE_BINARY_DIR}/lib/gsl")
 endif()
 
 if(BUILD_VIENNACL)
