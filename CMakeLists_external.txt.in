@@ -71,6 +71,51 @@ if(BUILD_VTK)
 	    )
 endif()
 
+#Paraview (<=5.1.2  -- unsure on 5.5+) still needs to build it's own VTK. Since we have to carefully build VTK to avoid netcdf/proj4 compatibility issues, it is best to just let PV do its own thing
+#https://public.kitware.com/pipermail/paraview/2016-August/037922.html
+if(BUILD_ParaView)
+
+     # Patch for Paraview 5.2.2 via
+     # https://trac.macports.org/ticket/56981
+     # https://trac.macports.org/attachment/ticket/56981/paraview-5.5.2.patch
+     ExternalProject_Add(
+	    ParaView
+
+	   # GIT_REPOSITORY https://github.com/Kitware/ParaView.git
+	   # GIT_TAG  3a2e6bc # v5.5.2
+
+
+	   #Super build would be nice to rever to, however it doesn't compile if within a git sub-tree. Unsure how to work around this
+       # GIT_REPOSITORY https://gitlab.kitware.com/paraview/paraview-superbuild.git
+       # GIT_PROGRESS true
+	    URL https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.5&type=source&os=Sources&downloadFile=ParaView-v5.5.2.tar.gz
+
+	    UPDATE_COMMAND ""
+	    CMAKE_ARGS -DMACOSX_APP_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ParaView -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ParaView -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}# -DCMAKE_PREFIX_PATH=/usr/local/opt/qt    #$(brew --prefix qt5)
+	    BUILD_COMMAND make -j10
+	    INSTALL_COMMAND make install
+	    PATCH_COMMAND patch -p0  < ${CMAKE_BINARY_DIR}/paraview-5.5.2.patch
+	    BUILD_IN_SOURCE 0
+	 )
+
+	#build the datetime filter
+	#this uses boost
+    ExternalProject_Add(
+    	    vtk-timefilter
+            DEPENDS ParaView
+
+    	    GIT_REPOSITORY https://github.com/Chrismarsh/vtk-paraview-datetimefilter.git
+
+            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/vtk-datetime-filter -DParaView_DIR=${CMAKE_BINARY_DIR}/lib/ParaView-prefix/src/ParaView-build -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} #$(brew --prefix qt5)
+    	    UPDATE_COMMAND ""
+    	    BUILD_COMMAND make -j10
+    	    INSTALL_COMMAND make install
+    	    BUILD_IN_SOURCE 1
+    	 )
+
+
+endif()
+
 if( BUILD_BOOST)
     ExternalProject_Add(
 	    boost
@@ -192,15 +237,15 @@ if(BUILD_NETCDF)
             DEPENDS hdf5
 
 
-            # looks like autoreconf -if  is no longer needed
-            CONFIGURE_COMMAND   ${CMAKE_BINARY_DIR}/lib/netcdf-c-prefix/src/netcdf-c/configure
-                      CPPFLAGS=-I${CMAKE_BINARY_DIR}/lib/hdf5/include
-                      LDFLAGS=-L${CMAKE_BINARY_DIR}/lib/hdf5/lib
-                      --prefix=${CMAKE_BINARY_DIR}/lib/netcdf-c
-                      --enable-netcdf-4 --enable-shared
+            # Only use autoreconf -if  on non-tagged git
+            #CONFIGURE_COMMAND   ${CMAKE_BINARY_DIR}/lib/netcdf-c-prefix/src/netcdf-c/configure
+            #          CPPFLAGS=-I${CMAKE_BINARY_DIR}/lib/hdf5/include
+            #          LDFLAGS=-L${CMAKE_BINARY_DIR}/lib/hdf5/lib
+            #          --prefix=${CMAKE_BINARY_DIR}/lib/netcdf-c
+            #          --enable-netcdf-4 --enable-shared
 
-          #  CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5 -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
-          #              -DENABLE_NETCDF_4=ON -DBUILD_SHARED_LIBS=ON
+          CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5 -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
+                        -DENABLE_NETCDF_4=ON -DBUILD_SHARED_LIBS=ON
 
           # With 4.6.1, there appears to be a parallel make regression that causes, randomly compilation failure
           # https://github.com/Unidata/netcdf-c/issues/896#issuecomment-382823731

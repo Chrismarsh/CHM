@@ -2481,7 +2481,7 @@ void core::run()
 
 
             boost::posix_time::ptime pt(boost::posix_time::second_clock::local_time());
-            pt = pt + boost::posix_time::seconds(mt * (max_ts - current_ts));
+            pt = pt + boost::posix_time::seconds(size_t(mt) * (max_ts - current_ts));
             _ui.write_time_estimate(boost::posix_time::to_simple_string(pt));
 
             LOG_DEBUG << "Avg timestep duration " << s << "\tEstimated completion: " << boost::posix_time::to_simple_string(pt);

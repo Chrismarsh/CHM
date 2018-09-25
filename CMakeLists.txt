@@ -2,11 +2,17 @@
 # https://stackoverflow.com/a/23539626/410074
 cmake_minimum_required (VERSION 2.8.12.2)
 
+# In CMake 3.12 and above the find_package(<PackageName>) command now searches prefixes specified by the <PackageName>_ROOT CMake variable and the <PackageName>_ROOT environment variable.
+#https://cmake.org/cmake/help/latest/policy/CMP0074.html
+cmake_policy(SET CMP0074 NEW)
 project (CHMprj)
 
 #http://stackoverflow.com/questions/31561309/cmake-warnings-under-os-x-macosx-rpath-is-not-specified-for-the-following-targe
 #https://cmake.org/cmake/help/v3.0/policy/CMP0042.html
 set(CMAKE_MACOSX_RPATH 1)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(MACOSX TRUE)
+endif()
 
 # The version number.
 set (CHM_VERSION_MAJOR 0)
@@ -15,7 +21,6 @@ set (CHM_VERSION_MINOR 1)
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
 option(USE_OCL "Enable OpenCL with ViennaCL"  OFF )
-option(PV_FILTER "Build Paraview time filter"  OFF )
 option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
@@ -23,8 +28,10 @@ option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
+set(BUILD_ParaView TRUE CACHE BOOL "Build Paraview and PV date-time filter")
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
+
 
 #enable with cmake -DSUPERBUILD=TRUE .
 if(SUPERBUILD)
@@ -61,7 +68,9 @@ if(BUILD_VIENNACL)
     set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
 endif()
 
-#To avoid issues #104, newer VTK version needs to be used. Until VTK7+ becomes available in the LTS/&c releases, allow for easily building a new VTK
+#To avoid issues #104, newer VTK version needs to be used.
+#8.1+ needs to be used so that proj4 name-collisions are resolved
+# http://vtk.1045678.n5.nabble.com/Don-t-build-vtkproj4-td5746073.html
 if(BUILD_VTK)
     set(BUILD_PROJ4 TRUE)
     set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.1")
@@ -77,17 +86,16 @@ if(BUILD_PROJ4)
 endif()
 
 if(BUILD_NETCDF)
-    set(NETCDF_DIR "${CMAKE_BINARY_DIR}/lib/netcdf-c")
-    set(NETCDF_INCLUDE_DIR "${NETCDF_DIR}/include")
-    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${NETCDF_DIR}")
-    set(ENV{HDF5_ROOT} "${CMAKE_BINARY_DIR}/lib/hdf5")
+    set(NETCDF_DIR ${CMAKE_BINARY_DIR}/lib/netcdf-c)
+    set(NETCDF_INCLUDE_DIR ${NETCDF_DIR}/include)
+    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${NETCDF_DIR})
+    set(ENV{HDF5_ROOT} ${CMAKE_BINARY_DIR}/lib/hdf5)
 
     if(NOT BUILD_GDAL)
         message(WARNING "You should do a GDAL build to avoid linking against system netCDF and HDF5.")
     endif()
 
 endif()
-#set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
 
 ## Any custom boost path.
 #set(Boost_NO_SYSTEM_PATHS TRUE)
@@ -103,12 +111,31 @@ endmacro()
 
 configure_file(${CMAKE_SOURCE_DIR}/gdal-2.2.1.patch ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/vtk-8.0.0.patch ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/paraview-5.5.2.patch ${CMAKE_BINARY_DIR}/paraview-5.5.2.patch COPYONLY)
 
 #things covered by the superbuild
 # super build things we are missing
 configure_file(CMakeLists_external.txt.in
     ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
 
+
+#on macos, if qt5 is installed with brew, it won't be picked up
+
+#The FindQt5.cmake is the “old way”, and it is still searched for. Qt 5
+#distributes CMake config files, such as Qt5Config.cmake that contain paths,
+#macros, functions, etc. They are unfortunately a little deeper in the tree, so
+#you would have to set Qt5_DIR to “/usr/lib64/cmake/Qt5” in my case. I use this
+#approach on Windows, macOS, and Linux. The reduction in Qt5*_DIR variables, and
+#the assurance that all modules come from the same Qt5 is worth it.
+#https://blog.kitware.com/cmake-finding-qt5-the-right-way/#comment-7191
+
+
+if(MACOSX)
+    execute_process(COMMAND brew --prefix qt5
+            OUTPUT_VARIABLE qt5path)
+    message(STATUS "Ammending CMAKE_PREFIX_PATH to include brew qt5 -- ${qt5path}" )
+    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}")
+endif()
 
 #Trigger superbuild
 #If superbuild is not needed, we still need to build sparsehash, gperftools, and eigen3
@@ -123,7 +150,8 @@ execute_process(COMMAND ${CMAKE_COMMAND}
         -DBUILD_PROJ4=${BUILD_PROJ4}
         -DBUILD_NETCDF=${BUILD_NETCDF}
         -DBUILD_TBB=${BUILD_TBB}
-
+        -DBUILD_ParaView=${BUILD_ParaView}
+        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
         -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 execute_process(COMMAND ${CMAKE_COMMAND}  --build .
@@ -330,28 +358,11 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(PROJ4 REQUIRED) #gdal dependency, only need to link against it
+find_package(PROJ4 REQUIRED)
+
 find_package(GDAL 2.1 REQUIRED )
 
 find_package (Threads REQUIRED)
-
-#if(BUILD_TBB)
-#    #this builds from source, but seems brittle and doesn't seem to be picked up correctly
-#    include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
-#    include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBBuild.cmake)
-#    tbb_get(TBB_ROOT tbb_root SOURCE_CODE)
-#    tbb_build(TBB_ROOT ${tbb_root} CONFIG_DIR TBB_DIR)
-#
-#    MESSAGE(STATUS ${CONFIG_DIR} )
-#    MESSAGE(STATUS ${tbb_root} )
-#    MESSAGE(STATUS ${TBB_DIR} )
-#    #download the pre build TBB packages for the correct OS. Needs to be done here, as it doesn't seem to work in the _external cmake file
-##    include(${CMAKE_SOURCE_DIR}/CMake/tbb_cmake/TBBGet.cmake)
-##    tbb_get(TBB_ROOT tbb_root CONFIG_DIR TBB_DIR)
-#
-#    set(TBB_INSTALL_DIR ${tbb_root})
-#    #message(STATUS ${TBB_INSTALL_DIR})
-#endif()
 
 find_package(TBB REQUIRED tbb)
 
@@ -365,28 +376,27 @@ find_package(NetCDF REQUIRED)
 
 message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 
-#if we are building the plugin we need to compile against paraview (which brings in VTK)
-#otherwise use just VTK. You cannot link against both at the same time
-if(PV_FILTER)
-    FIND_PACKAGE(ParaView REQUIRED)
-    INCLUDE(${PARAVIEW_USE_FILE})
+
+#N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
+#Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
+# so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
+if(BUILD_VTK)
+    find_package(VTK REQUIRED HINTS ${VTK_DIR})
 else()
-
-    #N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
-    #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
-    # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
-    if(BUILD_VTK)
-        find_package(VTK REQUIRED HINTS ${VTK_DIR})
-    else()
-        find_package(VTK REQUIRED)
-    endif()
-    include(${VTK_USE_FILE})
-
-    if(VTK_MAJOR_VERSION LESS 7)
-        #https://github.com/Chrismarsh/CHM/issues/104
-        message( FATAL_ERROR "VTK > 6 is required, please see issue #104. You can build a compatible VTK using -DBUILD_VTK=ON." )
-    endif()
+    find_package(VTK REQUIRED)
 endif()
+include(${VTK_USE_FILE})
+
+if(VTK_MAJOR_VERSION LESS 7)
+    #https://github.com/Chrismarsh/CHM/issues/104
+    message( FATAL_ERROR "VTK > 6 is required, please see issue #104. You can build a compatible VTK using -DBUILD_VTK=ON." )
+endif()
+
+if(VTK_MAJOR_VERSION EQUAL 8 AND VTK_MINOR_VERSION LESS 1)
+    message( FATAL_ERROR "VTK >= 8.1 is required to avoid libproj4 name collision. You can build a compatible VTK using -DBUILD_VTK=ON." )
+endif()
+
+#endif()
 
 # add a target to generate API documentation with Doxygen
 # generate this via 'make doc'
