@@ -157,7 +157,7 @@ if(BUILD_VIENNACL)
 	    URL https://downloads.sourceforge.net/project/viennacl/1.7.x/ViennaCL-1.7.1.tar.gz
 	    UPDATE_COMMAND ""
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ViennaCL -DENABLE_CUDA=OFF -DENABLE_OPENMP=ON -DBUILD_EXAMPLES=OFF
-	    BUILD_COMMAND make -j10 
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )

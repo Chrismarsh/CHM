@@ -428,9 +428,5 @@ if (test)
     enable_testing()
 endif()
 
-if(PV_FILTER)
-    add_subdirectory(pv_filter)
-endif()
-
 
 message(STATUS "${CMAKE_CXX_FLAGS}")
