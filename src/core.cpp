@@ -895,6 +895,28 @@ void core::config_output(pt::ptree &value)
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output " + out.name + " coordinate is invalid."));
             }
 
+            // Check if user provided veg parameters for this output cell.
+            out.modLandCover = itr.second.get("modLandCover",-9999); // Landcover classfication method
+            out.modVeg = itr.second.get("modVeg",false); // Distributed veg parameter mapping method
+
+            // Check user did not try to use both methods
+            if(out.modVeg & (out.modLandCover!=-9999)){
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Cannot set both modLandCover AND modVeg."));
+            }
+
+            if(out.modVeg) {
+                try
+                {
+                    out.modcanopyType = itr.second.get<int>("modcanopyType");
+                    out.modLAI = itr.second.get<double>("modLAI");
+                    out.modCanopyHeight = itr.second.get<double>("modCanopyHeight");
+                }
+                catch(const pt::ptree_error &e)
+                {
+                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing modified Vegetation parameters for " + out.name));
+                }
+            }
+
             //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
             if(!_mesh->is_geographic())
             {
@@ -934,6 +956,21 @@ void core::config_output(pt::ptree &value)
 
             out.face->_debug_name = out.name; //out_type holds the station name
             out.face->_debug_ID = ID;
+
+            // If modVeg is true, modify with specified vegetation parameters
+            if(out.modVeg) {
+                LOG_DEBUG << "Updating vegetation parameters for " << out_type << ".";
+                out.face->set_parameter("LAI", out.modLAI);
+                out.face->set_parameter("canopyType", out.modcanopyType);
+                out.face->set_parameter("CanopyHeight", out.modCanopyHeight);
+            }
+
+            // if modLandCover is set, modify landcover type of current cell
+            if(out.modLandCover!=-9999) {
+                LOG_DEBUG << "Updating vegetation landcover for " << out_type << ".";
+                out.face->set_parameter("landcover", out.modLandCover);
+            }
+
             ++ID;
         }
         else if (out_type == "mesh")

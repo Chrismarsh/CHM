@@ -302,6 +302,11 @@ protected:
             longitude = 0;
             face = nullptr;
             name = "";
+            modVeg = false;
+            modLandCover = -9999;
+            modcanopyType = -9999;
+            modLAI = -9999;
+            modCanopyHeight = -9999;
         }
         enum output_type
         {
@@ -325,6 +330,11 @@ protected:
         mesh_elem face;
         timeseries ts;
         size_t frequency;
+        bool modVeg;
+        int modLandCover;
+        int modcanopyType;
+        double modLAI;
+        double modCanopyHeight;
 
     };
 
