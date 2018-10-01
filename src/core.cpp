@@ -258,31 +258,31 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
     for (auto &itr : modules)
     {
 
-        std::string module = itr;
-        LOG_DEBUG << "Module ID=" << module;
+        std::string module_name = itr;
+        LOG_DEBUG << "Module ID=" << module_name;
 
 
         //try grabbing a config for this module, empty string default
         pt::ptree cfg;
         try
         {
-            cfg = config.get_child(module);
+            cfg = config.get_child(module_name);
         } catch (pt::ptree_bad_path &e)
         {
-            LOG_DEBUG << "No config for " << module;
+            LOG_DEBUG << "No config for " << module_name;
         }
 
-        boost::shared_ptr<module_base> m = ModuleFactory::Create(module,cfg);
-	m->ID = module;
+        boost::shared_ptr<module_base> module = ModuleFactory::Create(module_name,cfg);
+	module->ID = module_name;
         //internal tracking of module initialization order
-        m->IDnum = modnum;
+        module->IDnum = modnum;
 
         //assign the internal global param pointer to our global
-        m->global_param = _global;
+        module->global_param = _global;
 
         modnum++;
         _modules.push_back(
-                std::make_pair(m, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
+                std::make_pair(module, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
     }
 
     if (modnum == 0)
