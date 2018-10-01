@@ -55,7 +55,7 @@ private:
     double Z_R;
     std::string var;
 public:
-    scale_wind_speed();
+    scale_wind_speed(config_file cfg);
     ~scale_wind_speed();
     void init(boost::shared_ptr<station>& station);
     void process(boost::shared_ptr<station>& station);

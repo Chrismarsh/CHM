@@ -29,7 +29,8 @@
 REGISTER_FILTER_CPP(macdonald_undercatch);
 
 
-macdonald_undercatch::macdonald_undercatch()
+macdonald_undercatch::macdonald_undercatch(config_file cfg)
+  : filter_base("macdonald_undercatch", cfg)
 {
 
 }

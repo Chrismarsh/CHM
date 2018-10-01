@@ -28,7 +28,8 @@
 #include "goodison_undercatch.h"
 REGISTER_FILTER_CPP(goodison_undercatch);
 
-goodison_undercatch::goodison_undercatch()
+goodison_undercatch::goodison_undercatch(config_file cfg)
+  : filter_base("goodison_undercatch", cfg)
 {
 
 }

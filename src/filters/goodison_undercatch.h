@@ -48,7 +48,7 @@ REGISTER_FILTER_HPP(goodison_undercatch);
 private:
     std::string var;
 public:
-    goodison_undercatch();
+    goodison_undercatch(config_file cfg);
     ~goodison_undercatch();
     void init(boost::shared_ptr<station>& station);
     void process(boost::shared_ptr<station>& station);

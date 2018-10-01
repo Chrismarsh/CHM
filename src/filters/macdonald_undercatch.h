@@ -47,7 +47,7 @@ REGISTER_FILTER_HPP(macdonald_undercatch);
 private:
     std::string var;
 public:
-    macdonald_undercatch();
+    macdonald_undercatch(config_file cfg);
     ~macdonald_undercatch();
     void init(boost::shared_ptr<station>& station);
     void process(boost::shared_ptr<station>& station);

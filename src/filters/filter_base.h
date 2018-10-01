@@ -33,10 +33,14 @@
 
 namespace pt = boost::property_tree;
 
+typedef pt::ptree config_file;
+
 class filter_base
 {
 public:
-    filter_base(){};
+    filter_base( std::string name = "",
+		 config_file input_cfg = pt::basic_ptree<std::string,std::string>() )
+      : ID(name), cfg(input_cfg) {};
     virtual ~filter_base(){};
 
     virtual void init(boost::shared_ptr<station>& station){};
@@ -71,11 +75,11 @@ public:
 */
 // Macros for easier registration of Filter implementations
 // single argument ctor
-typedef Factory<filter_base> FilterFactory;
+typedef Factory<filter_base, config_file> FilterFactory;
 #define REGISTER_FILTER_HPP(Implementation) \
 private: \
-   static const Registrar<filter_base,Implementation> registrar;
+   static const Registrar<filter_base,Implementation, config_file> registrar;
 #define STR_EXPAND(x) #x     // ensure x gets evaluated as a string,
 #define STR(x) STR_EXPAND(x) // two-stage macro
 #define REGISTER_FILTER_CPP(Implementation) \
-   const Registrar<filter_base,Implementation> Implementation::registrar(STR(Implementation));
+   const Registrar<filter_base,Implementation,config_file> Implementation::registrar(STR(Implementation));
