@@ -48,6 +48,7 @@
 * */
 class Thornton_var_p : public module_base
 {
+REGISTER_MODULE_HPP(Thornton_var_p);
 public:
     Thornton_var_p(config_file cfg);
     ~Thornton_var_p();
@@ -58,4 +59,3 @@ public:
         interpolation interp;
     };
 };
-

@@ -52,6 +52,7 @@
 */
 class const_llra_ta : public module_base
 {
+REGISTER_MODULE_HPP(const_llra_ta);
 public:
     const_llra_ta(config_file cfg);
     ~const_llra_ta();

@@ -47,6 +47,7 @@
 */
 class iswr_from_obs : public module_base
 {
+REGISTER_MODULE_HPP(iswr_from_obs);
 public:
     iswr_from_obs(config_file cfg);
     ~iswr_from_obs();
@@ -57,5 +58,3 @@ public:
         interpolation interp;
     };
 };
-
-

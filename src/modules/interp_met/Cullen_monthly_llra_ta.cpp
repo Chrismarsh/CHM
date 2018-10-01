@@ -22,6 +22,7 @@
 //
 
 #include "Cullen_monthly_llra_ta.hpp"
+REGISTER_MODULE_CPP(Cullen_monthly_llra_ta);
 
 Cullen_monthly_llra_ta::Cullen_monthly_llra_ta(config_file cfg)
         :module_base(parallel::data)

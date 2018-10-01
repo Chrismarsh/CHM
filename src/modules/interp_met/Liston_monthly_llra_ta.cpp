@@ -22,6 +22,7 @@
 //
 
 #include "Liston_monthly_llra_ta.hpp"
+REGISTER_MODULE_CPP(Liston_monthly_llra_ta);
 
 Liston_monthly_llra_ta::Liston_monthly_llra_ta(config_file cfg)
         :module_base(parallel::data)

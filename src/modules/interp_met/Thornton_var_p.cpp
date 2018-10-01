@@ -26,6 +26,7 @@
 //
 
 #include "Thornton_var_p.h"
+REGISTER_MODULE_CPP(Thornton_var_p);
 
 Thornton_var_p::Thornton_var_p(config_file cfg)
 : module_base(parallel::data)

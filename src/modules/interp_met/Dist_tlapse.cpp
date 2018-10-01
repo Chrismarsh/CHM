@@ -22,6 +22,7 @@
 //
 
 #include "Dist_tlapse.hpp"
+REGISTER_MODULE_CPP(Dist_tlapse);
 
 Dist_tlapse::Dist_tlapse(config_file cfg)
         :module_base(parallel::data)
@@ -54,10 +55,10 @@ void Dist_tlapse::run(mesh_elem& face)
 {
     // Distributed forcing lapse_rate to each face (changes per time step)
     //lapse_rate=0.0047;
-    
+
     // Find nearest station
     auto s_near = global_param->nearest_station(face->center().x(),face->center().y());
-    
+
     // Get the lapse rate from that station
     double lapse_rate = s_near.at(0)->get("t_lapse_rate");
 

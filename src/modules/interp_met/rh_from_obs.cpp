@@ -23,6 +23,7 @@
 
 
 #include "rh_from_obs.h"
+REGISTER_MODULE_CPP(rh_from_obs);
 
 rh_from_obs::rh_from_obs(config_file cfg)
 :module_base(parallel::data)

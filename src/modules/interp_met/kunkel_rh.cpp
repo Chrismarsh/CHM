@@ -22,6 +22,7 @@
 //
 
 #include "kunkel_rh.hpp"
+REGISTER_MODULE_CPP(kunkel_rh);
 
 kunkel_rh::kunkel_rh(config_file cfg)
         : module_base(parallel::data)
@@ -89,4 +90,3 @@ void kunkel_rh::run(mesh_elem &face)
     face->set_face_data("rh", rh);
 
 }
-

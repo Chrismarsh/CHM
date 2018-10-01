@@ -59,6 +59,7 @@
 */
 class Liston_wind : public module_base
 {
+REGISTER_MODULE_HPP(Liston_wind);
 public:
     Liston_wind(config_file cfg);
     ~Liston_wind();

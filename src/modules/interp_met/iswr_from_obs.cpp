@@ -23,6 +23,7 @@
 
 
 #include "iswr_from_obs.h"
+REGISTER_MODULE_CPP(iswr_from_obs);
 
 
 iswr_from_obs::iswr_from_obs(config_file cfg)
@@ -92,4 +93,3 @@ void iswr_from_obs::run(mesh_elem &face)
 
     face->set_face_data("atm_trans",split_dir/1375.);
 }
-

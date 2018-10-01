@@ -49,6 +49,7 @@
 */
 class t_no_lapse : public module_base
 {
+REGISTER_MODULE_HPP(t_no_lapse);
 public:
     t_no_lapse(config_file cfg);
     ~t_no_lapse();

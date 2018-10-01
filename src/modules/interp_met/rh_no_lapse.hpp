@@ -42,6 +42,7 @@
 */
 class rh_no_lapse : public module_base
 {
+REGISTER_MODULE_HPP(rh_no_lapse);
 public:
     rh_no_lapse(config_file cfg);
 

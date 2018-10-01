@@ -22,7 +22,7 @@
 //
 
 #include "Kunkel_monthlyTd_rh.hpp"
-
+REGISTER_MODULE_CPP(Kunkel_monthlyTd_rh);
 
 Kunkel_monthlyTd_rh::Kunkel_monthlyTd_rh(config_file cfg)
         :module_base(parallel::data)
@@ -100,7 +100,7 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& face)
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), Td_z ) );
     }
 
-   
+
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
     double Tdz0 = face->get_module_data<data>(ID)->interp(lowered_values, query);//C

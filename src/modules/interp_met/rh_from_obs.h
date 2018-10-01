@@ -28,6 +28,7 @@
 #include <meteoio/MeteoIO.h>
 class rh_from_obs : public module_base
 {
+REGISTER_MODULE_HPP(rh_from_obs);
 public:
     rh_from_obs(config_file cfg);
     ~rh_from_obs();

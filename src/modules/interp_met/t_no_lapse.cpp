@@ -22,6 +22,7 @@
 //
 
 #include "t_no_lapse.hpp"
+REGISTER_MODULE_CPP(t_no_lapse);
 
 t_no_lapse::t_no_lapse(config_file cfg)
         :module_base(parallel::data)

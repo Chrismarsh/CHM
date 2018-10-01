@@ -22,6 +22,7 @@
 //
 
 #include "p_no_lapse.hpp"
+REGISTER_MODULE_CPP(p_no_lapse);
 
 p_no_lapse::p_no_lapse(config_file cfg)
         :module_base(parallel::data)

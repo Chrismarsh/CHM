@@ -22,6 +22,7 @@
 //
 
 #include "Dodson_NSA_ta.h"
+REGISTER_MODULE_CPP(Dodson_NSA_ta);
 
 Dodson_NSA_ta::Dodson_NSA_ta(config_file cfg)
 :module_base(parallel::data)

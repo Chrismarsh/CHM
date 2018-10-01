@@ -32,6 +32,7 @@
  */
 class Dodson_NSA_ta : public module_base
 {
+REGISTER_MODULE_HPP(Dodson_NSA_ta);
 public:
     Dodson_NSA_ta(config_file cfg);
     ~Dodson_NSA_ta();
@@ -42,5 +43,3 @@ public:
         interpolation interp;
     };
 };
-
-

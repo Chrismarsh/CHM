@@ -22,6 +22,7 @@
 //
 
 #include "Liston_wind.hpp"
+REGISTER_MODULE_CPP(Liston_wind);
 
 Liston_wind::Liston_wind(config_file cfg)
         :module_base(parallel::domain)

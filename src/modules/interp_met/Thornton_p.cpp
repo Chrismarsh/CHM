@@ -22,6 +22,7 @@
 //
 
 #include "Thornton_p.hpp"
+REGISTER_MODULE_CPP(Thornton_p);
 
 Thornton_p::Thornton_p(config_file cfg)
         :module_base(parallel::data)

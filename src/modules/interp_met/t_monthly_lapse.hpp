@@ -57,6 +57,7 @@
 */
 class t_monthly_lapse : public module_base
 {
+REGISTER_MODULE_HPP(t_monthly_lapse);
 public:
     t_monthly_lapse(config_file cfg);
     ~t_monthly_lapse();

@@ -22,6 +22,7 @@
 //
 
 #include "lw_no_lapse.hpp"
+REGISTER_MODULE_CPP(lw_no_lapse);
 
 lw_no_lapse::lw_no_lapse(config_file cfg)
         :module_base(parallel::data)
