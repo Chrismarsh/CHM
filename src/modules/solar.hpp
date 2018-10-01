@@ -40,6 +40,7 @@
 class solar : public module_base
 {
 
+REGISTER_MODULE_HPP(solar);
 public:
 
     //if we have a UTM mesh, cache the calculated lat and long

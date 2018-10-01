@@ -34,6 +34,7 @@
  */
 class Richard_albedo : public module_base
 {
+REGISTER_MODULE_HPP(Richard_albedo);
 public:
     struct data : public face_info
     {
@@ -56,5 +57,3 @@ public:
     double albedo_bare;
     double min_swe_refresh;
 };
-
-

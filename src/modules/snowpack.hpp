@@ -39,6 +39,7 @@
 #include <string>
 class Lehning_snowpack : public module_base
 {
+REGISTER_MODULE_HPP(Lehning_snowpack);
 public:
     Lehning_snowpack(config_file cfg);
 
@@ -73,6 +74,3 @@ public:
     double const_T_g; // constant ground temp, degC
 
 };
-
-
-

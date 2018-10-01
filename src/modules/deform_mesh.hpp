@@ -33,6 +33,7 @@
  */
 class deform_mesh : public module_base
 {
+REGISTER_MODULE_HPP(deform_mesh)
 public:
     deform_mesh(config_file cfg);
 

@@ -23,6 +23,7 @@
 
 
 #include "Burridge_iswr.h"
+REGISTER_MODULE_CPP(Burridge_iswr);
 
 Burridge_iswr::Burridge_iswr(config_file cfg)
         :module_base(parallel::data)

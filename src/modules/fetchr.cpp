@@ -23,6 +23,7 @@
 
 
 #include "fetchr.hpp"
+REGISTER_MODULE_CPP(fetchr);
 
 fetchr::fetchr(config_file cfg)
         : module_base(parallel::data)
@@ -117,4 +118,3 @@ void fetchr::run(mesh_elem& face)
 
 
 }
-

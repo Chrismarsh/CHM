@@ -22,6 +22,7 @@
 //
 
 #include "Walcek_cloud.hpp"
+REGISTER_MODULE_CPP(Walcek_cloud);
 
 Walcek_cloud::Walcek_cloud(config_file cfg)
         :module_base(parallel::data)

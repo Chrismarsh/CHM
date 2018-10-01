@@ -22,6 +22,8 @@
 //
 
 #include "Harder_precip_phase.hpp"
+REGISTER_MODULE_CPP(Harder_precip_phase);
+
 Harder_precip_phase::Harder_precip_phase(config_file cfg)
         :module_base(parallel::data)
 {

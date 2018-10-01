@@ -30,9 +30,10 @@
 #include <math.h>
 
 class sub_grid : public module_base {
+REGISTER_MODULE_HPP(sub_grid);
 public:
     sub_grid(config_file cfg);
-    
+
     ~sub_grid();
 
     virtual void run(mesh_elem &face);

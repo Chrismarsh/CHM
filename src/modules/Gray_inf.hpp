@@ -33,6 +33,7 @@
 
 class Gray_inf : public module_base
 {
+REGISTER_MODULE_HPP(Gray_inf)
 public:
     Gray_inf(config_file cfg);
 
@@ -56,6 +57,3 @@ public:
 
     };
 };
-
-
-

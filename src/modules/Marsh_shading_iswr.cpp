@@ -23,6 +23,7 @@
 
 
 #include "Marsh_shading_iswr.hpp"
+REGISTER_MODULE_CPP(Marsh_shading_iswr);
 
 Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
         :module_base(parallel::domain)
@@ -132,7 +133,7 @@ void Marsh_shading_iswr::run(mesh domain)
 //    }
 
     tbb::task_scheduler_init init;
-    
+
 #pragma omp parallel for
     for (size_t i = 0; i < BBR->n_rows; i++)
     {
@@ -215,6 +216,3 @@ Marsh_shading_iswr::~Marsh_shading_iswr()
 
 
 }
-
-
-

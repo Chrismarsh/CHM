@@ -40,6 +40,7 @@
 
 class Simple_Canopy : public module_base
 {
+REGISTER_MODULE_HPP(Simple_Canopy);
 public:
     Simple_Canopy(config_file cfg);
 
@@ -79,6 +80,3 @@ public:
 
 
 };
-
-
-

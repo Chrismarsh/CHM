@@ -22,6 +22,7 @@
 //
 
 #include "solar.hpp"
+REGISTER_MODULE_CPP(solar);
 
 solar::solar(config_file cfg)
         :module_base(parallel::data)

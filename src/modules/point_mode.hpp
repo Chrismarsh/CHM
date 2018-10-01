@@ -33,6 +33,7 @@
  */
 class point_mode : public module_base
 {
+REGISTER_MODULE_HPP(point_mode);
 public:
     point_mode(config_file cfg);
 
@@ -55,6 +56,3 @@ public:
 
 
 };
-
-
-

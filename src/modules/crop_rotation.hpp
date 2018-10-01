@@ -33,6 +33,7 @@
  */
 class crop_rotation : public module_base
 {
+REGISTER_MODULE_HPP(crop_rotation)
 public:
     crop_rotation(config_file cfg);
 

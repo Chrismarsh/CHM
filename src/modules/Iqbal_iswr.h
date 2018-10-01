@@ -31,6 +31,7 @@
 
 class Iqbal_iswr : public module_base
 {
+REGISTER_MODULE_HPP(Iqbal_iswr);
 public:
     Iqbal_iswr(config_file cfg);
     ~Iqbal_iswr();

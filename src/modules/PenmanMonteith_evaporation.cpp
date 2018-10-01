@@ -23,6 +23,7 @@
 
 
 #include "PenmanMonteith_evaporation.hpp"
+REGISTER_MODULE_CPP(PenmanMonteith_evaporation);
 
 PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
         :module_base(parallel::data)

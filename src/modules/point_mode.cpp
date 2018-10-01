@@ -22,6 +22,7 @@
 //
 
 #include "point_mode.hpp"
+REGISTER_MODULE_CPP(point_mode);
 
 point_mode::point_mode(config_file cfg)
         : module_base(parallel::data)
@@ -125,7 +126,7 @@ void point_mode::run(mesh_elem &face)
         double srh = global_param->stations().at(0)->get("rh");
         face->set_face_data("rh", srh);
     }
-    
+
     if(U_2m_above_srf) {
         double su = global_param->stations().at(0)->get("u");
         su = std::max(su,0.1);
@@ -187,4 +188,3 @@ void point_mode::run(mesh_elem &face)
     );
 
 }
-

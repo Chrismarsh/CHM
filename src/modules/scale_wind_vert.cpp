@@ -23,6 +23,7 @@
 
 
 #include "scale_wind_vert.hpp"
+REGISTER_MODULE_CPP(scale_wind_vert);
 
 scale_wind_vert::scale_wind_vert(config_file cfg)
         :module_base( parallel::data)

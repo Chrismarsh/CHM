@@ -34,6 +34,7 @@
 // IEEE Transactions on Geoscience and Remote, 28(5), 963–969.
 class fast_shadow : public module_base
 {
+REGISTER_MODULE_HPP(fast_shadow);
 public:
     fast_shadow(config_file cfg);
 
@@ -50,6 +51,3 @@ public:
     double size_of_step;
 
 };
-
-
-

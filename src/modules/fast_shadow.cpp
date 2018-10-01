@@ -23,6 +23,7 @@
 
 
 #include "fast_shadow.hpp"
+REGISTER_MODULE_CPP(fast_shadow);
 
 fast_shadow::fast_shadow(config_file cfg)
         : module_base(parallel::data)
@@ -89,4 +90,3 @@ void fast_shadow::run(mesh_elem& face)
 
 
 }
-

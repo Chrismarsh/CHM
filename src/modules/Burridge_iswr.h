@@ -48,12 +48,10 @@
  */
 class Burridge_iswr : public module_base
 {
+REGISTER_MODULE_HPP(Burridge_iswr);
 public:
     Burridge_iswr(config_file cfg);
     ~Burridge_iswr();
     void run(mesh_elem& face);
 
 };
-
-
-
