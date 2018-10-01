@@ -114,3 +114,7 @@ public:
         }
     }
 };
+
+// Convenience macro for exception throwing
+#define CHM_THROW_EXCEPTION(exception_type,message) \
+  BOOST_THROW_EXCEPTION( exception_type() << errstr_info( message ) )

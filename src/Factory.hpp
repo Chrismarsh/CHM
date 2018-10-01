@@ -1,13 +1,15 @@
 ////////////////////////////////////////////////////////////////////////////
-// Factory.hop
+// Factory.hpp
 
 #pragma once
 
-// #include <memory>
 #include <map>
 #include <vector>
-#include <boost/shared_ptr.hpp>
 #include <functional>
+
+#include <boost/shared_ptr.hpp>
+
+#include "exception.hpp"
 
 template <class Interface, class... ConstructorArgs>
 class Factory {
@@ -49,9 +51,10 @@ boost::shared_ptr<Interface> Factory<Interface,ConstructorArgs...>::Create(std::
   if(it != registry().end())
     instance = it->second(args...);
 
-  // wrap instance in a unique ptr and return (if created)
-  if(instance == nullptr)
-    throw "Table name not found in registry."; // TODO better exception
+  // wrap instance in a shared ptr and return (if created)
+  if(instance == nullptr) {
+    CHM_THROW_EXCEPTION(module_not_found, "Key not found in registry: [" + name +"]");
+  }
   return boost::shared_ptr<Interface>(instance);
 }
 
