@@ -44,6 +44,7 @@ public:
 };
 class snobal : public module_base
 {
+REGISTER_MODULE_HPP(snobal);
 public:
     snobal(config_file cfg);
 
@@ -58,6 +59,3 @@ public:
     void load_checkpoint(mesh domain, netcdf& chkpt);
 
 };
-
-
-
