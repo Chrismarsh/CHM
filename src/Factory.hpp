@@ -25,9 +25,9 @@ private:
   static std::map<std::string, std::function<Interface*(ConstructorArgs...)>>& registry();
 
   Factory(){};
-  // Do NOT implement copy methods
-  Factory(Factory const& copy);
-  Factory& operator=(Factory const& copy);
+  // Remove copy constructor methods
+  Factory(Factory const& copy) = delete;
+  Factory& operator=(Factory const& copy) = delete;
 };
 // Registrar helper class for Factory
 template <class Interface, class Implementation, class... ConstructorArgs>
