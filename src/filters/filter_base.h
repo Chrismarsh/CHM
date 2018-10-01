@@ -29,6 +29,8 @@
 
 #include "station.hpp"
 
+#include "Factory.hpp"
+
 namespace pt = boost::property_tree;
 
 class filter_base
@@ -63,3 +65,17 @@ public:
     */
     std::string ID;
 };
+
+/**
+* Factory related convenience typedef and macros
+*/
+// Macros for easier registration of Filter implementations
+// single argument ctor
+typedef Factory<filter_base> FilterFactory;
+#define REGISTER_FILTER_HPP(Implementation) \
+private: \
+   static const Registrar<filter_base,Implementation> registrar;
+#define STR_EXPAND(x) #x     // ensure x gets evaluated as a string,
+#define STR(x) STR_EXPAND(x) // two-stage macro
+#define REGISTER_FILTER_CPP(Implementation) \
+   const Registrar<filter_base,Implementation> Implementation::registrar(STR(Implementation));

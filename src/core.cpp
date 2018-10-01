@@ -496,14 +496,18 @@ void core::config_forcing(pt::ptree &value)
                         auto filter_section = value.get_child("filter");
 
                         for (auto &jtr: filter_section)
-                        {
+			{
                             auto name = jtr.first.data();
+			    auto cfg  = jtr.second;
 
-                            boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
+			    boost::shared_ptr<filter_base> filter = FilterFactory::Create(name);
+			    filter->ID = name;
+			    filter->cfg = cfg;
+                            // boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
                             filter->init(s);
                             _netcdf_filters[name] = filter;
 
-                        }
+			}
 
                     } catch (pt::ptree_bad_path &e)
                     {
@@ -588,8 +592,12 @@ void core::config_forcing(pt::ptree &value)
                 for (auto &jtr: filter_section)
                 {
                     auto name = jtr.first.data();
+                    auto cfg = jtr.second;
 
-                    boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
+		    boost::shared_ptr<filter_base> filter = FilterFactory::Create(name);
+		    filter->ID = name;
+		    filter->cfg = cfg;
+                    // boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
                     filter->init(s);
 
                     //save this filter to run later

@@ -80,7 +80,7 @@ namespace po = boost::program_options;
 #include "logger.hpp"
 #include "exception.hpp"
 #include "triangulation.hpp"
-#include "filter_factory.h"
+#include "filter_base.h"
 #include "module_base.hpp"
 #include "station.hpp"
 #include "timer.hpp"
@@ -232,7 +232,7 @@ protected:
     boost::shared_ptr< text_sink > _cout_log_sink;
 
     //filter factory for creating the specified modules
-    filter_factory _filtfactory;
+    // filter_factory _filtfactory;
 
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
