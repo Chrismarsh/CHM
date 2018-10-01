@@ -1228,7 +1228,11 @@ void core::init(int argc, char **argv)
 
     _global = boost::make_shared<global>();
 
-    //don't just abort and die
+    // This needs to be set so that underflows in gsl math
+    // computations are not treated as errors. i.e.,
+    //    gsl: expint.c:363: ERROR: underflow
+    //    Default GSL error handler invoked.
+    // is not what we want.
     gsl_set_error_handler_off();
 
 
