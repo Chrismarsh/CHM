@@ -22,6 +22,7 @@
 //
 
 #include "scale_wind_speed.h"
+REGISTER_FILTER_CPP(scale_wind_speed);
 
 scale_wind_speed::scale_wind_speed()
 {

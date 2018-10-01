@@ -26,7 +26,7 @@
 //
 
 #include "goodison_undercatch.h"
-
+REGISTER_FILTER_CPP(goodison_undercatch);
 
 goodison_undercatch::goodison_undercatch()
 {

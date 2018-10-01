@@ -44,6 +44,7 @@
  * **/
 class goodison_undercatch : public filter_base
 {
+REGISTER_FILTER_HPP(goodison_undercatch);
 private:
     std::string var;
 public:

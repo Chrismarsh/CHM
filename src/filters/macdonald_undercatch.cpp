@@ -26,6 +26,7 @@
 //
 
 #include "macdonald_undercatch.h"
+REGISTER_FILTER_CPP(macdonald_undercatch);
 
 
 macdonald_undercatch::macdonald_undercatch()

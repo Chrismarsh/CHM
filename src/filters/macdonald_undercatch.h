@@ -43,6 +43,7 @@
  * */
 class macdonald_undercatch : public filter_base
 {
+REGISTER_FILTER_HPP(macdonald_undercatch);
 private:
     std::string var;
 public:

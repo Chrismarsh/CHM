@@ -49,6 +49,7 @@
  */
 class scale_wind_speed : public filter_base
 {
+REGISTER_FILTER_HPP(scale_wind_speed);
 private:
     double Z_F;
     double Z_R;
