@@ -271,7 +271,9 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
         {
             LOG_DEBUG << "No config for " << module;
         }
-        boost::shared_ptr<module_base> m(_mfactory.get(module, cfg));
+
+        boost::shared_ptr<module_base> m = ModuleFactory::Create(module,cfg);
+	m->ID = module;
         //internal tracking of module initialization order
         m->IDnum = modnum;
 

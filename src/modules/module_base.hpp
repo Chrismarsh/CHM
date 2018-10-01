@@ -32,7 +32,7 @@ namespace pt = boost::property_tree;
 #include "triangulation.hpp"
 #include "global.hpp"
 #include "timeseries/netcdf.hpp"
-
+#include "Factory.hpp"
 
 //Create a process modules group in the doxygen docs to add individual modules to
 /**
@@ -330,3 +330,17 @@ protected:
 */
 typedef boost::shared_ptr<module_base> module;
 typedef pt::ptree config_file;
+
+/**
+* Factory related convenience typedef and macros
+*/
+// Macros for easier registration of Module implementations
+// single argument ctor
+typedef Factory<module_base, config_file> ModuleFactory;
+#define REGISTER_MODULE_HPP(Implementation) \
+private: \
+   static const Registrar<module_base,Implementation,config_file> registrar;
+#define STR_EXPAND(x) #x     // ensure x gets evaluated as a string,
+#define STR(x) STR_EXPAND(x) // two-stage macro
+#define REGISTER_MODULE_CPP(Implementation) \
+   const Registrar<module_base,Implementation,config_file> Implementation::registrar(STR(Implementation));

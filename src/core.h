@@ -81,7 +81,7 @@ namespace po = boost::program_options;
 #include "exception.hpp"
 #include "triangulation.hpp"
 #include "filter_factory.h"
-#include "module_factory.hpp"
+#include "module_base.hpp"
 #include "station.hpp"
 #include "timer.hpp"
 #include "global.hpp"
@@ -92,6 +92,7 @@ namespace po = boost::program_options;
 #include "version.h"
 #include "math/coordinates.hpp"
 #include "timeseries/netcdf.hpp"
+#include "gsl/gsl_errno.h"
 
 struct vertex{
     std::string name;
@@ -229,9 +230,8 @@ protected:
     //a text file log
     boost::shared_ptr< text_sink > _log_sink;
     boost::shared_ptr< text_sink > _cout_log_sink;
-    
-    //module factory for creating the specified modules
-    module_factory _mfactory;
+
+    //filter factory for creating the specified modules
     filter_factory _filtfactory;
 
     //main mesh object
@@ -340,6 +340,3 @@ protected:
     size_t _checkpoint_feq; // frequency of checkpoints
 
 };
-
-
-
