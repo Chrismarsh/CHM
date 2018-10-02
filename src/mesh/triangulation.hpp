@@ -319,7 +319,7 @@ public:
      * \param ID Module ID
      * \return none
      */
-    void remove_face_data(std::string ID);
+    void remove_face_data(const std::string &ID);
 
     /**
     * Initializes  this faces timeseires with the given variables, for the given datetime series with the given size
@@ -395,12 +395,12 @@ public:
     void to_file(std::string fname);
 
     template<typename T>
-    T*get_module_data(std::string module);
+    T*get_module_data(const std::string &module);
 
-    void set_module_data(std::string module, face_info *fi);
+    void set_module_data(const std::string &module, face_info *fi);
 
     template<typename T>
-    T*make_module_data(std::string module);
+    T*make_module_data(const std::string &module);
 
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
@@ -701,8 +701,13 @@ private:
 	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
 
 	//holds the vectors we use to create the vtu file
+#ifdef USE_SPARSEHASH
+    google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > data;
+    google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > vectors;
+#else
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > vectors;
+#endif
 
     //should we write parameters to the vtu file?
     bool _write_parameters_to_vtu;
@@ -1356,7 +1361,7 @@ timeseries::iterator face<Gt, Fb>::now()
 
 template < class Gt, class Vb>
 template<typename T>
-T* face<Gt, Vb>::make_module_data(std::string module)
+T* face<Gt, Vb>::make_module_data(const std::string &module)
 {
 
 
@@ -1375,7 +1380,7 @@ T* face<Gt, Vb>::make_module_data(std::string module)
 
 template < class Gt, class Fb>
 template < typename T>
-T* face<Gt, Fb>::get_module_data(std::string module)
+T* face<Gt, Fb>::get_module_data(const std::string &module)
 {
     auto it = _module_face_data.find(module);
 
@@ -1396,7 +1401,7 @@ void face<Gt, Fb>::set_face_vector(const std::string& variable, Vector_3 v)
 };
 
 template < class Gt, class Fb>
-void face<Gt, Fb>::remove_face_data(std::string module)
+void face<Gt, Fb>::remove_face_data(const std::string &module)
 {
     try
     {
@@ -1411,7 +1416,7 @@ void face<Gt, Fb>::remove_face_data(std::string module)
     }
 };
 template < class Gt, class Fb>
-void face<Gt, Fb>::set_module_data(std::string module, face_info *fi)
+void face<Gt, Fb>::set_module_data(const std::string &module, face_info *fi)
 {
     _module_face_data[module] = fi;
 }

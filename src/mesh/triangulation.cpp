@@ -31,6 +31,11 @@ triangulation::triangulation()
     _terrain_deformed=false;
     _min_z =  999999;
     _max_z = -999999;
+
+#ifdef USE_SPARSEHASH
+    data.set_empty_key("");
+    vectors.set_empty_key("");
+#endif
 }
 
 #ifdef MATLAB
