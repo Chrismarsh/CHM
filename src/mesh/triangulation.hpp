@@ -39,6 +39,12 @@
 //#define ARMA_64BIT_WORD
 #include <armadillo>
 
+#ifdef USE_SPARSEHASH
+#include <sparsehash/dense_hash_map>
+#else
+#include <unordered_map>
+#endif
+
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -133,6 +139,10 @@ typedef K::Vector_2 Vector_2;
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
+
+
+
+
 /**
 * \class face
 * \brief Defines the triangle face
@@ -452,11 +462,20 @@ private:
     boost::shared_ptr<Point_3> _center;
     boost::shared_ptr<Vector_3> _normal;
 
-    //boost::ptr_map<std::string,face_info> _module_face_data;
-    std::map<std::string,face_info* > _module_face_data;
-    std::map<std::string,double> _parameters;
-    std::map<std::string,double> _initial_conditions;
-    std::map<std::string,Vector_3> _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
+#ifdef USE_SPARSEHASH
+    typedef google::dense_hash_map<std::string,face_info*> face_data_hashmap;
+    typedef google::dense_hash_map<std::string,double> face_param_hashmap;
+    typedef google::dense_hash_map<std::string,Vector_3> face_vec_hashmap;
+#else
+    typedef std::unordered_map<std::string,face_info*> face_data_hashmap;
+    typedef std::unordered_map<std::string,double> face_param_hashmap;
+    typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
+#endif
+
+    face_data_hashmap _module_face_data;
+    face_param_hashmap _parameters;
+    face_param_hashmap _initial_conditions;
+    face_vec_hashmap _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
 
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
@@ -896,13 +915,17 @@ face<Gt, Fb>::face()
     _slope = -1;
     _azimuth = -1;
     _data = boost::make_shared<timeseries>();
-
     _center = NULL;
     _normal = NULL;
-
     _area = -1.;
-
     _is_geographic = false;
+
+#ifdef USE_SPARSEHASH
+    _module_face_data.set_empty_key("");
+    _parameters.set_empty_key("");
+    _initial_conditions.set_empty_key("");
+    _module_face_vectors.set_empty_key("");
+#endif
 
 
 }
@@ -920,6 +943,14 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _normal = NULL;
     _area = -1.;
     _is_geographic = false;
+
+#ifdef USE_SPARSEHASH
+    _module_face_data.set_empty_key("");
+    _parameters.set_empty_key("");
+    _initial_conditions.set_empty_key("");
+    _module_face_vectors.set_empty_key("");
+#endif
+
 }
 
 template < class Gt, class Fb >
@@ -938,6 +969,14 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _normal = NULL;
     _area = -1.;
     _is_geographic = false;
+
+#ifdef USE_SPARSEHASH
+    _module_face_data.set_empty_key("");
+    _parameters.set_empty_key("");
+    _initial_conditions.set_empty_key("");
+    _module_face_vectors.set_empty_key("");
+#endif
+
 
 }
 
@@ -960,6 +999,14 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _normal = NULL;
     _area = -1.;
     _is_geographic = false;
+
+#ifdef USE_SPARSEHASH
+    _module_face_data.set_empty_key("");
+    _parameters.set_empty_key("");
+    _initial_conditions.set_empty_key("");
+    _module_face_vectors.set_empty_key("");
+#endif
+
 }
 
 template < class Gt, class Fb>
