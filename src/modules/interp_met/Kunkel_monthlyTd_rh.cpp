@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(Kunkel_monthlyTd_rh);
 
 Kunkel_monthlyTd_rh::Kunkel_monthlyTd_rh(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("Kunkel_monthlyTd_rh", parallel::data, cfg)
 
 {
     provides("rh");

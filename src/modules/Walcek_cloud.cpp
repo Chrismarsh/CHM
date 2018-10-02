@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(Walcek_cloud);
 
 Walcek_cloud::Walcek_cloud(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("Walcek_cloud", parallel::data, cfg)
 {
     provides("cloud_frac");
     depends("t");

@@ -273,7 +273,6 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
         }
 
         boost::shared_ptr<module_base> module = ModuleFactory::Create(module_name,cfg);
-	module->ID = module_name;
         //internal tracking of module initialization order
         module->IDnum = modnum;
 

@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(Simple_Canopy);
 
 Simple_Canopy::Simple_Canopy(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("Simple_Canopy", parallel::data, cfg)
 {
     depends("p_rain");
     depends("p_snow");

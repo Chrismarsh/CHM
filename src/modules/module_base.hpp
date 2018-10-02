@@ -46,6 +46,8 @@ namespace pt = boost::property_tree;
 * A module must inherent from this class. This provides the interface for all module.
 */
 
+typedef pt::ptree config_file;
+
 class module_base
 {
 public:
@@ -97,14 +99,15 @@ public:
     /**
      * Consturctor that initializes everything
      */
-    module_base(parallel type)
+    module_base(std::string name = "",
+		parallel type = parallel::data,
+		config_file input_cfg = pt::basic_ptree<std::string,std::string>())
+      : ID(name), _parallel_type(type), cfg(input_cfg), IDnum(0)
     {
         _provides = boost::make_shared<std::vector<std::string> >();
         _depends = boost::make_shared<std::vector<std::string> >();
         _depends_from_met = boost::make_shared<std::vector<std::string> >();
         _optional = boost::make_shared<std::vector<std::string> >();
-        IDnum = 0;
-        _parallel_type = type;
         global_param = nullptr;
 
         //nothing
@@ -329,7 +332,6 @@ protected:
 * Convenience typedef for modules.
 */
 typedef boost::shared_ptr<module_base> module;
-typedef pt::ptree config_file;
 
 /**
 * Factory related convenience typedef and macros

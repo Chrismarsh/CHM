@@ -27,7 +27,7 @@ REGISTER_MODULE_CPP(iswr_from_obs);
 
 
 iswr_from_obs::iswr_from_obs(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("iswr_from_obs", parallel::data, cfg)
 {
     depends_from_met("Qsi");
     depends("solar_el");

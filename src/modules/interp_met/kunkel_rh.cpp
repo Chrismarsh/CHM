@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(kunkel_rh);
 
 kunkel_rh::kunkel_rh(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("kunkel_rh", parallel::data, cfg)
 {
     provides("rh");
     depends_from_met("rh");

@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(snobal);
 
 snobal::snobal(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("snobal", parallel::data, cfg)
 {
     depends("frac_precip_snow");
     depends("iswr");

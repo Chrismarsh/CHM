@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(Richard_albedo);
 
 Richard_albedo::Richard_albedo(config_file cfg)
-: module_base(parallel::data)
+: module_base("Richard_albedo", parallel::data, cfg)
 {
 
     depends("swe");

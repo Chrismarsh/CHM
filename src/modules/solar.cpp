@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(solar);
 
 solar::solar(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("solar", parallel::data, cfg)
 {
     provides("solar_el");
     provides("solar_az");

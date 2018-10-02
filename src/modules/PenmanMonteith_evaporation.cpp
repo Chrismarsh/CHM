@@ -26,7 +26,7 @@
 REGISTER_MODULE_CPP(PenmanMonteith_evaporation);
 
 PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
-        :module_base(parallel::data)
+        :module_base("PenmanMonteith_evaporation", parallel::data, cfg)
 {
 
     depends("Qsi");

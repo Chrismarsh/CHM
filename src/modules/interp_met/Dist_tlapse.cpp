@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(Dist_tlapse);
 
 Dist_tlapse::Dist_tlapse(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("Dist_tlapse", parallel::data, cfg)
 
 {
     provides("t");

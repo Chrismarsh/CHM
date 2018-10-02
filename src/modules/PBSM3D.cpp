@@ -35,7 +35,7 @@ inline unsigned int offset(const unsigned int& row_start,const unsigned int& row
     return -1; //wrap it and index garbage
 }
 PBSM3D::PBSM3D(config_file cfg)
-        :module_base(parallel::domain)
+        : module_base("PBSM3D", parallel::domain, cfg)
 {
     depends("U_2m_above_srf");
     depends("vw_dir");

@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(Lehning_snowpack);
 
 Lehning_snowpack::Lehning_snowpack(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("Lehning_snowpack", parallel::data, cfg)
 {
     depends("iswr");
     depends("ilwr");

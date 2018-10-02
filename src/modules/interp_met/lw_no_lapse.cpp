@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(lw_no_lapse);
 
 lw_no_lapse::lw_no_lapse(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("lw_no_lapse", parallel::data, cfg)
 
 {
     provides("ilwr");

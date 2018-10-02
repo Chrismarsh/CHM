@@ -25,8 +25,7 @@
 REGISTER_MODULE_CPP(Cullen_monthly_llra_ta);
 
 Cullen_monthly_llra_ta::Cullen_monthly_llra_ta(config_file cfg)
-        :module_base(parallel::data)
-
+        : module_base("Cullen_monthly_llra_ta", parallel::data, cfg)
 {
     provides("t");
     provides("t_lapse_rate");

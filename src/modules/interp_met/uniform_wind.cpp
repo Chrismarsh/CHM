@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(uniform_wind);
 
 uniform_wind::uniform_wind(config_file cfg)
-        :module_base(parallel::domain)
+        : module_base("uniform_wind", parallel::domain, cfg)
 
 {
     depends_from_met("U_R");

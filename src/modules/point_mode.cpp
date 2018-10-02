@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(point_mode);
 
 point_mode::point_mode(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("point_mode", parallel::data, cfg)
 {
 
      t              = cfg.get("provide.t",true);

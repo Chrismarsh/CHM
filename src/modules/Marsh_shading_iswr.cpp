@@ -26,7 +26,7 @@
 REGISTER_MODULE_CPP(Marsh_shading_iswr);
 
 Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
-        :module_base(parallel::domain)
+        :module_base("Marsh_shading_iswr", parallel::domain, cfg)
 {
     depends("solar_az");
     depends("solar_el");

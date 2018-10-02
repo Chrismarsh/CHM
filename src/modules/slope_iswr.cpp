@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(slope_iswr);
 
 slope_iswr::slope_iswr(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("slope_iswr", parallel::data, cfg)
 {
     depends("iswr");
     depends("iswr_diffuse");

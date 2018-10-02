@@ -25,7 +25,7 @@
 REGISTER_MODULE_CPP(const_llra_ta);
 
 const_llra_ta::const_llra_ta(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("const_llra_ta", parallel::data, cfg)
 
 {
     provides("t");

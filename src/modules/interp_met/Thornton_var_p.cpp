@@ -29,7 +29,7 @@
 REGISTER_MODULE_CPP(Thornton_var_p);
 
 Thornton_var_p::Thornton_var_p(config_file cfg)
-: module_base(parallel::data)
+  : module_base("Thornton_var_p", parallel::data, cfg)
 {
     depends_from_met("p");
 
