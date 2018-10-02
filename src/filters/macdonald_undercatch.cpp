@@ -25,7 +25,7 @@
 // Created by chris on 18/11/15.
 //
 
-#include "macdonald_undercatch.h"
+#include "macdonald_undercatch.hpp"
 REGISTER_FILTER_CPP(macdonald_undercatch);
 
 

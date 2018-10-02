@@ -25,7 +25,7 @@
 // Created by chris on 06/11/15.
 //
 
-#include "Iqbal_iswr.h"
+#include "Iqbal_iswr.hpp"
 REGISTER_MODULE_CPP(Iqbal_iswr);
 
 Iqbal_iswr::Iqbal_iswr(config_file cfg)

@@ -26,7 +26,7 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
-#include "interpolation.h"
+#include "interpolation.hpp"
 
 #include "math/coordinates.hpp"
 

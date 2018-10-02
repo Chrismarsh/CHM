@@ -80,14 +80,14 @@ namespace po = boost::program_options;
 #include "logger.hpp"
 #include "exception.hpp"
 #include "triangulation.hpp"
-#include "filter_base.h"
+#include "filter_base.hpp"
 #include "module_base.hpp"
 #include "station.hpp"
 #include "timer.hpp"
 #include "global.hpp"
 #include "str_format.h"
 #include "ui.h"
-#include "interpolation.h"
+#include "interpolation.hpp"
 #include "readjson.hpp"
 #include "version.h"
 #include "math/coordinates.hpp"
@@ -139,16 +139,16 @@ class core
 {
     friend class CoreTest;
 public:
-    
-    
+
+
   /**
    * Reads the main JSON configuration file. It assumes the base of the JSON is an object. That is, the file
    * starts with { ... }.
    * Within this file are a collection of meshes that are expected to have the same number of x,y
-   * points. This is done so that, for example, elevation, forest cover, sky-view factor, etc 
+   * points. This is done so that, for example, elevation, forest cover, sky-view factor, etc
    * may be added individually. Generation of the meshes should be done via the utilities for this.
    * An example of mesh.config is:
-   * \code	
+   * \code
    *  {
    *    "meshes":
    *    {
@@ -165,7 +165,7 @@ public:
    *            {
    *                    "file": "svf.asc"
    *            }
-   *    }	
+   *    }
    *   }
    *   \endcode
    * @param file The file to open

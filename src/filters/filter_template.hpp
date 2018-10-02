@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "filter_base.h"
+#include "filter_base.hpp"
 #include <constants/Atmosphere.h>
 
 

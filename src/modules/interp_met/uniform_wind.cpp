@@ -24,6 +24,7 @@
 #include "uniform_wind.hpp"
 REGISTER_MODULE_CPP(uniform_wind);
 
+
 uniform_wind::uniform_wind(config_file cfg)
         : module_base("uniform_wind", parallel::domain, cfg)
 

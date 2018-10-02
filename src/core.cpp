@@ -21,7 +21,8 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include "core.h"
+#include "core.hpp"
+
 
 core::core()
 {

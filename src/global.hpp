@@ -35,7 +35,7 @@ namespace pt = boost::property_tree;
 
 #include <tbb/concurrent_vector.h>
 
-#include "interpolation.h"
+#include "interpolation.hpp"
 #include "station.hpp"
 #include "math/coordinates.hpp"
 
@@ -53,7 +53,7 @@ namespace pt = boost::property_tree;
 class station;
 /**
  * Basin wide parameters such as transmissivity, solar elevation, solar aspect, etc.
- * 
+ *
  **/
 class global
 {
@@ -86,11 +86,11 @@ class global
 //    Sliding_midpoint
 //    typedef CGAL::Orthogonal_k_neighbor_search<Traits> Neighbor_search;
 
-     //want to let core modify date time, etc without showing a public interface. 
+     //want to let core modify date time, etc without showing a public interface.
     //This is because global gets passed to all modules and a rogue module could do something dumb
     //const doesn't save us as we actually do want to modify things
     friend class core;
-    
+
 private:
     boost::posix_time::ptime _current_date;
     var _variables;

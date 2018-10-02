@@ -22,7 +22,7 @@
 //
 
 
-#include "Burridge_iswr.h"
+#include "Burridge_iswr.hpp"
 REGISTER_MODULE_CPP(Burridge_iswr);
 
 Burridge_iswr::Burridge_iswr(config_file cfg)

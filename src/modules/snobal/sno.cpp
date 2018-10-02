@@ -120,7 +120,7 @@ double sno::new_tsno(
         **      init_snow -- initialize the properties for the snowcover
 **
 ** SYNOPSIS
-**      #include "snobal.h"
+**      #include "snobal.hpp"
 **
 **      void
         **	init_snow(void)

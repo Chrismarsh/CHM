@@ -22,41 +22,33 @@
 
 #pragma once
 
-#include "filter_base.h"
-#include <constants/Atmosphere.h>
+#include "filter_base.hpp"
+#include <math.h>
 
 
 /**
  * \addtogroup filters
  * @{
- * \class scale_wind_speed
- * \brief Scales station/model grid cell wind speed from measured/modeled height to standard reference height for CHM
+ * \class macdonald_undercatch
+ * \brief Computes undercatch correction
  *
- * Example call in config file
- * "filter":
-       {
-         "scale_wind_speed":
-         {
-           "variable":"u",
-           "Z_R":50  // [m]
-         }
-       }
+ * Undercatch correction for a Alter shielded Geonor and tipping bucket via Macdonald, et al. 2007
  *
  * Depends:
- * - U_F [m/s]
- * - Z_F [m] - Height of wind speed measurement/model layer
+ * - p [mm]
+ * - u [m/s]
  *
- */
-class scale_wind_speed : public filter_base
+ * References:
+ * - Macdonald, J., & Pomeroy, J. (2007). Gauge Undercatch of Two Common Snowfall Gauges in a Prairie Environment. Proceedings of the 64th Eastern Snow Conference, St. John‘s, Canada., 119–126.
+ * */
+class macdonald_undercatch : public filter_base
 {
-REGISTER_FILTER_HPP(scale_wind_speed);
+REGISTER_FILTER_HPP(macdonald_undercatch);
 private:
-    double Z_F;
-    double Z_R;
     std::string var;
 public:
-    scale_wind_speed(config_file cfg);
-    ~scale_wind_speed();
+    macdonald_undercatch(config_file cfg);
+    ~macdonald_undercatch();
     void init(boost::shared_ptr<station>& station);
     void process(boost::shared_ptr<station>& station);
 };

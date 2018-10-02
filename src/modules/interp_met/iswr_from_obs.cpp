@@ -22,7 +22,7 @@
 //
 
 
-#include "iswr_from_obs.h"
+#include "iswr_from_obs.hpp"
 REGISTER_MODULE_CPP(iswr_from_obs);
 
 

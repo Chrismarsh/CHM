@@ -21,7 +21,7 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include "scale_wind_speed.h"
+#include "scale_wind_speed.hpp"
 REGISTER_FILTER_CPP(scale_wind_speed);
 
 scale_wind_speed::scale_wind_speed(config_file cfg)

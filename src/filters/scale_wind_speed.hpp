@@ -22,34 +22,41 @@
 
 #pragma once
 
-#include "filter_base.h"
-#include <math.h>
+#include "filter_base.hpp"
+#include <constants/Atmosphere.h>
 
 
 /**
  * \addtogroup filters
  * @{
- * \class goodison_undercatch
- * \brief Computes undercatch correction
+ * \class scale_wind_speed
+ * \brief Scales station/model grid cell wind speed from measured/modeled height to standard reference height for CHM
  *
- * Undercatch correction for a Nipher shielded guage via Goodison 1998 for solid precipitation
+ * Example call in config file
+ * "filter":
+       {
+         "scale_wind_speed":
+         {
+           "variable":"u",
+           "Z_R":50  // [m]
+         }
+       }
  *
  * Depends:
- * - p [mm]
- * - u [m/s]
+ * - U_F [m/s]
+ * - Z_F [m] - Height of wind speed measurement/model layer
  *
- * References:
- * - ﻿Goodison, B. E. (1998), WMO Solid Solid Precipitiation Measurement Intercomparison. https://globalcryospherewatch.org/bestpractices/docs/WMOtd872.pdf
- *
- * **/
-class goodison_undercatch : public filter_base
+ */
+class scale_wind_speed : public filter_base
 {
-REGISTER_FILTER_HPP(goodison_undercatch);
+REGISTER_FILTER_HPP(scale_wind_speed);
 private:
+    double Z_F;
+    double Z_R;
     std::string var;
 public:
-    goodison_undercatch(config_file cfg);
-    ~goodison_undercatch();
+    scale_wind_speed(config_file cfg);
+    ~scale_wind_speed();
     void init(boost::shared_ptr<station>& station);
     void process(boost::shared_ptr<station>& station);
 };

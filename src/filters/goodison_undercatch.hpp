@@ -22,33 +22,34 @@
 
 #pragma once
 
-#include "filter_base.h"
+#include "filter_base.hpp"
 #include <math.h>
 
 
 /**
  * \addtogroup filters
  * @{
- * \class macdonald_undercatch
+ * \class goodison_undercatch
  * \brief Computes undercatch correction
  *
- * Undercatch correction for a Alter shielded Geonor and tipping bucket via Macdonald, et al. 2007
+ * Undercatch correction for a Nipher shielded guage via Goodison 1998 for solid precipitation
  *
  * Depends:
  * - p [mm]
  * - u [m/s]
  *
  * References:
- * - Macdonald, J., & Pomeroy, J. (2007). Gauge Undercatch of Two Common Snowfall Gauges in a Prairie Environment. Proceedings of the 64th Eastern Snow Conference, St. John‘s, Canada., 119–126.
- * */
-class macdonald_undercatch : public filter_base
+ * - ﻿Goodison, B. E. (1998), WMO Solid Solid Precipitiation Measurement Intercomparison. https://globalcryospherewatch.org/bestpractices/docs/WMOtd872.pdf
+ *
+ * **/
+class goodison_undercatch : public filter_base
 {
-REGISTER_FILTER_HPP(macdonald_undercatch);
+REGISTER_FILTER_HPP(goodison_undercatch);
 private:
     std::string var;
 public:
-    macdonald_undercatch(config_file cfg);
-    ~macdonald_undercatch();
+    goodison_undercatch(config_file cfg);
+    ~goodison_undercatch();
     void init(boost::shared_ptr<station>& station);
     void process(boost::shared_ptr<station>& station);
 };

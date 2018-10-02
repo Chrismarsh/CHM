@@ -27,7 +27,7 @@
 
 #define BOOST_SPIRIT_THREADSAFE
 
-#include "core.h"
+#include "core.hpp"
 
 
 
@@ -39,7 +39,7 @@ int main (int argc, char *argv[])
     try
     {
         kernel.init(argc, argv) ;
-        
+
         kernel.run();
 
         kernel.end();

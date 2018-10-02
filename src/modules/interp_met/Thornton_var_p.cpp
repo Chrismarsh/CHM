@@ -25,7 +25,7 @@
 // Created by chris on 17/11/15.
 //
 
-#include "Thornton_var_p.h"
+#include "Thornton_var_p.hpp"
 REGISTER_MODULE_CPP(Thornton_var_p);
 
 Thornton_var_p::Thornton_var_p(config_file cfg)
