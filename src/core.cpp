@@ -273,7 +273,7 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
             LOG_DEBUG << "No config for " << module_name;
         }
 
-        boost::shared_ptr<module_base> module = ModuleFactory::Create(module_name,cfg);
+        boost::shared_ptr<module_base> module = module_factory::create(module_name,cfg);
         //internal tracking of module initialization order
         module->IDnum = modnum;
 
@@ -500,7 +500,7 @@ void core::config_forcing(pt::ptree &value)
                             auto filter_name = jtr.first.data();
 			    auto cfg  = jtr.second;
 
-			    boost::shared_ptr<filter_base> filter = FilterFactory::Create(filter_name,cfg);
+			    boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
                             filter->init(s);
                             _netcdf_filters[filter_name] = filter;
 
@@ -591,7 +591,7 @@ void core::config_forcing(pt::ptree &value)
                     auto filter_name = jtr.first.data();
                     auto cfg = jtr.second;
 
-		    boost::shared_ptr<filter_base> filter = FilterFactory::Create(filter_name,cfg);
+		    boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
                     filter->init(s);
 
                     //save this filter to run later

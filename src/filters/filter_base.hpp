@@ -29,7 +29,7 @@
 
 #include "station.hpp"
 
-#include "Factory.hpp"
+#include "factory.hpp"
 
 namespace pt = boost::property_tree;
 
@@ -75,11 +75,11 @@ public:
 */
 // Macros for easier registration of Filter implementations
 // single argument ctor
-typedef Factory<filter_base, config_file> FilterFactory;
+typedef factory<filter_base, config_file> filter_factory;
 #define REGISTER_FILTER_HPP(Implementation) \
 private: \
-   static const Registrar<filter_base,Implementation, config_file> registrar;
+   static const registration_helper<filter_base,Implementation, config_file> registrar;
 #define STR_EXPAND(x) #x     // ensure x gets evaluated as a string,
 #define STR(x) STR_EXPAND(x) // two-stage macro
 #define REGISTER_FILTER_CPP(Implementation) \
-   const Registrar<filter_base,Implementation,config_file> Implementation::registrar(STR(Implementation));
+   const registration_helper<filter_base,Implementation,config_file> Implementation::registrar(STR(Implementation));

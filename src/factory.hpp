@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////
-// Factory.hpp
+// factory.hpp
 
 #pragma once
 
@@ -12,13 +12,13 @@
 #include "exception.hpp"
 
 template <class Interface, class... ConstructorArgs>
-class Factory {
+class factory {
 public:
   // Only ever hand out unique pointers
-  static boost::shared_ptr<Interface> Create(std::string name, ConstructorArgs... args);
+  static boost::shared_ptr<Interface> create(std::string name, ConstructorArgs... args);
   // Actual registration function
-  static void RegisterFactoryFunction(std::string name,
-        std::function<Interface*(ConstructorArgs...)> implementationFactoryFunction);
+  static void register_factory_function(std::string name,
+        std::function<Interface*(ConstructorArgs...)> implementation_constructor_function);
   // Get all keys from the registry
   static std::vector<std::string> registered_keys(void);
 
@@ -26,23 +26,23 @@ private:
   // the actual registry is private to this class
   static std::map<std::string, std::function<Interface*(ConstructorArgs...)>>& registry();
 
-  Factory(){};
+  factory(){};
   // Remove copy constructor methods
-  Factory(Factory const& copy) = delete;
-  Factory& operator=(Factory const& copy) = delete;
+  factory(factory const& copy) = delete;
+  factory& operator=(factory const& copy) = delete;
 };
-// Registrar helper class for Factory
+// registrar helper class for factory
 template <class Interface, class Implementation, class... ConstructorArgs>
-class Registrar {
+class registration_helper {
 public:
-  Registrar(std::string className)
+  registration_helper(std::string className)
   {
-    Factory<Interface,ConstructorArgs...>::RegisterFactoryFunction(className, [](ConstructorArgs... args) -> Interface * {return new Implementation(args...);});
+    factory<Interface,ConstructorArgs...>::register_factory_function(className, [](ConstructorArgs... args) -> Interface * {return new Implementation(args...);});
   }
 };
 
 template <class Interface, class... ConstructorArgs>
-boost::shared_ptr<Interface> Factory<Interface,ConstructorArgs...>::Create(std::string name, ConstructorArgs... args)
+boost::shared_ptr<Interface> factory<Interface,ConstructorArgs...>::create(std::string name, ConstructorArgs... args)
 {
   Interface * instance = nullptr;
 
@@ -59,7 +59,7 @@ boost::shared_ptr<Interface> Factory<Interface,ConstructorArgs...>::Create(std::
 }
 
 template <class Interface, class... ConstructorArgs>
-std::vector<std::string> Factory<Interface,ConstructorArgs...>::registered_keys()
+std::vector<std::string> factory<Interface,ConstructorArgs...>::registered_keys()
 {
   // copy all keys from the registry map into a vector
   std::vector<std::string> keys;
@@ -70,15 +70,15 @@ std::vector<std::string> Factory<Interface,ConstructorArgs...>::registered_keys(
 }
 
 template <class Interface, class... ConstructorArgs>
-void Factory<Interface,ConstructorArgs...>::RegisterFactoryFunction(std::string name,
-std::function<Interface*(ConstructorArgs...)> implementationFactoryFunction)
+void factory<Interface,ConstructorArgs...>::register_factory_function(std::string name,
+std::function<Interface*(ConstructorArgs...)> implementation_constructor_function)
 {
   // register a derived class factory function
-  registry()[name] = implementationFactoryFunction;
+  registry()[name] = implementation_constructor_function;
 }
 
 template <class Interface, class... ConstructorArgs>
-std::map<std::string, std::function<Interface*(ConstructorArgs...)> >& Factory<Interface,ConstructorArgs...>::registry()
+std::map<std::string, std::function<Interface*(ConstructorArgs...)> >& factory<Interface,ConstructorArgs...>::registry()
 {
   // Get the singleton instance of the registry map
   static std::map<std::string, std::function<Interface*(ConstructorArgs...)> > registry;
