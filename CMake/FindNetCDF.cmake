@@ -73,6 +73,7 @@ macro (NetCDF_check_interface lang header libs)
 	find_library (NETCDF_${lang}_LIBRARY NAMES ${libs}
 	    HINTS "${NetCDF_lib_dirs}"
 	    HINTS "${NETCDF_${lang}_ROOT}/lib"
+		HINTS "${NETCDF_${lang}_ROOT}/lib64"
 	    ${USE_DEFAULT_PATHS})
 
 	mark_as_advanced (NETCDF_${lang}_INCLUDE_DIR NETCDF_${lang}_LIBRARY)
