@@ -22,7 +22,7 @@
 //
 
 
-#include "core.h"
+#include "core.hpp"
 #include "gtest/gtest.h"
 #include <stdlib.h>
 #include <string>
