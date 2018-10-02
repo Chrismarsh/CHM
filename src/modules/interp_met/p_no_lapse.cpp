@@ -22,9 +22,10 @@
 //
 
 #include "p_no_lapse.hpp"
+REGISTER_MODULE_CPP(p_no_lapse);
 
 p_no_lapse::p_no_lapse(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("p_no_lapse", parallel::data, cfg)
 {
 
     depends_from_met("p");

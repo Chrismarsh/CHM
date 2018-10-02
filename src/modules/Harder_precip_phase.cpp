@@ -22,8 +22,10 @@
 //
 
 #include "Harder_precip_phase.hpp"
+REGISTER_MODULE_CPP(Harder_precip_phase);
+
 Harder_precip_phase::Harder_precip_phase(config_file cfg)
-        :module_base(parallel::data)
+        :module_base("Harder_precip_phase", parallel::data, cfg)
 {
     depends("t");
     depends("rh");

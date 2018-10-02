@@ -22,9 +22,10 @@
 //
 
 #include "snowpack.hpp"
+REGISTER_MODULE_CPP(Lehning_snowpack);
 
 Lehning_snowpack::Lehning_snowpack(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("Lehning_snowpack", parallel::data, cfg)
 {
     depends("iswr");
     depends("ilwr");
@@ -271,7 +272,7 @@ void Lehning_snowpack::run(mesh_elem &face)
 //        {
             face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
 //        }
-        
+
     } else{
        set_all_nan_on_skip(face);
 

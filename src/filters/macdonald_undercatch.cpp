@@ -25,10 +25,12 @@
 // Created by chris on 18/11/15.
 //
 
-#include "macdonald_undercatch.h"
+#include "macdonald_undercatch.hpp"
+REGISTER_FILTER_CPP(macdonald_undercatch);
 
 
-macdonald_undercatch::macdonald_undercatch()
+macdonald_undercatch::macdonald_undercatch(config_file cfg)
+  : filter_base("macdonald_undercatch", cfg)
 {
 
 }

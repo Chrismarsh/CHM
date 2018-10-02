@@ -55,11 +55,11 @@
 */
 class PenmanMonteith_evaporation : public module_base
 {
+REGISTER_MODULE_HPP(PenmanMonteith_evaporation);
 public:
     PenmanMonteith_evaporation(config_file cfg);
     ~PenmanMonteith_evaporation();
     virtual void run(mesh_elem& face);
-
 
 };
 

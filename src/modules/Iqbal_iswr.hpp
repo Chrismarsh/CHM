@@ -22,44 +22,18 @@
 
 #pragma once
 
-#include <string>
-#include <boost/shared_ptr.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
+#include "logger.hpp"
+#include "triangulation.hpp"
+#include "module_base.hpp"
+#include "TPSpline.hpp"
+#include <meteoio/MeteoIO.h>
 
-#include "station.hpp"
 
-namespace pt = boost::property_tree;
-
-class filter_base
+class Iqbal_iswr : public module_base
 {
+REGISTER_MODULE_HPP(Iqbal_iswr);
 public:
-    filter_base(){};
-    virtual ~filter_base(){};
-
-    virtual void init(boost::shared_ptr<station>& station){};
-    virtual void process(boost::shared_ptr<station>& station){};
-
-    bool is_nan(double variable)
-    {
-        if( variable == -9999.0)
-            return true;
-
-        if( std::isnan(variable) )
-            return true;
-
-        if( std::isinf(variable) )
-            return true;
-
-        return false;
-    }
-    /**
-     * Configuration file. If filter does not need one, then this will contain nothing
-     */
-    pt::ptree cfg;
-
-    /**
-    * ID of the module
-    */
-    std::string ID;
+    Iqbal_iswr(config_file cfg);
+    ~Iqbal_iswr();
+    void run(mesh_elem& face);
 };

@@ -25,10 +25,11 @@
 // Created by chris on 18/11/15.
 //
 
-#include "goodison_undercatch.h"
+#include "goodison_undercatch.hpp"
+REGISTER_FILTER_CPP(goodison_undercatch);
 
-
-goodison_undercatch::goodison_undercatch()
+goodison_undercatch::goodison_undercatch(config_file cfg)
+  : filter_base("goodison_undercatch", cfg)
 {
 
 }

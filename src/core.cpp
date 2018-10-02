@@ -21,7 +21,8 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include "core.h"
+#include "core.hpp"
+
 
 core::core()
 {
@@ -258,29 +259,30 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
     for (auto &itr : modules)
     {
 
-        std::string module = itr;
-        LOG_DEBUG << "Module ID=" << module;
+        std::string module_name = itr;
+        LOG_DEBUG << "Module ID=" << module_name;
 
 
         //try grabbing a config for this module, empty string default
         pt::ptree cfg;
         try
         {
-            cfg = config.get_child(module);
+            cfg = config.get_child(module_name);
         } catch (pt::ptree_bad_path &e)
         {
-            LOG_DEBUG << "No config for " << module;
+            LOG_DEBUG << "No config for " << module_name;
         }
-        boost::shared_ptr<module_base> m(_mfactory.get(module, cfg));
+
+        boost::shared_ptr<module_base> module = module_factory::create(module_name,cfg);
         //internal tracking of module initialization order
-        m->IDnum = modnum;
+        module->IDnum = modnum;
 
         //assign the internal global param pointer to our global
-        m->global_param = _global;
+        module->global_param = _global;
 
         modnum++;
         _modules.push_back(
-                std::make_pair(m, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
+                std::make_pair(module, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
     }
 
     if (modnum == 0)
@@ -494,14 +496,15 @@ void core::config_forcing(pt::ptree &value)
                         auto filter_section = value.get_child("filter");
 
                         for (auto &jtr: filter_section)
-                        {
-                            auto name = jtr.first.data();
+			{
+                            auto filter_name = jtr.first.data();
+			    auto cfg  = jtr.second;
 
-                            boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
+			    boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
                             filter->init(s);
-                            _netcdf_filters[name] = filter;
+                            _netcdf_filters[filter_name] = filter;
 
-                        }
+			}
 
                     } catch (pt::ptree_bad_path &e)
                     {
@@ -585,9 +588,10 @@ void core::config_forcing(pt::ptree &value)
 
                 for (auto &jtr: filter_section)
                 {
-                    auto name = jtr.first.data();
+                    auto filter_name = jtr.first.data();
+                    auto cfg = jtr.second;
 
-                    boost::shared_ptr<filter_base> filter(_filtfactory.get(name, jtr.second));
+		    boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
                     filter->init(s);
 
                     //save this filter to run later
@@ -1226,7 +1230,11 @@ void core::init(int argc, char **argv)
 
     _global = boost::make_shared<global>();
 
-    //don't just abort and die
+    // This needs to be set so that underflows in gsl math
+    // computations are not treated as errors. i.e.,
+    //    gsl: expint.c:363: ERROR: underflow
+    //    Default GSL error handler invoked.
+    // is not what we want.
     gsl_set_error_handler_off();
 
 

@@ -22,6 +22,7 @@
 //
 
 #include "PBSM3D.hpp"
+REGISTER_MODULE_CPP(PBSM3D);
 
 //starting at row_start until row_end find offset for col
 inline unsigned int offset(const unsigned int& row_start,const unsigned int& row_end,const unsigned int  * col_buffer, const unsigned int& col)
@@ -34,7 +35,7 @@ inline unsigned int offset(const unsigned int& row_start,const unsigned int& row
     return -1; //wrap it and index garbage
 }
 PBSM3D::PBSM3D(config_file cfg)
-        :module_base(parallel::domain)
+        : module_base("PBSM3D", parallel::domain, cfg)
 {
     depends("U_2m_above_srf");
     depends("vw_dir");
@@ -298,7 +299,7 @@ void PBSM3D::init(mesh domain)
     }
 
 
-    
+
     viennacl::copy(C,vl_C); // copy C -> vl_C, sets up the sparsity pattern
     viennacl::copy(A,vl_A); // copy A -> vl_A, sets up the sparsity pattern
 
@@ -648,7 +649,7 @@ void PBSM3D::run(mesh domain)
         double RH = rh*100.;
         double es = mio::Atmosphere::saturatedVapourPressure(t);
         double ea = rh * es / 1000.; // ea needs to be in kpa
- 
+
         double v = 1.88*10e-5; //kinematic viscosity of air, below eqn 13 Pomeroy 1993
 
         //vapour pressure, Pa
@@ -1002,7 +1003,7 @@ void PBSM3D::run(mesh domain)
     vl_C.switch_memory_context(gpu_ctx);
     b.switch_memory_context(gpu_ctx);
 #endif
- 
+
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
     chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps

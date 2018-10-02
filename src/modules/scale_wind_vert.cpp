@@ -23,9 +23,10 @@
 
 
 #include "scale_wind_vert.hpp"
+REGISTER_MODULE_CPP(scale_wind_vert);
 
 scale_wind_vert::scale_wind_vert(config_file cfg)
-        :module_base( parallel::data)
+        : module_base("scale_wind_vert", parallel::data, cfg)
 // Assume we are running in point mode, this gets us past the check in core. However we can later enable domain mode if we need to. We can't
 // do that in this ctor as global isn't defined yet and we don't
 

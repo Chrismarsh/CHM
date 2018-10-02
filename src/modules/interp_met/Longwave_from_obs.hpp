@@ -52,6 +52,7 @@
 */
 class Longwave_from_obs : public module_base
 {
+REGISTER_MODULE_HPP(Longwave_from_obs);
 public:
     Longwave_from_obs(config_file cfg);
     ~Longwave_from_obs();

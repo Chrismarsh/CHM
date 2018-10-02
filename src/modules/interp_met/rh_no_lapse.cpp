@@ -22,9 +22,10 @@
 //
 
 #include "rh_no_lapse.hpp"
+REGISTER_MODULE_CPP(rh_no_lapse);
 
 rh_no_lapse::rh_no_lapse(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("rh_no_lapse", parallel::data, cfg)
 {
     provides("rh");
     depends_from_met("rh");
@@ -68,4 +69,3 @@ void rh_no_lapse::run(mesh_elem &face)
     face->set_face_data("rh", rh);
 
 }
-

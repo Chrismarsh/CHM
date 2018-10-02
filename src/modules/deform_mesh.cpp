@@ -22,9 +22,10 @@
 //
 
 #include "deform_mesh.hpp"
+REGISTER_MODULE_CPP(deform_mesh);
 
 deform_mesh::deform_mesh(config_file cfg)
-        :module_base(parallel::domain)
+        : module_base("deform_mesh", parallel::domain, cfg)
 {
 
 }

@@ -55,6 +55,7 @@
 */
 class slope_iswr : public module_base
 {
+REGISTER_MODULE_HPP(slope_iswr);
     public:
         slope_iswr(config_file cfg);
         ~slope_iswr();

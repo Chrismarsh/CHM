@@ -48,6 +48,7 @@
 */
 class threshold_p_phase : public module_base
 {
+REGISTER_MODULE_HPP(threshold_p_phase);
 public:
     threshold_p_phase(config_file cfg);
 

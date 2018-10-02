@@ -26,7 +26,7 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
-#include "interpolation.h"
+#include "interpolation.hpp"
 
 #include "math/coordinates.hpp"
 
@@ -92,6 +92,7 @@ inline int omp_get_max_threads() { return 1;}
 */
 class PBSM3D : public module_base
 {
+REGISTER_MODULE_HPP(PBSM3D);
 public:
     PBSM3D(config_file cfg);
     ~PBSM3D();
@@ -106,7 +107,7 @@ public:
     double snow_diffusion_const ;
     double l__max; // vertical mixing length (m)
     bool rouault_diffusion_coeff; //use the spatially variable diffusivity coefficient of Rouault 1991
-    
+
     double settling_velocity;
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.

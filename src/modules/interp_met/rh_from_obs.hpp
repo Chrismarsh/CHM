@@ -21,33 +21,21 @@
  */
 
 #pragma once
-
-#include "filter_base.h"
-#include <math.h>
-
-
-/**
- * \addtogroup filters
- * @{
- * \class macdonald_undercatch
- * \brief Computes undercatch correction
- *
- * Undercatch correction for a Alter shielded Geonor and tipping bucket via Macdonald, et al. 2007
- *
- * Depends:
- * - p [mm]
- * - u [m/s]
- *
- * References:
- * - Macdonald, J., & Pomeroy, J. (2007). Gauge Undercatch of Two Common Snowfall Gauges in a Prairie Environment. Proceedings of the 64th Eastern Snow Conference, St. John‘s, Canada., 119–126.
- * */
-class macdonald_undercatch : public filter_base
+#include "logger.hpp"
+#include "triangulation.hpp"
+#include "module_base.hpp"
+#include <gsl/gsl_fit.h>
+#include <meteoio/MeteoIO.h>
+class rh_from_obs : public module_base
 {
-private:
-    std::string var;
+REGISTER_MODULE_HPP(rh_from_obs);
 public:
-    macdonald_undercatch();
-    ~macdonald_undercatch();
-    void init(boost::shared_ptr<station>& station);
-    void process(boost::shared_ptr<station>& station);
+    rh_from_obs(config_file cfg);
+    ~rh_from_obs();
+    virtual void run(mesh_elem& face);
+    virtual void init(mesh domain);
+    struct data : public face_info
+    {
+        interpolation interp;
+    };
 };

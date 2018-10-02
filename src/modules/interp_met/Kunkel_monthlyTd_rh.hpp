@@ -56,6 +56,7 @@
 */
 class Kunkel_monthlyTd_rh : public module_base
 {
+REGISTER_MODULE_HPP(Kunkel_monthlyTd_rh);
 public:
     Kunkel_monthlyTd_rh(config_file cfg);
     ~Kunkel_monthlyTd_rh();

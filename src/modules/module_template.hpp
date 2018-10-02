@@ -22,23 +22,43 @@
 //
 
 #pragma once
+
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
+#include <meteoio/MeteoIO.h>
+#include <cstdlib>
+#include <string>
 
-
+#include <cmath>
+#include <armadillo>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 /**
- * Proof of concept for crop_rotation
+ * \addtogroup modules
+ * @{
+ * \class module_template
+ * \brief Template header file for new module implementations
+ *
+ *
+ * Depends:
+ *
+ *
+ * Provides:
+ *
  */
-class crop_rotation : public module_base
+class module_template : public module_base
 {
-REGISTER_MODULE_HPP(crop_rotation)
+REGISTER_MODULE_HPP(module_template);
+private:
+  double module_variable;
 public:
-    crop_rotation(config_file cfg);
-
-    ~crop_rotation();
-
-    void run(mesh_elem &face);
-
+  module_template(config_file cfg);
+  ~module_template();
+  virtual void run(mesh_elem& face);
 };
+
+/**
+@}
+*/

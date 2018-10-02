@@ -22,9 +22,10 @@
 //
 
 #include "MS_wind.hpp"
+REGISTER_MODULE_CPP(MS_wind);
 
 MS_wind::MS_wind(config_file cfg)
-        :module_base(parallel::domain)
+        : module_base("MS_wind", parallel::domain, cfg)
 
 {
     depends_from_met("U_R");

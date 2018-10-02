@@ -22,11 +22,12 @@
 //
 
 
-#include "iswr_from_obs.h"
+#include "iswr_from_obs.hpp"
+REGISTER_MODULE_CPP(iswr_from_obs);
 
 
 iswr_from_obs::iswr_from_obs(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("iswr_from_obs", parallel::data, cfg)
 {
     depends_from_met("Qsi");
     depends("solar_el");
@@ -92,4 +93,3 @@ void iswr_from_obs::run(mesh_elem &face)
 
     face->set_face_data("atm_trans",split_dir/1375.);
 }
-

@@ -21,10 +21,11 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include "Dodson_NSA_ta.h"
+#include "Dodson_NSA_ta.hpp"
+REGISTER_MODULE_CPP(Dodson_NSA_ta);
 
 Dodson_NSA_ta::Dodson_NSA_ta(config_file cfg)
-:module_base(parallel::data)
+  : module_base("Dodson_NSA_ta", parallel::data, cfg)
 {
 
     depends_from_met("t");

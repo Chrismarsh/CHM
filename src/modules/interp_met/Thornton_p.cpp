@@ -22,9 +22,10 @@
 //
 
 #include "Thornton_p.hpp"
+REGISTER_MODULE_CPP(Thornton_p);
 
 Thornton_p::Thornton_p(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("Thornton_p", parallel::data, cfg)
 {
 
     depends_from_met("p");

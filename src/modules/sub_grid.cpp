@@ -22,9 +22,10 @@
 //
 
 #include "sub_grid.hpp"
+REGISTER_MODULE_CPP(sub_grid);
 
 sub_grid::sub_grid(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("sub_grid", parallel::data, cfg)
 
 {
     depends("snowdepthavg");

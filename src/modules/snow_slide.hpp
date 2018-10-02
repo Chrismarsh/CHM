@@ -33,6 +33,7 @@
 #include <string>
 class snow_slide : public module_base
 {
+REGISTER_MODULE_HPP(snow_slide);
 public:
     snow_slide(config_file cfg);
 
@@ -55,6 +56,3 @@ public:
     };
 
 };
-
-
-

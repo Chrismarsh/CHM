@@ -23,9 +23,10 @@
 
 
 #include "fetchr.hpp"
+REGISTER_MODULE_CPP(fetchr);
 
 fetchr::fetchr(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("fetchr", parallel::data, cfg)
 {
     depends("vw_dir");
 
@@ -117,4 +118,3 @@ void fetchr::run(mesh_elem& face)
 
 
 }
-

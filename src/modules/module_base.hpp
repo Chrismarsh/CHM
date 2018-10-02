@@ -32,7 +32,7 @@ namespace pt = boost::property_tree;
 #include "triangulation.hpp"
 #include "global.hpp"
 #include "timeseries/netcdf.hpp"
-
+#include "factory.hpp"
 
 //Create a process modules group in the doxygen docs to add individual modules to
 /**
@@ -45,6 +45,8 @@ namespace pt = boost::property_tree;
 *
 * A module must inherent from this class. This provides the interface for all module.
 */
+
+typedef pt::ptree config_file;
 
 class module_base
 {
@@ -97,14 +99,15 @@ public:
     /**
      * Consturctor that initializes everything
      */
-    module_base(parallel type)
+    module_base(std::string name = "",
+		parallel type = parallel::data,
+		config_file input_cfg = pt::basic_ptree<std::string,std::string>())
+      : ID(name), _parallel_type(type), cfg(input_cfg), IDnum(0)
     {
         _provides = boost::make_shared<std::vector<std::string> >();
         _depends = boost::make_shared<std::vector<std::string> >();
         _depends_from_met = boost::make_shared<std::vector<std::string> >();
         _optional = boost::make_shared<std::vector<std::string> >();
-        IDnum = 0;
-        _parallel_type = type;
         global_param = nullptr;
 
         //nothing
@@ -329,4 +332,17 @@ protected:
 * Convenience typedef for modules.
 */
 typedef boost::shared_ptr<module_base> module;
-typedef pt::ptree config_file;
+
+/**
+* Factory related convenience typedef and macros
+*/
+// Macros for easier registration of Module implementations
+// single argument ctor
+typedef factory<module_base, config_file> module_factory;
+#define REGISTER_MODULE_HPP(Implementation) \
+private: \
+   static const registration_helper<module_base,Implementation,config_file> registrar;
+#define STR_EXPAND(x) #x     // ensure x gets evaluated as a string,
+#define STR(x) STR_EXPAND(x) // two-stage macro
+#define REGISTER_MODULE_CPP(Implementation) \
+   const registration_helper<module_base,Implementation,config_file> Implementation::registrar(STR(Implementation));

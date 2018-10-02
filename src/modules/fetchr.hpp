@@ -34,6 +34,7 @@
  */
 class fetchr : public module_base
 {
+REGISTER_MODULE_HPP(fetchr);
 public:
     fetchr(config_file cfg);
 
@@ -56,6 +57,3 @@ public:
     double I;
 
 };
-
-
-

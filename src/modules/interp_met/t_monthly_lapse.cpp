@@ -22,9 +22,10 @@
 //
 
 #include "t_monthly_lapse.hpp"
+REGISTER_MODULE_CPP(t_monthly_lapse);
 
 t_monthly_lapse::t_monthly_lapse(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("t_monthly_lapse", parallel::data, cfg)
 
 {
     provides("t");

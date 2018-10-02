@@ -21,24 +21,27 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#pragma once
-#include "logger.hpp"
-#include "triangulation.hpp"
-#include "module_base.hpp"
+#include "module_template.hpp"
+REGISTER_MODULE_CPP(module_template);
 
-
-
-/**
- * Proof of concept for crop_rotation
- */
-class crop_rotation : public module_base
+module_template::module_template(config_file cfg)
+        : module_base("module_template", parallel::data OR parallel::domain, cfg)
 {
-REGISTER_MODULE_HPP(crop_rotation)
-public:
-    crop_rotation(config_file cfg);
 
-    ~crop_rotation();
+}
 
-    void run(mesh_elem &face);
+void module_template::run(mesh_elem& face)
+{
 
-};
+}
+
+void module_template::run(mesh domain)
+{
+
+}
+
+module_template::~module_template()
+{
+
+
+}

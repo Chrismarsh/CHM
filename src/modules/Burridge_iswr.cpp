@@ -22,10 +22,11 @@
 //
 
 
-#include "Burridge_iswr.h"
+#include "Burridge_iswr.hpp"
+REGISTER_MODULE_CPP(Burridge_iswr);
 
 Burridge_iswr::Burridge_iswr(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("Burridge_iswr", parallel::data, cfg)
 {
 
     depends("cloud_frac");

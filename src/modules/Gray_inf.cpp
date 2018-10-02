@@ -22,9 +22,10 @@
 //
 
 #include "Gray_inf.hpp"
+REGISTER_MODULE_CPP(Gray_inf);
 
 Gray_inf::Gray_inf(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("Gray_inf", parallel::data, cfg)
 {
 
     depends("swe");

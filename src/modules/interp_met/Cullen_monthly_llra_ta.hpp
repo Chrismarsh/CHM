@@ -53,6 +53,7 @@
 */
 class Cullen_monthly_llra_ta : public module_base
 {
+REGISTER_MODULE_HPP(Cullen_monthly_llra_ta);
 public:
     Cullen_monthly_llra_ta(config_file cfg);
     ~Cullen_monthly_llra_ta();

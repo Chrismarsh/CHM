@@ -22,9 +22,10 @@
 //
 
 #include "threshold_p_phase.hpp"
+REGISTER_MODULE_CPP(threshold_p_phase);
 
 threshold_p_phase::threshold_p_phase(config_file cfg)
-    : module_base(parallel::data)
+    : module_base("threshold_p_phase", parallel::data, cfg)
 {
     depends("t");
     depends("p");

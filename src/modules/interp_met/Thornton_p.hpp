@@ -56,6 +56,7 @@
 */
 class Thornton_p : public module_base
 {
+REGISTER_MODULE_HPP(Thornton_p);
 public:
     Thornton_p(config_file cfg);
     ~Thornton_p();

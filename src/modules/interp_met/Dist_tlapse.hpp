@@ -39,7 +39,7 @@
 * \class Dist_tlapse
 * \brief Distributed lapse rate from forcing file, changes per timestep
 *
-* 
+*
 *
 * Depends:
 * - Air temperature "t" [degC]
@@ -52,6 +52,7 @@
 */
 class Dist_tlapse : public module_base
 {
+REGISTER_MODULE_HPP(Dist_tlapse);
 public:
     Dist_tlapse(config_file cfg);
     ~Dist_tlapse();

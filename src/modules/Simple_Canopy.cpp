@@ -22,10 +22,10 @@
 //
 
 #include "Simple_Canopy.hpp"
-
+REGISTER_MODULE_CPP(Simple_Canopy);
 
 Simple_Canopy::Simple_Canopy(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("Simple_Canopy", parallel::data, cfg)
 {
     depends("p_rain");
     depends("p_snow");
@@ -636,6 +636,3 @@ double Simple_Canopy::Qs(double air_pressure, double T1) {
     double es = 611.213*exp(22.4422*T1/(272.186+T1)); // Pa
     return(0.622 * ( es / (air_pressure - es) )); // kg/kg
 }
-
-
-

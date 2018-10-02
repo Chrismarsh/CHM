@@ -59,6 +59,7 @@
 */
 class Harder_precip_phase : public module_base
 {
+REGISTER_MODULE_HPP(Harder_precip_phase);
 public:
     Harder_precip_phase(config_file cfg);
     ~Harder_precip_phase();

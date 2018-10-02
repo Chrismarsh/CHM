@@ -46,9 +46,10 @@
  */
 
 class scale_wind_vert : public module_base {
+REGISTER_MODULE_HPP(scale_wind_vert);
 public:
     scale_wind_vert(config_file cfg);
-    
+
     ~scale_wind_vert();
     virtual void init(mesh domain);
 

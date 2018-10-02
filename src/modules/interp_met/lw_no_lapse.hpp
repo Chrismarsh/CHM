@@ -49,6 +49,7 @@
 */
 class lw_no_lapse : public module_base
 {
+REGISTER_MODULE_HPP(lw_no_lapse);
 public:
     lw_no_lapse(config_file cfg);
     ~lw_no_lapse();

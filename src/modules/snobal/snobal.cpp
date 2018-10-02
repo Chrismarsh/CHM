@@ -22,9 +22,10 @@
 //
 
 #include "snobal.hpp"
+REGISTER_MODULE_CPP(snobal);
 
 snobal::snobal(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("snobal", parallel::data, cfg)
 {
     depends("frac_precip_snow");
     depends("iswr");
@@ -116,7 +117,7 @@ void snobal::init(mesh domain)
         sbal->isothermal = 0;
 
         /// Heights
-        sbal->z_0 = cfg.get("z_0",0.001); 
+        sbal->z_0 = cfg.get("z_0",0.001);
         sbal->z_T = cfg.get("z_T",2.6);
         sbal->z_u = cfg.get("z_u",2.96);
         sbal->z_g = cfg.get("z_g",0.1);
@@ -213,7 +214,7 @@ void snobal::init(mesh domain)
             face->set_face_data("snowdepthavg", sbal->z_s);
         }
 
-        
+
 
     }
 }
@@ -338,7 +339,7 @@ void snobal::run(mesh_elem &face)
         sbal->precip_now = 0;
         sbal->stop_no_snow=0;
     }
-  
+
     if(has_optional("drift_mass"))
     {
 
@@ -507,35 +508,3 @@ void snobal::load_checkpoint(mesh domain, netcdf& chkpt)
         sbal->init_snow();
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

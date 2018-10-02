@@ -59,6 +59,7 @@
 */
 class MS_wind : public module_base
 {
+REGISTER_MODULE_HPP(MS_wind);
 public:
     MS_wind(config_file cfg);
     ~MS_wind();

@@ -52,6 +52,7 @@
 */
 class uniform_wind : public module_base
 {
+REGISTER_MODULE_HPP(uniform_wind);
 public:
     uniform_wind(config_file cfg);
     ~uniform_wind();

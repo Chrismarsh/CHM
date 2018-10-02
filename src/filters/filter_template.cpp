@@ -21,35 +21,25 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-//
-// Created by chris on 18/11/15.
-//
+#include "filter_template.hpp"
+REGISTER_FILTER_CPP(filter_template);
 
-#include "filter_factory.h"
-
-
-filter_base* filter_factory::get(std::string ID, pt::ptree config)
+filter_template::filter_template(config_file cfg)
+  : filter_base("filter_template", cfg)
 {
-    LOG_VERBOSE << "Filter ID=" << ID;
 
-    filter_base* filter = nullptr;
+}
 
-    if (ID == "macdonald_undercatch")
-        filter = new macdonald_undercatch();
-    else if(ID == "goodison_undercatch")
-        filter = new goodison_undercatch();
-    else if (ID == "scale_wind_speed")
-        filter = new scale_wind_speed();
+filter_template::~filter_template()
+{
 
-    if(filter == nullptr)
-    {
-        BOOST_THROW_EXCEPTION(module_not_found()
-                              << errstr_info( std::string("Filter not found ") + ID)
-        );
-    }
+}
 
-    filter->ID = ID;
-    filter->cfg = config;
+void filter_template::init(boost::shared_ptr<station>& station)
+{
 
-    return filter;
+}
+void filter_template::process(boost::shared_ptr<station>& station)
+{
+
 }

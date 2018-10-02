@@ -22,9 +22,10 @@
 //
 
 #include "slope_iswr.hpp"
+REGISTER_MODULE_CPP(slope_iswr);
 
 slope_iswr::slope_iswr(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("slope_iswr", parallel::data, cfg)
 {
     depends("iswr");
     depends("iswr_diffuse");
@@ -46,11 +47,11 @@ slope_iswr::slope_iswr(config_file cfg)
 }
 void slope_iswr::run(mesh_elem& face)
 {
-    
+
 
     double A = face->face_data("solar_az") * mio::Cst::to_rad;
     double E = face->face_data("solar_el") * mio::Cst::to_rad;
-    
+
     //radiation data
     //solar vector
     //xyz cartesian
@@ -77,7 +78,7 @@ void slope_iswr::run(mesh_elem& face)
         << n[2] << arma::endr;
     }
 
-    
+
     double angle = acos(arma::dot(S,N));
     angle = cos(angle);
 
@@ -105,9 +106,6 @@ void slope_iswr::run(mesh_elem& face)
 
 slope_iswr::~slope_iswr()
 {
-    
-    
+
+
 }
-
-
-

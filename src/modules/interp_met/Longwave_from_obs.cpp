@@ -22,9 +22,10 @@
 //
 
 #include "Longwave_from_obs.hpp"
+REGISTER_MODULE_CPP(Longwave_from_obs);
 
 Longwave_from_obs::Longwave_from_obs(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("Longwave_from_obs", parallel::data, cfg)
 
 {
     provides("ilwr");

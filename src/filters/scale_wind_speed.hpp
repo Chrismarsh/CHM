@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "filter_base.h"
+#include "filter_base.hpp"
 #include <constants/Atmosphere.h>
 
 
@@ -49,12 +49,13 @@
  */
 class scale_wind_speed : public filter_base
 {
+REGISTER_FILTER_HPP(scale_wind_speed);
 private:
     double Z_F;
     double Z_R;
     std::string var;
 public:
-    scale_wind_speed();
+    scale_wind_speed(config_file cfg);
     ~scale_wind_speed();
     void init(boost::shared_ptr<station>& station);
     void process(boost::shared_ptr<station>& station);

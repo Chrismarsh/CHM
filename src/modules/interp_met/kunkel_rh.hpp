@@ -46,6 +46,7 @@
 */
 class kunkel_rh : public module_base
 {
+REGISTER_MODULE_HPP(kunkel_rh);
 public:
     kunkel_rh(config_file cfg);
 

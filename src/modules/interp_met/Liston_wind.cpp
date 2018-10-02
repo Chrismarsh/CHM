@@ -22,9 +22,10 @@
 //
 
 #include "Liston_wind.hpp"
+REGISTER_MODULE_CPP(Liston_wind);
 
 Liston_wind::Liston_wind(config_file cfg)
-        :module_base(parallel::domain)
+        : module_base("Liston_wind", parallel::domain, cfg)
 
 {
     depends_from_met("U_R");

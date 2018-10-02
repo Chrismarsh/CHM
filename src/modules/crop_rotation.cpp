@@ -22,9 +22,10 @@
 //
 
 #include "crop_rotation.hpp"
+REGISTER_MODULE_CPP(crop_rotation);
 
 crop_rotation::crop_rotation(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("crop_rotation", parallel::data, cfg)
 {
 
 }

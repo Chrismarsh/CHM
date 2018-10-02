@@ -22,9 +22,10 @@
 //
 
 #include "Sicart_ilwr.hpp"
+REGISTER_MODULE_CPP(Sicart_ilwr);
 
 Sicart_ilwr::Sicart_ilwr(config_file cfg)
-        :module_base(parallel::data)
+        : module_base("Sicart_ilwr", parallel::data, cfg)
 {
 
     depends("t");

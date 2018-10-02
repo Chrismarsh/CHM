@@ -26,7 +26,7 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
-#include "interpolation.h"
+#include "interpolation.hpp"
 
 #include <cstdlib>
 #include <string>
@@ -52,6 +52,7 @@
 */
 class const_llra_ta : public module_base
 {
+REGISTER_MODULE_HPP(const_llra_ta);
 public:
     const_llra_ta(config_file cfg);
     ~const_llra_ta();

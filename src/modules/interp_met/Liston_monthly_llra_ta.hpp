@@ -69,6 +69,7 @@
 */
 class Liston_monthly_llra_ta : public module_base
 {
+REGISTER_MODULE_HPP(Liston_monthly_llra_ta);
 public:
     Liston_monthly_llra_ta(config_file cfg);
     ~Liston_monthly_llra_ta();

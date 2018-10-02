@@ -21,7 +21,7 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include "interpolation.h"
+#include "interpolation.hpp"
 
 interpolation::interpolation(interp_alg ia, size_t size,
                              std::map<std::string,std::string> config)

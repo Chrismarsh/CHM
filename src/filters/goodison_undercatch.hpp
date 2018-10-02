@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "filter_base.h"
+#include "filter_base.hpp"
 #include <math.h>
 
 
@@ -44,10 +44,11 @@
  * **/
 class goodison_undercatch : public filter_base
 {
+REGISTER_FILTER_HPP(goodison_undercatch);
 private:
     std::string var;
 public:
-    goodison_undercatch();
+    goodison_undercatch(config_file cfg);
     ~goodison_undercatch();
     void init(boost::shared_ptr<station>& station);
     void process(boost::shared_ptr<station>& station);

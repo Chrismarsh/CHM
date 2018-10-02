@@ -22,7 +22,7 @@
 //
 
 
-#include "interpolation.h"
+#include "interpolation.hpp"
 #include "logger.hpp"
 #include <vector>
 #include <boost/tuple/tuple.hpp>

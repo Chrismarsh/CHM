@@ -55,6 +55,7 @@
 */
 class iswr : public module_base
 {
+REGISTER_MODULE_HPP(iswr);
     public:
         iswr(config_file cfg);
         ~iswr();

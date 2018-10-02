@@ -23,9 +23,10 @@
 
 
 #include "fast_shadow.hpp"
+REGISTER_MODULE_CPP(fast_shadow);
 
 fast_shadow::fast_shadow(config_file cfg)
-        : module_base(parallel::data)
+        : module_base("fast_shadow", parallel::data, cfg)
 {
     depends("solar_az");
     depends("solar_el");
@@ -89,4 +90,3 @@ void fast_shadow::run(mesh_elem& face)
 
 
 }
-

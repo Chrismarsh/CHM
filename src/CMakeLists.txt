@@ -87,8 +87,6 @@ set(MODULE_SRCS
 set(CHM_SRCS
 		#main.cpp needs to be added below so we can re use CHM_SRCS in the gtest build
 		core.cpp
-		module_factory.cpp
-		filter_factory.cpp
 		global.cpp
 		station.cpp
 		variable_map.cpp

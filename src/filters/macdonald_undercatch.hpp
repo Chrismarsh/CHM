@@ -22,40 +22,33 @@
 
 #pragma once
 
-#include "module_base.hpp"
-#include <gsl/gsl_fit.h>
-#include <vector>
-#include <gsl/gsl_combination.h>
+#include "filter_base.hpp"
+#include <math.h>
+
 
 /**
-* \addtogroup modules
-* @{
-* \class Precip
-* \brief Calculates precipitation
-*
-* Spatially distributes liquid water precipitation using the Thornton, et al. 1997 method.
-* Unlike Thornton_p, this calculates scaling rates based on observed data on a per-timestep basis
-*
-*
-* Depends:
-* - Precip from met file "p" [mm]
-*
-* Provides:
-* - Precip "p" [mm]
-*
-* Reference:
-* - Thornton, P. E., Running, S. W., & White, M. A. (1997). Generating surfaces of daily meteorological variables over large regions of complex terrain. Journal of Hydrology, 190(3-4), 214–251. http://doi.org/10.1016/S0022-1694(96)03128-9
-* */
-class Thornton_var_p : public module_base
+ * \addtogroup filters
+ * @{
+ * \class macdonald_undercatch
+ * \brief Computes undercatch correction
+ *
+ * Undercatch correction for a Alter shielded Geonor and tipping bucket via Macdonald, et al. 2007
+ *
+ * Depends:
+ * - p [mm]
+ * - u [m/s]
+ *
+ * References:
+ * - Macdonald, J., & Pomeroy, J. (2007). Gauge Undercatch of Two Common Snowfall Gauges in a Prairie Environment. Proceedings of the 64th Eastern Snow Conference, St. John‘s, Canada., 119–126.
+ * */
+class macdonald_undercatch : public filter_base
 {
+REGISTER_FILTER_HPP(macdonald_undercatch);
+private:
+    std::string var;
 public:
-    Thornton_var_p(config_file cfg);
-    ~Thornton_var_p();
-    void run(mesh_elem& face);
-    virtual void init(mesh domain);
-    struct data : public face_info
-    {
-        interpolation interp;
-    };
+    macdonald_undercatch(config_file cfg);
+    ~macdonald_undercatch();
+    void init(boost::shared_ptr<station>& station);
+    void process(boost::shared_ptr<station>& station);
 };
-
