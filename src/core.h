@@ -231,21 +231,18 @@ protected:
     boost::shared_ptr< text_sink > _log_sink;
     boost::shared_ptr< text_sink > _cout_log_sink;
 
-    //filter factory for creating the specified modules
-    // filter_factory _filtfactory;
-
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
 
     //if we use netcdf, store it here
     netcdf nc;
 
-    
+
 #ifdef MATLAB
     //matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
 #endif
-       
+
     //holds all the modules that are to be run on each mesh element
     //pair as we also need to store the make order
     std::vector< std::pair<module,size_t> > _modules;
