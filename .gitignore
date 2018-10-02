@@ -40,5 +40,5 @@ err.xml
 /CMake_fedora/*
 /cmake-build-debug/*
 /cmake-build-release/*
-
+/CHM.wiki/*
 node_modules/

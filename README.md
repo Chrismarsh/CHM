@@ -126,7 +126,7 @@ Comparison of CHM driving Snobal and Snowpack at the Upper Clearing site at Marm
 ![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/CHM_crhm_v_chm_v_obs_swe.png)
 
 ## Blowing snow 
-Comparison of blowing snow (left) versus no blowing snow (right) for a small sub-basin of Wolf Creek Reserach Basin, located in the Yukon, Canada.
+Blowing snow for a small sub-basin of Wolf Creek Reserach Basin, located in the Yukon, Canada.
 ![](https://raw.githubusercontent.com/Chrismarsh/CHM/master/wiki/output_small.gif)
 
 

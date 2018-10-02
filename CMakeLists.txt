@@ -89,6 +89,8 @@ if(BUILD_NETCDF)
     set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${NETCDF_DIR})
     set(ENV{HDF5_ROOT} ${CMAKE_BINARY_DIR}/lib/hdf5)
 
+    set( NETCDF_CXX_ROOT ${NETCDF_DIR})
+
     if(NOT BUILD_GDAL)
         message(WARNING "You should do a GDAL build to avoid linking against system netCDF and HDF5.")
     endif()
@@ -426,10 +428,6 @@ add_subdirectory(src)
 if (test)
     message(STATUS "Tests enabled. Run with make check")
     enable_testing()
-endif()
-
-if(PV_FILTER)
-    add_subdirectory(pv_filter)
 endif()
 
 

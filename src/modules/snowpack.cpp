@@ -308,11 +308,11 @@ void Lehning_snowpack::init(mesh domain)
 
         //setup critical keys.
         //overwrite the user if a dangerous key is set
-        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string(global_param->dt() / 4)); // Hz. Number of met per hour
+        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string( 3600.0 / global_param->dt())); // Hz. Number of met per hour
         d->config.addKey("MEAS_TSS", "Snowpack", "false");
 
-        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt() / 60 ) ); //specified as  minutes
-
+        //specified as minutes, snowpack will convert to s for us. CHM dt is in s
+        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt()  / 60 ) );
         //default values for
         //	"Snowpack": { }
 
