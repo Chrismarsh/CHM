@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 2.8)
 project(externalLib)
 include(ExternalProject)
 
-set(EXTERNAL_PROJECT_BUILD_THREADS 10)
-
 #these should always be built and downloaded
 ExternalProject_Add(
     sparsehash
