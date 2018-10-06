@@ -12,7 +12,7 @@ ExternalProject_Add(
 
     CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
     UPDATE_COMMAND ""
-    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+    BUILD_COMMAND make -j10
     INSTALL_COMMAND make install
     BUILD_IN_SOURCE 1
     )
@@ -25,7 +25,7 @@ if(USE_TCMALLOC)
 
         CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
         UPDATE_COMMAND ""
-        BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+        BUILD_COMMAND make -j10
         INSTALL_COMMAND make install
         BUILD_IN_SOURCE 1
             )
@@ -36,7 +36,7 @@ ExternalProject_Add(
     URL http://bitbucket.org/eigen/eigen/get/3.3.4.tar.bz2
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/eigen3 -DINCLUDE_INSTALL_DIR=${CMAKE_BINARY_DIR}/lib/eigen3
     UPDATE_COMMAND ""
-    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+    BUILD_COMMAND make -j10
     INSTALL_COMMAND make install
     BUILD_IN_SOURCE 0
     )
@@ -49,7 +49,7 @@ if(BUILD_PROJ4)
         URL http://download.osgeo.org/proj/proj-4.9.3.tar.gz
         UPDATE_COMMAND ""
         CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
-        BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+        BUILD_COMMAND make -j10
         INSTALL_COMMAND make install
         BUILD_IN_SOURCE 1
     )
@@ -66,7 +66,7 @@ if(BUILD_VTK)
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release
 	                -DVTK_USE_SYSTEM_libproj4=ON
 	                -DLIBPROJ4_LIBRARIES=${CMAKE_BINARY_DIR}/lib/proj4/lib/libproj.so -DLIBPROJ4_INCLUDE_DIR=${CMAKE_BINARY_DIR}/lib/proj4/include
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
@@ -93,14 +93,14 @@ if(BUILD_ParaView)
 
 	    UPDATE_COMMAND ""
 	    CMAKE_ARGS -DMACOSX_APP_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ParaView -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ParaView -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}# -DCMAKE_PREFIX_PATH=/usr/local/opt/qt    #$(brew --prefix qt5)
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    PATCH_COMMAND patch -p0  < ${CMAKE_BINARY_DIR}/paraview-5.5.2.patch
 	    BUILD_IN_SOURCE 0
 	 )
 
 	#build the datetime filter
-	#this uses boost
+	#this uses
     ExternalProject_Add(
     	    vtk-timefilter
             DEPENDS ParaView
@@ -109,7 +109,7 @@ if(BUILD_ParaView)
 
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/vtk-datetime-filter -DParaView_DIR=${CMAKE_BINARY_DIR}/lib/ParaView-prefix/src/ParaView-build -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} #$(brew --prefix qt5)
     	    UPDATE_COMMAND ""
-    	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+    	    BUILD_COMMAND make -j10
     	    INSTALL_COMMAND make install
     	    BUILD_IN_SOURCE 1
     	 )
@@ -124,7 +124,7 @@ if( BUILD_BOOST)
 	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
 	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost"
 	    UPDATE_COMMAND ""
-	    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j10
 	    INSTALL_COMMAND ./b2 install
 	    BUILD_IN_SOURCE 1
 	    )
@@ -136,7 +136,7 @@ if(BUILD_GSL)
 	    URL ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz
 	    CONFIGURE_COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/lib/gsl
 	    UPDATE_COMMAND ""
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1)
 endif()
@@ -147,7 +147,7 @@ if(BUILD_ARMADILLO)
 	    URL http://sourceforge.net/projects/arma/files/armadillo-7.950.1.tar.xz
 	    UPDATE_COMMAND ""
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/armadillo
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
@@ -158,7 +158,7 @@ if(BUILD_VIENNACL)
 	    URL https://downloads.sourceforge.net/project/viennacl/1.7.x/ViennaCL-1.7.1.tar.gz
 	    UPDATE_COMMAND ""
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ViennaCL -DENABLE_OPENCL=OFF -DENABLE_CUDA=OFF -DENABLE_OPENMP=ON -DBUILD_EXAMPLES=OFF
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
@@ -170,7 +170,7 @@ if(BUILD_CGAL)
 	    URL https://github.com/CGAL/cgal/releases/download/releases%2FCGAL-4.10/CGAL-4.10.tar.xz
 	    UPDATE_COMMAND ""
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/CGAL -DBoost_NO_SYSTEM_PATHS=TRUE -DBOOST_ROOT=${CMAKE_BINARY_DIR}/lib/boost -DWITH_CGAL_Qt5=OFF
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    DEPENDS boost
@@ -184,7 +184,7 @@ if(BUILD_TBB)
 	    GIT_REPOSITORY https://github.com/wjakob/tbb.git
 	    UPDATE_COMMAND ""
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/tbb
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
@@ -199,12 +199,12 @@ if(BUILD_GDAL)
 	    UPDATE_COMMAND ""
 	    PATCH_COMMAND patch -p1 < ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch
 
-	    #occasionally GDAL doesn't correctly detect this, so can enable if required
+	    #occasionally GDAL doesn't correctly detect this, so can enable if required by adding before the configure command
 	    #http://osgeo-org.1560.x6.nabble.com/gdal-dev-sprintf-different-exception-specified-td5340324.html
 	    # CXXFLAGS=-DDONT_DEPRECATE_SPRINTF
 
-	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  CXXFLAGS=-DDONT_DEPRECATE_SPRINTF --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
@@ -224,7 +224,7 @@ if(BUILD_NETCDF)
                               --prefix=${CMAKE_BINARY_DIR}/lib/hdf5
                               --enable-cxx --enable-shared --enable-unsupported
 
-	    BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
 	    )
@@ -267,7 +267,7 @@ if(BUILD_NETCDF)
             CMAKE_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/netcdf-c
                         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
 
-            BUILD_COMMAND make -j${EXTERNAL_PROJECT_BUILD_THREADS}
+            BUILD_COMMAND make -j10
             INSTALL_COMMAND make install
             BUILD_IN_SOURCE 1
         )
