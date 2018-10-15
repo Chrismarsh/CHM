@@ -138,5 +138,16 @@ namespace math
                 phi += 2.0 * M_PI;
             return phi * 180.0/M_PI;
         }
+
+        // Returns the azimuthal wind direction from zonal u,v in radians
+        double zonal2dir(double u, double v)
+        {
+            // http://mst.nerc.ac.uk/wind_vect_convs.html
+            double theta =  atan2(-u,-v);
+            if(theta < 0)
+                theta += 2.0*M_PI;
+
+            return theta;
+        }
     }
 }

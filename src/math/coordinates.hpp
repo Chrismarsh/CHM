@@ -96,5 +96,13 @@ namespace math
          */
         double cartesian_to_bearing(Vector_2 cart);
 
+        /**
+         * Convert a zonal u,v into an azimuthal direction. In radians. N=0, goes clockwise
+         * @param u
+         * @param v
+         * @return
+         */
+        double zonal2dir(double u, double v);
+
     }
 }

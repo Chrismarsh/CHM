@@ -61,22 +61,7 @@ void MS_wind::init(mesh domain)
     }
 }
 
-// Returns the azimuthal wind direction from zonal u,v in radians
-double zonal2dir(double u, double v)
-{
-    // Liston 2006 formulation
-//    double theta = 3.0 * M_PI * 0.5 - atan2(v,u);
-//    if (theta > 2.0 * M_PI)
-//        theta = theta - 2.0 * M_PI;
-//    return (theta);
 
-    // http://mst.nerc.ac.uk/wind_vect_convs.html
-    double theta =  atan2(-u,-v);
-    if(theta < 0)
-        theta += 2.0*M_PI;
-
-    return theta;
-}
 void MS_wind::run(mesh domain)
 {
 
@@ -123,7 +108,7 @@ void MS_wind::run(mesh domain)
 
             //Get back the interpolated wind direction
             // -- not sure if there is a better way to do this, but at least a first order to getting the right direction
-            double theta = zonal2dir(zonal_u, zonal_v);
+            double theta = math::gis::zonal2dir(zonal_u, zonal_v);
 
             double theta_orig = theta;
 
@@ -147,7 +132,7 @@ void MS_wind::run(mesh domain)
             double V = V_speedup * W;
 
             // NEW wind direction after we do the U,V speedup
-            theta = zonal2dir(U, V);
+            theta = math::gis::zonal2dir(U, V);
 
             //go back from 2m to reference
             W = Atmosphere::log_scale_wind(W,

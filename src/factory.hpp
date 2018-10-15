@@ -53,7 +53,7 @@ boost::shared_ptr<Interface> factory<Interface,ConstructorArgs...>::create(std::
 
   // wrap instance in a shared ptr and return (if created)
   if(instance == nullptr) {
-    CHM_THROW_EXCEPTION(module_not_found, "Key not found in registry: [" + name +"]");
+    CHM_THROW_EXCEPTION(module_not_found, "Requested module not found in registry: [" + name +"]");
   }
   return boost::shared_ptr<Interface>(instance);
 }
