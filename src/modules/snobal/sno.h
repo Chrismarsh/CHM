@@ -144,6 +144,7 @@ public:
             double p);    /* air pressure (Pa)  			    */
     int do_data_tstep(void);
 
+    void _time_compact_ori(void);
     void _time_compact(void);
     void    _snowmelt(void);
 
