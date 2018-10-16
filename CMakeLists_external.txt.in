@@ -219,11 +219,11 @@ if(BUILD_NETCDF)
 	    URL https://s3.amazonaws.com/hdf-wordpress-1/wp-content/uploads/manual/HDF5/HDF5_1_10_4/hdf5-1.10.4.tar.gz
 	    UPDATE_COMMAND ""
 
-        CMAKE_ARGS  -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5 -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=ON -DALLOW_UNSUPPORTED=ON
+#        CMAKE_ARGS  -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5 -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=ON -DALLOW_UNSUPPORTED=ON
 
-#        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure
-#                              --prefix=${CMAKE_BINARY_DIR}/lib/hdf5
-#                              --enable-cxx --enable-shared --enable-unsupported
+        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure
+                              --prefix=${CMAKE_BINARY_DIR}/lib/hdf5
+                              --enable-cxx --enable-shared --enable-unsupported
 
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
