@@ -218,7 +218,8 @@ if(BUILD_NETCDF)
 	    hdf5
 	    URL https://s3.amazonaws.com/hdf-wordpress-1/wp-content/uploads/manual/HDF5/HDF5_1_10_4/hdf5-1.10.4.tar.gz
 	    UPDATE_COMMAND ""
-
+# If HDF5 is build with CMake, the wrong library is looked for when netcdf-cxx is build
+# https://github.com/Unidata/netcdf-c/issues/712#issuecomment-430309449
 #        CMAKE_ARGS  -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5 -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=ON -DALLOW_UNSUPPORTED=ON
 
         CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure
