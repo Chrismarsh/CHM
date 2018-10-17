@@ -27,7 +27,7 @@ option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
 set(BUILD_ParaView FALSE CACHE BOOL "Build Paraview and PV date-time filter")
-set(EXTERNAL_PROJECT_BUILD_THREADS 10 CACHE STRING "Number of build threads for superbuild projects")
+set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Number of build threads for superbuild projects")
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
