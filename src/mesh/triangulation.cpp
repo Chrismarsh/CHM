@@ -427,6 +427,20 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         f->_slope = temp_slope.at(i);
     }
 
+    // Permute the faces if they have explicit IDs set in the mesh file
+    try
+    {
+      std::vector<size_t> permutation;
+      for (auto itr : mesh.get_child("mesh.cell_local_id")) {
+	  permutation.push_back(itr.second.get_value<size_t>());
+      }
+      reorder_faces(permutation);
+
+    }catch(pt::ptree_bad_path& e)
+    {
+        // If not, just ignore the exception
+    }
+
     return parameters;
 }
 
