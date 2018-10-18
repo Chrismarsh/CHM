@@ -13,7 +13,7 @@ ExternalProject_Add(
     GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
     INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/sparsehash
 
-    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
+    CONFIGURE_COMMAND bash  <SOURCE_DIR>/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
     UPDATE_COMMAND ""
     BUILD_COMMAND make -j10
     INSTALL_COMMAND make install
@@ -26,7 +26,7 @@ if(USE_TCMALLOC)
         GIT_REPOSITORY https://github.com/gperftools/gperftools
         INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
 
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
+        CONFIGURE_COMMAND bash  <SOURCE_DIR>/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
         UPDATE_COMMAND ""
         BUILD_COMMAND make -j10
         INSTALL_COMMAND make install
@@ -51,7 +51,7 @@ if(BUILD_PROJ4)
     	proj4
         URL http://download.osgeo.org/proj/proj-4.9.3.tar.gz
         UPDATE_COMMAND ""
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/proj4-prefix/src/proj4/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
+        CONFIGURE_COMMAND bash  <SOURCE_DIR>/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
         BUILD_COMMAND make -j10
         INSTALL_COMMAND make install
         BUILD_IN_SOURCE 1
@@ -125,7 +125,7 @@ if( BUILD_BOOST)
 	    boost
 	    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz
 	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
-	    CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost"
+	    CONFIGURE_COMMAND bash  <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost"
 	    UPDATE_COMMAND ""
 	    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j10
 	    INSTALL_COMMAND ./b2 install
@@ -137,7 +137,7 @@ if(BUILD_GSL)
     ExternalProject_Add(
 	    gsl
 	    URL ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz
-	    CONFIGURE_COMMAND ./configure --prefix=${CMAKE_BINARY_DIR}/lib/gsl
+	    CONFIGURE_COMMAND  <SOURCE_DIR>/configure --prefix=${CMAKE_BINARY_DIR}/lib/gsl
 	    UPDATE_COMMAND ""
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
@@ -198,9 +198,7 @@ if(BUILD_GDAL)
     ExternalProject_Add(
 	    GDAL
 	    DEPENDS proj4
-	    GIT_REPOSITORY https://github.com/OSGeo/gdal.git
-	    GIT_TAG 4ebe3d0 # 2.3.2
-	    #URL https://github.com/OSGeo/gdal/archive/v2.3.2.tar.gz
+	    URL http://download.osgeo.org/gdal/2.3.2/gdal-2.3.2.tar.gz
 
 	    UPDATE_COMMAND ""
 	    #PATCH_COMMAND patch -p1 < ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch
@@ -209,7 +207,7 @@ if(BUILD_GDAL)
 	    #http://osgeo-org.1560.x6.nabble.com/gdal-dev-sprintf-different-exception-specified-td5340324.html
 	    # CXXFLAGS=-DDONT_DEPRECATE_SPRINTF
 
-	    CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/lib/GDAL-prefix/src/GDAL/gdal/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
+	    CONFIGURE_COMMAND <SOURCE_DIR>/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
@@ -223,8 +221,6 @@ if(BUILD_NETCDF)
     ExternalProject_Add(
 	    hdf5
 	    URL https://s3.amazonaws.com/hdf-wordpress-1/wp-content/uploads/manual/HDF5/HDF5_1_10_4/hdf5-1.10.4.tar.gz
-      #  URL https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.3/src/hdf5-1.10.3.tar.gz
-	    #URL https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.gz
 
 	    UPDATE_COMMAND ""
 # If HDF5 is build with CMake, the wrong library is looked for when netcdf-cxx is build
@@ -235,10 +231,7 @@ if(BUILD_NETCDF)
 
         #-DALLOW_UNSUPPORTED=ON
 
-      #  CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure --prefix=${CMAKE_BINARY_DIR}/lib/hdf5 --enable-cxx
-
-        #--enable-shared
-        #--enable-unsupported
+      #  CONFIGURE_COMMAND bash  <SOURCE_DIR>/configure --prefix=${CMAKE_BINARY_DIR}/lib/hdf5 --enable-cxx --enable-shared
 
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
