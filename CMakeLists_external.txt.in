@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
+
+cmake_policy(SET CMP0074 NEW)
+
 project(externalLib)
 include(ExternalProject)
 
@@ -217,14 +220,20 @@ if(BUILD_NETCDF)
     ExternalProject_Add(
 	    hdf5
 	    URL https://s3.amazonaws.com/hdf-wordpress-1/wp-content/uploads/manual/HDF5/HDF5_1_10_4/hdf5-1.10.4.tar.gz
+      #  URL https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.3/src/hdf5-1.10.3.tar.gz
+	    #URL https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.gz
+
 	    UPDATE_COMMAND ""
 # If HDF5 is build with CMake, the wrong library is looked for when netcdf-cxx is build
 # https://github.com/Unidata/netcdf-c/issues/712#issuecomment-430309449
-#        CMAKE_ARGS  -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5 -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=ON -DALLOW_UNSUPPORTED=ON
+        CMAKE_ARGS  -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5 -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=ON
 
-        CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure
-                              --prefix=${CMAKE_BINARY_DIR}/lib/hdf5
-                              --enable-cxx --enable-shared --enable-unsupported
+        #-DALLOW_UNSUPPORTED=ON
+
+      #  CONFIGURE_COMMAND bash ${CMAKE_BINARY_DIR}/lib/hdf5-prefix/src/hdf5/configure --prefix=${CMAKE_BINARY_DIR}/lib/hdf5 --enable-cxx
+
+        #--enable-shared
+        #--enable-unsupported
 
 	    BUILD_COMMAND make -j10
 	    INSTALL_COMMAND make install
@@ -235,7 +244,7 @@ if(BUILD_NETCDF)
         ExternalProject_Add(
             netcdf-c
             GIT_REPOSITORY https://github.com/Unidata/netcdf-c.git
-            GIT_TAG e0dcb24  #v4.6.1
+            # GIT_TAG e0dcb24  #v4.6.1
             UPDATE_COMMAND ""
             DEPENDS hdf5
 
@@ -247,8 +256,7 @@ if(BUILD_NETCDF)
             #          --prefix=${CMAKE_BINARY_DIR}/lib/netcdf-c
             #          --enable-netcdf-4 --enable-shared
 
-          CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5 -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
-                        -DENABLE_NETCDF_4=ON -DBUILD_SHARED_LIBS=ON
+          CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5 -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c -DENABLE_NETCDF_4=ON -DBUILD_SHARED_LIBS=ON -DENABLE_PARALLEL4=OFF -DHDF5_HAS_COLL_METADATA_OPS=OFF
 
           # With 4.6.1, there appears to be a parallel make regression that causes, randomly compilation failure
           # https://github.com/Unidata/netcdf-c/issues/896#issuecomment-382823731
