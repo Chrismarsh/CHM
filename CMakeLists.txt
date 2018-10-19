@@ -27,6 +27,7 @@ option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
 set(BUILD_ParaView FALSE CACHE BOOL "Build Paraview and PV date-time filter")
+set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Number of build threads for superbuild projects")
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
@@ -151,6 +152,7 @@ execute_process(COMMAND ${CMAKE_COMMAND}
         -DBUILD_NETCDF=${BUILD_NETCDF}
         -DBUILD_TBB=${BUILD_TBB}
         -DBUILD_ParaView=${BUILD_ParaView}
+	-DEXTERNAL_BUILD_THREADS=${EXTERNAL_BUILD_THREADS}
         -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
         -DUSE_OMP=${USE_OMP}
         -DUSE_OCL=${USE_OCL}
