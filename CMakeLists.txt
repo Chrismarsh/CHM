@@ -351,6 +351,7 @@ find_package(Boost
              log
              thread
              regex
+             iostreams
              program_options
              REQUIRED)
 message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
