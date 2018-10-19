@@ -152,6 +152,7 @@ execute_process(COMMAND ${CMAKE_COMMAND}
         -DBUILD_TBB=${BUILD_TBB}
         -DBUILD_ParaView=${BUILD_ParaView}
         -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+        -DUSE_OMP=${USE_OMP}
         -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 execute_process(COMMAND ${CMAKE_COMMAND}  --build .
