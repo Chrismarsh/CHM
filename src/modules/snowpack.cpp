@@ -345,8 +345,8 @@ void Lehning_snowpack::init(mesh domain)
         // because we use our own config, we need to do the conversion
         //format is same key-val pairs that snowpack expects, case sensitive
         /**
-         * [snowpack]
-         * [snowpackadvanced]
+         * [Snowpack]
+         * [SnowpackAdvanced]
          */
         for(auto itr : cfg)
         {
