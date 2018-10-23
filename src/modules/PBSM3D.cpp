@@ -147,9 +147,9 @@ void PBSM3D::init(mesh domain)
     do_lateral_diff = cfg.get("do_lateral_diff",true);
     eps = cfg.get("smooth_coeff",820);
     limit_mass= cfg.get("limit_mass",false);
-    min_mass_for_trans = cfg.get("min_mass_for_trans",0);
+    min_mass_for_trans = cfg.get("min_mass_for_trans",5);
 
-    snow_diffusion_const = cfg.get("snow_diffusion_const",0.5); // Beta * K, this is beta and scales the eddy diffusivity
+    snow_diffusion_const = cfg.get("snow_diffusion_const",0.9); // Beta * K, this is beta and scales the eddy diffusivity
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",false);
 
     enable_veg = cfg.get("enable_veg",true);
@@ -570,7 +570,7 @@ void PBSM3D::run(mesh domain)
 
                 c_salt *= Lc;
             }
-            else
+            else if(use_PomLi_probability)
             {
                 // Essery, Li, and Pomeroy 1999
                 //Probability of blowing snow
