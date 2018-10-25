@@ -113,7 +113,7 @@ void MS_wind::run(mesh domain)
             double theta_orig = theta;
 
             // Use this wind dir to figure out which lookUP we need
-            int d = int(theta * 180.0 / M_PI / 45.);
+            int d = int( std::round(theta * 180.0 / M_PI / 45.));
             if (d == 0) d = 8;
             face->set_face_data("lookup_d", d);
 
