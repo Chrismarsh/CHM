@@ -69,6 +69,9 @@ void Ninja_wind::run(mesh domain)
 {
     double H_forc = 40.0;  // Reference height for GEM forcing and WindNinja wind field library
 
+    double Max_spdup = 1.5;  // Maximal value of crest speedup
+    double Min_spdup = 0.1;  // Minimal value of crest speedup
+
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
@@ -167,6 +170,8 @@ void Ninja_wind::run(mesh domain)
             theta = math::gis::zonal2dir(U, V);
 
             // NEW wind intensity from the wind field library
+            W_transf = std::min(W_transf,Max_spdup);         // Limit speed up value to avoid unrelistic values at crest top
+            W_transf = std::max(W_transf,Min_spdup);         
             double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v) * W_transf;
             W = std::max(W, 0.1);
             face->set_face_data("Ninja_speed", W);
@@ -174,7 +179,6 @@ void Ninja_wind::run(mesh domain)
             // Update U and V wind components
             U = -W  * sin(theta);
             V = -W  * cos(theta);
-
 
             //go back from H_forc to reference
             W = Atmosphere::log_scale_wind(W,
