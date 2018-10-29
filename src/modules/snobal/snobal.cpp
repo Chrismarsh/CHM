@@ -73,6 +73,9 @@ snobal::snobal(config_file cfg)
     provides("sum_snowpack_runoff");
     provides("sum_melt");
     provides("snowdepthavg");
+    provides("snowdepthavg_vert");
+
+
 }
 
 void snobal::init(mesh domain)
@@ -400,6 +403,8 @@ void snobal::run(mesh_elem &face)
     g->sum_runoff += sbal->ro_predict;
     g->sum_melt += swe_diff;
 
+    double sd_ver = sbal->z_s/std::max(0.001,cos(face->slope()));
+
     face->set_face_data("dead",g->dead);
 
     face->set_face_data("swe",sbal->m_s);
@@ -424,6 +429,7 @@ void snobal::run(mesh_elem &face)
     face->set_face_data("sum_snowpack_runoff",g->sum_runoff);
 
     face->set_face_data("snowdepthavg",sbal->z_s);
+    face->set_face_data("snowdepthavg_vert",sd_ver);
 
     sbal->input_rec1.S_n =sbal->input_rec2.S_n;
     sbal->input_rec1.I_lw =sbal->input_rec2.I_lw;
