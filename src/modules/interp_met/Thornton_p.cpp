@@ -32,6 +32,8 @@ Thornton_p::Thornton_p(config_file cfg)
 
     provides("p");
 
+    apply_cosine_correction = cfg.get("apply_cosine_correction",false);
+
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
@@ -69,14 +71,27 @@ void Thornton_p::run(mesh_elem& face)
     double p0 = face->get_module_data<data>(ID)->interp(ppt, query);
     double z0 = face->get_module_data<data>(ID)->interp(staion_z,query);
     double z = face->get_z();
+    double slp = face->slope();
 
     int month = global_param->month()-1;
     double lapse = monthly_factors[month];
 
     double P = p0*( (1+lapse*(z-z0))/(1-lapse*(z-z0)));
-    P = std::max(0.0,P);
+  //  P = std::max(0.0,P);
 
-    face->set_face_data("p", P);
+    double P_fin;
+
+   // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+    if(apply_cosine_correction)
+    {
+        P_fin = Atmosphere::corr_precip_slope(P,slp);
+    } else
+    { 
+        P_fin = P;
+    }
+
+    P_fin =  std::max(0.0,P_fin);
+    face->set_face_data("p", P_fin);
 
 
 }

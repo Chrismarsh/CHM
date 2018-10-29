@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <constants/Atmosphere.h>
+
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
@@ -66,6 +68,9 @@ public:
     {
         interpolation interp;
     };
+
+    // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+    bool apply_cosine_correction;
 
 };
 

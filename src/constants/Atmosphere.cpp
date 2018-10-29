@@ -45,4 +45,14 @@ namespace Atmosphere
         return u;
     }
 
+    // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+    // See Fig 1 and 2 of Kienzle (2010, Hydrological Processes)  
+    // Slope in radian
+    double corr_precip_slope(double p, double slope)
+    {
+        p = p * cos(slope);
+        return p;
+    }
+
+
 }

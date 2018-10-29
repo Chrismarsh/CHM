@@ -38,6 +38,11 @@ namespace Atmosphere {
     // Inoue E (1963) On the turbulent structure of air flow within crop canopies. J Meteorol Soc Jpn 41:317–326
     double exp_scale_wind(double u, double Z_in, double Z_out, const double alpha);
 
+   // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+   // See Fig 1 and 2 of Kienzle (2010, Hydrological Processes)
+    double corr_precip_slope(double p, double slope);
+
+
 }
 
 
