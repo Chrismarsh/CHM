@@ -31,6 +31,7 @@ p_no_lapse::p_no_lapse(config_file cfg)
     depends_from_met("p");
 
     provides("p");
+    apply_cosine_correction = cfg.get("apply_cosine_correction",false);
 
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -61,8 +62,23 @@ void p_no_lapse::run(mesh_elem& face)
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
     double p0 = face->get_module_data<data>(ID)->interp(ppt, query);
+    double slp = face->slope();
 
-    face->set_face_data("p", std::max(0.0,p0));
+    //face->set_face_data("p", std::max(0.0,p0));
+
+    double P_fin;
+
+   // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+    if(apply_cosine_correction)
+    {
+        P_fin = Atmosphere::corr_precip_slope(p0,slp);
+    } else
+    { 
+        P_fin = p0;
+    }
+
+    P_fin =  std::max(0.0,P_fin);
+    face->set_face_data("p", P_fin);
 
 
 }
