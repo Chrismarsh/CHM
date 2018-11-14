@@ -31,6 +31,8 @@ Thornton_p::Thornton_p(config_file cfg)
     depends_from_met("p");
 
     provides("p");
+    provides("p_no_slope");
+
 
     apply_cosine_correction = cfg.get("apply_cosine_correction",false);
 
@@ -93,6 +95,8 @@ void Thornton_p::run(mesh_elem& face)
     P_fin =  std::max(0.0,P_fin);
     face->set_face_data("p", P_fin);
 
+    P = std::max(0.0,P);
+    face->set_face_data("p_no_slope", P);
 
 }
 

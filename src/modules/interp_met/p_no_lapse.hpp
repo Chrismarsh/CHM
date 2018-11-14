@@ -50,6 +50,7 @@
 *
 * Provides:
 * - Precip "p" [mm]
+* - Precip "p_no_slope" [mm]
 */
 class p_no_lapse : public module_base
 {

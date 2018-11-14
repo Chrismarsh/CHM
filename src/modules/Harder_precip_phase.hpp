@@ -56,6 +56,8 @@
 * - Liquid precip p_rain [mm]
 * - Fractional rain frac_precip_rain [-]
 * - Fractional snow frac_precip_snow [-]
+* - Cumulated Snow precip p_snow [mm]
+* - Cumulated Liquid precip p_rain [mm]
 */
 class Harder_precip_phase : public module_base
 {
@@ -72,6 +74,9 @@ public:
     {
     public:
         double hours_since_snowfall;
+        double acc_rain;
+        double acc_snow;
+
     };
 
 
