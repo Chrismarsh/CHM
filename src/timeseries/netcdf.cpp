@@ -110,6 +110,11 @@ void netcdf::open_GEM(const std::string &file)
     _datetime_field = "datetime";
     _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
 
+    // if we don't have at least two timesteps, we can't figure out the model internal timestep length (dt)
+    if(_datetime_length == 1)
+    {
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("There needs to be at least 2 timesteps in order to determine model dt."));
+    }
 //
 //    if(coord_vars.size() > 1)
 //    {
