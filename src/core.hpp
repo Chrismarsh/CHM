@@ -57,6 +57,7 @@
 #include <boost/graph/graphviz.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/algorithm/cxx11/any_of.hpp>
 
 #include <tbb/concurrent_vector.h>
 
