@@ -102,7 +102,7 @@ private:
 
     size_t _datetime_length; //number of records
 
-    boost::posix_time::ptime _start, _end;
+    boost::posix_time::ptime _start, _epoch, _end;
     date_vec _datetime; //holds all the datetimes
     std::string dt_unit;
 
