@@ -22,6 +22,7 @@ set(FILTER_SRCS
 		filters/macdonald_undercatch.cpp
 		filters/scale_wind_speed.cpp
 		filters/goodison_undercatch.cpp
+		filters/debias_lw.cpp
 		CACHE INTERNAL "" FORCE
 		)
 
