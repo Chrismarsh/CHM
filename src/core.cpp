@@ -1479,6 +1479,24 @@ void core::init(int argc, char **argv)
     LOG_DEBUG << "Determining module dependencies";
     _determine_module_dep();
 
+    //now we know what outputs we have, and have ensure that's valid, we need to ensure the user hasn't asked to output
+    // a variable that won't be created, otherwise this will segfault.
+
+    for(auto& o : _outputs)
+    {
+        if( o.type != output_info::mesh )
+            continue;
+
+        for (auto& var : o.variables)
+        {
+            //check every output we requested against the global full list of provided outputs, bail if we don't find it
+            if(!boost::algorithm::any_of_equal(_provided_var_module,var))
+            {
+                BOOST_THROW_EXCEPTION(config_error() << errstr_info("Requested output " + var + " is not provided by any module."));
+            }
+        }
+    }
+
     LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
     if (_global->_stations.size() == 0)
@@ -1742,8 +1760,6 @@ void core::_determine_module_dep()
 
 
     std::set<std::string> graphviz_vars;
-
-    std::list<std::string> all_provides;
 
     bool overwrite_found = false;
     //make sure modules cannot override another module's output

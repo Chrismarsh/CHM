@@ -110,6 +110,11 @@ void netcdf::open_GEM(const std::string &file)
     _datetime_field = "datetime";
     _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
 
+    // if we don't have at least two timesteps, we can't figure out the model internal timestep length (dt)
+    if(_datetime_length == 1)
+    {
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("There needs to be at least 2 timesteps in order to determine model dt."));
+    }
 //
 //    if(coord_vars.size() > 1)
 //    {
@@ -182,22 +187,25 @@ void netcdf::open_GEM(const std::string &file)
         std::string s = strs[2];
         s.replace(s.find("T"),1," ");
 
-        _start = boost::posix_time::time_from_string(s);
+        _epoch = boost::posix_time::time_from_string(s);
 
     }
     else
     {
-        _start = boost::posix_time::time_from_string(strs[2]+" "+strs[3]);
+        _epoch = boost::posix_time::time_from_string(strs[2]+" "+strs[3]);
     }
-
-
-    LOG_DEBUG << "NetCDF epoch is " << _start;
 
     //get our dt, assuming constant dt throughout the nc file
     _timestep *= dt[1]-dt[0];
 
-    _end = _start + _timestep * dt[_datetime_length-1];
+    //need to handle a start that is different from our epoch
+    _start = _epoch + _timestep * dt[0];
 
+    //figure out what the end of the timeseries is
+    _end = _epoch + _timestep * dt[_datetime_length-1];
+
+    LOG_DEBUG << "NetCDF epoch is " << _epoch;
+    LOG_DEBUG << "NetCDF start is " << _start;
     LOG_DEBUG << "NetCDF end is " << _end;
     LOG_DEBUG << "NetCDF timestep is " << _timestep;
 
