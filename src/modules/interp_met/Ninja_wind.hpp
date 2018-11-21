@@ -77,7 +77,10 @@ public:
         interpolation interp_smoothing;
     };
     double distance;
-    bool ninja_average;
+    bool ninja_average;  
+    double H_forc; // Reference height for GEM forcing and WindNinja wind field library
+    double Max_spdup;  // Maximal value of crest speedup
+    double Min_spdup;   // Minimal value of crest speedup
 };
 
 /**

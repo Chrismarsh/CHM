@@ -62,15 +62,19 @@ void Ninja_wind::init(mesh domain)
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
         d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
     }
+
+    H_forc = cfg.get("H_forc",40.0);
+    Max_spdup = cfg.get("Max_spdup",3.);
+    Min_spdup = cfg.get("Min_spdup",0.1);
 }
 
 
 void Ninja_wind::run(mesh domain)
 {
-    double H_forc = 40.0;  // Reference height for GEM forcing and WindNinja wind field library
+   // double H_forc = 40.0;  // Reference height for GEM forcing and WindNinja wind field library
 
-    double Max_spdup = 1.5;  // Maximal value of crest speedup
-    double Min_spdup = 0.1;  // Minimal value of crest speedup
+    //double Max_spdup = 1.5;  // Maximal value of crest speedup
+   // double Min_spdup = 0.1;  // Minimal value of crest speedup
 
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
