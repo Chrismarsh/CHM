@@ -427,7 +427,70 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         f->_slope = temp_slope.at(i);
     }
 
+    // Permute the faces if they have explicit IDs set in the mesh file
+    try
+    {
+      std::vector<size_t> permutation;
+      for (auto itr : mesh.get_child("mesh.cell_local_id")) {
+	  permutation.push_back(itr.second.get_value<size_t>());
+      }
+      reorder_faces(permutation);
+
+    }catch(pt::ptree_bad_path& e)
+    {
+        // If not, just ignore the exception
+    }
+
     return parameters;
+}
+
+void triangulation::reorder_faces(std::vector<size_t> permutation)
+{
+  // NOTE: be careful with evaluating this, the 'cell_id's and a
+  // cell's position in the '_faces' vec are unrelated. They must both
+  // be modified (ie. renumber the 'cell_id's, AND sort the '_faces'
+  // vector) before the new ordering is consistent.
+
+  assert( permutation.size() == size_faces() );
+
+  LOG_DEBUG << "Reordering faces";
+
+  // Update the IDs on all faces
+  #pragma omp parallel for
+  for (size_t ind = 0; ind < permutation.size(); ++ind) {
+
+    size_t old_ID = permutation[ind];
+    size_t new_ID = ind;
+
+    auto face = _faces[old_ID];
+    face->cell_id = new_ID;
+  }
+
+  // Sort the faces in the new ordering
+  tbb::parallel_sort(_faces.begin(), _faces.end(),
+  		     [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
+  		     {
+  		       return fa->cell_id < fb->cell_id;
+  		     });
+
+  // for (size_t ind = 0; ind < permutation.size(); ++ind) {
+
+  //   auto face = _faces[ind];
+
+  //   Face_handle neighbor0 = face->neighbor(0);
+  //   Face_handle neighbor1 = face->neighbor(1);
+  //   Face_handle neighbor2 = face->neighbor(2);
+
+  //   if (neighbor0 !=nullptr &&
+  // 	neighbor1 !=nullptr &&
+  // 	neighbor2 !=nullptr ) {
+  //     std::cout << "ind: " << ind
+  // 		<< " N0: " << neighbor0->cell_id
+  // 		<< " N1: " << neighbor1->cell_id
+  // 		<< " N2: " << neighbor2->cell_id << std::endl;
+  //   }
+  // }
+
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)

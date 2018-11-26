@@ -63,6 +63,7 @@
 
 
 #include <tbb/concurrent_vector.h>
+#include <tbb/parallel_sort.h>
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -530,6 +531,13 @@ public:
     * \param file Fully qualified path to a file.
     */
 	std::set<std::string> from_json(pt::ptree& mesh);
+
+    /**
+    * Sets a new order to the face numbering.
+    * \param permutation desired ordering
+    */
+  void reorder_faces(std::vector<size_t> permutation);
+
 
 	/**
 	 * Serializes a mesh attribute to file so it can be read into the model.
