@@ -431,14 +431,16 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     try
     {
       std::vector<size_t> permutation;
-      for (auto itr : mesh.get_child("mesh.cell_local_id")) {
-	  permutation.push_back(itr.second.get_value<size_t>());
+      for (auto itr : mesh.get_child("mesh.cell_local_id"))
+      {
+	    permutation.push_back(itr.second.get_value<size_t>());
       }
       reorder_faces(permutation);
 
     }catch(pt::ptree_bad_path& e)
     {
         // If not, just ignore the exception
+        LOG_DEBUG << "No face permutation."
     }
 
     return parameters;
@@ -457,7 +459,8 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
 
   // Update the IDs on all faces
   #pragma omp parallel for
-  for (size_t ind = 0; ind < permutation.size(); ++ind) {
+  for (size_t ind = 0; ind < permutation.size(); ++ind)
+  {
 
     size_t old_ID = permutation[ind];
     size_t new_ID = ind;
@@ -472,25 +475,6 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   		     {
   		       return fa->cell_id < fb->cell_id;
   		     });
-
-  // for (size_t ind = 0; ind < permutation.size(); ++ind) {
-
-  //   auto face = _faces[ind];
-
-  //   Face_handle neighbor0 = face->neighbor(0);
-  //   Face_handle neighbor1 = face->neighbor(1);
-  //   Face_handle neighbor2 = face->neighbor(2);
-
-  //   if (neighbor0 !=nullptr &&
-  // 	neighbor1 !=nullptr &&
-  // 	neighbor2 !=nullptr ) {
-  //     std::cout << "ind: " << ind
-  // 		<< " N0: " << neighbor0->cell_id
-  // 		<< " N1: " << neighbor1->cell_id
-  // 		<< " N2: " << neighbor2->cell_id << std::endl;
-  //   }
-  // }
-
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
