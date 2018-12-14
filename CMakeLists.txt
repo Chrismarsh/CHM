@@ -17,7 +17,7 @@ set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(USE_OMP "Enable OpenMP"  ON )
+option(USE_OMP "Enable OpenMP"  OFF )
 option(USE_OCL "Enable OpenCL with ViennaCL"  OFF )
 option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
@@ -132,8 +132,7 @@ configure_file(CMakeLists_external.txt.in
 
 
 if(MACOSX)
-    execute_process(COMMAND brew --prefix qt5
-            OUTPUT_VARIABLE qt5path)
+    execute_process(COMMAND brew --prefix qt5  OUTPUT_VARIABLE qt5path)
     message(STATUS "Ammending CMAKE_PREFIX_PATH to include brew qt5 -- ${qt5path}" )
     set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}")
 endif()
@@ -346,7 +345,7 @@ endif()
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
 find_package(Boost
-             1.60.0
+             1.62.0
              COMPONENTS
              system
              filesystem
