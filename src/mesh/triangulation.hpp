@@ -490,17 +490,29 @@ typedef Delaunay::Face_handle mesh_elem;
 typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
 
 //search tree typedefs
+//http://doc.cgal.org/latest/Spatial_searching/index.html
 typedef K::Point_2 Point_2;
 typedef boost::tuple<Point_2, Delaunay::Face_handle > Point_and_face;
 typedef CGAL::Search_traits_2<K>                       Traits_base;
 typedef CGAL::Search_traits_adapter<Point_and_face,
-		CGAL::Nth_of_tuple_property_map<0, Point_and_face>,
-		Traits_base>                                              Traits;
+            CGAL::Nth_of_tuple_property_map<0, Point_and_face>,
+            Traits_base>                                              Traits;
+
+typedef CGAL::Sliding_midpoint<Traits> Splitter;
+typedef CGAL::Kd_tree<Traits,Splitter> Tree;
+
+// for nearest face search
+typedef CGAL::Orthogonal_k_neighbor_search <
+        Traits,
+        typename CGAL::internal::Spatial_searching_default_distance<Traits>::type,
+        Splitter > K_neighbor_search;
+//typedef CGAL::Orthogonal_k_neighbor_search<Traits>          K_neighbor_search;
+// used for faces in radius
+typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
 
 
-typedef CGAL::Orthogonal_k_neighbor_search<Traits>          K_neighbor_search;
-typedef K_neighbor_search::Tree                             Tree;
-typedef K_neighbor_search::Distance                         Distance;
+//typedef K_neighbor_search::Tree                             Tree;
+//typedef K_neighbor_search::Distance                         Distance;
 
 /**
 *
@@ -583,6 +595,23 @@ public:
      * @return
      */
 	mesh_elem find_closest_face(Point_2 query) const;
+
+    /**
+     * Locates the triangles (based on centers) within a given radius.
+     * @param center x,y-coordinate of the center to search from
+     * @param radius radius within which to search. Given in mesh units (e.g., metres)
+     * @return Vector of faces
+     */
+    std::vector< mesh_elem > find_faces_in_radius(Point_2 center, double radius) const;
+
+	/**
+	 * Locates the triangles (based on centers) within a given radius.
+	 * @param x x-coordinate of the center to search from
+	 * @param y y-coordinate of the center to search from
+	 * @param radius radius within which to search. Given in mesh units (e.g., metres)
+	 * @return Vector of faces
+	 */
+    std::vector< mesh_elem > find_faces_in_radius(double x, double y, double radius) const;
 
     /**
      * Lcoates the triangle that contains the query point. Guaranteed that if a triangle is found, the point lies inside the triangle.

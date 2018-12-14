@@ -70,23 +70,20 @@ class global
             CGAL::Nth_of_tuple_property_map<0, Point_and_station>,
             Traits_base>                                              Traits;
 
-    //Sliding_midpoint
+    //Sliding_midpoint spatial search tree. Better stability for searching with the coordinate systems we use
     typedef CGAL::Sliding_midpoint<Traits> Splitter;
-
-    typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
-
     typedef CGAL::Kd_tree<Traits,Splitter> Tree;
 
-//    typedef CGAL::Kd_tree<Traits> Tree;
+    // used for get_stations_in_radius
+    typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
 
+    // This is used by nearest_station to find a single nearest station
     typedef CGAL::Orthogonal_k_neighbor_search <
              Traits,
              typename CGAL::internal::Spatial_searching_default_distance<Traits>::type,
             Splitter > Neighbor_search;
-//    Sliding_midpoint
-//    typedef CGAL::Orthogonal_k_neighbor_search<Traits> Neighbor_search;
 
-     //want to let core modify date time, etc without showing a public interface.
+    //want to let core modify date time, etc without showing a public interface.
     //This is because global gets passed to all modules and a rogue module could do something dumb
     //const doesn't save us as we actually do want to modify things
     friend class core;

@@ -145,16 +145,45 @@ mesh_elem triangulation::locate_face(Point_2 query)
     return nullptr;
 }
 
+
+std::vector<mesh_elem > triangulation::find_faces_in_radius(Point_2 center, double radius) const
+{
+    // define exact circular range query  (fuzziness=0)
+    Fuzzy_circle exact_range(center, radius);
+
+    std::vector<boost::tuple<K::Point_2, mesh_elem > > result;
+    dD_tree->search(std::back_inserter(result), exact_range);
+
+    std::vector< mesh_elem > faces;
+
+    for (auto& itr : result)
+    {
+        faces.push_back( boost::get<1>(itr));
+    }
+    return faces;
+}
+
+
+std::vector< mesh_elem > triangulation::find_faces_in_radius(double x, double y, double radius) const
+{
+    Point_2 query(x,y);
+    return find_faces_in_radius(query, radius);
+}
+
+
+
 mesh_elem triangulation::find_closest_face(Point_2 query) const
 {
-    K_neighbor_search search(*(dD_tree.get()), query, 1);
+    K_neighbor_search search(*dD_tree, query, 1);
+
+    //return the first face only
     auto it = search.begin();
     return  boost::get<1>(it->first);
 
 }
 mesh_elem triangulation::find_closest_face(double x, double y) const
 {
-    //http://doc.cgal.org/latest/Spatial_searching/index.html
+
     Point_2 query(x,y);
 
     return find_closest_face(query);
@@ -440,7 +469,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     }catch(pt::ptree_bad_path& e)
     {
         // If not, just ignore the exception
-        LOG_DEBUG << "No face permutation."
+        LOG_DEBUG << "No face permutation.";
     }
 
     return parameters;
