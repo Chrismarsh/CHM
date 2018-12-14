@@ -498,6 +498,7 @@ typedef CGAL::Search_traits_adapter<Point_and_face,
             CGAL::Nth_of_tuple_property_map<0, Point_and_face>,
             Traits_base>                                              Traits;
 
+//Sliding_midpoint spatial search tree. Better stability for searching with the coordinate systems we use
 typedef CGAL::Sliding_midpoint<Traits> Splitter;
 typedef CGAL::Kd_tree<Traits,Splitter> Tree;
 
@@ -506,13 +507,10 @@ typedef CGAL::Orthogonal_k_neighbor_search <
         Traits,
         typename CGAL::internal::Spatial_searching_default_distance<Traits>::type,
         Splitter > K_neighbor_search;
-//typedef CGAL::Orthogonal_k_neighbor_search<Traits>          K_neighbor_search;
+
 // used for faces in radius
 typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
 
-
-//typedef K_neighbor_search::Tree                             Tree;
-//typedef K_neighbor_search::Distance                         Distance;
 
 /**
 *
@@ -597,7 +595,16 @@ public:
 	mesh_elem find_closest_face(Point_2 query) const;
 
     /**
-     * Locates the triangles (based on centers) within a given radius.
+     * Locates the triangles (based on centers) within a given radius. Example:
+     * @code
+     *       auto s = global_param->stations().at(0);
+     *       auto faces_in_radius = domain->find_faces_in_radius(s->x(),s->y(),1000.);
+     *
+     *       for (auto& f : faces_in_radius)
+     *       {
+     *           f->set_face_data("radius_test", 1);
+     *       }
+     * @endcode
      * @param center x,y-coordinate of the center to search from
      * @param radius radius within which to search. Given in mesh units (e.g., metres)
      * @return Vector of faces
