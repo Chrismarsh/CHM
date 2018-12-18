@@ -50,7 +50,7 @@ def main():
     input_path = ''
     if len(sys.argv) == 3: # we have a 2nd CLI arg
         input_path = sys.argv[2]
-        if(hasattr(X,'input_path')):
+        if hasattr(X,'input_path'):
             print 'Warning: Overwriting script defined input path with CL path'
     elif hasattr(X,'input_path'):
         input_path = X.input_path
@@ -108,7 +108,7 @@ def main():
 
 
     # Get info for constrained output extent/resolution if selected
-    if(constrain_flag):
+    if constrain_flag :
         ex_ds = gdal.Open(constrain_tif_file,GA_ReadOnly)
         gt = ex_ds.GetGeoTransform()
         pixel_width = np.abs(gt[1])
@@ -132,7 +132,6 @@ def main():
 
     iter=1
     for vtu in pvd:
-
         #if not pvd...
         path = vtu
         vtu_file = ''
@@ -242,7 +241,7 @@ def main():
                     data = cd.GetArray(v).GetTuple(i)
                     feature.SetField(str(v), float(data[0]))
                 except:
-                    print "Variable %s not present in mesh" %(v)
+                    print "Variable %s not present in mesh" % v
                     raise
 
 
@@ -252,7 +251,7 @@ def main():
                         data = cd.GetArray(p).GetTuple(i)
                         feature.SetField(str(p), float(data[0]))
                     except:
-                        print "Parameter %s not present in mesh" % (v)
+                        print "Parameter %s not present in mesh" % v
                         raise
             layer.CreateFeature(feature)
 
@@ -276,8 +275,8 @@ def main():
             target_ds = None
 
             # Optional clip file
-            if(constrain_flag):
-                subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f -r \"%s\" -tr %f %f \"%s\" \"%s\"' %
+            if constrain_flag:
+                subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
                                        (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, var_resample_method[var], pixel_width, pixel_height, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
 
             if parameters is not None:
@@ -293,9 +292,9 @@ def main():
                     target_ds = None
 
                     # Optional clip file
-                    if(constrain_flag):
+                    if constrain_flag:
                         subprocess.check_call([
-                          'gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %f %f %f %f -r \"%s\" -tr %f %f \"%s\" \"%s\"' %
+                          'gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
                           (srsout.ExportToProj4(), srsout.ExportToProj4(), o_xmin, o_ymin, o_xmax,
                            o_ymax, param_resample_method[p], pixel_width, pixel_height,
                            output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '.tif',

@@ -125,9 +125,10 @@ endif()
 if( BUILD_BOOST)
     ExternalProject_Add(
 	    boost
-	    URL https://downloads.sourceforge.net/project/boost/boost/1.62.0/boost_1_62_0.tar.gz
+	    URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
 	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
-	    CONFIGURE_COMMAND bash  <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --with-libraries=system,iostreams,filesystem,date_time,log,thread,regex,program_options
+	    CONFIGURE_COMMAND bash  <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python
+	     #--with-libraries=system,iostreams,filesystem,date_time,log,thread,regex,program_options
 	    UPDATE_COMMAND ""
 	    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND ./b2 install

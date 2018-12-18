@@ -145,16 +145,45 @@ mesh_elem triangulation::locate_face(Point_2 query)
     return nullptr;
 }
 
+
+std::vector<mesh_elem > triangulation::find_faces_in_radius(Point_2 center, double radius) const
+{
+    // define exact circular range query  (fuzziness=0)
+    Fuzzy_circle exact_range(center, radius);
+
+    std::vector<boost::tuple<K::Point_2, mesh_elem > > result;
+    dD_tree->search(std::back_inserter(result), exact_range);
+
+    std::vector< mesh_elem > faces;
+
+    for (auto& itr : result)
+    {
+        faces.push_back( boost::get<1>(itr));
+    }
+    return faces;
+}
+
+
+std::vector< mesh_elem > triangulation::find_faces_in_radius(double x, double y, double radius) const
+{
+    Point_2 query(x,y);
+    return find_faces_in_radius(query, radius);
+}
+
+
+
 mesh_elem triangulation::find_closest_face(Point_2 query) const
 {
-    K_neighbor_search search(*(dD_tree.get()), query, 1);
+    K_neighbor_search search(*dD_tree, query, 1);
+
+    //return the first face only
     auto it = search.begin();
     return  boost::get<1>(it->first);
 
 }
 mesh_elem triangulation::find_closest_face(double x, double y) const
 {
-    //http://doc.cgal.org/latest/Spatial_searching/index.html
+
     Point_2 query(x,y);
 
     return find_closest_face(query);
@@ -427,7 +456,54 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         f->_slope = temp_slope.at(i);
     }
 
+    // Permute the faces if they have explicit IDs set in the mesh file
+    try
+    {
+      std::vector<size_t> permutation;
+      for (auto itr : mesh.get_child("mesh.cell_local_id"))
+      {
+	    permutation.push_back(itr.second.get_value<size_t>());
+      }
+      reorder_faces(permutation);
+
+    }catch(pt::ptree_bad_path& e)
+    {
+        // If not, just ignore the exception
+        LOG_DEBUG << "No face permutation.";
+    }
+
     return parameters;
+}
+
+void triangulation::reorder_faces(std::vector<size_t> permutation)
+{
+  // NOTE: be careful with evaluating this, the 'cell_id's and a
+  // cell's position in the '_faces' vec are unrelated. They must both
+  // be modified (ie. renumber the 'cell_id's, AND sort the '_faces'
+  // vector) before the new ordering is consistent.
+
+  assert( permutation.size() == size_faces() );
+
+  LOG_DEBUG << "Reordering faces";
+
+  // Update the IDs on all faces
+  #pragma omp parallel for
+  for (size_t ind = 0; ind < permutation.size(); ++ind)
+  {
+
+    size_t old_ID = permutation[ind];
+    size_t new_ID = ind;
+
+    auto face = _faces[old_ID];
+    face->cell_id = new_ID;
+  }
+
+  // Sort the faces in the new ordering
+  tbb::parallel_sort(_faces.begin(), _faces.end(),
+  		     [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
+  		     {
+  		       return fa->cell_id < fb->cell_id;
+  		     });
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)

@@ -650,7 +650,7 @@ void PBSM3D::run(mesh domain)
         double es = mio::Atmosphere::saturatedVapourPressure(t);
         double ea = rh * es / 1000.; // ea needs to be in kpa
 
-        double v = 1.88*10e-5; //kinematic viscosity of air, below eqn 13 Pomeroy 1993
+        double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 Pomeroy 1993
 
         //vapour pressure, Pa
         auto e = [](double T,double RH)
@@ -677,7 +677,7 @@ void PBSM3D::run(mesh domain)
             if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1*10e7 * pow(rm,1.8); //eqn 15
+            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
             double Re = 2.0*rm*Vr / v; //eqn 13
@@ -688,13 +688,14 @@ void PBSM3D::run(mesh domain)
             //define above, T is in C, t is in K
 
             // (A.6)
-            double D = 2.06 * 10e-5 * pow(t/273.15,1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998 or Harder 2013 A.6
+            double D = 2.06e-5 * pow(t/273.15,1.75); //diffusivity of water vapour in air, t in K, eqn A-7 in Liston 1998 or Harder 2013 A.6
 
             // (A.9)
             double lambda_t = 0.000063 * t + 0.00673; //  thermal conductivity, user Harder 2013 A.9, Pomeroy's is off by an order of magnitude, this matches this https://www.engineeringtoolbox.com/air-properties-d_156.html
 
-            // (A.10) (A.11)
-            double L = 1000.0 * (2834.1 - 0.29 *T - 0.004*T*T); // T in C  Latent heat of sublimation
+            // Standard constant value, e.g.,
+            // https://link.springer.com/referenceworkentry/10.1007%2F978-90-481-2642-2_329
+            double L = 2.38e6; // Latent heat of sublimation, J/kg
 
             double dmdtz = 0;
 
@@ -787,7 +788,7 @@ void PBSM3D::run(mesh domain)
             //Li and Pomeroy 2000
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
             if(debug_output) face->set_face_data("l",l);
-            double w = 1.1*10e7*pow(rm,1.8);
+            double w = 1.1e7*pow(rm,1.8); //settling_velocity;
             if(debug_output) face->set_face_data("w",w);
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
