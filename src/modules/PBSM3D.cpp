@@ -537,13 +537,15 @@ void PBSM3D::run(mesh domain)
 
             double m = 0.16;
 
-            //this is ustar_n / ustar
-            double ustar_n = sqrt(m*Beta*lambda)*pow(1.0+m* Beta*lambda,-0.5); //MacDonald 2009 eq 3;
+            //this is ustar_n / ustar from MacDonald 2009 eq 3;
+            // we need (ustar_n / ustar)^2 whit the original derivation gives
+            // so this is is correctly squared
+            double ustar_n = (m*Beta*lambda) / (1.0 + m* Beta*lambda);
 
 
             if(debug_output) face->set_face_data("u*_n",ustar_n);
-            //Pomeroy 1992, eqn 12, see note above for ustar_n calc
-            c_salt = rho_f / (3.29 * ustar) * (1.0 - ustar_n*ustar_n -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
+            //Pomeroy 1992, eqn 12, see note above for ustar_n calc, but ustar_n is correctly squared already
+            c_salt = rho_f / (3.29 * ustar) * (1.0 - ustar_n -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
 
             // occasionally happens to happen at low wind speeds where the parameterization breaks.
             // hasn't happened since changed this to the threshold velocity though...
