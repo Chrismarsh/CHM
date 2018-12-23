@@ -81,7 +81,7 @@ PBSM3D::PBSM3D(config_file cfg)
     }
 
 //    provides("u10");
-    provides("is_drifting");
+
 //    provides("salt_limit");
     provides("blowingsnow_probability");
     if(debug_output)
@@ -95,6 +95,7 @@ PBSM3D::PBSM3D(config_file cfg)
             provides("csubl"+ std::to_string(i));
         }
 
+        provides("is_drifting");
         provides("Km_coeff");
         provides("Qsusp_pbsm");
         provides("inhibit_saltation");
@@ -116,6 +117,7 @@ PBSM3D::PBSM3D(config_file cfg)
 
         provides("u*_th");
         provides("u*_n");
+        provides("tau_n_ratio");
 
         provides("dm/dt");
         provides("mm");
