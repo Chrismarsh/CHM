@@ -792,7 +792,11 @@ void PBSM3D::run(mesh domain)
             //Li and Pomeroy 2000
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
             if(debug_output) face->set_face_data("l",l);
-            double w = 1.1e7*pow(rm,1.8); //settling_velocity;
+//            double w = 1.1*10e7*pow(rm,1.8); //settling_velocity;
+
+            // Lehning 2008
+            //Inhomogeneous precipitation distribution and snow transport in steep terrain
+            double w = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775); //Leghni
             if(debug_output) face->set_face_data("w",w);
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
