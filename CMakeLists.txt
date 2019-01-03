@@ -12,6 +12,20 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(MACOSX TRUE)
 endif()
 
+set(ext_cmakefile_name CMakeLists_external.txt.in)
+# Some machines require machine-specific work arounds when building the external libraries. Special casing to a per-machine basis should not be done often
+# and really should only be done if 100% required.
+# End of December 2018 caused the Westgrid machine Graham to require a special CMAKE_PREFIX_PATH from a system ENV var. This special cases that dramatic change until it's
+# fixed in a more seamless manner
+
+cmake_host_system_information(RESULT hostname QUERY HOSTNAME)
+
+if(hostname MATCHES "gra-login.*")
+    message(WARNING "Detected machine hostname = Compute Canada Graham")
+    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};$ENV{CMAKE_SYSTEM_PREFIX_PATH}")
+    set(ext_cmakefile_name CMakeLists_external_graham.txt.in)
+endif()
+
 # The version number.
 set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
@@ -87,7 +101,7 @@ endif()
 if(BUILD_NETCDF)
     set(NETCDF_DIR ${CMAKE_BINARY_DIR}/lib/netcdf-c)
     set(NETCDF_INCLUDE_DIR ${NETCDF_DIR}/include)
-    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${NETCDF_DIR})
+    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH};${NETCDF_DIR})
     set(ENV{HDF5_ROOT} ${CMAKE_BINARY_DIR}/lib/hdf5)
 
     set( NETCDF_CXX_ROOT ${NETCDF_DIR})
@@ -116,7 +130,7 @@ configure_file(${CMAKE_SOURCE_DIR}/paraview-5.5.2.patch ${CMAKE_BINARY_DIR}/para
 
 #things covered by the superbuild
 # super build things we are missing
-configure_file(CMakeLists_external.txt.in
+configure_file(${ext_cmakefile_name}
     ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
 
 
@@ -132,9 +146,12 @@ configure_file(CMakeLists_external.txt.in
 
 
 if(MACOSX)
-    execute_process(COMMAND brew --prefix qt5  OUTPUT_VARIABLE qt5path)
-    message(STATUS "Ammending CMAKE_PREFIX_PATH to include brew qt5 -- ${qt5path}" )
-    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}")
+    find_program(BREW brew)
+    if(BREW)
+        execute_process(COMMAND brew --prefix qt5  OUTPUT_VARIABLE qt5path)
+        message(WARNING "Ammending CMAKE_PREFIX_PATH to include brew qt5 -- ${qt5path}" )
+        set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}")
+    endif()
 endif()
 
 #Trigger superbuild
