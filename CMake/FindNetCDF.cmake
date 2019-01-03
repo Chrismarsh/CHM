@@ -43,7 +43,8 @@ if(NETCDF_USE_DEFAULT_PATHS)
     set(USE_DEFAULT_PATHS "")
 endif()
 
-find_path (NETCDF_INCLUDE_DIR netcdf.h
+find_path (NETCDF_INCLUDE_DIR
+		netcdf.h
     PATHS "${NETCDF_DIR}/include")
 mark_as_advanced (NETCDF_INCLUDE_DIR)
 set (NETCDF_C_INCLUDE_DIRS ${NETCDF_INCLUDE_DIR})
@@ -105,13 +106,9 @@ if (_nextcomp GREATER -1)
     set (NETCDF_F90 1)
 endif ()
 
-# depending on the platform, and if we are building netcdf, the name changes. Try a few things before giving up.
-NetCDF_check_interface (CXX netcdf netcdf_c++4) # Fedora's naming
-
-if(NOT NETCDF_HAS_INTERFACES)
-	set (NETCDF_HAS_INTERFACES "YES") #has to be reset
-	NetCDF_check_interface (CXX netcdf netcdf-cxx4) # if we build ourselves, it will be this
-endif()
+# try a few naming schemes, depends on the platform
+list(APPEND lib_names "netcdf_c++4" "netcdf_c++" "netcdf-cxx4")
+NetCDF_check_interface (CXX netcdf "${lib_names}")
 
 if(NOT NETCDF_HAS_INTERFACES)
 	message (STATUS "Failed to find NetCDF interface for ${lang}")

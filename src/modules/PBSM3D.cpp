@@ -81,7 +81,7 @@ PBSM3D::PBSM3D(config_file cfg)
     }
 
 //    provides("u10");
-    provides("is_drifting");
+
 //    provides("salt_limit");
     provides("blowingsnow_probability");
     if(debug_output)
@@ -95,6 +95,7 @@ PBSM3D::PBSM3D(config_file cfg)
             provides("csubl"+ std::to_string(i));
         }
 
+        provides("is_drifting");
         provides("Km_coeff");
         provides("Qsusp_pbsm");
         provides("inhibit_saltation");
@@ -116,6 +117,7 @@ PBSM3D::PBSM3D(config_file cfg)
 
         provides("u*_th");
         provides("u*_n");
+        provides("tau_n_ratio");
 
         provides("dm/dt");
         provides("mm");
@@ -679,7 +681,8 @@ void PBSM3D::run(mesh domain)
             if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
+            double omega = 1.1*10e7 * pow(rm,1.8); //eqn 15
+//            double omega = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
             double Re = 2.0*rm*Vr / v; //eqn 13
@@ -790,7 +793,11 @@ void PBSM3D::run(mesh domain)
             //Li and Pomeroy 2000
             double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
             if(debug_output) face->set_face_data("l",l);
-            double w = 1.1e7*pow(rm,1.8); //settling_velocity;
+            double w = omega; // 1.1*10e7*pow(rm,1.8); //settling_velocity;
+
+            // Lehning 2008
+            //Inhomogeneous precipitation distribution and snow transport in steep terrain
+//            double w = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775); //Leghni
             if(debug_output) face->set_face_data("w",w);
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
