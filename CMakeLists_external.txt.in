@@ -175,11 +175,7 @@ if(BUILD_CGAL)
 	    CGAL
 	    URL https://github.com/CGAL/cgal/releases/download/releases%2FCGAL-4.10/CGAL-4.10.tar.xz
 	    UPDATE_COMMAND ""
-	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/CGAL
-	                -DBoost_NO_SYSTEM_PATHS=TRUE
-	                -DBOOST_ROOT=${CMAKE_BINARY_DIR}/lib/boost
-	                -DWITH_CGAL_Qt5=OFF
-	                -DCMAKE_BUILD_TYPE="Release"
+	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/CGAL -DBoost_NO_SYSTEM_PATHS=TRUE -DBOOST_ROOT=${CMAKE_BINARY_DIR}/lib/boost -DWITH_CGAL_Qt5=OFF
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
