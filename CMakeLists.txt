@@ -18,7 +18,7 @@ set(ext_cmakefile_name CMakeLists_external.txt.in)
 # End of December 2018 caused the Westgrid machine Graham to require a special CMAKE_PREFIX_PATH from a system ENV var. This special cases that dramatic change until it's
 # fixed in a more seamless manner
 
-cmake_host_system_information(RESULT hostname HOSTNAME)
+cmake_host_system_information(RESULT hostname QUERY HOSTNAME)
 
 if(hostname MATCHES "gra-login.*")
     message(WARNING "Detected machine hostname = Compute Canada Graham")
@@ -146,9 +146,12 @@ configure_file(${ext_cmakefile_name}
 
 
 if(MACOSX)
-    execute_process(COMMAND brew --prefix qt5  OUTPUT_VARIABLE qt5path)
-    message(STATUS "Ammending CMAKE_PREFIX_PATH to include brew qt5 -- ${qt5path}" )
-    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}")
+    find_program(BREW brew)
+    if(BREW)
+        execute_process(COMMAND brew --prefix qt5  OUTPUT_VARIABLE qt5path)
+        message(WARNING "Ammending CMAKE_PREFIX_PATH to include brew qt5 -- ${qt5path}" )
+        set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}")
+    endif()
 endif()
 
 #Trigger superbuild
