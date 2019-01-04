@@ -93,6 +93,8 @@ PBSM3D::PBSM3D(config_file cfg)
             provides("c" + std::to_string(i));
             provides("rm" + std::to_string(i));
             provides("csubl"+ std::to_string(i));
+            provides("settling_velocity"+ std::to_string(i));
+
         }
 
         provides("is_drifting");
@@ -111,6 +113,8 @@ PBSM3D::PBSM3D(config_file cfg)
         provides("z0");
         provides("lambda");
         provides("LAI");
+
+        provides("U_10m");
 
         provides("csalt");
         provides("c_salt_fetch_big");
@@ -371,7 +375,7 @@ void PBSM3D::run(mesh domain)
 
 
         double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
-        // face->set_face_data("u10",u10);
+        if(debug_output) face->set_face_data("U_10m",u10);
 
         Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
 
@@ -418,7 +422,7 @@ void PBSM3D::run(mesh domain)
         if (height_diff < 0.05  ||  height_diff > 0.3 || !enable_veg)
         {
             ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
-            d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
+            d->z0 = std::max(Snow::Z0_SNOW, 0.1203 * ustar * ustar / (2.0 * 9.81));
             lambda = 0;
 
             if( height_diff > 0.3 && enable_veg)
@@ -460,11 +464,11 @@ void PBSM3D::run(mesh domain)
                 d->saltation = false;
 
                 ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
-                d->z0 = std::max(0.001, 0.1203 * ustar * ustar / (2.0 * 9.81));
+                d->z0 = std::max(Snow::Z0_SNOW, 0.1203 * ustar * ustar / (2.0 * 9.81));
             }
         }
 
-        d->z0 = std::max(0.001,d->z0);
+        d->z0 = std::max(Snow::Z0_SNOW,d->z0);
         ustar = std::max(0.01,ustar);
 
         if(debug_output) face->set_face_data("z0",d->z0);
@@ -650,7 +654,6 @@ void PBSM3D::run(mesh domain)
         face->set_face_data("Qsalt", Qsalt);
 
         double rh = face->face_data("rh")/100.;
-        double RH = rh*100.;
         double es = mio::Atmosphere::saturatedVapourPressure(t);
         double ea = rh * es / 1000.; // ea needs to be in kpa
 
@@ -680,9 +683,11 @@ void PBSM3D::run(mesh domain)
             double rm = 4.6e-5 * pow(cz,-0.258); // eqn 18, mean particle size
             if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
 
+
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1*10e7 * pow(rm,1.8); //eqn 15
+            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
 //            double omega = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775);
+            if(debug_output) face->set_face_data("settling_velocity"+std::to_string(z), omega);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
             double Re = 2.0*rm*Vr / v; //eqn 13
