@@ -512,7 +512,7 @@ void PBSM3D::run(mesh domain)
 
         double t = face->face_data("t")+273.15;
 
-        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.1.225; // air density, fix for T dependency
+        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); // air density kg/m^3, comment in mio is wrong.1.225;
 
         //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
         //double u_star_t = pow(tau_t_f/rho_f,0.5);
