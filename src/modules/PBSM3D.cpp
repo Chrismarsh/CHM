@@ -472,7 +472,9 @@ void PBSM3D::run(mesh domain)
             // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
             // in ares of trees.
 
-            d->saltation = false;
+            //if we have veg enabled, turn off saltation as it's too much veg for saltation to occur
+            if(enable_veg)
+                d->saltation = false;
 
             //direct solution for log wind w/ lambda = 0
             ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
