@@ -808,13 +808,10 @@ void PBSM3D::run(mesh domain)
                 }
             }
             //Li and Pomeroy 2000
-            double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
+            double l = PhysConst::kappa*(cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
             if(debug_output) face->set_face_data("l",l);
             double w = omega; // 1.1*10e7*pow(rm,1.8); //settling_velocity;
 
-            // Lehning 2008
-            //Inhomogeneous precipitation distribution and snow transport in steep terrain
-//            double w = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775); //Leghni
             if(debug_output) face->set_face_data("w",w);
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
@@ -843,6 +840,10 @@ void PBSM3D::run(mesh domain)
 
             uvw *= scale;
             uvw(2) = -w; //settling_velocity;
+
+            Vector_3 v3(-uvw(0),-uvw(1), uvw(2)); //negate as direction it's blowing instead of where it is from!!
+
+            face->set_face_vector("uvw"+std::to_string(z),v3);
 
             //holds wind dot face normal
             double udotm[5];
@@ -887,15 +888,12 @@ void PBSM3D::run(mesh domain)
                         elements[ idx_nidx_off ] += alpha[f];
 
                     }
-                    else
+                    else  //missing neighbour case
                     {
                         //no mass in
-//                       vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f]-alpha[f];
+//                        elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
-                        //allow mass in
-//                        vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f];
-
-
+                        //allow mass into the domain from ghost cell
                         elements[ idx_idx_off ] += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
 
                     }
@@ -915,12 +913,9 @@ void PBSM3D::run(mesh domain)
                     else
                     {
                         //No mass in
-//                        vl_C(idx,idx) += V*csubl-alpha[f];
+//                        elements[ idx_idx_off ] += V*csubl-alpha[f];
 
                         //allow mass in
-//                        vl_C(idx,idx) += -.99*d->A[f]*udotm[f]+csubl*V;
-
-
                         elements[ idx_idx_off ] += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
 
                     }
