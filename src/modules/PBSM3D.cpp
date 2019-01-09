@@ -411,38 +411,29 @@ void PBSM3D::run(mesh domain)
         // 1) Wait for vegetation to fill up until it is within 30 cm of the top
         //     then we can apply Pomeroy and Li 2000 eqn 4 to calculate a z0. This param doesn't seem to work for exposed veg > 30 cm
         //     i.e, what you'd expect for crop stubble where it was derived.
-        // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0, and effectively allow wind to blow snow out of the vegetation
-        // 3) Once lambda is close to 0, just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
-
-
+        // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0 for an interative solution to u*
+        //   This effectively allows wind to blow snow out of the vegetation
+        // 3) Once lambda is close to 0 -- veg height == snow depth -- just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
 
         //if lambda is -> 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
         // or if we have disabled veg, just use the non-veg param
         // or if we are still filling it up, calculate a 'sane' zo/ustar and just disable saltation in this triangle.
-        if (height_diff < 0.05  ||  height_diff > 0.3 || !enable_veg)
-        {
-            ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
-            d->z0 = std::max(Snow::Z0_SNOW, 0.1203 * ustar * ustar / (2.0 * 9.81));
-            lambda = 0;
 
-            if( height_diff > 0.3 && enable_veg)
-            {
-                //just disable saltation
-                d->saltation = false;
-            }
-        }
-        else  /*if( height_diff < 0.3)*/
+
+        bool convergence_failed = false;
+        if( height_diff <= 0.3 && enable_veg)
         {
-            auto z0Fn = [&](double z0) -> double {
+
+            auto ustarFn = [&](double u) -> double {
                 //This formulation has the following coeffs built in
                 // c_2 = 1.6;
                 // c_3 = 0.07519;
-                // c_4 - 0.5;
-                return (1.6 * 0.7519e-1) * pow(.41 * u2 / log(2.0 / z0), 2.0) / (2.0 * 9.81) +  lambda - z0;  //0.5
+                // c_4 = 0.5;
+                // g   = 9.81;
+
+                return PhysConst::kappa*u2/log(2.0/(0.6131702344e-2*u*u+.5*lambda))-u;
             };
 
-            double min = 0.0001;
-            double max = 1;
             boost::uintmax_t max_iter = 500;
 
             auto tol = [](double a, double b) -> bool {
@@ -450,10 +441,15 @@ void PBSM3D::run(mesh domain)
             };
 
             try {
-//                auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
-                auto r = boost::math::tools::bracket_and_solve_root(z0Fn,d->z0Fnguess,2.0,false,tol,max_iter);
-                d->z0 = r.first + (r.second - r.first) / 2;
-                ustar = u2 * PhysConst::kappa / log(2.0 / d->z0);
+                auto r = boost::math::tools::bracket_and_solve_root(ustarFn,d->z0Fnguess,1.0,false,tol,max_iter);
+                ustar = r.first + (r.second - r.first) / 2.0;
+
+                //This formulation has the following coeffs built in
+                // c_2 = 1.6;
+                // c_3 = 0.07519;
+                // c_4 = 0.5;
+                // g   = 9.81;
+                d->z0 = 0.6131702344e-2*ustar*ustar+.5*lambda; // pom and li 2000, eqn 4
             }
             catch (...) {
                 // for cases of large LAI, the above will not converge within the min/max given
@@ -461,11 +457,28 @@ void PBSM3D::run(mesh domain)
                 // however re calculate the z0 and ustar as if there was no vegetation.
                 // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
                 // in ares of trees.
+
+                convergence_failed = true;
+
+            }
+        }
+
+
+        if( convergence_failed ||  height_diff > 0.3 || !enable_veg)
+        {
+            // for cases of large LAI, the above will not converge within the min/max given
+            // this will trap that error, and sets that cell to have no saltation,
+            // however re calculate the z0 and ustar as if there was no vegetation.
+            // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
+            // in ares of trees.
+
+            //if we have veg enabled, turn off saltation as it's too much veg for saltation to occur
+            if(enable_veg)
                 d->saltation = false;
 
-                ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
-                d->z0 = std::max(Snow::Z0_SNOW, 0.1203 * ustar * ustar / (2.0 * 9.81));
-            }
+            //direct solution for log wind w/ lambda = 0
+            ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
+            d->z0 = std::max(Snow::Z0_SNOW, 0.1203 * ustar * ustar / (2.0 * 9.81));
         }
 
         d->z0 = std::max(Snow::Z0_SNOW,d->z0);
@@ -499,7 +512,7 @@ void PBSM3D::run(mesh domain)
 
         double t = face->face_data("t")+273.15;
 
-        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.1.225; // air density, fix for T dependency
+        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); // air density kg/m^3, comment in mio is wrong.1.225;
 
         //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
         //double u_star_t = pow(tau_t_f/rho_f,0.5);
@@ -507,7 +520,7 @@ void PBSM3D::run(mesh domain)
         //Pomeroy and Li, 2000
         // Eqn 7
         double T = face->face_data("t");
-        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T;
+        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
 
 
         double Qsalt = 0;
@@ -540,11 +553,10 @@ void PBSM3D::run(mesh domain)
 
             //Pomeroy and Li 2000, eqn 8
             double Beta =  202.0; //170.0;
-
             double m = 0.16;
 
             // tau_n_ratio = ustar_n^2 / ustar^2 from MacDonald 2009 eq 3;
-            // we need (ustar_n / ustar)^2 with the original derivation gives
+            // we need (ustar_n / ustar)^2 which the original derivation gives
             // so this is is correctly squared
             double tau_n_ratio = (m*Beta*lambda) / (1.0 + m* Beta*lambda);
 
@@ -796,13 +808,10 @@ void PBSM3D::run(mesh domain)
                 }
             }
             //Li and Pomeroy 2000
-            double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
+            double l = PhysConst::kappa*(cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
             if(debug_output) face->set_face_data("l",l);
             double w = omega; // 1.1*10e7*pow(rm,1.8); //settling_velocity;
 
-            // Lehning 2008
-            //Inhomogeneous precipitation distribution and snow transport in steep terrain
-//            double w = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775); //Leghni
             if(debug_output) face->set_face_data("w",w);
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
@@ -831,6 +840,10 @@ void PBSM3D::run(mesh domain)
 
             uvw *= scale;
             uvw(2) = -w; //settling_velocity;
+
+            Vector_3 v3(-uvw(0),-uvw(1), uvw(2)); //negate as direction it's blowing instead of where it is from!!
+
+            face->set_face_vector("uvw"+std::to_string(z),v3);
 
             //holds wind dot face normal
             double udotm[5];
@@ -875,15 +888,12 @@ void PBSM3D::run(mesh domain)
                         elements[ idx_nidx_off ] += alpha[f];
 
                     }
-                    else
+                    else  //missing neighbour case
                     {
                         //no mass in
-//                       vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f]-alpha[f];
+//                        elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
-                        //allow mass in
-//                        vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f];
-
-
+                        //allow mass into the domain from ghost cell
                         elements[ idx_idx_off ] += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
 
                     }
@@ -903,12 +913,9 @@ void PBSM3D::run(mesh domain)
                     else
                     {
                         //No mass in
-//                        vl_C(idx,idx) += V*csubl-alpha[f];
+//                        elements[ idx_idx_off ] += V*csubl-alpha[f];
 
                         //allow mass in
-//                        vl_C(idx,idx) += -.99*d->A[f]*udotm[f]+csubl*V;
-
-
                         elements[ idx_idx_off ] += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
 
                     }
