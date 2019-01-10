@@ -42,7 +42,7 @@ PBSM3D::PBSM3D(config_file cfg)
     depends("swe");
     depends("t");
     depends("rh");
-
+    depends("U_R");
 
     depends("p_snow");
     depends("p");
@@ -358,6 +358,8 @@ void PBSM3D::run(mesh domain)
         double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
         face->set_face_data("U_10m",u10);
 
+        double uref = face->face_data("U_R");
+
         double swe = face->face_data("swe"); // mm   -->    kg/m^2
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
@@ -398,10 +400,17 @@ void PBSM3D::run(mesh domain)
         // or if we are still filling it up, calculate a 'sane' zo/ustar and just disable saltation in this triangle.
 
 
-        bool convergence_failed = false;
-        if( height_diff <= 0.3 && enable_veg)
+        if (face->cell_id == 36582)
         {
+            LOG_DEBUG << "Face found";
+        }
+        bool convergence_failed = false;
 
+        if (height_diff > 0.4)
+            height_diff = 0.4;
+        if( /*height_diff <= 0.4 &&*/ enable_veg)
+        {
+            face->set_face_data("height_diff",height_diff);
             auto ustarFn = [&](double u) -> double {
                 //This formulation has the following coeffs built in
                 // c_2 = 1.6;
@@ -409,7 +418,7 @@ void PBSM3D::run(mesh domain)
                 // c_4 = 0.5;
                 // g   = 9.81;
 
-                return PhysConst::kappa*u2/log(2.0/(0.6131702344e-2*u*u+.5*lambda))-u;
+                return PhysConst::kappa*uref/log(Atmosphere::Z_U_R/(0.6131702344e-2*u*u+.5*lambda))-u;
             };
 
             boost::uintmax_t max_iter = 500;
@@ -442,7 +451,7 @@ void PBSM3D::run(mesh domain)
         }
 
 
-        if( convergence_failed ||  height_diff > 0.3 || !enable_veg)
+        if( convergence_failed ||  height_diff > 0.4 || !enable_veg)
         {
             // for cases of large LAI, the above will not converge within the min/max given
             // this will trap that error, and sets that cell to have no saltation,
@@ -454,9 +463,10 @@ void PBSM3D::run(mesh domain)
             if(enable_veg)
                 d->saltation = false;
 
-            //direct solution for log wind w/ lambda = 0
-            ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
-            d->z0 = std::max(Snow::Z0_SNOW, 0.1203 * ustar * ustar / (2.0 * 9.81));
+            // use the classic hc*0.12 = z0 for veg
+//            d->z0 = std::max(Snow::Z0_SNOW, d->CanopyHeight * 0.12);
+
+//            ustar = PhysConst::kappa*uref/log((Atmosphere::Z_U_R-d->CanopyHeight)/d->z0); // use 50m ref height
         }
 
         d->z0 = std::max(Snow::Z0_SNOW,d->z0);
@@ -467,7 +477,9 @@ void PBSM3D::run(mesh domain)
 
         //depth of saltation layer
         double hs = 0;
-        hs = 0.08436*pow(ustar,1.27); //pomeroy
+        if(d->saltation)
+            hs = 0.08436*pow(ustar,1.27); //pomeroy
+
         d->hs = hs;
         if(debug_output) face->set_face_data("hs",hs);
 
@@ -672,11 +684,14 @@ void PBSM3D::run(mesh domain)
             if ( cz <  height_diff)
             {
                 // LAI used as attenuation coefficient introduced by Inoue (1963) and increases with canopy density
-                double LAI = face->veg_attribute("LAI");
-                u_z = Atmosphere::exp_scale_wind(u2, 2, cz, LAI);
+                double LAI = std::max(0.01,face->veg_attribute("LAI"));
+                //bring wind down to canopy top
+                double u_cantop = std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, d->CanopyHeight, 0 , d->z0));
+
+                u_z = Atmosphere::exp_scale_wind(u_cantop, d->CanopyHeight, cz, LAI);
             } else
             {
-                u_z= std::max(0.01, Atmosphere::log_scale_wind(u2, 2, cz, snow_depth , d->z0)); // z0 is the blowing snow modified one
+                u_z= std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, cz, snow_depth , d->z0));
             }
 
 
