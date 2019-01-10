@@ -46,14 +46,8 @@ PBSM3D::PBSM3D(config_file cfg)
 
     depends("p_snow");
     depends("p");
-//    provides("p");
-//    provides("p_snow");
-
-
 
     //Determine if we want fetch, and if so, which one. Default is to use Pomeroy Tanh
-
-
     // if we use Liston fetch, we don't need hours since snowfall. If we use Essery 1999, then we need hours since snowfall
     // we have to do this here so we can correctly setup the depends for module linking.
     use_exp_fetch = cfg.get("use_exp_fetch",false);
@@ -80,9 +74,6 @@ PBSM3D::PBSM3D(config_file cfg)
         dv = cfg.get("dv",0.8);
     }
 
-//    provides("u10");
-
-//    provides("salt_limit");
     provides("blowingsnow_probability");
     if(debug_output)
     {
@@ -94,7 +85,7 @@ PBSM3D::PBSM3D(config_file cfg)
             provides("rm" + std::to_string(i));
             provides("csubl"+ std::to_string(i));
             provides("settling_velocity"+ std::to_string(i));
-
+            provides("u_z"+ std::to_string(i));
         }
 
         provides("is_drifting");
@@ -112,7 +103,6 @@ PBSM3D::PBSM3D(config_file cfg)
         provides("l");
         provides("z0");
         provides("lambda");
-        provides("LAI");
 
         provides("U_10m");
 
@@ -363,8 +353,10 @@ void PBSM3D::run(mesh domain)
             fetch = face->face_data("fetch");
 
         //get wind from the face
-        double phi = face->face_data("vw_dir");
+
         double u2 = face->face_data("U_2m_above_srf");
+        double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
+        face->set_face_data("U_10m",u10);
 
         double swe = face->face_data("swe"); // mm   -->    kg/m^2
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
@@ -373,23 +365,10 @@ void PBSM3D::run(mesh domain)
 
         snow_depth = is_nan(snow_depth) ? 0: snow_depth;
 
-
-        double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
-        if(debug_output) face->set_face_data("U_10m",u10);
-
-        Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
-
-        //setup wind vector
-        arma::vec uvw(3);
-        uvw(0) = vwind.x(); //U_x
-        uvw(1) = vwind.y(); //U_y
-        uvw(2) = 0;
-
-
         // -------
         // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
 
-        // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
+        // Li and Pomeroy 2000, eqn 5.
 
         double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);//don't allow negative differences in height
         if(debug_output) face->set_face_data("height_diff",height_diff);
@@ -397,12 +376,11 @@ void PBSM3D::run(mesh domain)
 
         double lambda = 0;
         if(use_R94_lambda)
-            lambda = 0.5 * d->LAI * height_diff; // Raupach 1994
+            // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
+            lambda = 0.5 * d->LAI * height_diff;
         else
             lambda = N*dv*height_diff; // Pomeroy formulation
 
-
-        if(debug_output) face->set_face_data("LAI",d->LAI);
         if(debug_output) face->set_face_data("lambda",lambda);
 
         d->saltation = true;
@@ -489,13 +467,7 @@ void PBSM3D::run(mesh domain)
 
         //depth of saltation layer
         double hs = 0;
-
-        //lehning
-//        hs = d->z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
-//                         (pow(log(2. / d->z0), 2.) * 9.81);
-
-        //pomeroy
-        hs = 0.08436*pow(ustar,1.27);
+        hs = 0.08436*pow(ustar,1.27); //pomeroy
         d->hs = hs;
         if(debug_output) face->set_face_data("hs",hs);
 
@@ -542,13 +514,21 @@ void PBSM3D::run(mesh domain)
 
         face->set_face_data("blowingsnow_probability",0); // default to 0%
 
+        // Check if we can blow snow in this triagnle
+        // Are we above saltation threshold?
+        // Do we have enough mass in this triangle?
+        // Has saltation been disabled because there is too much veg?
         if( ustar > u_star_saltation &&
                swe > min_mass_for_trans &&
                 d->saltation)
         {
 
-            double pbsm_qsusp = pow(u10,4.13)/674100.0;
-            if(debug_output) face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+            if(debug_output)
+            {
+                double pbsm_qsusp = pow(u10,4.13)/674100.0;
+                face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+            }
+
             if(debug_output) face->set_face_data("is_drifting",1);
 
             //Pomeroy and Li 2000, eqn 8
@@ -562,6 +542,7 @@ void PBSM3D::run(mesh domain)
 
 
             if(debug_output) face->set_face_data("tau_n_ratio",tau_n_ratio);
+
             //Pomeroy 1992, eqn 12, see note above for ustar_n calc, but ustar_n is correctly squared already
             c_salt = rho_f / (3.29 * ustar) * (1.0 - tau_n_ratio -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
 
@@ -574,7 +555,7 @@ void PBSM3D::run(mesh domain)
 
             c_salt_fetch_big = c_salt;
 
-            //use the exp decay of Liston, eq 10
+            //exp decay of Liston, eq 10
             //95% of max saltation occurs at fetch = 500m
             //Liston, G., & Sturm, M. (1998). A snow-transport model for complex terrain. Journal of Glaciology.
             if(use_exp_fetch && fetch < 500)
@@ -583,14 +564,14 @@ void PBSM3D::run(mesh domain)
                 double mu = 3.0;
                 c_salt *= 1.0-exp(-mu * fetch/fetch_ref);
             }
-            else if(use_tanh_fetch && fetch <= 300.) // use Pomeroy & Male 1986
+            else if(use_tanh_fetch && fetch <= 300.) // use Pomeroy & Male 1986 tanh fetch
             {
                 double fetch_ref = 300;
                 double Lc = 0.5*tanh(0.1333333333e-1*fetch_ref-2.0)+0.5;
 
                 c_salt *= Lc;
             }
-            else if(use_PomLi_probability)
+            else if(use_PomLi_probability) // Pomeroy and Li 2000 upscaled probability
             {
                 // Essery, Li, and Pomeroy 1999
                 //Probability of blowing snow
@@ -609,7 +590,6 @@ void PBSM3D::run(mesh domain)
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
-
 
             // face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
 
@@ -669,7 +649,7 @@ void PBSM3D::run(mesh domain)
         double es = mio::Atmosphere::saturatedVapourPressure(t);
         double ea = rh * es / 1000.; // ea needs to be in kpa
 
-        double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 Pomeroy 1993
+        double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 in Pomeroy 1993
 
         //vapour pressure, Pa
         auto e = [](double T,double RH)
@@ -680,10 +660,26 @@ void PBSM3D::run(mesh domain)
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
         {
-            //height in the suspension layer
-            double cz = z + hs+ v_edge_height/2.; //cell center height
+            //height in the suspension layer, floats above the snow surface
+            double cz = z + hs + v_edge_height/2.; //cell center height
+
             //compute new U_z at this height in the suspension layer
-            double u_z = std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0));
+            double u_z = 0;
+
+            // the suspension layer discretization 'floats' on top of the snow surface
+            // so height_diff = d->CanopyHeight - snowdepth
+            // which is looking to see if cz is within this part of the canopy
+            if ( cz <  height_diff)
+            {
+                // LAI used as attenuation coefficient introduced by Inoue (1963) and increases with canopy density
+                double LAI = face->veg_attribute("LAI");
+                u_z = Atmosphere::exp_scale_wind(u2, 2, cz, LAI);
+            } else
+            {
+                u_z= std::max(0.01, Atmosphere::log_scale_wind(u2, 2, cz, snow_depth , d->z0)); // z0 is the blowing snow modified one
+            }
+
+
 
             //calculate dm/dt from
             // equation 13 from Pomeroy and Li 2000
@@ -697,8 +693,8 @@ void PBSM3D::run(mesh domain)
 
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
-//            double omega = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775);
+            double omega = 1.1e7 * pow(rm,1.8); //eqn 15 settling velocity
+
             if(debug_output) face->set_face_data("settling_velocity"+std::to_string(z), omega);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
@@ -810,7 +806,7 @@ void PBSM3D::run(mesh domain)
             //Li and Pomeroy 2000
             double l = PhysConst::kappa*(cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
             if(debug_output) face->set_face_data("l",l);
-            double w = omega; // 1.1*10e7*pow(rm,1.8); //settling_velocity;
+            double w = omega; //settling_velocity;
 
             if(debug_output) face->set_face_data("w",w);
 
@@ -824,28 +820,40 @@ void PBSM3D::run(mesh domain)
             if(debug_output) face->set_face_data("Km_coeff", diffusion_coeff);
 
              //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
+             // with pomeroy fall velocity, 0.3 gives good agreement w/ published Qsusp values. Low value compensates for low fall velocity
              K[3] = K[4] = diffusion_coeff * ustar * l;
 
 //            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
 
-            if(debug_output) face->set_face_data("K"+std::to_string(z), K[3] );
+            if(debug_output) face->set_face_data("K"+std::to_string(z), K[3]);
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
             //bottom
             alpha[4] = d->A[4] * K[4] / v_edge_height;
 
 
-            double length = arma::norm(uvw, 2);
-            double scale = u_z / length;
+            double phi = face->face_data("vw_dir"); //wind direction
+            Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
 
-            uvw *= scale;
-            uvw(2) = -w; //settling_velocity;
+            //setup wind vector
+            arma::vec uvw(3);
+            uvw(0) = vwind.x(); //U_x
+            uvw(1) = vwind.y(); //U_y
+            uvw(2) = 0;
 
-            Vector_3 v3(-uvw(0),-uvw(1), uvw(2)); //negate as direction it's blowing instead of where it is from!!
+            // above we have just the direction so it's unit vector. scale it to have the same magnitude as u_z
+            uvw *= u_z / arma::norm(uvw, 2);
 
+            // now we can add in the settling_velocity
+            uvw(2) = -w;
+
+            if(debug_output) face->set_face_data("u_z"+ std::to_string(z),u_z);
+
+            //negate as direction it's blowing instead of where it is from!!
+            Vector_3 v3(-uvw(0),-uvw(1), uvw(2));
             face->set_face_vector("uvw"+std::to_string(z),v3);
 
-            //holds wind dot face normal
+            //holds wind velocity dot face normal
             double udotm[5];
             for (int j = 0; j < 5; ++j)
             {
