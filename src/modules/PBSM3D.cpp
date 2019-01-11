@@ -355,8 +355,8 @@ void PBSM3D::run(mesh domain)
         //get wind from the face
 
         double u2 = face->face_data("U_2m_above_srf");
-        double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
-        face->set_face_data("U_10m",u10);
+        double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0); //used by the pom probability forumuation, so don't hide behide debug output
+        if(debug_output) face->set_face_data("U_10m",u10);
 
         double uref = face->face_data("U_R");
 
