@@ -91,7 +91,6 @@ PBSM3D::PBSM3D(config_file cfg)
         provides("is_drifting");
         provides("Km_coeff");
         provides("Qsusp_pbsm");
-        provides("inhibit_saltation");
         provides("height_diff");
         provides("suspension_mass");
         provides("saltation_mass");
@@ -340,6 +339,12 @@ void PBSM3D::run(mesh domain)
     unsigned int const* col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
     vcl_scalar_type*    elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
 
+    // Helpers for the u* iterative solver
+    boost::uintmax_t max_iter = 500;
+    auto tol = [](double a, double b) -> bool {
+        return fabs(a - b) < 1e-8;
+    };
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -372,47 +377,48 @@ void PBSM3D::run(mesh domain)
 
         // Li and Pomeroy 2000, eqn 5.
 
-        double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);//don't allow negative differences in height
+        double height_diff = std::max(0.0,d->CanopyHeight - snow_depth); //don't allow negative differences in height
         if(debug_output) face->set_face_data("height_diff",height_diff);
         double ustar = 1.3; //placeholder
 
-        double lambda = 0;
-        if(use_R94_lambda)
-            // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
-            lambda = 0.5 * d->LAI * height_diff;
-        else
-            lambda = N*dv*height_diff; // Pomeroy formulation
+        double cutoff = 0.3; // cutoff veg-snow diff that we inhibit blowing snow entirely
 
-        if(debug_output) face->set_face_data("lambda",lambda);
-
-        d->saltation = true;
-
-        // The strategy here is as follows:
-        // 1) Wait for vegetation to fill up until it is within 30 cm of the top
-        //     then we can apply Pomeroy and Li 2000 eqn 4 to calculate a z0. This param doesn't seem to work for exposed veg > 30 cm
-        //     i.e, what you'd expect for crop stubble where it was derived.
-        // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0 for an interative solution to u*
-        //   This effectively allows wind to blow snow out of the vegetation
-        // 3) Once lambda is close to 0 -- veg height == snow depth -- just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
-
-        //if lambda is -> 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-        // or if we have disabled veg, just use the non-veg param
-        // or if we are still filling it up, calculate a 'sane' zo/ustar and just disable saltation in this triangle.
-
-
-        if (face->cell_id == 36582)
+        d->saltation = false; // default case
+        if( height_diff > cutoff) // lots of veg exposed
         {
-            LOG_DEBUG << "Face found";
+            d->z0 = 0.12 * height_diff;
         }
-        bool convergence_failed = false;
-
-        double cutoff = 0.3;
-        double old_height_diff = height_diff;
-        if (height_diff > cutoff)
-            height_diff = cutoff;
-        if( /*height_diff <= 0.4 &&*/ enable_veg)
+        else
         {
-            if(debug_output) face->set_face_data("height_diff",height_diff);
+            d->z0 = Snow::Z0_SNOW;
+        }
+
+        ustar = std::max(0.01,PhysConst::kappa*uref/log(Atmosphere::Z_U_R/d->z0));
+
+        //threshold friction velocity
+        //Pomeroy and Li, 2000
+        // Eqn 7
+        double T = face->face_data("t");
+        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
+        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
+
+        // This is the lamdba from Li and Pomeroy eqn 4 that is used to include exposed vegetation w/ the z0 estimate
+        double lambda = 0;
+        // can we be saltating?
+        if( ustar > u_star_saltation &&
+            swe > min_mass_for_trans)
+        {
+            d->saltation = true;
+
+
+            if(use_R94_lambda)
+                // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
+                lambda = 0.5 * d->LAI * height_diff;
+            else
+                lambda = N*dv*height_diff; // Pomeroy formulation
+
+            if(debug_output) face->set_face_data("lambda",lambda);
+
             auto ustarFn = [&](double ustar) -> double {
                 //This formulation has the following coeffs built in
                 // c_2 = 1.6;
@@ -421,12 +427,6 @@ void PBSM3D::run(mesh domain)
                 // g   = 9.81;
 
                 return PhysConst::kappa*uref/log(Atmosphere::Z_U_R/(0.6131702344e-2*ustar*ustar+0.5*lambda))-ustar;
-            };
-
-            boost::uintmax_t max_iter = 500;
-
-            auto tol = [](double a, double b) -> bool {
-                return fabs(a - b) < 1e-8;
             };
 
             try {
@@ -447,36 +447,33 @@ void PBSM3D::run(mesh domain)
                 // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
                 // in ares of trees.
 
-                convergence_failed = true;
+                d->saltation = false;
+                LOG_ERROR << "u* convergence failed";
 
             }
         }
 
-        height_diff = old_height_diff;
-
-        if( convergence_failed ||  height_diff > cutoff )
-        {
-            // for cases of large LAI, the above will not converge within the min/max given
-            // this will trap that error, and sets that cell to have no saltation,
-            // however re calculate the z0 and ustar as if there was no vegetation.
-            // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
-            // in ares of trees.
-
-            //if we have veg enabled, turn off saltation as it's too much veg for saltation to occur
-            if(enable_veg)
-                d->saltation = false;
-
-            // use the classic hc*0.12 = z0 for veg
-//            d->z0 = std::max(Snow::Z0_SNOW, d->CanopyHeight * 0.12);
-
-//            ustar = PhysConst::kappa*uref/log((Atmosphere::Z_U_R-d->CanopyHeight)/d->z0); // use 50m ref height
-        }
-
         d->z0 = std::max(Snow::Z0_SNOW,d->z0);
         ustar = std::max(0.01,ustar);
+        if(debug_output) face->set_face_data("ustar",ustar);
+
+
+
+
+        // The strategy here is as follows:
+        // 1) Wait for vegetation to fill up until it is within 30 cm of the top
+        //     then we can apply Pomeroy and Li 2000 eqn 4 to calculate a z0. This param doesn't seem to work for exposed veg > 30 cm
+        //     i.e, what you'd expect for crop stubble where it was derived.
+        // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0 for an interative solution to u*
+        //   This effectively allows wind to blow snow out of the vegetation
+        // 3) Once lambda is close to 0 -- veg height == snow depth -- just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
+
+        //if lambda is -> 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
+        // or if we have disabled veg, just use the non-veg param
+        // or if we are still filling it up, calculate a 'sane' zo/ustar and just disable saltation in this triangle.
+
 
         if(debug_output) face->set_face_data("z0",d->z0);
-        // ------------------
 
         //depth of saltation layer
         double hs = 0;
@@ -485,58 +482,25 @@ void PBSM3D::run(mesh domain)
 
         d->hs = hs;
         if(debug_output) face->set_face_data("hs",hs);
-
-        //eddy diffusivity (m^2/s)
-        // 0,1,2 will all be K = 0, as no horizontal diffusion process
-        double K[5] = {0, 0, 0, 0, 0};
-
-        // holds A_ * K_ / h_
-        // _0 -> _2 are the horizontal sides
-        // _3 -> is the top of the prism
-        // _4 -> is the bottom the prism
-        double alpha[5] = {0, 0, 0, 0, 0};
-
-
-        double t = face->face_data("t")+273.15;
-
-        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); // air density kg/m^3, comment in mio is wrong.1.225;
-
-        //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
-        //double u_star_t = pow(tau_t_f/rho_f,0.5);
-
-        //Pomeroy and Li, 2000
-        // Eqn 7
-        double T = face->face_data("t");
-        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
+        if(debug_output) face->set_face_data("is_drifting",0);
+        if(debug_output) face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
 
         double Qsalt = 0;
         double c_salt = 0;
-
-
-        double c_salt_fetch_big=0;
-        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
-
-        if(debug_output) face->set_face_data("ustar",ustar);
-
-        if(debug_output) face->set_face_data("is_drifting",0);
-        if(debug_output) face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
-
-        if(!d->saltation && debug_output)
-        {
-             face->set_face_data("inhibit_saltation",1);
-        }
-
-        face->set_face_data("blowingsnow_probability",0); // default to 0%
+        double t = face->face_data("t")+273.15;
 
         // Check if we can blow snow in this triagnle
         // Are we above saltation threshold?
         // Do we have enough mass in this triangle?
         // Has saltation been disabled because there is too much veg?
-        if( ustar > u_star_saltation &&
-               swe > min_mass_for_trans &&
-                d->saltation)
+        if(d->saltation)
         {
+
+            double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); // air density kg/m^3, comment in mio is wrong.1.225;
+
+            if(debug_output) face->set_face_data("blowingsnow_probability",0); // default to 0%
+
 
             if(debug_output)
             {
@@ -566,9 +530,10 @@ void PBSM3D::run(mesh domain)
             if(c_salt < 0 || std::isnan(c_salt))
             {
                 c_salt = 0;
+                d->saltation = false;
             }
 
-            c_salt_fetch_big = c_salt;
+            if(debug_output) face->set_face_data("c_salt_fetch_big", c_salt);
 
             //exp decay of Liston, eq 10
             //95% of max saltation occurs at fetch = 500m
@@ -657,7 +622,7 @@ void PBSM3D::run(mesh domain)
 
 
         if(debug_output) face->set_face_data("csalt", c_salt);
-        if(debug_output) face->set_face_data("c_salt_fetch_big", c_salt_fetch_big);
+
         face->set_face_data("Qsalt", Qsalt);
 
         double rh = face->face_data("rh")/100.;
@@ -665,12 +630,6 @@ void PBSM3D::run(mesh domain)
         double ea = rh * es / 1000.; // ea needs to be in kpa
 
         double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 in Pomeroy 1993
-
-        //vapour pressure, Pa
-        auto e = [](double T,double RH)
-        {
-            return RH/100.*611.0*exp(17.3*T/(237.3+T)); //Pa
-        };
 
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
@@ -684,20 +643,28 @@ void PBSM3D::run(mesh domain)
             // the suspension layer discretization 'floats' on top of the snow surface
             // so height_diff = d->CanopyHeight - snowdepth
             // which is looking to see if cz is within this part of the canopy
-            if ( cz <  height_diff)
+            if (d->saltation && cz <  height_diff)
             {
-                // LAI used as attenuation coefficient introduced by Inoue (1963) and increases with canopy density
-                double LAI = std::max(0.01,face->veg_attribute("LAI"));
-                //bring wind down to canopy top
-                double u_cantop = std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, d->CanopyHeight, 0 , d->z0));
+                // saltating so used the z0 with veg, but we are in the canopy so use the saltation vel
 
-                u_z = Atmosphere::exp_scale_wind(u_cantop, d->CanopyHeight, cz, LAI);
+                // wind speed in the saltation layer Pomeroy and Gray 1990
+                u_z = 2.8 * u_star_saltation; //eqn 7
+            }
+            else if(cz <  height_diff)
+            {
+                //we/re in a canopy, but not saltating, just do nothing
+                u_z = 0.01; // essentially do nothing when we are in sub canopy
+
+//                // LAI used as attenuation coefficient introduced by Inoue (1963) and increases with canopy density
+//                double LAI = std::max(0.01,face->veg_attribute("LAI"));
+//                //bring wind down to canopy top
+//                double u_cantop = std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, d->CanopyHeight, 0 , d->z0));
+//
+//                u_z = Atmosphere::exp_scale_wind(u_cantop, d->CanopyHeight, cz, LAI);
             } else
             {
                 u_z= std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, cz, snow_depth , d->z0));
             }
-
-
 
             //calculate dm/dt from
             // equation 13 from Pomeroy and Li 2000
@@ -788,6 +755,7 @@ void PBSM3D::run(mesh domain)
                 dmdtz = Sh*rho*D*(6.283185308*Nu*R*rm*sigma*t*t*lambda_t-L*M*Qr+Qr*R*t)/(D*L*Sh*(L*M-R*t)*rho+lambda_t*t*t*Nu*R);
             }
             if (debug_output) face->set_face_data("dm/dt", dmdtz);
+
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
             double mm_alpha = 4.08 + 12.6*cz; //24
             double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
@@ -796,6 +764,18 @@ void PBSM3D::run(mesh domain)
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
 
             if(debug_output) face->set_face_data("csubl"+std::to_string(z),dmdtz);
+
+
+            //eddy diffusivity (m^2/s)
+            // 0,1,2 will all be K = 0, as no horizontal diffusion process
+            double K[5] = {0, 0, 0, 0, 0};
+
+            // holds A_ * K_ / h_
+            // _0 -> _2 are the horizontal sides
+            // _3 -> is the top of the prism
+            // _4 -> is the bottom the prism
+            double alpha[5] = {0, 0, 0, 0, 0};
+
             //compute alpha and K for edges
             if(do_lateral_diff)
             {

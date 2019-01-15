@@ -44,6 +44,7 @@ MS_wind::MS_wind(config_file cfg)
 
     provides("vw_dir_orig");
 
+    speedup_height = cfg.get("speedup_height",2.0);
     use_ryan_dir = cfg.get("use_ryan_dir",false);
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
@@ -86,7 +87,7 @@ void MS_wind::run(mesh domain)
 
                 W = Atmosphere::log_scale_wind(W,
                                                Atmosphere::Z_U_R,  // UR is at our reference height
-                                               2.0,  // MS assumes a 2m wind speed
+                                               speedup_height,  // MS assumes a 2m wind speed
                                                0); // no canopy, no snow, but uses a snow roughness
 
                 double zonal_u = -W * sin(theta);
@@ -138,7 +139,7 @@ void MS_wind::run(mesh domain)
 
             //go back from 2m to reference
             W = Atmosphere::log_scale_wind(W,
-                                           2.0,  // MS assumes a 2m wind speed
+                                           speedup_height,  // MS assumes a 2m wind speed
                                            Atmosphere::Z_U_R,  // UR is at our reference height
                                            0); // no canopy, no snow, but uses a snow roughness
 
@@ -215,7 +216,7 @@ void MS_wind::run(mesh domain)
                 W = std::max(W, 0.1);
                 W = Atmosphere::log_scale_wind(W,
                                                Atmosphere::Z_U_R,  // UR is at our reference height
-                                               2.0,  // MS assumes a 2m wind speed
+                                               speedup_height,  // MS assumes a 2m wind speed
                                                0); // no canopy, no snow, but uses a snow roughness
 
 
@@ -299,7 +300,7 @@ void MS_wind::run(mesh domain)
             W = std::min(W,30.0);
 
             W = Atmosphere::log_scale_wind(W,
-                                           2.0,  // MS assumes a 2m wind speed
+                                           speedup_height,  // MS assumes a 2m wind speed
                                            Atmosphere::Z_U_R,  // UR is at our reference height
                                            0); // no canopy, no snow, but uses a snow roughness
 
