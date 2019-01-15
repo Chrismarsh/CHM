@@ -114,7 +114,9 @@ void MS_wind::run(mesh domain)
 
             // Use this wind dir to figure out which lookUP we need
             int d = int( std::round(theta * 180.0 / M_PI / 45.));
-            if (d == 0) d = 8;
+
+            if (d == 8) d = 0; // floor(360/45) = 8, which we don't have, as 0 is already North, so use that.
+
             face->set_face_data("lookup_d", d);
 
             // get the speedup for the interpolated direction

@@ -406,19 +406,21 @@ void PBSM3D::run(mesh domain)
         }
         bool convergence_failed = false;
 
-        if (height_diff > 0.4)
-            height_diff = 0.4;
+        double cutoff = 0.3;
+        double old_height_diff = height_diff;
+        if (height_diff > cutoff)
+            height_diff = cutoff;
         if( /*height_diff <= 0.4 &&*/ enable_veg)
         {
-            face->set_face_data("height_diff",height_diff);
-            auto ustarFn = [&](double u) -> double {
+            if(debug_output) face->set_face_data("height_diff",height_diff);
+            auto ustarFn = [&](double ustar) -> double {
                 //This formulation has the following coeffs built in
                 // c_2 = 1.6;
                 // c_3 = 0.07519;
                 // c_4 = 0.5;
                 // g   = 9.81;
 
-                return PhysConst::kappa*uref/log(Atmosphere::Z_U_R/(0.6131702344e-2*u*u+.5*lambda))-u;
+                return PhysConst::kappa*uref/log(Atmosphere::Z_U_R/(0.6131702344e-2*ustar*ustar+0.5*lambda))-ustar;
             };
 
             boost::uintmax_t max_iter = 500;
@@ -450,8 +452,9 @@ void PBSM3D::run(mesh domain)
             }
         }
 
+        height_diff = old_height_diff;
 
-        if( convergence_failed ||  height_diff > 0.4 || !enable_veg)
+        if( convergence_failed ||  height_diff > cutoff )
         {
             // for cases of large LAI, the above will not converge within the min/max given
             // this will trap that error, and sets that cell to have no saltation,
