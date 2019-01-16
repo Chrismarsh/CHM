@@ -358,59 +358,45 @@ void PBSM3D::run(mesh domain)
             fetch = face->face_data("fetch");
 
         //get wind from the face
+        double uref = face->face_data("U_R");
+        double snow_depth = face->face_data("snowdepthavg");
+        snow_depth = is_nan(snow_depth) ? 0: snow_depth;
 
-        double u2 = face->face_data("U_2m_above_srf");
-        double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0); //used by the pom probability forumuation, so don't hide behide debug output
+        double u10 = Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, 10, snow_depth); //used by the pom probability forumuation, so don't hide behide debug output
         if(debug_output) face->set_face_data("U_10m",u10);
 
-        double uref = face->face_data("U_R");
 
         double swe = face->face_data("swe"); // mm   -->    kg/m^2
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
-        double snow_depth = face->face_data("snowdepthavg");
-
-        snow_depth = is_nan(snow_depth) ? 0: snow_depth;
-
-        // -------
-        // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
-
-        // Li and Pomeroy 2000, eqn 5.
-
-        double height_diff = std::max(0.0,d->CanopyHeight - snow_depth); //don't allow negative differences in height
+        //height difference between snowcover and veg
+        double height_diff = 0;//std::max(0.0,d->CanopyHeight - snow_depth);
         if(debug_output) face->set_face_data("height_diff",height_diff);
+
         double ustar = 1.3; //placeholder
 
-        double cutoff = 0.3; // cutoff veg-snow diff that we inhibit blowing snow entirely
+        // The strategy here is as follows:
+        // 0) If the exposed vegetation is above $cutoff, inhibit saltation and use the classical vegheight*0.12=z0 and use that for calculating u*
+        // 1) Wait for vegetation to fill up until it is within $cutoff of the top of the veg
+        //     then use Pomeroy & Li 2000 eqn 4 to calculate an iterative solution to u* under blowing snow conditions
+        //     This effectively allows wind to blow snow out of the vegetation
+        // 2) Calculate a u* that uses the blowing snow z0. Then test this against the blowing snow u* threshold
+        // 3) If blowing snow isn't happening, recalculate u* using the normal z0.
 
-        d->saltation = false; // default case
-        if( height_diff > cutoff) // lots of veg exposed
-        {
-            d->z0 = 0.12 * height_diff;
-        }
-        else
-        {
-            d->z0 = Snow::Z0_SNOW;
-        }
-
-        ustar = std::max(0.01,PhysConst::kappa*uref/log(Atmosphere::Z_U_R/d->z0));
-
-        //threshold friction velocity
-        //Pomeroy and Li, 2000
-        // Eqn 7
-        double T = face->face_data("t");
-        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
-        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
+        double cutoff = 0.3; // cutoff veg-snow diff (m) that we inhibit saltation entirely
 
         // This is the lamdba from Li and Pomeroy eqn 4 that is used to include exposed vegetation w/ the z0 estimate
         double lambda = 0;
-        // can we be saltating?
-        if( ustar > u_star_saltation &&
-            swe > min_mass_for_trans)
+
+        d->saltation = true; // default case
+
+        if( height_diff > cutoff) // lots of veg exposed
         {
-            d->saltation = true;
-
-
+            d->z0 = 0.12 * height_diff;
+            d->saltation = false;
+        }
+        else // Assuming blowing snow
+        {
             if(use_R94_lambda)
                 // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
                 lambda = 0.5 * d->LAI * height_diff;
@@ -419,7 +405,9 @@ void PBSM3D::run(mesh domain)
 
             if(debug_output) face->set_face_data("lambda",lambda);
 
+            // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
             auto ustarFn = [&](double ustar) -> double {
+                // Li and Pomeroy 2000, eqn 5.
                 //This formulation has the following coeffs built in
                 // c_2 = 1.6;
                 // c_3 = 0.07519;
@@ -441,39 +429,40 @@ void PBSM3D::run(mesh domain)
                 d->z0 = 0.6131702344e-2*ustar*ustar+.5*lambda; // pom and li 2000, eqn 4
             }
             catch (...) {
-                // for cases of large LAI, the above will not converge within the min/max given
-                // this will trap that error, and sets that cell to have no saltation,
-                // however re calculate the z0 and ustar as if there was no vegetation.
-                // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
-                // in ares of trees.
-
+                // Sometimes this doesn't converge, for no clear reason.
                 d->saltation = false;
-                LOG_ERROR << "u* convergence failed";
 
+                d->z0 = Snow::Z0_SNOW;
+                ustar = std::max(0.01,PhysConst::kappa*uref/log(Atmosphere::Z_U_R/d->z0));
             }
+
         }
 
+        //threshold friction velocity
+        //Pomeroy and Li, 2000
+        // Eqn 7
+        double T = face->face_data("t");
+        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
+        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
+
+
+        // can we be saltating?
+        if( ustar < u_star_saltation ||
+            swe < min_mass_for_trans ||
+            !d->saltation) // we don't want to override this if we already did the veg check above
+        {
+            d->saltation = false;
+
+            d->z0 = Snow::Z0_SNOW;
+            ustar = std::max(0.01,PhysConst::kappa*uref/log(Atmosphere::Z_U_R/d->z0));
+        }
+
+        //sanity checks
         d->z0 = std::max(Snow::Z0_SNOW,d->z0);
         ustar = std::max(0.01,ustar);
         if(debug_output) face->set_face_data("ustar",ustar);
-
-
-
-
-        // The strategy here is as follows:
-        // 1) Wait for vegetation to fill up until it is within 30 cm of the top
-        //     then we can apply Pomeroy and Li 2000 eqn 4 to calculate a z0. This param doesn't seem to work for exposed veg > 30 cm
-        //     i.e, what you'd expect for crop stubble where it was derived.
-        // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0 for an interative solution to u*
-        //   This effectively allows wind to blow snow out of the vegetation
-        // 3) Once lambda is close to 0 -- veg height == snow depth -- just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
-
-        //if lambda is -> 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-        // or if we have disabled veg, just use the non-veg param
-        // or if we are still filling it up, calculate a 'sane' zo/ustar and just disable saltation in this triangle.
-
-
         if(debug_output) face->set_face_data("z0",d->z0);
+
 
         //depth of saltation layer
         double hs = 0;
