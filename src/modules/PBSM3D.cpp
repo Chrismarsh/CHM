@@ -370,7 +370,7 @@ void PBSM3D::run(mesh domain)
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
         //height difference between snowcover and veg
-        double height_diff = 0;//std::max(0.0,d->CanopyHeight - snow_depth);
+        double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);
         if(debug_output) face->set_face_data("height_diff",height_diff);
 
         double ustar = 1.3; //placeholder
