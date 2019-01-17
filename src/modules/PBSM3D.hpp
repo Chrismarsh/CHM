@@ -169,9 +169,6 @@ public:
 
         double z0;
 
-        double Tsguess;
-        double z0Fnguess;
-
         double sum_drift;
     };
 

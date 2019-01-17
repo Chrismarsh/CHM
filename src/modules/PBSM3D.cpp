@@ -171,8 +171,6 @@ void PBSM3D::init(mesh domain)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->Tsguess = 273.0;
-        d->z0Fnguess = 0.01;
 
         if(!face->has_vegetation() && enable_veg)
         {
@@ -418,7 +416,7 @@ void PBSM3D::run(mesh domain)
             };
 
             try {
-                auto r = boost::math::tools::bracket_and_solve_root(ustarFn,d->z0Fnguess,1.0,false,tol,max_iter);
+                auto r = boost::math::tools::bracket_and_solve_root(ustarFn,1.0,1.0,false,tol,max_iter);
                 ustar = r.first + (r.second - r.first) / 2.0;
 
                 //This formulation has the following coeffs built in
