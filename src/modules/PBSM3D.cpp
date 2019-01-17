@@ -143,6 +143,7 @@ void PBSM3D::init(mesh domain)
     eps = cfg.get("smooth_coeff",820);
     limit_mass= cfg.get("limit_mass",false);
     min_mass_for_trans = cfg.get("min_mass_for_trans",5);
+    cutoff = cfg.get("cutoff",0.3); // cutoff veg-snow diff (m) that we inhibit saltation entirely
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.9); // Beta * K, this is beta and scales the eddy diffusivity
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",false);
@@ -381,19 +382,27 @@ void PBSM3D::run(mesh domain)
         // 2) Calculate a u* that uses the blowing snow z0. Then test this against the blowing snow u* threshold
         // 3) If blowing snow isn't happening, recalculate u* using the normal z0.
 
-        double cutoff = 0.3; // cutoff veg-snow diff (m) that we inhibit saltation entirely
+
 
         // This is the lamdba from Li and Pomeroy eqn 4 that is used to include exposed vegetation w/ the z0 estimate
         double lambda = 0;
 
-        d->saltation = true; // default case
+        d->saltation = false; // default case
 
-        if( height_diff > cutoff) // lots of veg exposed
+        if (face->cell_id == 4055)
         {
-            d->z0 = 0.12 * height_diff;
-            d->saltation = false;
+            LOG_DEBUG << "Face found";
         }
-        else // Assuming blowing snow
+
+        //threshold friction velocity. Compute here as it's used below as well
+        //Pomeroy and Li, 2000
+        // Eqn 7
+        double T = face->face_data("t");
+        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
+        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
+
+        // we don't have too high of veg. Check for blowing snow
+        if( height_diff <= cutoff && swe >= min_mass_for_trans)
         {
             if(use_R94_lambda)
                 // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
@@ -425,35 +434,30 @@ void PBSM3D::run(mesh domain)
                 // c_4 = 0.5;
                 // g   = 9.81;
                 d->z0 = 0.6131702344e-2*ustar*ustar+.5*lambda; // pom and li 2000, eqn 4
+
+                if( ustar >= u_star_saltation)
+                    d->saltation = true;
             }
             catch (...) {
-                // Sometimes this doesn't converge, for no clear reason.
-                d->saltation = false;
+                // Didn't converge
 
+            }
+        }
+
+        if(! d->saltation)
+        {
+            if( height_diff > cutoff) // lots of veg exposed
+            {
+                d->z0 = 0.12 * height_diff;
+            }
+            else
+            {
                 d->z0 = Snow::Z0_SNOW;
-                ustar = std::max(0.01,PhysConst::kappa*uref/log(Atmosphere::Z_U_R/d->z0));
             }
 
-        }
-
-        //threshold friction velocity
-        //Pomeroy and Li, 2000
-        // Eqn 7
-        double T = face->face_data("t");
-        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
-        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
-
-
-        // can we be saltating?
-        if( ustar < u_star_saltation ||
-            swe < min_mass_for_trans ||
-            !d->saltation) // we don't want to override this if we already did the veg check above
-        {
-            d->saltation = false;
-
-            d->z0 = Snow::Z0_SNOW;
             ustar = std::max(0.01,PhysConst::kappa*uref/log(Atmosphere::Z_U_R/d->z0));
         }
+
 
         //sanity checks
         d->z0 = std::max(Snow::Z0_SNOW,d->z0);
@@ -1027,7 +1031,7 @@ void PBSM3D::run(mesh domain)
 
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::linalg::gmres_tag gmres_tag(1e-8, 500, 30);
+    viennacl::linalg::gmres_tag gmres_tag(1e-16, 1000, 30);
     viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
