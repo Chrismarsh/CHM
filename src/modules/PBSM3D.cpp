@@ -338,11 +338,7 @@ void PBSM3D::run(mesh domain)
     unsigned int const* col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
     vcl_scalar_type*    elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
 
-    // Helpers for the u* iterative solver
-    boost::uintmax_t max_iter = 500;
-    auto tol = [](double a, double b) -> bool {
-        return fabs(a - b) < 1e-8;
-    };
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -370,6 +366,7 @@ void PBSM3D::run(mesh domain)
 
         //height difference between snowcover and veg
         double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);
+        if(!enable_veg) height_diff = 0;
         if(debug_output) face->set_face_data("height_diff",height_diff);
 
         double ustar = 1.3; //placeholder
@@ -389,10 +386,10 @@ void PBSM3D::run(mesh domain)
 
         d->saltation = false; // default case
 
-        if (face->cell_id == 4055)
-        {
-            LOG_DEBUG << "Face found";
-        }
+//        if (face->cell_id == 4055)
+//        {
+//            LOG_DEBUG << "Face found";
+//        }
 
         //threshold friction velocity. Compute here as it's used below as well
         //Pomeroy and Li, 2000
@@ -402,15 +399,25 @@ void PBSM3D::run(mesh domain)
         if(debug_output) face->set_face_data("u*_th",u_star_saltation);
 
         // we don't have too high of veg. Check for blowing snow
-        if( height_diff <= cutoff && swe >= min_mass_for_trans)
+        if(height_diff <= cutoff && swe >= min_mass_for_trans)
         {
-            if(use_R94_lambda)
+
+            // lambda -> 0 when height_diff ->, such as full or no veg
+            if (use_R94_lambda)
                 // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
                 lambda = 0.5 * d->LAI * height_diff;
             else
-                lambda = N*dv*height_diff; // Pomeroy formulation
+                lambda = N * dv * height_diff; // Pomeroy formulation
+
 
             if(debug_output) face->set_face_data("lambda",lambda);
+
+            // Helpers for the u* iterative solver
+            //needs to be here in the for-loop, otherwise there are thread consistency issues with the solver
+            boost::uintmax_t max_iter = 500;
+            auto tol = [](double a, double b) -> bool {
+                return fabs(a - b) < 1e-8;
+            };
 
             // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
             auto ustarFn = [&](double ustar) -> double {
@@ -1032,10 +1039,25 @@ void PBSM3D::run(mesh domain)
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
     viennacl::linalg::gmres_tag gmres_tag(1e-16, 1000, 30);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, gmres_tag, chow_patel_ilu);
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b,  gmres_tag, chow_patel_ilu)
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 
+    /*
+      Dump matrix to ASCII file
+    */
+//    ofstream ofile;
+//    ofile.open("C.out");
+//    ofile << std::setprecision(12) << vl_C;
+//    ofile.close();
+//
+//    ofile.open("b.out");
+//    ofile << std::setprecision(12) << b;
+//    ofile.close();
+//
+//    ofile.open("x.out");
+//    ofile << std::setprecision(12) << vl_x;
+//    ofile.close();
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
