@@ -1039,7 +1039,7 @@ void PBSM3D::run(mesh domain)
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
     viennacl::linalg::gmres_tag gmres_tag(1e-16, 1000, 30);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b,  gmres_tag, chow_patel_ilu)
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b,  gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 
