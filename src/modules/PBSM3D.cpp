@@ -339,9 +339,17 @@ void PBSM3D::run(mesh domain)
     vcl_scalar_type*    elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
 
 
+#pragma omp parallel
+{
+    // Helpers for the u* iterative solver
+    // - needs to be here in thread pool, otherwise there are thread consistency issues with the solver
+    boost::uintmax_t max_iter = 500;
+    auto tol = [](double a, double b) -> bool {
+        return fabs(a - b) < 1e-8;
+    };
 
-#pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+ #pragma omp for
+   for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         auto id = face->cell_id;
@@ -411,13 +419,6 @@ void PBSM3D::run(mesh domain)
 
 
             if(debug_output) face->set_face_data("lambda",lambda);
-
-            // Helpers for the u* iterative solver
-            //needs to be here in the for-loop, otherwise there are thread consistency issues with the solver
-            boost::uintmax_t max_iter = 500;
-            auto tol = [](double a, double b) -> bool {
-                return fabs(a - b) < 1e-8;
-            };
 
             // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
             auto ustarFn = [&](double ustar) -> double {
@@ -1022,6 +1023,8 @@ void PBSM3D::run(mesh domain)
             }
         } // end z iter
     } //end face iter
+
+} // end pragma omp parallel thread pool
 
     //setup the compressed matrix on the compute device, if available
 #ifdef VIENNACL_WITH_OPENCL
