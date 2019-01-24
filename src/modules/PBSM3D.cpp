@@ -1199,11 +1199,26 @@ void PBSM3D::run(mesh domain)
     vl_A.switch_memory_context(gpu_ctx);
     bb.switch_memory_context(gpu_ctx);
 #endif
+
     // configuration of preconditioner:
-    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
+    viennacl::linalg::chow_patel_tag laplace_smoothing_chow_patel_config;
+    laplace_smoothing_chow_patel_config.sweeps(3);       //  nonlinear sweeps
+    laplace_smoothing_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
+    viennacl::linalg::chow_patel_icc_precond< viennacl::compressed_matrix<vcl_scalar_type> > laplace_smoothing_chow_patel_icc(vl_A, laplace_smoothing_chow_patel_config);
+
+    // Set up convergence tolerance to have an average value for each unknown
+    double laplace_smoothing_cg_tol_per_unknown = 1e-7;
+    double laplace_smoothing_cg_tol = laplace_smoothing_cg_tol_per_unknown * ntri;
+    // Set max iterations and maximum Krylov dimension before restart
+    size_t laplace_smoothing_cg_max_iterations = 500;
+
+    // compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+    viennacl::linalg::cg_tag laplace_smoothing_custom_cg(laplace_smoothing_cg_tol,
+							 laplace_smoothing_cg_max_iterations);
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, gmres_tag,chow_patel_ilu2);
+    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, laplace_smoothing_custom_cg, laplace_smoothing_chow_patel_icc);
+    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, laplace_smoothing_custom_cg);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
 

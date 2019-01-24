@@ -55,6 +55,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <viennacl/linalg/gmres.hpp>
 #include <viennacl/compressed_matrix.hpp>
 #include <viennacl/linalg/ilu.hpp>
+#include <viennacl/linalg/cg.hpp>
 
 
 
