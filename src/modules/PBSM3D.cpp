@@ -1054,6 +1054,10 @@ void PBSM3D::run(mesh domain)
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 
+    // Log final state of the linear solve
+    LOG_DEBUG << "Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
+    LOG_DEBUG << "Suspension_GMRES final residual : " << suspension_custom_gmres.error();
+
     /*
       Dump matrix to ASCII file
     */
@@ -1221,6 +1225,11 @@ void PBSM3D::run(mesh domain)
     // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, laplace_smoothing_custom_cg);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
+
+    // Log final state of the linear solve
+    LOG_DEBUG << "Laplace_Smoothing_CG # of iterations: " << laplace_smoothing_custom_cg.iters();
+    LOG_DEBUG << "Laplace_Smoothing_CG final residual : " << laplace_smoothing_custom_cg.error();
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
