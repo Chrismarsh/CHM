@@ -1040,8 +1040,17 @@ void PBSM3D::run(mesh domain)
     viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
 
 
-    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::linalg::gmres_tag gmres_tag(1e-16, 1000, 30);
+    // Set up convergence tolerance to have an average value for each unknown
+    double suspension_gmres_tol_per_unknown = 1e-8;
+    double suspension_gmres_tol = suspension_gmres_tol_per_unknown * nLayer * ntri;
+    // Set max iterations and maximum Krylov dimension before restart
+    size_t suspension_gmres_max_iterations = 1000;
+    size_t suspension_gmres_krylov_dimension = 30;
+
+    // compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+    viennacl::linalg::gmres_tag gmres_tag(suspension_gmres_tol,
+					  suspension_gmres_max_iterations,
+					  suspension_gmres_krylov_dimension);
     viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b,  gmres_tag, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
