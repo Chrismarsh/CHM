@@ -323,9 +323,9 @@ void PBSM3D::run(mesh domain)
 
 
     //zero CSR vector in vl_C
-    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), 0, 1);
+    viennacl::vector_base<vcl_scalar_type> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), 0, 1);
     // write:
-    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), viennacl::traits::context(vl_C));
+    init_temporary = viennacl::zero_vector<vcl_scalar_type>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), viennacl::traits::context(vl_C));
 
     //zero-fill RHS
     b.clear();
@@ -1105,9 +1105,9 @@ void PBSM3D::run(mesh domain)
     vcl_scalar_type*    A_elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
 
     //zero CSR vector in vl_A
-    viennacl::vector_base<unsigned int> init_temporaryA(vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), 0, 1);
+    viennacl::vector_base<vcl_scalar_type> init_temporaryA(vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), 0, 1);
     // write:
-    init_temporaryA = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), viennacl::traits::context(vl_A));
+    init_temporaryA = viennacl::zero_vector<vcl_scalar_type>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), viennacl::traits::context(vl_A));
 
     //zero fill RHS for drift
     bb.clear();
