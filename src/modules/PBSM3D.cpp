@@ -1033,6 +1033,8 @@ void PBSM3D::run(mesh domain)
     b.switch_memory_context(gpu_ctx);
 #endif
 
+    // This solves the steady-state suspension layer concentration
+
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
     chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps
@@ -1074,6 +1076,9 @@ void PBSM3D::run(mesh domain)
 //    ofile << std::setprecision(12) << vl_x;
 //    ofile.close();
 
+
+// Now we have the concentration, compute the suspension flux
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -1111,6 +1116,8 @@ void PBSM3D::run(mesh domain)
 
     }
 
+    // Setup the matrix to be used to the solution of the gradient of the suspension flux
+    // this will give us our deposition flux
     //get row buffer
     unsigned int const* A_row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
     unsigned int const* A_col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
@@ -1204,32 +1211,35 @@ void PBSM3D::run(mesh domain)
     bb.switch_memory_context(gpu_ctx);
 #endif
 
+    // Solve the deposition flux --> how much drifting there is.
+
     // configuration of preconditioner:
-    viennacl::linalg::chow_patel_tag laplace_smoothing_chow_patel_config;
-    laplace_smoothing_chow_patel_config.sweeps(3);       //  nonlinear sweeps
-    laplace_smoothing_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
-    viennacl::linalg::chow_patel_icc_precond< viennacl::compressed_matrix<vcl_scalar_type> > laplace_smoothing_chow_patel_icc(vl_A, laplace_smoothing_chow_patel_config);
+    viennacl::linalg::chow_patel_tag deposition_flux_chow_patel_config;
+    deposition_flux_chow_patel_config.sweeps(3);       //  nonlinear sweeps
+    deposition_flux_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
+    viennacl::linalg::chow_patel_icc_precond< viennacl::compressed_matrix<vcl_scalar_type> > deposition_flux_chow_patel_icc(vl_A, deposition_flux_chow_patel_config);
 
     // Set up convergence tolerance to have an average value for each unknown
-    double laplace_smoothing_cg_tol_per_unknown = 1e-7;
-    double laplace_smoothing_cg_tol = laplace_smoothing_cg_tol_per_unknown * ntri;
+    double deposition_flux_cg_tol_per_unknown = 1e-7;
+    double deposition_flux_cg_tol = deposition_flux_cg_tol_per_unknown * ntri;
     // Set max iterations and maximum Krylov dimension before restart
-    size_t laplace_smoothing_cg_max_iterations = 500;
+    size_t deposition_flux_cg_max_iterations = 500;
 
     // compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::linalg::cg_tag laplace_smoothing_custom_cg(laplace_smoothing_cg_tol,
-							 laplace_smoothing_cg_max_iterations);
+    viennacl::linalg::cg_tag deposition_flux_custom_cg(deposition_flux_cg_tol,
+							 deposition_flux_cg_max_iterations);
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, laplace_smoothing_custom_cg, laplace_smoothing_chow_patel_icc);
-    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, laplace_smoothing_custom_cg);
+    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg, deposition_flux_chow_patel_icc);
+    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
 
     // Log final state of the linear solve
-    LOG_DEBUG << "Laplace_Smoothing_CG # of iterations: " << laplace_smoothing_custom_cg.iters();
-    LOG_DEBUG << "Laplace_Smoothing_CG final residual : " << laplace_smoothing_custom_cg.error();
+    LOG_DEBUG << "deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
+    LOG_DEBUG << "deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
 
+    // take one FE integration step to get the total mass (SWE) that is eroded or deposited 
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
