@@ -160,6 +160,7 @@ void PBSM3D::init(mesh domain)
     n_non_edge_tri = 0;
 
 
+
     //use this to build the sparsity pattern for suspension matrix
     size_t ntri = domain->number_of_faces();
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
@@ -191,6 +192,9 @@ void PBSM3D::init(mesh domain)
             d->LAI = 0;
             enable_veg = false;
         }
+
+        //pre alloc for the windpseeds
+        d->u_z_susp.resize(nLayer);
 
         auto& m = d->m;
         //edge unit normals
@@ -665,6 +669,8 @@ void PBSM3D::run(mesh domain)
                 u_z= std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, cz, snow_depth , d->z0));
             }
 
+            d->u_z_susp.at(z) = u_z;
+
             //calculate dm/dt from
             // equation 13 from Pomeroy and Li 2000
             // To do so, use equations 12 - 16 in Pomeroy et al 2000
@@ -1087,10 +1093,6 @@ void PBSM3D::run(mesh domain)
         double Qsusp = 0;
         double hs = d->hs;
 
-        double u2 = face->face_data("U_2m_above_srf");
-
-        double total_mass = 0;
-
         double Qsubl=0;
         for (int z = 0; z<nLayer;++z)
         {
@@ -1099,10 +1101,9 @@ void PBSM3D::run(mesh domain)
 
             double cz = z + hs+ v_edge_height/2.; //cell center height
 
-            double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
-            Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
+            double u_z = d->u_z_susp.at(z);
 
-            total_mass += c * v_edge_height * face->get_area();
+            Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
             if(debug_output) face->set_face_data("c"+std::to_string(z),c);
 
@@ -1111,9 +1112,6 @@ void PBSM3D::run(mesh domain)
         }
          face->set_face_data("Qsusp",Qsusp);
         if(debug_output) face->set_face_data("Qsubl",Qsubl);
-        // face->set_face_data("suspension_mass",total_mass);
-
-
     }
 
     // Setup the matrix to be used to the solution of the gradient of the suspension flux
@@ -1172,6 +1170,7 @@ void PBSM3D::run(mesh domain)
 
         for (int j = 0; j < 3; j++)
         {
+
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
@@ -1239,7 +1238,7 @@ void PBSM3D::run(mesh domain)
     LOG_DEBUG << "deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
     LOG_DEBUG << "deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
 
-    // take one FE integration step to get the total mass (SWE) that is eroded or deposited 
+    // take one FE integration step to get the total mass (SWE) that is eroded or deposited
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)

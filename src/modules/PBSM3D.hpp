@@ -155,6 +155,7 @@ public:
         //face neighbours
         bool face_neigh[3];
 
+        std::vector<double> u_z_susp; //suspension layer windspeeds
         size_t cell_id;
 
         double CanopyHeight;
