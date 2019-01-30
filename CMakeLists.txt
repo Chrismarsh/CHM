@@ -315,7 +315,7 @@ if(USE_OCL AND OPENCL_FOUND)
        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
     endif()
 else()
-    add_definitions(-Dvcl_scalar_type=float) #might as well default to double precision if no OpenCL device found.
+    add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
     unset(OPENCL_LIBRARIES CACHE) ##zero these out so we can use them later without trouble
     unset(OPENCL_INCLUDE_DIRS CACHE)
 endif()

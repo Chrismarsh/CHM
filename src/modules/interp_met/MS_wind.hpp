@@ -79,6 +79,7 @@ public:
     };
     double distance;
     bool use_ryan_dir;
+    double speedup_height; // height at which the speedup is for
 };
 
 /**

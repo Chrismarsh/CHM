@@ -55,6 +55,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <viennacl/linalg/gmres.hpp>
 #include <viennacl/compressed_matrix.hpp>
 #include <viennacl/linalg/ilu.hpp>
+#include <viennacl/linalg/cg.hpp>
 
 
 
@@ -138,7 +139,7 @@ public:
     viennacl::vector<vcl_scalar_type> bb;
 
     double debug_output;
-
+    double cutoff; // cutoff veg-snow diff (m) that we inhibit saltation entirely
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
     double min_mass_for_trans;
@@ -154,6 +155,7 @@ public:
         //face neighbours
         bool face_neigh[3];
 
+        std::vector<double> u_z_susp; //suspension layer windspeeds
         size_t cell_id;
 
         double CanopyHeight;
@@ -168,9 +170,6 @@ public:
         bool saltation;
 
         double z0;
-
-        double Tsguess;
-        double z0Fnguess;
 
         double sum_drift;
     };
