@@ -33,17 +33,14 @@ Ninja_wind_lim::Ninja_wind_lim(config_file cfg)
 
     provides("U_R");
     provides("Ninja_speed");
-    provides("Ninja_speed2");
-
     provides("Ninja_speed_nodown");
+    
     provides("vw_dir");
     provides("Ninja_u");
     provides("Ninja_v");
 
     provides("omega_s");
     provides("W_transf");
-
-
 
     provides("interp_zonal_u");
     provides("interp_zonal_v");
@@ -74,17 +71,16 @@ void Ninja_wind_lim::init(mesh domain)
     Max_spdup = cfg.get("Max_spdup",3.);
     Min_spdup = cfg.get("Min_spdup",0.1);
     ninja_recirc = cfg.get("ninja_recirc",false);
+    N_windfield = cfg.get("N_windfield",24);
 }
 
 
 void Ninja_wind_lim::run(mesh domain)
 {
-   // double H_forc = 40.0;  // Reference height for GEM forcing and WindNinja wind field library
-
-    //double Max_spdup = 1.5;  // Maximal value of crest speedup
-   // double Min_spdup = 0.1;  // Minimal value of crest speedup
         double transf_max = -9999.0;
         double max_omega_s = -9999.0;
+
+        double delta_angle = 360. / N_windfield;
 
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -145,9 +141,9 @@ void Ninja_wind_lim::run(mesh domain)
             if(!ninja_average)  // No Linear interpolation between the closest 2 wind fields from the library
             {
                 // Use this wind dir to figure out which wind field from the library we need
-                // Wind field are available each 15 deg.
-                int d = int(theta * 180.0 / M_PI / 15.);
-                if (d == 0) d = 24;
+                // Wind field are available each delta_angle deg.
+                int d = int(theta * 180.0 / M_PI / delta_angle);
+                if (d == 0) d = N_windfield;
                 face->set_face_data("lookup_d", d);
 
                 // get the transfert function and associated wind component for the interpolated wind direction
@@ -160,13 +156,13 @@ void Ninja_wind_lim::run(mesh domain)
  
                 // Use this wind dir to figure out which wind fields from the library we need
                 // Wind fields are available each 15 deg.        
-                int d1 = int(theta * 180.0 / M_PI / 15.);
-                double theta1 = d1 * 15.0 * M_PI / 180.0;
-                if (d1 == 0) d1 = 24;
+                int d1 = int(theta * 180.0 / M_PI / delta_angle);
+                double theta1 = d1 * delta_angle * M_PI / 180.0;
+                if (d1 == 0) d1 = N_windfield;
 
-                int d2 = int((theta * 180.0 / M_PI + 15.) / 15.);
-                double theta2 = d2 * 15.0 *M_PI / 180.0;
-                if (d2 == 0) d2 = 24;
+                int d2 = int((theta * 180.0 / M_PI + delta_angle) / delta_angle);
+                double theta2 = d2 * delta_angle *M_PI / 180.0;
+                if (d2 == 0) d2 = N_windfield;
 
                 double d = d1*(theta2-theta)/(theta2-theta1)+d2*(theta-theta1)/(theta2-theta1);
                 face->set_face_data("lookup_d", d);
@@ -216,14 +212,15 @@ void Ninja_wind_lim::run(mesh domain)
            double W= face->get_module_data<data>(ID)->W;
            double W_transf= face->get_module_data<data>(ID)->W_transf;
 
-            face->set_face_data("Ninja_speed_nodown", W);
+            face->set_face_data("Ninja_speed_nodown", W);   // Wind speed without downscaling
 
 
-           // Limit speed up value  to avoid unrelistic values at crest top
+           // Limit speed up value to Max_spdup
+           // Can be used to avoid unrelistic values at crest top
            if(W_transf>1.)
                W_transf = 1.+(Max_spdup-1.)*(W_transf-1.)/(transf_max-1.);
 
-           if (ninja_recirc){
+           if (ninja_recirc){  // Need further test
  
               //Compute what liston calls 'wind slope' using updated wind direction
               double omega_s = face->slope() * cos(theta - face->aspect());
@@ -239,7 +236,7 @@ void Ninja_wind_lim::run(mesh domain)
             // NEW wind intensity from the wind field library
             W = W * W_transf;
             W = std::max(W, 0.1);
-            face->set_face_data("Ninja_speed", W);
+            face->set_face_data("Ninja_speed", W);    // Wind speed with downscaling
 
             // Update U and V wind components
             double U = -W  * sin(theta);

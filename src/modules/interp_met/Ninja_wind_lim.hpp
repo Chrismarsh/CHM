@@ -78,7 +78,8 @@ public:
         double W_transf;
     };
     double distance;
-    bool ninja_average;  
+    int N_windfield; //  Number of wind fields in the library
+    bool ninja_average; // Boolean to activate linear interpolation betweem the closest 2 wind fields from the library 
     double H_forc; // Reference height for GEM forcing and WindNinja wind field library
     double Max_spdup;  // Maximal value of crest speedup
     double Min_spdup;  // Minimal value of crest speedup
