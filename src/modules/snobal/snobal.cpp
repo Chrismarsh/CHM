@@ -99,6 +99,8 @@ void snobal::init(mesh domain)
         /**
          * Snopack config
          */
+        sbal->param_snow_compaction = cfg.get("param_snow_compaction",1); // new param is the default 
+ 
         sbal->h2o_sat = .3;
         sbal->layer_count = 0;
         sbal->m_s = 0.;

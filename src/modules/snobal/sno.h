@@ -248,6 +248,13 @@ public:
     double time_since_out;    /* time since last output record (sec) */
 
 
+/*   snowpack scheme options */
+
+    int param_snow_compaction;
+    /* TRUE (=1): new parametrization is used (_time_compact)
+       FALSE (=0): old parametrization is used (_time_compact_ori)
+           */
+
 /*   snowpack information   */
 
     int layer_count;

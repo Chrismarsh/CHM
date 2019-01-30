@@ -1490,11 +1490,11 @@ void sno::_mass_bal(void)
     /***    adjust mass and calc. runoff    ***/
 
     /*	age snow by compacting snow due to time passing */
-    if(OPT_SNOW_COMPACT == 1)
+    if(param_snow_compaction == 1)
     {
          _time_compact();
     }
-    else if(OPT_SNOW_COMPACT ==0)
+    else if(param_snow_compaction ==0)
     {
          _time_compact_ori();
     }

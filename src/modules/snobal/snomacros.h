@@ -140,13 +140,6 @@ namespace snobalMacros
 #define DELTA_EDDINGTON        0
 #define MEADOR_WEAVER        1
 
-/*
- *  Methods for computing snow compaction
- *   0: old version (see time_compact_ori)
- *   1: new version (default, see time_compact)
- */
-#define OPT_SNOW_COMPACT      1
-
 /* 	 
 *  Maximum density due to compaction (kg/m^3). 	 
 */ 

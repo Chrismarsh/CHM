@@ -21,11 +21,11 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include "Ninja_wind_lim.hpp"
-REGISTER_MODULE_CPP(Ninja_wind_lim);
+#include "WindNinja.hpp"
+REGISTER_MODULE_CPP(WindNinja);
 
-Ninja_wind_lim::Ninja_wind_lim(config_file cfg)
-        : module_base("Ninja_wind_lim", parallel::domain, cfg)
+WindNinja::WindNinja(config_file cfg)
+        : module_base("WindNinja", parallel::domain, cfg)
 
 {
     depends_from_met("U_R");
@@ -56,7 +56,7 @@ Ninja_wind_lim::Ninja_wind_lim(config_file cfg)
 }
 
 //Calculates the curvature required
-void Ninja_wind_lim::init(mesh domain)
+void WindNinja::init(mesh domain)
 {
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -75,7 +75,7 @@ void Ninja_wind_lim::init(mesh domain)
 }
 
 
-void Ninja_wind_lim::run(mesh domain)
+void WindNinja::run(mesh domain)
 {
         double transf_max = -9999.0;
         double max_omega_s = -9999.0;
@@ -288,7 +288,7 @@ void Ninja_wind_lim::run(mesh domain)
         }
    }
 
-Ninja_wind_lim::~Ninja_wind_lim()
+WindNinja::~WindNinja()
 {
 
 }

@@ -44,7 +44,7 @@
 /**
 * \addtogroup modules
 * @{
-* \class Ninja_wind_lim
+* \class WindNinja
 * \brief Calculates wind speed and direction following the downscaling stategy of Barcons et al. (Wind Energy, 2018)
 *
 * Calculates windspeeds and direction from GEM input and a library of high-resolution wind field generated with the WindNinja wind flow model
@@ -56,12 +56,12 @@
 * - Wind "U_R" [m/s] at reference height
 * - Wind direction 'vw_dir' [degrees]
 */
-class Ninja_wind_lim : public module_base
+class WindNinja : public module_base
 {
-REGISTER_MODULE_HPP(Ninja_wind_lim);
+REGISTER_MODULE_HPP(WindNinja);
 public:
-    Ninja_wind_lim(config_file cfg);
-    ~Ninja_wind_lim();
+    WindNinja(config_file cfg);
+    ~WindNinja();
     virtual void run(mesh domain);
     virtual void init(mesh domain);
     double ys;
