@@ -678,12 +678,24 @@ void PBSM3D::run(mesh domain)
 
             //these are from
             // Pomeroy, J. W., D. M. Gray, and P. G. Landine (1993), The prairie blowing snow model: characteristics, validation, operation, J. Hydrol., 144(1–4), 165–192.
-            double rm = 4.6e-5 * pow(cz,-0.258); // eqn 18, mean particle size
+
+            // eqn 18, mean particle radius
+            // This is 'r_r' in Pomeroy and Gray 1995, eqn 50
+            double rm = 4.6e-5 * pow(cz,-0.258);
             if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
+
+            //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
+            // 52, 53 P&G 1995
+            double mm_alpha = 4.08 + 12.6*cz; //24
+            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
+
+            // mean radius of mean mass particle
+            double r_z = pow((3.0 * mm) / (4*M_PI*rho_p),0.33); // 50 in p&g 1995
+            if(debug_output) face->set_face_data("mm",mm);
 
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1e7 * pow(rm,1.8); //eqn 15 settling velocity
+            double omega = 1.1e7 * pow(r_z,1.8); //eqn 15 settling velocity
 
             if(debug_output) face->set_face_data("settling_velocity"+std::to_string(z), omega);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
