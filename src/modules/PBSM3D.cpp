@@ -854,7 +854,7 @@ void PBSM3D::run(mesh domain)
 
             //negate as direction it's blowing instead of where it is from!!
             Vector_3 v3(-uvw(0),-uvw(1), uvw(2));
-            face->set_face_vector("uvw"+std::to_string(z),v3);
+            if(debug_output) face->set_face_vector("uvw"+std::to_string(z),v3);
 
             //holds wind velocity dot face normal
             double udotm[5];
