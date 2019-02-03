@@ -46,6 +46,14 @@ set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Number of build threads for superbui
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
+# Need to check for MPI before building external libraries
+find_package(MPI)
+if(MPI_FOUND AND USE_MPI)
+  message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
+else()
+  message(WARNING "MPI not enabled. Building for single process.")
+endif()
+
 
 #enable with cmake -DSUPERBUILD=TRUE .
 if(SUPERBUILD)
@@ -171,6 +179,8 @@ execute_process(COMMAND ${CMAKE_COMMAND}
         -DBUILD_ParaView=${BUILD_ParaView}
 	-DEXTERNAL_BUILD_THREADS=${EXTERNAL_BUILD_THREADS}
         -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+        -DUSE_MPI=${USE_MPI}
+        -DMPI_FOUND=${MPI_FOUND}
         -DUSE_OMP=${USE_OMP}
         -DUSE_OCL=${USE_OCL}
         -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
@@ -216,13 +226,6 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
         NOT CMAKE_BUILD_TYPE)
 
     set(CMAKE_BUILD_TYPE "Release")
-endif()
-
-find_package(MPI)
-if(MPI_FOUND AND USE_MPI)
-  message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
-else()
-  message(WARNING "MPI not enabled. Building for single process.")
 endif()
 
 #Setup output paths
@@ -379,6 +382,8 @@ find_package(Boost
              regex
              iostreams
              program_options
+	     mpi
+	     serialization
              REQUIRED)
 message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
 message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")

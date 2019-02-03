@@ -29,8 +29,7 @@
 
 #include "core.hpp"
 
-
-
+namespace mpi = boost::mpi;
 
 int main (int argc, char *argv[])
 {
