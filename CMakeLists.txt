@@ -31,6 +31,7 @@ set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
+option(USE_MPI "Enable MPI"  OFF )
 option(USE_OMP "Enable OpenMP"  ON )
 option(USE_OCL "Enable OpenCL with ViennaCL"  OFF )
 option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
@@ -217,6 +218,12 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+find_package(MPI)
+if(MPI_FOUND AND USE_MPI)
+  message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
+else()
+  message(WARNING "MPI not enabled. Building for single process.")
+endif()
 
 #Setup output paths
 

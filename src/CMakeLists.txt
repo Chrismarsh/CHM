@@ -219,9 +219,14 @@ add_executable(
 	${LIBMAW_SRCS}
 	)
 
+target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH})
+target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+
 target_link_libraries(
 	CHM
 	${LIB_FILES}
+	${MPI_CXX_LIBRARIES}
+	${MPI_CXX_LINK_FLAGS}
 )
 
 
