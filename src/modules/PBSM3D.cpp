@@ -820,7 +820,8 @@ void PBSM3D::run(mesh domain)
             //Li and Pomeroy 2000
             double l = PhysConst::kappa*(cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
             if(debug_output) face->set_face_data("l",l);
-            double w = omega; //settling_velocity;
+            // double w = omega; //settling_velocity;
+            double w = -1.0*settling_velocity; // Test VV: make sure w is positive.
 
             if(debug_output) face->set_face_data("w",w);
 
