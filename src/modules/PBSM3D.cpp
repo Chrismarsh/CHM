@@ -77,7 +77,6 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("blowingsnow_probability");
     if(debug_output)
     {
-        provides("salt_csubl");
         nLayer = cfg.get("nLayer", 5);
         for (int i = 0; i < nLayer; ++i)
         {
@@ -1121,7 +1120,7 @@ void PBSM3D::run(mesh domain)
 
             if(debug_output) Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
 
-            d->sum_subl += face->face_data("csubl"+std::to_string(z)) * global_param->dt()*c;
+            if(debug_output) d->sum_subl += face->face_data("csubl"+std::to_string(z)) * global_param->dt()*c;
 
         }
          face->set_face_data("Qsusp",Qsusp);
