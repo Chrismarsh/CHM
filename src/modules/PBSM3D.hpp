@@ -172,7 +172,10 @@ public:
         double z0;
 
         double sum_drift;
+
+        double sum_subl;
     };
+
 
 };
 

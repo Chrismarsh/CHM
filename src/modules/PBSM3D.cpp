@@ -77,6 +77,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("blowingsnow_probability");
     if(debug_output)
     {
+        provides("salt_csubl");
         nLayer = cfg.get("nLayer", 5);
         for (int i = 0; i < nLayer; ++i)
         {
@@ -120,7 +121,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("drift_mass"); //kg/m^2
     provides("Qsusp");
     provides("Qsalt");
-
+    provides("sum_subl");
     provides("sum_drift");
 }
 
@@ -257,7 +258,7 @@ void PBSM3D::init(mesh domain)
         }
 
         d->sum_drift = 0;
-
+        d->sum_subl = 0;
 
 
         // iterate over the vertical layers
@@ -334,8 +335,7 @@ void PBSM3D::run(mesh domain)
     //zero-fill RHS
     b.clear();
 
-    //ice density
-    double rho_p = PhysConst::rho_ice;
+
 
     //get row buffer
     unsigned int const* row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
@@ -352,6 +352,8 @@ void PBSM3D::run(mesh domain)
         return fabs(a - b) < 1e-8;
     };
 
+    //ice density
+    double rho_p = PhysConst::rho_ice;
  #pragma omp for
    for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -407,8 +409,8 @@ void PBSM3D::run(mesh domain)
         //Pomeroy and Li, 2000
         // Eqn 7
         double T = face->face_data("t");
-        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
-        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
+        double u_star_saltation_threshold = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
+        if(debug_output) face->set_face_data("u*_th",u_star_saltation_threshold);
 
         // we don't have too high of veg. Check for blowing snow
         if(height_diff <= cutoff && swe >= min_mass_for_trans)
@@ -447,7 +449,7 @@ void PBSM3D::run(mesh domain)
                 // g   = 9.81;
                 d->z0 = 0.6131702344e-2*ustar*ustar+.5*lambda; // pom and li 2000, eqn 4
 
-                if( ustar >= u_star_saltation)
+                if( ustar >= u_star_saltation_threshold)
                     d->saltation = true;
             }
             catch (...) {
@@ -526,7 +528,7 @@ void PBSM3D::run(mesh domain)
             if(debug_output) face->set_face_data("tau_n_ratio",tau_n_ratio);
 
             //Pomeroy 1992, eqn 12, see note above for ustar_n calc, but ustar_n is correctly squared already
-            c_salt = rho_f / (3.29 * ustar) * (1.0 - tau_n_ratio -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
+            c_salt = rho_f / (3.29 * ustar) * (1.0 - tau_n_ratio -  (u_star_saltation_threshold*u_star_saltation_threshold) / (ustar * ustar));
 
             // occasionally happens to happen at low wind speeds where the parameterization breaks.
             // hasn't happened since changed this to the threshold velocity though...
@@ -537,6 +539,7 @@ void PBSM3D::run(mesh domain)
             }
 
             if(debug_output) face->set_face_data("c_salt_fetch_big", c_salt);
+
 
             //exp decay of Liston, eq 10
             //95% of max saltation occurs at fetch = 500m
@@ -567,9 +570,8 @@ void PBSM3D::run(mesh domain)
                 //decrease the saltation by the probability amount
                 c_salt *= Pu10;
             }
-
             // wind speed in the saltation layer Pomeroy and Gray 1990
-            double uhs = 2.8 * u_star_saltation; //eqn 7
+            double uhs = 2.8 * u_star_saltation_threshold; //eqn 7
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
@@ -628,11 +630,11 @@ void PBSM3D::run(mesh domain)
 
         face->set_face_data("Qsalt", Qsalt);
 
-        double rh = face->face_data("rh")/100.;
-        double es = mio::Atmosphere::saturatedVapourPressure(t);
-        double ea = rh * es / 1000.; // ea needs to be in kpa
+       double rh = face->face_data("rh")/100.;
+       double es = mio::Atmosphere::saturatedVapourPressure(t);
+       double ea = rh * es / 1000.; // ea needs to be in kpa
 
-        double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 in Pomeroy 1993
+       double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 in Pomeroy 1993
 
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
@@ -651,7 +653,7 @@ void PBSM3D::run(mesh domain)
                 // saltating so used the z0 with veg, but we are in the canopy so use the saltation vel
 
                 // wind speed in the saltation layer Pomeroy and Gray 1990
-                u_z = 2.8 * u_star_saltation; //eqn 7
+                u_z = 2.8 * u_star_saltation_threshold; //eqn 7
             }
             else if(cz <  height_diff)
             {
@@ -700,6 +702,7 @@ void PBSM3D::run(mesh domain)
             if(debug_output) face->set_face_data("settling_velocity"+std::to_string(z), omega);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
+            double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 in Pomeroy 1993
             double Re = 2.0*rm*Vr / v; //eqn 13
 
             double Nu, Sh;
@@ -772,10 +775,6 @@ void PBSM3D::run(mesh domain)
                 dmdtz = Sh*rho*D*(6.283185308*Nu*R*rm*sigma*t*t*lambda_t-L*M*Qr+Qr*R*t)/(D*L*Sh*(L*M-R*t)*rho+lambda_t*t*t*Nu*R);
             }
             if (debug_output) face->set_face_data("dm/dt", dmdtz);
-
-            //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
-            mm_alpha = 4.08 + 12.6*cz; //24
-            mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
 
             if(debug_output) face->set_face_data("mm",mm);
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
@@ -888,6 +887,7 @@ void PBSM3D::run(mesh domain)
             //so / by 5 for csubl and V so it's not 5x counted.
             csubl /= 5.0;
             V/=5.0;
+            if(debug_output) face->set_face_data("csubl"+std::to_string(z),csubl);
             if(!do_sublimation)
             {
                 csubl = 0.0;
@@ -1121,9 +1121,13 @@ void PBSM3D::run(mesh domain)
 
             if(debug_output) Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
 
+            d->sum_subl += face->face_data("csubl"+std::to_string(z)) * global_param->dt()*c;
+
         }
          face->set_face_data("Qsusp",Qsusp);
         if(debug_output) face->set_face_data("Qsubl",Qsubl);
+
+        face->set_face_data("sum_subl",d->sum_subl);
     }
 
     // Setup the matrix to be used to the solution of the gradient of the suspension flux
