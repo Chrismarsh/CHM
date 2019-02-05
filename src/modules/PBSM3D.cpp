@@ -774,8 +774,8 @@ void PBSM3D::run(mesh domain)
             if (debug_output) face->set_face_data("dm/dt", dmdtz);
 
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
-            double mm_alpha = 4.08 + 12.6*cz; //24
-            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
+            mm_alpha = 4.08 + 12.6*cz; //24
+            mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
 
             if(debug_output) face->set_face_data("mm",mm);
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
