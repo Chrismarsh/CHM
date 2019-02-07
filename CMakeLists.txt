@@ -371,20 +371,35 @@ endif()
 
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
-find_package(Boost
-             1.62.0
-             COMPONENTS
-             system
-             filesystem
-             date_time
-             log
-             thread
-             regex
-             iostreams
-             program_options
-	     mpi
-	     serialization
-             REQUIRED)
+if(USE_MPI AND MPI_FOUND)
+  find_package(Boost
+    1.62.0
+    COMPONENTS
+    system
+    filesystem
+    date_time
+    log
+    thread
+    regex
+    iostreams
+    program_options
+    mpi
+    serialization
+    REQUIRED)
+else()
+  find_package(Boost
+    1.62.0
+    COMPONENTS
+    system
+    filesystem
+    date_time
+    log
+    thread
+    regex
+    iostreams
+    program_options
+    REQUIRED)
+endif()
 message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
 message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
 message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
