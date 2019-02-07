@@ -137,7 +137,7 @@ void PBSM3D::init(mesh domain)
     // settling_velocity is used if the user chooses a fixed settling velocity (do_fixed_settling=true)
     settling_velocity = cfg.get("settling_velocity",0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall (2008), Inhomogeneous precipitation distribution and snow transport in steep terrain, Water Resour. Res., 44(7), 1–19, doi:10.1029/2007WR006545.
 
-    if(settling_velocity > 0)
+    if(settling_velocity < 0)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be positive"));
 
 
