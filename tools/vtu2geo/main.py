@@ -32,7 +32,7 @@ def printProgress(iteration, total, prefix='', suffix='', decimals=2, barLength=
 
 def main():
     gdal.UseExceptions()  # Enable errors
-    
+
     #####  load user configurable paramters here    #######
     # Check user defined configuraiton file
     if len(sys.argv) == 1:
@@ -77,6 +77,7 @@ def main():
         constrain_flag = True
 
     output_path = input_path[:input_path.rfind('/')+1]
+
     if hasattr(X,'output_path'):
         output_path = X.output_path
 
@@ -131,6 +132,7 @@ def main():
 
 
     iter=1
+
     for vtu in pvd:
         #if not pvd...
         path = vtu
@@ -262,7 +264,9 @@ def main():
         y_res = int((y_max - y_min) / pixel_size)
 
         for var in variables:
-            target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ var.replace(" ","_")+str(pixel_size)+'x'+str(pixel_size)+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
+            target_fname = os.path.join(output_path, vtu_file + '_'+ var.replace(" ","_")+str(pixel_size)+'x'+str(pixel_size)+'.tif')
+
+            target_ds = gdal.GetDriverByName('GTiff').Create(target_fname, x_res, y_res, 1, gdal.GDT_Float32)
             target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
             # target_ds.SetProjection(srs)
             band = target_ds.GetRasterBand(1)
@@ -281,13 +285,9 @@ def main():
 
             if parameters is not None:
                 for p in parameters:
-<<<<<<< HEAD
-                    target_ds = gdal.GetDriverByName('GTiff').Create(output_path+'/'+vtu_file[:-4] + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif', x_res, y_res, 1, gdal.GDT_Float32)
-=======
-                    target_param_fname = os.path.join(output_path, vtu_file[:-4] + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif')
+                    target_param_fname = os.path.join(output_path, vtu_file + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif')
 
                     target_ds = gdal.GetDriverByName('GTiff').Create(target_param_fname, x_res, y_res, 1, gdal.GDT_Float32)
->>>>>>> parent of b164339... fix incorrect removal of vtu suffix
                     target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
                     target_ds.SetProjection(srsout.ExportToWkt())
                     band = target_ds.GetRasterBand(1)
@@ -303,13 +303,8 @@ def main():
                           'gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
                           (srsout.ExportToProj4(), srsout.ExportToProj4(), o_xmin, o_ymin, o_xmax,
                            o_ymax, param_resample_method[p], pixel_width, pixel_height,
-<<<<<<< HEAD
-                           output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '.tif',
-                           output_path + '/' + vtu_file[:-4] + '_' + p.replace(" ","_") + '_clipped.tif')],
-=======
-                           os.path.join(output_path,vtu_file[:-4] + '_' + p.replace(" ","_") + '.tif'),
-                           os.path.join(output_path, vtu_file[:-4] + '_' + p.replace(" ","_") + '_clipped.tif'))],
->>>>>>> parent of b164339... fix incorrect removal of vtu suffix
+                           os.path.join(output_path,vtu_file + '_' + p.replace(" ","_") + '.tif'),
+                           os.path.join(output_path, vtu_file + '_' + p.replace(" ","_") + '_clipped.tif'))],
                           shell=True)
 
         # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
