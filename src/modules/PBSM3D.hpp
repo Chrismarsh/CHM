@@ -109,7 +109,12 @@ public:
     double l__max; // vertical mixing length (m)
     bool rouault_diffusion_coeff; //use the spatially variable diffusivity coefficient of Rouault 1991
 
-    double settling_velocity;
+    bool do_fixed_settling; // should we have a constant settling velocity? 
+                            // true: constant settling velocity = settling_velocity (see below)
+                            // false: use the parameterization of Pomeroy et al. (1993) and Pomeroy and Gray (1995):
+                            //        In this case, the settling velocity decreases with height above the snow surface 
+                            //        due to a decrease with height in the mean particle size. 
+    double settling_velocity; // Variable used if do_fixed_settling = true
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.
     bool limit_mass; // do not saltate more snow than what exists in a cell.
