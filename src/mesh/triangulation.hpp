@@ -212,11 +212,11 @@ public:
 
     /**
      * Exactly the same as find_closest_face in triangulation but uses the current face's center
-     * @param azmimuth
+     * @param azimuth
      * @param distance
      * @return
      */
-    const Face_handle find_closest_face(double azmimuth, double distance);
+    const Face_handle find_closest_face(double azimuth, double distance);
 
     /**
      * Returns the ith edge's length. Refering to the docs here
@@ -1183,9 +1183,9 @@ bool face<Gt, Fb>::intersects(face<Gt, Fb>::Face_handle fh)
 }
 
 template < class Gt, class Fb>
-const typename face<Gt, Fb>::Face_handle face<Gt, Fb>::find_closest_face(double azmimuth, double distance)
+const typename face<Gt, Fb>::Face_handle face<Gt, Fb>::find_closest_face(double azimuth, double distance)
 {
-    return _domain->find_closest_face(math::gis::point_from_bearing(center(), azmimuth, distance));
+    return _domain->find_closest_face(math::gis::point_from_bearing(center(), azimuth, distance));
 };
 
 template < class Gt, class Fb>
