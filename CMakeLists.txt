@@ -50,6 +50,7 @@ set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime p
 find_package(MPI)
 if(MPI_FOUND AND USE_MPI)
   message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
+  add_definitions(-DUSE_MPI)
 else()
   message(WARNING "MPI not enabled. Building for single process.")
 endif()

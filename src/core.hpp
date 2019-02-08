@@ -95,8 +95,10 @@ namespace po = boost::program_options;
 #include "timeseries/netcdf.hpp"
 #include "gsl/gsl_errno.h"
 
+#ifdef USE_MPI
 #include <boost/mpi.hpp>
 #include <boost/serialization/string.hpp>
+#endif
 
 struct vertex{
     std::string name;
