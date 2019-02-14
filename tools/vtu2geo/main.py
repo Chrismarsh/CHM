@@ -8,10 +8,10 @@ import subprocess
 import numpy as np
 import os
 from gdalconst import GA_ReadOnly
-from datetime import datetime  
+
 
 from rasterio.warp import transform
-import xarray as xr 
+import xarray as xr
 
 gdal.UseExceptions()  # Enable errors
 
@@ -34,16 +34,72 @@ def printProgress(iteration, total, prefix='', suffix='', decimals=2, barLength=
     if iteration == total:
         print("\n")
 
-def add_geo_coord(da):
-    # Compute the lon/lat coordinates with rasterio.warp.transform
-    ny, nx = len(da['y']), len(da['x'])
-    x, y = np.meshgrid(da['x'], da['y'])
-    # Rasterio works with 1D arrays
-    lon, lat = transform(da.crs, {'init': 'EPSG:4326'}, x.flatten(), y.flatten())
-    lon = np.asarray(lon).reshape((ny, nx))
-    lat = np.asarray(lat).reshape((ny, nx))
-    da.coords['lon'] = (('y', 'x'), lon)
-    da.coords['lat'] = (('y', 'x'), lat)
+import contextlib
+
+
+#suppress stderr from one of the vtk calls that has deprecated warning out put for something outside of our control with vtk8.1
+#https://stackoverflow.com/a/17753620/410074
+@contextlib.contextmanager
+def stdchannel_redirected(stdchannel, dest_filename):
+    """
+    A context manager to temporarily redirect stdout or stderr
+
+    e.g.:
+
+
+    with stdchannel_redirected(sys.stderr, os.devnull):
+        if compiler.has_function('clock_gettime', libraries=['rt']):
+            libraries.append('rt')
+    """
+
+    try:
+        oldstdchannel = os.dup(stdchannel.fileno())
+        dest_file = open(dest_filename, 'w')
+        os.dup2(dest_file.fileno(), stdchannel.fileno())
+
+        yield
+    finally:
+        if oldstdchannel is not None:
+            os.dup2(oldstdchannel, stdchannel.fileno())
+        if dest_file is not None:
+            dest_file.close()
+
+# layer Input USM to be rasterized
+# srsout Output CRS
+# the filename of the raster
+# pixel size, in srsout units. Constant dx,dy
+# attribute The value from the USM we want to burn into the raster
+def rasterize(layer, srsout, target_fname, pixel_size, attribute, constrain_flag=False):
+    x_min, x_max, y_min, y_max = layer.GetExtent()
+
+    NoData_value = -9999
+    # width/height of created raster in pixels.
+    xsize = int((x_max - x_min) / pixel_size)
+    ysize = int((y_max - y_min) / pixel_size)
+
+
+
+    target_ds = gdal.GetDriverByName('GTiff').Create(target_fname, xsize, ysize, 1, gdal.GDT_Float32)
+    target_ds.SetProjection(srsout.ExportToWkt())
+    target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
+    band = target_ds.GetRasterBand(1)
+    band.SetNoDataValue(NoData_value)
+
+    # Rasterize
+    gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0], options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + attribute])
+
+    target_ds = None
+
+    # re-enable this later
+    # Optional clip file
+    # if constrain_flag:
+    #     subprocess.check_call(
+    #         ['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
+    #          (srsout.ExportToProj4(), srsout.ExportToProj4(),
+    #           o_xmin, o_ymin, o_xmax, o_ymax,
+    #           var_resample_method[var],
+    #           pixel_width, pixel_height,
+    #           path[:-4] + '_' + var + '.tif', path[:-4] + '_' + var + '_clipped.tif')], shell=True)
 
 def main():
     gdal.UseExceptions()  # Enable errors
@@ -111,13 +167,23 @@ def main():
     if hasattr(X,'nc_archive'):
         nc_archive = X.nc_archive
 
+    #user defined output EPSG to use instead of the proj4 as defined in the vtu
+    out_EPSG = None
+    if hasattr(X,'out_EPSG'):
+        out_EPSG = X.out_EPSG
+
+    if parameters is not None and nc_archive:
+        print('Parameters are ignored when writing the nc archive.')
+        parameters = []
+
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
 
-# see if we were given a single vtu file or a pvd xml file
+    # see if we were given a single vtu file or a pvd xml file
     filename, file_extension = os.path.splitext(input_path)
     is_pvd = False
     pvd = [input_path] # if not given a pvd file, make this iterable for the below code
+    timesteps=None
     if file_extension == '.pvd':
         print 'Detected pvd file, processing all linked vtu files'
         is_pvd = True
@@ -148,29 +214,38 @@ def main():
         print "Output pixel size is " + str(pixel_width) + " by " + str(pixel_height)
         ex_ds = None
 
+    if constrain_flag:
+        print(" Constrain flag currently not supported!")
+        return -1
 
 
-    iter=1
+    files_processed=1 # this really should be 1 for useful output
 
-    nc_rasters = []
+    #information to build up the nc meta data
+    nc_rasters = {}
+    for v in variables:
+        nc_rasters[v]=[]
+
     nc_time_counter=0
     tifs_to_remove = []
-    epoch=np.datetime64( int(timesteps[0].get('timestep')),'s')
+    epoch=np.datetime64(0,'s')
+
+    # if we are loading a pvd, we have access to the timestep information if we want to build
+    if is_pvd and timesteps is not None:
+        epoch = np.datetime64(int(timesteps[0].get('timestep')),'s')
 
     dt=1 # model timestep, in seconds
 
-    if len(timesteps) > 1:
+    if timesteps is not None and len(timesteps) > 1:
         dt = int(timesteps[1].get('timestep')) - int(timesteps[0].get('timestep'))
 
 
-    print( 'Start epoch: %s, model dt = %i (s)' %(epoch,dt))
+    print('Start epoch: %s, model dt = %i (s)' %(epoch,dt))
 
 
     for vtu in pvd:
-        #if not pvd...
         path = vtu
         vtu_file = ''
-
         if is_pvd:
             vtu_file  = vtu.get('file')
             path = input_path[:input_path.rfind('/')+1] + vtu_file
@@ -179,9 +254,12 @@ def main():
             vtu_file = os.path.splitext(base)[0] #we strip out vtu later so keep here
 
 
-        printProgress(iter,len(pvd))
+        printProgress(files_processed,len(pvd),decimals=0)
         reader.SetFileName(path)
-        reader.Update()
+
+        #shut up a deprecated warning from vtk 8.1
+        with stdchannel_redirected(sys.stderr, os.devnull):
+            reader.Update()
 
         mesh = reader.GetOutput()
 
@@ -207,35 +285,16 @@ def main():
 
         #output conic equal area for geotiff
         srsout = osr.SpatialReference()
+        srsout.ImportFromProj4(vtu_proj4)
 
-        if not is_geographic:
-            srsout.ImportFromProj4(vtu_proj4)
-        else:
-            srsout.ImportFromWkt("PROJCS[\"North_America_Albers_Equal_Area_Conic\",     "
-                                 "GEOGCS[\"GCS_North_American_1983\",         "
-                                 "DATUM[\"North_American_Datum_1983\",            "
-                                 " SPHEROID[\"GRS_1980\",6378137,298.257222101]],         "
-                                 "PRIMEM[\"Greenwich\",0],        "
-                                 " UNIT[\"Degree\",0.017453292519943295]],     "
-                                 "PROJECTION[\"Albers_Conic_Equal_Area\"],     "
-                                 "PARAMETER[\"False_Easting\",0],    "
-                                 " PARAMETER[\"False_Northing\",0],     "
-                                 "PARAMETER[\"longitude_of_center\",-96],     "
-                                 "PARAMETER[\"Standard_Parallel_1\",20],     "
-                                 "PARAMETER[\"Standard_Parallel_2\",60],     "
-                                 "PARAMETER[\"latitude_of_center\",40],     "
-                                 "UNIT[\"Meter\",1],     "
-                                 "AUTHORITY[\"EPSG\",\"102008\"]]")
+        if out_EPSG:
+            srsout.ImportFromEPSG(out_EPSG)
 
         trans = osr.CoordinateTransformation(srsin,srsout)
-
         layer = output_usm.CreateLayer('poly', srsout, ogr.wkbPolygon)
-
         cd = mesh.GetCellData()
 
-
         for i in range(0,cd.GetNumberOfArrays()):
-            # print cd.GetArrayName(i)
             layer.CreateField(ogr.FieldDefn(cd.GetArrayName(i), ogr.OFTReal))
 
         #build the triangulation geometery
@@ -251,15 +310,13 @@ def main():
                 ring.AddPoint (mesh.GetPoint(v1)[0]/ scale, mesh.GetPoint(v1)[1]/ scale )
                 ring.AddPoint( mesh.GetPoint(v2)[0]/ scale, mesh.GetPoint(v2)[1]/ scale )
                 ring.AddPoint( mesh.GetPoint(v0)[0]/ scale, mesh.GetPoint(v0)[1]/ scale ) # add again to complete the ring.
-
-                ring.Transform(trans) #only transform if needed
-
             else:
                 ring.AddPoint( mesh.GetPoint(v0)[0], mesh.GetPoint(v0)[1] )
                 ring.AddPoint (mesh.GetPoint(v1)[0], mesh.GetPoint(v1)[1] )
                 ring.AddPoint( mesh.GetPoint(v2)[0], mesh.GetPoint(v2)[1] )
                 ring.AddPoint( mesh.GetPoint(v0)[0], mesh.GetPoint(v0)[1] ) # add again to complete the ring.
 
+            ring.Transform(trans)
             tpoly = ogr.Geometry(ogr.wkbPolygon)
             tpoly.AddGeometry(ring)
 
@@ -277,7 +334,7 @@ def main():
                     feature.SetField(str(v), float(data[0]))
                 except:
                     print "Variable %s not present in mesh" % v
-                    exit()
+                    return -1
 
 
             if parameters is not None:
@@ -287,74 +344,32 @@ def main():
                         feature.SetField(str(p), float(data[0]))
                     except:
                         print "Parameter %s not present in mesh" % v
-                        exit()
+                        return -1
             layer.CreateFeature(feature)
 
-        x_min, x_max, y_min, y_max = layer.GetExtent()
-
-        NoData_value = -9999
-        x_res = int((x_max - x_min) / pixel_size)
-        y_res = int((y_max - y_min) / pixel_size)
-
-
-
         for var in variables:
-            target_fname = os.path.join(output_path, vtu_file + '_'+ var.replace(" ","_")+str(pixel_size)+'x'+str(pixel_size)+'.tif')
 
-            target_ds = gdal.GetDriverByName('GTiff').Create(target_fname, x_res, y_res, 1, gdal.GDT_Float32)
-            target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-            # target_ds.SetProjection(srs)
-            band = target_ds.GetRasterBand(1)
-
-            band.SetNoDataValue(NoData_value)
-
-            # Rasterize
-            gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE',"ATTRIBUTE="+var])
-            target_ds.SetProjection(srsout.ExportToWkt())
-            target_ds = None
-
-
-            # Optional clip file
-            if constrain_flag:
-                subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
-                                       (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, var_resample_method[var], pixel_width, pixel_height, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
+            target_fname = os.path.join(output_path,
+                                        vtu_file + '_' + var.replace(" ", "_") + str(pixel_size) + 'x' + str(
+                                            pixel_size) + '.tif')
+            rasterize(layer, srsout, target_fname, pixel_size, var)
 
             if nc_archive:
-                subprocess.check_call(['gdalwarp %s %s_geographic.tif -t_srs EPSG:4326 -tr 0.01 0.01' %(target_fname,target_fname)], shell=True)
+                df = xr.open_rasterio(target_fname).sel(band=1).drop('band')
 
-                df = xr.open_rasterio(target_fname+'_geographic.tif').sel(band=1).drop('band')
-                # add_geo_coord(df)
                 df.coords['time']=epoch + nc_time_counter*np.timedelta64(dt,'s') # this will automatically get converted to min or hours in the output nc
                 df.name=var
-                nc_rasters.append(df) # these are lazy loaded at the to netcdf call
+                nc_rasters[var].append(df) # these are lazy loaded at the to netcdf call
 
                 # remove the tifs we produce
                 tifs_to_remove.append(target_fname)
-                tifs_to_remove.append(target_fname+'_geographic.tif')
+
 
             if parameters is not None:
                 for p in parameters:
                     target_param_fname = os.path.join(output_path, vtu_file + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif')
+                    rasterize(layer, srsout, target_fname, pixel_size, p)
 
-                    target_ds = gdal.GetDriverByName('GTiff').Create(target_param_fname, x_res, y_res, 1, gdal.GDT_Float32)
-                    target_ds.SetGeoTransform((x_min, pixel_size, 0, y_max, 0, -pixel_size))
-                    target_ds.SetProjection(srsout.ExportToWkt())
-                    band = target_ds.GetRasterBand(1)
-                    band.SetNoDataValue(NoData_value)
-
-                    # Rasterize
-                    gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + p])
-                    target_ds = None
-
-                    # Optional clip file
-                    if constrain_flag:
-                        subprocess.check_call([
-                          'gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
-                          (srsout.ExportToProj4(), srsout.ExportToProj4(), o_xmin, o_ymin, o_xmax,
-                           o_ymax, param_resample_method[p], pixel_width, pixel_height,
-                           os.path.join(output_path,vtu_file + '_' + p.replace(" ","_") + '.tif'),
-                           os.path.join(output_path, vtu_file + '_' + p.replace(" ","_") + '_clipped.tif'))],
-                          shell=True)
         nc_time_counter += 1
         # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
         parameters = None
@@ -363,20 +378,27 @@ def main():
         if not variables and parameters is None:
             break
 
-        iter += 1
+        files_processed += 1
 
     if nc_archive:
-        arr = xr.concat(nc_rasters,dim='time')
+
+        datasets = []
+
+        for var, rasters in nc_rasters.iteritems():
+            a = xr.concat(rasters,dim='time')
+            datasets.append(a.to_dataset())
+
+        arr = xr.merge(datasets)
         print('Writing netCDF file')
         fname=os.path.join(os.path.splitext(input_path)[0]+'.nc')
-        arr.to_netcdf(fname,engine='netcdf4')   
+        arr.to_netcdf(fname,engine='netcdf4')
 
         for f in tifs_to_remove:
             try:
                 os.remove(f)
             except:
                 pass
-        
+
 if __name__ == "__main__":
 
     main()
