@@ -8,6 +8,11 @@ import subprocess
 import numpy as np
 import os
 from gdalconst import GA_ReadOnly
+from datetime import datetime  
+
+from rasterio.warp import transform
+import xarray as xr 
+
 gdal.UseExceptions()  # Enable errors
 
 # Print iterations progress
@@ -29,6 +34,16 @@ def printProgress(iteration, total, prefix='', suffix='', decimals=2, barLength=
     if iteration == total:
         print("\n")
 
+def add_geo_coord(da):
+    # Compute the lon/lat coordinates with rasterio.warp.transform
+    ny, nx = len(da['y']), len(da['x'])
+    x, y = np.meshgrid(da['x'], da['y'])
+    # Rasterio works with 1D arrays
+    lon, lat = transform(da.crs, {'init': 'EPSG:4326'}, x.flatten(), y.flatten())
+    lon = np.asarray(lon).reshape((ny, nx))
+    lat = np.asarray(lat).reshape((ny, nx))
+    da.coords['lon'] = (('y', 'x'), lon)
+    da.coords['lat'] = (('y', 'x'), lat)
 
 def main():
     gdal.UseExceptions()  # Enable errors
@@ -91,8 +106,10 @@ def main():
     if hasattr(X,'user_define_extent'):
         user_define_extent = X.user_define_extent
 
-    # Get size for first rasterization (less than triangle min area)
-
+    #Produces a lat/long regular grid in CF netCDF format instead of the TIF files
+    nc_archive = False
+    if hasattr(X,'nc_archive'):
+        nc_archive = X.nc_archive
 
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
@@ -104,8 +121,10 @@ def main():
     if file_extension == '.pvd':
         print 'Detected pvd file, processing all linked vtu files'
         is_pvd = True
-        pvd = ET.parse(input_path)
-        pvd = pvd.findall(".//*[@file]")
+        parse = ET.parse(input_path)
+        pvd = parse.findall(".//*[@file]")
+
+        timesteps = parse.findall(".//*[@timestep]")
 
 
     # Get info for constrained output extent/resolution if selected
@@ -132,6 +151,20 @@ def main():
 
 
     iter=1
+
+    nc_rasters = []
+    nc_time_counter=0
+    tifs_to_remove = []
+    epoch=np.datetime64( int(timesteps[0].get('timestep')),'s')
+
+    dt=1 # model timestep, in seconds
+
+    if len(timesteps) > 1:
+        dt = int(timesteps[1].get('timestep')) - int(timesteps[0].get('timestep'))
+
+
+    print( 'Start epoch: %s, model dt = %i (s)' %(epoch,dt))
+
 
     for vtu in pvd:
         #if not pvd...
@@ -244,7 +277,7 @@ def main():
                     feature.SetField(str(v), float(data[0]))
                 except:
                     print "Variable %s not present in mesh" % v
-                    raise
+                    exit()
 
 
             if parameters is not None:
@@ -254,7 +287,7 @@ def main():
                         feature.SetField(str(p), float(data[0]))
                     except:
                         print "Parameter %s not present in mesh" % v
-                        raise
+                        exit()
             layer.CreateFeature(feature)
 
         x_min, x_max, y_min, y_max = layer.GetExtent()
@@ -262,6 +295,8 @@ def main():
         NoData_value = -9999
         x_res = int((x_max - x_min) / pixel_size)
         y_res = int((y_max - y_min) / pixel_size)
+
+
 
         for var in variables:
             target_fname = os.path.join(output_path, vtu_file + '_'+ var.replace(" ","_")+str(pixel_size)+'x'+str(pixel_size)+'.tif')
@@ -278,10 +313,24 @@ def main():
             target_ds.SetProjection(srsout.ExportToWkt())
             target_ds = None
 
+
             # Optional clip file
             if constrain_flag:
                 subprocess.check_call(['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
                                        (srsout.ExportToProj4(),srsout.ExportToProj4(),o_xmin, o_ymin, o_xmax, o_ymax, var_resample_method[var], pixel_width, pixel_height, path[:-4]+'_'+var+'.tif',path[:-4]+'_'+var+'_clipped.tif')], shell=True)
+
+            if nc_archive:
+                subprocess.check_call(['gdalwarp %s %s_geographic.tif -t_srs EPSG:4326 -tr 0.01 0.01' %(target_fname,target_fname)], shell=True)
+
+                df = xr.open_rasterio(target_fname+'_geographic.tif').sel(band=1).drop('band')
+                # add_geo_coord(df)
+                df.coords['time']=epoch + nc_time_counter*np.timedelta64(dt,'s') # this will automatically get converted to min or hours in the output nc
+                df.name=var
+                nc_rasters.append(df) # these are lazy loaded at the to netcdf call
+
+                # remove the tifs we produce
+                tifs_to_remove.append(target_fname)
+                tifs_to_remove.append(target_fname+'_geographic.tif')
 
             if parameters is not None:
                 for p in parameters:
@@ -306,7 +355,7 @@ def main():
                            os.path.join(output_path,vtu_file + '_' + p.replace(" ","_") + '.tif'),
                            os.path.join(output_path, vtu_file + '_' + p.replace(" ","_") + '_clipped.tif'))],
                           shell=True)
-
+        nc_time_counter += 1
         # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
         parameters = None
 
@@ -316,6 +365,18 @@ def main():
 
         iter += 1
 
+    if nc_archive:
+        arr = xr.concat(nc_rasters,dim='time')
+        print('Writing netCDF file')
+        fname=os.path.join(os.path.splitext(input_path)[0]+'.nc')
+        arr.to_netcdf(fname,engine='netcdf4')   
+
+        for f in tifs_to_remove:
+            try:
+                os.remove(f)
+            except:
+                pass
+        
 if __name__ == "__main__":
 
     main()
