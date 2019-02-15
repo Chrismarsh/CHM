@@ -55,12 +55,12 @@
 * Provides:
 * - Sx, Winstral paramter [degrees]
 */
-class Winstral_index : public module_base
+class Winstral_parameters : public module_base
 {
-REGISTER_MODULE_HPP(Winstral_index);
+REGISTER_MODULE_HPP(Winstral_parameters);
 public:
-    Winstral_index(config_file cfg);
-    ~Winstral_index();
+    Winstral_parameters(config_file cfg);
+    ~Winstral_parameters();
 
 
     virtual void run(mesh domain);

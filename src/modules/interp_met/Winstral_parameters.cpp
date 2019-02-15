@@ -21,11 +21,11 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include "Winstral_index.hpp"
-REGISTER_MODULE_CPP(Winstral_index);
+#include "Winstral_parameters.hpp"
+REGISTER_MODULE_CPP(Winstral_parameters);
 
-Winstral_index::Winstral_index(config_file cfg)
-        : module_base("Winstral_index", parallel::domain, cfg)
+Winstral_parameters::Winstral_parameters(config_file cfg)
+        : module_base("Winstral_parameters", parallel::domain, cfg)
 
 {
 
@@ -68,7 +68,7 @@ Winstral_index::Winstral_index(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-void Winstral_index::run(mesh domain)
+void Winstral_parameters::run(mesh domain)
 {
 
 
@@ -155,7 +155,7 @@ void Winstral_index::run(mesh domain)
    }
 
 }
-Winstral_index::~Winstral_index()
+Winstral_parameters::~Winstral_parameters()
 {
 
 }
