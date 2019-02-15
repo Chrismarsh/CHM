@@ -224,7 +224,7 @@ void WindNinja::run(mesh domain)
  
               //Compute what liston calls 'wind slope' using updated wind direction
               double omega_s = face->slope() * cos(theta - face->aspect());
-         //     face->set_face_data("omega_s", omega_s);
+              face->set_face_data("omega_s", omega_s);
 
               if( omega_s<-0.35 and W_transf>1.05)  //Reduce wind speed on the lee side of mountain crest                                                     
                    W_transf = std::max(0.5,0.5+(omega_s+0.5)/(0.15)*0.5);   // Reduction 0f 50% for omega_s larger than 30 deg
