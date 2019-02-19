@@ -140,6 +140,22 @@ namespace snobalMacros
 #define DELTA_EDDINGTON        0
 #define MEADOR_WEAVER        1
 
+/* 	 
+*  Maximum density due to compaction (kg/m^3). 	 
+*/ 
+#define	RMX	550 	
+
+/* 	 
+*  days over which compaction occurs 	 
+*/ 
+#define RD1	23.5 
+#define RD2	24.5 
+
+/* 	 
+*  max swe to consider - after this swe value, compaction is maximized 	 
+*/ 
+#define SWE_MAX	2000.0 
+
 /*
  * Status codes returned by integer functions.
  */
@@ -170,6 +186,7 @@ const double THRESH = 1.e-1;
 /*
  *  Constants
  */
+#define PI	3.14159265 
 
 /*
  *  molecular weight of air (kg / kmole)
@@ -207,6 +224,14 @@ const double THRESH = 1.e-1;
  *    (from CRC handbook pg F-11)
  */
 #define RHO_W0    999.87
+
+/* 	
+ *  Density of water (kg/m^3). 	
+ *  Use by updated compaction parameterization.
+ * TODO: coherence between water and RHO_W0
+*/ 
+#define water	1000.0 	
+
 
 /*  density of ice - no air (kg/m^3)
  *    (from CRC handbook pg F-1)
@@ -601,4 +626,8 @@ const double THRESH = 1.e-1;
  *  convert wave number (1/cm) to wavelength (um)
  */
 #define WAVELEN(nu)                     ( 10000. / (nu) )
+/* 	 
+*  seconds in an hour 	 
+*/
+#define nsec_hour	3600 	
 }

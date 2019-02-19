@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <constants/Atmosphere.h>
+
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
@@ -49,7 +51,8 @@
 *
 * Provides:
 * - Precip "p" [mm]
- *
+* - Precip "p_no_slope" [mm]
+* 
  * Reference:
  * - Thornton, P. E., Running, S. W., & White, M. A. (1997). Generating surfaces of daily meteorological variables over large regions of complex terrain. Journal of Hydrology, 190(3-4), 214–251. http://doi.org/10.1016/S0022-1694(96)03128-9
  * - Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
@@ -66,6 +69,9 @@ public:
     {
         interpolation interp;
     };
+
+    // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+    bool apply_cosine_correction;
 
 };
 

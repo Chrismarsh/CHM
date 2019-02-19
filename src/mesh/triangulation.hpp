@@ -386,6 +386,13 @@ public:
     double get_z();
 
     /**
+     * Returns the sub-triangle z coordinates of the Point 2 
+     * @return  elevation
+     */
+    double get_subgrid_z(Point_2 query);
+
+
+    /**
      * Get triangle area (m)
      */
     double get_area();
@@ -1492,4 +1499,42 @@ double face<Gt, Fb>::get_area()
 
 
     return _area;
+}
+template < class Gt, class Fb>
+double face<Gt, Fb>::get_subgrid_z(Point_2 query)
+{
+
+            auto x1 = this->vertex(0)->point().x();
+            auto y1 = this->vertex(0)->point().y();
+            auto z1 = this->vertex(0)->point().z();
+
+            auto x2 = this->vertex(1)->point().x();
+            auto y2 = this->vertex(1)->point().y();
+            auto z2 = this->vertex(1)->point().z();
+
+            auto x3 = this->vertex(2)->point().x();
+            auto y3 = this->vertex(2)->point().y();
+            auto z3 = this->vertex(2)->point().z();
+
+            double ux = x2-x1;
+            double uy = y2-y1;
+            double uz = z2-z1;
+
+            double vx = x3-x1;
+            double vy = y3-y1;
+            double vz = z3-z1;
+
+            double a, b, c;
+            a = uy * vz - vy * uz;
+            b = vx * uz - ux * vz;
+            c = ux * vy - vx * uy;
+
+            //solve for d
+            double d =a*x1 + b*y1 + c*z1;
+
+            double z = -(a*query.x()+b*query.y()-d)/c;
+           
+            return z;
+
+
 };

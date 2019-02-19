@@ -37,6 +37,10 @@ Harder_precip_phase::Harder_precip_phase(config_file cfg)
     provides("p_snow");
     provides("p_rain");
 
+    provides("acc_snow");
+    provides("acc_rain");
+
+
     provides("p_snow_hours"); // hours since snowfall
 
     //     default values:
@@ -63,6 +67,8 @@ void Harder_precip_phase::init(mesh domain)
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
         d->hours_since_snowfall = 0;
+        d->acc_rain = 0;
+        d->acc_snow = 0;
     }
 }
 void Harder_precip_phase::run(mesh_elem& face)
@@ -135,5 +141,13 @@ void Harder_precip_phase::run(mesh_elem& face)
     }
 
     face->set_face_data("p_snow_hours",d->hours_since_snowfall);
+
+    d->acc_rain += p * frTi;
+    d->acc_snow += p * (1.0-frTi);
+
+    face->set_face_data("acc_rain",d->acc_rain);
+    face->set_face_data("acc_snow",d->acc_snow);
+
+
 
 }

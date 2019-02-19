@@ -22,6 +22,7 @@ set(FILTER_SRCS
 		filters/macdonald_undercatch.cpp
 		filters/scale_wind_speed.cpp
 		filters/goodison_undercatch.cpp
+		filters/debias_lw.cpp
 		CACHE INTERNAL "" FORCE
 		)
 
@@ -37,6 +38,7 @@ set(MODULE_SRCS
 		modules/interp_met/Kunkel_monthlyTd_rh.cpp
 		modules/interp_met/Liston_wind.cpp
 		modules/interp_met/iswr_from_obs.cpp
+		modules/interp_met/iswr_from_nwp.cpp
 		modules/interp_met/Dodson_NSA_ta.cpp
 		modules/interp_met/Thornton_var_p.cpp
 		modules/interp_met/kunkel_rh.cpp
@@ -50,6 +52,8 @@ set(MODULE_SRCS
 		modules/interp_met/lw_no_lapse.cpp
 		modules/interp_met/uniform_wind.cpp
 		modules/interp_met/MS_wind.cpp
+		modules/interp_met/WindNinja.cpp
+		modules/interp_met/Winstral_parameters.cpp
 		modules/interp_met/t_monthly_lapse.cpp
 		modules/interp_met/Cullen_monthly_llra_ta.cpp
 

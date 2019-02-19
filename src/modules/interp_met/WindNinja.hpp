@@ -44,11 +44,10 @@
 /**
 * \addtogroup modules
 * @{
-* \class MS_wind
-* \brief Calculates wind speed and direction following Mason Sykes
+* \class WindNinja
+* \brief Calculates wind speed and direction following the downscaling stategy of Barcons et al. (Wind Energy, 2018)
 *
-* Calculates windspeeds using the Mason Sykes wind speed from Essery 1999, using lookup map from DBSM.
- * Calculates the speedup in the mean wind direction defined by all the stations
+* Calculates windspeeds and direction from GEM input and a library of high-resolution wind field generated with the WindNinja wind flow model
 * Depends:
 * - Wind at reference height "U_R" [m/s]
 * - Direction at reference height 'vw_dir' [degrees]
@@ -57,12 +56,12 @@
 * - Wind "U_R" [m/s] at reference height
 * - Wind direction 'vw_dir' [degrees]
 */
-class MS_wind : public module_base
+class WindNinja : public module_base
 {
-REGISTER_MODULE_HPP(MS_wind);
+REGISTER_MODULE_HPP(WindNinja);
 public:
-    MS_wind(config_file cfg);
-    ~MS_wind();
+    WindNinja(config_file cfg);
+    ~WindNinja();
     virtual void run(mesh domain);
     virtual void init(mesh domain);
     double ys;
@@ -76,10 +75,16 @@ public:
         double W;
         double temp_u;
         interpolation interp_smoothing;
+        double W_transf;
     };
     double distance;
-    bool use_ryan_dir;
-    double speedup_height; // height at which the speedup is for
+    int N_windfield; //  Number of wind fields in the library
+    bool ninja_average; // Boolean to activate linear interpolation betweem the closest 2 wind fields from the library 
+    double H_forc; // Reference height for GEM forcing and WindNinja wind field library
+    double Max_spdup;  // Maximal value of crest speedup
+    double Min_spdup;  // Minimal value of crest speedup
+    bool ninja_recirc; // Boolean to activate wind speed reduction on the leeside of mountainous terrain
+
 };
 
 /**

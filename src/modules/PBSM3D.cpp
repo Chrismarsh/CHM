@@ -42,18 +42,12 @@ PBSM3D::PBSM3D(config_file cfg)
     depends("swe");
     depends("t");
     depends("rh");
-
+    depends("U_R");
 
     depends("p_snow");
     depends("p");
-//    provides("p");
-//    provides("p_snow");
-
-
 
     //Determine if we want fetch, and if so, which one. Default is to use Pomeroy Tanh
-
-
     // if we use Liston fetch, we don't need hours since snowfall. If we use Essery 1999, then we need hours since snowfall
     // we have to do this here so we can correctly setup the depends for module linking.
     use_exp_fetch = cfg.get("use_exp_fetch",false);
@@ -80,9 +74,6 @@ PBSM3D::PBSM3D(config_file cfg)
         dv = cfg.get("dv",0.8);
     }
 
-//    provides("u10");
-
-//    provides("salt_limit");
     provides("blowingsnow_probability");
     if(debug_output)
     {
@@ -94,13 +85,12 @@ PBSM3D::PBSM3D(config_file cfg)
             provides("rm" + std::to_string(i));
             provides("csubl"+ std::to_string(i));
             provides("settling_velocity"+ std::to_string(i));
-
+            provides("u_z"+ std::to_string(i));
         }
 
         provides("is_drifting");
         provides("Km_coeff");
         provides("Qsusp_pbsm");
-        provides("inhibit_saltation");
         provides("height_diff");
         provides("suspension_mass");
         provides("saltation_mass");
@@ -112,7 +102,6 @@ PBSM3D::PBSM3D(config_file cfg)
         provides("l");
         provides("z0");
         provides("lambda");
-        provides("LAI");
 
         provides("U_10m");
 
@@ -131,7 +120,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("drift_mass"); //kg/m^2
     provides("Qsusp");
     provides("Qsalt");
-
+    provides("sum_subl");
     provides("sum_drift");
 }
 
@@ -143,10 +132,13 @@ void PBSM3D::init(mesh domain)
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40; // mixing length for diffusivity calculations
 
-    settling_velocity = cfg.get("settling_velocity",-0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall (2008), Inhomogeneous precipitation distribution and snow transport in steep terrain, Water Resour. Res., 44(7), 1–19, doi:10.1029/2007WR006545.
+    do_fixed_settling = cfg.get("do_fixed_settling",false);
 
-    if(settling_velocity > 0)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be negative"));
+    // settling_velocity is used if the user chooses a fixed settling velocity (do_fixed_settling=true)
+    settling_velocity = cfg.get("settling_velocity",0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall (2008), Inhomogeneous precipitation distribution and snow transport in steep terrain, Water Resour. Res., 44(7), 1–19, doi:10.1029/2007WR006545.
+
+    if(settling_velocity < 0)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be positive"));
 
 
     do_sublimation = cfg.get("do_sublimation",true);
@@ -154,6 +146,7 @@ void PBSM3D::init(mesh domain)
     eps = cfg.get("smooth_coeff",820);
     limit_mass= cfg.get("limit_mass",false);
     min_mass_for_trans = cfg.get("min_mass_for_trans",5);
+    cutoff = cfg.get("cutoff",0.3); // cutoff veg-snow diff (m) that we inhibit saltation entirely
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",0.9); // Beta * K, this is beta and scales the eddy diffusivity
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef",false);
@@ -170,6 +163,7 @@ void PBSM3D::init(mesh domain)
     n_non_edge_tri = 0;
 
 
+
     //use this to build the sparsity pattern for suspension matrix
     size_t ntri = domain->number_of_faces();
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
@@ -182,8 +176,6 @@ void PBSM3D::init(mesh domain)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->Tsguess = 273.0;
-        d->z0Fnguess = 0.01;
 
         if(!face->has_vegetation() && enable_veg)
         {
@@ -203,6 +195,9 @@ void PBSM3D::init(mesh domain)
             d->LAI = 0;
             enable_veg = false;
         }
+
+        //pre alloc for the windpseeds
+        d->u_z_susp.resize(nLayer);
 
         auto& m = d->m;
         //edge unit normals
@@ -265,7 +260,7 @@ void PBSM3D::init(mesh domain)
         }
 
         d->sum_drift = 0;
-
+        d->sum_subl = 0;
 
 
         // iterate over the vertical layers
@@ -335,23 +330,34 @@ void PBSM3D::run(mesh domain)
 
 
     //zero CSR vector in vl_C
-    viennacl::vector_base<unsigned int> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), 0, 1);
+    viennacl::vector_base<vcl_scalar_type> init_temporary(vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), 0, 1);
     // write:
-    init_temporary = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), viennacl::traits::context(vl_C));
+    init_temporary = viennacl::zero_vector<vcl_scalar_type>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz+1), viennacl::traits::context(vl_C));
 
     //zero-fill RHS
     b.clear();
 
-    //ice density
-    double rho_p = PhysConst::rho_ice;
+
 
     //get row buffer
     unsigned int const* row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
     unsigned int const* col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
     vcl_scalar_type*    elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
 
-#pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+
+#pragma omp parallel
+{
+    // Helpers for the u* iterative solver
+    // - needs to be here in thread pool, otherwise there are thread consistency issues with the solver
+    boost::uintmax_t max_iter = 500;
+    auto tol = [](double a, double b) -> bool {
+        return fabs(a - b) < 1e-8;
+    };
+
+    //ice density
+    double rho_p = PhysConst::rho_ice;
+ #pragma omp for
+   for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         auto id = face->cell_id;
@@ -363,206 +369,181 @@ void PBSM3D::run(mesh domain)
             fetch = face->face_data("fetch");
 
         //get wind from the face
-        double phi = face->face_data("vw_dir");
-        double u2 = face->face_data("U_2m_above_srf");
+        double uref = face->face_data("U_R");
+        double snow_depth = face->face_data("snowdepthavg");
+        snow_depth = is_nan(snow_depth) ? 0: snow_depth;
+
+        double u10 = Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, 10, snow_depth); //used by the pom probability forumuation, so don't hide behide debug output
+        if(debug_output) face->set_face_data("U_10m",u10);
+
 
         double swe = face->face_data("swe"); // mm   -->    kg/m^2
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
-        double snow_depth = face->face_data("snowdepthavg");
-
-        snow_depth = is_nan(snow_depth) ? 0: snow_depth;
-
-
-        double u10 = Atmosphere::log_scale_wind(u2, 2, 10, 0);
-        if(debug_output) face->set_face_data("U_10m",u10);
-
-        Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
-
-        //setup wind vector
-        arma::vec uvw(3);
-        uvw(0) = vwind.x(); //U_x
-        uvw(1) = vwind.y(); //U_y
-        uvw(2) = 0;
-
-
-        // -------
-        // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
-
-        // Li and Pomeroy 2000, eqn 5. But follow the LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
-
-        double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);//don't allow negative differences in height
+        //height difference between snowcover and veg
+        double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);
+        if(!enable_veg) height_diff = 0;
         if(debug_output) face->set_face_data("height_diff",height_diff);
+
         double ustar = 1.3; //placeholder
 
-        double lambda = 0;
-        if(use_R94_lambda)
-            lambda = 0.5 * d->LAI * height_diff; // Raupach 1994
-        else
-            lambda = N*dv*height_diff; // Pomeroy formulation
-
-
-        if(debug_output) face->set_face_data("LAI",d->LAI);
-        if(debug_output) face->set_face_data("lambda",lambda);
-
-        d->saltation = true;
-
         // The strategy here is as follows:
-        // 1) Wait for vegetation to fill up until it is within 30 cm of the top
-        //     then we can apply Pomeroy and Li 2000 eqn 4 to calculate a z0. This param doesn't seem to work for exposed veg > 30 cm
-        //     i.e, what you'd expect for crop stubble where it was derived.
-        // 2) Within 30 cm of the top, use P&l2000 eqn 4 to calculate a z0, and effectively allow wind to blow snow out of the vegetation
-        // 3) Once lambda is close to 0, just solve eqn 4 directly via lambert fn without the veg sink as this is faster than the iter sol'n
+        // 0) If the exposed vegetation is above $cutoff, inhibit saltation and use the classical vegheight*0.12=z0 and use that for calculating u*
+        // 1) Wait for vegetation to fill up until it is within $cutoff of the top of the veg
+        //     then use Pomeroy & Li 2000 eqn 4 to calculate an iterative solution to u* under blowing snow conditions
+        //     This effectively allows wind to blow snow out of the vegetation
+        // 2) Calculate a u* that uses the blowing snow z0. Then test this against the blowing snow u* threshold
+        // 3) If blowing snow isn't happening, recalculate u* using the normal z0.
 
 
 
-        //if lambda is -> 0, we can solve for a ustar and the z0 value directly without calculating an iterative sol'n
-        // or if we have disabled veg, just use the non-veg param
-        // or if we are still filling it up, calculate a 'sane' zo/ustar and just disable saltation in this triangle.
-        if (height_diff < 0.05  ||  height_diff > 0.3 || !enable_veg)
-        {
-            ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
-            d->z0 = std::max(Snow::Z0_SNOW, 0.1203 * ustar * ustar / (2.0 * 9.81));
-            lambda = 0;
+        // This is the lamdba from Li and Pomeroy eqn 4 that is used to include exposed vegetation w/ the z0 estimate
+        double lambda = 0;
 
-            if( height_diff > 0.3 && enable_veg)
-            {
-                //just disable saltation
-                d->saltation = false;
-            }
-        }
-        else  /*if( height_diff < 0.3)*/
-        {
-            auto z0Fn = [&](double z0) -> double {
-                //This formulation has the following coeffs built in
-                // c_2 = 1.6;
-                // c_3 = 0.07519;
-                // c_4 - 0.5;
-                return (1.6 * 0.7519e-1) * pow(.41 * u2 / log(2.0 / z0), 2.0) / (2.0 * 9.81) +  lambda - z0;  //0.5
-            };
+        d->saltation = false; // default case
 
-            double min = 0.0001;
-            double max = 1;
-            boost::uintmax_t max_iter = 500;
+//        if (face->cell_id == 4055)
+//        {
+//            LOG_DEBUG << "Face found";
+//        }
 
-            auto tol = [](double a, double b) -> bool {
-                return fabs(a - b) < 1e-8;
-            };
-
-            try {
-//                auto r = boost::math::tools::toms748_solve(z0Fn, min, max, tol, max_iter);
-                auto r = boost::math::tools::bracket_and_solve_root(z0Fn,d->z0Fnguess,2.0,false,tol,max_iter);
-                d->z0 = r.first + (r.second - r.first) / 2;
-                ustar = u2 * PhysConst::kappa / log(2.0 / d->z0);
-            }
-            catch (...) {
-                // for cases of large LAI, the above will not converge within the min/max given
-                // this will trap that error, and sets that cell to have no saltation,
-                // however re calculate the z0 and ustar as if there was no vegetation.
-                // TODO: something with zeroplane displacement should replace this, but for now this works as it limits saltation
-                // in ares of trees.
-                d->saltation = false;
-
-                ustar = -.2000000000 * u2 / gsl_sf_lambert_Wm1(-0.1107384167e-1 * u2);
-                d->z0 = std::max(Snow::Z0_SNOW, 0.1203 * ustar * ustar / (2.0 * 9.81));
-            }
-        }
-
-        d->z0 = std::max(Snow::Z0_SNOW,d->z0);
-        ustar = std::max(0.01,ustar);
-
-        if(debug_output) face->set_face_data("z0",d->z0);
-        // ------------------
-
-        //depth of saltation layer
-        double hs = 0;
-
-        //lehning
-//        hs = d->z0 + 2.4025 * pow(u2, 2.) * pow(PhysConst::kappa, 2.) * pow(cos(25. * M_PI / 180.), 2.) /
-//                         (pow(log(2. / d->z0), 2.) * 9.81);
-
-        //pomeroy
-        hs = 0.08436*pow(ustar,1.27);
-        d->hs = hs;
-        if(debug_output) face->set_face_data("hs",hs);
-
-        //eddy diffusivity (m^2/s)
-        // 0,1,2 will all be K = 0, as no horizontal diffusion process
-        double K[5] = {0, 0, 0, 0, 0};
-
-        // holds A_ * K_ / h_
-        // _0 -> _2 are the horizontal sides
-        // _3 -> is the top of the prism
-        // _4 -> is the bottom the prism
-        double alpha[5] = {0, 0, 0, 0, 0};
-
-
-        double t = face->face_data("t")+273.15;
-
-        double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); //kg/m^3, comment in mio is wrong.1.225; // air density, fix for T dependency
-
-        //threshold friction velocity, paragraph below eqn 3 in Saltation of Snow, Pomeroy 1990
-        //double u_star_t = pow(tau_t_f/rho_f,0.5);
-
+        //threshold friction velocity. Compute here as it's used below as well
         //Pomeroy and Li, 2000
         // Eqn 7
         double T = face->face_data("t");
-        double u_star_saltation = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T;
+        double u_star_saltation_threshold = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
+        if(debug_output) face->set_face_data("u*_th",u_star_saltation_threshold);
+
+        // we don't have too high of veg. Check for blowing snow
+        if(height_diff <= cutoff && swe >= min_mass_for_trans)
+        {
+
+            // lambda -> 0 when height_diff ->, such as full or no veg
+            if (use_R94_lambda)
+                // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229) Section 3(a)
+                lambda = 0.5 * d->LAI * height_diff;
+            else
+                lambda = N * dv * height_diff; // Pomeroy formulation
+
+
+            if(debug_output) face->set_face_data("lambda",lambda);
+
+            // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
+            auto ustarFn = [&](double ustar) -> double {
+                // Li and Pomeroy 2000, eqn 5.
+                //This formulation has the following coeffs built in
+                // c_2 = 1.6;
+                // c_3 = 0.07519;
+                // c_4 = 0.5;
+                // g   = 9.81;
+
+                return PhysConst::kappa*uref/log(Atmosphere::Z_U_R/(0.6131702344e-2*ustar*ustar+0.5*lambda))-ustar;
+            };
+
+            try {
+                auto r = boost::math::tools::bracket_and_solve_root(ustarFn,1.0,1.0,false,tol,max_iter);
+                ustar = r.first + (r.second - r.first) / 2.0;
+
+                //This formulation has the following coeffs built in
+                // c_2 = 1.6;
+                // c_3 = 0.07519;
+                // c_4 = 0.5;
+                // g   = 9.81;
+                d->z0 = 0.6131702344e-2*ustar*ustar+.5*lambda; // pom and li 2000, eqn 4
+
+                if( ustar >= u_star_saltation_threshold)
+                    d->saltation = true;
+            }
+            catch (...) {
+                // Didn't converge
+
+            }
+        }
+
+        if(! d->saltation)
+        {
+            if( height_diff > cutoff) // lots of veg exposed
+            {
+                d->z0 = 0.12 * height_diff;
+            }
+            else
+            {
+                d->z0 = Snow::Z0_SNOW;
+            }
+
+            ustar = std::max(0.01,PhysConst::kappa*uref/log(Atmosphere::Z_U_R/d->z0));
+        }
+
+
+        //sanity checks
+        d->z0 = std::max(Snow::Z0_SNOW,d->z0);
+        ustar = std::max(0.01,ustar);
+        if(debug_output) face->set_face_data("ustar",ustar);
+        if(debug_output) face->set_face_data("z0",d->z0);
+
+
+        //depth of saltation layer
+        double hs = 0;
+        if(d->saltation)
+            hs = 0.08436*pow(ustar,1.27); //pomeroy
+
+        d->hs = hs;
+        if(debug_output) face->set_face_data("hs",hs);
+        if(debug_output) face->set_face_data("is_drifting",0);
+        if(debug_output) face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
 
 
         double Qsalt = 0;
         double c_salt = 0;
+        double t = face->face_data("t")+273.15;
 
-
-        double c_salt_fetch_big=0;
-        if(debug_output) face->set_face_data("u*_th",u_star_saltation);
-
-        if(debug_output) face->set_face_data("ustar",ustar);
-
-        if(debug_output) face->set_face_data("is_drifting",0);
-        if(debug_output) face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
-
-        if(!d->saltation && debug_output)
-        {
-             face->set_face_data("inhibit_saltation",1);
-        }
-
-        face->set_face_data("blowingsnow_probability",0); // default to 0%
-
-        if( ustar > u_star_saltation &&
-               swe > min_mass_for_trans &&
-                d->saltation)
+        // Check if we can blow snow in this triagnle
+        // Are we above saltation threshold?
+        // Do we have enough mass in this triangle?
+        // Has saltation been disabled because there is too much veg?
+        if(d->saltation)
         {
 
-            double pbsm_qsusp = pow(u10,4.13)/674100.0;
-            if(debug_output) face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+            double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); // air density kg/m^3, comment in mio is wrong.1.225;
+
+            if(debug_output) face->set_face_data("blowingsnow_probability",0); // default to 0%
+
+
+            if(debug_output)
+            {
+                double pbsm_qsusp = pow(u10,4.13)/674100.0;
+                face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+            }
+
             if(debug_output) face->set_face_data("is_drifting",1);
 
             //Pomeroy and Li 2000, eqn 8
             double Beta =  202.0; //170.0;
-
             double m = 0.16;
 
             // tau_n_ratio = ustar_n^2 / ustar^2 from MacDonald 2009 eq 3;
-            // we need (ustar_n / ustar)^2 with the original derivation gives
+            // we need (ustar_n / ustar)^2 which the original derivation gives
             // so this is is correctly squared
             double tau_n_ratio = (m*Beta*lambda) / (1.0 + m* Beta*lambda);
 
 
             if(debug_output) face->set_face_data("tau_n_ratio",tau_n_ratio);
+
             //Pomeroy 1992, eqn 12, see note above for ustar_n calc, but ustar_n is correctly squared already
-            c_salt = rho_f / (3.29 * ustar) * (1.0 - tau_n_ratio -  (u_star_saltation*u_star_saltation) / (ustar * ustar));
+            c_salt = rho_f / (3.29 * ustar) * (1.0 - tau_n_ratio -  (u_star_saltation_threshold*u_star_saltation_threshold) / (ustar * ustar));
 
             // occasionally happens to happen at low wind speeds where the parameterization breaks.
             // hasn't happened since changed this to the threshold velocity though...
             if(c_salt < 0 || std::isnan(c_salt))
             {
                 c_salt = 0;
+                d->saltation = false;
             }
 
-            c_salt_fetch_big = c_salt;
+            if(debug_output) face->set_face_data("c_salt_fetch_big", c_salt);
 
-            //use the exp decay of Liston, eq 10
+
+            //exp decay of Liston, eq 10
             //95% of max saltation occurs at fetch = 500m
             //Liston, G., & Sturm, M. (1998). A snow-transport model for complex terrain. Journal of Glaciology.
             if(use_exp_fetch && fetch < 500)
@@ -571,14 +552,14 @@ void PBSM3D::run(mesh domain)
                 double mu = 3.0;
                 c_salt *= 1.0-exp(-mu * fetch/fetch_ref);
             }
-            else if(use_tanh_fetch && fetch <= 300.) // use Pomeroy & Male 1986
+            else if(use_tanh_fetch && fetch <= 300.) // use Pomeroy & Male 1986 tanh fetch
             {
                 double fetch_ref = 300;
                 double Lc = 0.5*tanh(0.1333333333e-1*fetch_ref-2.0)+0.5;
 
                 c_salt *= Lc;
             }
-            else if(use_PomLi_probability)
+            else if(use_PomLi_probability) // Pomeroy and Li 2000 upscaled probability
             {
                 // Essery, Li, and Pomeroy 1999
                 //Probability of blowing snow
@@ -591,13 +572,11 @@ void PBSM3D::run(mesh domain)
                 //decrease the saltation by the probability amount
                 c_salt *= Pu10;
             }
-
             // wind speed in the saltation layer Pomeroy and Gray 1990
-            double uhs = 2.8 * u_star_saltation; //eqn 7
+            double uhs = 2.8 * u_star_saltation_threshold; //eqn 7
 
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
-
 
             // face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
 
@@ -650,28 +629,51 @@ void PBSM3D::run(mesh domain)
 
 
         if(debug_output) face->set_face_data("csalt", c_salt);
-        if(debug_output) face->set_face_data("c_salt_fetch_big", c_salt_fetch_big);
+
         face->set_face_data("Qsalt", Qsalt);
 
-        double rh = face->face_data("rh")/100.;
-        double es = mio::Atmosphere::saturatedVapourPressure(t);
-        double ea = rh * es / 1000.; // ea needs to be in kpa
+       double rh = face->face_data("rh")/100.;
+       double es = mio::Atmosphere::saturatedVapourPressure(t);
+       double ea = rh * es / 1000.; // ea needs to be in kpa
 
-        double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 Pomeroy 1993
-
-        //vapour pressure, Pa
-        auto e = [](double T,double RH)
-        {
-            return RH/100.*611.0*exp(17.3*T/(237.3+T)); //Pa
-        };
+       double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 in Pomeroy 1993
 
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
         {
-            //height in the suspension layer
-            double cz = z + hs+ v_edge_height/2.; //cell center height
+            //height in the suspension layer, floats above the snow surface
+            double cz = z + hs + v_edge_height/2.; //cell center height
+
             //compute new U_z at this height in the suspension layer
-            double u_z = std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0));
+            double u_z = 0;
+
+            // the suspension layer discretization 'floats' on top of the snow surface
+            // so height_diff = d->CanopyHeight - snowdepth
+            // which is looking to see if cz is within this part of the canopy
+            if (d->saltation && cz <  height_diff)
+            {
+                // saltating so used the z0 with veg, but we are in the canopy so use the saltation vel
+
+                // wind speed in the saltation layer Pomeroy and Gray 1990
+                u_z = 2.8 * u_star_saltation_threshold; //eqn 7
+            }
+            else if(cz <  height_diff)
+            {
+                //we/re in a canopy, but not saltating, just do nothing
+                u_z = 0.01; // essentially do nothing when we are in sub canopy
+
+//                // LAI used as attenuation coefficient introduced by Inoue (1963) and increases with canopy density
+//                double LAI = std::max(0.01,face->veg_attribute("LAI"));
+//                //bring wind down to canopy top
+//                double u_cantop = std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, d->CanopyHeight, 0 , d->z0));
+//
+//                u_z = Atmosphere::exp_scale_wind(u_cantop, d->CanopyHeight, cz, LAI);
+            } else
+            {
+                u_z= std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, cz, snow_depth , d->z0));
+            }
+
+            d->u_z_susp.at(z) = u_z;
 
             //calculate dm/dt from
             // equation 13 from Pomeroy and Li 2000
@@ -680,16 +682,38 @@ void PBSM3D::run(mesh domain)
 
             //these are from
             // Pomeroy, J. W., D. M. Gray, and P. G. Landine (1993), The prairie blowing snow model: characteristics, validation, operation, J. Hydrol., 144(1–4), 165–192.
-            double rm = 4.6e-5 * pow(cz,-0.258); // eqn 18, mean particle size
+
+            // eqn 18, mean particle radius
+            // This is 'r_r' in Pomeroy and Gray 1995, eqn 50
+            double rm = 4.6e-5 * pow(cz,-0.258);
             if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
+
+            //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
+            // 52, 53 P&G 1995
+            double mm_alpha = 4.08 + 12.6*cz; //24
+            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
+
+            // mean radius of mean mass particle
+            double r_z = pow((3.0 * mm) / (4*M_PI*rho_p),0.33); // 50 in p&g 1995
+            if(debug_output) face->set_face_data("mm",mm);
 
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1e7 * pow(rm,1.8); //eqn 15
-//            double omega = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775);
+
+            double omega; // Settling velocity
+            if(do_fixed_settling)
+            {
+               omega = settling_velocity;
+            }
+            else
+            {
+               omega = 1.1e7 * pow(r_z,1.8); //eqn 15 settling velocity
+            }
+    
             if(debug_output) face->set_face_data("settling_velocity"+std::to_string(z), omega);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
+            double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 in Pomeroy 1993
             double Re = 2.0*rm*Vr / v; //eqn 13
 
             double Nu, Sh;
@@ -762,14 +786,23 @@ void PBSM3D::run(mesh domain)
                 dmdtz = Sh*rho*D*(6.283185308*Nu*R*rm*sigma*t*t*lambda_t-L*M*Qr+Qr*R*t)/(D*L*Sh*(L*M-R*t)*rho+lambda_t*t*t*Nu*R);
             }
             if (debug_output) face->set_face_data("dm/dt", dmdtz);
-            //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
-            double mm_alpha = 4.08 + 12.6*cz; //24
-            double mm = 4./3. * M_PI * rho_p * rm*rm*rm *(1.0 + 3.0/mm_alpha + 2./(mm_alpha*mm_alpha)); //mean mass, eqn 23
 
             if(debug_output) face->set_face_data("mm",mm);
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
 
             if(debug_output) face->set_face_data("csubl"+std::to_string(z),dmdtz);
+
+
+            //eddy diffusivity (m^2/s)
+            // 0,1,2 will all be K = 0, as no horizontal diffusion process
+            double K[5] = {0, 0, 0, 0, 0};
+
+            // holds A_ * K_ / h_
+            // _0 -> _2 are the horizontal sides
+            // _3 -> is the top of the prism
+            // _4 -> is the bottom the prism
+            double alpha[5] = {0, 0, 0, 0, 0};
+
             //compute alpha and K for edges
             if(do_lateral_diff)
             {
@@ -796,13 +829,10 @@ void PBSM3D::run(mesh domain)
                 }
             }
             //Li and Pomeroy 2000
-            double l = PhysConst::kappa * (cz + d->z0) / ( 1.0  + PhysConst::kappa * (cz+d->z0)/ l__max);
+            double l = PhysConst::kappa*(cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
             if(debug_output) face->set_face_data("l",l);
-            double w = omega; // 1.1*10e7*pow(rm,1.8); //settling_velocity;
 
-            // Lehning 2008
-            //Inhomogeneous precipitation distribution and snow transport in steep terrain
-//            double w = std::max(0.0,0.5 - ustar*1.8257418583505537115232326093360071131758156499932775); //Leghni
+            double w = omega; //settling_velocity;
             if(debug_output) face->set_face_data("w",w);
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
@@ -815,24 +845,40 @@ void PBSM3D::run(mesh domain)
             if(debug_output) face->set_face_data("Km_coeff", diffusion_coeff);
 
              //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
+             // with pomeroy fall velocity, 0.3 gives good agreement w/ published Qsusp values. Low value compensates for low fall velocity
              K[3] = K[4] = diffusion_coeff * ustar * l;
 
 //            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
 
-            if(debug_output) face->set_face_data("K"+std::to_string(z), K[3] );
+            if(debug_output) face->set_face_data("K"+std::to_string(z), K[3]);
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
             //bottom
             alpha[4] = d->A[4] * K[4] / v_edge_height;
 
 
-            double length = arma::norm(uvw, 2);
-            double scale = u_z / length;
+            double phi = face->face_data("vw_dir"); //wind direction
+            Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
 
-            uvw *= scale;
-            uvw(2) = -w; //settling_velocity;
+            //setup wind vector
+            arma::vec uvw(3);
+            uvw(0) = vwind.x(); //U_x
+            uvw(1) = vwind.y(); //U_y
+            uvw(2) = 0;
 
-            //holds wind dot face normal
+            // above we have just the direction so it's unit vector. scale it to have the same magnitude as u_z
+            uvw *= u_z / arma::norm(uvw, 2);
+
+            // now we can add in the settling_velocity
+            uvw(2) = -w;
+
+            if(debug_output) face->set_face_data("u_z"+ std::to_string(z),u_z);
+
+            //negate as direction it's blowing instead of where it is from!!
+            Vector_3 v3(-uvw(0),-uvw(1), uvw(2));
+            if(debug_output) face->set_face_vector("uvw"+std::to_string(z),v3);
+
+            //holds wind velocity dot face normal
             double udotm[5];
             for (int j = 0; j < 5; ++j)
             {
@@ -852,6 +898,7 @@ void PBSM3D::run(mesh domain)
             //so / by 5 for csubl and V so it's not 5x counted.
             csubl /= 5.0;
             V/=5.0;
+            if(debug_output) face->set_face_data("csubl"+std::to_string(z),csubl);
             if(!do_sublimation)
             {
                 csubl = 0.0;
@@ -875,15 +922,12 @@ void PBSM3D::run(mesh domain)
                         elements[ idx_nidx_off ] += alpha[f];
 
                     }
-                    else
+                    else  //missing neighbour case
                     {
                         //no mass in
-//                       vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f]-alpha[f];
+//                        elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
-                        //allow mass in
-//                        vl_C(idx,idx) += V*csubl-d->A[f]*udotm[f];
-
-
+                        //allow mass into the domain from ghost cell
                         elements[ idx_idx_off ] += -0.1e-1*alpha[f]-1.*d->A[f]*udotm[f]+csubl*V;
 
                     }
@@ -903,12 +947,9 @@ void PBSM3D::run(mesh domain)
                     else
                     {
                         //No mass in
-//                        vl_C(idx,idx) += V*csubl-alpha[f];
+//                        elements[ idx_idx_off ] += V*csubl-alpha[f];
 
                         //allow mass in
-//                        vl_C(idx,idx) += -.99*d->A[f]*udotm[f]+csubl*V;
-
-
                         elements[ idx_idx_off ] += -0.1e-1*alpha[f]-.99*d->A[f]*udotm[f]+csubl*V;
 
                     }
@@ -1012,6 +1053,8 @@ void PBSM3D::run(mesh domain)
         } // end z iter
     } //end face iter
 
+} // end pragma omp parallel thread pool
+
     //setup the compressed matrix on the compute device, if available
 #ifdef VIENNACL_WITH_OPENCL
     viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
@@ -1019,19 +1062,51 @@ void PBSM3D::run(mesh domain)
     b.switch_memory_context(gpu_ctx);
 #endif
 
+    // This solves the steady-state suspension layer concentration
+
     // configuration of preconditioner:
     viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
     chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps
     chow_patel_ilu_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
     viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu(vl_C, chow_patel_ilu_config);
 
+    // Set up convergence tolerance to have an average value for each unknown
+    double suspension_gmres_tol_per_unknown = 1e-8;
+    double suspension_gmres_tol = suspension_gmres_tol_per_unknown * nLayer * ntri;
+    // Set max iterations and maximum Krylov dimension before restart
+    size_t suspension_gmres_max_iterations = 1000;
+    size_t suspension_gmres_krylov_dimension = 30;
 
-    //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::linalg::gmres_tag gmres_tag(1e-8, 500, 30);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, gmres_tag, chow_patel_ilu);
+    // compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+    viennacl::linalg::gmres_tag suspension_custom_gmres(suspension_gmres_tol,
+							suspension_gmres_max_iterations,
+							suspension_gmres_krylov_dimension);
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b,  suspension_custom_gmres, chow_patel_ilu);
     std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x,x);
 
+    // Log final state of the linear solve
+    LOG_DEBUG << "Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
+    LOG_DEBUG << "Suspension_GMRES final residual : " << suspension_custom_gmres.error();
+
+    /*
+      Dump matrix to ASCII file
+    */
+//    ofstream ofile;
+//    ofile.open("C.out");
+//    ofile << std::setprecision(12) << vl_C;
+//    ofile.close();
+//
+//    ofile.open("b.out");
+//    ofile << std::setprecision(12) << b;
+//    ofile.close();
+//
+//    ofile.open("x.out");
+//    ofile << std::setprecision(12) << vl_x;
+//    ofile.close();
+
+
+// Now we have the concentration, compute the suspension flux
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -1041,10 +1116,6 @@ void PBSM3D::run(mesh domain)
         double Qsusp = 0;
         double hs = d->hs;
 
-        double u2 = face->face_data("U_2m_above_srf");
-
-        double total_mass = 0;
-
         double Qsubl=0;
         for (int z = 0; z<nLayer;++z)
         {
@@ -1053,32 +1124,34 @@ void PBSM3D::run(mesh domain)
 
             double cz = z + hs+ v_edge_height/2.; //cell center height
 
-            double u_z =std::max(0.1, Atmosphere::log_scale_wind(u2, 2, cz, 0,d->z0)); //compute new U_z at this height in the suspension layer
-            Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
+            double u_z = d->u_z_susp.at(z);
 
-            total_mass += c * v_edge_height * face->get_area();
+            Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
             if(debug_output) face->set_face_data("c"+std::to_string(z),c);
 
             if(debug_output) Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
 
+            if(debug_output) d->sum_subl += face->face_data("csubl"+std::to_string(z)) * global_param->dt()*c;
+
         }
          face->set_face_data("Qsusp",Qsusp);
         if(debug_output) face->set_face_data("Qsubl",Qsubl);
-        // face->set_face_data("suspension_mass",total_mass);
 
-
+        face->set_face_data("sum_subl",d->sum_subl);
     }
 
+    // Setup the matrix to be used to the solution of the gradient of the suspension flux
+    // this will give us our deposition flux
     //get row buffer
     unsigned int const* A_row_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
     unsigned int const* A_col_buffer = viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
     vcl_scalar_type*    A_elements   = viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
 
     //zero CSR vector in vl_A
-    viennacl::vector_base<unsigned int> init_temporaryA(vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), 0, 1);
+    viennacl::vector_base<vcl_scalar_type> init_temporaryA(vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), 0, 1);
     // write:
-    init_temporaryA = viennacl::zero_vector<unsigned int>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), viennacl::traits::context(vl_A));
+    init_temporaryA = viennacl::zero_vector<vcl_scalar_type>(viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift+1), viennacl::traits::context(vl_A));
 
     //zero fill RHS for drift
     bb.clear();
@@ -1124,6 +1197,7 @@ void PBSM3D::run(mesh domain)
 
         for (int j = 0; j < 3; j++)
         {
+
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
@@ -1162,13 +1236,36 @@ void PBSM3D::run(mesh domain)
     vl_A.switch_memory_context(gpu_ctx);
     bb.switch_memory_context(gpu_ctx);
 #endif
+
+    // Solve the deposition flux --> how much drifting there is.
+
     // configuration of preconditioner:
-    viennacl::linalg::chow_patel_ilu_precond< viennacl::compressed_matrix<vcl_scalar_type> > chow_patel_ilu2(vl_A, chow_patel_ilu_config);
+    viennacl::linalg::chow_patel_tag deposition_flux_chow_patel_config;
+    deposition_flux_chow_patel_config.sweeps(3);       //  nonlinear sweeps
+    deposition_flux_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
+    viennacl::linalg::chow_patel_icc_precond< viennacl::compressed_matrix<vcl_scalar_type> > deposition_flux_chow_patel_icc(vl_A, deposition_flux_chow_patel_config);
+
+    // Set up convergence tolerance to have an average value for each unknown
+    double deposition_flux_cg_tol_per_unknown = 1e-7;
+    double deposition_flux_cg_tol = deposition_flux_cg_tol_per_unknown * ntri;
+    // Set max iterations and maximum Krylov dimension before restart
+    size_t deposition_flux_cg_max_iterations = 500;
+
+    // compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
+    viennacl::linalg::cg_tag deposition_flux_custom_cg(deposition_flux_cg_tol,
+							 deposition_flux_cg_max_iterations);
 
     //compute result and copy back to CPU device (if an accelerator was used), otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, gmres_tag,chow_patel_ilu2);
+    viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg, deposition_flux_chow_patel_icc);
+    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg);
     std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt,dSdt);
+
+    // Log final state of the linear solve
+    LOG_DEBUG << "deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
+    LOG_DEBUG << "deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
+
+    // take one FE integration step to get the total mass (SWE) that is eroded or deposited
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)

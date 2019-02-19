@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <constants/Atmosphere.h>
+
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
@@ -48,6 +50,7 @@
 *
 * Provides:
 * - Precip "p" [mm]
+* - Precip "p_no_slope" [mm]
 */
 class p_no_lapse : public module_base
 {
@@ -61,6 +64,9 @@ public:
     {
         interpolation interp;
     };
+
+    // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+    bool apply_cosine_correction;
 
 };
 

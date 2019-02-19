@@ -144,6 +144,7 @@ public:
             double p);    /* air pressure (Pa)  			    */
     int do_data_tstep(void);
 
+    void _time_compact_ori(void);
     void _time_compact(void);
     void    _snowmelt(void);
 
@@ -246,6 +247,13 @@ public:
     /* start time of current time step (sec) */
     double time_since_out;    /* time since last output record (sec) */
 
+
+/*   snowpack scheme options */
+
+    int param_snow_compaction;
+    /* TRUE (=1): new parametrization is used (_time_compact)
+       FALSE (=0): old parametrization is used (_time_compact_ori)
+           */
 
 /*   snowpack information   */
 

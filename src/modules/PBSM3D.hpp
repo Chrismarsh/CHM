@@ -55,6 +55,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <viennacl/linalg/gmres.hpp>
 #include <viennacl/compressed_matrix.hpp>
 #include <viennacl/linalg/ilu.hpp>
+#include <viennacl/linalg/cg.hpp>
 
 
 
@@ -108,7 +109,12 @@ public:
     double l__max; // vertical mixing length (m)
     bool rouault_diffusion_coeff; //use the spatially variable diffusivity coefficient of Rouault 1991
 
-    double settling_velocity;
+    bool do_fixed_settling; // should we have a constant settling velocity? 
+                            // true: constant settling velocity = settling_velocity (see below)
+                            // false: use the parameterization of Pomeroy et al. (1993) and Pomeroy and Gray (1995):
+                            //        In this case, the settling velocity decreases with height above the snow surface 
+                            //        due to a decrease with height in the mean particle size. 
+    double settling_velocity; // Variable used if do_fixed_settling = true
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.
     bool limit_mass; // do not saltate more snow than what exists in a cell.
@@ -138,7 +144,7 @@ public:
     viennacl::vector<vcl_scalar_type> bb;
 
     double debug_output;
-
+    double cutoff; // cutoff veg-snow diff (m) that we inhibit saltation entirely
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
     double min_mass_for_trans;
@@ -154,6 +160,7 @@ public:
         //face neighbours
         bool face_neigh[3];
 
+        std::vector<double> u_z_susp; //suspension layer windspeeds
         size_t cell_id;
 
         double CanopyHeight;
@@ -169,11 +176,11 @@ public:
 
         double z0;
 
-        double Tsguess;
-        double z0Fnguess;
-
         double sum_drift;
+
+        double sum_subl;
     };
+
 
 };
 
