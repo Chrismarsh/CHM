@@ -87,7 +87,7 @@ void fetchr::run(mesh_elem& face)
         if (incl_veg && f->has_vegetation())
         {
 
-            Z_CanTop = face->veg_attribute("CanopyHeight");
+            Z_CanTop = f->veg_attribute("CanopyHeight");
         }
 
         //include canopy height if available
