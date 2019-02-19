@@ -356,7 +356,7 @@ def main():
 
             if nc_archive:
                 df = xr.open_rasterio(target_fname).sel(band=1).drop('band')
-                df = df.rename({'x':'long','y':'lat'})
+                df = df.rename({'x':'lon','y':'lat'})
                 df.coords['time']=epoch + nc_time_counter*np.timedelta64(dt,'s') # this will automatically get converted to min or hours in the output nc
                 df.name=var
                 nc_rasters[var].append(df) # these are lazy loaded at the to netcdf call
