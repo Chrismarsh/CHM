@@ -132,10 +132,13 @@ void PBSM3D::init(mesh domain)
     v_edge_height = susp_depth / nLayer; //height of each vertical prism
     l__max = 40; // mixing length for diffusivity calculations
 
-    settling_velocity = cfg.get("settling_velocity",-0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall (2008), Inhomogeneous precipitation distribution and snow transport in steep terrain, Water Resour. Res., 44(7), 1–19, doi:10.1029/2007WR006545.
+    do_fixed_settling = cfg.get("do_fixed_settling",false);
 
-    if(settling_velocity > 0)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be negative"));
+    // settling_velocity is used if the user chooses a fixed settling velocity (do_fixed_settling=true)
+    settling_velocity = cfg.get("settling_velocity",0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall (2008), Inhomogeneous precipitation distribution and snow transport in steep terrain, Water Resour. Res., 44(7), 1–19, doi:10.1029/2007WR006545.
+
+    if(settling_velocity < 0)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("PBSM3D settling velocity must be positive"));
 
 
     do_sublimation = cfg.get("do_sublimation",true);
@@ -696,8 +699,17 @@ void PBSM3D::run(mesh domain)
 
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
-            double omega = 1.1e7 * pow(r_z,1.8); //eqn 15 settling velocity
 
+            double omega; // Settling velocity
+            if(do_fixed_settling)
+            {
+               omega = settling_velocity;
+            }
+            else
+            {
+               omega = 1.1e7 * pow(r_z,1.8); //eqn 15 settling velocity
+            }
+    
             if(debug_output) face->set_face_data("settling_velocity"+std::to_string(z), omega);
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
@@ -819,8 +831,8 @@ void PBSM3D::run(mesh domain)
             //Li and Pomeroy 2000
             double l = PhysConst::kappa*(cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
             if(debug_output) face->set_face_data("l",l);
-            double w = omega; //settling_velocity;
 
+            double w = omega; //settling_velocity;
             if(debug_output) face->set_face_data("w",w);
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite

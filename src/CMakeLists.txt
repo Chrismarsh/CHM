@@ -53,6 +53,7 @@ set(MODULE_SRCS
 		modules/interp_met/uniform_wind.cpp
 		modules/interp_met/MS_wind.cpp
 		modules/interp_met/WindNinja.cpp
+		modules/interp_met/Winstral_parameters.cpp
 		modules/interp_met/t_monthly_lapse.cpp
 		modules/interp_met/Cullen_monthly_llra_ta.cpp
 
