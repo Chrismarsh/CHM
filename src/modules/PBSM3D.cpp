@@ -700,12 +700,8 @@ void PBSM3D::run(mesh domain)
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
 
-            double omega; // Settling velocity
-            if(do_fixed_settling)
-            {
-               omega = settling_velocity;
-            }
-            else
+            double omega = settling_velocity;; // Settling velocity
+            if(! do_fixed_settling)
             {
                omega = 1.1e7 * pow(r_z,1.8); //eqn 15 settling velocity
             }
