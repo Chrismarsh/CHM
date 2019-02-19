@@ -78,10 +78,10 @@ void Winstral_parameters::run(mesh domain)
     auto face = domain->face(ii);
 
     // Reference point: center of the triangle
-    Point_3 me = face->center();
+    auto face_centre = face->center();
 
     // Reference height: elevation of the center of the triangle
-    double Z_loc = face->center().z()+height_param;
+    double Z_loc = face_centre.z()+height_param;
 
     if (incl_veg && face->has_vegetation())
     {
@@ -112,7 +112,7 @@ void Winstral_parameters::run(mesh domain)
            double distance = j * size_of_step;
 
            // Select point along the line
-           Point_2 pref =  math::gis::point_from_bearing(me,wind_dir,distance);
+           Point_2 pref =  math::gis::point_from_bearing(face_centre,wind_dir,distance);
            // Find corresponding triangle
            auto f = domain->find_closest_face (pref );
 
@@ -123,7 +123,7 @@ void Winstral_parameters::run(mesh domain)
            }
            else
            {
-              Z_dist = f->center().z();
+              Z_dist = face_centre.z();
            } 
             
            if (incl_veg && f->has_vegetation())
