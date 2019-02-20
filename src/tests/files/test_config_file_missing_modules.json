@@ -158,12 +158,7 @@
 // //       "frequency":1 //every N timesteps
 //      }
   },
-  "global":
-  {
-    "latitude":60.52163,
-    "longitude":-135.197151,
-    "UTC_offset":8
-  },
+
   "forcing":
   {
        "UTC_offset": 8,
