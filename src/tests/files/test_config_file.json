@@ -39,7 +39,7 @@
     //met process
     "Walcek_cloud",
      "Sicart_ilwr",
-    "Harder_precip_phase",
+    "Harder_precip_phase"
 //     "threshold_p_phase",
 
     //processes
@@ -79,7 +79,7 @@
   },
   "meshes":
   {
-    "mesh":"meshes/granger30.mesh"
+    "mesh":"meshes/granger1m.mesh"
 //
     //map internal variables/parameters to the .mesh file's parameter section.
     // "parameters":
@@ -170,25 +170,11 @@
   },
   "output":
   {
-    "northface":
+    "bb":
     {
-      "easting": 489857.879,
-      "northing": 6712108.525,
-      "file": "granger_northface.txt",
-      "type": "timeseries"
-    },
-    "southface":
-    {
-      "easting": 489881.078,
-      "northing": 6712491.738,
-      "file": "granger_southface.txt",
-      "type": "timeseries"
-    },
-    "middle":
-    {
-      "easting": 489864.752,
-      "northing": 6712277.792,
-      "file": "granger_middle.txt",
+      "latitude": 60.551,
+      "longitude": -135.193,
+      "file": "buckbrush.txt",
       "type": "timeseries"
     }
 //      "mesh":
@@ -206,41 +192,19 @@
   },
   "forcing":
   {
-      "buckbrush":
-       {
-         "file":"bb_1999-2002", // hm_oct2010 hm_oct2_4_2010 hm_sep_15_2006
-         "easting": 489216.601,
-         "northing": 6709533.168,
-         "elevation": 1305
-       }
-     // "alpine":
-     // {
-     //   "file":"alp_1999-2002",  //fr_sep_15_2006
-     //   "easting": 489879.341,
-     //   "northing":  6714611.183,
-     //   "elevation": 1559
-     //  // "filter":
-     //  // {
-     //  //   "macdonald_undercatch":
-     //  //   {
-     //  //     "variable":"p"
-     //  //   }
-     //  },
-     //  "forest":
-     //  {
-     //    "file":"for_1999-2002",  //fr_sep_15_2006
-     //    "easting": 502601.621,
-     //    "northing":   6717779.327 ,
-     //    "elevation": 739
-     //    // "filter":
-     //    // {
-     //    //   "macdonald_undercatch":
-     //    //   {
-     //    //     "variable":"p"
-     //    //   }
-     //  }
-
-    
+       "UTC_offset": 8,
+      "buckbrush": {
+      "file": "bb_m_2000-2008",
+      "latitude": 60.52163,
+      "longitude": -135.197151,
+      "elevation": 1305,
+      "filter": {
+        "scale_wind_speed": {
+          "Z_F": 4.6,
+          "variable": "u"
+        }
+      }
+    }    
   }  
 
 }
