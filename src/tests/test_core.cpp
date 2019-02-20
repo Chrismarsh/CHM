@@ -139,7 +139,7 @@ TEST_F(CoreTest,EmptySectionModules)
 //            {
 //                    (char*) "/path/to/CHM",
 //                    (char*) "-f",
-//                    (char*) "test_optional_section.config"
+//                    (char*) "test_optional_section.json"
 //            };
 //
 //    ASSERT_NO_THROW(c1.init(3,argv));
@@ -167,14 +167,13 @@ TEST_F(CoreTest,CmdlOptions)
             {
                     (char*) "/path/to/CHM",
                     (char*) "-f",
-                    (char*) "test_config_file.config",
+                    (char*) "test_config_file.json",
                     (char*) "-c",
                     (char*) "config.Harder_precip_phase.const.b:3.14",
                     (char*) "-c",
                     (char*) "nproc:2"
 
             };
-
 
     ASSERT_NO_THROW(c1.init(7,argv));
 
@@ -191,7 +190,7 @@ TEST_F(CoreTest,CmdlOptions2)
     char* argv[] =
             {
                     (char*) "/path/to/CHM",
-                    (char*) "test_config_file.config",
+                    (char*) "test_config_file.json",
                     (char*) "-c",
                     (char*) "config.Harder_precip_phase.const.b:3.14",
                     (char*) "-c",
@@ -215,19 +214,12 @@ TEST_F(CoreTest,CmdlOptionsPositional)
     char* argv[] =
             {
                     (char*) "/path/to/CHM",
-                    (char*) "test_config_file.config",
-                    (char*) "-c",
-                    (char*) "config.Harder_precip_phase.const.b:3.14",
-                    (char*) "-c",
-                    (char*) "nproc:2"
-
+                    (char*) "test_config_file.json",
             };
 
 
-    ASSERT_NO_THROW(c1.init(6,argv));
+    ASSERT_NO_THROW(c1.init(2,argv));
 
-    ASSERT_EQ(c1._cfg.get<double>("config.Harder_precip_phase.const.b"),3.14);
-    ASSERT_EQ(c1._cfg.get<int>("nproc"),2);
 
 }
 
@@ -239,9 +231,9 @@ TEST_F(CoreTest,CmdlOptionsPositional2)
     char* argv[] =
             {
                     (char*) "/path/to/CHM",
+                    (char*) "test_config_file.json",
                     (char*) "-c",
                     (char*) "config.Harder_precip_phase.const.b:3.14",
-                    (char*) "test_config_file.config",
                     (char*) "-c",
                     (char*) "nproc:2"
             };
@@ -264,7 +256,8 @@ TEST_F(CoreTest,CmdlOptionsErase)
                     (char*) "/path/to/CHM",
                     (char*) "-c",
                     (char*) "config.Harder_precip_phase.const.b:3.14",
-                    (char*) "test_config_file.config",
+                    (char*) "-f",
+                    (char*) "test_config_file.json",
                     (char*) "-c",
                     (char*) "nproc:2",
                     (char*) "-r",
@@ -278,7 +271,7 @@ TEST_F(CoreTest,CmdlOptionsErase)
 
 
 
-    ASSERT_NO_THROW(c1.init(12,argv));
+    ASSERT_NO_THROW(c1.init(13,argv));
     ASSERT_EQ(c1._cfg.get<double>("config.Harder_precip_phase.const.b"),3.14);
 
     //removals are done after -c so, this should not exist
