@@ -50,19 +50,6 @@ typedef pt::ptree config_file;
 
 class module_base
 {
-protected:
-    parallel _parallel_type;
-    boost::shared_ptr<std::vector<std::string> > _provides;
-    boost::shared_ptr<std::vector<std::string> > _depends;
-    boost::shared_ptr<std::vector<std::string> > _depends_from_met;
-    boost::shared_ptr<std::vector<std::string> > _optional;
-    boost::shared_ptr<std::vector<std::string> > _conflicts;
-
-
-
-    //lists the options that were found
-    std::map<std::string,bool> _optional_found;
-
 public:
 
     /**
@@ -115,7 +102,7 @@ public:
     module_base(std::string name = "",
 		parallel type = parallel::data,
 		config_file input_cfg = pt::basic_ptree<std::string,std::string>())
-      : _parallel_type(type),  cfg(input_cfg), ID(name), IDnum(0)
+      :    ID(name), cfg(input_cfg), IDnum(0),_parallel_type(type)
     {
         _provides = boost::make_shared<std::vector<std::string> >();
         _depends = boost::make_shared<std::vector<std::string> >();
@@ -345,6 +332,18 @@ public:
         return is;
     }
 
+protected:
+    parallel _parallel_type;
+    boost::shared_ptr<std::vector<std::string> > _provides;
+    boost::shared_ptr<std::vector<std::string> > _depends;
+    boost::shared_ptr<std::vector<std::string> > _depends_from_met;
+    boost::shared_ptr<std::vector<std::string> > _optional;
+    boost::shared_ptr<std::vector<std::string> > _conflicts;
+
+
+
+    //lists the options that were found
+    std::map<std::string,bool> _optional_found;
 
 
 };
