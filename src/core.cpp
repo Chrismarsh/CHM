@@ -890,7 +890,7 @@ void core::config_output(pt::ptree &value)
             }
             catch(const pt::ptree_error &e)
             {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing latitude and/or longitude for " + out.name));
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output point " + out.name + " is missing latitude and/or longitude."));
             }
 
 
