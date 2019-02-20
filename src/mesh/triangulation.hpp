@@ -896,6 +896,8 @@ bool face<Gt, Fb>::has_parameter(std::string key)
 template < class Gt, class Fb >
 double face<Gt, Fb>::get_parameter(std::string key)
 {
+    if(!has_parameter(key))
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + key +" does not exist."));
     return _parameters[key];
 };
 
