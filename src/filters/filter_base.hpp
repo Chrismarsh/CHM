@@ -40,7 +40,7 @@ class filter_base
 public:
     filter_base( std::string name = "",
 		 config_file input_cfg = pt::basic_ptree<std::string,std::string>() )
-      : ID(name), cfg(input_cfg) {};
+      : cfg(input_cfg),ID(name) {};
     virtual ~filter_base(){};
 
     virtual void init(boost::shared_ptr<station>& station){};

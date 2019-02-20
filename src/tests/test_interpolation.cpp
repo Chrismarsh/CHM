@@ -79,12 +79,9 @@ TEST_F(InterpTest,spline2)
 
     auto query = boost::make_tuple(-1276633.6294519969,1408220.6575855566,2306.0533040364585);
 
-    double z0 =  s(xy,query);
-    std::cout << z0 << std::endl;
-
     double result = s(xy,query);
 
-    ASSERT_DOUBLE_EQ(result,22.301293951848109);
+    ASSERT_DOUBLE_EQ(result,22.30217013945628);
 
 
 }
@@ -164,7 +161,7 @@ TEST_F(InterpTest,interpolation_class_static_size2)
 
     double result = s(xy,query);
 
-    ASSERT_DOUBLE_EQ(result,22.301293951848109);
+    ASSERT_DOUBLE_EQ(result,22.30217013945628);
 
 
 }

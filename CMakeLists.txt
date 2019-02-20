@@ -33,7 +33,7 @@ set (CHM_VERSION_MINOR 1)
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_OMP "Enable OpenMP"  ON )
 option(USE_OCL "Enable OpenCL with ViennaCL"  OFF )
-option(test "Build all tests."  OFF ) # Makes boolean 'test' available.
+option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
@@ -446,7 +446,7 @@ endif()
 #setup src dirs
 add_subdirectory(src)
 
-if (test)
+if (BUILD_TESTS)
     message(STATUS "Tests enabled. Run with make check")
     enable_testing()
 endif()

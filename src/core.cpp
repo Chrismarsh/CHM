@@ -890,7 +890,7 @@ void core::config_output(pt::ptree &value)
             }
             catch(const pt::ptree_error &e)
             {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing latitude and/or longitude for " + out.name));
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output point " + out.name + " is missing latitude and/or longitude."));
             }
 
 
@@ -2023,8 +2023,8 @@ void core::_determine_module_dep()
         file.close();
 
         //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
-        std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp");
-        std::system("dot -Tpdf modules.dot -o modules.pdf");
+        std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp > /dev/null 2>&1");
+        std::system("dot -Tpdf modules.dot -o modules.pdf > /dev/null 2>&1");
         std::remove("modules.dot.tmp");
         std::remove("filter.gvpr");
         std::remove("modules.dot");
