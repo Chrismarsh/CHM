@@ -31,6 +31,8 @@
 #include <cstdlib>
 #include <string>
 
+#include <Winstral_parameters.hpp>
+
 #include <cmath>
 #include <armadillo>
 #define _USE_MATH_DEFINES
@@ -85,6 +87,8 @@ public:
     double Min_spdup;  // Minimal value of crest speedup
     bool ninja_recirc; // Boolean to activate wind speed reduction on the leeside of mountainous terrain
 
+    bool compute_Sx; // uses the Sx module to influence the windspeeds so Sx needs to be computed during the windspeed evaluation, instead of a seperate module
+    boost::shared_ptr<Winstral_parameters> Sx;
 };
 
 /**

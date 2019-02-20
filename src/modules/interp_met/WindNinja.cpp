@@ -51,6 +51,20 @@ WindNinja::WindNinja(config_file cfg)
 
     ninja_average = cfg.get("ninja_average",true);
 
+    compute_Sx = cfg.get("compute_Sx",true);
+    // We are going to use the winstral parameterization of Sx to modify out windfield. So we cannot do it later
+    // it needs to be coupled with  the windspeed parameterization. Manually instantiate our own copy of this module
+    // and we can then access Sx as if it were any other object. The config for this will need to come from WN's config section
+    if(compute_Sx)
+    {
+        depends("snowdepthavg");
+        provides("Sx");
+        conflicts("Winstral_parameters"); // we cannot have Winstral_parameters alongside this if we generate the Sx.
+
+        config_file tmp;
+        tmp.put("angular_window",30.);
+        Sx = boost::dynamic_pointer_cast<Winstral_parameters>(module_factory::create("Winstral_parameters",tmp));
+    }
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
@@ -110,6 +124,14 @@ void WindNinja::run(mesh domain)
                 u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u));
                 v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v));
             }
+
+            /**
+             * Example use of Sx, modify as needed in the future
+             * When we are reusing other modules' members they ofc need to be thread safe
+             */
+            if(compute_Sx)
+                face->set_face_data("Sx", Sx->Sx(domain,face));
+
 
             //http://mst.nerc.ac.uk/wind_vect_convs.html
 

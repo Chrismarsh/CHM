@@ -73,21 +73,31 @@ void Winstral_parameters::run(mesh domain)
 
 
   #pragma omp parallel for
-  for (size_t ii = 0; ii < domain->size_faces(); ii++)
+  for (size_t i = 0; i < domain->size_faces(); i++)
   {
-    auto face = domain->face(ii);
+    auto face = domain->face(i);
 
+    // Derive Sx averaged over the angular windows 
+    double sx_mean = Sx(domain,face);
+   
+    face->set_face_data("Sx", sx_mean);    
+   }
+
+}
+
+double Winstral_parameters::Sx(const mesh &domain, Delaunay::Face_handle face) const
+{
     // Reference point: center of the triangle
     auto face_centre = face->center();
 
     // Reference height: elevation of the center of the triangle
-    double Z_loc = face_centre.z()+height_param;
+    double Z_loc = face_centre.z() + this->height_param;
 
-    if (incl_veg && face->has_vegetation())
+    if (this->incl_veg && face->has_vegetation())
     {
          Z_loc = Z_loc + face->veg_attribute("CanopyHeight");
     }
-    if (incl_snw)
+    if (this->incl_snw)
     {
          Z_loc = Z_loc + face->face_data("snowdepthavg");
     }
@@ -97,19 +107,19 @@ void Winstral_parameters::run(mesh domain)
     // Extract Wind direction
     double wind_dir = face->face_data("vw_dir") ;
 
-    for (int i = 1; i <= nangle; ++i)
+    for (int i = 1; i <= this->nangle; ++i)
     {
-     
+
         double sx = -9999.0;
         double max_tan_sx = 0.;
 
         //direction it is from,i need upwind fetch
-        double wdir = wind_dir- angular_window/2+ (i-1)*delta_angle;
+        double wdir = wind_dir - this->angular_window / 2 + (i - 1) * this->delta_angle;
 
        // search along wdir azimuth in j step increments
-        for (int j = 1; j <= steps; ++j)
+        for (int j = 1; j <= this->steps; ++j)
         {
-           double distance = j * size_of_step;
+           double distance = j * this->size_of_step;
 
            // Select point along the line
            Point_2 pref =  math::gis::point_from_bearing(face_centre,wind_dir,distance);
@@ -117,21 +127,21 @@ void Winstral_parameters::run(mesh domain)
            auto f = domain->find_closest_face (pref );
 
            double Z_dist = 0.;
-           if(use_subgridz)
+           if(this->use_subgridz)
            {
               Z_dist = f->get_subgrid_z(pref);
            }
            else
            {
               Z_dist = face_centre.z();
-           } 
-            
-           if (incl_veg && f->has_vegetation())
+           }
+
+           if (this->incl_veg && f->has_vegetation())
            {
                Z_dist = Z_dist + f->veg_attribute("CanopyHeight");
             }
 
-           if (incl_snw)
+           if (this->incl_snw)
            {
                Z_dist = Z_dist+ f->face_data("snowdepthavg");
            }
@@ -144,17 +154,15 @@ void Winstral_parameters::run(mesh domain)
         }
 
         sx = atan(max_tan_sx);
-        sx_mean = sx_mean+sx; 
+        sx_mean = sx_mean+sx;
 
      }
 
-    // Derive Sx averaged over the angular windows 
-    sx_mean = sx_mean/nangle;
-   
-    face->set_face_data("Sx", sx_mean);    
-   }
-
+    // Derive Sx averaged over the angular windows
+    sx_mean = sx_mean / this->nangle;
+    return sx_mean;
 }
+
 Winstral_parameters::~Winstral_parameters()
 {
 

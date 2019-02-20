@@ -100,5 +100,6 @@ public:
     // Improve estimation of Sx when snow is accumulating during the snow season
     bool incl_snw;
 
-
+    // Calculates the Sx parameter
+    double Sx(const mesh &domain, Delaunay::Face_handle face) const;
 };
