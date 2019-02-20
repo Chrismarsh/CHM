@@ -10,23 +10,18 @@
 //      "forcing":"UpperClearing"
 //    },
 
-    "notification_script":"./finished.sh",
+    // "notification_script":"./finished.sh",
     "per_triangle_timeseries":"false",
-    "ui":true,
+    "ui":false,
     "debug_level":"debug",
 
-    "prj_name":"Granger creek",
+    "prj_name":"Granger creek"
 
-//    "startdate":"20010501T000000",
 
-    "startdate ":"20010501T000000",
-    "enddate":   "20010501T003000"
-//     "enddate":"20010613T000000"
   },
   "modules": //important these are [ ]
   [
-    
-
+     //nothing here!
   ],
 
   // In case of a cycle depencency, remove dependencies between two modules. 
@@ -35,7 +30,8 @@
   // will remove the dependency on B from A.
   "remove_depency":
   {
-    "Richard_albedo":"snobal"
+    "Richard_albedo":"snobal",
+     "scale_wind_vert": "snobal"
   },
   "config":
   {
@@ -163,7 +159,6 @@
 // //       "frequency":1 //every N timesteps
 //      }
   },
-
   "forcing":
   {
        "UTC_offset": 8,

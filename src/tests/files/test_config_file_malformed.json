@@ -10,43 +10,35 @@
 //      "forcing":"UpperClearing"
 //    },
 
-    "notification_script":"./finished.sh",
+    // "notification_script":"./finished.sh",
     "per_triangle_timeseries":"false",
-    "ui":true,
+    "ui":false,
     "debug_level":"debug",
 
-    "prj_name":"Granger creek",
+    "prj_name":"Granger creek"
 
-//    "startdate":"20010501T000000",
 
-    "startdate ":"20010501T000000",
-    "enddate":   "20010501T003000"
-//     "enddate":"20010613T000000"
-  },
+  }  //<------------ missing , here
   "modules": //important these are [ ]
   [
     //met interp
-     // "Liston_wind",
-    "Marsh_shading_iswr",
-//    "iswr_from_obs",
-    "Burridge_iswr",
-//    "slope_iswr",
-     "Liston_monthly_llra_ta",
-     "kunkel_rh",
-     "Thornton_p",
-//    "point_mode",
+    "solar",
+ 
+    "scale_wind_vert",
+    "iswr_from_obs",
+    "Liston_wind",
+    "iswr",
+    "Liston_monthly_llra_ta",
+    "kunkel_rh",
+    "Thornton_p",
 
     //met process
     "Walcek_cloud",
-     "Sicart_ilwr",
-    "Harder_precip_phase"
-//     "threshold_p_phase",
-
+    "Sicart_ilwr",
+    "Harder_precip_phase",
     //processes
-//     "snobal",
-//     "Gray_inf",
-// //    "snowpack"
-//      "Richard_albedo"
+     "snobal",
+    "Richard_albedo"
 
   ],
 
@@ -56,7 +48,8 @@
   // will remove the dependency on B from A.
   "remove_depency":
   {
-    "Richard_albedo":"snobal"
+    "Richard_albedo":"snobal",
+     "scale_wind_vert": "snobal"
   },
   "config":
   {
@@ -85,7 +78,24 @@
     // "parameters":
     // {
     //   "file":"meshes/granger30_liston_curvature.mesh"
-  true
+    // }
+
+  },
+
+  "parameters":
+  {
+    "soil":"parameters/wolf_soil_param.json",
+
+    "landcover":
+    {
+      "12":
+      {
+        "desc":"shadow"
+      },
+      "20":
+      {
+        "desc":"lake",
+        "is_waterbody":true
       },
       "31":
       {
@@ -167,7 +177,6 @@
 // //       "frequency":1 //every N timesteps
 //      }
   },
-
   "forcing":
   {
        "UTC_offset": 8,
