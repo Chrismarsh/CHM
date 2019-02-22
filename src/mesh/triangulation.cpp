@@ -506,6 +506,50 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   		     });
 }
 
+void triangulation::partition_mesh()
+{
+  /*
+    Basically, this first attempt splits the number of mesh points as equally as possible
+  */
+  // 1. Determine number of (processor) locally owned faces
+  // 2. Determine (processor) locally owned indices of faces
+  // 3. Set locally owned _is_ghost=false
+
+  size_t total_num_faces = this->size_faces();
+
+#ifdef USE_MPI
+
+  // Set up so that all processors know how 'big' all other processors are
+  std::vector<int> num_faces_in_partition(_comm_world.size(),
+  					  total_num_faces/_comm_world.size());
+  for (unsigned int i=0;i<total_num_faces%_comm_world.size();++i) {
+    num_faces_in_partition[i]++;
+  }
+
+  // each processor only knows its own start and end indices
+  size_t face_start_idx = 0;
+  size_t face_end_idx = num_faces_in_partition[0]-1;
+  for (int i=1;i<_comm_world.rank();++i) {
+    face_start_idx += num_faces_in_partition[i-1];
+    face_end_idx += num_faces_in_partition[i];
+  }
+
+#pragma omp parallel for
+  for(int i=face_start_idx;i<face_end_idx;++i) {
+    _faces.at(i)->_is_ghost = false;
+  }
+
+#else // USE_MPI
+
+#pragma omp parallel for
+  for(int i=0;i<total_num_faces;++i) {
+    _faces.at(i)->_is_ghost = false
+  }
+
+#endif // USE_MPI
+
+}
+
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
 {
     return _vertexes.at(i);

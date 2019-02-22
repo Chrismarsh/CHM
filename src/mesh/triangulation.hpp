@@ -109,6 +109,11 @@ namespace pt = boost::property_tree;
 #include "libmaw.h"
 #endif
 
+#ifdef USE_MPI
+#include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
+#endif
+
 #include "vertex.hpp"
 //#include "face.hpp"
 #include "timeseries.hpp"
@@ -559,6 +564,11 @@ public:
     */
   void reorder_faces(std::vector<size_t> permutation);
 
+    /**
+    * Sets the MPI process ownership of mesh faces and nodes
+    */
+  void partition_mesh();
+
 
 	/**
 	 * Serializes a mesh attribute to file so it can be read into the model.
@@ -781,6 +791,11 @@ private:
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
     boost::shared_ptr<maw::graphics> _gfx;
+#endif
+
+#ifdef USE_MPI
+    boost::mpi::environment _mpi_env;
+    boost::mpi::communicator _comm_world;
 #endif
 
 };

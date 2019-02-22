@@ -342,4 +342,10 @@ protected:
     std::string _checkpoint_file;//file to load from
     size_t _checkpoint_feq; // frequency of checkpoints
 
+
+#ifdef USE_MPI
+    boost::mpi::environment _mpi_env;
+    boost::mpi::communicator _comm_world;
+#endif
+
 };
