@@ -270,10 +270,15 @@ if (test)
 			${TEST_SRCS}
 	)
 
+      target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH})
+      target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+
 	target_link_libraries(
 			runUnitTests
 			${LIB_FILES}
 			${GTEST_LINK}
+			${MPI_CXX_LIBRARIES}
+			${MPI_CXX_LINK_FLAGS}
 	)
 
 	# You can also omit NAME and COMMAND. The second argument could be some other
