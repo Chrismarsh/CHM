@@ -8,7 +8,7 @@ import subprocess
 import numpy as np
 import os
 from gdalconst import GA_ReadOnly
-
+import resource
 
 from rasterio.warp import transform
 import xarray as xr
@@ -242,6 +242,12 @@ def main():
 
     print('Start epoch: %s, model dt = %i (s)' %(epoch,dt))
 
+    #because of how the netcdf is built we hold a file of file handles before converting. ensure we can do so
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    total_output_files = len(pvd) * (len(variables)+len(parameters))
+    if soft < total_output_files or hard < total_output_files:
+        print('The users soft or hard file limit is less than the total number of tmp files to be created.')
+        print('The system ulimit should be raised to at least ' + total_output_files)
 
     for vtu in pvd:
         path = vtu
