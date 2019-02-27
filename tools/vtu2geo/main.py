@@ -248,6 +248,7 @@ def main():
     if soft < total_output_files or hard < total_output_files:
         print('The users soft or hard file limit is less than the total number of tmp files to be created.')
         print('The system ulimit should be raised to at least ' + total_output_files)
+        return -1
 
     for vtu in pvd:
         path = vtu
