@@ -508,7 +508,7 @@ typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
 //search tree typedefs
 //http://doc.cgal.org/latest/Spatial_searching/index.html
 typedef K::Point_2 Point_2;
-typedef boost::tuple<Point_2, Delaunay::Face_handle > Point_and_face;
+typedef boost::tuple<Point_2, mesh_elem > Point_and_face;
 typedef CGAL::Search_traits_2<K>                       Traits_base;
 typedef CGAL::Search_traits_adapter<Point_and_face,
             CGAL::Nth_of_tuple_property_map<0, Point_and_face>,
@@ -656,7 +656,7 @@ public:
     * \param i Index
     * \return A face handle to the ith face
     */
-    Delaunay::Face_handle face(size_t i);
+    mesh_elem face(size_t i);
 
     /**
     * Returns the finite vertex at index i. A given index will always return the same vertex.
@@ -784,7 +784,7 @@ private:
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
     //that allows us to traverse the triangulation in a deterministic order, as well as play nice with openmp
-    std::vector< Delaunay::Face_handle  > _faces;
+    std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;
 
 #ifdef NOMATLAB

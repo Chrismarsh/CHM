@@ -85,7 +85,7 @@ void Winstral_parameters::run(mesh domain)
 
 }
 
-double Winstral_parameters::Sx(const mesh &domain, Delaunay::Face_handle face) const
+double Winstral_parameters::Sx(const mesh &domain, mesh_elem face) const
 {
     // Reference point: center of the triangle
     auto face_centre = face->center();

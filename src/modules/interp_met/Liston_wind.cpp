@@ -72,15 +72,15 @@ void Liston_wind::init(mesh domain)
             auto face = domain->face(i);
 
             Point_3 me = face->center();
-            Delaunay::Face_handle north;
-            Delaunay::Face_handle south;
-            Delaunay::Face_handle east;
-            Delaunay::Face_handle west;
+            mesh_elem north;
+            mesh_elem south;
+            mesh_elem east;
+            mesh_elem west;
 
-            Delaunay::Face_handle northeast;
-            Delaunay::Face_handle northwest;
-            Delaunay::Face_handle southeast;
-            Delaunay::Face_handle southwest;
+            mesh_elem northeast;
+            mesh_elem northwest;
+            mesh_elem southeast;
+            mesh_elem southwest;
 
             north = domain->find_closest_face( math::gis::point_from_bearing(me,0,distance) ) ; // me.x(), me.y() + distance
             south = domain->find_closest_face( math::gis::point_from_bearing(me,180,distance) ); //me.x(), me.y() - distance

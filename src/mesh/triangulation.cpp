@@ -70,7 +70,7 @@ triangulation::~triangulation()
 //    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
 //            fit != this->finite_faces_end(); ++fit)
 //    {
-//        Delaunay::Face_handle face = fit;
+//        mesh_elem face = fit;
 //        _faces.push_back(face);
 //    }
 //
@@ -555,7 +555,7 @@ Delaunay::Vertex_handle triangulation::vertex(size_t i)
     return _vertexes.at(i);
 }
 
-Delaunay::Face_handle triangulation::face(size_t i)
+mesh_elem triangulation::face(size_t i)
 {
     return _faces.at(i);
 }
@@ -595,7 +595,7 @@ void triangulation::plot(std::string ID)
     for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
             fit != this->finite_faces_end(); ++fit)
     {
-        Delaunay::Face_handle face = fit;
+        mesh_elem face = fit;
 
         (*tri)(i, 0) = face->vertex(0)->get_id() + 1; //+1 because matlab indexing starts at 1
         (*tri)(i, 1) = face->vertex(1)->get_id() + 1;
@@ -658,7 +658,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 
     for (size_t i = 0; i < this->size_faces(); i++)
     {
-        Delaunay::Face_handle fit = this->face(i);
+        mesh_elem fit = this->face(i);
 
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
@@ -746,7 +746,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
     for (size_t i = 0; i < this->size_faces(); i++)
     {
-        Delaunay::Face_handle fit = this->face(i);
+        mesh_elem fit = this->face(i);
 
         for (auto &v: variables)
         {
