@@ -787,6 +787,7 @@ private:
     std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;
 
+    std::vector< mesh_elem > _local_faces;
 #ifdef NOMATLAB
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;

@@ -515,9 +515,12 @@ void triangulation::partition_mesh()
   // 2. Determine (processor) locally owned indices of faces
   // 3. Set locally owned _is_ghost=false
 
+
   size_t total_num_faces = this->size_faces();
 
 #ifdef USE_MPI
+
+  LOG_DEBUG << "Partitioning mesh";
 
   // Set up so that all processors know how 'big' all other processors are
   std::vector<int> num_faces_in_partition(_comm_world.size(),
@@ -529,21 +532,29 @@ void triangulation::partition_mesh()
   // each processor only knows its own start and end indices
   size_t face_start_idx = 0;
   size_t face_end_idx = num_faces_in_partition[0]-1;
-  for (int i=1;i<_comm_world.rank();++i) {
+  for (int i=1;i<=_comm_world.rank();++i) {
     face_start_idx += num_faces_in_partition[i-1];
     face_end_idx += num_faces_in_partition[i];
   }
 
+
+  // Set size of vector containing locally owned faces
+  _local_faces.resize(num_faces_in_partition[_comm_world.rank()]);
+
 #pragma omp parallel for
-  for(int i=face_start_idx;i<face_end_idx;++i) {
-    _faces.at(i)->_is_ghost = false;
+  for(int local_ind=0;local_ind<_local_faces.size();++local_ind) {
+    int global_ind = face_start_idx + local_ind;
+    _faces.at(global_ind)->_is_ghost = false;
+    _local_faces[local_ind] = _faces.at(global_ind);
   }
 
-#else // USE_MPI
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << ": start " << face_start_idx << ", end " << face_end_idx << ", number " << _local_faces.size();
+
+#else // do not USE_MPI
 
 #pragma omp parallel for
   for(int i=0;i<total_num_faces;++i) {
-    _faces.at(i)->_is_ghost = false
+    _faces.at(i)->_is_ghost = false;
   }
 
 #endif // USE_MPI
