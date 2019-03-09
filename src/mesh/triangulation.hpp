@@ -569,6 +569,11 @@ public:
     */
   void partition_mesh();
 
+    /**
+    * Figures out which faces lie on the boundary of an MPI process' domain
+    */
+  void determine_local_boundary_faces();
+
 
 	/**
 	 * Serializes a mesh attribute to file so it can be read into the model.
@@ -788,6 +793,9 @@ private:
     std::vector< Delaunay::Vertex_handle > _vertexes;
 
     std::vector< mesh_elem > _local_faces;
+    std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
+
+
 #ifdef NOMATLAB
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;

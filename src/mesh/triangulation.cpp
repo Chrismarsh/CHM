@@ -472,6 +472,10 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         LOG_DEBUG << "No face permutation.";
     }
 
+    partition_mesh();
+#ifdef USE_MPI
+    determine_local_boundary_faces();
+#endif // USE_MPI
     return parameters;
 }
 
@@ -558,6 +562,65 @@ void triangulation::partition_mesh()
   }
 
 #endif // USE_MPI
+
+}
+
+void triangulation::determine_local_boundary_faces()
+{
+  /*
+    - Store handles to boundary faces on the locally owned process
+    - Also store boolean value "is_global_boundary"
+  */
+
+  // Need to ensure we're starting from nothing?
+  assert( _boundary_faces.size() == 0 );
+
+  // We want an array of vectors, so that OMP threads can increment them
+  // separately, then join them afterwards
+  std::unique_ptr< std::vector< std::pair<mesh_elem,bool> >[] > th_local_boundary_faces(new std::vector< std::pair<mesh_elem,bool> >[omp_get_num_threads()]);
+
+// This is not thread safe. why?
+#pragma omp parallel for
+  for(int face_index=0;face_index<_local_faces.size();++face_index) {
+
+    // face_index is a local index... get the face handle
+    mesh_elem face = _local_faces.at(face_index);
+
+    int num_owned_neighbours = 0;
+    for (int neigh_index = 0; neigh_index < 3; ++neigh_index) {
+
+      auto neigh = face->neighbor(neigh_index);
+
+      // Test status of neighbour
+      if (neigh == nullptr) {
+	th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+	num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
+	break;
+      } else {
+	if (neigh->_is_ghost == false) {
+	  num_owned_neighbours++;
+	}
+      }
+    }
+
+    // If we don't own 3 neighbours, we are a local, but not a global boundary face
+    if( num_owned_neighbours<3 ) {
+      th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
+    }
+
+  }
+
+  // Join the vectors via a single thread in t operations
+  //  NOTE future optimizations:
+  //   - reserve space for insertions into _boundary_faces
+  //   - can be done recursively in log2(t) operations
+  for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx) {
+    _boundary_faces.insert(_boundary_faces.end(),
+			   th_local_boundary_faces[thread_idx].begin(), th_local_boundary_faces[thread_idx].end());
+  }
+
+  // Some log debug output to see how many boundary faces on each
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
 
 }
 
