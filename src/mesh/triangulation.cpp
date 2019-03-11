@@ -14,7 +14,7 @@
 // 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#include <vtkStringArray.h>
+
 #include "triangulation.hpp"
 
 triangulation::triangulation()
@@ -434,7 +434,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     for (size_t i = 0; i < size_faces(); i++)
     {
 
-        auto f = face(i);
+        auto f = _faces.at(i);
         std::vector<boost::tuple<double, double, double> > u;
         for (size_t j = 0; j < 3; j++)
         {
@@ -452,7 +452,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 
     for (size_t i = 0; i < size_faces(); i++)
     {
-        auto f = face(i);
+        auto f = _faces.at(i);
         f->_slope = temp_slope.at(i);
     }
 
@@ -474,6 +474,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 
     partition_mesh();
 #ifdef USE_MPI
+    _num_faces = _local_faces.size();
     determine_local_boundary_faces();
 #endif // USE_MPI
     return parameters;
@@ -520,7 +521,7 @@ void triangulation::partition_mesh()
   // 3. Set locally owned _is_ghost=false
 
 
-  size_t total_num_faces = this->size_faces();
+  size_t total_num_faces = _faces.size();
 
 #ifdef USE_MPI
 
@@ -554,6 +555,7 @@ void triangulation::partition_mesh()
 
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << ": start " << face_start_idx << ", end " << face_end_idx << ", number " << _local_faces.size();
 
+
 #else // do not USE_MPI
 
 #pragma omp parallel for
@@ -581,25 +583,30 @@ void triangulation::determine_local_boundary_faces()
 
 // This is not thread safe. why?
 #pragma omp parallel for
-  for(int face_index=0;face_index<_local_faces.size();++face_index) {
+  for(int face_index=0; face_index< _local_faces.size(); ++face_index)
+  {
 
     // face_index is a local index... get the face handle
     mesh_elem face = _local_faces.at(face_index);
 
     int num_owned_neighbours = 0;
-    for (int neigh_index = 0; neigh_index < 3; ++neigh_index) {
+    for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
+    {
 
       auto neigh = face->neighbor(neigh_index);
 
       // Test status of neighbour
-      if (neigh == nullptr) {
-	th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
-	num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
-	break;
-      } else {
-	if (neigh->_is_ghost == false) {
-	  num_owned_neighbours++;
-	}
+      if (neigh == nullptr)
+      {
+        th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+        num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
+        break;
+      } else
+      {
+        if (neigh->_is_ghost == false)
+        {
+            num_owned_neighbours++;
+        }
       }
     }
 
@@ -631,7 +638,11 @@ Delaunay::Vertex_handle triangulation::vertex(size_t i)
 
 mesh_elem triangulation::face(size_t i)
 {
+#if USE_MPI
+    return _local_faces.at(i);
+#else
     return _faces.at(i);
+#endif
 }
 
 void triangulation::timeseries_to_file(double x, double y, std::string fname)

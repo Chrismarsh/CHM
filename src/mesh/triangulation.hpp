@@ -26,6 +26,14 @@
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
+// we need to define these and have them return constant values under a no-omp situation
+inline int omp_get_num_threads() { return 1;}
+inline int omp_get_thread_num() { return 0;}
+inline int omp_get_max_threads() { return 1;}
+#endif
 
 #include <iostream>
 #include <fstream>
@@ -87,6 +95,7 @@ namespace pt = boost::property_tree;
 
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
+#include <vtkStringArray.h>
 #include <vtkTriangle.h>
 #include <vtkCellArray.h>
 #include <vtkXMLUnstructuredGridWriter.h>
@@ -118,6 +127,7 @@ namespace pt = boost::property_tree;
 //#include "face.hpp"
 #include "timeseries.hpp"
 #include "math/coordinates.hpp"
+
 
 /**
 * \struct face_info
