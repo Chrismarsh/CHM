@@ -2175,7 +2175,6 @@ void core::run()
 
     timer c;
 
-
     //setup a XML writer for the PVD paraview format
     pt::ptree pvd;
     pvd.add("VTKFile.<xmlattr>.type", "Collection");
@@ -2421,20 +2420,34 @@ void core::run()
                                     #pragma omp task
                                     {
                                         std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
+                                        boost::filesystem::path p(base_name);
 
                                         if (jtr == output_info::mesh_outputs::vtu  )
                                         {
-                                            pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
-                                            dataset.add("<xmlattr>.timestep", _global->posix_time_int());
-                                            dataset.add("<xmlattr>.group", "");
-                                            dataset.add("<xmlattr>.part", 0);
+
+                                            // this really only works if we let rank0 handle the io.
+                                            // If we let each process do it, they walk all over each other's output
+                                            if(_comm_world.rank() == 0)
+                                            {
+                                                for(int rank = 0; rank < _comm_world.size(); rank++)
+                                                {
+                                                    pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
+                                                    dataset.add("<xmlattr>.timestep", _global->posix_time_int());
+                                                    dataset.add("<xmlattr>.group", "");
+                                                    dataset.add("<xmlattr>.part", rank);
+                                                    dataset.add("<xmlattr>.file", p.filename().string()+"_"+std::to_string(rank) + ".vtu");
+                                                }
+
+                                            }
+
 
                                             //because a full path can be provided for the base_name, we need to strip this off
                                             //to make it a relative path in the xml file.
-                                            boost::filesystem::path p(base_name);
 
-                                            dataset.add("<xmlattr>.file", p.filename().string() + ".vtu");
-                                            _mesh->write_vtu(base_name + ".vtu");
+
+                                            _mesh->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
+
+
                                         }
 
                                         if (jtr == output_info::mesh_outputs::vtp)
@@ -2538,15 +2551,18 @@ void core::run()
         if (itr.type == output_info::output_type::mesh)
         {
 
+            if(_comm_world.rank() == 0)
+            {
 
 #if (BOOST_VERSION / 100 % 1000) < 56
-            pt::write_xml(base_name + ".pvd",
-                          pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
+                pt::write_xml(base_name + ".pvd",
+                              pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
 #else
-            pt::write_xml(itr.fname + ".pvd",
-                          pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
-            break;
+                pt::write_xml(itr.fname + ".pvd",
+                              pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+                break;
 #endif
+            }
         }
     }
 
