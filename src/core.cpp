@@ -2427,19 +2427,23 @@ void core::run()
 
                                             // this really only works if we let rank0 handle the io.
                                             // If we let each process do it, they walk all over each other's output
+#ifdef USE_MPI
                                             if(_comm_world.rank() == 0)
                                             {
                                                 for(int rank = 0; rank < _comm_world.size(); rank++)
                                                 {
+#else
+                                                    int rank = 0;
+#endif
                                                     pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
                                                     dataset.add("<xmlattr>.timestep", _global->posix_time_int());
                                                     dataset.add("<xmlattr>.group", "");
                                                     dataset.add("<xmlattr>.part", rank);
                                                     dataset.add("<xmlattr>.file", p.filename().string()+"_"+std::to_string(rank) + ".vtu");
+#ifdef USE_MPI
                                                 }
-
                                             }
-
+#endif
 
                                             //because a full path can be provided for the base_name, we need to strip this off
                                             //to make it a relative path in the xml file.
@@ -2551,9 +2555,10 @@ void core::run()
         if (itr.type == output_info::output_type::mesh)
         {
 
+#ifdef USE_MPI
             if(_comm_world.rank() == 0)
             {
-
+#endif
 #if (BOOST_VERSION / 100 % 1000) < 56
                 pt::write_xml(base_name + ".pvd",
                               pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
@@ -2562,7 +2567,9 @@ void core::run()
                               pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
                 break;
 #endif
+#ifdef USE_MPI
             }
+#endif
         }
     }
 
