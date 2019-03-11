@@ -40,18 +40,6 @@
 #include <gsl/gsl_sf_lambert.h>
 
 
-#ifdef _OPENMP
-#include <omp.h>
-#else
-// we need to define these and have them return constant values under a no-omp situation
-inline int omp_get_thread_num() { return 0;}
-inline int omp_get_max_threads() { return 1;}
-
-#undef VIENNACL_WITH_OPENMP
-
-#endif
-
-
 #include <viennacl/linalg/gmres.hpp>
 #include <viennacl/compressed_matrix.hpp>
 #include <viennacl/linalg/ilu.hpp>
