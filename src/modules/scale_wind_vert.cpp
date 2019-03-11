@@ -187,14 +187,22 @@ void scale_wind_vert::run(mesh domain)
         {
             auto neigh = face->neighbor(j);
 
-            if (neigh != nullptr)
+            if (neigh != nullptr && !neigh->_is_ghost)
                 u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_2m_above_srf")));
         }
 
         auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
 
-        double new_u =  face->get_module_data<d>(ID)->interp(u, query);
-        face->get_module_data<d>(ID)->temp_u = std::max(0.1,new_u);
+        if(u.size()>0)
+        {
+            double new_u =  face->get_module_data<d>(ID)->interp(u, query);
+            face->get_module_data<d>(ID)->temp_u = std::max(0.1,new_u);
+        }
+        else
+        {
+            face->get_module_data<d>(ID)->temp_u = std::max(0.1,face->face_data("U_2m_above_srf"));
+        }
+
     }
 
     #pragma omp parallel for
