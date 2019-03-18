@@ -920,26 +920,41 @@ void core::config_output(pt::ptree &value)
                 delete coordTrans;
             }
 
-
-
             out.face = _mesh->locate_face(out.longitude, out.latitude);
 
-
             if(out.face == nullptr)
+            {
+#ifndef USE_MPI
                 BOOST_THROW_EXCEPTION(config_error() <<
                                                      errstr_info(
                                                              "Requested an output point that is not in the triangulation domain. Pt:"
-                                                             + std::to_string(out.longitude) + "," + std::to_string(out.latitude) + " name: " + out.name));
+                                                             + std::to_string(out.longitude) + "," +
+                                                             std::to_string(out.latitude) + " name: " + out.name));
+#endif
 
-            //set the point to be the center of the triangle that the output point lies on
-            points->InsertNextPoint ( out.face->get_x(), out.face->get_y(), out.face->get_z() );
-            labels->InsertNextValue(out.name);
+                LOG_ERROR << "In MPI mode there is currently no check if all the nodes correctly find the output triangle. "
+                             "If you are missing output, ensure that all the output points are within the domain.";
 
-            LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./M_PI << " aspect:" << out.face->aspect() * 180./M_PI;
+            }
 
-            out.face->_debug_name = out.name; //out_type holds the station name
-            out.face->_debug_ID = ID;
-            ++ID;
+
+            if(out.face != nullptr)
+            {
+                // In MPI mode, we might not thave the output triangle on this node, so we just have to fail gracefulyl and hope that the other nodes have this
+                // in the future we need a comms here to check if the nodes successfully figured out the output points
+                // for now, if we don't have it, print an error but keep going
+
+                //set the point to be the center of the triangle that the output point lies on
+                points->InsertNextPoint(out.face->get_x(), out.face->get_y(), out.face->get_z());
+                labels->InsertNextValue(out.name);
+
+                LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: "
+                          << out.face->slope() * 180. / M_PI << " aspect:" << out.face->aspect() * 180. / M_PI;
+
+                out.face->_debug_name = out.name; //out_type holds the station name
+                out.face->_debug_ID = ID;
+                ++ID;
+            }
         }
         else if (out_type == "mesh")
         {
@@ -987,7 +1002,10 @@ void core::config_output(pt::ptree &value)
             LOG_WARNING << "Unknown output type: " << itr.second.data();
         }
 
-        _outputs.push_back(out);
+        //ensure we aren't adding timeseries outputs with invalid faces bc of MPI
+        if(  out.type != output_info::time_series &&
+             out.face != nullptr)
+            _outputs.push_back(out);
     }
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
@@ -996,7 +1014,11 @@ void core::config_output(pt::ptree &value)
     vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
 
     //output this to the same folder as the points are written out to
-    auto f = pts_path / "output_points.vtp";
+    std::string rank = "";
+#ifdef USE_MPI
+    rank = "."+ std::to_string(_comm_world.rank());
+#endif
+    auto f = pts_path / ("output_points"+rank+".vtp");
     writer->SetFileName(f.string().c_str());
     #if VTK_MAJOR_VERSION <= 5
         writer->SetInput(polydata);
@@ -1162,7 +1184,14 @@ void core::init(int argc, char **argv)
 
     std::string log_dir = "log";
     auto log_path = cwd_dir / log_dir;
-    std::string log_name = "CHM_" + log_start_time + ".log";
+
+    //output a unique logfile for each mpi rank
+    std::string rank = "";
+#ifdef USE_MPI
+   rank = "."+std::to_string(_comm_world.rank());
+#endif
+
+    std::string log_name = "CHM_" + log_start_time + rank + ".log";
 
     boost::filesystem::create_directories(log_path);
 
@@ -1347,8 +1376,8 @@ void core::init(int argc, char **argv)
     //remove and add modules
     /*
      * We expect the following sections:
-     *  modules
-     *  meshes
+     *  modules <- These don't get the mesh in the ctor, everything has to be in init, so doesn't mess with the MPI calls
+     *  meshes  <- Will redefine the elements to be on a per-node (MPI mode) basis
      *  forcing
      * The rest may be optional, and will override the defaults.
      */
@@ -2330,6 +2359,7 @@ void core::run()
                                        //module calls
                                        for (auto &jtr : itr)
                                        {
+                                           LOG_VERBOSE << "Module: "<< jtr->ID;
                                            jtr->run(face);
                                        }
 
@@ -2342,6 +2372,7 @@ void core::run()
                         //module calls for domain parallel
                         for (auto &jtr : itr)
                         {
+                            LOG_VERBOSE << "Module: "<< jtr->ID;
                             ompException oe;
                             oe.Run([&]
                                    {
@@ -2404,6 +2435,7 @@ void core::run()
 
                 LOG_DEBUG << "Done checkpoint [ " << c.toc<s>() << "s]";
             }
+
             for (auto &itr : _outputs)
             {
                 if (itr.type == output_info::output_type::mesh)
@@ -2468,8 +2500,8 @@ void core::run()
 
             }
 
-
-            //get data from the face into the output timeseries
+            //If we are output a timeseries at specific triangles, we do that here
+            //Each output knows what face it corresponds to
             for (auto &itr : _outputs)
             {
                 //only update the full timeseries
@@ -2482,6 +2514,7 @@ void core::run()
                     }
                 }
             }
+
 
             if (_per_triangle_timeseries)
             {

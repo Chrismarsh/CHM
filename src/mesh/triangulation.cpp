@@ -292,7 +292,8 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     //set our mesh dimensions
     this->set_dimension(2);
 
-    //vectors to hold the center of a face, and a pointer to that face to generate the spatial search tree
+
+    //vectors to hold the center of a face to generate the spatial search tree
     std::vector<Point_2> center_points;
 
     i = 0;
@@ -326,16 +327,25 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 
         _faces.push_back(face);
 
-        Point_2 pt2(face->center().x(),face->center().y());
+// If we aren't using MPI, we can build the centre points here for efficiency.
+// these centre points will be used to build the spatial search tree. If we are using MPI,
+// we need to wait until we've figured out the per-node triangle partition so we can build
+// a per-node spatial search tree that only takes into account this node's elements.
+// If MPI, we do that at the end of this function
 
+#ifndef USE_MPI
+        Point_2 pt2(face->center().x(),face->center().y());
         center_points.push_back(pt2);
+#endif
+
     }
 
-
+#ifndef USE_MPI
     //make the search tree
     dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
-                                 boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(), _faces.end() ) )
     );
+#endif
 
     _num_faces = this->number_of_faces();
 
@@ -476,7 +486,24 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
     determine_local_boundary_faces();
+
+    // should make this parallel
+    for(size_t i=0; i < _num_faces; ++i)
+    {
+        auto face = _local_faces.at(i);
+        Point_2 pt2(face->center().x(),face->center().y());
+        center_points.push_back(pt2);
+    }
+    //make the search tree
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_local_faces.begin() )),
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _local_faces.end() ) )
+    );
+
 #endif // USE_MPI
+
+
+
+
     return parameters;
 }
 
