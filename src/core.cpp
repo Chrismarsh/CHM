@@ -1706,7 +1706,7 @@ void core::init(int argc, char **argv)
 
     for (auto& itr : _modules)
     {
-
+            LOG_VERBOSE << itr.first->ID;
             ompException oe;
             oe.Run([&]
                    {
@@ -2488,7 +2488,6 @@ void core::run()
                         }
                     }
                 }
-
             }
 
             //If we are output a timeseries at specific triangles, we do that here
