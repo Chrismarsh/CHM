@@ -493,6 +493,9 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         auto face = _local_faces.at(ii);
         Point_2 pt2(face->center().x(),face->center().y());
         center_points.push_back(pt2);
+
+        //reset the cell_ids to take into account the smaller local_faces
+        face->cell_id = ii;
     }
     //make the search tree
     dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_local_faces.begin() )),
@@ -609,7 +612,7 @@ void triangulation::determine_local_boundary_faces()
   std::unique_ptr< std::vector< std::pair<mesh_elem,bool> >[] > th_local_boundary_faces(new std::vector< std::pair<mesh_elem,bool> >[omp_get_num_threads()]);
 
 // This is not thread safe. why?
-#pragma omp parallel for
+//#pragma omp parallel for
   for(int face_index=0; face_index< _local_faces.size(); ++face_index)
   {
 
