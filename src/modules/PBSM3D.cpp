@@ -165,12 +165,13 @@ void PBSM3D::init(mesh domain)
 
 
     //use this to build the sparsity pattern for suspension matrix
-    size_t ntri = domain->number_of_faces();
+    size_t ntri = domain->size_faces();
     std::vector< std::map< unsigned int, vcl_scalar_type> > C(ntri * nLayer);
 
     //sparsity pattern for drift
     std::vector< std::map< unsigned int, vcl_scalar_type> > A(ntri);
 
+    LOG_DEBUG << "#face="<<ntri;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -240,7 +241,7 @@ void PBSM3D::init(mesh domain)
             A[i][i] = -9999;
 
             auto neigh = face->neighbor(a);
-            if (neigh == nullptr)
+            if (neigh == nullptr || neigh->_is_ghost)
             {
                 d->face_neigh[a] = false;
                 d->is_edge = true;
@@ -314,7 +315,7 @@ void PBSM3D::init(mesh domain)
 void PBSM3D::run(mesh domain)
 {
     //needed for linear system offsets
-    size_t ntri = domain->number_of_faces();
+    size_t ntri = domain->size_faces();
 
     //vcl_scalar_type is defined in the main CMakeLists.txt file.
     // Some GPUs do not have double precision so the run will fail if the wrong precision is used
