@@ -120,7 +120,7 @@ mesh_elem triangulation::locate_face(Point_2 query)
     {
         auto n = face->neighbor(i);
 
-        if(n != nullptr && n->contains(query.x(),query.y()))
+        if(n != nullptr && !n->_is_ghost && n->contains(query.x(),query.y()))
             return n;
     }
 
@@ -129,13 +129,13 @@ mesh_elem triangulation::locate_face(Point_2 query)
     {
         auto n = face->neighbor(i);
 
-        if(n != nullptr)
+        if(n != nullptr && !n->_is_ghost)
         {
             //check all 3 neighbours of n
             for(int j=0; j < 3;j++)
             {
                 auto nn = n->neighbor(j);
-                if(nn != nullptr && nn->contains(query.x(),query.y()))
+                if(nn != nullptr && !nn->_is_ghost && nn->contains(query.x(),query.y()))
                     return nn;
             }
         }
@@ -488,9 +488,9 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     determine_local_boundary_faces();
 
     // should make this parallel
-    for(size_t i=0; i < _num_faces; ++i)
+    for(size_t ii=0; ii < _num_faces; ++ii)
     {
-        auto face = _local_faces.at(i);
+        auto face = _local_faces.at(ii);
         Point_2 pt2(face->center().x(),face->center().y());
         center_points.push_back(pt2);
     }
@@ -575,7 +575,7 @@ void triangulation::partition_mesh()
 
 #pragma omp parallel for
   for(int local_ind=0;local_ind<_local_faces.size();++local_ind) {
-    int global_ind = face_start_idx + local_ind;
+    size_t global_ind = face_start_idx + local_ind;
     _faces.at(global_ind)->_is_ghost = false;
     _local_faces[local_ind] = _faces.at(global_ind);
   }

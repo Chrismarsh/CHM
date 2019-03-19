@@ -922,25 +922,9 @@ void core::config_output(pt::ptree &value)
 
             out.face = _mesh->locate_face(out.longitude, out.latitude);
 
-            if(out.face == nullptr)
-            {
-#ifndef USE_MPI
-                BOOST_THROW_EXCEPTION(config_error() <<
-                                                     errstr_info(
-                                                             "Requested an output point that is not in the triangulation domain. Pt:"
-                                                             + std::to_string(out.longitude) + "," +
-                                                             std::to_string(out.latitude) + " name: " + out.name));
-#endif
-
-                LOG_ERROR << "In MPI mode there is currently no check if all the nodes correctly find the output triangle. "
-                             "If you are missing output, ensure that all the output points are within the domain.";
-
-            }
-
-
             if(out.face != nullptr)
             {
-                // In MPI mode, we might not thave the output triangle on this node, so we just have to fail gracefulyl and hope that the other nodes have this
+                // In MPI mode, we might not thave the output triangle on this node, so we just have to fail gracefully and hope that the other nodes have this.
                 // in the future we need a comms here to check if the nodes successfully figured out the output points
                 // for now, if we don't have it, print an error but keep going
 
@@ -984,29 +968,36 @@ void core::config_output(pt::ptree &value)
 
             out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
 
-
-            // can do all non-vtu formats with vtu2geo tool, which is also faster. So move towards removing all this
-            //functionality
-
-//            for (auto &jtr: itr.second.get_child("format"))
-//            {
-//                LOG_DEBUG << "Output format found: " << jtr.second.data();
-//                if (jtr.second.data() == "vtu")
-//                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
-//                if (jtr.second.data() == "vtp")
-//                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtp);
-//            }
-
         } else
         {
             LOG_WARNING << "Unknown output type: " << itr.second.data();
         }
 
         //ensure we aren't adding timeseries outputs with invalid faces bc of MPI
-        if(  out.type != output_info::time_series &&
-             out.face != nullptr)
+        if(  out.type == output_info::time_series &&
+             out.face == nullptr)
+        {
+            // we will pass for now, but ultimiately we should have done an MPI comms and
+            // check if we are missing an output
+#ifndef USE_MPI
+            BOOST_THROW_EXCEPTION(config_error() <<
+                                                     errstr_info(
+                                                             "Requested an output point that is not in the triangulation domain. Pt:"
+                                                             + std::to_string(out.longitude) + "," +
+                                                             std::to_string(out.latitude) + " name: " + out.name));
+#else
+            LOG_WARNING << "In MPI mode there is currently no check if all the nodes correctly find the output triangle. "
+                           "If you are missing output, ensure that all the output points are within the domain.";
+#endif
+
+        }else
+        {
             _outputs.push_back(out);
+        }
     }
+
+    LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has #ouput points = " << _outputs.size();
+
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
     polydata->GetPointData()->AddArray(labels);
