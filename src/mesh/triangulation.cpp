@@ -449,14 +449,20 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         for (size_t j = 0; j < 3; j++)
         {
             auto neigh = f->neighbor(j);
-            if (neigh != nullptr)
+            if (neigh != nullptr && !neigh->_is_ghost)
                 u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->slope()));
         }
 
         auto query = boost::make_tuple(f->get_x(), f->get_y(), f->get_z());
 
         interpolation interp(interp_alg::tpspline);
-        double new_slope = interp(u, query);
+        double new_slope = f->slope();
+
+        if(u.size() > 0)
+        {
+            new_slope = interp(u, query);
+        }
+
         temp_slope.at(i) = new_slope;
     }
 

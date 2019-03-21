@@ -172,13 +172,18 @@ void MS_wind::run(mesh domain)
             for (size_t j = 0; j < 3; j++)
             {
                 auto neigh = face->neighbor(j);
-                if (neigh != nullptr)
+                if (neigh != nullptr && !neigh->_is_ghost)
                     u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_R")));
             }
 
-            auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+            double new_u = face->face_data("U_R");
 
-            double new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
+            if(u.size()>0)
+            {
+                auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+                new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
+            }
+
             face->get_module_data<data>(ID)->temp_u = new_u;
         }
         #pragma omp parallel for
@@ -326,13 +331,18 @@ void MS_wind::run(mesh domain)
             for (size_t j = 0; j < 3; j++)
             {
                 auto neigh = face->neighbor(j);
-                if (neigh != nullptr)
+                if (neigh != nullptr && !neigh->_is_ghost)
                     u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_R")));
             }
 
-            auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
 
-            double new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
+            double new_u = face->face_data("U_R");
+            if (u.size() > 0)
+            {
+                auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+                new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
+            }
+
             face->get_module_data<data>(ID)->temp_u = new_u;
         }
     #pragma omp parallel for

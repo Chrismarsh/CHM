@@ -50,7 +50,7 @@
 * Defaults to 300 m distance. Configurable using "distance".
  * Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
 * Depends:
-* - Wind at reference height "U_R" [m/s]
+* - Wind at reference height "U_R" [m/s]p
 * - Direction at reference height 'vw_dir' [degrees]
 *
 * Provides:

@@ -177,10 +177,8 @@ void Liston_wind::run(mesh domain)
             double theta = s->get("vw_dir") * M_PI / 180.;
             double phi = math::gis::bearing_to_polar(s->get("vw_dir") );
 
-            double zonal_u = -W * sin(theta);
+            double zonal_u = -W * sin(theta);//negate as it needs to be the direction the wind is *going*
             double zonal_v = -W * cos(theta);
-//            double zonal_u = -W * sin(phi); //negate as it needs to be the direction the wind is *going*
-//            double zonal_v = -W * cos(phi);
 
             u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u));
             v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v));
@@ -324,13 +322,17 @@ void Liston_wind::run(mesh domain)
         for (size_t j = 0; j < 3; j++)
         {
             auto neigh = face->neighbor(j);
-            if (neigh != nullptr)
+            if (neigh != nullptr && !neigh->_is_ghost)
                 u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_R")));
         }
 
-        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+        double new_u = face->face_data("U_R");
+        if(u.size() > 0)
+        {
+            auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+            new_u = face->get_module_data<lwinddata>(ID)->interp_smoothing(u, query);
+        }
 
-        double new_u = face->get_module_data<lwinddata>(ID)->interp_smoothing(u, query);
         face->get_module_data<lwinddata>(ID)->temp_u = new_u;
     }
 #pragma omp parallel for
