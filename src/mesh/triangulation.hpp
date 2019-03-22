@@ -1351,15 +1351,21 @@ template < class Gt, class Fb >
 double face<Gt, Fb>::veg_attribute(const std::string &variable)
 {
     double result = 0;
-    if(has_parameter("landcover"))
+
+    // first see if we have a distributed map of this parameter
+    if(has_parameter(variable))
+    {
+        result = get_parameter(variable);
+    }
+    else if(has_parameter("landcover")) // Ok, try to look it up in a classified landcover lookup table
     {
         int LC = get_parameter("landcover");
-        auto param = _domain->_global->parameters;
+        auto param = _domain->_global->parameters; //this grabs the loaded landcover map
         result = param.get<double>("landcover." + std::to_string(LC) + "."+variable);
     }
     else
     {
-        result = get_parameter(variable);
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + key +" does not exist."));
     }
 
     return result;
