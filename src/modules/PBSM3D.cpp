@@ -361,6 +361,7 @@ void PBSM3D::run(mesh domain)
    for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
+
         auto id = face->cell_id;
         auto d = face->get_module_data<data>(ID);
         auto& m = d->m;
@@ -416,7 +417,7 @@ void PBSM3D::run(mesh domain)
         if(debug_output) face->set_face_data("u*_th",u_star_saltation_threshold);
 
         // we don't have too high of veg. Check for blowing snow
-        if(height_diff <= cutoff && swe >= min_mass_for_trans)
+        if(height_diff <= cutoff && swe >= min_mass_for_trans && !is_water(face))
         {
 
             // lambda -> 0 when height_diff ->, such as full or no veg
