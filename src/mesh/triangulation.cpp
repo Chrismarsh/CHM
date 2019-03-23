@@ -609,7 +609,7 @@ void triangulation::determine_local_boundary_faces()
     - Store handles to boundary faces on the locally owned process
     - Also store boolean value "is_global_boundary"
   */
-
+#ifdef USE_MPI
   // Need to ensure we're starting from nothing?
   assert( _boundary_faces.size() == 0 );
 
@@ -664,7 +664,7 @@ void triangulation::determine_local_boundary_faces()
 
   // Some log debug output to see how many boundary faces on each
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
-
+#endif
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)

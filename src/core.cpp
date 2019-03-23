@@ -995,9 +995,9 @@ void core::config_output(pt::ptree &value)
             _outputs.push_back(out);
         }
     }
-
+#ifdef USE_MPI
     LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has #ouput points = " << _outputs.size();
-
+#endif
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
     polydata->GetPointData()->AddArray(labels);
@@ -2471,9 +2471,11 @@ void core::run()
                                             //because a full path can be provided for the base_name, we need to strip this off
                                             //to make it a relative path in the xml file.
 
-
+#ifdef USE_MPI
                                             _mesh->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
-
+#else
+                                            _mesh->write_vtu(base_name + ".vtu");
+#endif
 
                                         }
 
