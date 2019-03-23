@@ -1365,7 +1365,7 @@ double face<Gt, Fb>::veg_attribute(const std::string &variable)
     }
     else
     {
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + key +" does not exist."));
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable +" does not exist."));
     }
 
     return result;
