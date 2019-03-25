@@ -35,6 +35,7 @@ triangulation::triangulation()
 #ifdef USE_SPARSEHASH
     data.set_empty_key("");
     vectors.set_empty_key("");
+
 #endif
 }
 

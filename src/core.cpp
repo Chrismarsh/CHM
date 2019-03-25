@@ -1660,7 +1660,7 @@ void core::init(int argc, char **argv)
     }
 
 
-
+    LOG_DEBUG << "Allocating face variable storage";
     #pragma omp parallel for
     for (size_t it = 0; it < _mesh->size_faces(); it++)
     {
@@ -1674,6 +1674,7 @@ void core::init(int argc, char **argv)
             face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
         }
 
+//        LOG_DEBUG << it;
         if (!_per_triangle_timeseries)
         {
             //only do 1 init. The time is wrong, but that is ok as it's never used

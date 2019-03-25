@@ -53,6 +53,8 @@ inline int omp_get_max_threads() { return 1;}
 #include <unordered_map>
 #endif
 
+#include "utility/BooPHF.h"
+
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -127,6 +129,7 @@ namespace pt = boost::property_tree;
 //#include "face.hpp"
 #include "timeseries.hpp"
 #include "math/coordinates.hpp"
+#include "utility/xxh64.hpp"
 
 
 /**
@@ -489,7 +492,15 @@ private:
     boost::shared_ptr<Point_3> _center;
     boost::shared_ptr<Vector_3> _normal;
 
+
+    struct var
+    {
+        double value;
+        std::string variable;
+    };
 #ifdef USE_SPARSEHASH
+
+
     typedef google::dense_hash_map<std::string,face_info*> face_data_hashmap;
     typedef google::dense_hash_map<std::string,double> face_param_hashmap;
     typedef google::dense_hash_map<std::string,Vector_3> face_vec_hashmap;
@@ -498,7 +509,11 @@ private:
     typedef std::unordered_map<std::string,double> face_param_hashmap;
     typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
 #endif
+    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
+    typedef boomphf::mphf<  u_int64_t, hasher_t  > boophf_t;
 
+    boophf_t * bphf;
+    std::vector<var> _variables;
     face_data_hashmap _module_face_data;
     face_param_hashmap _parameters;
     face_param_hashmap _initial_conditions;
@@ -1021,6 +1036,7 @@ face<Gt, Fb>::face()
     _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
+
 #endif
 
 
@@ -1045,6 +1061,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
+
 #endif
 
 }
@@ -1101,6 +1118,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
+
 #endif
 
 }
@@ -1313,26 +1331,50 @@ bool face<Gt, Fb>::contains(double x, double y)
 template < class Gt, class Fb>
 std::vector<std::string> face<Gt, Fb>::variables()
 {
-    return _data->list_variables();
+    std::vector<std::string> vars;
+    for(auto itr:_variables)
+    {
+        vars.push_back(itr.variable);
+    }
+    return vars;
+//    return _data->list_variables();
+
 }
 
 
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has(const std::string& variable)
 {
-    return _itr->has(variable);
+//    return _itr->has(variable);
+
+//    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+
+//    return _variables.find(hash) != _variables.end();
+
+    BOOST_THROW_EXCEPTION(module_error() << errstr_info("face::has not implemented"));
+    return false;
 };
 
 template < class Gt, class Fb>
 void face<Gt, Fb>::set_face_data(const std::string& variable, double data)
 {
-     _itr->set(variable, data);
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    uint64_t  idx = bphf->lookup(hash);
+    _variables[idx].value=data;
+//    auto ret = _variables.find(hash);
+//    ret->second=data;
+
+//     _itr->set(variable, data);
 }
 
 template < class Gt, class Fb>
 double face<Gt, Fb>::face_data(const std::string& variable)
 {
-    return _itr->get(variable);
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    uint64_t  idx = bphf->lookup(hash);
+    return _variables[idx].value;
+
+//    return _itr->get(variable);
 }
 
 template < class Gt, class Fb >
@@ -1387,9 +1429,29 @@ Vector_3 face<Gt, Fb>::face_vector(const std::string& variable)
 template < class Gt, class Fb>
 void face<Gt, Fb>::init_time_series(std::set<std::string> variables, timeseries::date_vec datetime)
 {
-    _data->init(variables, datetime);
 
-    _itr = _data->begin();
+    std::vector<u_int64_t> hash_vec;
+    for(auto v : variables)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
+        hash_vec.push_back(hash);
+    }
+
+    bphf = new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false);
+
+    _variables.resize(variables.size());
+    for(auto v : variables)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
+        uint64_t  idx = bphf->lookup(hash);
+        _variables[idx].value = -9999.0;
+        _variables[idx].variable = v;
+    }
+
+
+//    _data->init(variables, datetime);
+
+//    _itr = _data->begin();
 }
 
 template < class Gt, class Fb>
