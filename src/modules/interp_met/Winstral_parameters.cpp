@@ -143,7 +143,7 @@ double Winstral_parameters::Sx(const mesh &domain, mesh_elem face) const
 
            if (this->incl_snw)
            {
-               Z_dist = Z_dist+ f->face_data("snowdepthavg");
+               Z_dist = Z_dist+ (*f)["snowdepthavg"_s];
            }
 
            double tan_sx = (Z_dist-Z_loc) / distance;

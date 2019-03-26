@@ -497,6 +497,8 @@ private:
     boost::shared_ptr<Vector_3> _normal;
 
 
+    // Holds the name-value pair in the variable store hashmap
+    // we do this as we hold a hash and not the name
     struct var
     {
         double value;
@@ -513,18 +515,20 @@ private:
     typedef std::unordered_map<std::string,double> face_param_hashmap;
     typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
 #endif
-//    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
+
     template <typename Item> class xxhashFunctor
     {
     public:
-        uint64_t operator ()  (const Item& key, uint64_t seed=0xAAAAAAAA55555555ULL) const
+        uint64_t operator ()  (const Item& key, uint64_t seed=2654435761U) const
         {
             return XXH3_64bits_withSeed(&key, sizeof(Item), seed);
         }
 
     };
 
+
     typedef xxhashFunctor<u_int64_t> hasher_t;
+    //    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
     typedef boomphf::mphf< u_int64_t, hasher_t  > boophf_t;
 
     boophf_t * bphf;

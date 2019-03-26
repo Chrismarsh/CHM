@@ -1199,8 +1199,8 @@ void PBSM3D::run(mesh& domain)
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
-                auto Qtj = neigh->face_data("Qsusp") + (*face)["Qsusp"_s];
-                auto Qsj = neigh->face_data("Qsalt") + (*face)["Qsalt"_s];
+                auto Qtj =(*neigh)["Qsusp"_s] + (*face)["Qsusp"_s];
+                auto Qsj =(*neigh)["Qsalt"_s] + (*face)["Qsalt"_s];
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
 
                 dx[j] = math::gis::distance(face->center(), neigh->center());
