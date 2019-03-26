@@ -44,7 +44,7 @@ Thornton_var_p::~Thornton_var_p()
 template <typename T> int signum(T val) {
     return (T(0) < val) - (val < T(0));
 }
-void Thornton_var_p::init(mesh domain)
+void Thornton_var_p::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -116,7 +116,7 @@ void Thornton_var_p::run(mesh_elem& face)
         last_update = global_param->posix_time();
     }
 
-    face->set_face_data("p_lapse",lapse);
+    (*face)["p_lapse"_s]=lapse;
 
     //now do the full interpolation
     std::vector< boost::tuple<double, double, double> > ppt;
@@ -149,7 +149,7 @@ void Thornton_var_p::run(mesh_elem& face)
     double P = p0*( (1+f)/(1-f));
     P = std::max(0.0,P);
 
-    face->set_face_data("p", P);
+    (*face)["p"_s]= P;
 
 
 }

@@ -52,18 +52,18 @@ void Iqbal_iswr::run(mesh_elem &face)
 {
     double pressure = mio::Atmosphere::stdAirPressure(face->get_z());//101325.0;
     double altitude = face->get_z();
-    double sun_elevation = face->face_data("solar_el");
+    double sun_elevation = (*face)["solar_el"_s];
     sun_elevation = sun_elevation < 0? 0. : sun_elevation;
 
     if (sun_elevation < 3)
     {
-        face->set_face_data("iswr_direct_no_slope",0);
-        face->set_face_data("iswr_diffuse_no_slope",0);
+        (*face)["iswr_direct_no_slope"_s]=0;
+        (*face)["iswr_diffuse_no_slope"_s]=0;
         return;
     }
 
-    double ta = face->face_data("t")+273.15;
-    double rh = face->face_data("rh")/100.0;
+    double ta = (*face)["t"_s]+273.15;
+    double rh = (*face)["rh"_s]/100.0;
     double R_toa = 1375;
     double R_direct=0;
     double R_diffuse=0;
@@ -185,15 +185,15 @@ void Iqbal_iswr::run(mesh_elem &face)
     }
 
 
-    double cf = face->face_data("cloud_frac");
+    double cf = (*face)["cloud_frac"_s];
     double dir = R_direct  * (0.6 + 0.2*cos_zenith) * (1.0-cf);
 
     dir = std::max(0.0,dir);
     R_diffuse = std::max(0.0,R_diffuse);
 
-    face->set_face_data("iswr_direct_no_slope",dir);
-    face->set_face_data("iswr_diffuse_no_slope",R_diffuse);
+    (*face)["iswr_direct_no_slope"_s]=dir;
+    (*face)["iswr_diffuse_no_slope"_s]=R_diffuse;
 
-    face->set_face_data("atm_trans",(dir+R_diffuse)/1375.);
+    (*face)["atm_trans"_s]=(dir+R_diffuse/1375.);
 
 }

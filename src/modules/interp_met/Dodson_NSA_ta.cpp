@@ -36,7 +36,7 @@ Dodson_NSA_ta::~Dodson_NSA_ta()
 {
 
 }
-void Dodson_NSA_ta::init(mesh domain)
+void Dodson_NSA_ta::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -91,6 +91,6 @@ void Dodson_NSA_ta::run(mesh_elem &face)
     double Ta = ( theta/pow(ratio,exp) );
     Ta -= 273.15;
 
-    face->set_face_data("t",Ta);
-    face->set_face_data("t_lapse_rate",lapse);
+    (*face)["t"_s]=Ta;
+    (*face)["t_lapse_rate"_s]=lapse;
 }

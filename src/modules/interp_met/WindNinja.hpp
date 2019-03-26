@@ -64,8 +64,8 @@ REGISTER_MODULE_HPP(WindNinja);
 public:
     WindNinja(config_file cfg);
     ~WindNinja();
-    virtual void run(mesh domain);
-    virtual void init(mesh domain);
+    virtual void run(mesh& domain);
+    virtual void init(mesh& domain);
     double ys;
     double yc;
     class data : public face_info

@@ -57,7 +57,7 @@ public:
     Dist_tlapse(config_file cfg);
     ~Dist_tlapse();
     virtual void run(mesh_elem& face);
-    virtual void init(mesh domain);
+    virtual void init(mesh& domain);
     struct data : public face_info
     {
         interpolation interp;

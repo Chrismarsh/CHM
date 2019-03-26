@@ -68,7 +68,7 @@ Winstral_parameters::Winstral_parameters(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-void Winstral_parameters::run(mesh domain)
+void Winstral_parameters::run(mesh& domain)
 {
 
 
@@ -80,7 +80,7 @@ void Winstral_parameters::run(mesh domain)
     // Derive Sx averaged over the angular windows 
     double sx_mean = Sx(domain,face);
    
-    face->set_face_data("Sx", sx_mean);    
+    (*face)["Sx"_s]= sx_mean;
    }
 
 }
@@ -99,13 +99,13 @@ double Winstral_parameters::Sx(const mesh &domain, mesh_elem face) const
     }
     if (this->incl_snw)
     {
-         Z_loc = Z_loc + face->face_data("snowdepthavg");
+         Z_loc = Z_loc + (*face)["snowdepthavg"_s];
     }
 
     double sx_mean  = 0.;
 
     // Extract Wind direction
-    double wind_dir = face->face_data("vw_dir") ;
+    double wind_dir = (*face)["vw_dir"_s] ;
 
     for (int i = 1; i <= this->nangle; ++i)
     {

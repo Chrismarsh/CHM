@@ -47,7 +47,7 @@ Gray_inf::~Gray_inf()
 
 }
 
-void Gray_inf::init(mesh domain)
+void Gray_inf::init(mesh& domain)
 {
     //store all of snobals global variables from this timestep to be used as ICs for the next timestep
 #pragma omp parallel for
@@ -90,7 +90,7 @@ void Gray_inf::run(mesh_elem &face)
     double runoff = 0.;
     double inf = 0.;
 
-    double snowmelt = face->face_data("snowmelt_int");
+    double snowmelt = (*face)["snowmelt_int"_s];
 
     double potential_inf = d->last_ts_potential_inf;
     double avail_storage = (d->max_storage - d->storage);
@@ -136,15 +136,15 @@ void Gray_inf::run(mesh_elem &face)
 
     if( !is_nan(face->get_initial_condition("sm")))
     {
-        face->set_face_data("total_excess",d->total_excess);
-        face->set_face_data("total_inf",d->total_inf);
+        (*face)["total_excess"_s]=d->total_excess;
+        (*face)["total_inf"_s]=d->total_inf;
 
-        face->set_face_data("runoff",runoff);
-        face->set_face_data("inf",inf);
-        face->set_face_data("potential_inf",potential_inf);
-        face->set_face_data("soil_storage", d->storage);
-        face->set_face_data("opportunity_time",d->opportunity_time);
-        face->set_face_data("available_storage",avail_storage);
+        (*face)["runoff"_s]=runoff;
+        (*face)["inf"_s]=inf;
+        (*face)["potential_inf"_s]=potential_inf;
+        (*face)["soil_storage"_s]= d->storage;
+        (*face)["opportunity_time"_s]=d->opportunity_time;
+        (*face)["available_storage"_s]=avail_storage;
     }
     else
     {

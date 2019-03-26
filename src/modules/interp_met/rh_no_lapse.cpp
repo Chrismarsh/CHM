@@ -38,7 +38,7 @@ rh_no_lapse::~rh_no_lapse()
 {
 
 }
-void rh_no_lapse::init(mesh domain)
+void rh_no_lapse::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -66,6 +66,6 @@ void rh_no_lapse::run(mesh_elem &face)
 
     rh = std::min(rh, 100.0);
     rh = std::max(10.0, rh);
-    face->set_face_data("rh", rh);
+    (*face)["rh"_s]= rh;
 
 }

@@ -78,7 +78,7 @@ snobal::snobal(config_file cfg)
 
 }
 
-void snobal::init(mesh domain)
+void snobal::init(mesh& domain)
 {
     drift_density = cfg.get("drift_density",300.);
     const_T_g = cfg.get("const_T_g",-4.0);
@@ -198,25 +198,25 @@ void snobal::init(mesh domain)
 
         if (face->has_initial_condition("swe") &&  !is_nan(face->get_initial_condition("swe")))
         {
-            face->set_face_data("swe", sbal->m_s);
-            face->set_face_data("R_n", sbal->R_n);
-            face->set_face_data("H", sbal->H);
-            face->set_face_data("E", sbal->L_v_E);
-            face->set_face_data("G", sbal->G);
-            face->set_face_data("M", sbal->M);
-            face->set_face_data("dQ", sbal->delta_Q);
-            face->set_face_data("cc", sbal->cc_s);
-            face->set_face_data("T_s", sbal->T_s);
-            face->set_face_data("T_s_0", sbal->T_s_0);
-            face->set_face_data("T_s_l", sbal->T_s_l);
-            face->set_face_data("iswr_net", sbal->S_n);
-            face->set_face_data("isothermal", sbal->isothermal);
-            face->set_face_data("ilwr_out", sbal->R_n - sbal->S_n - sbal->I_lw);
-            face->set_face_data("snowmelt_int", 0);
-            face->set_face_data("sum_melt", g->sum_melt);
-            face->set_face_data("sum_snowpack_runoff", g->sum_runoff);
+            (*face)["swe"_s]= sbal->m_s;
+            (*face)["R_n"_s]= sbal->R_n;
+            (*face)["H"_s]= sbal->H;
+            (*face)["E"_s]= sbal->L_v_E;
+            (*face)["G"_s]= sbal->G;
+            (*face)["M"_s]= sbal->M;
+            (*face)["dQ"_s]= sbal->delta_Q;
+            (*face)["cc"_s]= sbal->cc_s;
+            (*face)["T_s"_s]= sbal->T_s;
+            (*face)["T_s_0"_s]= sbal->T_s_0;
+            (*face)["T_s_l"_s]= sbal->T_s_l;
+            (*face)["iswr_net"_s]= sbal->S_n;
+            (*face)["isothermal"_s]= sbal->isothermal;
+            (*face)["ilwr_out"_s]= sbal->R_n - sbal->S_n - sbal->I_lw;
+            (*face)["snowmelt_int"_s]= 0;
+            (*face)["sum_melt"_s]= g->sum_melt;
+            (*face)["sum_snowpack_runoff"_s]= g->sum_runoff;
 
-            face->set_face_data("snowdepthavg", sbal->z_s);
+            (*face)["snowdepthavg"_s]= sbal->z_s;
         }
 
 
@@ -255,50 +255,50 @@ void snobal::run(mesh_elem &face)
 
     sbal->P_a = mio::Atmosphere::stdAirPressure( face->get_z());
 
-    double albedo = face->face_data("snow_albedo");
+    double albedo = (*face)["snow_albedo"_s];
 
     // Optional inputs if there is a canopy or not
     double ilwr;
     if(has_optional("ilwr_subcanopy")) {
-        ilwr = face->face_data("ilwr_subcanopy");
+        ilwr = (*face)["ilwr_subcanopy"_s];
     } else {
-        ilwr = face->face_data("ilwr");
+        ilwr = (*face)["ilwr"_s];
     }
 
     // Optional inputs if there is a canopy or not
     double rh;
     if(has_optional("rh_subcanopy")) {
-        rh = face->face_data("rh_subcanopy");
+        rh = (*face)["rh_subcanopy"_s];
     } else {
-        rh = face->face_data("rh");
+        rh = (*face)["rh"_s];
     }
 
     // Optional inputs if there is a canopy or not
     double t;
     if(has_optional("ta_subcanopy")) {
-        t = face->face_data("ta_subcanopy");
+        t = (*face)["ta_subcanopy"_s];
     } else {
-        t = face->face_data("t");
+        t = (*face)["t"_s];
     }
 
     double ea = mio::Atmosphere::vaporSaturationPressure(t+273.15)  * rh/100.;
 
     // Optional inputs if there is a canopy or not
     if(has_optional("iswr_subcanopy")) {
-        sbal->input_rec2.S_n = (1.0-albedo) * face->face_data("iswr_subcanopy");
+        sbal->input_rec2.S_n = (1.0-albedo) * (*face)["iswr_subcanopy"_s];
     } else {
-        sbal->input_rec2.S_n = (1.0-albedo) * face->face_data("iswr");
+        sbal->input_rec2.S_n = (1.0-albedo) * (*face)["iswr"_s];
     }
     sbal->input_rec2.I_lw = ilwr;
     sbal->input_rec2.T_a = t+FREEZE;
     sbal->input_rec2.e_a = ea;
 
     // Optional inputs if there is a canopy or not
-    sbal->input_rec2.u = face->face_data("U_2m_above_srf");
+    sbal->input_rec2.u = (*face)["U_2m_above_srf"_s];
     sbal->input_rec2.u = std::max(sbal->input_rec2.u,1.0);
 
     if(has_optional("T_g"))
-        sbal->input_rec2.T_g = face->face_data("T_g") + 273.15;
+        sbal->input_rec2.T_g = (*face)["T_g"_s] + 273.15;
     else
         sbal->input_rec2.T_g = const_T_g+FREEZE;
 
@@ -319,9 +319,9 @@ void snobal::run(mesh_elem &face)
     // Optional inputs if there is a canopy or not
     double p;
     if(has_optional("p_subcanopy")) {
-        p = face->face_data("p_subcanopy");
+        p = (*face)["p_subcanopy"_s];
     } else {
-        p = face->face_data("p");
+        p = (*face)["p"_s];
     }
 
     if(p >= 0.00025) //0.25mm swe
@@ -331,9 +331,9 @@ void snobal::run(mesh_elem &face)
 
         // Optional inputs if there is a canopy or not
         if(has_optional("frac_precip_snow_subcanopy")) {
-            sbal->percent_snow = face->face_data("frac_precip_snow_subcanopy");
+            sbal->percent_snow = (*face)["frac_precip_snow_subcanopy"_s];
         } else {
-            sbal->percent_snow = face->face_data("frac_precip_snow");
+            sbal->percent_snow = (*face)["frac_precip_snow"_s];
         }
         sbal->rho_snow = 100.; //http://ccc.atmos.colostate.edu/pdfs/SnowDensity_BAMS.pdf
         sbal->T_pp = t; //actually in C unlike everything else in the model!!  //+FREEZE;//std::min(t+FREEZE,0.0);
@@ -348,7 +348,7 @@ void snobal::run(mesh_elem &face)
     if(has_optional("drift_mass"))
     {
 
-        double mass = face->face_data("drift_mass");
+        double mass = (*face)["drift_mass"_s];
         mass = is_nan(mass) ? 0 : mass;
         //m_s is kg/m^2 and mass is kg/m^2
         //negative = mass removal
@@ -361,10 +361,10 @@ void snobal::run(mesh_elem &face)
     // If snow avalanche variables are available
     bool snow_slide = false;
     if(has_optional("delta_avalanche_snowdepth")) {
-        g->delta_avalanche_snowdepth = face->face_data("delta_avalanche_snowdepth");
+        g->delta_avalanche_snowdepth = (*face)["delta_avalanche_snowdepth"_s];
     }
     if(has_optional("delta_avalanche_mass")) {
-        g->delta_avalanche_swe = face->face_data("delta_avalanche_mass");
+        g->delta_avalanche_swe = (*face)["delta_avalanche_mass"_s];
         snow_slide = true;
     }
 
@@ -407,31 +407,31 @@ void snobal::run(mesh_elem &face)
 
     double sd_ver = sbal->z_s/std::max(0.001,cos(face->slope()));
 
-    face->set_face_data("dead",g->dead);
+    (*face)["dead"_s]=g->dead;
 
-    face->set_face_data("swe",sbal->m_s);
+    (*face)["swe"_s]=sbal->m_s;
 
-    face->set_face_data("R_n",sbal->R_n);
-    face->set_face_data("H",sbal->H);
-    face->set_face_data("E",sbal->L_v_E);
-    face->set_face_data("G",sbal->G);
-    face->set_face_data("M",sbal->M);
-    face->set_face_data("dQ",sbal->delta_Q);
-    face->set_face_data("cc",sbal->cc_s);
-    face->set_face_data("T_s",sbal->T_s);
-    face->set_face_data("T_s_0",sbal->T_s_0);
-    face->set_face_data("T_s_l",sbal->T_s_l);
-    face->set_face_data("iswr_net",sbal->S_n);
-    face->set_face_data("isothermal",sbal->isothermal);
-    face->set_face_data("ilwr_out", sbal->R_n - sbal->S_n - sbal->I_lw);
-//    face->set_face_data("snowmelt_int",sbal->ro_predict);
+    (*face)["R_n"_s]=sbal->R_n;
+    (*face)["H"_s]=sbal->H;
+    (*face)["E"_s]=sbal->L_v_E;
+    (*face)["G"_s]=sbal->G;
+    (*face)["M"_s]=sbal->M;
+    (*face)["dQ"_s]=sbal->delta_Q;
+    (*face)["cc"_s]=sbal->cc_s;
+    (*face)["T_s"_s]=sbal->T_s;
+    (*face)["T_s_0"_s]=sbal->T_s_0;
+    (*face)["T_s_l"_s]=sbal->T_s_l;
+    (*face)["iswr_net"_s]=sbal->S_n;
+    (*face)["isothermal"_s]=sbal->isothermal;
+    (*face)["ilwr_out"_s]= sbal->R_n - sbal->S_n - sbal->I_lw;
+//    (*face)["snowmelt_int"_s]=sbal->ro_predict;
 
-    face->set_face_data("snowmelt_int",swe_diff);
-    face->set_face_data("sum_melt",g->sum_melt);
-    face->set_face_data("sum_snowpack_runoff",g->sum_runoff);
+    (*face)["snowmelt_int"_s]=swe_diff;
+    (*face)["sum_melt"_s]=g->sum_melt;
+    (*face)["sum_snowpack_runoff"_s]=g->sum_runoff;
 
-    face->set_face_data("snowdepthavg",sbal->z_s);
-    face->set_face_data("snowdepthavg_vert",sd_ver);
+    (*face)["snowdepthavg"_s]=sbal->z_s;
+    (*face)["snowdepthavg_vert"_s]=sd_ver;
 
     sbal->input_rec1.S_n =sbal->input_rec2.S_n;
     sbal->input_rec1.I_lw =sbal->input_rec2.I_lw;

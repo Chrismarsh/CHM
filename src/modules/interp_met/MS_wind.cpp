@@ -50,7 +50,7 @@ MS_wind::MS_wind(config_file cfg)
 }
 
 //Calculates the curvature required
-void MS_wind::init(mesh domain)
+void MS_wind::init(mesh& domain)
 {
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -63,7 +63,7 @@ void MS_wind::init(mesh domain)
 }
 
 
-void MS_wind::run(mesh domain)
+void MS_wind::run(mesh& domain)
 {
 
     if(!use_ryan_dir)
@@ -104,8 +104,8 @@ void MS_wind::run(mesh domain)
             double zonal_u = face->get_module_data<data>(ID)->interp(u, query);
             double zonal_v = face->get_module_data<data>(ID)->interp(v, query);
 
-            face->set_face_data("interp_zonal_u", zonal_u);
-            face->set_face_data("interp_zonal_v", zonal_v);
+            (*face)["interp_zonal_u"_s]= zonal_u;
+            (*face)["interp_zonal_v"_s]= zonal_v;
 
             //Get back the interpolated wind direction
             // -- not sure if there is a better way to do this, but at least a first order to getting the right direction
@@ -118,7 +118,7 @@ void MS_wind::run(mesh domain)
 
             if (d == 8) d = 0; // floor(360/45) = 8, which we don't have, as 0 is already North, so use that.
 
-            face->set_face_data("lookup_d", d);
+            (*face)["lookup_d"_s]= d;
 
             // get the speedup for the interpolated direction
             double U_speedup = face->get_parameter("MS" + std::to_string(d) + "_U");
@@ -128,7 +128,7 @@ void MS_wind::run(mesh domain)
             // Speed up interpolated zonal_u & zonal_v
             double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v) * W_speedup;
             W = std::max(W, 0.1);
-            face->set_face_data("W_speedup", W);
+            (*face)["W_speedup"_s]= W;
 
             //Now recover a U and V from this to get a new direction
             double U = U_speedup * W;
@@ -143,11 +143,11 @@ void MS_wind::run(mesh domain)
                                            Atmosphere::Z_U_R,  // UR is at our reference height
                                            0); // no canopy, no snow, but uses a snow roughness
 
-            face->set_face_data("U_R", W);
-            face->set_face_data("vw_dir", theta * 180.0 / M_PI);
+            (*face)["U_R"_s]= W;
+            (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
 
-            face->set_face_data("2m_zonal_u", U); // these are still 2m
-            face->set_face_data("2m_zonal_v", V);
+            (*face)["2m_zonal_u"_s]= U; // these are still 2m
+            (*face)["2m_zonal_v"_s]= V;
 
             Vector_2 v_corr = math::gis::bearing_to_cartesian(theta * 180.0 / M_PI);
             Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
@@ -158,7 +158,7 @@ void MS_wind::run(mesh domain)
             //        Vector_3 v3_orig(-v_orig.x(),-v_orig.y(), 0); //negate as direction it's blowing instead of where it is from!!
             //        face->set_face_vector("wind_direction_original",v3_orig);
 
-            face->set_face_data("vw_dir_orig", theta_orig * 180.0 / M_PI);
+            (*face)["vw_dir_orig"_s]= theta_orig * 180.0 / M_PI;
 
         }
 
@@ -176,7 +176,7 @@ void MS_wind::run(mesh domain)
                     u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_R")));
             }
 
-            double new_u = face->face_data("U_R");
+            double new_u = (*face)["U_R"_s];
 
             if(u.size()>0)
             {
@@ -190,7 +190,7 @@ void MS_wind::run(mesh domain)
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
             auto face = domain->face(i);
-            face->set_face_data("U_R", std::max(0.1, face->get_module_data<data>(ID)->temp_u));
+            (*face)["U_R"_s]= std::max(0.1, face->get_module_data<data>(ID)->temp_u);
         }
     }else
     {
@@ -310,8 +310,8 @@ void MS_wind::run(mesh domain)
                                            0); // no canopy, no snow, but uses a snow roughness
 
 
-            face->set_face_data("U_R", W);
-            face->set_face_data("vw_dir", theta * 180.0 / M_PI);
+            (*face)["U_R"_s]= W;
+            (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
 
 
             Vector_2 v = math::gis::bearing_to_cartesian(theta* 180.0 / M_PI);
@@ -336,7 +336,7 @@ void MS_wind::run(mesh domain)
             }
 
 
-            double new_u = face->face_data("U_R");
+            double new_u = (*face)["U_R"_s];
             if (u.size() > 0)
             {
                 auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
@@ -349,14 +349,14 @@ void MS_wind::run(mesh domain)
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
             auto face = domain->face(i);
-            face->set_face_data("U_R", std::max(0.1,face->get_module_data<data>(ID)->temp_u) );
+            (*face)["U_R"_s]= std::max(0.1,face->get_module_data<data>(ID)->temp_u) ;
         }
     }
 }
 
 //Old version, uses ryan. Deal with enabling this later, but for now use the version that gets dir off the u,v components of MS
 
-//void MS_wind::run(mesh domain)
+//void MS_wind::run(mesh& domain)
 //{
 //
 //    // omega_s needs to be scaled on [-0.5,0.5]
@@ -464,8 +464,8 @@ void MS_wind::run(mesh domain)
 //
 //        W = std::max(W,0.1);
 //        W = std::min(W,30.0);
-//        face->set_face_data("U_R", W);
-//        face->set_face_data("vw_dir", theta * 180.0 / M_PI);
+//        (*face)["U_R"_s]= W;
+//        (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
 //
 //
 //        Vector_2 v = math::gis::bearing_to_cartesian(theta* 180.0 / M_PI);
@@ -498,7 +498,7 @@ void MS_wind::run(mesh domain)
 //    for (size_t i = 0; i < domain->size_faces(); i++)
 //    {
 //        auto face = domain->face(i);
-//        face->set_face_data("U_R", std::max(0.1,face->get_module_data<data>(ID)->temp_u) );
+//        (*face)["U_R"_s]= std::max(0.1,face->get_module_data<data>(ID->temp_u) );
 //    }
 //}
 

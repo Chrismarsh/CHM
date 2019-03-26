@@ -63,7 +63,7 @@ public:
     ~Winstral_parameters();
 
 
-    virtual void run(mesh domain);
+    virtual void run(mesh& domain);
 
     //number of steps along the search vector to check for a higher point
     int steps;

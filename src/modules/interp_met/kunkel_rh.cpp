@@ -38,7 +38,7 @@ kunkel_rh::~kunkel_rh()
 {
 
 }
-void kunkel_rh::init(mesh domain)
+void kunkel_rh::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -87,6 +87,6 @@ void kunkel_rh::run(mesh_elem &face)
 
     rh = std::min(rh, 100.0);
     rh = std::max(10.0, rh);
-    face->set_face_data("rh", rh);
+    (*face)["rh"_s]= rh;
 
 }

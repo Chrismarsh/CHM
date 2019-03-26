@@ -39,6 +39,6 @@ public:
 
     ~deform_mesh();
 
-    void run(mesh domain);
+    void run(mesh& domain);
 
 };

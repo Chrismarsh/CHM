@@ -71,7 +71,7 @@ void Richard_albedo::run(mesh_elem &face)
     }
     double albedo = face->get_module_data<Richard_albedo::data>(ID)->albedo;
 
-    double swe = face->face_data("swe");
+    double swe = (*face)["swe"_s];
 
     double dt = global_param->dt();
     if(global_param->first_time_step)
@@ -88,18 +88,18 @@ void Richard_albedo::run(mesh_elem &face)
 
     if ( swe > 0.)
     {
-        if (face->face_data("T_s_0") >= 273.)  //melting snow, T_s_0???
+        if ((*face)["T_s_0"_s] >= 273.)  //melting snow, T_s_0???
         {
             albedo = (albedo - amin) * exp(-dt/a2) + amin;
-            face->set_face_data("melting_albedo",1);
+            (*face)["melting_albedo"_s]=1;
         }
         else
         {
             albedo = albedo - dt/a1; // cold snow decay
-            face->set_face_data("melting_albedo",0);
+            (*face)["melting_albedo"_s]=0;
         }
 
-        double psnow = face->face_data("p_snow");
+        double psnow = (*face)["p_snow"_s];
         albedo = albedo + (amax - albedo) * (psnow )/min_swe_refresh; //* dt
 
         albedo = std::max(albedo,amin);
@@ -107,16 +107,16 @@ void Richard_albedo::run(mesh_elem &face)
     }
     else
     {
-        face->set_face_data("melting_albedo",0);
+        (*face)["melting_albedo"_s]=0;
         albedo = albedo_bare;
     }
 
 
-    face->set_face_data("snow_albedo",albedo);
+    (*face)["snow_albedo"_s]=albedo;
     face->get_module_data<Richard_albedo::data>(ID)->albedo = albedo;
 }
 
-void Richard_albedo::init(mesh domain)
+void Richard_albedo::init(mesh& domain)
 {
 
     //these

@@ -85,8 +85,8 @@ REGISTER_MODULE_HPP(PBSM3D);
 public:
     PBSM3D(config_file cfg);
     ~PBSM3D();
-    void run(mesh domain);
-    void init(mesh domain);
+    void run(mesh& domain);
+    void init(mesh& domain);
 
     double nLayer;
     double susp_depth;

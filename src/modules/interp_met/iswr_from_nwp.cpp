@@ -41,7 +41,7 @@ iswr_from_nwp::~iswr_from_nwp()
 {
 
 }
-void iswr_from_nwp::init(mesh domain)
+void iswr_from_nwp::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -79,8 +79,8 @@ void iswr_from_nwp::run(mesh_elem &face)
     split_dir = std::max(0.0,split_dir);
     split_diff = std::max(0.0,split_diff);
 
-    face->set_face_data("iswr_direct_no_slope",split_dir);
-    face->set_face_data("iswr_diffuse_no_slope",split_diff);
-    face->set_face_data("iswr_observed",iswr_observed);
+    (*face)["iswr_direct_no_slope"_s]=split_dir;
+    (*face)["iswr_diffuse_no_slope"_s]=split_diff;
+    (*face)["iswr_observed"_s]=iswr_observed;
 
 }

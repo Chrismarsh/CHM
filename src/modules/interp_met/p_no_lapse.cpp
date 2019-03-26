@@ -37,7 +37,7 @@ p_no_lapse::p_no_lapse(config_file cfg)
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
-void p_no_lapse::init(mesh domain)
+void p_no_lapse::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -65,7 +65,7 @@ void p_no_lapse::run(mesh_elem& face)
     double p0 = face->get_module_data<data>(ID)->interp(ppt, query);
     double slp = face->slope();
 
-    //face->set_face_data("p", std::max(0.0,p0));
+    //(*face)["p"_s]= std::max(0.0,p0);
 
     double P_fin;
 
@@ -79,8 +79,8 @@ void p_no_lapse::run(mesh_elem& face)
     }
 
     P_fin =  std::max(0.0,P_fin);
-    face->set_face_data("p", P_fin);
-    face->set_face_data("p_no_slope", std::max(0.0,p0));
+    (*face)["p"_s]= P_fin;
+    (*face)["p_no_slope"_s]= std::max(0.0,p0);
 
 
 

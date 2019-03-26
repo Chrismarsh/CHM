@@ -35,7 +35,7 @@ deform_mesh::~deform_mesh()
 
 }
 
-void deform_mesh::run(mesh domain)
+void deform_mesh::run(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_vertex(); i++)

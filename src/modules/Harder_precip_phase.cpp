@@ -59,7 +59,7 @@ Harder_precip_phase::~Harder_precip_phase()
 {
 
 }
-void Harder_precip_phase::init(mesh domain)
+void Harder_precip_phase::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -73,9 +73,9 @@ void Harder_precip_phase::init(mesh domain)
 }
 void Harder_precip_phase::run(mesh_elem& face)
 {
-    double Ta = face->face_data("t")+273.15; //K
-    double T =  face->face_data("t");
-    double RH = face->face_data("rh");
+    double Ta = (*face)["t"_s]+273.15; //K
+    double T =  (*face)["t"_s];
+    double RH = (*face)["rh"_s];
     double ea = RH/100 * 0.611*exp( (17.3*T) / (237.3+T));
 
     // (A.6)
@@ -121,14 +121,14 @@ void Harder_precip_phase::run(mesh_elem& face)
 
     frTi = std::trunc(100.0*frTi) / 100.0; //truncate to 2 decimal positions
 
-    face->set_face_data("Ti",Ti);
-    face->set_face_data("frac_precip_rain",frTi);
-    face->set_face_data("frac_precip_snow",1.0-frTi);
+    (*face)["Ti"_s]=Ti;
+    (*face)["frac_precip_rain"_s]=frTi;
+    (*face)["frac_precip_snow"_s]=1.0-frTi;
 
-    double p = face->face_data("p");
+    double p = (*face)["p"_s];
 
-    face->set_face_data("p_rain", p * frTi);
-    face->set_face_data("p_snow", p * (1.0-frTi));
+    (*face)["p_rain"_s]= p * frTi;
+    (*face)["p_snow"_s]= p * (1.0-frTi);
 
     auto d = face->get_module_data<data>(ID);
     if( p * (1.0-frTi) > 0) // it's snowing
@@ -140,13 +140,13 @@ void Harder_precip_phase::run(mesh_elem& face)
         d->hours_since_snowfall  +=  (global_param->dt() / 3600.0) ; // dt(s) -> hr
     }
 
-    face->set_face_data("p_snow_hours",d->hours_since_snowfall);
+    (*face)["p_snow_hours"_s]=d->hours_since_snowfall;
 
     d->acc_rain += p * frTi;
     d->acc_snow += p * (1.0-frTi);
 
-    face->set_face_data("acc_rain",d->acc_rain);
-    face->set_face_data("acc_snow",d->acc_snow);
+    (*face)["acc_rain"_s]=d->acc_rain;
+    (*face)["acc_snow"_s]=d->acc_snow;
 
 
 

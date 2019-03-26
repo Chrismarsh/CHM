@@ -53,7 +53,7 @@ public:
     Thornton_var_p(config_file cfg);
     ~Thornton_var_p();
     void run(mesh_elem& face);
-    virtual void init(mesh domain);
+    virtual void init(mesh& domain);
     struct data : public face_info
     {
         interpolation interp;

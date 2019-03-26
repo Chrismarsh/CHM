@@ -37,7 +37,7 @@ rh_from_obs::~rh_from_obs()
 {
 
 }
-void rh_from_obs::init(mesh domain)
+void rh_from_obs::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -108,13 +108,13 @@ void rh_from_obs::run(mesh_elem& face)
     //raise it back up
     ea = ea + lapse*( face->get_z() - 0.0);
 
-    double es = mio::Atmosphere::vaporSaturationPressure(face->face_data("t")+273.15);
+    double es = mio::Atmosphere::vaporSaturationPressure((*face)["t"_s]+273.15);
     double rh = ea/es*100.0;
 
     rh = std::min(rh,100.0);
     rh = std::max(10.0,rh);
 
-    face->set_face_data("rh",rh);
+    (*face)["rh"_s]=rh;
 
 
 }

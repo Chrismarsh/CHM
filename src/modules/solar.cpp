@@ -139,11 +139,11 @@ void solar::run(mesh_elem &face)
     double Az = atan2(yhor,xhor)*(180./M_PI) + 180.;
     double El = asin(zhor)*(180./M_PI);
 
-    face->set_face_data("solar_az",Az);
-    face->set_face_data("solar_el",El);
+    (*face)["solar_az"_s]=Az;
+    (*face)["solar_el"_s]=El;
 
 }
-void solar::init(mesh domain)
+void solar::init(mesh& domain)
 {
 
     //number of steps along the search vector to check for a higher point

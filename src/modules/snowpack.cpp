@@ -100,19 +100,19 @@ void Lehning_snowpack::run(mesh_elem &face)
     Mdata.date   =  mio::Date( global_param->year(), global_param->month(), global_param->day(),global_param->hour(),global_param->min(),-6 );
     // Optional inputs if there is a canopy or not
     if(has_optional("ta_subcanopy")) {
-        Mdata.ta     =  face->face_data("ta_subcanopy")+mio::Cst::t_water_freezing_pt;
+        Mdata.ta     =  (*face)["ta_subcanopy"_s]+mio::Cst::t_water_freezing_pt;
     } else {
-        Mdata.ta     =  face->face_data("t")+mio::Cst::t_water_freezing_pt;
+        Mdata.ta     =  (*face)["t"_s]+mio::Cst::t_water_freezing_pt;
     }
 
     if(has_optional("rh_subcanopy")) {
-        Mdata.rh     =  face->face_data("rh_subcanopy")/100.;
+        Mdata.rh     =  (*face)["rh_subcanopy"_s]/100.;
     } else {
-        Mdata.rh     =  face->face_data("rh")/100.;
+        Mdata.rh     =  (*face)["rh"_s]/100.;
     }
 
 
-    Mdata.vw     =  face->face_data("U_2m_above_srf");
+    Mdata.vw     =  (*face)["U_2m_above_srf"_s];
 
     Mdata.vw_max = mio::IOUtils::nodata;// TODO: fix md(MeteoData::VW_MAX);
 
@@ -121,9 +121,9 @@ void Lehning_snowpack::run(mesh_elem &face)
 
 
     if(has_optional("iswr_subcanopy")) {
-        Mdata.iswr     =  std::max(0.0,face->face_data("iswr_subcanopy"));
+        Mdata.iswr     =  std::max(0.0,(*face)["iswr_subcanopy"_s]);
     } else {
-        Mdata.iswr     =  std::max(0.0,face->face_data("iswr"));
+        Mdata.iswr     =  std::max(0.0,(*face)["iswr"_s]);
     }
 
     // If  Snowpack, "SW_MODE" : "BOTH"  then rswr and iswr needs to be definined.
@@ -134,8 +134,8 @@ void Lehning_snowpack::run(mesh_elem &face)
 //    {
         //measured albedo in snowpack will be fed from an albedo model
         //in the config 'both' will enable this
-        Mdata.mAlbedo   =  face->face_data("snow_albedo");
-        Mdata.rswr      =  std::max(0.0,face->face_data("snow_albedo") * Mdata.iswr);
+        Mdata.mAlbedo   =  (*face)["snow_albedo"_s];
+        Mdata.rswr      =  std::max(0.0,(*face)["snow_albedo"_s] * Mdata.iswr);
 
 //    }
 //    else
@@ -146,9 +146,9 @@ void Lehning_snowpack::run(mesh_elem &face)
 
 
     if(has_optional("ilwr_subcanopy")) {
-        Mdata.ilwr     =  face->face_data("ilwr_subcanopy");
+        Mdata.ilwr     =  (*face)["ilwr_subcanopy"_s];
     } else {
-        Mdata.ilwr     =  face->face_data("ilwr");
+        Mdata.ilwr     =  (*face)["ilwr"_s];
     }
 
     Mdata.ea =  mio::Atmosphere::blkBody_Emissivity(Mdata.ilwr, Mdata.ta); //follows apline3d
@@ -160,11 +160,11 @@ void Lehning_snowpack::run(mesh_elem &face)
 
     // Define fraction rain and total precipitaiton (soild and liquid)
     if(has_optional("p_subcanopy")) {
-        Mdata.psum_ph = face->face_data("frac_precip_rain_subcanopy"); //  0 = snow, 1 = rain
-        Mdata.psum = face->face_data("p_subcanopy");
+        Mdata.psum_ph = (*face)["frac_precip_rain_subcanopy"_s]; //  0 = snow, 1 = rain
+        Mdata.psum = (*face)["p_subcanopy"_s];
     } else {
-        Mdata.psum_ph = face->face_data("frac_precip_rain"); //  0 = snow, 1 = rain
-        Mdata.psum = face->face_data("p");
+        Mdata.psum_ph = (*face)["frac_precip_rain"_s]; //  0 = snow, 1 = rain
+        Mdata.psum = (*face)["p"_s];
     }
 
     Mdata.rho_hn = 100;
@@ -182,12 +182,12 @@ void Lehning_snowpack::run(mesh_elem &face)
     Mdata.tss = data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
     //setting this to tss is inline with Alpine3d if there is no soil node. However, it might make more sense to use a const ground temp?
     if(has_optional("T_g"))
-        Mdata.ts0 = face->face_data("T_g") + 273.15;
+        Mdata.ts0 = (*face)["T_g"_s] + 273.15;
     else
         Mdata.ts0 =  const_T_g + 273.15; //Mdata.tss <- is in line with Alpine3D, but this makes no sense. So use a const temp.
 
     Mdata.hs = mio::IOUtils::nodata; //follows alpine3d
-    Mdata.elev      = face->face_data("solar_el")*mio::Cst::to_rad;
+    Mdata.elev      = (*face)["solar_el"_s]*mio::Cst::to_rad;
 
     data->cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
     data->meteo->compMeteo(Mdata,*(data->Xdata),false); // no canopy model
@@ -197,7 +197,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     if(has_optional("drift_mass"))
     {
 
-        double mass = face->face_data("drift_mass");
+        double mass = (*face)["drift_mass"_s];
         mass = is_nan(mass) ? 0 : mass;
 
         if(mass > 0)
@@ -241,7 +241,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
 
-    face->set_face_data("sublimation",surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION]);
+    (*face)["sublimation"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
 
     if(data->Xdata->swe > 0)
     {
@@ -254,23 +254,23 @@ void Lehning_snowpack::run(mesh_elem &face)
 
         bulk_T_s /= data->Xdata->getNumberOfElements();
 
-        face->set_face_data("T_s",bulk_T_s);
-        face->set_face_data("T_s_0",Mdata.tss);
-        face->set_face_data("n_nodes",data->Xdata->getNumberOfNodes());
-        face->set_face_data("n_elem",data->Xdata->getNumberOfElements());
-        face->set_face_data("H",surface_fluxes.qs);
-        face->set_face_data("E",surface_fluxes.ql);
+        (*face)["T_s"_s]=bulk_T_s;
+        (*face)["T_s_0"_s]=Mdata.tss;
+        (*face)["n_nodes"_s]=data->Xdata->getNumberOfNodes();
+        (*face)["n_elem"_s]=data->Xdata->getNumberOfElements();
+        (*face)["H"_s]=surface_fluxes.qs;
+        (*face)["E"_s]=surface_fluxes.ql;
 
 
-        face->set_face_data("G",surface_fluxes.qg0 == -999 ? 0 : surface_fluxes.qg0); //qg0 is the correct ground heatflux to match snowpack output. qg is just uninit
+        (*face)["G"_s]=surface_fluxes.qg0 == -999 ? 0 : surface_fluxes.qg0; //qg0 is the correct ground heatflux to match snowpack output. qg is just uninit
 
-        face->set_face_data("ilwr_out",-surface_fluxes.lw_out); //these are actually positive!
-        face->set_face_data("iswr_out",-surface_fluxes.sw_out);
-        face->set_face_data("R_n", surface_fluxes.lw_net + (surface_fluxes.sw_in-surface_fluxes.sw_out) );
-        face->set_face_data("dQ",surface_fluxes.dIntEnergy);
+        (*face)["ilwr_out"_s]=-surface_fluxes.lw_out; //these are actually positive!
+        (*face)["iswr_out"_s]=-surface_fluxes.sw_out;
+        (*face)["R_n"_s]= surface_fluxes.lw_net + (surface_fluxes.sw_in-surface_fluxes.sw_out );
+        (*face)["dQ"_s]=surface_fluxes.dIntEnergy;
 //        if(!has_optional("snow_albedo"))
 //        {
-            face->set_face_data("snow_albedo",data->Xdata->Albedo);  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
+            (*face)["snow_albedo"_s]=data->Xdata->Albedo;  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
 //        }
 
     } else{
@@ -279,23 +279,23 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
     //always write out 0 swe regardless of amount of swee
-    face->set_face_data("swe",data->Xdata->swe);
-    face->set_face_data("mass_snowpack_removed",data->Xdata->ErosionMass);
-    face->set_face_data("snowdepthavg",data->Xdata->cH - data->Xdata->Ground); // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
-    face->set_face_data("runoff",surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
-    face->set_face_data("evap",surface_fluxes.mass[SurfaceFluxes::MS_EVAPORATION]);
-//    face->set_face_data("sum_runoff",  face->face_data("sum_runoff") + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
+    (*face)["swe"_s]=data->Xdata->swe;
+    (*face)["mass_snowpack_removed"_s]=data->Xdata->ErosionMass;
+    (*face)["snowdepthavg"_s]=data->Xdata->cH - data->Xdata->Ground; // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
+    (*face)["runoff"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF];
+    (*face)["evap"_s]=surface_fluxes.mass[SurfaceFluxes::MS_EVAPORATION];
+//    (*face)["sum_runoff"_s]=  (*face["sum_runoff"_s] + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
     data->sum_subl +=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
-    face->set_face_data("sum_subl",   data->sum_subl );
+    (*face)["sum_subl"_s]=   data->sum_subl ;
 
 
-    face->set_face_data("MS_SWE",surface_fluxes.mass[SurfaceFluxes::MS_SWE]);
-    face->set_face_data("MS_WATER",surface_fluxes.mass[SurfaceFluxes::MS_WATER]);
-    face->set_face_data("MS_TOTALMASS",surface_fluxes.mass[SurfaceFluxes::MS_TOTALMASS]);
-    face->set_face_data("MS_SOIL_RUNOFF",surface_fluxes.mass[SurfaceFluxes::MS_SOIL_RUNOFF]);
+    (*face)["MS_SWE"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SWE];
+    (*face)["MS_WATER"_s]=surface_fluxes.mass[SurfaceFluxes::MS_WATER];
+    (*face)["MS_TOTALMASS"_s]=surface_fluxes.mass[SurfaceFluxes::MS_TOTALMASS];
+    (*face)["MS_SOIL_RUNOFF"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SOIL_RUNOFF];
 }
 
-void Lehning_snowpack::init(mesh domain)
+void Lehning_snowpack::init(mesh& domain)
 {
     const_T_g = cfg.get("const_T_g",-4.0);
 

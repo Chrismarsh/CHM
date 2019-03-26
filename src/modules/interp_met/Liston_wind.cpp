@@ -41,7 +41,7 @@ Liston_wind::Liston_wind(config_file cfg)
 }
 
 //Calculates the curvature required
-void Liston_wind::init(mesh domain)
+void Liston_wind::init(mesh& domain)
 {
 
     ys = cfg.get("ys",0.5);
@@ -152,7 +152,7 @@ void Liston_wind::init(mesh domain)
 }
 
 
-void Liston_wind::run(mesh domain)
+void Liston_wind::run(mesh& domain)
 {
 
 
@@ -255,14 +255,14 @@ void Liston_wind::run(mesh domain)
         }
 
         W = std::max(W,0.1);
-        face->set_face_data("U_R", W);
-        face->set_face_data("vw_dir", theta * 180.0 / M_PI);
+        (*face)["U_R"_s]= W;
+        (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
 
 
         Vector_2 v = math::gis::bearing_to_cartesian(theta* 180.0 / M_PI);
         Vector_3 v3(-v.x(),-v.y(), 0); //negate as direction it's blowing instead of where it is from!!
 
-        face->set_face_data("vw_dir_divergence",dirdiff* 180.0 / M_PI);
+        (*face)["vw_dir_divergence"_s]=dirdiff* 180.0 / M_PI;
         face->set_face_vector("wind_direction",v3);
 
     }
@@ -300,7 +300,7 @@ void Liston_wind::run(mesh domain)
 //                U[i][i] += 1.0 ;//+eps*Ej/V;
 //
 //            }
-//            b[i] = face->face_data("U_R");
+//            b[i] = (*face)["U_R"_s];
 //        }
 //    }
 //    viennacl::compressed_matrix<vcl_scalar_type>  vl_U(ntri, ntri);
@@ -326,7 +326,7 @@ void Liston_wind::run(mesh domain)
                 u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_R")));
         }
 
-        double new_u = face->face_data("U_R");
+        double new_u = (*face)["U_R"_s];
         if(u.size() > 0)
         {
             auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
@@ -339,8 +339,8 @@ void Liston_wind::run(mesh domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        face->set_face_data("U_R",face->get_module_data<lwinddata>(ID)->temp_u );
-//        face->set_face_data("U_R",x[i] );
+        (*face)["U_R"_s]=face->get_module_data<lwinddata>(ID)->temp_u;
+//        (*face)["U_R"_s]=x[i] ;
 
     }
 }

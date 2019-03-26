@@ -40,7 +40,7 @@ Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
 
 }
 
-void Marsh_shading_iswr::run(mesh domain)
+void Marsh_shading_iswr::run(mesh& domain)
 {
     //compute the rotation of each vertex
 
@@ -94,8 +94,8 @@ void Marsh_shading_iswr::run(mesh domain)
         double E = domain->face(i)->face_data("solar_el");
         if (E < 5)
         {
-            face->set_face_data("z_prime", 0); //unshadowed
-            face->set_face_data("shadow", 0);
+            (*face)["z_prime"_s]= 0; //unshadowed
+            (*face)["shadow"_s]= 0;
             continue;
         }
 

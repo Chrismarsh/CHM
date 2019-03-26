@@ -39,7 +39,7 @@ uniform_wind::uniform_wind(config_file cfg)
 }
 
 //Calculates the curvature required
-void uniform_wind::init(mesh domain)
+void uniform_wind::init(mesh& domain)
 {
 
     #pragma omp parallel for
@@ -54,7 +54,7 @@ void uniform_wind::init(mesh domain)
 }
 
 
-void uniform_wind::run(mesh domain)
+void uniform_wind::run(mesh& domain)
 {
 
 
@@ -112,8 +112,8 @@ void uniform_wind::run(mesh domain)
         double W= face->get_module_data<lwinddata>(ID)->W;
 
         W = std::max(W,0.1);
-        face->set_face_data("U_R", W);
-        face->set_face_data("vw_dir", corrected_theta * 180.0 / M_PI);
+        (*face)["U_R"_s]= W;
+        (*face)["vw_dir"_s]= corrected_theta * 180.0 / M_PI;
 
         Vector_2 v_corr = math::gis::bearing_to_cartesian(corrected_theta * 180.0 / M_PI);
         Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!

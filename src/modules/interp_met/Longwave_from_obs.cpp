@@ -40,7 +40,7 @@ Longwave_from_obs::~Longwave_from_obs()
 {
 
 }
-void Longwave_from_obs::init(mesh domain)
+void Longwave_from_obs::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -73,8 +73,8 @@ void Longwave_from_obs::run(mesh_elem& face)
     //raise value back up to the face's elevation from sea level
     value =  value + lapse_rate * (0.0 - face->get_z());
 
-    face->set_face_data("ilwr",value);
+    (*face)["ilwr"_s]=value;
 
-    //face->set_face_data("lw_lapse_rate",lapse_rate);
+    //(*face)["lw_lapse_rate"_s]=lapse_rate;
 
 }

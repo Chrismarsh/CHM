@@ -124,7 +124,7 @@ PBSM3D::PBSM3D(config_file cfg)
     provides("sum_drift");
 }
 
-void PBSM3D::init(mesh domain)
+void PBSM3D::init(mesh& domain)
 {
     nLayer = cfg.get("nLayer",5);
 
@@ -312,7 +312,7 @@ void PBSM3D::init(mesh domain)
 
 }
 
-void PBSM3D::run(mesh domain)
+void PBSM3D::run(mesh& domain)
 {
     //needed for linear system offsets
     size_t ntri = domain->size_faces();
@@ -368,24 +368,24 @@ void PBSM3D::run(mesh domain)
 
         double fetch = 1000;
         if(use_exp_fetch || use_tanh_fetch)
-            fetch = face->face_data("fetch");
+            fetch = (*face)["fetch"_s];
 
         //get wind from the face
-        double uref = face->face_data("U_R");
-        double snow_depth = face->face_data("snowdepthavg");
+        double uref = (*face)["U_R"_s];
+        double snow_depth = (*face)["snowdepthavg"_s];
         snow_depth = is_nan(snow_depth) ? 0: snow_depth;
 
         double u10 = Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, 10, snow_depth); //used by the pom probability forumuation, so don't hide behide debug output
-        if(debug_output) face->set_face_data("U_10m",u10);
+        if(debug_output) (*face)["U_10m"_s]=u10;
 
 
-        double swe = face->face_data("swe"); // mm   -->    kg/m^2
+        double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
         swe = is_nan(swe) ? 0 : swe; // handle the first timestep where swe won't have been updated if we override the module order
 
         //height difference between snowcover and veg
         double height_diff = std::max(0.0,d->CanopyHeight - snow_depth);
         if(!enable_veg) height_diff = 0;
-        if(debug_output) face->set_face_data("height_diff",height_diff);
+        if(debug_output) (*face)["height_diff"_s]=height_diff;
 
         double ustar = 1.3; //placeholder
 
@@ -412,9 +412,9 @@ void PBSM3D::run(mesh domain)
         //threshold friction velocity. Compute here as it's used below as well
         //Pomeroy and Li, 2000
         // Eqn 7
-        double T = face->face_data("t");
+        double T = (*face)["t"_s];
         double u_star_saltation_threshold = 0.35+(1.0/150.0)*T+(1.0/8200.0)*T*T; //saltation threshold m/s
-        if(debug_output) face->set_face_data("u*_th",u_star_saltation_threshold);
+        if(debug_output) (*face)["u*_th"_s]=u_star_saltation_threshold;
 
         // we don't have too high of veg. Check for blowing snow
         if(height_diff <= cutoff && swe >= min_mass_for_trans && !is_water(face))
@@ -428,7 +428,7 @@ void PBSM3D::run(mesh domain)
                 lambda = N * dv * height_diff; // Pomeroy formulation
 
 
-            if(debug_output) face->set_face_data("lambda",lambda);
+            if(debug_output) (*face)["lambda"_s]=lambda;
 
             // Calculate the new value of z0 to take into account partially filled vegetation and the momentum sink
             auto ustarFn = [&](double ustar) -> double {
@@ -480,8 +480,8 @@ void PBSM3D::run(mesh domain)
         //sanity checks
         d->z0 = std::max(Snow::Z0_SNOW,d->z0);
         ustar = std::max(0.01,ustar);
-        if(debug_output) face->set_face_data("ustar",ustar);
-        if(debug_output) face->set_face_data("z0",d->z0);
+        if(debug_output) (*face)["ustar"_s]=ustar;
+        if(debug_output) (*face)["z0"_s]=d->z0;
 
 
         //depth of saltation layer
@@ -490,14 +490,14 @@ void PBSM3D::run(mesh domain)
             hs = 0.08436*pow(ustar,1.27); //pomeroy
 
         d->hs = hs;
-        if(debug_output) face->set_face_data("hs",hs);
-        if(debug_output) face->set_face_data("is_drifting",0);
-        if(debug_output) face->set_face_data("Qsusp_pbsm",0); //for santiy checks against pbsm
+        if(debug_output) (*face)["hs"_s]=hs;
+        if(debug_output) (*face)["is_drifting"_s]=0;
+        if(debug_output) (*face)["Qsusp_pbsm"_s]=0; //for santiy checks against pbsm
 
 
         double Qsalt = 0;
         double c_salt = 0;
-        double t = face->face_data("t")+273.15;
+        double t = (*face)["t"_s]+273.15;
 
         // Check if we can blow snow in this triagnle
         // Are we above saltation threshold?
@@ -508,16 +508,16 @@ void PBSM3D::run(mesh domain)
 
             double rho_f =  mio::Atmosphere::stdDryAirDensity(face->get_z(),t); // air density kg/m^3, comment in mio is wrong.1.225;
 
-            if(debug_output) face->set_face_data("blowingsnow_probability",0); // default to 0%
+            if(debug_output) (*face)["blowingsnow_probability"_s]=0; // default to 0%
 
 
             if(debug_output)
             {
                 double pbsm_qsusp = pow(u10,4.13)/674100.0;
-                face->set_face_data("Qsusp_pbsm",pbsm_qsusp);
+                (*face)["Qsusp_pbsm"_s]=pbsm_qsusp;
             }
 
-            if(debug_output) face->set_face_data("is_drifting",1);
+            if(debug_output) (*face)["is_drifting"_s]=1;
 
             //Pomeroy and Li 2000, eqn 8
             double Beta =  202.0; //170.0;
@@ -529,7 +529,7 @@ void PBSM3D::run(mesh domain)
             double tau_n_ratio = (m*Beta*lambda) / (1.0 + m* Beta*lambda);
 
 
-            if(debug_output) face->set_face_data("tau_n_ratio",tau_n_ratio);
+            if(debug_output) (*face)["tau_n_ratio"_s]=tau_n_ratio;
 
             //Pomeroy 1992, eqn 12, see note above for ustar_n calc, but ustar_n is correctly squared already
             c_salt = rho_f / (3.29 * ustar) * (1.0 - tau_n_ratio -  (u_star_saltation_threshold*u_star_saltation_threshold) / (ustar * ustar));
@@ -542,7 +542,7 @@ void PBSM3D::run(mesh domain)
                 d->saltation = false;
             }
 
-            if(debug_output) face->set_face_data("c_salt_fetch_big", c_salt);
+            if(debug_output) (*face)["c_salt_fetch_big"_s]= c_salt;
 
 
             //exp decay of Liston, eq 10
@@ -565,11 +565,11 @@ void PBSM3D::run(mesh domain)
             {
                 // Essery, Li, and Pomeroy 1999
                 //Probability of blowing snow
-                double A = face->face_data("p_snow_hours"); // hours since last snowfall
+                double A = (*face)["p_snow_hours"_s]; // hours since last snowfall
                 double u_mean = 11.2 + 0.365*T + 0.00706*T*T+0.9*log(A); // eqn 10  T -> air temp, degC
                 double delta = 0.145*T + 0.00196*T*T+4.3;  //eqn 11
                 double Pu10 = 1.0/(1.0 + exp( (sqrt(M_PI)* (u_mean - u10 )) / delta )); //eqn 12
-                face->set_face_data("blowingsnow_probability",Pu10);
+                (*face)["blowingsnow_probability"_s]=Pu10;
 
                 //decrease the saltation by the probability amount
                 c_salt *= Pu10;
@@ -580,7 +580,7 @@ void PBSM3D::run(mesh domain)
             // kg/(m*s)
             Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
 
-            // face->set_face_data("saltation_mass",c_salt*hs * face->get_area());
+            // (*face)["saltation_mass"_s]=c_salt*hs * face->get_area();
 
             //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
             //in the triangle. I
@@ -598,7 +598,7 @@ void PBSM3D::run(mesh domain)
 //            //https://www.wolframalpha.com/input/?i=(m*(kg%2Fm%5E3*(m%2Fs)*m)%2Fm%5E2)*s
 //            salt = std::fabs(salt) *  global_param->dt(); // ->kg/m^2
 //
-            // face->set_face_data("salt_limit",salt);
+            // (*face)["salt_limit"_s]=salt;
 //
 //            //Figure out the max we can transport, ie total mass in cell
 //            if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
@@ -630,11 +630,11 @@ void PBSM3D::run(mesh domain)
 //        }
 
 
-        if(debug_output) face->set_face_data("csalt", c_salt);
+        if(debug_output) (*face)["csalt"_s]= c_salt;
 
-        face->set_face_data("Qsalt", Qsalt);
+        (*face)["Qsalt"_s]= Qsalt;
 
-       double rh = face->face_data("rh")/100.;
+       double rh = (*face)["rh"_s]/100.;
        double es = mio::Atmosphere::saturatedVapourPressure(t);
        double ea = rh * es / 1000.; // ea needs to be in kpa
 
@@ -688,7 +688,7 @@ void PBSM3D::run(mesh domain)
             // eqn 18, mean particle radius
             // This is 'r_r' in Pomeroy and Gray 1995, eqn 50
             double rm = 4.6e-5 * pow(cz,-0.258);
-            if(debug_output) face->set_face_data("rm"+std::to_string(z), rm);
+            if(debug_output) (*face)["rm"+std::to_string(z)]= rm;
 
             //calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
             // 52, 53 P&G 1995
@@ -697,7 +697,7 @@ void PBSM3D::run(mesh domain)
 
             // mean radius of mean mass particle
             double r_z = pow((3.0 * mm) / (4*M_PI*rho_p),0.33); // 50 in p&g 1995
-            if(debug_output) face->set_face_data("mm",mm);
+            if(debug_output) (*face)["mm"_s]=mm;
 
 
             double xrz = 0.005 * pow(u_z,1.36);  //eqn 16
@@ -708,7 +708,7 @@ void PBSM3D::run(mesh domain)
                omega = 1.1e7 * pow(r_z,1.8); //eqn 15 settling velocity
             }
     
-            if(debug_output) face->set_face_data("settling_velocity"+std::to_string(z), omega);
+            if(debug_output) (*face)["settling_velocity"+std::to_string(z)]= omega;
             double Vr = omega + 3.0*xrz*cos(M_PI/4.0); //eqn 14
 
             double v = 1.88e-5; //kinematic viscosity of air, below eqn 13 in Pomeroy 1993
@@ -783,12 +783,12 @@ void PBSM3D::run(mesh domain)
                 // eqn 11 in PGL 1993
                 dmdtz = Sh*rho*D*(6.283185308*Nu*R*rm*sigma*t*t*lambda_t-L*M*Qr+Qr*R*t)/(D*L*Sh*(L*M-R*t)*rho+lambda_t*t*t*Nu*R);
             }
-            if (debug_output) face->set_face_data("dm/dt", dmdtz);
+            if (debug_output) (*face)["dm/dt"_s]= dmdtz;
 
-            if(debug_output) face->set_face_data("mm",mm);
+            if(debug_output) (*face)["mm"_s]=mm;
             double csubl = dmdtz/mm; //EQN 21 POMEROY 1993 (PBSM)
 
-            if(debug_output) face->set_face_data("csubl"+std::to_string(z),dmdtz);
+            if(debug_output) (*face)["csubl"+std::to_string(z)]=dmdtz;
 
 
             //eddy diffusivity (m^2/s)
@@ -828,10 +828,10 @@ void PBSM3D::run(mesh domain)
             }
             //Li and Pomeroy 2000
             double l = PhysConst::kappa*(cz+d->z0)*l__max/(PhysConst::kappa*(cz+d->z0)+l__max);
-            if(debug_output) face->set_face_data("l",l);
+            if(debug_output) (*face)["l"_s]=l;
 
             double w = omega; //settling_velocity;
-            if(debug_output) face->set_face_data("w",w);
+            if(debug_output) (*face)["w"_s]=w;
 
             double diffusion_coeff = snow_diffusion_const; //snow_diffusion_const is a shared param so need a seperate copy here we can overwrite
             if (rouault_diffusion_coeff)
@@ -840,7 +840,7 @@ void PBSM3D::run(mesh domain)
                 double dc = 1.0 / (1.0 + (c2 * w * w) / (1.56 * ustar * ustar));
                 diffusion_coeff = dc;     //nope, snow_diffusion_const is shared, use a new
             }
-            if(debug_output) face->set_face_data("Km_coeff", diffusion_coeff);
+            if(debug_output) (*face)["Km_coeff"_s]= diffusion_coeff;
 
              //snow_diffusion_const is pretty much a calibration constant. At 1 it seems to over predict transports.
              // with pomeroy fall velocity, 0.3 gives good agreement w/ published Qsusp values. Low value compensates for low fall velocity
@@ -848,14 +848,14 @@ void PBSM3D::run(mesh domain)
 
 //            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
 
-            if(debug_output) face->set_face_data("K"+std::to_string(z), K[3]);
+            if(debug_output) (*face)["K"+std::to_string(z)]= K[3];
             //top
             alpha[3] = d->A[3] * K[3] / v_edge_height;
             //bottom
             alpha[4] = d->A[4] * K[4] / v_edge_height;
 
 
-            double phi = face->face_data("vw_dir"); //wind direction
+            double phi = (*face)["vw_dir"_s]; //wind direction
             Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
 
             //setup wind vector
@@ -870,7 +870,7 @@ void PBSM3D::run(mesh domain)
             // now we can add in the settling_velocity
             uvw(2) = -w;
 
-            if(debug_output) face->set_face_data("u_z"+ std::to_string(z),u_z);
+            if(debug_output) (*face)["u_z"+ std::to_string(z)]=u_z;
 
             //negate as direction it's blowing instead of where it is from!!
             Vector_3 v3(-uvw(0),-uvw(1), uvw(2));
@@ -896,7 +896,7 @@ void PBSM3D::run(mesh domain)
             //so / by 5 for csubl and V so it's not 5x counted.
             csubl /= 5.0;
             V/=5.0;
-            if(debug_output) face->set_face_data("csubl"+std::to_string(z),csubl);
+            if(debug_output) (*face)["csubl"+std::to_string(z)]=csubl;
             if(!do_sublimation)
             {
                 csubl = 0.0;
@@ -987,10 +987,10 @@ void PBSM3D::run(mesh domain)
             } else if (z == nLayer - 1)// top z layer
             {
                 //(kg/m^2/s)/(m/s)  ---->  kg/m^3
-                double cprecip = 0;//face->face_data("p_snow")/global_param->dt()/w;
+                double cprecip = 0;//(*face)["p_snow"_s]/global_param->dt()/w;
 
-                // face->set_face_data("p_snow",0);
-                // face->set_face_data("p",0);
+                // (*face)["p_snow"_s]=0;
+                // (*face)["p"_s]=0;
 
                 if (udotm[3] > 0)
                 {
@@ -1126,17 +1126,17 @@ void PBSM3D::run(mesh domain)
 
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
-            if(debug_output) face->set_face_data("c"+std::to_string(z),c);
+            if(debug_output) (*face)["c"+std::to_string(z)]=c;
 
-            if(debug_output) Qsubl+=face->face_data("csubl"+std::to_string(z))* c*v_edge_height;
+            if(debug_output) Qsubl+=(*face)["csubl"+std::to_string(z)]* c*v_edge_height;
 
-            if(debug_output) d->sum_subl += face->face_data("csubl"+std::to_string(z)) * global_param->dt()*c;
+            if(debug_output) d->sum_subl += (*face)["csubl"+std::to_string(z)]* global_param->dt()*c;
 
         }
-         face->set_face_data("Qsusp",Qsusp);
-        if(debug_output) face->set_face_data("Qsubl",Qsubl);
+         (*face)["Qsusp"_s]=Qsusp;
+        if(debug_output) (*face)["Qsubl"_s]=Qsubl;
 
-        face->set_face_data("sum_subl",d->sum_subl);
+        (*face)["sum_subl"_s]=d->sum_subl;
     }
 
     // Setup the matrix to be used to the solution of the gradient of the suspension flux
@@ -1161,7 +1161,7 @@ void PBSM3D::run(mesh domain)
         auto d = face->get_module_data<data>(ID);
         auto &m = d->m;
 
-        double phi = face->face_data("vw_dir");
+        double phi = (*face)["vw_dir"_s];
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
 
         //setup wind vector
@@ -1199,8 +1199,8 @@ void PBSM3D::run(mesh domain)
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
-                auto Qtj = neigh->face_data("Qsusp") + face->face_data("Qsusp");
-                auto Qsj = neigh->face_data("Qsalt") + face->face_data("Qsalt");
+                auto Qtj = neigh->face_data("Qsusp") + (*face)["Qsusp"_s];
+                auto Qsj = neigh->face_data("Qsalt") + (*face)["Qsalt"_s];
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
 
                 dx[j] = math::gis::distance(face->center(), neigh->center());
@@ -1216,8 +1216,8 @@ void PBSM3D::run(mesh domain)
 
             } else
             {
-                auto Qtj = 2. * face->face_data("Qsusp"); // const flux across, 0 -> drifts!!!
-                auto Qsj = 2. * face->face_data("Qsalt");
+                auto Qtj = 2. * (*face)["Qsusp"_s]; // const flux across, 0 -> drifts!!!
+                auto Qsj = 2. * (*face)["Qsalt"_s];
                 double Qt = Qtj / 2.0 + Qsj / 2.0;
                 A_elements[i_i_off] += V;
                 bb[i] += -E[j] * Qt * udotm[j];
@@ -1277,10 +1277,10 @@ void PBSM3D::run(mesh domain)
 
         mass = qdep * global_param->dt();// kg/m^2*s *dt -> kg/m^2
 
-        face->set_face_data("drift_mass", mass);
+        (*face)["drift_mass"_s]= mass;
         d->sum_drift += mass;
 
-        face->set_face_data("sum_drift", d->sum_drift);
+        (*face)["sum_drift"_s]= d->sum_drift;
 
 
     }

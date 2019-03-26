@@ -144,7 +144,7 @@ public:
     * \param face The terrain element (triangle) to be worked upon for an element parallel domain
     * \param global_param A pointer to the shared global paramter space with domain-wide paramters
     */
-    virtual void run(elem&&face)
+    virtual void run(mesh_elem&face)
     {
     };
 
@@ -283,11 +283,11 @@ public:
      * If you want to skip evaluating this current face, call this to set all provides outputs to nan
      * E.g., called if the is_water, is_glacier, etc is true
      */
-    void set_all_nan_on_skip(elem& face)
+    void set_all_nan_on_skip(mesh_elem& face)
     {
         for(auto& itr: *_provides)
         {
-            face[itr]=-9999.;
+            (*face)[itr]=-9999.;
         }
     }
     /**
@@ -308,25 +308,25 @@ public:
         return false;
     }
 
-    bool is_water(elem& face)
+    bool is_water(mesh_elem& face)
     {
         bool is = false;
 
-        if(face.has_parameter("landcover"))
+        if(face->has_parameter("landcover"))
         {
-            int LC = face.get_parameter("landcover");
+            int LC = face->get_parameter("landcover");
             is = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".is_water",false);
         }
         return is;
     }
 
-    bool is_glacier(elem& face)
+    bool is_glacier(mesh_elem& face)
     {
         bool is = false;
 
-        if(face.has_parameter("landcover"))
+        if(face->has_parameter("landcover"))
         {
-            int LC = face.get_parameter("landcover");
+            int LC = face->get_parameter("landcover");
             is = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".is_glacier",false);
         }
         return is;

@@ -63,8 +63,8 @@ REGISTER_MODULE_HPP(Liston_wind);
 public:
     Liston_wind(config_file cfg);
     ~Liston_wind();
-    virtual void run(mesh domain);
-    virtual void init(mesh domain);
+    virtual void run(mesh& domain);
+    virtual void init(mesh& domain);
     double ys;
     double yc;
     class lwinddata : public face_info

@@ -37,7 +37,7 @@ public:
     Dodson_NSA_ta(config_file cfg);
     ~Dodson_NSA_ta();
     void run(mesh_elem &face);
-    virtual void init(mesh domain);
+    virtual void init(mesh& domain);
     struct data : public face_info
     {
         interpolation interp;

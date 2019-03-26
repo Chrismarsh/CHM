@@ -39,7 +39,7 @@ Thornton_p::Thornton_p(config_file cfg)
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
-void Thornton_p::init(mesh domain)
+void Thornton_p::init(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -93,10 +93,10 @@ void Thornton_p::run(mesh_elem& face)
     }
 
     P_fin =  std::max(0.0,P_fin);
-    face->set_face_data("p", P_fin);
+    (*face)["p"_s]= P_fin;
 
     P = std::max(0.0,P);
-    face->set_face_data("p_no_slope", P);
+    (*face)["p_no_slope"_s]= P;
 
 }
 

@@ -58,7 +58,7 @@ void scale_wind_vert::point_scale(mesh_elem &face)
 //    }
 
     // Get meteorological data for current face
-    double U_R = face->face_data("U_R"); // Wind speed at reference height Z_R (m/s)
+    double U_R = (*face)["U_R"_s]; // Wind speed at reference height Z_R (m/s)
 
     // Get height info
     double Z_R = Atmosphere::Z_U_R; // Reference wind speed height [m] = 50.0 m
@@ -75,7 +75,7 @@ void scale_wind_vert::point_scale(mesh_elem &face)
     //double Z_CanMid       = (Z_CanTop+Z_CanBot)/2.0; // Mid height of canopy
     double snowdepthavg = 0;
     if (has_optional("snowdepthavg"))
-        snowdepthavg = face->face_data("snowdepthavg");
+        snowdepthavg = (*face)["snowdepthavg"_s];
 
     // Snow depth check
     if (is_nan(snowdepthavg)) // If it is not defined
@@ -90,7 +90,7 @@ void scale_wind_vert::point_scale(mesh_elem &face)
     // This is outside of log_scale_wind()'s range, so make assumption that wind is constant above U_R
     if (Z_2m_above_srf >= Z_R)
     {
-        face->set_face_data("U_2m_above_srf", U_R);
+        (*face)["U_2m_above_srf"_s]= U_R;
         return;
     }
 
@@ -141,11 +141,11 @@ void scale_wind_vert::point_scale(mesh_elem &face)
 
     // Check that U_2m_above_srf is not too small for turbulent parameterizations (should move check there)
     U_2m_above_srf = std::max(0.1, U_2m_above_srf);
-    face->set_face_data("U_2m_above_srf", U_2m_above_srf);
+    (*face)["U_2m_above_srf"_s]= U_2m_above_srf;
 
 };
 
-void scale_wind_vert::init(mesh domain)
+void scale_wind_vert::init(mesh& domain)
 {
     //since we can optionally run this module in point or domain mode, we need to turn back on the domain parallel flag at this point
     if(!global_param->is_point_mode())
@@ -168,7 +168,7 @@ void scale_wind_vert::run(mesh_elem &face)
     point_scale(face);
 }
 
-void scale_wind_vert::run(mesh domain)
+void scale_wind_vert::run(mesh& domain)
 {
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -200,7 +200,7 @@ void scale_wind_vert::run(mesh domain)
         }
         else
         {
-            face->get_module_data<d>(ID)->temp_u = std::max(0.1,face->face_data("U_2m_above_srf"));
+            face->get_module_data<d>(ID)->temp_u = std::max(0.1,(*face)["U_2m_above_srf"_s]);
         }
 
     }
@@ -209,7 +209,7 @@ void scale_wind_vert::run(mesh domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        face->set_face_data("U_2m_above_srf",face->get_module_data<d>(ID)->temp_u );
+        (*face)["U_2m_above_srf"_s]=face->get_module_data<d>(ID)->temp_u ;
     }
 
 }

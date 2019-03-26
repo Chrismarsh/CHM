@@ -45,7 +45,7 @@ public:
     Richard_albedo(config_file cfg);
     ~Richard_albedo();
     void run(mesh_elem& face);
-    void init(mesh domain);
+    void init(mesh& domain);
     void checkpoint(mesh domain,  netcdf& chkpt);
     void load_checkpoint(mesh domain,  netcdf& chkpt);
 
