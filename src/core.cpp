@@ -1216,8 +1216,8 @@ void core::init(int argc, char **argv)
 
     _log_sink->set_formatter
             (
-                    expr::format("%1% %2% [%3%]: %4%")
-                    % expr::attr<boost::posix_time::ptime>("TimeStamp")
+                    expr::format("%1% [%2%]: %3%")
+//                    % expr::attr<boost::posix_time::ptime>("TimeStamp")
                     % expr::format_named_scope("Scope",
                                                keywords::format = "%n:%l",
                                                keywords::iteration = expr::reverse,
@@ -1229,7 +1229,7 @@ void core::init(int argc, char **argv)
             severity >= verbose
     );
 
-    logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
+//    logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
     logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
 
 
