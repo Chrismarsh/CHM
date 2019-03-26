@@ -127,13 +127,13 @@ public:
      * @param domain
      * @param data
      */
-    virtual void checkpoint(mesh domain, netcdf& chkpt)
+    virtual void checkpoint(mesh& domain, netcdf& chkpt)
     {
 
       //TODO: Add default check for the assumption that module does not support serialization
     };
 
-    virtual void load_checkpoint(mesh domain, netcdf& chkpt)
+    virtual void load_checkpoint(mesh& domain, netcdf& chkpt)
     {
 
         //TODO: Add default check for the assumption that module does not support serialization
@@ -144,7 +144,7 @@ public:
     * \param face The terrain element (triangle) to be worked upon for an element parallel domain
     * \param global_param A pointer to the shared global paramter space with domain-wide paramters
     */
-    virtual void run(mesh_elem &face)
+    virtual void run(elem&&face)
     {
     };
 
@@ -153,7 +153,7 @@ public:
      * \param domain The entier terrain mesh
      * \param global_parama A pointer to the shared global paramter space with domain-wide paramters
      */
-    virtual void run(mesh domain)
+    virtual void run(mesh& domain)
     {
     };
 
@@ -161,7 +161,7 @@ public:
      * Optional function to run after the dependency constructor call, but before the run function is called. Used to perform any initalization.
      * \param domain The entire terrain mesh
      */
-    virtual void init(mesh domain)
+    virtual void init(mesh& domain)
     {
 
     };
@@ -186,7 +186,7 @@ public:
     /**
      * Set a variable that this module provides
      */
-    void provides(std::string variable)
+    void provides(const std::string& variable)
     {
         if(variable.find_first_of("\t ") != std::string::npos)
             BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + variable +" has a space. This is not allowed."));
@@ -205,7 +205,7 @@ public:
     /**
     * Modules we conflict with and absolutely cannot run alongside. Use sparingly.
     */
-    void conflicts(std::string variable)
+    void conflicts(const std::string& variable)
     {
         if(variable.find_first_of("\t ") != std::string::npos)
             BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + variable +" has a space. This is not allowed."));
@@ -231,7 +231,7 @@ public:
     /**
      * Set a variable, from another module, that this module depends upon
      */
-    void depends(std::string variable)
+    void depends(const std::string& variable)
     {
         _depends->push_back(variable);
     }
@@ -247,7 +247,7 @@ public:
     /**
      * Set a variable, from a met file, that this module depends upon
      */
-    void depends_from_met(std::string variable)
+    void depends_from_met(const std::string& variable)
     {
         _depends_from_met->push_back(variable);
     }
@@ -256,7 +256,7 @@ public:
      * Set an optional (not required) variable, from another module, that this module depends upon.
      *
      */
-    void optional(std::string variable)
+    void optional(const std::string& variable)
     {
         _optional->push_back(variable);
         _optional_found.insert( std::pair<std::string,bool>(variable,false));
@@ -265,7 +265,7 @@ public:
     /**
      * Checks if an optional variable was found
      */
-    bool has_optional(std::string variable)
+    bool has_optional(const std::string& variable)
     {
         auto it = _optional_found.find(variable);
 
@@ -283,22 +283,22 @@ public:
      * If you want to skip evaluating this current face, call this to set all provides outputs to nan
      * E.g., called if the is_water, is_glacier, etc is true
      */
-    void set_all_nan_on_skip(mesh_elem& face)
+    void set_all_nan_on_skip(elem& face)
     {
         for(auto& itr: *_provides)
         {
-            face->set_face_data(itr,-9999.);
+            face[itr]=-9999.;
         }
     }
     /**
      * Set that an optional variable was found
      */
-    void set_optional_found(std::string variable)
+    void set_optional_found(const std::string& variable)
     {
         _optional_found[variable]=true;
     }
 
-    bool is_nan(double variable)
+    bool is_nan(const double& variable)
     {
         if( std::fabs(variable - -9999.0) < 1e-5)
             return true;
@@ -308,25 +308,25 @@ public:
         return false;
     }
 
-    bool is_water(mesh_elem face)
+    bool is_water(elem& face)
     {
         bool is = false;
 
-        if(face->has_parameter("landcover"))
+        if(face.has_parameter("landcover"))
         {
-            int LC = face->get_parameter("landcover");
+            int LC = face.get_parameter("landcover");
             is = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".is_water",false);
         }
         return is;
     }
 
-    bool is_glacier(mesh_elem face)
+    bool is_glacier(elem& face)
     {
         bool is = false;
 
-        if(face->has_parameter("landcover"))
+        if(face.has_parameter("landcover"))
         {
-            int LC = face->get_parameter("landcover");
+            int LC = face.get_parameter("landcover");
             is = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".is_glacier",false);
         }
         return is;

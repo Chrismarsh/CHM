@@ -164,6 +164,7 @@ set (EXT_HEADER_FILES
 		${SPARSEHASH_INCLUDE_DIRS}
 		${EIGEN3_INCLUDE_DIR}
 		${NETCDF_INCLUDE_DIRS}
+		/home/chris/Documents/PhD/code/xxHash-dev/cmake_unofficial/install/include/
 		CACHE INTERNAL "" FORCE
     )
 
@@ -184,6 +185,7 @@ set( LIB_FILES
 		${OPENCL_LIBRARIES}
 		${Tcmalloc_LIBRARY}
 		${PROJ4_LIBRARY}
+		/home/chris/Documents/PhD/code/xxHash-dev/cmake_unofficial/install/lib64/libxxhash.so
 		CACHE INTERNAL "" FORCE
 )
 

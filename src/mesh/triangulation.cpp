@@ -596,7 +596,7 @@ void triangulation::partition_mesh()
 #else // do not USE_MPI
 
 #pragma omp parallel for
-  for(int i=0;i<total_num_faces;++i) {
+  for(size_t i=0;i<total_num_faces;++i) {
     _faces.at(i)->_is_ghost = false;
   }
 

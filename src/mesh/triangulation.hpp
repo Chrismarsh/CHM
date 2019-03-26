@@ -54,6 +54,8 @@ inline int omp_get_max_threads() { return 1;}
 #endif
 
 #include "utility/BooPHF.h"
+#define XXH_STATIC_LINKING_ONLY
+#include <xxhash.h>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
@@ -324,6 +326,8 @@ public:
     */
     double face_data(const std::string& variable);
 
+    double& operator[](const uint64_t& variable);
+    double& operator[](const std::string& variable);
     /**
      * Returns the face vector for a specified variable
      * @param variable
@@ -509,8 +513,19 @@ private:
     typedef std::unordered_map<std::string,double> face_param_hashmap;
     typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
 #endif
-    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
-    typedef boomphf::mphf<  u_int64_t, hasher_t  > boophf_t;
+//    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
+    template <typename Item> class xxhashFunctor
+    {
+    public:
+        uint64_t operator ()  (const Item& key, uint64_t seed=0xAAAAAAAA55555555ULL) const
+        {
+            return XXH3_64bits_withSeed(&key, sizeof(Item), seed);
+        }
+
+    };
+
+    typedef xxhashFunctor<u_int64_t> hasher_t;
+    typedef boomphf::mphf< u_int64_t, hasher_t  > boophf_t;
 
     boophf_t * bphf;
     std::vector<var> _variables;
@@ -1365,6 +1380,21 @@ void face<Gt, Fb>::set_face_data(const std::string& variable, double data)
 //    ret->second=data;
 
 //     _itr->set(variable, data);
+}
+
+template < class Gt, class Fb>
+double& face<Gt, Fb>::operator[](const uint64_t& hash)
+{
+    uint64_t  idx = bphf->lookup(hash);
+    return _variables[idx].value;
+}
+
+template < class Gt, class Fb>
+double& face<Gt, Fb>::operator[](const std::string& variable)
+{
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    uint64_t  idx = bphf->lookup(hash);
+    return _variables[idx].value;
 }
 
 template < class Gt, class Fb>
