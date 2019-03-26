@@ -96,4 +96,9 @@ private:
     }
 };
 
+// compile time hash of strings
+constexpr uint64_t operator"" _s(const char* s, std::size_t len)
+{
+    return xxh64::hash (s, len, 2654435761U);
+}
 #endif /* !defined XXH64_HPP */
