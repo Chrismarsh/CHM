@@ -298,13 +298,6 @@ public:
     */
     bool intersects(Face_handle fh);
 
-    /**
-    * Sets the face data, for the given variable, at the current timestep
-    * \param variable Variable to assign the data to
-    * \param data Data
-    */
-    void set_face_data(const std::string& variable, double data);
-
     bool has_vegetation();
 
     double veg_attribute(const std::string &variable);
@@ -318,13 +311,6 @@ public:
      * @param v
      */
     void set_face_vector(const std::string& variable, Vector_3 v);
-
-    /**
-    * Returns the face data
-    * \param variable  variable being queried
-    * \return  this timesteps value for the given variable
-    */
-    double face_data(const std::string& variable);
 
     double& operator[](const uint64_t& variable);
     double& operator[](const std::string& variable);
@@ -765,7 +751,6 @@ public:
     */
 	void write_vtu(std::string fname);
 
-    void write_vtp(std::string file_name);
 
 	/**
 	 * Returns true if this is a geogrphic mesh
@@ -1374,17 +1359,17 @@ bool face<Gt, Fb>::has(const std::string& variable)
     return false;
 };
 
-template < class Gt, class Fb>
-void face<Gt, Fb>::set_face_data(const std::string& variable, double data)
-{
-    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-    uint64_t  idx = bphf->lookup(hash);
-    _variables[idx].value=data;
-//    auto ret = _variables.find(hash);
-//    ret->second=data;
-
-//     _itr->set(variable, data);
-}
+//template < class Gt, class Fb>
+//void face<Gt, Fb>::set_face_data(const std::string& variable, double data)
+//{
+//    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+//    uint64_t  idx = bphf->lookup(hash);
+//    _variables[idx].value=data;
+////    auto ret = _variables.find(hash);
+////    ret->second=data;
+//
+////     _itr->set(variable, data);
+//}
 
 template < class Gt, class Fb>
 double& face<Gt, Fb>::operator[](const uint64_t& hash)
@@ -1400,16 +1385,16 @@ double& face<Gt, Fb>::operator[](const std::string& variable)
     uint64_t  idx = bphf->lookup(hash);
     return _variables[idx].value;
 }
-
-template < class Gt, class Fb>
-double face<Gt, Fb>::face_data(const std::string& variable)
-{
-    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-    uint64_t  idx = bphf->lookup(hash);
-    return _variables[idx].value;
-
-//    return _itr->get(variable);
-}
+//
+//template < class Gt, class Fb>
+//double face<Gt, Fb>::face_data(const std::string& variable)
+//{
+//    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+//    uint64_t  idx = bphf->lookup(hash);
+//    return _variables[idx].value;
+//
+////    return _itr->get(variable);
+//}
 
 template < class Gt, class Fb >
 bool  face<Gt, Fb>::has_vegetation()

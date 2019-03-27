@@ -52,8 +52,8 @@ void Marsh_shading_iswr::run(mesh& domain)
     {
         auto vert = domain->vertex(i);
 
-        double A =  vert->face()->face_data("solar_az");
-        double E = vert->face()->face_data("solar_el");
+        double A =  (*vert->face())["solar_az"_s];
+        double E = (*vert->face())["solar_el"_s];
 
 
         //euler rotation matrix K
@@ -91,7 +91,7 @@ void Marsh_shading_iswr::run(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        double E = domain->face(i)->face_data("solar_el");
+        double E = (*domain->face(i))["solar_el"_s];
         if (E < 5)
         {
             (*face)["z_prime"_s]= 0; //unshadowed
@@ -193,8 +193,8 @@ void Marsh_shading_iswr::run(mesh& domain)
                 }
 
                auto face_info = face_j->get_module_data<module_shadow_face_info>(ID);
-                face_j->set_face_data("shadow", face_info->shadow);
-                face_j->set_face_data("z_prime", face_info->z_prime);
+                (*face_j)["shadow"_s] = face_info->shadow;
+                (*face_j)["z_prime"_s]= face_info->z_prime;
 
             }
         }

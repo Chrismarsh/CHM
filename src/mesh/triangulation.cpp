@@ -872,7 +872,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
         for (auto &v: variables)
         {
-            double d = fit->face_data(v);
+            double d = (*fit)[v];
             if(d == -9999.)
             {
                 d = nan("");
@@ -947,71 +947,6 @@ void triangulation::write_vtu(std::string file_name)
 
 //    write_vtp(file_name);
 }
-
-void triangulation::write_vtp(std::string file_name)
-{
-    //this now needs to be called from outside these functions
-//    update_vtk_data();
-//
-//    vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
-//    geometryFilter->SetInputData(_vtk_unstructuredGrid);
-//    geometryFilter->Update();
-//    geometryFilter->GetOutput()->GetPointData()->SetScalars(_vtk_unstructuredGrid->GetCellData()->GetScalars());
-//
-//
-//    vtkSmartPointer<vtkTransform> flattener = vtkSmartPointer<vtkTransform>::New();
-//    flattener->Scale(1.0,1.0,0.0);
-//    flattener->Update();
-//
-//    vtkSmartPointer<vtkTransformFilter> filt = vtkSmartPointer<vtkTransformFilter>::New();
-//    filt->SetInputConnection(geometryFilter->GetOutputPort());
-//    filt->SetTransform(flattener);
-//    filt->Update();
-//
-//    double* bounds = _vtk_unstructuredGrid->GetBounds();
-//
-//
-//    // Create a grid of points to interpolate over
-//    vtkSmartPointer<vtkPlaneSource> gridPoints = vtkSmartPointer<vtkPlaneSource>::New();
-//
-//    size_t dx = 10; //(meters)
-//    size_t dy = 10;
-//
-//    double distx = bounds[1] - bounds[0];
-//    double disty = bounds[3] - bounds[2];
-//
-//    size_t gridSizeX = ceil(distx/dx);
-//    size_t gridSizeY = ceil(disty/dy);
-//
-//    gridPoints->SetResolution(gridSizeX, gridSizeY); //number of cells, NOT! cell size.
-//    gridPoints->SetOrigin(bounds[0],  bounds[2], 0);
-//    gridPoints->SetPoint1(bounds[1],  bounds[2], 0);
-//    gridPoints->SetPoint2(bounds[0], bounds[3], 0);
-//    gridPoints->Update();
-//
-//
-//    // Perform the interpolation
-//    vtkSmartPointer<vtkProbeFilter> probeFilter =  vtkSmartPointer<vtkProbeFilter>::New();
-//    probeFilter->SetSourceData(filt->GetOutput());
-//#if VTK_MAJOR_VERSION <= 5
-//    probeFilter->SetInput(gridPoints->GetOutput());
-//#else
-//    probeFilter->SetInputConnection(gridPoints->GetOutputPort());
-//#endif
-//    probeFilter->Update();
-//
-//    vtkSmartPointer<vtkXMLPolyDataWriter> gridWriter =  vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-//    gridWriter->SetFileName ( file_name.c_str());
-//#if VTK_MAJOR_VERSION <= 5
-//    gridWriter->SetInput(probeFilter->GetOutput());
-//#else
-//    probeFilter->SetInputConnection(probeFilter->GetOutputPort());
-//#endif
-//
-//    gridWriter->Write();
-
-}
-
 
 double triangulation::max_z()
 {

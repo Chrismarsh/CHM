@@ -2480,10 +2480,7 @@ void core::run()
 
                                         }
 
-                                        if (jtr == output_info::mesh_outputs::vtp)
-                                        {
-                                            _mesh->write_vtp(base_name + ".vtp");
-                                        }
+
 
                                     }
                                 }
@@ -2502,7 +2499,7 @@ void core::run()
                 {
                     for (auto v : _provided_var_module)
                     {
-                        auto data = itr.face->face_data(v);
+                        auto data = (*itr.face)[v];
                         itr.ts.at(v, current_ts) = data;
                     }
                 }
