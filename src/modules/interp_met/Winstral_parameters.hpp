@@ -101,5 +101,5 @@ public:
     bool incl_snw;
 
     // Calculates the Sx parameter
-    double Sx(const mesh &domain, mesh_elem face) const;
+    double Sx(const mesh &domain, mesh_elem& face) const;
 };

@@ -1650,7 +1650,7 @@ void core::init(int argc, char **argv)
     #pragma omp parallel for
     for (size_t it = 0; it < _mesh->size_faces(); it++)
     {
-        mesh_elem face = _mesh->face(it);
+        auto face = _mesh->face(it);
         if(point_mode.enable && face->_debug_name != _outputs[0].name )
             continue;
 

@@ -970,7 +970,7 @@ bool face<Gt, Fb>::has_parameter(const std::string& variable)
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has_parameter(const uint64_t& hash)
 {
-    return _parameters_bphf->lookup(hash) > _parameters.size();
+    return _parameters_bphf->lookup(hash) < _parameters.size();
 //    return _parameters.find( key ) != _parameters.end();
 }
 

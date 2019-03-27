@@ -115,7 +115,7 @@ mesh_elem triangulation::locate_face(double x, double y)
 
 mesh_elem triangulation::locate_face(Point_2 query)
 {
-    mesh_elem face = find_closest_face(query);
+    auto face = find_closest_face(query);
 
     //check if the closest is what we wanted
     if(face->contains(query.x(),query.y()))
@@ -640,7 +640,7 @@ void triangulation::determine_local_boundary_faces()
   {
 
     // face_index is a local index... get the face handle
-    mesh_elem face = _local_faces.at(face_index);
+    auto face = _local_faces.at(face_index);
 
     int num_owned_neighbours = 0;
     for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
@@ -733,7 +733,7 @@ void triangulation::plot(std::string ID)
     for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
             fit != this->finite_faces_end(); ++fit)
     {
-        mesh_elem face = fit;
+        auto face = fit;
 
         (*tri)(i, 0) = face->vertex(0)->get_id() + 1; //+1 because matlab indexing starts at 1
         (*tri)(i, 1) = face->vertex(1)->get_id() + 1;
