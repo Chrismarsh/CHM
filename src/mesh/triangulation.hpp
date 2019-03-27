@@ -53,8 +53,8 @@ inline int omp_get_max_threads() { return 1;}
 #include <unordered_map>
 #endif
 
-#include "utility/BooPHF.h"
-#define XXH_STATIC_LINKING_ONLY
+// hash functions
+#include "utility/BBhash.h"
 #include <xxhash.h>
 
 #include <boost/lexical_cast.hpp>
@@ -502,18 +502,18 @@ private:
     typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
 #endif
 
-    template <typename Item> class xxhashFunctor
+
+    template <typename Item> class wyandFunctor
     {
     public:
         uint64_t operator ()  (const Item& key, uint64_t seed=2654435761U) const
         {
-            return XXH3_64bits_withSeed(&key, sizeof(Item), seed);
+            return wyhash(&key, sizeof(Item), seed);
         }
 
     };
 
-
-    typedef xxhashFunctor<u_int64_t> hasher_t;
+    typedef wyandFunctor<u_int64_t> hasher_t;
     //    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
     typedef boomphf::mphf< u_int64_t, hasher_t  > boophf_t;
 
