@@ -331,11 +331,10 @@ public:
     void remove_face_data(const std::string &ID);
 
     /**
-    * Initializes  this faces timeseires with the given variables, for the given datetime series with the given size
+    * Initializes  this faces timeseires with the given variables
     * \param variables Names of the variables to add
-    * \param datetime Vector of boost::ptimes for the entire duration of the timesries
     */
-    void init_time_series(std::set<std::string> variables, timeseries::date_vec datetime);
+    void init_time_series(std::set<std::string>& variables);
 
     /**
     * Obtains the timeseries associated with the given variable
@@ -517,7 +516,7 @@ private:
     //    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
     typedef boomphf::mphf< u_int64_t, hasher_t  > boophf_t;
 
-    boophf_t * bphf;
+    std::unique_ptr<boophf_t> bphf;
     std::vector<var> _variables;
     face_data_hashmap _module_face_data;
     face_param_hashmap _parameters;
@@ -1446,17 +1445,18 @@ Vector_3 face<Gt, Fb>::face_vector(const std::string& variable)
 };
 
 template < class Gt, class Fb>
-void face<Gt, Fb>::init_time_series(std::set<std::string> variables, timeseries::date_vec datetime)
+void face<Gt, Fb>::init_time_series(std::set<std::string>& variables)
 {
 
     std::vector<u_int64_t> hash_vec;
-    for(auto v : variables)
+    for(auto& v : variables)
     {
         uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
         hash_vec.push_back(hash);
     }
 
-    bphf = new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false);
+    bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
+            new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false));
 
     _variables.resize(variables.size());
     for(auto v : variables)
@@ -1466,11 +1466,6 @@ void face<Gt, Fb>::init_time_series(std::set<std::string> variables, timeseries:
         _variables[idx].value = -9999.0;
         _variables[idx].variable = v;
     }
-
-
-//    _data->init(variables, datetime);
-
-//    _itr = _data->begin();
 }
 
 template < class Gt, class Fb>

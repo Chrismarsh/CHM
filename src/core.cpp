@@ -31,7 +31,6 @@ core::core()
     _enable_ui=false; //default to no UI
     _start_ts = nullptr;
     _end_ts = nullptr;
-    _per_triangle_timeseries = false;
     _interpolation_method = interp_alg::tpspline;
 
     //default logging level
@@ -128,17 +127,6 @@ void core::config_options( pt::ptree &value)
         LOG_DEBUG << "User-specified endate: " << *_end_ts;
     }
 
-    // full time series per triangle.
-    boost::optional<bool> per_triangle_storage = value.get_optional<bool>("per_triangle_timeseries");
-    if (per_triangle_storage)
-    {
-        _per_triangle_timeseries = *per_triangle_storage;
-        LOG_DEBUG << "per triangle timer series storage: " << _per_triangle_timeseries;
-    }
-    else
-    {
-        _per_triangle_timeseries = false;
-    }
 
     // point mode options
     try
@@ -1665,20 +1653,8 @@ void core::init(int argc, char **argv)
         if(point_mode.enable && face->_debug_name != _outputs[0].name )
             continue;
 
-        //_per_triangle_timeseries=true will create a full timeseries on each triangle. this takes up a crazy amount of ram
-        if (_per_triangle_timeseries)
-        {
-            face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
-        }
+        face->init_time_series(_provided_var_module);
 
-//        LOG_DEBUG << it;
-        if (!_per_triangle_timeseries)
-        {
-            //only do 1 init. The time is wrong, but that is ok as it's never used
-            timeseries::date_vec d;
-            d.push_back(date[0]);
-            face->init_time_series(_provided_var_module, d);
-        }
 
     }
 
@@ -2502,20 +2478,6 @@ void core::run()
                 }
             }
 
-
-            if (_per_triangle_timeseries)
-            {
-                #pragma omp parallel for
-                for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
-                {
-                    if(point_mode.enable && _mesh->face(i)->_debug_name != _outputs[0].name )
-                        continue;
-
-                    _mesh->face(i)->next();
-                }
-
-            }
-
             //update all the stations internal iterators to point to the next time step
             for (auto &itr : _global->_stations)
             {
@@ -2603,19 +2565,6 @@ void core::run()
         }
     }
 
-    if (_per_triangle_timeseries)
-    {
-#pragma omp parallel for
-        for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
-        {
-            auto db = _mesh->face(i)->cell_id;
-
-            auto f = (o_path / "points") / (std::to_string(db) + "_timeseries.txt");
-
-            _mesh->face(i)->to_file(f.string());
-        }
-
-    }
 
     if(_notification_script != "")
     {

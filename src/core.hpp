@@ -25,7 +25,6 @@
 #define BOOST_SPIRIT_THREADSAFE
 
 
-
 //vtk includes
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
@@ -280,9 +279,6 @@ protected:
 
     boost::posix_time::ptime* _start_ts;
     boost::posix_time::ptime* _end_ts;
-
-    //a full timeseires per triangle
-    bool _per_triangle_timeseries;
 
     struct point_mode_info
     {
