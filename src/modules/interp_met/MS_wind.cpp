@@ -121,9 +121,9 @@ void MS_wind::run(mesh& domain)
             (*face)["lookup_d"_s]= d;
 
             // get the speedup for the interpolated direction
-            double U_speedup = face->get_parameter("MS" + std::to_string(d) + "_U");
-            double V_speedup = face->get_parameter("MS" + std::to_string(d) + "_V");
-            double W_speedup = face->get_parameter("MS" + std::to_string(d));
+            double U_speedup = face->parameter("MS" + std::to_string(d) + "_U");
+            double V_speedup = face->parameter("MS" + std::to_string(d) + "_V");
+            double W_speedup = face->parameter("MS" + std::to_string(d));
 
             // Speed up interpolated zonal_u & zonal_v
             double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v) * W_speedup;
@@ -215,7 +215,7 @@ void MS_wind::run(mesh& domain)
                 //figure out which lookup map we need
                 int d = int(theta*180/M_PI/45.);
                 if (d == 0) d = 8;
-                double speedup = f->get_parameter("MS"+std::to_string(d));
+                double speedup = f->parameter("MS"+std::to_string(d));
 
                 double W = s->get("U_R") / speedup;
                 W = std::max(W, 0.1);
@@ -298,7 +298,7 @@ void MS_wind::run(mesh& domain)
             int d = int(theta*180.0/M_PI/45.);
             if (d == 0) d = 8;
 
-            double speedup = face->get_parameter("MS"+std::to_string(d));
+            double speedup = face->parameter("MS"+std::to_string(d));
             W = W*speedup;
 
             W = std::max(W,0.1);
@@ -380,7 +380,7 @@ void MS_wind::run(mesh& domain)
 //            //figure out which lookup map we need
 //            int d = int(theta*180/M_PI/45.);
 //            if (d == 0) d = 8;
-//            double speedup = f->get_parameter("MS"+std::to_string(d));
+//            double speedup = f->parameter("MS"+std::to_string(d));
 //
 //            double W = s->get("U_R") / speedup;
 //            W = std::max(W, 0.1);
@@ -459,7 +459,7 @@ void MS_wind::run(mesh& domain)
 //        int d = int(theta*180.0/M_PI/45.);
 //        if (d == 0) d = 8;
 //
-//        double speedup = face->get_parameter("MS"+std::to_string(d));
+//        double speedup = face->parameter("MS"+std::to_string(d));
 //        W = W*speedup;
 //
 //        W = std::max(W,0.1);

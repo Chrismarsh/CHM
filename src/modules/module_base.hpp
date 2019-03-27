@@ -312,9 +312,9 @@ public:
     {
         bool is = false;
 
-        if(face->has_parameter("landcover"))
+        if(face->has_parameter("landcover"_s))
         {
-            int LC = face->get_parameter("landcover");
+            int LC = face->parameter("landcover"_s);
             is = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".is_water",false);
         }
         return is;
@@ -324,9 +324,9 @@ public:
     {
         bool is = false;
 
-        if(face->has_parameter("landcover"))
+        if(face->has_parameter("landcover"_s))
         {
-            int LC = face->get_parameter("landcover");
+            int LC = face->parameter("landcover"_s);
             is = global_param->parameters.get<bool>("landcover." + std::to_string(LC) + ".is_glacier",false);
         }
         return is;

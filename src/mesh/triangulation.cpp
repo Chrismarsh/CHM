@@ -88,6 +88,11 @@ void triangulation::write_param_to_vtu(bool write_param)
     _write_parameters_to_vtu = write_param;
 }
 
+std::set<std::string> triangulation::parameters()
+{
+    return _parameters;
+}
+
 bool triangulation::is_geographic()
 {
     return _is_geographic;
@@ -230,7 +235,7 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
     for(auto& face : _faces)
     {
         pt::ptree item;
-        item.put_value(face->get_parameter(parameter));
+        item.put_value(face->parameter(parameter));
         subtree.push_back(std::make_pair("",item));
     }
     out.put_child( pt::ptree::path_type(parameter),subtree);
@@ -238,7 +243,7 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
     pt::write_json(output_path,out);
 
 }
-std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
+void triangulation::from_json(pt::ptree &mesh)
 {
 
     size_t nvertex_toread = mesh.get<size_t>("mesh.nvertex");
@@ -390,24 +395,37 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     }
     //loop over parameter name
 
-    std::set<std::string> parameters;
+
     try
     {
+        // build up the entire list of parameters so we can use this to init the per-face parameter
+        // storage later
+
+        for (auto &itr : mesh.get_child("parameters"))
+        {
+            auto name = itr.first.data();
+            _parameters.insert(name);
+        }
+
+        // init the storage, which builds the mphf
+        for (size_t i = 0; i < size_faces(); i++)
+        {
+            face(i)->init_parameters(_parameters);
+        }
+
         for (auto &itr : mesh.get_child("parameters"))
         {
             i = 0; // reset evertime we get a new parameter set
             auto name = itr.first.data();
             LOG_DEBUG << "Applying parameter: " << name;
+
             for (auto &jtr : itr.second)
             {
                 auto face = _faces.at(i);
-                double value = jtr.second.get_value<double>();
-                //            value == -9999. ? value = nan("") : value;
-                face->set_parameter(name, value);
+                auto value = jtr.second.get_value<double>();
+                face->parameter(name) = value;
                 i++;
             }
-
-            parameters.insert(name);
         }
     }catch(pt::ptree_bad_path& e)
     {
@@ -513,8 +531,6 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 
 
 
-
-    return parameters;
 }
 
 void triangulation::reorder_faces(std::vector<size_t> permutation)
@@ -884,7 +900,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         {
             for (auto &v: params)
             {
-                double d = fit->get_parameter(v);
+                double d = fit->parameter(v);
                 if (d == -9999.)
                 {
                     d = nan("");

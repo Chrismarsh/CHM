@@ -233,7 +233,7 @@ void solar::init(mesh& domain)
         } else{
             svf = 1.;
         }
-        face->set_parameter("svf", std::max(0.0, svf));
+        face->parameter("svf") = std::max(0.0, svf);
     }
 
     delete coordTrans;

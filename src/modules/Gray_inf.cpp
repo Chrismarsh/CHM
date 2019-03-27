@@ -59,8 +59,8 @@ void Gray_inf::init(mesh& domain)
         d->soil_depth = 400;
         d->porosity = .4;
         d->max_storage =  d->soil_depth * d->porosity;
-//        d->storage =  d->max_storage  - (1 - d->max_storage * face->get_parameter("sm")/100.);
-        d->storage =  d->max_storage * face->get_parameter("sm")/100.;
+//        d->storage =  d->max_storage  - (1 - d->max_storage * face->parameter("sm"_s)/100.);
+        d->storage =  d->max_storage * face->parameter("sm"_s)/100.;
 
         d->last_ts_potential_inf = 0;
         d->opportunity_time=0.;

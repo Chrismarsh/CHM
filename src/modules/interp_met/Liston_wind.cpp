@@ -34,6 +34,7 @@ Liston_wind::Liston_wind(config_file cfg)
     provides("U_R");
     provides("vw_dir");
     provides("vw_dir_divergence");
+    provides("Liston_curvature");
     distance = cfg.get<double>("distance",300);
     Ww_coeff = cfg.get<double>("Ww_coeff",1.0);
 
@@ -58,11 +59,11 @@ void Liston_wind::init(mesh& domain)
         face->coloured = false;
     }
 
-    if (domain->face(0)->has_parameter("Liston curvature"))
-    {
-        LOG_DEBUG << "Liston curvature available as parameter, using that.";
-        return;
-    }
+//    if (domain->face(0)->has_parameter("Liston curvature"_s))
+//    {
+//        LOG_DEBUG << "Liston curvature available as parameter, using that.";
+//        return;
+//    }
 
     double curmax = -9999.0;
 
@@ -138,16 +139,16 @@ void Liston_wind::init(mesh& domain)
         // there are edge cases where curmax=0 and makes curvature NAN. Just set it to 0, no curvature, and don't do silly speedup/down
         c->curvature = std::isnan(value) ? 0 : value;
 
-        face->set_parameter("Liston curvature",  c->curvature);
+        (*face)["Liston_curvature"_s] =  c->curvature;
     }
 
 
-    if ( cfg.get("serialize",false) )
-    {
-        LOG_DEBUG << "Serializing liston curvature";
-        domain->serialize_parameter(cfg.get("serialize_output", "liston_curvature.mesh"),
-                                    "Liston curvature");
-    }
+//    if ( cfg.get("serialize",false) )
+//    {
+//        LOG_DEBUG << "Serializing liston curvature";
+//        domain->serialize_parameter(cfg.get("serialize_output", "liston_curvature.mesh"),
+//                                    "Liston curvature");
+//    }
 
 }
 
@@ -220,7 +221,7 @@ void Liston_wind::run(mesh& domain)
         omega_s = omega_s / (max_omega_s * 2.0);
 
 
-        double omega_c = face->get_parameter("Liston curvature");
+        double omega_c = (*face)["Liston_curvature"_s];
 
         double Ww = Ww_coeff + ys * omega_s + yc * omega_c;
 

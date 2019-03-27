@@ -55,7 +55,7 @@ inline int omp_get_max_threads() { return 1;}
 
 // hash functions
 #include "utility/BBhash.h"
-#include <xxhash.h>
+#include "utility/wyhash.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
@@ -331,10 +331,16 @@ public:
     void remove_face_data(const std::string &ID);
 
     /**
-    * Initializes  this faces timeseires with the given variables
+    * Initializes  this faces variable storage
     * \param variables Names of the variables to add
     */
     void init_time_series(std::set<std::string>& variables);
+
+    /**
+        * Initializes  this faces parameter storage
+        * \param variables Names of the variables to add
+        */
+    void init_parameters(std::set<std::string>& parameters);
 
     /**
     * Obtains the timeseries associated with the given variable
@@ -428,18 +434,19 @@ public:
      * @param key
      * @return
      */
-    double get_parameter(std::string key);
-
+    double& parameter(const uint64_t& hash);
+    double& parameter(const std::string& variable);
     /**
      * Sets the parameter on the face to the given value. Parameter doesn't have to exist. Do not use to store model output.
      * @param key
      * @param value
      */
-    void set_parameter(std::string key, double value);
+//    void set_parameter(std::string key, double value);
 
 
-    std::vector<std::string>  parameters();
-    bool has_parameter(std::string key);
+    std::vector<std::string> parameters();
+    bool has_parameter(const uint64_t& hash);
+    bool has_parameter(const std::string& variable);
 
     void set_initial_condition(std::string key,double value);
     double get_initial_condition(std::string key);
@@ -516,10 +523,15 @@ private:
     //    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
     typedef boomphf::mphf< u_int64_t, hasher_t  > boophf_t;
 
-    std::unique_ptr<boophf_t> bphf;
+    // perfect hashfn + variable storage
+    std::unique_ptr<boophf_t> _variable_bphf;
     std::vector<var> _variables;
+
+    // perfect hashfn + parameter storage
+    std::unique_ptr<boophf_t> _parameters_bphf;
+    std::vector<var> _parameters;
+
     face_data_hashmap _module_face_data;
-    face_param_hashmap _parameters;
     face_param_hashmap _initial_conditions;
     face_vec_hashmap _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
 
@@ -585,7 +597,7 @@ public:
     * Loads a mesh from file. Should by x y z values with no header, space delimited.
     * \param file Fully qualified path to a file.
     */
-	std::set<std::string> from_json(pt::ptree& mesh);
+	void from_json(pt::ptree& mesh);
 
     /**
     * Sets a new order to the face numbering.
@@ -769,6 +781,12 @@ public:
 
     void write_param_to_vtu(bool write_param);
 
+    /**
+     * Returns the set of parameters available on the triangulation
+     * @return
+     */
+    std::set<std::string> parameters();
+
     bool _terrain_deformed;
 
     /**
@@ -809,7 +827,7 @@ private:
 
     //should we write parameters to the vtu file?
     bool _write_parameters_to_vtu;
-
+    std::set<std::string> _parameters;
     // min and max elevations
     double _min_z;
     double _max_z;
@@ -942,26 +960,44 @@ private:
 
 };
 
+template < class Gt, class Fb>
+bool face<Gt, Fb>::has_parameter(const std::string& variable)
+{
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    return has_parameter(hash);
+}
 
 template < class Gt, class Fb>
-bool face<Gt, Fb>::has_parameter(std::string key)
+bool face<Gt, Fb>::has_parameter(const uint64_t& hash)
 {
-    return _parameters.find( key ) != _parameters.end();
+    return _parameters_bphf->lookup(hash) > _parameters.size();
+//    return _parameters.find( key ) != _parameters.end();
 }
 
 template < class Gt, class Fb >
-double face<Gt, Fb>::get_parameter(std::string key)
+double& face<Gt, Fb>::parameter(const std::string& variable)
 {
-    if(!has_parameter(key))
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + key +" does not exist."));
-    return _parameters[key];
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    return parameter(hash);
 };
 
 template < class Gt, class Fb >
-void face<Gt, Fb>::set_parameter(std::string key, double value)
+double& face<Gt, Fb>::parameter(const uint64_t& hash)
 {
-    _parameters[key] = value;
+    uint64_t  idx = _parameters_bphf->lookup(hash);
+    return _parameters[idx].value;
+
+
+//    if(!has_parameter(key))
+//        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + key +" does not exist."));
+//    return _parameters[key];
 };
+
+//template < class Gt, class Fb >
+//void face<Gt, Fb>::set_parameter(std::string key, double value)
+//{
+//    _parameters[key] = value;
+//};
 
 template < class Gt, class Fb >
 bool face<Gt, Fb>::has_initial_condition(std::string key)
@@ -987,7 +1023,7 @@ std::vector<std::string>  face<Gt, Fb>::parameters()
     std::vector<std::string> params;
     for(auto& itr : _parameters)
     {
-        params.push_back(itr.first);
+        params.push_back(itr.variable);
     }
     return params;
 };
@@ -1061,7 +1097,6 @@ face<Gt, Fb>::face(Vertex_handle v0,
 
 #ifdef USE_SPARSEHASH
     _module_face_data.set_empty_key("");
-    _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
 
@@ -1088,7 +1123,6 @@ face<Gt, Fb>::face(Vertex_handle v0,
 
 #ifdef USE_SPARSEHASH
     _module_face_data.set_empty_key("");
-    _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
 #endif
@@ -1118,7 +1152,6 @@ face<Gt, Fb>::face(Vertex_handle v0,
 
 #ifdef USE_SPARSEHASH
     _module_face_data.set_empty_key("");
-    _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
 
@@ -1340,7 +1373,6 @@ std::vector<std::string> face<Gt, Fb>::variables()
         vars.push_back(itr.variable);
     }
     return vars;
-//    return _data->list_variables();
 
 }
 
@@ -1358,22 +1390,10 @@ bool face<Gt, Fb>::has(const std::string& variable)
     return false;
 };
 
-//template < class Gt, class Fb>
-//void face<Gt, Fb>::set_face_data(const std::string& variable, double data)
-//{
-//    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-//    uint64_t  idx = bphf->lookup(hash);
-//    _variables[idx].value=data;
-////    auto ret = _variables.find(hash);
-////    ret->second=data;
-//
-////     _itr->set(variable, data);
-//}
-
 template < class Gt, class Fb>
 double& face<Gt, Fb>::operator[](const uint64_t& hash)
 {
-    uint64_t  idx = bphf->lookup(hash);
+    uint64_t  idx = _variable_bphf->lookup(hash);
     return _variables[idx].value;
 }
 
@@ -1381,28 +1401,18 @@ template < class Gt, class Fb>
 double& face<Gt, Fb>::operator[](const std::string& variable)
 {
     uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-    uint64_t  idx = bphf->lookup(hash);
+    uint64_t  idx = _variable_bphf->lookup(hash);
     return _variables[idx].value;
 }
-//
-//template < class Gt, class Fb>
-//double face<Gt, Fb>::face_data(const std::string& variable)
-//{
-//    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-//    uint64_t  idx = bphf->lookup(hash);
-//    return _variables[idx].value;
-//
-////    return _itr->get(variable);
-//}
 
 template < class Gt, class Fb >
 bool  face<Gt, Fb>::has_vegetation()
 {
-    if (has_parameter("landcover") )
+    if (has_parameter("landcover"_s) )
         return true;
-    if (has_parameter("canopyType"))
+    if (has_parameter("canopyType"_s))
         return true;
-    if (has_parameter("CanopyHeight"))
+    if (has_parameter("CanopyHeight"_s))
         return true;
 
     return false;
@@ -1415,11 +1425,11 @@ double face<Gt, Fb>::veg_attribute(const std::string &variable)
     // first see if we have a distributed map of this parameter
     if(has_parameter(variable))
     {
-        result = get_parameter(variable);
+        result = parameter(variable);
     }
-    else if(has_parameter("landcover")) // Ok, try to look it up in a classified landcover lookup table
+    else if(has_parameter("landcover"_s)) // Ok, try to look it up in a classified landcover lookup table
     {
-        int LC = get_parameter("landcover");
+        int LC = parameter("landcover"_s);
         auto param = _domain->_global->parameters; //this grabs the loaded landcover map
         result = param.get<double>("landcover." + std::to_string(LC) + "."+variable);
     }
@@ -1455,16 +1465,39 @@ void face<Gt, Fb>::init_time_series(std::set<std::string>& variables)
         hash_vec.push_back(hash);
     }
 
-    bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
+    _variable_bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
             new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false));
 
     _variables.resize(variables.size());
     for(auto v : variables)
     {
         uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
-        uint64_t  idx = bphf->lookup(hash);
+        uint64_t  idx = _variable_bphf->lookup(hash);
         _variables[idx].value = -9999.0;
         _variables[idx].variable = v;
+    }
+}
+
+template < class Gt, class Fb>
+void face<Gt, Fb>::init_parameters(std::set<std::string>& parameters)
+{
+    std::vector<u_int64_t> hash_vec;
+    for(auto& v : parameters)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
+        hash_vec.push_back(hash);
+    }
+
+    _parameters_bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
+            new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false));
+
+    _parameters.resize(parameters.size());
+    for(auto& v : parameters)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
+        uint64_t  idx = _parameters_bphf->lookup(hash);
+        _parameters[idx].value = -9999.0;
+        _parameters[idx].variable = v;
     }
 }
 
@@ -1599,9 +1632,9 @@ double face<Gt, Fb>::get_area()
     if(_area == -1)
     {
         // supports geographic
-        if(has_parameter("area"))
+        if(has_parameter("area"_s))
         {
-            _area = get_parameter("area");
+            _area = parameter("area"_s);
         }
         else
         {

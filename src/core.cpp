@@ -767,7 +767,8 @@ void core::config_meshes( pt::ptree &value)
         LOG_DEBUG << "No addtional initial conditions found in mesh section.";
     }
 
-    _provided_parameters = _mesh->from_json(mesh);
+    _mesh->from_json(mesh);
+    _provided_parameters = _mesh->parameters();
 
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
