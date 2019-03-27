@@ -93,9 +93,8 @@ set(CHM_SRCS
 		core.cpp
 		global.cpp
 		station.cpp
-		variable_map.cpp
 
-		constants/Atmosphere.cpp
+        constants/Atmosphere.cpp
 
 		ui/ui.cpp
 		ui/ncstream.cpp
@@ -111,7 +110,6 @@ set(CHM_SRCS
 		timeseries/daily.cpp
 		timeseries/netcdf.cpp
 
-		utility/crc_hash_compare.cpp
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
 		utility/jsonstrip.cpp

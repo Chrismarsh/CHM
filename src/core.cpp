@@ -1497,9 +1497,6 @@ void core::init(int argc, char **argv)
 
     LOG_DEBUG << "Finished initialization";
 
-    LOG_DEBUG << "Init variables mapping";
-    _global->_variables.init_from_file("Un-init path");
-
     LOG_DEBUG << "Determining module dependencies";
     _determine_module_dep();
 
