@@ -105,6 +105,7 @@ public:
       :    ID(name), cfg(input_cfg), IDnum(0),_parallel_type(type)
     {
         _provides = boost::make_shared<std::vector<std::string> >();
+        _provides_parameters = boost::make_shared<std::vector<std::string> >();
         _depends = boost::make_shared<std::vector<std::string> >();
         _depends_from_met = boost::make_shared<std::vector<std::string> >();
         _optional = boost::make_shared<std::vector<std::string> >();
@@ -184,6 +185,14 @@ public:
     }
 
     /**
+    * List of the parameters that this module provides.
+    */
+    boost::shared_ptr<std::vector<std::string> > provides_parameter()
+    {
+        return _provides_parameters;
+    }
+
+    /**
      * Set a variable that this module provides
      */
     void provides(const std::string& variable)
@@ -192,6 +201,18 @@ public:
             BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + variable +" has a space. This is not allowed."));
 
         _provides->push_back(variable);
+    }
+
+
+    /**
+     * Set a parameter that this module provides
+     */
+    void provides_parameter(const std::string& variable)
+    {
+        if(variable.find_first_of("\t ") != std::string::npos)
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + variable +" has a space. This is not allowed."));
+
+        _provides_parameters->push_back(variable);
     }
 
     /**
@@ -335,6 +356,7 @@ public:
 protected:
     parallel _parallel_type;
     boost::shared_ptr<std::vector<std::string> > _provides;
+    boost::shared_ptr<std::vector<std::string> > _provides_parameters;
     boost::shared_ptr<std::vector<std::string> > _depends;
     boost::shared_ptr<std::vector<std::string> > _depends_from_met;
     boost::shared_ptr<std::vector<std::string> > _optional;

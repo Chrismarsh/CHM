@@ -401,10 +401,30 @@ void triangulation::from_json(pt::ptree &mesh)
         // build up the entire list of parameters so we can use this to init the per-face parameter
         // storage later
 
+        std::set<std::string> blacklist; // holds any parameters that have 0 length, eg "area": [],
         for (auto &itr : mesh.get_child("parameters"))
         {
-            auto name = itr.first.data();
-            _parameters.insert(name);
+            // we could have an item like this
+            // "area": [],
+            // and we need to ensure we *don't* load those
+            std::string name = itr.first.data();
+            size_t i=0;
+            for (auto &jtr : itr.second)
+            {
+                //just count the first couple items, make sure it's non zero
+                if(i > 1)
+                    break;
+                ++i;
+            }
+
+            if(i == 0)
+            {
+                blacklist.insert(name);
+                LOG_WARNING << "Parameter " + name + " is zero length and will be ignored.";
+            } else {
+                _parameters.insert(name);
+            }
+
         }
 
         // init the storage, which builds the mphf
@@ -417,6 +437,10 @@ void triangulation::from_json(pt::ptree &mesh)
         {
             i = 0; // reset evertime we get a new parameter set
             auto name = itr.first.data();
+
+            if(blacklist.find(name) != blacklist.end())
+                continue; // skip blacklisted ones, as we don't want to use these
+
             LOG_DEBUG << "Applying parameter: " << name;
 
             for (auto &jtr : itr.second)

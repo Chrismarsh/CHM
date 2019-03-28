@@ -803,6 +803,11 @@ public:
 
     //Point to the global object that contains paramter information.
     boost::shared_ptr<global> _global;
+
+    //this holds the parameters that we load
+    //however, core might have found some parameters from modules
+    // it will have to insert them into this list so that the static hashmaps can be properly init
+    std::set<std::string> _parameters;
 private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
@@ -827,7 +832,7 @@ private:
 
     //should we write parameters to the vtu file?
     bool _write_parameters_to_vtu;
-    std::set<std::string> _parameters;
+    
     // min and max elevations
     double _min_z;
     double _max_z;
@@ -978,13 +983,22 @@ template < class Gt, class Fb >
 double& face<Gt, Fb>::parameter(const std::string& variable)
 {
     uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-    return parameter(hash);
+    uint64_t  idx = _parameters_bphf->lookup(hash);
+
+    //duplicate the code of the other paramter here for speed so we don't lookup 2x
+    if( idx> _parameters.size())
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable + " does not exist."));
+
+    return _parameters[idx].value;
 };
 
 template < class Gt, class Fb >
 double& face<Gt, Fb>::parameter(const uint64_t& hash)
 {
     uint64_t  idx = _parameters_bphf->lookup(hash);
+    if(idx > _parameters.size())
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + std::to_string(hash) + " does not exist."));
+
     return _parameters[idx].value;
 
 

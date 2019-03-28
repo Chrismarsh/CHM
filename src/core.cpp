@@ -269,6 +269,12 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
         //assign the internal global param pointer to our global
         module->global_param = _global;
 
+        //get the parameters that this module will provide
+        // we need this now before the mesh call as in the mesh call we will build the static mph hashtable for all parameters
+
+        for(auto& p: *(module->provides_parameter()))
+            _provided_parameters.insert(p);
+
         modnum++;
         _modules.push_back(
                 std::make_pair(module, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
@@ -767,9 +773,15 @@ void core::config_meshes( pt::ptree &value)
         LOG_DEBUG << "No addtional initial conditions found in mesh section.";
     }
 
+    //we need to let the mesh know about any parameters the modules will provide so they can be correctly build into the static hashmaps
+    for(auto& p : _provided_parameters)
+        _mesh->_parameters.insert(p);
+    
     _mesh->from_json(mesh);
-    _provided_parameters = _mesh->parameters();
 
+    _provided_parameters = _mesh->parameters();
+    
+    
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 

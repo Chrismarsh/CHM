@@ -29,6 +29,8 @@ solar::solar(config_file cfg)
 {
     provides("solar_el");
     provides("solar_az");
+
+    provides_parameter("svf");
 }
 solar::~solar()
 {
@@ -233,7 +235,7 @@ void solar::init(mesh& domain)
         } else{
             svf = 1.;
         }
-        face->parameter("svf") = std::max(0.0, svf);
+        face->parameter("svf"_s) = std::max(0.0, svf);
     }
 
     delete coordTrans;
