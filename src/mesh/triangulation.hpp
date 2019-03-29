@@ -55,9 +55,7 @@ inline int omp_get_max_threads() { return 1;}
 
 // hash functions
 #include "utility/BBhash.h"
-//#include "utility/wyhash.h"
-#define XXH_STATIC_LINKING_ONLY
-#include <xxhash.h>
+#include "utility/wyhash.h"
 
 
 #include <boost/lexical_cast.hpp>
@@ -356,6 +354,11 @@ public:
     bool has(const std::string& variable);
 
     /**
+    * Returns true if the variable is present
+    */
+    bool has(const uint64_t& hash);
+
+    /**
      * Returns a list of variables in this face's timeseries
      * \return Vector of variable names
      */
@@ -496,11 +499,10 @@ private:
     struct var
     {
         double value;
+        double xxhash; // holds the xxhash value so we can confirm we get the right thing back from BBHash
         std::string variable;
     };
 #ifdef USE_SPARSEHASH
-
-
     typedef google::dense_hash_map<std::string,face_info*> face_data_hashmap;
     typedef google::dense_hash_map<std::string,double> face_param_hashmap;
     typedef google::dense_hash_map<std::string,Vector_3> face_vec_hashmap;
@@ -510,37 +512,22 @@ private:
     typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
 #endif
 
-    template <typename Item> class xxhashFunctor
+
+    template <typename Item> class wyandFunctor
     {
     public:
         uint64_t operator ()  (const Item& key, uint64_t seed=2654435761U) const
         {
-            return XXH3_64bits_withSeed(&key, sizeof(Item), seed);
+            return wyhash(&key, sizeof(Item), seed);
         }
 
     };
+    typedef wyandFunctor<uint64_t> hasher_t;
+    typedef boomphf::mphf< uint64_t, hasher_t  > boophf_t;
 
-//    template <typename Item> class wyandFunctor
-//    {
-//    public:
-//        uint64_t operator ()  (const Item& key, uint64_t seed=2654435761U) const
-//        {
-//            return wyhash(&key, sizeof(Item), seed);
-//        }
-//
-//    };
-
-    // This is currently causing a collision, somehow. I've opened a bug
+    // Note that we have to explicitly check if what we get back is what we wanted as
+    // mphf do not guarantee what asking for something outside of the map returns a sane answer
     // https://github.com/rizkg/BBHash/issues/12
-    // https://github.com/wangyi-fudan/wyhash/issues/9
-//    typedef wyandFunctor<u_int64_t> hasher_t;
-//    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
-
-
-    typedef xxhashFunctor<uint64_t> hasher_t;
-    typedef boomphf::mphf< u_int64_t, hasher_t  > boophf_t;
-
-
 
     // perfect hashfn + variable storage
     std::unique_ptr<boophf_t> _variable_bphf;
@@ -995,8 +982,17 @@ template < class Gt, class Fb>
 bool face<Gt, Fb>::has_parameter(const uint64_t& hash)
 {
     auto idx = _parameters_bphf->lookup(hash);
-    return idx < _parameters.size();
-//    return _parameters.find( key ) != _parameters.end();
+
+    // did the table return garabage?
+    if( idx >  _parameters.size() )
+        return false;
+
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if (_parameters[idx].xxhash != hash)
+        return false;
+
+    return true;
+
 }
 
 template < class Gt, class Fb >
@@ -1006,8 +1002,14 @@ double& face<Gt, Fb>::parameter(const std::string& variable)
     uint64_t  idx = _parameters_bphf->lookup(hash);
 
     //duplicate the code of the other paramter here for speed so we don't lookup 2x
-    if( idx> _parameters.size())
+    // did the table return garabage?
+    if( idx >  _parameters.size() )
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable + " does not exist."));
+
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if (_parameters[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable + " does not exist."));
+
 
     return _parameters[idx].value;
 };
@@ -1016,22 +1018,21 @@ template < class Gt, class Fb >
 double& face<Gt, Fb>::parameter(const uint64_t& hash)
 {
     uint64_t  idx = _parameters_bphf->lookup(hash);
-    if(idx > _parameters.size())
+
+    //duplicate the code of the other paramter here for speed so we don't lookup 2x
+    // did the table return garabage?
+    if( idx >  _parameters.size() )
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + std::to_string(hash)+ " does not exist."));
+
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if (_parameters[idx].xxhash != hash)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + std::to_string(hash) + " does not exist."));
+
 
     return _parameters[idx].value;
 
 
-//    if(!has_parameter(key))
-//        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + key +" does not exist."));
-//    return _parameters[key];
 };
-
-//template < class Gt, class Fb >
-//void face<Gt, Fb>::set_parameter(std::string key, double value)
-//{
-//    _parameters[key] = value;
-//};
 
 template < class Gt, class Fb >
 bool face<Gt, Fb>::has_initial_condition(std::string key)
@@ -1414,15 +1415,26 @@ std::vector<std::string> face<Gt, Fb>::variables()
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has(const std::string& variable)
 {
-//    return _itr->has(variable);
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    return has(hash);
 
-//    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-
-//    return _variables.find(hash) != _variables.end();
-
-    BOOST_THROW_EXCEPTION(module_error() << errstr_info("face::has not implemented"));
-    return false;
 };
+
+template < class Gt, class Fb>
+bool face<Gt, Fb>::has(const uint64_t& hash)
+{
+    uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    if( idx >  _variables.size() )
+        return false;
+
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if (_variables[idx].xxhash != hash)
+        return false;
+
+    return true;
+}
 
 template < class Gt, class Fb>
 double& face<Gt, Fb>::operator[](const uint64_t& hash)
@@ -1509,6 +1521,7 @@ void face<Gt, Fb>::init_time_series(std::set<std::string>& variables)
         uint64_t  idx = _variable_bphf->lookup(hash);
         _variables[idx].value = -9999.0;
         _variables[idx].variable = v;
+        _variables[idx].xxhash = hash;
     }
 }
 
@@ -1532,6 +1545,7 @@ void face<Gt, Fb>::init_parameters(std::set<std::string>& parameters)
         uint64_t  idx = _parameters_bphf->lookup(hash);
         _parameters[idx].value = -9999.0;
         _parameters[idx].variable = v;
+        _parameters[idx].xxhash = hash;
     }
 }
 
@@ -1665,18 +1679,6 @@ double face<Gt, Fb>::get_area()
 {
     if(_area == -1)
     {
-//        std::string var1="area";
-//        uint64_t hash1 = xxh64::hash (var1.c_str(), var1.length(), 2654435761U);
-//
-//        std::string var2="Ninja21_V";
-//        uint64_t hash2 = xxh64::hash (var2.c_str(), var2.length(), 2654435761U);
-//
-//        LOG_DEBUG << hash1;
-//        LOG_DEBUG << hash2;
-//
-//        wyandFunctor<uint64_t> f;
-//        LOG_DEBUG << f(hash1);
-//        LOG_DEBUG << f(hash2);
         // supports geographic
         if(has_parameter("area"_s))
         {
@@ -1684,26 +1686,16 @@ double face<Gt, Fb>::get_area()
         }
         else
         {
-//            auto x1 = this->vertex(0)->point().x();
-//            auto y1 = this->vertex(0)->point().y();
-//
-//            auto x2 = this->vertex(1)->point().x();
-//            auto y2 = this->vertex(1)->point().y();
-//
-//            auto x3 = this->vertex(2)->point().x();
-//            auto y3 = this->vertex(2)->point().y();
 
             auto& pa = this->vertex(0)->point();
             auto& pb = this->vertex(1)->point();
             auto& pc = this->vertex(2)->point();
 
 
+            //same way it's done in mesher for consistency
             typename Fb::Geom_traits traits;
+            _area = CGAL::to_double(traits.compute_area_2_object()(pa, pb, pc));
 
-             _area = CGAL::to_double(traits.compute_area_2_object()(pa, pb, pc));
-
-//            _area = CGAL::area(this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point());
-//            _area = 0.5 * fabs( x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2) );
         }
     }
 

@@ -301,11 +301,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 
-set(XXHASH_ROOT "${CMAKE_BINARY_DIR}/lib/xxHash")
-find_package(xxhash REQUIRED)
-message(STATUS "xxhash -- ${XXHASH_LIBRARY} ${XXHASH_INCLUDE_DIR}")
-
-
 if(USE_OMP)
     find_package(OpenMP)
     if(OPENMP_FOUND AND CMAKE_BUILD_TYPE MATCHES Release AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #osx Clang doesn't have mainline support for openmp

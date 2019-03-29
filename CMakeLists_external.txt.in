@@ -12,17 +12,6 @@ set(USE_OCL OFF)
 set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Build vars")
 
 #these should always be built and downloaded
-ExternalProject_Add(
-    xxhash
-    GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/xxHash <SOURCE_DIR>/cmake_unofficial
-    UPDATE_COMMAND ""
-    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-    INSTALL_COMMAND make install
-    BUILD_IN_SOURCE 1
-    )
-
-
 
 ExternalProject_Add(
     sparsehash
