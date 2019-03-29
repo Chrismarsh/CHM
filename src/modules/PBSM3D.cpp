@@ -250,7 +250,7 @@ void PBSM3D::init(mesh& domain)
             {
                 d->face_neigh[a] = true;
 
-                A[i][neigh->cell_id] = -9999;
+                A[i][neigh->cell_local_id] = -9999;
             }
 
         }
@@ -267,12 +267,12 @@ void PBSM3D::init(mesh& domain)
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
         {
-            size_t idx = ntri * z + face->cell_id;
+            size_t idx = ntri * z + face->cell_local_id;
             for (int f = 0; f < 3; f++)
             {
                 if (d->face_neigh[f])
                 {
-                    size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                    size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
                     C[idx][idx] = -9999;
                     C[idx][nidx] = -9999;
                 } else
@@ -284,18 +284,18 @@ void PBSM3D::init(mesh& domain)
             if (z == 0)
             {
                 C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
+                C[idx][ntri * (z + 1) + face->cell_local_id] = -9999;
             } else if (z == nLayer - 1)
             {
                 C[idx][idx] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
+                C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
 
             }
             else //middle layers
             {
                 C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_id] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_id] = -9999;
+                C[idx][ntri * (z + 1) + face->cell_local_id] = -9999;
+                C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
             }
         }
     }
@@ -362,7 +362,7 @@ void PBSM3D::run(mesh& domain)
     {
         auto face = domain->face(i);
 
-        auto id = face->cell_id;
+        auto id = face->cell_local_id;
         auto d = face->get_module_data<data>(ID);
         auto& m = d->m;
 
@@ -404,7 +404,7 @@ void PBSM3D::run(mesh& domain)
 
         d->saltation = false; // default case
 
-//        if (face->cell_id == 4055)
+//        if (face->cell_local_id == 4055)
 //        {
 //            LOG_DEBUG << "Face found";
 //        }
@@ -883,7 +883,7 @@ void PBSM3D::run(mesh& domain)
                 udotm[j] = arma::dot(uvw, m[j]);
             }
             //lateral
-            size_t idx = ntri*z + face->cell_id;
+            size_t idx = ntri*z + face->cell_local_id;
 
             //[idx][idx]
             size_t idx_idx_off = offset(row_buffer[idx],
@@ -909,7 +909,7 @@ void PBSM3D::run(mesh& domain)
 
                     if (d->face_neigh[f])
                     {
-                        size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                        size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
 
                         elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
@@ -933,7 +933,7 @@ void PBSM3D::run(mesh& domain)
                 {
                     if (d->face_neigh[f])
                     {
-                        size_t nidx = ntri * z + face->neighbor(f)->cell_id;
+                        size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
 
                         size_t idx_nidx_off = offset(row_buffer[idx],
                                                      row_buffer[idx+1],
@@ -970,10 +970,10 @@ void PBSM3D::run(mesh& domain)
 
                 b[idx] += -alpha4*c_salt;
 
-                //ntri * (z + 1) + face->cell_id
+                //ntri * (z + 1) + face->cell_local_id
                 size_t idx_nidx_off = offset(row_buffer[idx],
                                              row_buffer[idx+1],
-                                             col_buffer, ntri * (z + 1) + face->cell_id);
+                                             col_buffer, ntri * (z + 1) + face->cell_local_id);
 
                 if (udotm[3] > 0)
                 {
@@ -1002,10 +1002,10 @@ void PBSM3D::run(mesh& domain)
                     b[idx] += d->A[3]*cprecip*udotm[3] - alpha[3] * cprecip;
                 }
 
-                //ntri * (z - 1) + face->cell_id
+                //ntri * (z - 1) + face->cell_local_id
                 size_t idx_nidx_off = offset(row_buffer[idx],
                                              row_buffer[idx+1],
-                                             col_buffer, ntri * (z - 1) + face->cell_id);
+                                             col_buffer, ntri * (z - 1) + face->cell_local_id);
                 if (udotm[4] > 0)
                 {
                     elements[ idx_idx_off ] += V*csubl-d->A[4]*udotm[4]-alpha[4];
@@ -1020,10 +1020,10 @@ void PBSM3D::run(mesh& domain)
 
             } else //middle layers
             {
-                //ntri * (z + 1) + face->cell_id
+                //ntri * (z + 1) + face->cell_local_id
                 size_t idx_nidx_off = offset(row_buffer[idx],
                                              row_buffer[idx+1],
-                                             col_buffer, ntri * (z + 1) + face->cell_id);
+                                             col_buffer, ntri * (z + 1) + face->cell_local_id);
 
                 if (udotm[3] > 0)
                 {
@@ -1037,7 +1037,7 @@ void PBSM3D::run(mesh& domain)
 
                 idx_nidx_off = offset(row_buffer[idx],
                                       row_buffer[idx+1],
-                                      col_buffer, ntri * (z - 1) + face->cell_id);
+                                      col_buffer, ntri * (z - 1) + face->cell_local_id);
                 if (udotm[4] > 0)
                 {
                     elements[ idx_idx_off ] += V*csubl-d->A[4]*udotm[4]-alpha[4];
@@ -1117,7 +1117,7 @@ void PBSM3D::run(mesh& domain)
         double Qsubl=0;
         for (int z = 0; z<nLayer;++z)
         {
-            double c = x[ntri * z + face->cell_id];
+            double c = x[ntri * z + face->cell_local_id];
             c = c < 0 || is_nan(c) ? 0 : c; //harden against some numerical issues that occasionally come up for unknown reasons.
 
             double cz = z + hs+ v_edge_height/2.; //cell center height
@@ -1207,10 +1207,10 @@ void PBSM3D::run(mesh& domain)
 
                 A_elements[i_i_off] += V + eps * E[j] / dx[j];
 
-                //[i][neigh->cell_id]
+                //[i][neigh->cell_local_id]
                 size_t i_ni_off = offset(A_row_buffer[i],
                                         A_row_buffer[i+1],
-                                        A_col_buffer, neigh->cell_id);
+                                        A_col_buffer, neigh->cell_local_id);
                 A_elements[i_ni_off] += - eps * E[j] / dx[j];
                 bb[i] += - E[j] * Qt * udotm[j];
 

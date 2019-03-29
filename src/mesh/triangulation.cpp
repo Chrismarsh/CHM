@@ -317,7 +317,7 @@ void triangulation::from_json(pt::ptree &mesh)
         auto vert3 = _vertexes.at(items[2]);
 
         auto face = this->create_face(vert1,vert2,vert3);
-        face->cell_id = cid++;
+        face->cell_global_id = cid++;
         if( is_geographic == 1)
         {
             face->_is_geographic = true;
@@ -520,7 +520,7 @@ void triangulation::from_json(pt::ptree &mesh)
     try
     {
       std::vector<size_t> permutation;
-      for (auto itr : mesh.get_child("mesh.cell_local_id"))
+      for (auto itr : mesh.get_child("mesh.cell_global_id"))
       {
 	    permutation.push_back(itr.second.get_value<size_t>());
       }
@@ -544,8 +544,6 @@ void triangulation::from_json(pt::ptree &mesh)
         Point_2 pt2(face->center().x(),face->center().y());
         center_points.push_back(pt2);
 
-        //reset the cell_ids to take into account the smaller local_faces
-        face->cell_id = ii;
     }
     //make the search tree
     dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_local_faces.begin() )),
@@ -560,9 +558,9 @@ void triangulation::from_json(pt::ptree &mesh)
 
 void triangulation::reorder_faces(std::vector<size_t> permutation)
 {
-  // NOTE: be careful with evaluating this, the 'cell_id's and a
+  // NOTE: be careful with evaluating this, the 'cell_global_id's and a
   // cell's position in the '_faces' vec are unrelated. They must both
-  // be modified (ie. renumber the 'cell_id's, AND sort the '_faces'
+  // be modified (ie. renumber the 'cell_global_id's, AND sort the '_faces'
   // vector) before the new ordering is consistent.
 
   assert( permutation.size() == size_faces() );
@@ -578,14 +576,14 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
     size_t new_ID = ind;
 
     auto face = _faces[old_ID];
-    face->cell_id = new_ID;
+    face->cell_global_id = new_ID;
   }
 
   // Sort the faces in the new ordering
   tbb::parallel_sort(_faces.begin(), _faces.end(),
   		     [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
   		     {
-  		       return fa->cell_id < fb->cell_id;
+  		       return fa->cell_global_id < fb->cell_global_id;
   		     });
 }
 
@@ -628,6 +626,7 @@ void triangulation::partition_mesh()
   for(int local_ind=0;local_ind<_local_faces.size();++local_ind) {
     size_t global_ind = face_start_idx + local_ind;
     _faces.at(global_ind)->_is_ghost = false;
+    _faces.at(global_ind)->cell_local_id = local_ind;
     _local_faces[local_ind] = _faces.at(global_ind);
   }
 

@@ -279,7 +279,7 @@ void Liston_wind::run(mesh& domain)
 //        for (int j = 0; j < 3; j++)
 //        {
 //            if (face->neighbor(j) != nullptr)
-//                U[i][face->neighbor(j)->cell_id] = 0;
+//                U[i][face->neighbor(j)->cell_local_id] = 0;
 //        }
 //        for (int j = 0; j < 3; j++)
 //        {
@@ -289,7 +289,7 @@ void Liston_wind::run(mesh& domain)
 //            {
 //                double dx =  math::gis::distance(face->center(), neigh->center());
 //                U[i][i] += 1.0+eps*Ej/(V*dx);
-//                U[i][face->neighbor(j)->cell_id] += -eps*Ej/(V*dx);
+//                U[i][face->neighbor(j)->cell_local_id] += -eps*Ej/(V*dx);
 //
 //            } else
 //            {

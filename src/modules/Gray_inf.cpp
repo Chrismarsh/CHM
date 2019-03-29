@@ -80,7 +80,7 @@ void Gray_inf::run(mesh_elem &face)
 
     auto* d = face->get_module_data<Gray_inf::data>(ID);
 
-    auto id = face->cell_id;
+    auto id = face->cell_local_id;
     double C = 2.;
     double S0 = 1;
     double SI = face->get_initial_condition("sm")/100.;

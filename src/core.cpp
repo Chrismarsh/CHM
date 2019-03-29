@@ -615,7 +615,7 @@ void core::config_forcing(pt::ptree &value)
             labels->SetValue(i, s->ID() );
         }
         auto cf = _mesh->find_closest_face(s->x(),s->y());
-        s->set_closest_face(cf->cell_id);
+        s->set_closest_face(cf->cell_global_id);
 
         //do a few things behind _global's back for efficiency.
 //        auto s = pstations.at(i);

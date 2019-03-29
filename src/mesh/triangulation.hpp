@@ -430,7 +430,7 @@ public:
 
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
-    size_t cell_id; // This is the global id
+    size_t cell_global_id;
     size_t cell_local_id;
 
 
