@@ -661,7 +661,7 @@ void triangulation::determine_local_boundary_faces()
 
 // This is not thread safe. why?
 //#pragma omp parallel for
-  for(int face_index=0; face_index< _local_faces.size(); ++face_index)
+  for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
   {
 
     // face_index is a local index... get the face handle
