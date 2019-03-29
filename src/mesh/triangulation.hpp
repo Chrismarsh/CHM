@@ -984,11 +984,9 @@ bool face<Gt, Fb>::has_parameter(const uint64_t& hash)
     auto idx = _parameters_bphf->lookup(hash);
 
     // did the table return garabage?
-    if( idx >  _parameters.size() )
-        return false;
-
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if (_parameters[idx].xxhash != hash)
+    if( idx >=  _parameters.size() ||
+            _parameters[idx].xxhash != hash)
         return false;
 
     return true;
@@ -1003,13 +1001,10 @@ double& face<Gt, Fb>::parameter(const std::string& variable)
 
     //duplicate the code of the other paramter here for speed so we don't lookup 2x
     // did the table return garabage?
-    if( idx >  _parameters.size() )
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable + " does not exist."));
-
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if (_parameters[idx].xxhash != hash)
+    if( idx >=  _parameters.size() ||
+            _parameters[idx].xxhash != hash)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable + " does not exist."));
-
 
     return _parameters[idx].value;
 };
@@ -1021,13 +1016,10 @@ double& face<Gt, Fb>::parameter(const uint64_t& hash)
 
     //duplicate the code of the other paramter here for speed so we don't lookup 2x
     // did the table return garabage?
-    if( idx >  _parameters.size() )
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + std::to_string(hash)+ " does not exist."));
-
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if (_parameters[idx].xxhash != hash)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + std::to_string(hash) + " does not exist."));
-
+    if( idx >= _parameters.size() ||
+            _parameters[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + std::to_string(hash)+ " does not exist."));
 
     return _parameters[idx].value;
 
@@ -1427,7 +1419,7 @@ bool face<Gt, Fb>::has(const uint64_t& hash)
 
     // did the table return garabage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if( idx >  _variables.size() ||
+    if( idx >=  _variables.size() ||
             _variables[idx].xxhash != hash)
         return false;
 
@@ -1441,7 +1433,7 @@ double& face<Gt, Fb>::operator[](const uint64_t& hash)
 
     // did the table return garabage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if (  idx >  _variables.size() ||
+    if (  idx >=  _variables.size() ||
         _variables[idx].xxhash != hash)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
 
@@ -1457,7 +1449,7 @@ double& face<Gt, Fb>::operator[](const std::string& variable)
 
     // did the table return garabage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if( idx >  _variables.size() ||
+    if( idx >=  _variables.size() ||
             _variables[idx].xxhash != hash)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
 
