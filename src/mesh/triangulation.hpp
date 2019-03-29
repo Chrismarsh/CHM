@@ -55,7 +55,10 @@ inline int omp_get_max_threads() { return 1;}
 
 // hash functions
 #include "utility/BBhash.h"
-#include "utility/wyhash.h"
+//#include "utility/wyhash.h"
+#define XXH_STATIC_LINKING_ONLY
+#include <xxhash.h>
+
 
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
@@ -128,7 +131,6 @@ namespace pt = boost::property_tree;
 #endif
 
 #include "vertex.hpp"
-//#include "face.hpp"
 #include "timeseries.hpp"
 #include "math/coordinates.hpp"
 #include "utility/xxh64.hpp"
@@ -508,20 +510,37 @@ private:
     typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
 #endif
 
-
-    template <typename Item> class wyandFunctor
+    template <typename Item> class xxhashFunctor
     {
     public:
         uint64_t operator ()  (const Item& key, uint64_t seed=2654435761U) const
         {
-            return wyhash(&key, sizeof(Item), seed);
+            return XXH3_64bits_withSeed(&key, sizeof(Item), seed);
         }
 
     };
 
-    typedef wyandFunctor<u_int64_t> hasher_t;
-    //    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
+//    template <typename Item> class wyandFunctor
+//    {
+//    public:
+//        uint64_t operator ()  (const Item& key, uint64_t seed=2654435761U) const
+//        {
+//            return wyhash(&key, sizeof(Item), seed);
+//        }
+//
+//    };
+
+    // This is currently causing a collision, somehow. I've opened a bug
+    // https://github.com/rizkg/BBHash/issues/12
+    // https://github.com/wangyi-fudan/wyhash/issues/9
+//    typedef wyandFunctor<u_int64_t> hasher_t;
+//    typedef boomphf::SingleHashFunctor<u_int64_t>  hasher_t;
+
+
+    typedef xxhashFunctor<uint64_t> hasher_t;
     typedef boomphf::mphf< u_int64_t, hasher_t  > boophf_t;
+
+
 
     // perfect hashfn + variable storage
     std::unique_ptr<boophf_t> _variable_bphf;
@@ -832,7 +851,7 @@ private:
 
     //should we write parameters to the vtu file?
     bool _write_parameters_to_vtu;
-    
+
     // min and max elevations
     double _min_z;
     double _max_z;
@@ -975,7 +994,8 @@ bool face<Gt, Fb>::has_parameter(const std::string& variable)
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has_parameter(const uint64_t& hash)
 {
-    return _parameters_bphf->lookup(hash) < _parameters.size();
+    auto idx = _parameters_bphf->lookup(hash);
+    return idx < _parameters.size();
 //    return _parameters.find( key ) != _parameters.end();
 }
 
@@ -1645,6 +1665,18 @@ double face<Gt, Fb>::get_area()
 {
     if(_area == -1)
     {
+//        std::string var1="area";
+//        uint64_t hash1 = xxh64::hash (var1.c_str(), var1.length(), 2654435761U);
+//
+//        std::string var2="Ninja21_V";
+//        uint64_t hash2 = xxh64::hash (var2.c_str(), var2.length(), 2654435761U);
+//
+//        LOG_DEBUG << hash1;
+//        LOG_DEBUG << hash2;
+//
+//        wyandFunctor<uint64_t> f;
+//        LOG_DEBUG << f(hash1);
+//        LOG_DEBUG << f(hash2);
         // supports geographic
         if(has_parameter("area"_s))
         {
@@ -1652,17 +1684,26 @@ double face<Gt, Fb>::get_area()
         }
         else
         {
-            auto x1 = this->vertex(0)->point().x();
-            auto y1 = this->vertex(0)->point().y();
+//            auto x1 = this->vertex(0)->point().x();
+//            auto y1 = this->vertex(0)->point().y();
+//
+//            auto x2 = this->vertex(1)->point().x();
+//            auto y2 = this->vertex(1)->point().y();
+//
+//            auto x3 = this->vertex(2)->point().x();
+//            auto y3 = this->vertex(2)->point().y();
 
-            auto x2 = this->vertex(1)->point().x();
-            auto y2 = this->vertex(1)->point().y();
+            auto& pa = this->vertex(0)->point();
+            auto& pb = this->vertex(1)->point();
+            auto& pc = this->vertex(2)->point();
 
-            auto x3 = this->vertex(2)->point().x();
-            auto y3 = this->vertex(2)->point().y();
 
-//        auto lol= CGAL::area(this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point());
-            _area = 0.5 * fabs( x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2) );
+            typename Fb::Geom_traits traits;
+
+             _area = CGAL::to_double(traits.compute_area_2_object()(pa, pb, pc));
+
+//            _area = CGAL::area(this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point());
+//            _area = 0.5 * fabs( x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2) );
         }
     }
 

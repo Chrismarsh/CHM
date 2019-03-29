@@ -108,6 +108,7 @@ if(BUILD_PROJ4)
     set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
 endif()
 
+
 if(BUILD_NETCDF)
     set(NETCDF_DIR ${CMAKE_BINARY_DIR}/lib/netcdf-c)
     set(NETCDF_INCLUDE_DIR ${NETCDF_DIR}/include)
@@ -299,6 +300,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -stdlib=libc++")
 endif()
 
+
+set(XXHASH_ROOT "${CMAKE_BINARY_DIR}/lib/xxHash")
+find_package(xxhash REQUIRED)
+message(STATUS "xxhash -- ${XXHASH_LIBRARY} ${XXHASH_INCLUDE_DIR}")
 
 
 if(USE_OMP)

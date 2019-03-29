@@ -428,6 +428,7 @@ void triangulation::from_json(pt::ptree &mesh)
         }
 
         // init the storage, which builds the mphf
+#pragma omp parallel for
         for (size_t i = 0; i < size_faces(); i++)
         {
             face(i)->init_parameters(_parameters);

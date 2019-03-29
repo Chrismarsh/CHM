@@ -27,7 +27,7 @@ REGISTER_MODULE_CPP(crop_rotation);
 crop_rotation::crop_rotation(config_file cfg)
         : module_base("crop_rotation", parallel::data, cfg)
 {
-    provides_parameter("crop"_s);
+    provides_parameter("crop");
 }
 
 crop_rotation::~crop_rotation()
