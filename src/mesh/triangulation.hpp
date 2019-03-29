@@ -1426,11 +1426,9 @@ bool face<Gt, Fb>::has(const uint64_t& hash)
     uint64_t  idx = _variable_bphf->lookup(hash);
 
     // did the table return garabage?
-    if( idx >  _variables.size() )
-        return false;
-
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if (_variables[idx].xxhash != hash)
+    if( idx >  _variables.size() ||
+            _variables[idx].xxhash != hash)
         return false;
 
     return true;
@@ -1440,6 +1438,14 @@ template < class Gt, class Fb>
 double& face<Gt, Fb>::operator[](const uint64_t& hash)
 {
     uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if (  idx >  _variables.size() ||
+        _variables[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
+
+
     return _variables[idx].value;
 }
 
@@ -1448,6 +1454,13 @@ double& face<Gt, Fb>::operator[](const std::string& variable)
 {
     uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
     uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if( idx >  _variables.size() ||
+            _variables[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
+
     return _variables[idx].value;
 }
 
