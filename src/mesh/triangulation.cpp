@@ -431,7 +431,7 @@ void triangulation::from_json(pt::ptree &mesh)
 #pragma omp parallel for
         for (size_t i = 0; i < size_faces(); i++)
         {
-            face(i)->init_parameters(_parameters);
+            _faces(i)->init_parameters(_parameters);
         }
 
         for (auto &itr : mesh.get_child("parameters"))
