@@ -445,7 +445,7 @@ void snobal::run(mesh_elem &face)
 //    g->dead = 0;
 }
 
-void snobal::checkpoint(mesh domain,  netcdf& chkpt)
+void snobal::checkpoint(mesh& domain,  netcdf& chkpt)
 {
 
     chkpt.create_variable1D("snobal:m_s",domain->size_faces());
@@ -489,7 +489,7 @@ void snobal::checkpoint(mesh domain,  netcdf& chkpt)
 
 }
 
-void snobal::load_checkpoint(mesh domain, netcdf& chkpt)
+void snobal::load_checkpoint(mesh& domain, netcdf& chkpt)
 {
     for (size_t i = 0; i < domain->size_faces(); i++)
     {

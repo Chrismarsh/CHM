@@ -46,8 +46,8 @@ public:
     ~Richard_albedo();
     void run(mesh_elem& face);
     void init(mesh& domain);
-    void checkpoint(mesh domain,  netcdf& chkpt);
-    void load_checkpoint(mesh domain,  netcdf& chkpt);
+    void checkpoint(mesh& domain,  netcdf& chkpt);
+    void load_checkpoint(mesh& domain,  netcdf& chkpt);
 
     double amin;
     double amax;

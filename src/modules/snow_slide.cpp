@@ -41,7 +41,7 @@ snow_slide::~snow_slide()
 
 }
 
-void snow_slide::checkpoint(mesh domain,  netcdf& chkpt)
+void snow_slide::checkpoint(mesh& domain,  netcdf& chkpt)
 {
 
     chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth", domain->size_faces());
@@ -55,7 +55,7 @@ void snow_slide::checkpoint(mesh domain,  netcdf& chkpt)
     }
 }
 
-void snow_slide::load_checkpoint(mesh domain,  netcdf& chkpt)
+void snow_slide::load_checkpoint(mesh& domain,  netcdf& chkpt)
 {
     for (size_t i = 0; i < domain->size_faces(); i++)
     {

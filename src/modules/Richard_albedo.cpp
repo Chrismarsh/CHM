@@ -41,7 +41,7 @@ Richard_albedo::~Richard_albedo()
 
 }
 
-void Richard_albedo::checkpoint(mesh domain,  netcdf& chkpt)
+void Richard_albedo::checkpoint(mesh& domain,  netcdf& chkpt)
 {
 
     chkpt.create_variable1D("Richard_albedo:albedo", domain->size_faces());
@@ -53,7 +53,7 @@ void Richard_albedo::checkpoint(mesh domain,  netcdf& chkpt)
     }
 }
 
-void Richard_albedo::load_checkpoint(mesh domain,  netcdf& chkpt)
+void Richard_albedo::load_checkpoint(mesh& domain,  netcdf& chkpt)
 {
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
