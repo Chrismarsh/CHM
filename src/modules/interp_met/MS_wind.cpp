@@ -68,100 +68,103 @@ void MS_wind::run(mesh& domain)
 
     if(!use_ryan_dir)
     {
+        ompException oe;
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
             auto face = domain->face(i);
+	    oe.Run([&]
+		   {
+		     std::vector<boost::tuple<double, double, double> > u;
+		     std::vector<boost::tuple<double, double, double> > v;
+		     for (auto &s : global_param->get_stations(face->get_x(), face->get_y()))
+		       {
+			 if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
+			   continue;
 
-            std::vector<boost::tuple<double, double, double> > u;
-            std::vector<boost::tuple<double, double, double> > v;
-            for (auto &s : global_param->get_stations(face->get_x(), face->get_y()))
-            {
-                if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
-                    continue;
+			 double theta = s->get("vw_dir") * M_PI / 180.;
 
-                double theta = s->get("vw_dir") * M_PI / 180.;
+			 double W = s->get("U_R");
+			 W = std::max(W, 0.1);
 
-                double W = s->get("U_R");
-                W = std::max(W, 0.1);
+			 W = Atmosphere::log_scale_wind(W,
+							Atmosphere::Z_U_R,  // UR is at our reference height
+							speedup_height,  // MS assumes a 2m wind speed
+							0); // no canopy, no snow, but uses a snow roughness
 
-                W = Atmosphere::log_scale_wind(W,
-                                               Atmosphere::Z_U_R,  // UR is at our reference height
-                                               speedup_height,  // MS assumes a 2m wind speed
-                                               0); // no canopy, no snow, but uses a snow roughness
+			 double zonal_u = -W * sin(theta);
+			 double zonal_v = -W * cos(theta);
 
-                double zonal_u = -W * sin(theta);
-                double zonal_v = -W * cos(theta);
+			 u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u));
+			 v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v));
+		       }
 
-                u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u));
-                v.push_back(boost::make_tuple(s->x(), s->y(), zonal_v));
-            }
+		     //http://mst.nerc.ac.uk/wind_vect_convs.html
 
-            //http://mst.nerc.ac.uk/wind_vect_convs.html
+		     // get an interpolated zonal U,V at our face
+		     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+		     double zonal_u = face->get_module_data<data>(ID)->interp(u, query);
+		     double zonal_v = face->get_module_data<data>(ID)->interp(v, query);
 
-            // get an interpolated zonal U,V at our face
-            auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-            double zonal_u = face->get_module_data<data>(ID)->interp(u, query);
-            double zonal_v = face->get_module_data<data>(ID)->interp(v, query);
+		     (*face)["interp_zonal_u"_s]= zonal_u;
+		     (*face)["interp_zonal_v"_s]= zonal_v;
 
-            (*face)["interp_zonal_u"_s]= zonal_u;
-            (*face)["interp_zonal_v"_s]= zonal_v;
+		     //Get back the interpolated wind direction
+		     // -- not sure if there is a better way to do this, but at least a first order to getting the right direction
+		     double theta = math::gis::zonal2dir(zonal_u, zonal_v);
 
-            //Get back the interpolated wind direction
-            // -- not sure if there is a better way to do this, but at least a first order to getting the right direction
-            double theta = math::gis::zonal2dir(zonal_u, zonal_v);
+		     double theta_orig = theta;
 
-            double theta_orig = theta;
+		     // Use this wind dir to figure out which lookUP we need
+		     int d = int( std::round(theta * 180.0 / M_PI / 45.));
 
-            // Use this wind dir to figure out which lookUP we need
-            int d = int( std::round(theta * 180.0 / M_PI / 45.));
+		     if (d == 8) d = 0; // floor(360/45) = 8, which we don't have, as 0 is already North, so use that.
 
-            if (d == 8) d = 0; // floor(360/45) = 8, which we don't have, as 0 is already North, so use that.
+		     (*face)["lookup_d"_s]= d;
 
-            (*face)["lookup_d"_s]= d;
+		     // get the speedup for the interpolated direction
+		     double U_speedup = face->parameter("MS" + std::to_string(d) + "_U");
+		     double V_speedup = face->parameter("MS" + std::to_string(d) + "_V");
+		     double W_speedup = face->parameter("MS" + std::to_string(d));
 
-            // get the speedup for the interpolated direction
-            double U_speedup = face->parameter("MS" + std::to_string(d) + "_U");
-            double V_speedup = face->parameter("MS" + std::to_string(d) + "_V");
-            double W_speedup = face->parameter("MS" + std::to_string(d));
+		     // Speed up interpolated zonal_u & zonal_v
+		     double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v) * W_speedup;
+		     W = std::max(W, 0.1);
+		     (*face)["W_speedup"_s]= W;
 
-            // Speed up interpolated zonal_u & zonal_v
-            double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v) * W_speedup;
-            W = std::max(W, 0.1);
-            (*face)["W_speedup"_s]= W;
+		     //Now recover a U and V from this to get a new direction
+		     double U = U_speedup * W;
+		     double V = V_speedup * W;
 
-            //Now recover a U and V from this to get a new direction
-            double U = U_speedup * W;
-            double V = V_speedup * W;
+		     // NEW wind direction after we do the U,V speedup
+		     theta = math::gis::zonal2dir(U, V);
 
-            // NEW wind direction after we do the U,V speedup
-            theta = math::gis::zonal2dir(U, V);
+		     //go back from 2m to reference
+		     W = Atmosphere::log_scale_wind(W,
+						    speedup_height,  // MS assumes a 2m wind speed
+						    Atmosphere::Z_U_R,  // UR is at our reference height
+						    0); // no canopy, no snow, but uses a snow roughness
 
-            //go back from 2m to reference
-            W = Atmosphere::log_scale_wind(W,
-                                           speedup_height,  // MS assumes a 2m wind speed
-                                           Atmosphere::Z_U_R,  // UR is at our reference height
-                                           0); // no canopy, no snow, but uses a snow roughness
+		     (*face)["U_R"_s]= W;
+		     (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
 
-            (*face)["U_R"_s]= W;
-            (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
+		     (*face)["2m_zonal_u"_s]= U; // these are still 2m
+		     (*face)["2m_zonal_v"_s]= V;
 
-            (*face)["2m_zonal_u"_s]= U; // these are still 2m
-            (*face)["2m_zonal_v"_s]= V;
-
-            Vector_2 v_corr = math::gis::bearing_to_cartesian(theta * 180.0 / M_PI);
-            Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
-            face->set_face_vector("wind_direction", v3);
+		     Vector_2 v_corr = math::gis::bearing_to_cartesian(theta * 180.0 / M_PI);
+		     Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
+		     face->set_face_vector("wind_direction", v3);
 
 
-            //        Vector_2 v_orig = math::gis::bearing_to_cartesian(theta_orig* 180.0 / M_PI);
-            //        Vector_3 v3_orig(-v_orig.x(),-v_orig.y(), 0); //negate as direction it's blowing instead of where it is from!!
-            //        face->set_face_vector("wind_direction_original",v3_orig);
+		     //        Vector_2 v_orig = math::gis::bearing_to_cartesian(theta_orig* 180.0 / M_PI);
+		     //        Vector_3 v3_orig(-v_orig.x(),-v_orig.y(), 0); //negate as direction it's blowing instead of where it is from!!
+		     //        face->set_face_vector("wind_direction_original",v3_orig);
 
-            (*face)["vw_dir_orig"_s]= theta_orig * 180.0 / M_PI;
+		     (*face)["vw_dir_orig"_s]= theta_orig * 180.0 / M_PI;
+		   });
 
         }
-
+	oe.Rethrow();
 
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
