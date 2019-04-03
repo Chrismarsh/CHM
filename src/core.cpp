@@ -788,15 +788,21 @@ void core::config_meshes( pt::ptree &value)
     _ui.write_mesh_details(_mesh->size_faces());
 
     LOG_DEBUG << "Initializing DEM mesh attributes";
+
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < _mesh->size_faces(); i++)
     {
-        auto face = _mesh->face(i);
-        face->slope();
-        face->aspect();
-        face->center();
-        face->normal();
+      oe.Run([&]
+	     {
+	       auto face = _mesh->face(i);
+	       face->slope();
+	       face->aspect();
+	       face->center();
+	       face->normal();
+	     });
     }
+    oe.Rethrow();
 
 
 
@@ -1657,19 +1663,21 @@ void core::init(int argc, char **argv)
         }
     }
 
+    ompException oe;
 
     LOG_DEBUG << "Allocating face variable storage";
     #pragma omp parallel for
     for (size_t it = 0; it < _mesh->size_faces(); it++)
     {
-        auto face = _mesh->face(it);
-        if(point_mode.enable && face->_debug_name != _outputs[0].name )
-            continue;
-
-        face->init_time_series(_provided_var_module);
-
-
+      auto face = _mesh->face(it);
+      if(point_mode.enable && face->_debug_name != _outputs[0].name )
+	continue;
+      oe.Run([&]
+	     {
+	       face->init_time_series(_provided_var_module);
+	     });
     }
+    oe.Rethrow();
 
     if(point_mode.enable)
     {
@@ -2182,6 +2190,7 @@ void core::run()
 
     timer c;
 
+    ompException oe;
     //setup a XML writer for the PVD paraview format
     pt::ptree pvd;
     pvd.add("VTKFile.<xmlattr>.type", "Collection");
@@ -2243,24 +2252,27 @@ void core::run()
                     #pragma omp parallel for
                     for (size_t y = 0; y < nc.get_ysize(); y++)
                     {
-                        for (size_t x = 0; x < nc.get_xsize(); x++)
-                        {
-                            size_t index = x + y * nc.get_xsize();
-                            auto s = _global->_stations.at(index);
+		      oe.Run([&]
+			     {
+			       for (size_t x = 0; x < nc.get_xsize(); x++)
+			       {
+				   size_t index = x + y * nc.get_xsize();
+				   auto s = _global->_stations.at(index);
 
-                            //sanity check that we are getting the right station for this xy pair
-                            if (s->ID() != std::to_string(index))
-                            {
-                                BOOST_THROW_EXCEPTION(
-                                        forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
-                            }
+				   //sanity check that we are getting the right station for this xy pair
+				   if (s->ID() != std::to_string(index))
+				   {
+				       BOOST_THROW_EXCEPTION(
+							     forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
+				   }
 
+				   double d = data[y][x];
+				   s->now().set(itr, d);
 
-                            double d = data[y][x];
-                            s->now().set(itr, d);
-
-                        }
-                    }
+			       }
+			     });
+		    }
+		    oe.Rethrow();
                 }
 
                 LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";
