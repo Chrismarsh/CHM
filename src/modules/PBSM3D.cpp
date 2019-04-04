@@ -592,55 +592,8 @@ void PBSM3D::run(mesh& domain)
 		   // kg/(m*s)
 		   Qsalt =  c_salt * uhs * hs; //integrate over the depth of the saltation layer, kg/(m*s)
 
-		   // (*face)["saltation_mass"_s]=c_salt*hs * face->get_area();
 
-		   //calculate the surface integral of Qsalt, and ensure we aren't saltating more mass than what exists
-		   //in the triangle. I
-		   //            double salt=0;
-		   //            double udotm[3];
-		   //            double A = face->get_area();
-		   //            double E[3];
-		   //            for(int j=0; j<3; ++j)
-		   //            {
-		   //                E[j]=face->edge_length(j);
-		   //                udotm[j] = arma::dot(uvw, m[j]);
-		   //                salt += -.5000000000*E[j]*Qsalt*udotm[j]/A;
-		   //            }
-		   //
-		   //            //https://www.wolframalpha.com/input/?i=(m*(kg%2Fm%5E3*(m%2Fs)*m)%2Fm%5E2)*s
-		   //            salt = std::fabs(salt) *  global_param->dt(); // ->kg/m^2
-		   //
-		   // (*face)["salt_limit"_s]=salt;
-		   //
-		   //            //Figure out the max we can transport, ie total mass in cell
-		   //            if( limit_mass && salt > swe) // could we move more than the total mass in the cell during this timestep?
-		   //            {
-		   //
-		   //                //back out what the max conc should be based on our swe
-		   //                //units: ((kg/m^2)*m^2)/( s*m*(m/s)*m ) -> kg/m^3
-		   //                c_salt = -2.*swe*A/(uhs*hs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2]));
-		   //
-		   //                Qsalt = c_salt * uhs * hs;
-		   //                if(is_nan(c_salt)) //shoouldn't happen but....
-		   //                {
-		   //                    c_salt = 0;
-		   //                    Qsalt = 0;
-		   //                }
-		   //
-		   //
-		   ////                LOG_DEBUG << "More saltation than snow, limiting conc to " << c_salt << " triangle="<<i;
-		   ////                LOG_DEBUG << "Avail mass = " << swe << ", would have salted =  " << salt;
-		   //            }
 		 }
-
-	       // can use for point scale plume testing.
-	       //
-	       //        if (i != 7105 )
-	       //        {
-	       //            Qsalt = 0;
-	       //            c_salt = 0;
-	       //        }
-
 
 	       if(debug_output) (*face)["csalt"_s]= c_salt;
 
@@ -821,20 +774,8 @@ void PBSM3D::run(mesh& domain)
 			   auto neigh = face->neighbor(a);
 			   alpha[a] = d->A[a];
 
-			   //                    //if we have a neighbour, use the distance
-			   //                    if (neigh != nullptr)
-			   //                    {
-			   //                        alpha[a] /= math::gis::distance(face->center(), neigh->center());
-			   //
-			   //                    } else
-			   //                    {
-			   //                        //otherwise assume 2x the distance from the center of face to one of it's vertexes, so ghost triangle is approx the same size
-			   //                        alpha[a] /= 5.0 * math::gis::distance(face->center(), face->vertex(0)->point());
-			   //
-			   //                    }
-
 			   //do just very low horz diffusion for numerics
-			   K[a] =  0.00001;    //PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * 2. * ustar);
+			   K[a] =  0.00001;
 			   alpha[a] *= K[a];
 			 }
 		     }
@@ -858,7 +799,6 @@ void PBSM3D::run(mesh& domain)
 		   // with pomeroy fall velocity, 0.3 gives good agreement w/ published Qsusp values. Low value compensates for low fall velocity
 		   K[3] = K[4] = diffusion_coeff * ustar * l;
 
-		   //            K[3] = K[4] = snow_diffusion_const * PhysConst::kappa * cz * ustar;// std::max(ustar * l, PhysConst::kappa * cz * ustar);
 
 		   if(debug_output) (*face)["K"+std::to_string(z)]= K[3];
 		   //top
@@ -1004,7 +944,7 @@ void PBSM3D::run(mesh& domain)
 		       // (*face)["p_snow"_s]=0;
 		       // (*face)["p"_s]=0;
 
-		       if (udotm[3] > 0)
+               if (udotm[3] > 0)
 			 {
 			   elements[ idx_idx_off ] += V*csubl-d->A[3]*udotm[3]-alpha[3];
 			   b[idx] += -alpha[3] * cprecip;
