@@ -41,7 +41,7 @@ Richard_albedo::~Richard_albedo()
 
 }
 
-void Richard_albedo::checkpoint(mesh domain,  netcdf& chkpt)
+void Richard_albedo::checkpoint(mesh& domain,  netcdf& chkpt)
 {
 
     chkpt.create_variable1D("Richard_albedo:albedo", domain->size_faces());
@@ -53,7 +53,7 @@ void Richard_albedo::checkpoint(mesh domain,  netcdf& chkpt)
     }
 }
 
-void Richard_albedo::load_checkpoint(mesh domain,  netcdf& chkpt)
+void Richard_albedo::load_checkpoint(mesh& domain,  netcdf& chkpt)
 {
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -128,11 +128,16 @@ void Richard_albedo::init(mesh& domain)
     albedo_snow = cfg.get("init_albedo_snow",0.85); // intial snow albedo
     albedo_bare = cfg.get("init_albedo_bare",0.17); //initial bare ground albedo
 
+    ompException oe;
 #pragma omp parallel for
     for (size_t i=0; i < domain->size_faces(); ++i)
     {
-        auto face = domain->face(i);
-        auto* d = face->make_module_data<data>(ID);
-        d->albedo = albedo_bare;
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto* d = face->make_module_data<data>(ID);
+	       d->albedo = albedo_bare;
+	     });
     }
+    oe.Rethrow();
 }

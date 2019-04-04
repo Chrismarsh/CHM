@@ -149,7 +149,7 @@ public:
         bool face_neigh[3];
 
         std::vector<double> u_z_susp; //suspension layer windspeeds
-        size_t cell_id;
+        size_t cell_local_id;
 
         double CanopyHeight;
         double LAI;

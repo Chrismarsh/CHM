@@ -61,15 +61,20 @@ Harder_precip_phase::~Harder_precip_phase()
 }
 void Harder_precip_phase::init(mesh& domain)
 {
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
-        d->hours_since_snowfall = 0;
-        d->acc_rain = 0;
-        d->acc_snow = 0;
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto d = face->make_module_data<data>(ID);
+	       d->hours_since_snowfall = 0;
+	       d->acc_rain = 0;
+	       d->acc_snow = 0;
+	     });
     }
+    oe.Rethrow();
 }
 void Harder_precip_phase::run(mesh_elem& face)
 {

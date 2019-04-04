@@ -1,15 +1,15 @@
 // 	Copyright (C) 2011  Chris Marsh
-// 
+//
 // 	This program is free software: you can redistribute it and/or modify
 // 	it under the terms of the GNU General Public License as published by
 // 	the Free Software Foundation, either version 3 of the License, or
 // 	(at your option) any later version.
-// 
+//
 // 	This program is distributed in the hope that it will be useful,
 // 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 // 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // 	GNU General Public License for more details.
-// 
+//
 // 	You should have received a copy of the GNU General Public License
 // 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -246,6 +246,8 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
 void triangulation::from_json(pt::ptree &mesh)
 {
 
+    ompException oe;
+
     size_t nvertex_toread = mesh.get<size_t>("mesh.nvertex");
     LOG_DEBUG << "Reading in #vertex=" << nvertex_toread;
     size_t i=0;
@@ -431,8 +433,12 @@ void triangulation::from_json(pt::ptree &mesh)
 #pragma omp parallel for
         for (size_t i = 0; i < size_faces(); i++)
         {
-            _faces.at(i)->init_parameters(_parameters);
+	  oe.Run([&]
+		 {
+		   _faces.at(i)->init_parameters(_parameters);
+		 });
         }
+	oe.Rethrow();
 
         for (auto &itr : mesh.get_child("parameters"))
         {
@@ -564,19 +570,22 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   // vector) before the new ordering is consistent.
 
   assert( permutation.size() == size_faces() );
-
   LOG_DEBUG << "Reordering faces";
+
+  ompException oe;
 
   // Update the IDs on all faces
   #pragma omp parallel for
   for (size_t ind = 0; ind < permutation.size(); ++ind)
   {
+    oe.Run([&]
+	   {
+	     size_t old_ID = permutation.at(ind);
+	     size_t new_ID = ind;
 
-    size_t old_ID = permutation[ind];
-    size_t new_ID = ind;
-
-    auto face = _faces[old_ID];
-    face->cell_global_id = new_ID;
+	     auto face = _faces.at(old_ID);
+	     face->cell_global_id = new_ID;
+	   });
   }
 
   // Sort the faces in the new ordering
@@ -596,6 +605,7 @@ void triangulation::partition_mesh()
   // 2. Determine (processor) locally owned indices of faces
   // 3. Set locally owned _is_ghost=false
 
+  ompException oe;
 
   size_t total_num_faces = _faces.size();
 
@@ -623,12 +633,17 @@ void triangulation::partition_mesh()
   _local_faces.resize(num_faces_in_partition[_comm_world.rank()]);
 
 #pragma omp parallel for
-  for(int local_ind=0;local_ind<_local_faces.size();++local_ind) {
-    size_t global_ind = face_start_idx + local_ind;
-    _faces.at(global_ind)->_is_ghost = false;
-    _faces.at(global_ind)->cell_local_id = local_ind;
-    _local_faces[local_ind] = _faces.at(global_ind);
+  for(int local_ind=0;local_ind<_local_faces.size();++local_ind)
+  {
+    oe.Run([&]
+	   {
+	     size_t global_ind = face_start_idx + local_ind;
+	     _faces.at(global_ind)->_is_ghost = false;
+	     _faces.at(global_ind)->cell_local_id = local_ind;
+	     _local_faces[local_ind] = _faces.at(global_ind);
+	   });
   }
+  oe.Rethrow();
 
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << ": start " << face_start_idx << ", end " << face_end_idx << ", number " << _local_faces.size();
 
@@ -637,7 +652,10 @@ void triangulation::partition_mesh()
 
 #pragma omp parallel for
   for(size_t i=0;i<total_num_faces;++i) {
-    _faces.at(i)->_is_ghost = false;
+    oe.Run([&]
+	   {
+	     _faces.at(i)->_is_ghost = false;
+	   });
   }
 
 #endif // USE_MPI
@@ -660,7 +678,7 @@ void triangulation::determine_local_boundary_faces()
 
 // This is not thread safe. why?
 //#pragma omp parallel for
-  for(int face_index=0; face_index< _local_faces.size(); ++face_index)
+  for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
   {
 
     // face_index is a local index... get the face handle
@@ -784,7 +802,7 @@ void triangulation::plot(std::string ID)
 
         double d = fit->face_data(ID);
         (*cdata)(i) = d;
-        //        std::cout << i <<std::endl; 
+        //        std::cout << i <<std::endl;
         ++i;
     }
 
@@ -1029,7 +1047,7 @@ void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
     {
         bboxpt.push_back(K::Point_2(v->point().x(),v->point().y()));
     }
-        
+
     K::Iso_rectangle_2 rot_bbox = CGAL::bounding_box(bboxpt.begin(), bboxpt.end());
 
     //need to construct new axis aligned BBR
@@ -1092,7 +1110,7 @@ void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
         }
     }
 
-    
+
 }
 
 rect* segmented_AABB::get_rect(size_t row, size_t col)

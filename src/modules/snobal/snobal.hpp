@@ -55,7 +55,7 @@ public:
 
     virtual void run(mesh_elem &face);
     virtual void init(mesh& domain);
-    void checkpoint(mesh domain, netcdf& chkpt);
-    void load_checkpoint(mesh domain, netcdf& chkpt);
+    void checkpoint(mesh& domain, netcdf& chkpt);
+    void load_checkpoint(mesh& domain, netcdf& chkpt);
 
 };
