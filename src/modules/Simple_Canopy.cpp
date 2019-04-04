@@ -576,35 +576,39 @@ void Simple_Canopy::run(mesh_elem &face)
 
 void Simple_Canopy::init(mesh& domain)
 {
+  ompException oe;
     #pragma omp parallel for
-
     // For each face
     for(size_t i=0;i<domain->size_faces();i++)
     {
+      oe.Run([&]
+	     {
         // Get current face
-        auto face = domain->face(i);
+	       auto face = domain->face(i);
 
-        auto d = face->make_module_data<Simple_Canopy::data>(ID);
+	       auto d = face->make_module_data<Simple_Canopy::data>(ID);
 
-        // Check if Canopy exists at this face/triangle
-        if(face->has_vegetation() )
-        {
-            // Get Canopy type (CRHM canop classifcation: Canopy, Clearing, or Gap)
-            d->canopyType       = face->veg_attribute("canopyType");
-            d->CanopyHeight     = face->veg_attribute("CanopyHeight");
-            d->LAI              = face->veg_attribute("LAI");
-            d->rain_load        = 0.0;
-            d->Snow_load        = 0.0;
-            d->cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
-            d->cum_net_rain     = 0.0; // " direct_rain + drip", "(mm)"
-            d->cum_Subl_Cpy     = 0.0; //  "canopy snow sublimation", "(mm)"
-            d->cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
-            d->cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
+	       // Check if Canopy exists at this face/triangle
+	       if(face->has_vegetation() )
+	       {
+		   // Get Canopy type (CRHM canop classifcation: Canopy, Clearing, or Gap)
+		   d->canopyType       = face->veg_attribute("canopyType");
+		   d->CanopyHeight     = face->veg_attribute("CanopyHeight");
+		   d->LAI              = face->veg_attribute("LAI");
+		   d->rain_load        = 0.0;
+		   d->Snow_load        = 0.0;
+		   d->cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
+		   d->cum_net_rain     = 0.0; // " direct_rain + drip", "(mm)"
+		   d->cum_Subl_Cpy     = 0.0; //  "canopy snow sublimation", "(mm)"
+		   d->cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
+		   d->cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
 
-        } else {
-            BOOST_THROW_EXCEPTION(missing_value_error() << errstr_info("landcover not defined, but is required for simple_canopy module, please check the configuration file"));
-        }
+	       } else {
+		 BOOST_THROW_EXCEPTION(missing_value_error() << errstr_info("landcover not defined, but is required for simple_canopy module, please check the configuration file"));
+	       }
+	     });
     }
+    oe.Rethrow();
 }
 
 double Simple_Canopy::delta(double ta) // Slope of sat vap p vs t, kPa/°C

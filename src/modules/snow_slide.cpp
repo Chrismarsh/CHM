@@ -68,23 +68,28 @@ void snow_slide::load_checkpoint(mesh& domain,  netcdf& chkpt)
 void snow_slide::run(mesh& domain)
 {
 
+    ompException oe;
+
     // Make a vector of pairs (elevation + snowdepth, pointer to face)
     tbb::concurrent_vector< std::pair<double, mesh_elem> > sorted_z(domain->size_faces());
 
 #pragma omp parallel for
     for(size_t i = 0; i  < domain->size_faces(); i++)
     {
-        auto face = domain->face(i); // Get face
-        // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
-        auto data = face->get_module_data<snow_slide::data>(ID); // Get data
-        data->snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
-        data->swe_copy = (*face)["swe"_s]/1000; // mm to m
-        // Initalize snow transport to zero
-        data->delta_avalanche_snowdepth = 0.0;
-        data->delta_avalanche_mass = 0.0; // m
-        sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s], face) ;
-
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i); // Get face
+	       // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
+	       auto data = face->get_module_data<snow_slide::data>(ID); // Get data
+	       data->snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
+	       data->swe_copy = (*face)["swe"_s]/1000; // mm to m
+	       // Initalize snow transport to zero
+	       data->delta_avalanche_snowdepth = 0.0;
+	       data->delta_avalanche_mass = 0.0; // m
+	       sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s], face) ;
+	     });
     }
+    oe.Rethrow();
 
     // Sort faces by elevation + snowdepth
 //    std::sort(sorted_z.begin(), sorted_z.end(), [](const std::pair<double, mesh_elem> &a,const std::pair<double, mesh_elem> &b) {

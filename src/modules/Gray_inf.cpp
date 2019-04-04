@@ -49,25 +49,29 @@ Gray_inf::~Gray_inf()
 
 void Gray_inf::init(mesh& domain)
 {
+    ompException oe;
     //store all of snobals global variables from this timestep to be used as ICs for the next timestep
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto* d = face->make_module_data<Gray_inf::data>(ID);
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto* d = face->make_module_data<Gray_inf::data>(ID);
 
-        d->soil_depth = 400;
-        d->porosity = .4;
-        d->max_storage =  d->soil_depth * d->porosity;
-//        d->storage =  d->max_storage  - (1 - d->max_storage * face->parameter("sm"_s)/100.);
-        d->storage =  d->max_storage * face->parameter("sm"_s)/100.;
+	       d->soil_depth = 400;
+	       d->porosity = .4;
+	       d->max_storage =  d->soil_depth * d->porosity;
+	       //        d->storage =  d->max_storage  - (1 - d->max_storage * face->parameter("sm"_s)/100.);
+	       d->storage =  d->max_storage * face->parameter("sm"_s)/100.;
 
-        d->last_ts_potential_inf = 0;
-        d->opportunity_time=0.;
-        d->total_inf = 0.;
-        d->total_excess = 0.;
-
+	       d->last_ts_potential_inf = 0;
+	       d->opportunity_time=0.;
+	       d->total_inf = 0.;
+	       d->total_excess = 0.;
+	     });
     }
+    oe.Rethrow();
 }
 void Gray_inf::run(mesh_elem &face)
 {
