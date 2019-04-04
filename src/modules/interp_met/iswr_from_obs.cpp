@@ -44,13 +44,18 @@ iswr_from_obs::~iswr_from_obs()
 }
 void iswr_from_obs::init(mesh& domain)
 {
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto d = face->make_module_data<data>(ID);
+	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+	     });
     }
+    oe.Rethrow();
 }
 void iswr_from_obs::run(mesh_elem &face)
 {
