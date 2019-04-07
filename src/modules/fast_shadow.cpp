@@ -50,14 +50,14 @@ fast_shadow::~fast_shadow()
 void fast_shadow::run(mesh_elem& face)
 {
 
-    double solar_el = face->face_data("solar_el") *M_PI / 180.;
+    double solar_el = (*face)["solar_el"_s] *M_PI / 180.;
 
-    face->set_face_data("shadow", 0);
+    (*face)["shadow"_s]= 0;
     //bail early
     if (solar_el < 0)
         return;
 
-    double solar_az = face->face_data("solar_az") ;
+    double solar_az = (*face)["solar_az"_s] ;
 
     Point_3 me = face->center();
 
@@ -78,13 +78,13 @@ void fast_shadow::run(mesh_elem& face)
         //try to bail early if possible
         if (phi > solar_el )
         {
-            face->set_face_data("shadow", 1);
+            (*face)["shadow"_s]= 1;
         }
     }
     //try to bail early if possible
     if (phi > solar_el )
     {
-        face->set_face_data("shadow", 1);
+        (*face)["shadow"_s]= 1;
     }
 
 

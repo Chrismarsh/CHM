@@ -59,8 +59,8 @@ void iswr::run(mesh_elem& face)
                      "When using point-mode, you probably want to set -c config.iswr.already_cosine_corrected:true";
     }
 
-    double A = face->face_data("solar_az") * mio::Cst::to_rad;
-    double E = face->face_data("solar_el") * mio::Cst::to_rad;
+    double A = (*face)["solar_az"_s] * mio::Cst::to_rad;
+    double E = (*face)["solar_el"_s] * mio::Cst::to_rad;
 
     //radiation data
     //solar vector
@@ -95,18 +95,18 @@ void iswr::run(mesh_elem& face)
     if(angle < 0.0 || E < 0.0523598776) //3deg -> rad
         angle = 0.0;
 
-    face->set_face_data("solar_angle",angle);
+    (*face)["solar_angle"_s]=angle;
 
     //if we have remote shadowing
     if(has_optional("shadow"))
     {
-        if(face->face_data("shadow") == 1)
+        if((*face)["shadow"_s] == 1)
         {
             angle = 0;
         }
     }
 
-    double direct_beam = face->face_data("iswr_direct_no_slope");
+    double direct_beam = (*face)["iswr_direct_no_slope"_s];
 
     //If we're using obs at a point, this should be set to true
     if(already_cosine_corrected)
@@ -115,14 +115,14 @@ void iswr::run(mesh_elem& face)
     }
 
     double swr =  angle * direct_beam;
-    double diff = face->face_data("iswr_diffuse_no_slope");
+    double diff = (*face)["iswr_diffuse_no_slope"_s];
 
     swr = std::max(0.0, swr);
     diff = std::max(0.0,diff);
 
-    face->set_face_data("iswr_direct",swr );
-    face->set_face_data("iswr_diffuse",diff );
-    face->set_face_data("iswr", swr + diff );
+    (*face)["iswr_direct"_s]=swr ;
+    (*face)["iswr_diffuse"_s]=diff ;
+    (*face)["iswr"_s]= swr + diff ;
 
 }
 

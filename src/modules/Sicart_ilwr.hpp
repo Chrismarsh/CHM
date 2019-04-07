@@ -58,7 +58,7 @@ public:
     Sicart_ilwr(config_file cfg);
     ~Sicart_ilwr();
     virtual void run(mesh_elem& face);
-    void init(mesh domain);
+    void init(mesh& domain);
 
 
 };

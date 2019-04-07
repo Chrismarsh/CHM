@@ -81,7 +81,7 @@ REGISTER_MODULE_HPP(Marsh_shading_iswr);
     public:
         Marsh_shading_iswr(config_file cfg);
         ~Marsh_shading_iswr();
-        virtual void run(mesh domain);
+        virtual void run(mesh& domain);
 
     int x_AABB;
     int y_AABB;

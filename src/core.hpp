@@ -25,7 +25,6 @@
 #define BOOST_SPIRIT_THREADSAFE
 
 
-
 //vtk includes
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
@@ -74,9 +73,8 @@ namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 
 #include <ogr_spatialref.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+
+
 //includes from CHM
 #include "logger.hpp"
 #include "exception.hpp"
@@ -94,6 +92,11 @@ namespace po = boost::program_options;
 #include "math/coordinates.hpp"
 #include "timeseries/netcdf.hpp"
 #include "gsl/gsl_errno.h"
+
+#ifdef USE_MPI
+#include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
+#endif
 
 struct vertex{
     std::string name;
@@ -277,9 +280,6 @@ protected:
     boost::posix_time::ptime* _start_ts;
     boost::posix_time::ptime* _end_ts;
 
-    //a full timeseires per triangle
-    bool _per_triangle_timeseries;
-
     struct point_mode_info
     {
         bool enable;
@@ -336,5 +336,11 @@ protected:
     bool _load_from_checkpoint; // are we loading from a checkpoint?
     std::string _checkpoint_file;//file to load from
     size_t _checkpoint_feq; // frequency of checkpoints
+
+
+#ifdef USE_MPI
+    boost::mpi::environment _mpi_env;
+    boost::mpi::communicator _comm_world;
+#endif
 
 };

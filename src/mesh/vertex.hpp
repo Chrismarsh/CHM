@@ -62,7 +62,9 @@ public:
         typedef ex_vertex<Gt, Vb2> Other;
     };
 private:
-    size_t _id;
+    size_t _id; // This is the global id
+    size_t _local_id;
+    bool   _is_ghost;
     std::map<std::string,vertex_info* > _vertex_module_data;
 public:
     ex_vertex();
@@ -87,6 +89,18 @@ public:
     */
     size_t get_id();
 
+    /**
+    * Sets the vertex to have a given id local to a process. Generally this would be the current x,y,z point read in from a file, for example.
+    * \param id Vertex global id
+    */
+    void set_local_id(size_t id);
+
+    /**
+    * Returns the local id
+    * \return local id
+    */
+    size_t get_local_id();
+
     template<typename T>
     T*get_module_data(std::string module);
 
@@ -107,25 +121,29 @@ template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex() : Base()
 {
 
-    _id = 0;
+    _id       = 0;
+    _local_id = 0;
 }
 
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(const Point & p) : Base(p)
 {
     _id = 0;
+    _local_id = 0;
 
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(const Point & p, Face_handle f) : Base(f, p)
 {
     _id = 0;
+    _local_id = 0;
 
 }
 template < class Gt, class Vb>
 ex_vertex<Gt, Vb>::ex_vertex(Face_handle f) : Base(f)
 {
     _id = 0;
+    _local_id = 0;
 
 }
 
@@ -139,6 +157,18 @@ template < class Gt, class Vb>
 size_t ex_vertex<Gt, Vb>::get_id()
 {
     return _id;
+}
+
+template < class Gt, class Vb>
+void ex_vertex<Gt, Vb>::set_local_id(size_t id)
+{
+    _local_id = id;
+}
+
+template < class Gt, class Vb>
+size_t ex_vertex<Gt, Vb>::get_local_id()
+{
+    return _local_id;
 }
 
 template < class Gt, class Vb>

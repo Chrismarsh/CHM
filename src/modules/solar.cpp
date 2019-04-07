@@ -29,6 +29,8 @@ solar::solar(config_file cfg)
 {
     provides("solar_el");
     provides("solar_az");
+
+    provides_parameter("svf");
 }
 solar::~solar()
 {
@@ -139,11 +141,11 @@ void solar::run(mesh_elem &face)
     double Az = atan2(yhor,xhor)*(180./M_PI) + 180.;
     double El = asin(zhor)*(180./M_PI);
 
-    face->set_face_data("solar_az",Az);
-    face->set_face_data("solar_el",El);
+    (*face)["solar_az"_s]=Az;
+    (*face)["solar_el"_s]=El;
 
 }
-void solar::init(mesh domain)
+void solar::init(mesh& domain)
 {
 
     //number of steps along the search vector to check for a higher point
@@ -163,10 +165,11 @@ void solar::init(mesh domain)
 
     bool svf_compute = cfg.get("svf.compute",true);
 
-
     OGRSpatialReference monUtm;
     OGRSpatialReference monGeo;
     OGRCoordinateTransformation* coordTrans = nullptr;
+
+    ompException oe;
 
     // we are UTM and need to convert internally to lat long to calc the solar position
     if(!domain->is_geographic())
@@ -179,62 +182,66 @@ void solar::init(mesh domain)
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
 
-        // we are UTM and need to convert internally to lat long to calc the solar position
-        if(!domain->is_geographic())
-        {
-            double x = face->center().x();
-            double y = face->center().y();
-            int reprojected = coordTrans->Transform(1, &x, &y);
+	       // we are UTM and need to convert internally to lat long to calc the solar position
+	       if(!domain->is_geographic())
+	       {
+		   double x = face->center().x();
+		   double y = face->center().y();
+		   int reprojected = coordTrans->Transform(1, &x, &y);
 
-            auto d = face->make_module_data<solar::data>(ID);
-            d->lat = y;
-            d->lng = x;
-        }
+		   auto d = face->make_module_data<solar::data>(ID);
+		   d->lat = y;
+		   d->lng = x;
+	       }
 
-        double svf = 0.0;
+	       double svf = 0.0;
 
-        if(svf_compute)
-        {
-            Point_3 me = face->center();
-            auto cosSlope = cos(face->slope());
-            auto sinSlope = sin(face->slope());
+	       if(svf_compute)
+	       {
+		   Point_3 me = face->center();
+		   auto cosSlope = cos(face->slope());
+		   auto sinSlope = sin(face->slope());
 
-            //for each search azimuthal sector
-            for (int k = 0; k < N; k++)
-            {
-                double phi = 0.;
-                // search along each azimuth in j step increments to find horizon angle
-                for (int j = 1; j <= steps; ++j)
-                {
-                    double distance = j * size_of_step;
+		   //for each search azimuthal sector
+		   for (int k = 0; k < N; k++)
+		   {
+		       double phi = 0.;
+		       // search along each azimuth in j step increments to find horizon angle
+		       for (int j = 1; j <= steps; ++j)
+		       {
+			   double distance = j * size_of_step;
 
-                    auto f = domain->find_closest_face(math::gis::point_from_bearing(me, k * azimuthal_width, distance));
+			   auto f = domain->find_closest_face(math::gis::point_from_bearing(me, k * azimuthal_width, distance));
 
-                    double z_diff = (f->center().z() - me.z());
-                    if (z_diff > 0)
-                    {
-                        double dist = math::gis::distance(f->center(), me);
-                        phi = std::max(atan(z_diff / dist), phi);
-                    }
-                }
+			   double z_diff = (f->center().z() - me.z());
+			   if (z_diff > 0)
+			   {
+			       double dist = math::gis::distance(f->center(), me);
+			       phi = std::max(atan(z_diff / dist), phi);
+			   }
+		       }
 
-                auto cosPhi = cos(phi);
-                auto sinPhi = sin(phi);
-                auto azi_in_rad = (k * azimuthal_width * M_PI / 180.);
+		       auto cosPhi = cos(phi);
+		       auto sinPhi = sin(phi);
+		       auto azi_in_rad = (k * azimuthal_width * M_PI / 180.);
 
-                svf += cosSlope * cosPhi * cosPhi +
-                       sinSlope * cos(azi_in_rad - face->aspect()) * (M_PI_2 - phi - sinPhi * cosPhi);
+		       svf += cosSlope * cosPhi * cosPhi +
+			 sinSlope * cos(azi_in_rad - face->aspect()) * (M_PI_2 - phi - sinPhi * cosPhi);
 
-            }
+		   }
 
-            svf /= (double)N;
-        } else{
-            svf = 1.;
-        }
-        face->set_parameter("svf", std::max(0.0, svf));
+		   svf /= (double)N;
+	       } else{
+		 svf = 1.;
+	       }
+	       face->parameter("svf"_s) = std::max(0.0, svf);
+	     });
     }
+    oe.Rethrow();
 
     delete coordTrans;
 

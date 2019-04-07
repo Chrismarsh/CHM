@@ -43,7 +43,7 @@ sub_grid::~sub_grid()
 
 void sub_grid::run(mesh_elem &face) {
 
-    double snowdepthavg = face->face_data("snowdepthavg");
+    double snowdepthavg = (*face)["snowdepthavg"_s];
     double snowcoverfraction;
 
     if(snowdepthavg>0) {
@@ -52,6 +52,6 @@ void sub_grid::run(mesh_elem &face) {
         snowcoverfraction = 0;
     }
 
-    face->set_face_data("snowcoverfraction",snowcoverfraction);
+    (*face)["snowcoverfraction"_s]=snowcoverfraction;
 
 }

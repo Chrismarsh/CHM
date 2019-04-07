@@ -56,8 +56,8 @@ REGISTER_MODULE_HPP(uniform_wind);
 public:
     uniform_wind(config_file cfg);
     ~uniform_wind();
-    virtual void run(mesh domain);
-    virtual void init(mesh domain);
+    virtual void run(mesh& domain);
+    virtual void init(mesh& domain);
     class lwinddata : public face_info
     {
     public:

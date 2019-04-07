@@ -63,7 +63,7 @@ public:
     ~Winstral_parameters();
 
 
-    virtual void run(mesh domain);
+    virtual void run(mesh& domain);
 
     //number of steps along the search vector to check for a higher point
     int steps;
@@ -101,5 +101,5 @@ public:
     bool incl_snw;
 
     // Calculates the Sx parameter
-    double Sx(const mesh &domain, Delaunay::Face_handle face) const;
+    double Sx(const mesh &domain, mesh_elem& face) const;
 };

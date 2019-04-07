@@ -70,17 +70,17 @@ void Simple_Canopy::run(mesh_elem &face)
     auto data = face->get_module_data<Simple_Canopy::data>(ID);
 
     // Get meteorological data for current face
-    double ta           = face->face_data("t");
-    double rh           = face->face_data("rh");
-    double U_R          = face->face_data("U_R");
-    double iswr         = face->face_data("iswr"); // SW in above canopy
-    double Qdfo         = face->face_data("iswr_diffuse"); // "clear-sky diffuse", "(W/m^2)"
-    double ilwr         = face->face_data("ilwr"); // LW in above canopy
-    double p_rain       = face->face_data("p_rain"); // rain (mm/timestep) above canopy
-    double p_snow       = face->face_data("p_snow"); // snow (mm/timestep) above canopy
-    double snowdepthavg = face->face_data("snowdepthavg");
-    double Albedo       = face->face_data("snow_albedo"); // Broad band snow albedo
-    double air_pressure = 915; //face->face_data("air_pressure"); //"Average surface pressure", "(kPa)" TODO: Get from face_data
+    double ta           = (*face)["t"_s];
+    double rh           = (*face)["rh"_s];
+    double U_R          = (*face)["U_R"_s];
+    double iswr         = (*face)["iswr"_s]; // SW in above canopy
+    double Qdfo         = (*face)["iswr_diffuse"_s]; // "clear-sky diffuse", "(W/m^2)"
+    double ilwr         = (*face)["ilwr"_s]; // LW in above canopy
+    double p_rain       = (*face)["p_rain"_s]; // rain (mm/timestep) above canopy
+    double p_snow       = (*face)["p_snow"_s]; // snow (mm/timestep) above canopy
+    double snowdepthavg = (*face)["snowdepthavg"_s];
+    double Albedo       = (*face)["snow_albedo"_s]; // Broad band snow albedo
+    double air_pressure = 915; //(*face)["air_pressure"_s]; //"Average surface pressure", "(kPa)" TODO: Get from face_data
 
     // Checks on boundary conditions
 
@@ -151,8 +151,8 @@ void Simple_Canopy::run(mesh_elem &face)
     double Zvent            = 0.75; //", "0.0", "1.0", "ventilation wind speed height (z/Ht)", "()", &Zvent);
     double unload_t         = 1.0; //", "-10.0", "20.0", "if ice-bulb temp >= t : canopy snow is unloaded as snow", "(°C)", &unload_t);
     double unload_t_water   = 4.0; //", "-10.0", "20.0", "if ice-bulb temp >= t: canopy snow is unloaded as water", "(°C)", &unload_t_water);
-    double SolAng           = face->face_data("solar_el") * mio::Cst::to_rad; // degrees to radians (assumed horizontal)
-    double cosxs            = face->face_data("solar_angle"); // "cosine of the angle of incidence on the slope", "()"
+    double SolAng           = (*face)["solar_el"_s] * mio::Cst::to_rad; // degrees to radians (assumed horizontal)
+    double cosxs            = (*face)["solar_angle"_s]; // "cosine of the angle of incidence on the slope", "()"
     double cosxsflat        = cos(SolAng); // "cosine of the angle of incidence on the horizontal"
     double Surrounding_Ht   = data->CanopyHeight; //""[0.1, 0.25, 1.0]", "0.001", "100.0", "surrounding canopy height", "()", &Surrounding_Ht);
     double Gap_diameter     = 100; // "[100]", "10", "1000", "representative gap diameter", "(m)", &Gap_diameter); TODO: hardcod gap diamter, need to get from lidar if available
@@ -559,52 +559,56 @@ void Simple_Canopy::run(mesh_elem &face)
 
 
     // Output computed canopy states and fluxes downward to snowpack and upward to atmosphere
-    face->set_face_data("snow_load",data->Snow_load);
-    face->set_face_data("rain_load",data->rain_load);
-    face->set_face_data("ts_canopy",Ts);
-    face->set_face_data("ta_subcanopy",ta);
-    face->set_face_data("rh_subcanopy",rh);
-    face->set_face_data("iswr_subcanopy",Qsisn); // (W/m^2)
-    face->set_face_data("ilwr_subcanopy",Qlisn); // (W/m^2)
-    face->set_face_data("p_rain_subcanopy",net_rain); // (mm/int)
-    face->set_face_data("p_snow_subcanopy",net_snow); // (mm/int)
-    face->set_face_data("p_subcanopy",net_p); // Total precip (mm/int)
-    face->set_face_data("frac_precip_rain_subcanopy",net_rain/net_p); // Fraction rain (-)
-    face->set_face_data("frac_precip_snow_subcanopy",net_snow/net_p); // Fraction snow (-)
+    (*face)["snow_load"_s]=data->Snow_load;
+    (*face)["rain_load"_s]=data->rain_load;
+    (*face)["ts_canopy"_s]=Ts;
+    (*face)["ta_subcanopy"_s]=ta;
+    (*face)["rh_subcanopy"_s]=rh;
+    (*face)["iswr_subcanopy"_s]=Qsisn; // (W/m^2)
+    (*face)["ilwr_subcanopy"_s]=Qlisn; // (W/m^2)
+    (*face)["p_rain_subcanopy"_s]=net_rain; // (mm/int)
+    (*face)["p_snow_subcanopy"_s]=net_snow; // (mm/int)
+    (*face)["p_subcanopy"_s]=net_p; // Total precip (mm/int)
+    (*face)["frac_precip_rain_subcanopy"_s]=net_rain/net_p; // Fraction rain (-)
+    (*face)["frac_precip_snow_subcanopy"_s]=net_snow/net_p; // Fraction snow (-)
 
 }
 
-void Simple_Canopy::init(mesh domain)
+void Simple_Canopy::init(mesh& domain)
 {
+  ompException oe;
     #pragma omp parallel for
-
     // For each face
     for(size_t i=0;i<domain->size_faces();i++)
     {
+      oe.Run([&]
+	     {
         // Get current face
-        auto face = domain->face(i);
+	       auto face = domain->face(i);
 
-        auto d = face->make_module_data<Simple_Canopy::data>(ID);
+	       auto d = face->make_module_data<Simple_Canopy::data>(ID);
 
-        // Check if Canopy exists at this face/triangle
-        if(face->has_vegetation() )
-        {
-            // Get Canopy type (CRHM canop classifcation: Canopy, Clearing, or Gap)
-            d->canopyType       = face->veg_attribute("canopyType");
-            d->CanopyHeight     = face->veg_attribute("CanopyHeight");
-            d->LAI              = face->veg_attribute("LAI");
-            d->rain_load        = 0.0;
-            d->Snow_load        = 0.0;
-            d->cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
-            d->cum_net_rain     = 0.0; // " direct_rain + drip", "(mm)"
-            d->cum_Subl_Cpy     = 0.0; //  "canopy snow sublimation", "(mm)"
-            d->cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
-            d->cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
+	       // Check if Canopy exists at this face/triangle
+	       if(face->has_vegetation() )
+	       {
+		   // Get Canopy type (CRHM canop classifcation: Canopy, Clearing, or Gap)
+		   d->canopyType       = face->veg_attribute("canopyType");
+		   d->CanopyHeight     = face->veg_attribute("CanopyHeight");
+		   d->LAI              = face->veg_attribute("LAI");
+		   d->rain_load        = 0.0;
+		   d->Snow_load        = 0.0;
+		   d->cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
+		   d->cum_net_rain     = 0.0; // " direct_rain + drip", "(mm)"
+		   d->cum_Subl_Cpy     = 0.0; //  "canopy snow sublimation", "(mm)"
+		   d->cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
+		   d->cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
 
-        } else {
-            BOOST_THROW_EXCEPTION(missing_value_error() << errstr_info("landcover not defined, but is required for simple_canopy module, please check the configuration file"));
-        }
+	       } else {
+		 BOOST_THROW_EXCEPTION(missing_value_error() << errstr_info("landcover not defined, but is required for simple_canopy module, please check the configuration file"));
+	       }
+	     });
     }
+    oe.Rethrow();
 }
 
 double Simple_Canopy::delta(double ta) // Slope of sat vap p vs t, kPa/°C

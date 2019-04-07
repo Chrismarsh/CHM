@@ -66,7 +66,7 @@ public:
     Harder_precip_phase(config_file cfg);
     ~Harder_precip_phase();
     virtual void run(mesh_elem& face);
-    void init(mesh domain);
+    void init(mesh& domain);
     double b;
     double c;
 

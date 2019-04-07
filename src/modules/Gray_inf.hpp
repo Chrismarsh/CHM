@@ -40,7 +40,7 @@ public:
     ~Gray_inf();
 
     void run(mesh_elem &face);
-    void init(mesh domain);
+    void init(mesh& domain);
 
     class data : public face_info
     {

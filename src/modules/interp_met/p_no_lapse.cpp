@@ -37,15 +37,20 @@ p_no_lapse::p_no_lapse(config_file cfg)
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
-void p_no_lapse::init(mesh domain)
+void p_no_lapse::init(mesh& domain)
 {
+   ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto d = face->make_module_data<p_no_lapse::data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto d = face->make_module_data<p_no_lapse::data>(ID);
+	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+	     });
     }
+    oe.Rethrow();
 }
 void p_no_lapse::run(mesh_elem& face)
 {
@@ -65,7 +70,7 @@ void p_no_lapse::run(mesh_elem& face)
     double p0 = face->get_module_data<data>(ID)->interp(ppt, query);
     double slp = face->slope();
 
-    //face->set_face_data("p", std::max(0.0,p0));
+    //(*face)["p"_s]= std::max(0.0,p0);
 
     double P_fin;
 
@@ -74,13 +79,13 @@ void p_no_lapse::run(mesh_elem& face)
     {
         P_fin = Atmosphere::corr_precip_slope(p0,slp);
     } else
-    { 
+    {
         P_fin = p0;
     }
 
     P_fin =  std::max(0.0,P_fin);
-    face->set_face_data("p", P_fin);
-    face->set_face_data("p_no_slope", std::max(0.0,p0));
+    (*face)["p"_s]= P_fin;
+    (*face)["p_no_slope"_s]= std::max(0.0,p0);
 
 
 

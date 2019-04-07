@@ -53,5 +53,5 @@ public:
     solar(config_file cfg);
     ~solar();
     void run(mesh_elem &face);
-    void init(mesh domain);
+    void init(mesh& domain);
 };

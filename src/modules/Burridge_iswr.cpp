@@ -45,7 +45,7 @@ Burridge_iswr::~Burridge_iswr()
 
 void Burridge_iswr::run(mesh_elem &face)
 {
-    double solar_el = face->face_data("solar_el");
+    double solar_el = (*face)["solar_el"_s];
     double cosZ = cos( (90.0-solar_el) *mio::Cst::to_rad);
 
 //    double aspect_south0 = face->aspect() * mio::Cst::to_deg;
@@ -76,7 +76,7 @@ void Burridge_iswr::run(mesh_elem &face)
 //        cosZ=0.0;
 
     double S = 1375.0;
-    double cf = face->face_data("cloud_frac");
+    double cf = (*face)["cloud_frac"_s];
 
     double dir = S  * (0.6+0.2*cosZ)*(1.0-cf);
     double diff = S * (0.3+0.1*cosZ)*(cf);
@@ -90,8 +90,8 @@ void Burridge_iswr::run(mesh_elem &face)
     if(dir <0)
         dir = 0.0;
 
-    face->set_face_data("iswr_diffuse_no_slope",diff);
-    face->set_face_data("iswr_direct_no_slope",dir);
+    (*face)["iswr_diffuse_no_slope"_s]=diff;
+    (*face)["iswr_direct_no_slope"_s]=dir;
 
-    face->set_face_data("atm_trans", (dir+diff) / 1375.);
+    (*face)["atm_trans"_s]= (dir+diff / 1375.);
 }

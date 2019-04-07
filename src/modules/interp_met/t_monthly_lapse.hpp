@@ -62,7 +62,7 @@ public:
     t_monthly_lapse(config_file cfg);
     ~t_monthly_lapse();
     virtual void run(mesh_elem& face);
-    virtual void init(mesh domain);
+    virtual void init(mesh& domain);
     struct data : public face_info
     {
         interpolation interp;

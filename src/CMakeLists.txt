@@ -93,9 +93,8 @@ set(CHM_SRCS
 		core.cpp
 		global.cpp
 		station.cpp
-		variable_map.cpp
 
-		constants/Atmosphere.cpp
+        constants/Atmosphere.cpp
 
 		ui/ui.cpp
 		ui/ncstream.cpp
@@ -111,7 +110,6 @@ set(CHM_SRCS
 		timeseries/daily.cpp
 		timeseries/netcdf.cpp
 
-		utility/crc_hash_compare.cpp
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
 		utility/jsonstrip.cpp
@@ -219,9 +217,14 @@ add_executable(
 	${LIBMAW_SRCS}
 	)
 
+target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH})
+target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+
 target_link_libraries(
 	CHM
 	${LIB_FILES}
+	${MPI_CXX_LIBRARIES}
+	${MPI_CXX_LINK_FLAGS}
 )
 
 
@@ -265,10 +268,15 @@ if (test)
 			${TEST_SRCS}
 	)
 
+      target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH})
+      target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+
 	target_link_libraries(
 			runUnitTests
 			${LIB_FILES}
 			${GTEST_LINK}
+			${MPI_CXX_LIBRARIES}
+			${MPI_CXX_LINK_FLAGS}
 	)
 
 	# You can also omit NAME and COMMAND. The second argument could be some other

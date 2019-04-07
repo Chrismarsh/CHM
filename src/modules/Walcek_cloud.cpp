@@ -63,8 +63,8 @@ void Walcek_cloud::run(mesh_elem& face)
     double press_ratio = 0.7;
 
 
-    double Ta = face->face_data("t");
-    double Rh = face->face_data("rh");
+    double Ta = (*face)["t"_s];
+    double Rh = (*face)["rh"_s];
 
 //    double Td = mio::Atmosphere::RhtoDewPoint(Rh/100.0,Ta+273.15,false);
 //
@@ -72,8 +72,8 @@ void Walcek_cloud::run(mesh_elem& face)
 //    double z = face->get_z();
 //    double dz = z - 3000.0;// assume 700mb is at 3000m
 //
-//    double Td_lapse_rate = face->face_data("Td_lapse_rate");
-//    double T_lapse_rate = face->face_data("t_lapse_rate");
+//    double Td_lapse_rate = (*face)["Td_lapse_rate"_s];
+//    double T_lapse_rate = (*face)["t_lapse_rate"_s];
 //
 //    double Td_700 = Td + Td_lapse_rate * dz;
 //    double Tair_700 = Ta + T_lapse_rate * dz;
@@ -100,6 +100,6 @@ void Walcek_cloud::run(mesh_elem& face)
     cloud_frac = std::min(cloud_frac,1.0);
 
 
-    face->set_face_data("cloud_frac",cloud_frac);
+    (*face)["cloud_frac"_s]=cloud_frac;
 
 }

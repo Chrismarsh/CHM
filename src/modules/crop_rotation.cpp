@@ -27,7 +27,7 @@ REGISTER_MODULE_CPP(crop_rotation);
 crop_rotation::crop_rotation(config_file cfg)
         : module_base("crop_rotation", parallel::data, cfg)
 {
-
+    provides_parameter("crop");
 }
 
 crop_rotation::~crop_rotation()
@@ -41,8 +41,8 @@ void crop_rotation::run(mesh_elem& face)
     int year = global_param->year();
 
     if(year == 2010)
-        face->set_parameter("crop", face->get_parameter("annual_crop_inventory_2010"));
+        face->parameter("crop"_s) = face->parameter("annual_crop_inventory_2010"_s);
     else if( year == 2011)
-        face->set_parameter("crop", face->get_parameter("annual_crop_inventory_2011"));
+        face->parameter("crop"_s) = face->parameter("annual_crop_inventory_2011"_s);
 
 }
