@@ -5,11 +5,14 @@ cmake_policy(SET CMP0074 NEW)
 project(externalLib)
 include(ExternalProject)
 
+set(USE_MPI OFF)
+set(MPI_FOUND OFF)
 set(USE_OMP ON)
 set(USE_OCL OFF)
 set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Build vars")
 
 #these should always be built and downloaded
+
 ExternalProject_Add(
     sparsehash
     GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
@@ -122,18 +125,30 @@ if(BUILD_ParaView)
 
 endif()
 
-if( BUILD_BOOST)
+if(BUILD_BOOST)
+  if(${USE_MPI} AND ${MPI_FOUND})
     ExternalProject_Add(
-	    boost
-	    URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
-	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
-	    CONFIGURE_COMMAND bash  <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python
-	     #--with-libraries=system,iostreams,filesystem,date_time,log,thread,regex,program_options
-	    UPDATE_COMMAND ""
-	    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
-	    INSTALL_COMMAND ./b2 install
-	    BUILD_IN_SOURCE 1
-	    )
+      boost
+      URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
+      INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
+      CONFIGURE_COMMAND bash <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python COMMAND echo "using mpi : ${MPI_CXX_COMPILER} : : ${MPIEXEC_EXECUTABLE} $<SEMICOLON>" >> ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/project-config.jam
+      UPDATE_COMMAND ""
+      BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
+      INSTALL_COMMAND ./b2 install
+      BUILD_IN_SOURCE 1
+      )
+  else()
+    ExternalProject_Add(
+      boost
+      URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
+      INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
+      CONFIGURE_COMMAND bash  <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python
+      UPDATE_COMMAND ""
+      BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
+      INSTALL_COMMAND ./b2 install
+      BUILD_IN_SOURCE 1
+      )
+  endif()
 endif()
 
 if(BUILD_GSL)

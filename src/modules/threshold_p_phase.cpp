@@ -47,22 +47,22 @@ threshold_p_phase::~threshold_p_phase()
 
 void threshold_p_phase::run(mesh_elem &face)
 {
-    double p = face->face_data("p");
+    double p = (*face)["p"_s];
 
-    if( face->face_data("t") >= t_thresh)
+    if( (*face)["t"_s] >= t_thresh)
     {
-        face->set_face_data("frac_precip_rain", 1);
-        face->set_face_data("frac_precip_snow", 0);
+        (*face)["frac_precip_rain"_s]= 1;
+        (*face)["frac_precip_snow"_s]= 0;
 
-        face->set_face_data("p_rain", p);
-        face->set_face_data("p_snow", 0 );
+        (*face)["p_rain"_s]= p;
+        (*face)["p_snow"_s]= 0 ;
     } else
     {
-        face->set_face_data("frac_precip_rain", 0);
-        face->set_face_data("frac_precip_snow", 1);
+        (*face)["frac_precip_rain"_s]= 0;
+        (*face)["frac_precip_snow"_s]= 1;
 
-        face->set_face_data("p_rain", 0);
-        face->set_face_data("p_snow", p );
+        (*face)["p_rain"_s]= 0;
+        (*face)["p_snow"_s]= p ;
     }
 
 

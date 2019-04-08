@@ -40,18 +40,6 @@
 #include <gsl/gsl_sf_lambert.h>
 
 
-#ifdef _OPENMP
-#include <omp.h>
-#else
-// we need to define these and have them return constant values under a no-omp situation
-inline int omp_get_thread_num() { return 0;}
-inline int omp_get_max_threads() { return 1;}
-
-#undef VIENNACL_WITH_OPENMP
-
-#endif
-
-
 #include <viennacl/linalg/gmres.hpp>
 #include <viennacl/compressed_matrix.hpp>
 #include <viennacl/linalg/ilu.hpp>
@@ -97,8 +85,8 @@ REGISTER_MODULE_HPP(PBSM3D);
 public:
     PBSM3D(config_file cfg);
     ~PBSM3D();
-    void run(mesh domain);
-    void init(mesh domain);
+    void run(mesh& domain);
+    void init(mesh& domain);
 
     double nLayer;
     double susp_depth;
@@ -161,7 +149,7 @@ public:
         bool face_neigh[3];
 
         std::vector<double> u_z_susp; //suspension layer windspeeds
-        size_t cell_id;
+        size_t cell_local_id;
 
         double CanopyHeight;
         double LAI;

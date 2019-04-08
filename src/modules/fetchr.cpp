@@ -58,10 +58,10 @@ void fetchr::run(mesh_elem& face)
 {
 
 
-    face->set_face_data("fetch", max_distance);
+    (*face)["fetch"_s]= max_distance;
 
     //direction it is from, need upwind fetch
-    double wind_dir = face->face_data("vw_dir") ;
+    double wind_dir = (*face)["vw_dir"_s] ;
 
     //if we are using vegetation and the current face is covered in veg, set the fetch to 0
     if(incl_veg && face->has_vegetation())
@@ -70,7 +70,7 @@ void fetchr::run(mesh_elem& face)
         double me_Z_CanTop = face->veg_attribute("CanopyHeight");
         if(me_Z_CanTop > 1) // 1m might be too high?
         {
-            face->set_face_data("fetch", 0);
+            (*face)["fetch"_s]= 0;
             return;
         }
 
@@ -109,7 +109,7 @@ void fetchr::run(mesh_elem& face)
         if(Z_test >= Z_core ||
                 (incl_veg && distance < x_sss) )
         {
-            face->set_face_data("fetch", distance);
+            (*face)["fetch"_s]= distance;
             break;
         }
     }

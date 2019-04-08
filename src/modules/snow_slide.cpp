@@ -41,7 +41,7 @@ snow_slide::~snow_slide()
 
 }
 
-void snow_slide::checkpoint(mesh domain,  netcdf& chkpt)
+void snow_slide::checkpoint(mesh& domain,  netcdf& chkpt)
 {
 
     chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth", domain->size_faces());
@@ -55,7 +55,7 @@ void snow_slide::checkpoint(mesh domain,  netcdf& chkpt)
     }
 }
 
-void snow_slide::load_checkpoint(mesh domain,  netcdf& chkpt)
+void snow_slide::load_checkpoint(mesh& domain,  netcdf& chkpt)
 {
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -65,8 +65,10 @@ void snow_slide::load_checkpoint(mesh domain,  netcdf& chkpt)
     }
 }
 
-void snow_slide::run(mesh domain)
+void snow_slide::run(mesh& domain)
 {
+
+    ompException oe;
 
     // Make a vector of pairs (elevation + snowdepth, pointer to face)
     tbb::concurrent_vector< std::pair<double, mesh_elem> > sorted_z(domain->size_faces());
@@ -74,17 +76,20 @@ void snow_slide::run(mesh domain)
 #pragma omp parallel for
     for(size_t i = 0; i  < domain->size_faces(); i++)
     {
-        auto face = domain->face(i); // Get face
-        // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
-        auto data = face->get_module_data<snow_slide::data>(ID); // Get data
-        data->snowdepthavg_copy = face->face_data("snowdepthavg"); // Store copy of snowdepth for snow_slide use
-        data->swe_copy = face->face_data("swe")/1000; // mm to m
-        // Initalize snow transport to zero
-        data->delta_avalanche_snowdepth = 0.0;
-        data->delta_avalanche_mass = 0.0; // m
-        sorted_z.at(i) = std::make_pair( face->center().z() + face->face_data("snowdepthavg"), face) ;
-
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i); // Get face
+	       // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
+	       auto data = face->get_module_data<snow_slide::data>(ID); // Get data
+	       data->snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
+	       data->swe_copy = (*face)["swe"_s]/1000; // mm to m
+	       // Initalize snow transport to zero
+	       data->delta_avalanche_snowdepth = 0.0;
+	       data->delta_avalanche_mass = 0.0; // m
+	       sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s], face) ;
+	     });
     }
+    oe.Rethrow();
 
     // Sort faces by elevation + snowdepth
 //    std::sort(sorted_z.begin(), sorted_z.end(), [](const std::pair<double, mesh_elem> &a,const std::pair<double, mesh_elem> &b) {
@@ -149,8 +154,8 @@ void snow_slide::run(mesh domain)
                 data->delta_avalanche_mass -= del_swe * cen_area;
 
                 // Save state variables
-                face->set_face_data("delta_avalanche_snowdepth", data->delta_avalanche_snowdepth);
-                face->set_face_data("delta_avalanche_mass", data->delta_avalanche_mass);
+                (*face)["delta_avalanche_snowdepth"_s]= data->delta_avalanche_snowdepth;
+                (*face)["delta_avalanche_mass"_s]= data->delta_avalanche_mass;
             }
 
             // Case 2) Non-Edge cell, but w_dem=0, "sink" cell. Don't route snow.
@@ -208,15 +213,15 @@ void snow_slide::run(mesh domain)
         }
 
         // Save state variables at end of time step
-        face->set_face_data("delta_avalanche_snowdepth", data->delta_avalanche_snowdepth);
-        face->set_face_data("delta_avalanche_mass", data->delta_avalanche_mass);
+        (*face)["delta_avalanche_snowdepth"_s]= data->delta_avalanche_snowdepth;
+        (*face)["delta_avalanche_mass"_s]= data->delta_avalanche_mass;
 
     } // End of each face
 
 
 }
 
-void snow_slide::init(mesh domain)
+void snow_slide::init(mesh& domain)
 {
     // Get Parameters that control maxDepth function
     double avalache_mult = cfg.get("avalache_mult",3178.4);
@@ -242,6 +247,6 @@ void snow_slide::init(mesh domain)
         double slopeDeg = std::max(10.0,face->slope()*180/M_PI);  // radians to degres, limit to >10 degrees to avoid inf
         d->maxDepth = std::max(avalache_mult * pow(slopeDeg,avalache_pow),Z_CanTop); // (m) Estimate min depth that avalanche occurs
         // Max of either veg height or derived max holding snow depth.
-        face->set_face_data("maxDepth", d->maxDepth);
+        (*face)["maxDepth"_s]= d->maxDepth;
     }
 }

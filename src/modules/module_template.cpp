@@ -35,7 +35,7 @@ void module_template::run(mesh_elem& face)
 
 }
 
-void module_template::run(mesh domain)
+void module_template::run(mesh& domain)
 {
 
 }

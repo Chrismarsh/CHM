@@ -51,7 +51,7 @@ public:
     iswr_from_nwp(config_file cfg);
     ~iswr_from_nwp();
     void run(mesh_elem &face);
-    virtual void init(mesh domain);
+    virtual void init(mesh& domain);
     struct data : public face_info
     {
         interpolation interp;

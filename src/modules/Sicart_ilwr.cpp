@@ -38,21 +38,21 @@ Sicart_ilwr::Sicart_ilwr(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-void Sicart_ilwr::init(mesh domain)
+void Sicart_ilwr::init(mesh& domain)
 {
 
 }
 void Sicart_ilwr::run(mesh_elem& face)
 {
-    double T = face->face_data("t")+273.15; //C->K
-    double tau = face->face_data("atm_trans");
-    if( face->face_data("iswr") < 3.)
+    double T = (*face)["t"_s]+273.15; //C->K
+    double tau = (*face)["atm_trans"_s];
+    if( (*face)["iswr"_s] < 3.)
     {
-        tau = face->face_data("cloud_frac");
+        tau = (*face)["cloud_frac"_s];
     }
 
 
-    double RH = face->face_data("rh") / 100.0;
+    double RH = (*face)["rh"_s] / 100.0;
     double es = mio::Atmosphere::vaporSaturationPressure(T);//mio::Atmosphere::saturatedVapourPressure(T);
     double e =  es * RH;
     e = e * 0.01; // pa->mb
@@ -61,11 +61,11 @@ void Sicart_ilwr::run(mesh_elem& face)
     double Lin = 1.24*pow(e/T,1.0/7.0)*(1.0+0.44*RH-0.18*tau)*sigma*pow(T,4.0);
 
     double svf = 1.; //default open view
-    if (face->has_parameter("svf") && !is_nan(face->get_parameter("svf")))
+    if (face->has_parameter("svf") && !is_nan(face->parameter("svf"_s)))
     {
-        svf = face->get_parameter("svf");
+        svf = face->parameter("svf"_s);
     }
-    face->set_face_data("ilwr", svf*Lin);
+    (*face)["ilwr"_s]= svf*Lin;
 }
 
 Sicart_ilwr::~Sicart_ilwr()

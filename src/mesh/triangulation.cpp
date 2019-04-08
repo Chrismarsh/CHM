@@ -1,20 +1,20 @@
 // 	Copyright (C) 2011  Chris Marsh
-// 
+//
 // 	This program is free software: you can redistribute it and/or modify
 // 	it under the terms of the GNU General Public License as published by
 // 	the Free Software Foundation, either version 3 of the License, or
 // 	(at your option) any later version.
-// 
+//
 // 	This program is distributed in the hope that it will be useful,
 // 	but WITHOUT ANY WARRANTY; without even the implied warranty of
 // 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // 	GNU General Public License for more details.
-// 
+//
 // 	You should have received a copy of the GNU General Public License
 // 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#include <vtkStringArray.h>
+
 #include "triangulation.hpp"
 
 triangulation::triangulation()
@@ -35,6 +35,7 @@ triangulation::triangulation()
 #ifdef USE_SPARSEHASH
     data.set_empty_key("");
     vectors.set_empty_key("");
+
 #endif
 }
 
@@ -70,7 +71,7 @@ triangulation::~triangulation()
 //    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
 //            fit != this->finite_faces_end(); ++fit)
 //    {
-//        Delaunay::Face_handle face = fit;
+//        mesh_elem face = fit;
 //        _faces.push_back(face);
 //    }
 //
@@ -85,6 +86,11 @@ std::string triangulation::proj4()
 void triangulation::write_param_to_vtu(bool write_param)
 {
     _write_parameters_to_vtu = write_param;
+}
+
+std::set<std::string> triangulation::parameters()
+{
+    return _parameters;
 }
 
 bool triangulation::is_geographic()
@@ -109,7 +115,7 @@ mesh_elem triangulation::locate_face(double x, double y)
 
 mesh_elem triangulation::locate_face(Point_2 query)
 {
-    mesh_elem face = find_closest_face(query);
+    auto face = find_closest_face(query);
 
     //check if the closest is what we wanted
     if(face->contains(query.x(),query.y()))
@@ -120,7 +126,7 @@ mesh_elem triangulation::locate_face(Point_2 query)
     {
         auto n = face->neighbor(i);
 
-        if(n != nullptr && n->contains(query.x(),query.y()))
+        if(n != nullptr && !n->_is_ghost && n->contains(query.x(),query.y()))
             return n;
     }
 
@@ -129,13 +135,13 @@ mesh_elem triangulation::locate_face(Point_2 query)
     {
         auto n = face->neighbor(i);
 
-        if(n != nullptr)
+        if(n != nullptr && !n->_is_ghost)
         {
             //check all 3 neighbours of n
             for(int j=0; j < 3;j++)
             {
                 auto nn = n->neighbor(j);
-                if(nn != nullptr && nn->contains(query.x(),query.y()))
+                if(nn != nullptr && !nn->_is_ghost && nn->contains(query.x(),query.y()))
                     return nn;
             }
         }
@@ -229,7 +235,7 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
     for(auto& face : _faces)
     {
         pt::ptree item;
-        item.put_value(face->get_parameter(parameter));
+        item.put_value(face->parameter(parameter));
         subtree.push_back(std::make_pair("",item));
     }
     out.put_child( pt::ptree::path_type(parameter),subtree);
@@ -237,8 +243,10 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
     pt::write_json(output_path,out);
 
 }
-std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
+void triangulation::from_json(pt::ptree &mesh)
 {
+
+    ompException oe;
 
     size_t nvertex_toread = mesh.get<size_t>("mesh.nvertex");
     LOG_DEBUG << "Reading in #vertex=" << nvertex_toread;
@@ -292,7 +300,8 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     //set our mesh dimensions
     this->set_dimension(2);
 
-    //vectors to hold the center of a face, and a pointer to that face to generate the spatial search tree
+
+    //vectors to hold the center of a face to generate the spatial search tree
     std::vector<Point_2> center_points;
 
     i = 0;
@@ -310,7 +319,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         auto vert3 = _vertexes.at(items[2]);
 
         auto face = this->create_face(vert1,vert2,vert3);
-        face->cell_id = cid++;
+        face->cell_global_id = cid++;
         if( is_geographic == 1)
         {
             face->_is_geographic = true;
@@ -326,16 +335,25 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
 
         _faces.push_back(face);
 
-        Point_2 pt2(face->center().x(),face->center().y());
+// If we aren't using MPI, we can build the centre points here for efficiency.
+// these centre points will be used to build the spatial search tree. If we are using MPI,
+// we need to wait until we've figured out the per-node triangle partition so we can build
+// a per-node spatial search tree that only takes into account this node's elements.
+// If MPI, we do that at the end of this function
 
+#ifndef USE_MPI
+        Point_2 pt2(face->center().x(),face->center().y());
         center_points.push_back(pt2);
+#endif
+
     }
 
-
+#ifndef USE_MPI
     //make the search tree
     dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
-                                 boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(), _faces.end() ) )
     );
+#endif
 
     _num_faces = this->number_of_faces();
 
@@ -379,24 +397,66 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     }
     //loop over parameter name
 
-    std::set<std::string> parameters;
+
     try
     {
+        // build up the entire list of parameters so we can use this to init the per-face parameter
+        // storage later
+
+        std::set<std::string> blacklist; // holds any parameters that have 0 length, eg "area": [],
+        for (auto &itr : mesh.get_child("parameters"))
+        {
+            // we could have an item like this
+            // "area": [],
+            // and we need to ensure we *don't* load those
+            std::string name = itr.first.data();
+            size_t i=0;
+            for (auto &jtr : itr.second)
+            {
+                //just count the first couple items, make sure it's non zero
+                if(i > 1)
+                    break;
+                ++i;
+            }
+
+            if(i == 0)
+            {
+                blacklist.insert(name);
+                LOG_WARNING << "Parameter " + name + " is zero length and will be ignored.";
+            } else {
+                _parameters.insert(name);
+            }
+
+        }
+
+        // init the storage, which builds the mphf
+#pragma omp parallel for
+        for (size_t i = 0; i < size_faces(); i++)
+        {
+	  oe.Run([&]
+		 {
+		   _faces.at(i)->init_parameters(_parameters);
+		 });
+        }
+	oe.Rethrow();
+
         for (auto &itr : mesh.get_child("parameters"))
         {
             i = 0; // reset evertime we get a new parameter set
             auto name = itr.first.data();
+
+            if(blacklist.find(name) != blacklist.end())
+                continue; // skip blacklisted ones, as we don't want to use these
+
             LOG_DEBUG << "Applying parameter: " << name;
+
             for (auto &jtr : itr.second)
             {
                 auto face = _faces.at(i);
-                double value = jtr.second.get_value<double>();
-                //            value == -9999. ? value = nan("") : value;
-                face->set_parameter(name, value);
+                auto value = jtr.second.get_value<double>();
+                face->parameter(name) = value;
                 i++;
             }
-
-            parameters.insert(name);
         }
     }catch(pt::ptree_bad_path& e)
     {
@@ -434,25 +494,31 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     for (size_t i = 0; i < size_faces(); i++)
     {
 
-        auto f = face(i);
+        auto f = _faces.at(i);
         std::vector<boost::tuple<double, double, double> > u;
         for (size_t j = 0; j < 3; j++)
         {
             auto neigh = f->neighbor(j);
-            if (neigh != nullptr)
+            if (neigh != nullptr && !neigh->_is_ghost)
                 u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->slope()));
         }
 
         auto query = boost::make_tuple(f->get_x(), f->get_y(), f->get_z());
 
         interpolation interp(interp_alg::tpspline);
-        double new_slope = interp(u, query);
+        double new_slope = f->slope();
+
+        if(u.size() > 0)
+        {
+            new_slope = interp(u, query);
+        }
+
         temp_slope.at(i) = new_slope;
     }
 
     for (size_t i = 0; i < size_faces(); i++)
     {
-        auto f = face(i);
+        auto f = _faces.at(i);
         f->_slope = temp_slope.at(i);
     }
 
@@ -460,7 +526,7 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
     try
     {
       std::vector<size_t> permutation;
-      for (auto itr : mesh.get_child("mesh.cell_local_id"))
+      for (auto itr : mesh.get_child("mesh.cell_global_id"))
       {
 	    permutation.push_back(itr.second.get_value<size_t>());
       }
@@ -472,38 +538,192 @@ std::set<std::string>  triangulation::from_json(pt::ptree &mesh)
         LOG_DEBUG << "No face permutation.";
     }
 
-    return parameters;
+    partition_mesh();
+#ifdef USE_MPI
+    _num_faces = _local_faces.size();
+    determine_local_boundary_faces();
+
+    // should make this parallel
+    for(size_t ii=0; ii < _num_faces; ++ii)
+    {
+        auto face = _local_faces.at(ii);
+        Point_2 pt2(face->center().x(),face->center().y());
+        center_points.push_back(pt2);
+
+    }
+    //make the search tree
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_local_faces.begin() )),
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _local_faces.end() ) )
+    );
+
+#endif // USE_MPI
+
+
+
 }
 
 void triangulation::reorder_faces(std::vector<size_t> permutation)
 {
-  // NOTE: be careful with evaluating this, the 'cell_id's and a
+  // NOTE: be careful with evaluating this, the 'cell_global_id's and a
   // cell's position in the '_faces' vec are unrelated. They must both
-  // be modified (ie. renumber the 'cell_id's, AND sort the '_faces'
+  // be modified (ie. renumber the 'cell_global_id's, AND sort the '_faces'
   // vector) before the new ordering is consistent.
 
   assert( permutation.size() == size_faces() );
-
   LOG_DEBUG << "Reordering faces";
+
+  ompException oe;
 
   // Update the IDs on all faces
   #pragma omp parallel for
   for (size_t ind = 0; ind < permutation.size(); ++ind)
   {
+    oe.Run([&]
+	   {
+	     size_t old_ID = permutation.at(ind);
+	     size_t new_ID = ind;
 
-    size_t old_ID = permutation[ind];
-    size_t new_ID = ind;
-
-    auto face = _faces[old_ID];
-    face->cell_id = new_ID;
+	     auto face = _faces.at(old_ID);
+	     face->cell_global_id = new_ID;
+	   });
   }
 
   // Sort the faces in the new ordering
   tbb::parallel_sort(_faces.begin(), _faces.end(),
   		     [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
   		     {
-  		       return fa->cell_id < fb->cell_id;
+  		       return fa->cell_global_id < fb->cell_global_id;
   		     });
+}
+
+void triangulation::partition_mesh()
+{
+  /*
+    Basically, this first attempt splits the number of mesh points as equally as possible
+  */
+  // 1. Determine number of (processor) locally owned faces
+  // 2. Determine (processor) locally owned indices of faces
+  // 3. Set locally owned _is_ghost=false
+
+  ompException oe;
+
+  size_t total_num_faces = _faces.size();
+
+#ifdef USE_MPI
+
+  LOG_DEBUG << "Partitioning mesh";
+
+  // Set up so that all processors know how 'big' all other processors are
+  std::vector<int> num_faces_in_partition(_comm_world.size(),
+  					  total_num_faces/_comm_world.size());
+  for (unsigned int i=0;i<total_num_faces%_comm_world.size();++i) {
+    num_faces_in_partition[i]++;
+  }
+
+  // each processor only knows its own start and end indices
+  size_t face_start_idx = 0;
+  size_t face_end_idx = num_faces_in_partition[0]-1;
+  for (int i=1;i<=_comm_world.rank();++i) {
+    face_start_idx += num_faces_in_partition[i-1];
+    face_end_idx += num_faces_in_partition[i];
+  }
+
+
+  // Set size of vector containing locally owned faces
+  _local_faces.resize(num_faces_in_partition[_comm_world.rank()]);
+
+#pragma omp parallel for
+  for(int local_ind=0;local_ind<_local_faces.size();++local_ind)
+  {
+    oe.Run([&]
+	   {
+	     size_t global_ind = face_start_idx + local_ind;
+	     _faces.at(global_ind)->_is_ghost = false;
+	     _faces.at(global_ind)->cell_local_id = local_ind;
+	     _local_faces[local_ind] = _faces.at(global_ind);
+	   });
+  }
+  oe.Rethrow();
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << ": start " << face_start_idx << ", end " << face_end_idx << ", number " << _local_faces.size();
+
+
+#else // do not USE_MPI
+
+#pragma omp parallel for
+  for(size_t i=0;i<total_num_faces;++i) {
+    oe.Run([&]
+	   {
+	     _faces.at(i)->_is_ghost = false;
+	   });
+  }
+
+#endif // USE_MPI
+
+}
+
+void triangulation::determine_local_boundary_faces()
+{
+  /*
+    - Store handles to boundary faces on the locally owned process
+    - Also store boolean value "is_global_boundary"
+  */
+#ifdef USE_MPI
+  // Need to ensure we're starting from nothing?
+  assert( _boundary_faces.size() == 0 );
+
+  // We want an array of vectors, so that OMP threads can increment them
+  // separately, then join them afterwards
+  std::unique_ptr< std::vector< std::pair<mesh_elem,bool> >[] > th_local_boundary_faces(new std::vector< std::pair<mesh_elem,bool> >[omp_get_num_threads()]);
+
+// This is not thread safe. why?
+//#pragma omp parallel for
+  for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
+  {
+
+    // face_index is a local index... get the face handle
+    auto face = _local_faces.at(face_index);
+
+    int num_owned_neighbours = 0;
+    for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
+    {
+
+      auto neigh = face->neighbor(neigh_index);
+
+      // Test status of neighbour
+      if (neigh == nullptr)
+      {
+        th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+        num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
+        break;
+      } else
+      {
+        if (neigh->_is_ghost == false)
+        {
+            num_owned_neighbours++;
+        }
+      }
+    }
+
+    // If we don't own 3 neighbours, we are a local, but not a global boundary face
+    if( num_owned_neighbours<3 ) {
+      th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
+    }
+
+  }
+
+  // Join the vectors via a single thread in t operations
+  //  NOTE future optimizations:
+  //   - reserve space for insertions into _boundary_faces
+  //   - can be done recursively in log2(t) operations
+  for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx) {
+    _boundary_faces.insert(_boundary_faces.end(),
+			   th_local_boundary_faces[thread_idx].begin(), th_local_boundary_faces[thread_idx].end());
+  }
+
+  // Some log debug output to see how many boundary faces on each
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
+#endif
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
@@ -511,9 +731,13 @@ Delaunay::Vertex_handle triangulation::vertex(size_t i)
     return _vertexes.at(i);
 }
 
-Delaunay::Face_handle triangulation::face(size_t i)
+mesh_elem triangulation::face(size_t i)
 {
+#if USE_MPI
+    return _local_faces.at(i);
+#else
     return _faces.at(i);
+#endif
 }
 
 void triangulation::timeseries_to_file(double x, double y, std::string fname)
@@ -551,7 +775,7 @@ void triangulation::plot(std::string ID)
     for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
             fit != this->finite_faces_end(); ++fit)
     {
-        Delaunay::Face_handle face = fit;
+        auto face = fit;
 
         (*tri)(i, 0) = face->vertex(0)->get_id() + 1; //+1 because matlab indexing starts at 1
         (*tri)(i, 1) = face->vertex(1)->get_id() + 1;
@@ -578,7 +802,7 @@ void triangulation::plot(std::string ID)
 
         double d = fit->face_data(ID);
         (*cdata)(i) = d;
-        //        std::cout << i <<std::endl; 
+        //        std::cout << i <<std::endl;
         ++i;
     }
 
@@ -614,7 +838,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 
     for (size_t i = 0; i < this->size_faces(); i++)
     {
-        Delaunay::Face_handle fit = this->face(i);
+        mesh_elem fit = this->face(i);
 
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
@@ -702,11 +926,11 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
     for (size_t i = 0; i < this->size_faces(); i++)
     {
-        Delaunay::Face_handle fit = this->face(i);
+        mesh_elem fit = this->face(i);
 
         for (auto &v: variables)
         {
-            double d = fit->face_data(v);
+            double d = (*fit)[v];
             if(d == -9999.)
             {
                 d = nan("");
@@ -718,7 +942,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         {
             for (auto &v: params)
             {
-                double d = fit->get_parameter(v);
+                double d = fit->parameter(v);
                 if (d == -9999.)
                 {
                     d = nan("");
@@ -782,71 +1006,6 @@ void triangulation::write_vtu(std::string file_name)
 //    write_vtp(file_name);
 }
 
-void triangulation::write_vtp(std::string file_name)
-{
-    //this now needs to be called from outside these functions
-//    update_vtk_data();
-//
-//    vtkSmartPointer<vtkGeometryFilter> geometryFilter = vtkSmartPointer<vtkGeometryFilter>::New();
-//    geometryFilter->SetInputData(_vtk_unstructuredGrid);
-//    geometryFilter->Update();
-//    geometryFilter->GetOutput()->GetPointData()->SetScalars(_vtk_unstructuredGrid->GetCellData()->GetScalars());
-//
-//
-//    vtkSmartPointer<vtkTransform> flattener = vtkSmartPointer<vtkTransform>::New();
-//    flattener->Scale(1.0,1.0,0.0);
-//    flattener->Update();
-//
-//    vtkSmartPointer<vtkTransformFilter> filt = vtkSmartPointer<vtkTransformFilter>::New();
-//    filt->SetInputConnection(geometryFilter->GetOutputPort());
-//    filt->SetTransform(flattener);
-//    filt->Update();
-//
-//    double* bounds = _vtk_unstructuredGrid->GetBounds();
-//
-//
-//    // Create a grid of points to interpolate over
-//    vtkSmartPointer<vtkPlaneSource> gridPoints = vtkSmartPointer<vtkPlaneSource>::New();
-//
-//    size_t dx = 10; //(meters)
-//    size_t dy = 10;
-//
-//    double distx = bounds[1] - bounds[0];
-//    double disty = bounds[3] - bounds[2];
-//
-//    size_t gridSizeX = ceil(distx/dx);
-//    size_t gridSizeY = ceil(disty/dy);
-//
-//    gridPoints->SetResolution(gridSizeX, gridSizeY); //number of cells, NOT! cell size.
-//    gridPoints->SetOrigin(bounds[0],  bounds[2], 0);
-//    gridPoints->SetPoint1(bounds[1],  bounds[2], 0);
-//    gridPoints->SetPoint2(bounds[0], bounds[3], 0);
-//    gridPoints->Update();
-//
-//
-//    // Perform the interpolation
-//    vtkSmartPointer<vtkProbeFilter> probeFilter =  vtkSmartPointer<vtkProbeFilter>::New();
-//    probeFilter->SetSourceData(filt->GetOutput());
-//#if VTK_MAJOR_VERSION <= 5
-//    probeFilter->SetInput(gridPoints->GetOutput());
-//#else
-//    probeFilter->SetInputConnection(gridPoints->GetOutputPort());
-//#endif
-//    probeFilter->Update();
-//
-//    vtkSmartPointer<vtkXMLPolyDataWriter> gridWriter =  vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-//    gridWriter->SetFileName ( file_name.c_str());
-//#if VTK_MAJOR_VERSION <= 5
-//    gridWriter->SetInput(probeFilter->GetOutput());
-//#else
-//    probeFilter->SetInputConnection(probeFilter->GetOutputPort());
-//#endif
-//
-//    gridWriter->Write();
-
-}
-
-
 double triangulation::max_z()
 {
     return _max_z;
@@ -888,7 +1047,7 @@ void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
     {
         bboxpt.push_back(K::Point_2(v->point().x(),v->point().y()));
     }
-        
+
     K::Iso_rectangle_2 rot_bbox = CGAL::bounding_box(bboxpt.begin(), bboxpt.end());
 
     //need to construct new axis aligned BBR
@@ -951,7 +1110,7 @@ void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
         }
     }
 
-    
+
 }
 
 rect* segmented_AABB::get_rect(size_t row, size_t col)

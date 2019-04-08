@@ -26,6 +26,14 @@
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
 
+#ifdef _OPENMP
+#include <omp.h>
+#else
+// we need to define these and have them return constant values under a no-omp situation
+inline int omp_get_num_threads() { return 1;}
+inline int omp_get_thread_num() { return 0;}
+inline int omp_get_max_threads() { return 1;}
+#endif
 
 #include <iostream>
 #include <fstream>
@@ -44,6 +52,11 @@
 #else
 #include <unordered_map>
 #endif
+
+// hash functions
+#include "utility/BBhash.h"
+#include "utility/wyhash.h"
+
 
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
@@ -87,6 +100,7 @@ namespace pt = boost::property_tree;
 
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
+#include <vtkStringArray.h>
 #include <vtkTriangle.h>
 #include <vtkCellArray.h>
 #include <vtkXMLUnstructuredGridWriter.h>
@@ -109,10 +123,16 @@ namespace pt = boost::property_tree;
 #include "libmaw.h"
 #endif
 
+#ifdef USE_MPI
+#include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
+#endif
+
 #include "vertex.hpp"
-//#include "face.hpp"
 #include "timeseries.hpp"
 #include "math/coordinates.hpp"
+#include "utility/xxh64.hpp"
+
 
 /**
 * \struct face_info
@@ -212,11 +232,11 @@ public:
 
     /**
      * Exactly the same as find_closest_face in triangulation but uses the current face's center
-     * @param azmimuth
+     * @param azimuth
      * @param distance
      * @return
      */
-    const Face_handle find_closest_face(double azmimuth, double distance);
+    const Face_handle find_closest_face(double azimuth, double distance);
 
     /**
      * Returns the ith edge's length. Refering to the docs here
@@ -278,13 +298,6 @@ public:
     */
     bool intersects(Face_handle fh);
 
-    /**
-    * Sets the face data, for the given variable, at the current timestep
-    * \param variable Variable to assign the data to
-    * \param data Data
-    */
-    void set_face_data(const std::string& variable, double data);
-
     bool has_vegetation();
 
     double veg_attribute(const std::string &variable);
@@ -299,13 +312,8 @@ public:
      */
     void set_face_vector(const std::string& variable, Vector_3 v);
 
-    /**
-    * Returns the face data
-    * \param variable  variable being queried
-    * \return  this timesteps value for the given variable
-    */
-    double face_data(const std::string& variable);
-
+    double& operator[](const uint64_t& variable);
+    double& operator[](const std::string& variable);
     /**
      * Returns the face vector for a specified variable
      * @param variable
@@ -323,11 +331,16 @@ public:
     void remove_face_data(const std::string &ID);
 
     /**
-    * Initializes  this faces timeseires with the given variables, for the given datetime series with the given size
+    * Initializes  this faces variable storage
     * \param variables Names of the variables to add
-    * \param datetime Vector of boost::ptimes for the entire duration of the timesries
     */
-    void init_time_series(std::set<std::string> variables, timeseries::date_vec datetime);
+    void init_time_series(std::set<std::string>& variables);
+
+    /**
+        * Initializes  this faces parameter storage
+        * \param variables Names of the variables to add
+        */
+    void init_parameters(std::set<std::string>& parameters);
 
     /**
     * Obtains the timeseries associated with the given variable
@@ -339,6 +352,11 @@ public:
      * Returns true if the variable is present
      */
     bool has(const std::string& variable);
+
+    /**
+    * Returns true if the variable is present
+    */
+    bool has(const uint64_t& hash);
 
     /**
      * Returns a list of variables in this face's timeseries
@@ -412,7 +430,8 @@ public:
 
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
-    size_t cell_id;
+    size_t cell_global_id;
+    size_t cell_local_id;
 
 
     /**
@@ -420,18 +439,19 @@ public:
      * @param key
      * @return
      */
-    double get_parameter(std::string key);
-
+    double& parameter(const uint64_t& hash);
+    double& parameter(const std::string& variable);
     /**
      * Sets the parameter on the face to the given value. Parameter doesn't have to exist. Do not use to store model output.
      * @param key
      * @param value
      */
-    void set_parameter(std::string key, double value);
+//    void set_parameter(std::string key, double value);
 
 
-    std::vector<std::string>  parameters();
-    bool has_parameter(std::string key);
+    std::vector<std::string> parameters();
+    bool has_parameter(const uint64_t& hash);
+    bool has_parameter(const std::string& variable);
 
     void set_initial_condition(std::string key,double value);
     double get_initial_condition(std::string key);
@@ -451,6 +471,9 @@ public:
     bool has_initial_condition(std::string key);
 
     bool _is_geographic;
+
+    bool _is_ghost=true;
+
 private:
 
 
@@ -470,6 +493,15 @@ private:
     boost::shared_ptr<Point_3> _center;
     boost::shared_ptr<Vector_3> _normal;
 
+
+    // Holds the name-value pair in the variable store hashmap
+    // we do this as we hold a hash and not the name
+    struct var
+    {
+        double value;
+        double xxhash; // holds the xxhash value so we can confirm we get the right thing back from BBHash
+        std::string variable;
+    };
 #ifdef USE_SPARSEHASH
     typedef google::dense_hash_map<std::string,face_info*> face_data_hashmap;
     typedef google::dense_hash_map<std::string,double> face_param_hashmap;
@@ -480,8 +512,32 @@ private:
     typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
 #endif
 
+
+    template <typename Item> class wyandFunctor
+    {
+    public:
+        uint64_t operator ()  (const Item& key, uint64_t seed=2654435761U) const
+        {
+            return wyhash(&key, sizeof(Item), seed);
+        }
+
+    };
+    typedef wyandFunctor<uint64_t> hasher_t;
+    typedef boomphf::mphf< uint64_t, hasher_t  > boophf_t;
+
+    // Note that we have to explicitly check if what we get back is what we wanted as
+    // mphf do not guarantee what asking for something outside of the map returns a sane answer
+    // https://github.com/rizkg/BBHash/issues/12
+
+    // perfect hashfn + variable storage
+    std::unique_ptr<boophf_t> _variable_bphf;
+    std::vector<var> _variables;
+
+    // perfect hashfn + parameter storage
+    std::unique_ptr<boophf_t> _parameters_bphf;
+    std::vector<var> _parameters;
+
     face_data_hashmap _module_face_data;
-    face_param_hashmap _parameters;
     face_param_hashmap _initial_conditions;
     face_vec_hashmap _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
 
@@ -499,7 +555,7 @@ typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
 //search tree typedefs
 //http://doc.cgal.org/latest/Spatial_searching/index.html
 typedef K::Point_2 Point_2;
-typedef boost::tuple<Point_2, Delaunay::Face_handle > Point_and_face;
+typedef boost::tuple<Point_2, mesh_elem > Point_and_face;
 typedef CGAL::Search_traits_2<K>                       Traits_base;
 typedef CGAL::Search_traits_adapter<Point_and_face,
             CGAL::Nth_of_tuple_property_map<0, Point_and_face>,
@@ -547,13 +603,23 @@ public:
     * Loads a mesh from file. Should by x y z values with no header, space delimited.
     * \param file Fully qualified path to a file.
     */
-	std::set<std::string> from_json(pt::ptree& mesh);
+	void from_json(pt::ptree& mesh);
 
     /**
     * Sets a new order to the face numbering.
     * \param permutation desired ordering
     */
   void reorder_faces(std::vector<size_t> permutation);
+
+    /**
+    * Sets the MPI process ownership of mesh faces and nodes
+    */
+  void partition_mesh();
+
+    /**
+    * Figures out which faces lie on the boundary of an MPI process' domain
+    */
+  void determine_local_boundary_faces();
 
 
 	/**
@@ -642,7 +708,7 @@ public:
     * \param i Index
     * \return A face handle to the ith face
     */
-    Delaunay::Face_handle face(size_t i);
+    mesh_elem face(size_t i);
 
     /**
     * Returns the finite vertex at index i. A given index will always return the same vertex.
@@ -702,7 +768,6 @@ public:
     */
 	void write_vtu(std::string fname);
 
-    void write_vtp(std::string file_name);
 
 	/**
 	 * Returns true if this is a geogrphic mesh
@@ -722,6 +787,12 @@ public:
 
     void write_param_to_vtu(bool write_param);
 
+    /**
+     * Returns the set of parameters available on the triangulation
+     * @return
+     */
+    std::set<std::string> parameters();
+
     bool _terrain_deformed;
 
     /**
@@ -738,6 +809,11 @@ public:
 
     //Point to the global object that contains paramter information.
     boost::shared_ptr<global> _global;
+
+    //this holds the parameters that we load
+    //however, core might have found some parameters from modules
+    // it will have to insert them into this list so that the static hashmaps can be properly init
+    std::set<std::string> _parameters;
 private:
     size_t _num_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
@@ -770,13 +846,22 @@ private:
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
     //that allows us to traverse the triangulation in a deterministic order, as well as play nice with openmp
-    std::vector< Delaunay::Face_handle  > _faces;
+    std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;
+
+    std::vector< mesh_elem > _local_faces;
+    std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
+
 
 #ifdef NOMATLAB
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
     boost::shared_ptr<maw::graphics> _gfx;
+#endif
+
+#ifdef USE_MPI
+    boost::mpi::environment _mpi_env;
+    boost::mpi::communicator _comm_world;
 #endif
 
 };
@@ -886,25 +971,59 @@ private:
 
 };
 
+template < class Gt, class Fb>
+bool face<Gt, Fb>::has_parameter(const std::string& variable)
+{
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    return has_parameter(hash);
+}
 
 template < class Gt, class Fb>
-bool face<Gt, Fb>::has_parameter(std::string key)
+bool face<Gt, Fb>::has_parameter(const uint64_t& hash)
 {
-    return _parameters.find( key ) != _parameters.end();
+    auto idx = _parameters_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if( idx >=  _parameters.size() ||
+            _parameters[idx].xxhash != hash)
+        return false;
+
+    return true;
+
 }
 
 template < class Gt, class Fb >
-double face<Gt, Fb>::get_parameter(std::string key)
+double& face<Gt, Fb>::parameter(const std::string& variable)
 {
-    if(!has_parameter(key))
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + key +" does not exist."));
-    return _parameters[key];
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    uint64_t  idx = _parameters_bphf->lookup(hash);
+
+    //duplicate the code of the other paramter here for speed so we don't lookup 2x
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if( idx >=  _parameters.size() ||
+            _parameters[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable + " does not exist."));
+
+    return _parameters[idx].value;
 };
 
 template < class Gt, class Fb >
-void face<Gt, Fb>::set_parameter(std::string key, double value)
+double& face<Gt, Fb>::parameter(const uint64_t& hash)
 {
-    _parameters[key] = value;
+    uint64_t  idx = _parameters_bphf->lookup(hash);
+
+    //duplicate the code of the other paramter here for speed so we don't lookup 2x
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if( idx >= _parameters.size() ||
+            _parameters[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + std::to_string(hash)+ " does not exist."));
+
+    return _parameters[idx].value;
+
+
 };
 
 template < class Gt, class Fb >
@@ -931,7 +1050,7 @@ std::vector<std::string>  face<Gt, Fb>::parameters()
     std::vector<std::string> params;
     for(auto& itr : _parameters)
     {
-        params.push_back(itr.first);
+        params.push_back(itr.variable);
     }
     return params;
 };
@@ -983,6 +1102,7 @@ face<Gt, Fb>::face()
     _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
+
 #endif
 
 
@@ -1004,9 +1124,9 @@ face<Gt, Fb>::face(Vertex_handle v0,
 
 #ifdef USE_SPARSEHASH
     _module_face_data.set_empty_key("");
-    _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
+
 #endif
 
 }
@@ -1030,7 +1150,6 @@ face<Gt, Fb>::face(Vertex_handle v0,
 
 #ifdef USE_SPARSEHASH
     _module_face_data.set_empty_key("");
-    _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
 #endif
@@ -1060,9 +1179,9 @@ face<Gt, Fb>::face(Vertex_handle v0,
 
 #ifdef USE_SPARSEHASH
     _module_face_data.set_empty_key("");
-    _parameters.set_empty_key("");
     _initial_conditions.set_empty_key("");
     _module_face_vectors.set_empty_key("");
+
 #endif
 
 }
@@ -1183,9 +1302,9 @@ bool face<Gt, Fb>::intersects(face<Gt, Fb>::Face_handle fh)
 }
 
 template < class Gt, class Fb>
-const typename face<Gt, Fb>::Face_handle face<Gt, Fb>::find_closest_face(double azmimuth, double distance)
+const typename face<Gt, Fb>::Face_handle face<Gt, Fb>::find_closest_face(double azimuth, double distance)
 {
-    return _domain->find_closest_face(math::gis::point_from_bearing(center(), azmimuth, distance));
+    return _domain->find_closest_face(math::gis::point_from_bearing(center(), azimuth, distance));
 };
 
 template < class Gt, class Fb>
@@ -1275,36 +1394,76 @@ bool face<Gt, Fb>::contains(double x, double y)
 template < class Gt, class Fb>
 std::vector<std::string> face<Gt, Fb>::variables()
 {
-    return _data->list_variables();
+    std::vector<std::string> vars;
+    for(auto itr:_variables)
+    {
+        vars.push_back(itr.variable);
+    }
+    return vars;
+
 }
 
 
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has(const std::string& variable)
 {
-    return _itr->has(variable);
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    return has(hash);
+
 };
 
 template < class Gt, class Fb>
-void face<Gt, Fb>::set_face_data(const std::string& variable, double data)
+bool face<Gt, Fb>::has(const uint64_t& hash)
 {
-     _itr->set(variable, data);
+    uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if( idx >=  _variables.size() ||
+            _variables[idx].xxhash != hash)
+        return false;
+
+    return true;
 }
 
 template < class Gt, class Fb>
-double face<Gt, Fb>::face_data(const std::string& variable)
+double& face<Gt, Fb>::operator[](const uint64_t& hash)
 {
-    return _itr->get(variable);
+    uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if (  idx >=  _variables.size() ||
+        _variables[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
+
+
+    return _variables[idx].value;
+}
+
+template < class Gt, class Fb>
+double& face<Gt, Fb>::operator[](const std::string& variable)
+{
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if( idx >=  _variables.size() ||
+            _variables[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
+
+    return _variables[idx].value;
 }
 
 template < class Gt, class Fb >
 bool  face<Gt, Fb>::has_vegetation()
 {
-    if (has_parameter("landcover") )
+    if (has_parameter("landcover"_s) )
         return true;
-    if (has_parameter("canopyType"))
+    if (has_parameter("canopyType"_s))
         return true;
-    if (has_parameter("CanopyHeight"))
+    if (has_parameter("CanopyHeight"_s))
         return true;
 
     return false;
@@ -1313,15 +1472,21 @@ template < class Gt, class Fb >
 double face<Gt, Fb>::veg_attribute(const std::string &variable)
 {
     double result = 0;
-    if(has_parameter("landcover"))
+
+    // first see if we have a distributed map of this parameter
+    if(has_parameter(variable))
     {
-        int LC = get_parameter("landcover");
-        auto param = _domain->_global->parameters;
+        result = parameter(variable);
+    }
+    else if(has_parameter("landcover"_s)) // Ok, try to look it up in a classified landcover lookup table
+    {
+        int LC = parameter("landcover"_s);
+        auto param = _domain->_global->parameters; //this grabs the loaded landcover map
         result = param.get<double>("landcover." + std::to_string(LC) + "."+variable);
     }
     else
     {
-        result = get_parameter(variable);
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable +" does not exist."));
     }
 
     return result;
@@ -1341,11 +1506,52 @@ Vector_3 face<Gt, Fb>::face_vector(const std::string& variable)
 };
 
 template < class Gt, class Fb>
-void face<Gt, Fb>::init_time_series(std::set<std::string> variables, timeseries::date_vec datetime)
+void face<Gt, Fb>::init_time_series(std::set<std::string>& variables)
 {
-    _data->init(variables, datetime);
 
-    _itr = _data->begin();
+    std::vector<u_int64_t> hash_vec;
+    for(auto& v : variables)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
+        hash_vec.push_back(hash);
+    }
+
+    _variable_bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
+            new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false));
+
+    _variables.resize(variables.size());
+    for(auto v : variables)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
+        uint64_t  idx = _variable_bphf->lookup(hash);
+        _variables[idx].value = -9999.0;
+        _variables[idx].variable = v;
+        _variables[idx].xxhash = hash;
+    }
+}
+
+template < class Gt, class Fb>
+void face<Gt, Fb>::init_parameters(std::set<std::string>& parameters)
+{
+    std::vector<u_int64_t> hash_vec;
+    for(auto& v : parameters)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
+        hash_vec.push_back(hash);
+    }
+
+    _parameters_bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
+            new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false));
+
+    _parameters.resize(parameters.size());
+    for(auto& v : parameters)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
+        uint64_t  idx = _parameters_bphf->lookup(hash);
+        _parameters[idx].value = -9999.0;
+        _parameters[idx].variable = v;
+        _parameters[idx].xxhash = hash;
+    }
 }
 
 template < class Gt, class Fb>
@@ -1479,23 +1685,22 @@ double face<Gt, Fb>::get_area()
     if(_area == -1)
     {
         // supports geographic
-        if(has_parameter("area"))
+        if(has_parameter("area"_s))
         {
-            _area = get_parameter("area");
+            _area = parameter("area"_s);
         }
         else
         {
-            auto x1 = this->vertex(0)->point().x();
-            auto y1 = this->vertex(0)->point().y();
 
-            auto x2 = this->vertex(1)->point().x();
-            auto y2 = this->vertex(1)->point().y();
+            auto& pa = this->vertex(0)->point();
+            auto& pb = this->vertex(1)->point();
+            auto& pc = this->vertex(2)->point();
 
-            auto x3 = this->vertex(2)->point().x();
-            auto y3 = this->vertex(2)->point().y();
 
-//        auto lol= CGAL::area(this->vertex(0)->point(),this->vertex(1)->point(),this->vertex(2)->point());
-            _area = 0.5 * fabs( x1*(y2-y3) + x2*(y3-y1) + x3*(y1-y2) );
+            //same way it's done in mesher for consistency
+            typename Fb::Geom_traits traits;
+            _area = CGAL::to_double(traits.compute_area_2_object()(pa, pb, pc));
+
         }
     }
 

@@ -71,11 +71,6 @@ uint64_t global::posix_time_int()
     return duration.total_seconds();
 }
 
-std::string global::get_variable(std::string variable)
-{
-    return _variables(variable);
-    
-}
 
 int global::dt()
 {

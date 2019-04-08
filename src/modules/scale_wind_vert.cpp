@@ -52,13 +52,13 @@ scale_wind_vert::~scale_wind_vert()
 
 void scale_wind_vert::point_scale(mesh_elem &face)
 {
-//    if (face->cell_id == 1248)
+//    if (face->cell_local_id == 1248)
 //    {
 //        LOG_DEBUG << "Face found";
 //    }
 
     // Get meteorological data for current face
-    double U_R = face->face_data("U_R"); // Wind speed at reference height Z_R (m/s)
+    double U_R = (*face)["U_R"_s]; // Wind speed at reference height Z_R (m/s)
 
     // Get height info
     double Z_R = Atmosphere::Z_U_R; // Reference wind speed height [m] = 50.0 m
@@ -75,7 +75,7 @@ void scale_wind_vert::point_scale(mesh_elem &face)
     //double Z_CanMid       = (Z_CanTop+Z_CanBot)/2.0; // Mid height of canopy
     double snowdepthavg = 0;
     if (has_optional("snowdepthavg"))
-        snowdepthavg = face->face_data("snowdepthavg");
+        snowdepthavg = (*face)["snowdepthavg"_s];
 
     // Snow depth check
     if (is_nan(snowdepthavg)) // If it is not defined
@@ -90,7 +90,7 @@ void scale_wind_vert::point_scale(mesh_elem &face)
     // This is outside of log_scale_wind()'s range, so make assumption that wind is constant above U_R
     if (Z_2m_above_srf >= Z_R)
     {
-        face->set_face_data("U_2m_above_srf", U_R);
+        (*face)["U_2m_above_srf"_s]= U_R;
         return;
     }
 
@@ -141,23 +141,29 @@ void scale_wind_vert::point_scale(mesh_elem &face)
 
     // Check that U_2m_above_srf is not too small for turbulent parameterizations (should move check there)
     U_2m_above_srf = std::max(0.1, U_2m_above_srf);
-    face->set_face_data("U_2m_above_srf", U_2m_above_srf);
+    (*face)["U_2m_above_srf"_s]= U_2m_above_srf;
 
 };
 
-void scale_wind_vert::init(mesh domain)
+void scale_wind_vert::init(mesh& domain)
 {
     //since we can optionally run this module in point or domain mode, we need to turn back on the domain parallel flag at this point
     if(!global_param->is_point_mode())
         _parallel_type =  parallel::domain;
 
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto data = face->make_module_data<d>(ID);
-        data->interp.init(interp_alg::tpspline,3,{{"reuse_LU","true"}});
+      auto face = domain->face(i);
+      // Exception throwing from OpenMP needs to be here
+      oe.Run([&]
+	     {
+	       auto data = face->make_module_data<d>(ID);
+	       data->interp.init(interp_alg::tpspline,3,{{"reuse_LU","true"}});
+	     });
     }
+    oe.Rethrow();
 
     ignore_canopy = cfg.get("ignore_canopy",false);
 
@@ -168,40 +174,62 @@ void scale_wind_vert::run(mesh_elem &face)
     point_scale(face);
 }
 
-void scale_wind_vert::run(mesh domain)
+void scale_wind_vert::run(mesh& domain)
 {
+    ompException oe;
+#pragma omp parallel for
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+      auto face = domain->face(i);
+      // Exception throwing from OpenMP needs to be here
+      oe.Run([&]
+	     {
+	       point_scale(face);
+	     });
+    }
+    oe.Rethrow();
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        point_scale(face);
+      // Exception throwing from OpenMP needs to be here
+      oe.Run([&]
+	     {
+	       std::vector<boost::tuple<double, double, double> > u;
+	       for (size_t j = 0; j < 3; j++)
+	       {
+		 auto neigh = face->neighbor(j);
 
+		 if (neigh != nullptr && !neigh->_is_ghost)
+		   u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_2m_above_srf"]));
+	       }
+
+	       auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+
+	       if(u.size()>0)
+	       {
+		 double new_u =  face->get_module_data<d>(ID)->interp(u, query);
+		 face->get_module_data<d>(ID)->temp_u = std::max(0.1,new_u);
+	       }
+	       else
+	       {
+		 face->get_module_data<d>(ID)->temp_u = std::max(0.1,(*face)["U_2m_above_srf"_s]);
+	       }
+	     });
     }
+    oe.Rethrow();
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
-        auto face = domain->face(i);
-        std::vector<boost::tuple<double, double, double> > u;
-        for (size_t j = 0; j < 3; j++)
-        {
-            auto neigh = face->neighbor(j);
-
-            if (neigh != nullptr)
-                u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->face_data("U_2m_above_srf")));
-        }
-
-        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-
-        double new_u =  face->get_module_data<d>(ID)->interp(u, query);
-        face->get_module_data<d>(ID)->temp_u = std::max(0.1,new_u);
+      auto face = domain->face(i);
+      // Exception throwing from OpenMP needs to be here
+      oe.Run([&]
+	     {
+	       (*face)["U_2m_above_srf"_s]=face->get_module_data<d>(ID)->temp_u ;
+	     });
     }
-
-    #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
-    {
-        auto face = domain->face(i);
-        face->set_face_data("U_2m_above_srf",face->get_module_data<d>(ID)->temp_u );
-    }
+    oe.Rethrow();
 
 }

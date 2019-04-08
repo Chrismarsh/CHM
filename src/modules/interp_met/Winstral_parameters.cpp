@@ -68,24 +68,27 @@ Winstral_parameters::Winstral_parameters(config_file cfg)
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 
-void Winstral_parameters::run(mesh domain)
+void Winstral_parameters::run(mesh& domain)
 {
-
+  ompException oe;
 
   #pragma omp parallel for
   for (size_t i = 0; i < domain->size_faces(); i++)
   {
-    auto face = domain->face(i);
+    oe.Run([&]
+	   {
+	     auto face = domain->face(i);
 
-    // Derive Sx averaged over the angular windows 
-    double sx_mean = Sx(domain,face);
-   
-    face->set_face_data("Sx", sx_mean);    
-   }
+	     // Derive Sx averaged over the angular windows
+	     double sx_mean = Sx(domain,face);
 
+	     (*face)["Sx"_s]= sx_mean;
+	   });
+  }
+  oe.Rethrow();
 }
 
-double Winstral_parameters::Sx(const mesh &domain, Delaunay::Face_handle face) const
+double Winstral_parameters::Sx(const mesh &domain, mesh_elem& face) const
 {
     // Reference point: center of the triangle
     auto face_centre = face->center();
@@ -99,13 +102,13 @@ double Winstral_parameters::Sx(const mesh &domain, Delaunay::Face_handle face) c
     }
     if (this->incl_snw)
     {
-         Z_loc = Z_loc + face->face_data("snowdepthavg");
+         Z_loc = Z_loc + (*face)["snowdepthavg"_s];
     }
 
     double sx_mean  = 0.;
 
     // Extract Wind direction
-    double wind_dir = face->face_data("vw_dir") ;
+    double wind_dir = (*face)["vw_dir"_s] ;
 
     for (int i = 1; i <= this->nangle; ++i)
     {
@@ -143,7 +146,7 @@ double Winstral_parameters::Sx(const mesh &domain, Delaunay::Face_handle face) c
 
            if (this->incl_snw)
            {
-               Z_dist = Z_dist+ f->face_data("snowdepthavg");
+               Z_dist = Z_dist+ (*f)["snowdepthavg"_s];
            }
 
            double tan_sx = (Z_dist-Z_loc) / distance;
@@ -167,7 +170,3 @@ Winstral_parameters::~Winstral_parameters()
 {
 
 }
-
-
-
-

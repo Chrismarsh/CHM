@@ -118,73 +118,70 @@ void point_mode::run(mesh_elem &face)
     if(t)
     {
         double st = global_param->stations().at(0)->get("t");
-        face->set_face_data("t",st);
+        (*face)["t"_s]=st;
     }
 
     if(rh)
     {
         double srh = global_param->stations().at(0)->get("rh");
-        face->set_face_data("rh", srh);
+        (*face)["rh"_s]= srh;
     }
 
     if(U_2m_above_srf) {
         double su = global_param->stations().at(0)->get("u");
         su = std::max(su,0.1);
-        face->set_face_data("U_2m_above_srf",su);
+        (*face)["U_2m_above_srf"_s]=su;
     } else if (U_R)
     {
         double su = global_param->stations().at(0)->get("U_R");
 
         //make sure we don't have zero wind speeds
         su = std::max(su,0.1);
-        face->set_face_data("U_R",su);
+        (*face)["U_R"_s]=su;
     }
 
     if(vw_dir)
     {
         double sdir = global_param->stations().at(0)->get("vw_dir");
-        face->set_face_data("vw_dir",sdir);
+        (*face)["vw_dir"_s]=sdir;
     }
 
     if(p)
     {
         double sp = global_param->stations().at(0)->get("p");
-        face->set_face_data("p", sp);
+        (*face)["p"_s]= sp;
     }
     if(ilwr)
     {
         double silwr = global_param->stations().at(0)->get("Qli");
-        face->set_face_data("ilwr", silwr);
+        (*face)["ilwr"_s]= silwr;
     }
     if(iswr)
     {
         double iswr = global_param->stations().at(0)->get("Qsi");
-        face->set_face_data("iswr", iswr);
+        (*face)["iswr"_s]= iswr;
 
     }
     if(iswr_diffuse)
     {
         double iswr_diffuse = global_param->stations().at(0)->get("iswr_diffuse");
-        face->set_face_data("iswr_diffuse", iswr_diffuse);
+        (*face)["iswr_diffuse"_s]= iswr_diffuse;
 
     }
     if(iswr_direct)
     {
         double iswr_direct = global_param->stations().at(0)->get("iswr_direct");
-        face->set_face_data("iswr_direct", iswr_direct);
+        (*face)["iswr_direct"_s]= iswr_direct;
 
     }
 
     if(T_g)
     {
         double T_g = global_param->stations().at(0)->get("T_g");
-        face->set_face_data("T_g", T_g);
+        (*face)["T_g"_s]= T_g;
     }
 
 
-    face->set_parameter("svf",
-                            cfg.get("override.svf",
-                                        face->get_parameter("ssvf") )
-    );
+    face->parameter("svf") = cfg.get("override.svf", face->parameter("ssvf"_s));
 
 }

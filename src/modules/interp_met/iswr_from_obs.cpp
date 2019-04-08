@@ -42,15 +42,20 @@ iswr_from_obs::~iswr_from_obs()
 {
 
 }
-void iswr_from_obs::init(mesh domain)
+void iswr_from_obs::init(mesh& domain)
 {
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto d = face->make_module_data<data>(ID);
+	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+	     });
     }
+    oe.Rethrow();
 }
 void iswr_from_obs::run(mesh_elem &face)
 {
@@ -75,7 +80,7 @@ void iswr_from_obs::run(mesh_elem &face)
     //! compute the fraction of direct radiation using the parameterization of Nijssen and Lettenmaier (1999)
     double Frad_direct = 0.7000;
     double directScale = 0.0900;
-    double cosZenith = cos( M_PI/2.0 -  (face->face_data("solar_el")*mio::Cst::to_rad)) ; //zenith is from 90 vert -> 0 horz
+    double cosZenith = cos( M_PI/2.0 -  ((*face)["solar_el"_s]*mio::Cst::to_rad)) ; //zenith is from 90 vert -> 0 horz
     double scalarFractionDirect = 0;
 
     if(cosZenith > 0. )
@@ -87,9 +92,9 @@ void iswr_from_obs::run(mesh_elem &face)
     split_dir = std::max(0.0,split_dir);
     split_diff = std::max(0.0,split_diff);
 
-    face->set_face_data("iswr_direct_no_slope",split_dir);
-    face->set_face_data("iswr_diffuse_no_slope",split_diff);
-    face->set_face_data("iswr_observed",iswr_observed);
+    (*face)["iswr_direct_no_slope"_s]=split_dir;
+    (*face)["iswr_diffuse_no_slope"_s]=split_diff;
+    (*face)["iswr_observed"_s]=iswr_observed;
 
-    face->set_face_data("atm_trans",split_dir/1375.);
+    (*face)["atm_trans"_s]=split_dir/1375.;
 }

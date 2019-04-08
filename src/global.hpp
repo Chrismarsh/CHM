@@ -90,7 +90,6 @@ class global
 
 private:
     boost::posix_time::ptime _current_date;
-    var _variables;
     Tree _dD_tree; //spatial query tree
     //each station where observations are
     std::vector< boost::shared_ptr<station> > _stations;
@@ -133,7 +132,6 @@ public:
 
     double station_search_radius;
     bool first_time_step;
-    std::string get_variable(std::string variable);
 
     /**
      * Inserts a new station

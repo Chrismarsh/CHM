@@ -63,8 +63,8 @@ REGISTER_MODULE_HPP(MS_wind);
 public:
     MS_wind(config_file cfg);
     ~MS_wind();
-    virtual void run(mesh domain);
-    virtual void init(mesh domain);
+    virtual void run(mesh& domain);
+    virtual void init(mesh& domain);
     double ys;
     double yc;
     class data : public face_info

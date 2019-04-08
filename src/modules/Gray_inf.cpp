@@ -47,27 +47,31 @@ Gray_inf::~Gray_inf()
 
 }
 
-void Gray_inf::init(mesh domain)
+void Gray_inf::init(mesh& domain)
 {
+    ompException oe;
     //store all of snobals global variables from this timestep to be used as ICs for the next timestep
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto* d = face->make_module_data<Gray_inf::data>(ID);
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto* d = face->make_module_data<Gray_inf::data>(ID);
 
-        d->soil_depth = 400;
-        d->porosity = .4;
-        d->max_storage =  d->soil_depth * d->porosity;
-//        d->storage =  d->max_storage  - (1 - d->max_storage * face->get_parameter("sm")/100.);
-        d->storage =  d->max_storage * face->get_parameter("sm")/100.;
+	       d->soil_depth = 400;
+	       d->porosity = .4;
+	       d->max_storage =  d->soil_depth * d->porosity;
+	       //        d->storage =  d->max_storage  - (1 - d->max_storage * face->parameter("sm"_s)/100.);
+	       d->storage =  d->max_storage * face->parameter("sm"_s)/100.;
 
-        d->last_ts_potential_inf = 0;
-        d->opportunity_time=0.;
-        d->total_inf = 0.;
-        d->total_excess = 0.;
-
+	       d->last_ts_potential_inf = 0;
+	       d->opportunity_time=0.;
+	       d->total_inf = 0.;
+	       d->total_excess = 0.;
+	     });
     }
+    oe.Rethrow();
 }
 void Gray_inf::run(mesh_elem &face)
 {
@@ -80,7 +84,7 @@ void Gray_inf::run(mesh_elem &face)
 
     auto* d = face->get_module_data<Gray_inf::data>(ID);
 
-    auto id = face->cell_id;
+    auto id = face->cell_local_id;
     double C = 2.;
     double S0 = 1;
     double SI = face->get_initial_condition("sm")/100.;
@@ -90,7 +94,7 @@ void Gray_inf::run(mesh_elem &face)
     double runoff = 0.;
     double inf = 0.;
 
-    double snowmelt = face->face_data("snowmelt_int");
+    double snowmelt = (*face)["snowmelt_int"_s];
 
     double potential_inf = d->last_ts_potential_inf;
     double avail_storage = (d->max_storage - d->storage);
@@ -136,15 +140,15 @@ void Gray_inf::run(mesh_elem &face)
 
     if( !is_nan(face->get_initial_condition("sm")))
     {
-        face->set_face_data("total_excess",d->total_excess);
-        face->set_face_data("total_inf",d->total_inf);
+        (*face)["total_excess"_s]=d->total_excess;
+        (*face)["total_inf"_s]=d->total_inf;
 
-        face->set_face_data("runoff",runoff);
-        face->set_face_data("inf",inf);
-        face->set_face_data("potential_inf",potential_inf);
-        face->set_face_data("soil_storage", d->storage);
-        face->set_face_data("opportunity_time",d->opportunity_time);
-        face->set_face_data("available_storage",avail_storage);
+        (*face)["runoff"_s]=runoff;
+        (*face)["inf"_s]=inf;
+        (*face)["potential_inf"_s]=potential_inf;
+        (*face)["soil_storage"_s]= d->storage;
+        (*face)["opportunity_time"_s]=d->opportunity_time;
+        (*face)["available_storage"_s]=avail_storage;
     }
     else
     {

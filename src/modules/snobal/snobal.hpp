@@ -54,8 +54,8 @@ public:
     double const_T_g; // constant ground temp, degC
 
     virtual void run(mesh_elem &face);
-    virtual void init(mesh domain);
-    void checkpoint(mesh domain, netcdf& chkpt);
-    void load_checkpoint(mesh domain, netcdf& chkpt);
+    virtual void init(mesh& domain);
+    void checkpoint(mesh& domain, netcdf& chkpt);
+    void load_checkpoint(mesh& domain, netcdf& chkpt);
 
 };

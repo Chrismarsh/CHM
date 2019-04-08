@@ -53,7 +53,7 @@ public:
     ~kunkel_rh();
 
     virtual void run(mesh_elem &face);
-    virtual void init(mesh domain);
+    virtual void init(mesh& domain);
     struct data : public face_info
     {
         interpolation interp;

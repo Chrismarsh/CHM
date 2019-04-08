@@ -54,7 +54,7 @@ public:
     t_no_lapse(config_file cfg);
     ~t_no_lapse();
     virtual void run(mesh_elem& face);
-    virtual void init(mesh domain);
+    virtual void init(mesh& domain);
     struct data : public face_info
     {
         interpolation interp;

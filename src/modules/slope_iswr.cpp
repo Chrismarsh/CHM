@@ -49,8 +49,8 @@ void slope_iswr::run(mesh_elem& face)
 {
 
 
-    double A = face->face_data("solar_az") * mio::Cst::to_rad;
-    double E = face->face_data("solar_el") * mio::Cst::to_rad;
+    double A = (*face)["solar_az"_s] * mio::Cst::to_rad;
+    double E = (*face)["solar_el"_s] * mio::Cst::to_rad;
 
     //radiation data
     //solar vector
@@ -85,22 +85,22 @@ void slope_iswr::run(mesh_elem& face)
     if(angle < 0.0 || E < 0.0523598776) //3deg -> rad
         angle = 0.0;
 
-    face->set_face_data("solar_angle",angle);
+    (*face)["solar_angle"_s]=angle;
 
     //if we have remote shadowing
     if(has_optional("shadow"))
     {
-        if(face->face_data("shadow") == 1)
+        if((*face)["shadow"_s] == 1)
         {
             angle = 0;
         }
     }
 
-    double swr =  angle * face->face_data("iswr_direct");
-    double diff = face->face_data("iswr_diffuse");
+    double swr =  angle * (*face)["iswr_direct"_s];
+    double diff = (*face)["iswr_diffuse"_s];
 
-    face->set_face_data("iswr_direct",swr );
-    face->set_face_data("iswr", swr + diff );
+    (*face)["iswr_direct"_s]=swr ;
+    (*face)["iswr"_s]= swr + diff ;
 
 }
 

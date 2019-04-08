@@ -31,6 +31,7 @@ set (CHM_VERSION_MAJOR 0)
 set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
+option(USE_MPI "Enable MPI"  OFF )
 option(USE_OMP "Enable OpenMP"  ON )
 option(USE_OCL "Enable OpenCL with ViennaCL"  OFF )
 option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
@@ -44,6 +45,15 @@ set(BUILD_ParaView FALSE CACHE BOOL "Build Paraview and PV date-time filter")
 set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Number of build threads for superbuild projects")
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
+
+# Need to check for MPI before building external libraries
+find_package(MPI)
+if(MPI_FOUND AND USE_MPI)
+  message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
+  add_definitions(-DUSE_MPI)
+else()
+  message(WARNING "MPI not enabled. Building for single process.")
+endif()
 
 
 #enable with cmake -DSUPERBUILD=TRUE .
@@ -97,6 +107,7 @@ endif()
 if(BUILD_PROJ4)
     set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
 endif()
+
 
 if(BUILD_NETCDF)
     set(NETCDF_DIR ${CMAKE_BINARY_DIR}/lib/netcdf-c)
@@ -170,6 +181,8 @@ execute_process(COMMAND ${CMAKE_COMMAND}
         -DBUILD_ParaView=${BUILD_ParaView}
 	-DEXTERNAL_BUILD_THREADS=${EXTERNAL_BUILD_THREADS}
         -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+        -DUSE_MPI=${USE_MPI}
+        -DMPI_FOUND=${MPI_FOUND}
         -DUSE_OMP=${USE_OMP}
         -DUSE_OCL=${USE_OCL}
         -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
@@ -216,7 +229,6 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
 
     set(CMAKE_BUILD_TYPE "Release")
 endif()
-
 
 #Setup output paths
 
@@ -287,7 +299,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -Wno-c++11-extensions")
   set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -stdlib=libc++")
 endif()
-
 
 
 if(USE_OMP)
@@ -361,18 +372,35 @@ endif()
 
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
-find_package(Boost
-             1.62.0
-             COMPONENTS
-             system
-             filesystem
-             date_time
-             log
-             thread
-             regex
-             iostreams
-             program_options
-             REQUIRED)
+if(USE_MPI AND MPI_FOUND)
+  find_package(Boost
+    1.62.0
+    COMPONENTS
+    system
+    filesystem
+    date_time
+    log
+    thread
+    regex
+    iostreams
+    program_options
+    mpi
+    serialization
+    REQUIRED)
+else()
+  find_package(Boost
+    1.62.0
+    COMPONENTS
+    system
+    filesystem
+    date_time
+    log
+    thread
+    regex
+    iostreams
+    program_options
+    REQUIRED)
+endif()
 message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
 message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
 message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")

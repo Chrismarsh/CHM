@@ -31,7 +31,6 @@ core::core()
     _enable_ui=false; //default to no UI
     _start_ts = nullptr;
     _end_ts = nullptr;
-    _per_triangle_timeseries = false;
     _interpolation_method = interp_alg::tpspline;
 
     //default logging level
@@ -128,17 +127,6 @@ void core::config_options( pt::ptree &value)
         LOG_DEBUG << "User-specified endate: " << *_end_ts;
     }
 
-    // full time series per triangle.
-    boost::optional<bool> per_triangle_storage = value.get_optional<bool>("per_triangle_timeseries");
-    if (per_triangle_storage)
-    {
-        _per_triangle_timeseries = *per_triangle_storage;
-        LOG_DEBUG << "per triangle timer series storage: " << _per_triangle_timeseries;
-    }
-    else
-    {
-        _per_triangle_timeseries = false;
-    }
 
     // point mode options
     try
@@ -280,6 +268,12 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
 
         //assign the internal global param pointer to our global
         module->global_param = _global;
+
+        //get the parameters that this module will provide
+        // we need this now before the mesh call as in the mesh call we will build the static mph hashtable for all parameters
+
+        for(auto& p: *(module->provides_parameter()))
+            _provided_parameters.insert(p);
 
         modnum++;
         _modules.push_back(
@@ -621,7 +615,7 @@ void core::config_forcing(pt::ptree &value)
             labels->SetValue(i, s->ID() );
         }
         auto cf = _mesh->find_closest_face(s->x(),s->y());
-        s->set_closest_face(cf->cell_id);
+        s->set_closest_face(cf->cell_global_id);
 
         //do a few things behind _global's back for efficiency.
 //        auto s = pstations.at(i);
@@ -779,23 +773,36 @@ void core::config_meshes( pt::ptree &value)
         LOG_DEBUG << "No addtional initial conditions found in mesh section.";
     }
 
-    _provided_parameters = _mesh->from_json(mesh);
+    //we need to let the mesh know about any parameters the modules will provide so they can be correctly build into the static hashmaps
+    for(auto& p : _provided_parameters)
+        _mesh->_parameters.insert(p);
+    
+    _mesh->from_json(mesh);
 
+    _provided_parameters = _mesh->parameters();
+    
+    
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 
     _ui.write_mesh_details(_mesh->size_faces());
 
     LOG_DEBUG << "Initializing DEM mesh attributes";
+
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < _mesh->size_faces(); i++)
     {
-        auto face = _mesh->face(i);
-        face->slope();
-        face->aspect();
-        face->center();
-        face->normal();
+      oe.Run([&]
+	     {
+	       auto face = _mesh->face(i);
+	       face->slope();
+	       face->aspect();
+	       face->center();
+	       face->normal();
+	     });
     }
+    oe.Rethrow();
 
 
 
@@ -920,26 +927,25 @@ void core::config_output(pt::ptree &value)
                 delete coordTrans;
             }
 
-
-
             out.face = _mesh->locate_face(out.longitude, out.latitude);
 
+            if(out.face != nullptr)
+            {
+                // In MPI mode, we might not thave the output triangle on this node, so we just have to fail gracefully and hope that the other nodes have this.
+                // in the future we need a comms here to check if the nodes successfully figured out the output points
+                // for now, if we don't have it, print an error but keep going
 
-            if(out.face == nullptr)
-                BOOST_THROW_EXCEPTION(config_error() <<
-                                                     errstr_info(
-                                                             "Requested an output point that is not in the triangulation domain. Pt:"
-                                                             + std::to_string(out.longitude) + "," + std::to_string(out.latitude) + " name: " + out.name));
+                //set the point to be the center of the triangle that the output point lies on
+                points->InsertNextPoint(out.face->get_x(), out.face->get_y(), out.face->get_z());
+                labels->InsertNextValue(out.name);
 
-            //set the point to be the center of the triangle that the output point lies on
-            points->InsertNextPoint ( out.face->get_x(), out.face->get_y(), out.face->get_z() );
-            labels->InsertNextValue(out.name);
+                LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: "
+                          << out.face->slope() * 180. / M_PI << " aspect:" << out.face->aspect() * 180. / M_PI;
 
-            LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: " << out.face->slope() * 180./M_PI << " aspect:" << out.face->aspect() * 180./M_PI;
-
-            out.face->_debug_name = out.name; //out_type holds the station name
-            out.face->_debug_ID = ID;
-            ++ID;
+                out.face->_debug_name = out.name; //out_type holds the station name
+                out.face->_debug_ID = ID;
+                ++ID;
+            }
         }
         else if (out_type == "mesh")
         {
@@ -969,26 +975,36 @@ void core::config_output(pt::ptree &value)
 
             out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
 
-
-            // can do all non-vtu formats with vtu2geo tool, which is also faster. So move towards removing all this
-            //functionality
-
-//            for (auto &jtr: itr.second.get_child("format"))
-//            {
-//                LOG_DEBUG << "Output format found: " << jtr.second.data();
-//                if (jtr.second.data() == "vtu")
-//                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
-//                if (jtr.second.data() == "vtp")
-//                    out.mesh_output_formats.push_back(output_info::mesh_outputs::vtp);
-//            }
-
         } else
         {
             LOG_WARNING << "Unknown output type: " << itr.second.data();
         }
 
-        _outputs.push_back(out);
+        //ensure we aren't adding timeseries outputs with invalid faces bc of MPI
+        if(  out.type == output_info::time_series &&
+             out.face == nullptr)
+        {
+            // we will pass for now, but ultimiately we should have done an MPI comms and
+            // check if we are missing an output
+#ifndef USE_MPI
+            BOOST_THROW_EXCEPTION(config_error() <<
+                                                     errstr_info(
+                                                             "Requested an output point that is not in the triangulation domain. Pt:"
+                                                             + std::to_string(out.longitude) + "," +
+                                                             std::to_string(out.latitude) + " name: " + out.name));
+#else
+            LOG_WARNING << "In MPI mode there is currently no check if all the nodes correctly find the output triangle. "
+                           "If you are missing output, ensure that all the output points are within the domain.";
+#endif
+
+        }else
+        {
+            _outputs.push_back(out);
+        }
     }
+#ifdef USE_MPI
+    LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has #ouput points = " << _outputs.size();
+#endif
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
     polydata->GetPointData()->AddArray(labels);
@@ -996,7 +1012,11 @@ void core::config_output(pt::ptree &value)
     vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
 
     //output this to the same folder as the points are written out to
-    auto f = pts_path / "output_points.vtp";
+    std::string rank = "";
+#ifdef USE_MPI
+    rank = "."+ std::to_string(_comm_world.rank());
+#endif
+    auto f = pts_path / ("output_points"+rank+".vtp");
     writer->SetFileName(f.string().c_str());
     #if VTK_MAJOR_VERSION <= 5
         writer->SetInput(polydata);
@@ -1162,7 +1182,14 @@ void core::init(int argc, char **argv)
 
     std::string log_dir = "log";
     auto log_path = cwd_dir / log_dir;
-    std::string log_name = "CHM_" + log_start_time + ".log";
+
+    //output a unique logfile for each mpi rank
+    std::string rank = "";
+#ifdef USE_MPI
+   rank = "."+std::to_string(_comm_world.rank());
+#endif
+
+    std::string log_name = "CHM_" + log_start_time + rank + ".log";
 
     boost::filesystem::create_directories(log_path);
 
@@ -1196,8 +1223,8 @@ void core::init(int argc, char **argv)
 
     _log_sink->set_formatter
             (
-                    expr::format("%1% %2% [%3%]: %4%")
-                    % expr::attr<boost::posix_time::ptime>("TimeStamp")
+                    expr::format("%1% [%2%]: %3%")
+//                    % expr::attr<boost::posix_time::ptime>("TimeStamp")
                     % expr::format_named_scope("Scope",
                                                keywords::format = "%n:%l",
                                                keywords::iteration = expr::reverse,
@@ -1209,7 +1236,7 @@ void core::init(int argc, char **argv)
             severity >= verbose
     );
 
-    logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
+//    logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
     logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
 
 
@@ -1238,9 +1265,12 @@ void core::init(int argc, char **argv)
     // is not what we want.
     gsl_set_error_handler_off();
 
+#ifdef USE_MPI
+    LOG_DEBUG << "Built with MPI support,    #processes = " << _comm_world.size();
+#endif
 
 #ifdef _OPENMP
-    LOG_DEBUG << "Built with OpenMP support, #threads = " << omp_get_max_threads();
+    LOG_DEBUG << "Built with OpenMP support, #threads   = " << omp_get_max_threads();
 #endif
 
 
@@ -1344,8 +1374,8 @@ void core::init(int argc, char **argv)
     //remove and add modules
     /*
      * We expect the following sections:
-     *  modules
-     *  meshes
+     *  modules <- These don't get the mesh in the ctor, everything has to be in init, so doesn't mess with the MPI calls
+     *  meshes  <- Will redefine the elements to be on a per-node (MPI mode) basis
      *  forcing
      * The rest may be optional, and will override the defaults.
      */
@@ -1473,9 +1503,6 @@ void core::init(int argc, char **argv)
     _cfg = cfg;
 
     LOG_DEBUG << "Finished initialization";
-
-    LOG_DEBUG << "Init variables mapping";
-    _global->_variables.init_from_file("Un-init path");
 
     LOG_DEBUG << "Determining module dependencies";
     _determine_module_dep();
@@ -1636,30 +1663,21 @@ void core::init(int argc, char **argv)
         }
     }
 
+    ompException oe;
 
-
+    LOG_DEBUG << "Allocating face variable storage";
     #pragma omp parallel for
     for (size_t it = 0; it < _mesh->size_faces(); it++)
     {
-        Delaunay::Face_handle face = _mesh->face(it);
-        if(point_mode.enable && face->_debug_name != _outputs[0].name )
-            continue;
-
-        //_per_triangle_timeseries=true will create a full timeseries on each triangle. this takes up a crazy amount of ram
-        if (_per_triangle_timeseries)
-        {
-            face->init_time_series(_provided_var_module, date); /*length of all the vectors to initialize*/
-        }
-
-        if (!_per_triangle_timeseries)
-        {
-            //only do 1 init. The time is wrong, but that is ok as it's never used
-            timeseries::date_vec d;
-            d.push_back(date[0]);
-            face->init_time_series(_provided_var_module, d);
-        }
-
+      auto face = _mesh->face(it);
+      if(point_mode.enable && face->_debug_name != _outputs[0].name )
+	continue;
+      oe.Run([&]
+	     {
+	       face->init_time_series(_provided_var_module);
+	     });
     }
+    oe.Rethrow();
 
     if(point_mode.enable)
     {
@@ -1683,7 +1701,7 @@ void core::init(int argc, char **argv)
 
     for (auto& itr : _modules)
     {
-
+            LOG_VERBOSE << itr.first->ID;
             ompException oe;
             oe.Run([&]
                    {
@@ -2172,7 +2190,7 @@ void core::run()
 
     timer c;
 
-
+    ompException oe;
     //setup a XML writer for the PVD paraview format
     pt::ptree pvd;
     pvd.add("VTKFile.<xmlattr>.type", "Collection");
@@ -2234,24 +2252,27 @@ void core::run()
                     #pragma omp parallel for
                     for (size_t y = 0; y < nc.get_ysize(); y++)
                     {
-                        for (size_t x = 0; x < nc.get_xsize(); x++)
-                        {
-                            size_t index = x + y * nc.get_xsize();
-                            auto s = _global->_stations.at(index);
+		      oe.Run([&]
+			     {
+			       for (size_t x = 0; x < nc.get_xsize(); x++)
+			       {
+				   size_t index = x + y * nc.get_xsize();
+				   auto s = _global->_stations.at(index);
 
-                            //sanity check that we are getting the right station for this xy pair
-                            if (s->ID() != std::to_string(index))
-                            {
-                                BOOST_THROW_EXCEPTION(
-                                        forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
-                            }
+				   //sanity check that we are getting the right station for this xy pair
+				   if (s->ID() != std::to_string(index))
+				   {
+				       BOOST_THROW_EXCEPTION(
+							     forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
+				   }
 
+				   double d = data[y][x];
+				   s->now().set(itr, d);
 
-                            double d = data[y][x];
-                            s->now().set(itr, d);
-
-                        }
-                    }
+			       }
+			     });
+		    }
+		    oe.Rethrow();
                 }
 
                 LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";
@@ -2328,6 +2349,7 @@ void core::run()
                                        //module calls
                                        for (auto &jtr : itr)
                                        {
+                                           LOG_VERBOSE << "Module: "<< jtr->ID;
                                            jtr->run(face);
                                        }
 
@@ -2340,6 +2362,7 @@ void core::run()
                         //module calls for domain parallel
                         for (auto &jtr : itr)
                         {
+                            LOG_VERBOSE << "Module: "<< jtr->ID;
                             ompException oe;
                             oe.Run([&]
                                    {
@@ -2402,6 +2425,7 @@ void core::run()
 
                 LOG_DEBUG << "Done checkpoint [ " << c.toc<s>() << "s]";
             }
+
             for (auto &itr : _outputs)
             {
                 if (itr.type == output_info::output_type::mesh)
@@ -2418,26 +2442,43 @@ void core::run()
                                     #pragma omp task
                                     {
                                         std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
+                                        boost::filesystem::path p(base_name);
 
                                         if (jtr == output_info::mesh_outputs::vtu  )
                                         {
-                                            pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
-                                            dataset.add("<xmlattr>.timestep", _global->posix_time_int());
-                                            dataset.add("<xmlattr>.group", "");
-                                            dataset.add("<xmlattr>.part", 0);
+
+                                            // this really only works if we let rank0 handle the io.
+                                            // If we let each process do it, they walk all over each other's output
+#ifdef USE_MPI
+                                            if(_comm_world.rank() == 0)
+                                            {
+                                                for(int rank = 0; rank < _comm_world.size(); rank++)
+                                                {
+#else
+                                                    int rank = 0;
+#endif
+                                                    pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
+                                                    dataset.add("<xmlattr>.timestep", _global->posix_time_int());
+                                                    dataset.add("<xmlattr>.group", "");
+                                                    dataset.add("<xmlattr>.part", rank);
+                                                    dataset.add("<xmlattr>.file", p.filename().string()+"_"+std::to_string(rank) + ".vtu");
+#ifdef USE_MPI
+                                                }
+                                            }
+#endif
 
                                             //because a full path can be provided for the base_name, we need to strip this off
                                             //to make it a relative path in the xml file.
-                                            boost::filesystem::path p(base_name);
 
-                                            dataset.add("<xmlattr>.file", p.filename().string() + ".vtu");
+#ifdef USE_MPI
+                                            _mesh->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
+#else
                                             _mesh->write_vtu(base_name + ".vtu");
+#endif
+
                                         }
 
-                                        if (jtr == output_info::mesh_outputs::vtp)
-                                        {
-                                            _mesh->write_vtp(base_name + ".vtp");
-                                        }
+
 
                                     }
                                 }
@@ -2445,11 +2486,10 @@ void core::run()
                         }
                     }
                 }
-
             }
 
-
-            //get data from the face into the output timeseries
+            //If we are output a timeseries at specific triangles, we do that here
+            //Each output knows what face it corresponds to
             for (auto &itr : _outputs)
             {
                 //only update the full timeseries
@@ -2457,23 +2497,10 @@ void core::run()
                 {
                     for (auto v : _provided_var_module)
                     {
-                        auto data = itr.face->face_data(v);
+                        auto data = (*itr.face)[v];
                         itr.ts.at(v, current_ts) = data;
                     }
                 }
-            }
-
-            if (_per_triangle_timeseries)
-            {
-                #pragma omp parallel for
-                for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
-                {
-                    if(point_mode.enable && _mesh->face(i)->_debug_name != _outputs[0].name )
-                        continue;
-
-                    _mesh->face(i)->next();
-                }
-
             }
 
             //update all the stations internal iterators to point to the next time step
@@ -2535,14 +2562,20 @@ void core::run()
         if (itr.type == output_info::output_type::mesh)
         {
 
-
+#ifdef USE_MPI
+            if(_comm_world.rank() == 0)
+            {
+#endif
 #if (BOOST_VERSION / 100 % 1000) < 56
-            pt::write_xml(base_name + ".pvd",
-                          pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
+                pt::write_xml(base_name + ".pvd",
+                              pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
 #else
-            pt::write_xml(itr.fname + ".pvd",
-                          pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
-            break;
+                pt::write_xml(itr.fname + ".pvd",
+                              pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+                break;
+#endif
+#ifdef USE_MPI
+            }
 #endif
         }
     }
@@ -2557,19 +2590,6 @@ void core::run()
         }
     }
 
-    if (_per_triangle_timeseries)
-    {
-#pragma omp parallel for
-        for (size_t i = 0; i < _mesh->size_faces(); i++)//update all the internal iterators
-        {
-            auto db = _mesh->face(i)->cell_id;
-
-            auto f = (o_path / "points") / (std::to_string(db) + "_timeseries.txt");
-
-            _mesh->face(i)->to_file(f.string());
-        }
-
-    }
 
     if(_notification_script != "")
     {

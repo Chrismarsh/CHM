@@ -40,15 +40,23 @@ lw_no_lapse::~lw_no_lapse()
 {
 
 }
-void lw_no_lapse::init(mesh domain)
+
+void lw_no_lapse::init(mesh& domain)
 {
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto d = face->make_module_data<lw_no_lapse::data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
-    }}
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto d = face->make_module_data<lw_no_lapse::data>(ID);
+	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+	     });
+    }
+    oe.Rethrow();
+}
+
 void lw_no_lapse::run(mesh_elem& face)
 {
 
@@ -66,6 +74,6 @@ void lw_no_lapse::run(mesh_elem& face)
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
     double value = face->get_module_data<data>(ID)->interp(lowered_values, query);
 
-    face->set_face_data("ilwr",value);
+    (*face)["ilwr"_s]=value;
 
 }

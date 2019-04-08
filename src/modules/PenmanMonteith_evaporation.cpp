@@ -47,12 +47,12 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
 {
 
     double albedo = 0.23; //grass and crops
-    double qsi = face->face_data("Qsi");
-    double Lin = face->face_data("Lin");
-    double es = face->face_data("es")/1000.0;
-    double ea = face->face_data("ea")/1000.0;
-    double T = face->face_data("t");
-    double u = face->face_data("u");
+    double qsi = (*face)["Qsi"_s];
+    double Lin = (*face)["Lin"_s];
+    double es = (*face)["es"_s]/1000.0;
+    double ea = (*face)["ea"_s]/1000.0;
+    double T = (*face)["t"_s];
+    double u = (*face)["u"_s];
 
 
     double grass_emissivity = 0.9;
@@ -88,7 +88,7 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
 
     double E = (delta*(Qn-G)/latent_heat + (rho*cp*(es-ea)/ra))/(delta + psy_const * (1+rc/ra));
 
-    face->set_face_data("ET", E);
+    (*face)["ET"_s]= E;
 
 
 }

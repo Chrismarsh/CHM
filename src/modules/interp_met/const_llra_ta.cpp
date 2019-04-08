@@ -41,15 +41,20 @@ const_llra_ta::~const_llra_ta()
 
 }
 
-void const_llra_ta::init(mesh domain)
+void const_llra_ta::init(mesh& domain)
 {
+    ompException oe;
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto d = face->make_module_data<const_llra_ta::data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto d = face->make_module_data<const_llra_ta::data>(ID);
+	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+	     });
     }
+    oe.Rethrow();
 }
 void const_llra_ta::run(mesh_elem& face)
 {
@@ -74,7 +79,7 @@ void const_llra_ta::run(mesh_elem& face)
     //raise value back up to the face's elevation from sea level
     value =  value + lapse_rate * (0.0 - face->get_z());
 
-    face->set_face_data("t",value);
-    face->set_face_data("const_llra_ta",value);
+    (*face)["t"_s]=value;
+    (*face)["const_llra_ta"_s]=value;
 
 }

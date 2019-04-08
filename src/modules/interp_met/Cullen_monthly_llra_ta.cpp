@@ -39,15 +39,20 @@ Cullen_monthly_llra_ta::~Cullen_monthly_llra_ta()
 {
 
 }
-void Cullen_monthly_llra_ta::init(mesh domain)
+void Cullen_monthly_llra_ta::init(mesh& domain)
 {
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-        auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+      oe.Run([&]
+	     {
+	       auto face = domain->face(i);
+	       auto d = face->make_module_data<data>(ID);
+	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+	     });
     }
+    oe.Rethrow();
 }
 void Cullen_monthly_llra_ta::run(mesh_elem& face)
 {
@@ -113,8 +118,8 @@ void Cullen_monthly_llra_ta::run(mesh_elem& face)
     //raise value back up to the face's elevation from sea level
     value =  value + lapse_rate * (0.0 - face->get_z());
 
-    face->set_face_data("t",value);
+    (*face)["t"_s]=value;
 
-    face->set_face_data("t_lapse_rate",lapse_rate);
+    (*face)["t_lapse_rate"_s]=lapse_rate;
 
 }
