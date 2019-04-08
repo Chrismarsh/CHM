@@ -41,13 +41,18 @@ p_lapse::p_lapse(config_file cfg)
 }
 void p_lapse::init(mesh domain)
 {
+    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
+      oe.Run([&]
+        {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
+        auto d = face->make_module_data<p_lapse::data>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+        });
     }
+    oe.Rethrow();
 }
 void p_lapse::run(mesh_elem& face)
 {
@@ -107,10 +112,10 @@ void p_lapse::run(mesh_elem& face)
     }
 
     P_fin =  std::max(0.0,P_fin);
-    face->set_face_data("p", P_fin);
+    (*face)["p"_s]= P_fin;
 
     P = std::max(0.0,P);
-    face->set_face_data("p_no_slope", P);
+    (*face)["p_no_slope"_s]= P;
 
 }
 
