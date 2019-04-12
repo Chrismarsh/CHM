@@ -41,6 +41,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <cmath>
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <stack>
 #include <fstream>
 #include <utility>
@@ -626,6 +627,11 @@ public:
     * This is useful for the communication needed in nearest-neighbour discretizations of spatial operators.
     */
   void determine_process_ghost_faces_nearest_neighbours();
+    /**
+    * Figures out which faces are required in the ghost region of an MPI process.
+    * \param max_distance the maximum distance needed for communication
+    */
+  void determine_process_ghost_faces_by_distance(double max_distance);
 
 
 	/**
@@ -858,6 +864,7 @@ private:
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
     std::vector< mesh_elem > _ghost_neighbours;
+    std::vector< mesh_elem > _ghost_faces;
 
 
 #ifdef NOMATLAB

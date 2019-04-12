@@ -504,6 +504,7 @@ void triangulation::from_json(pt::ptree &mesh)
     _num_faces = _local_faces.size();
     determine_local_boundary_faces();
     determine_process_ghost_faces_nearest_neighbours();
+    determine_process_ghost_faces_by_distance(500.);
 
     // should make this parallel
     for(size_t ii=0; ii < _num_faces; ++ii)
@@ -769,6 +770,44 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
 					std::end(ghosted_boundary_nearest_neighbours));
   // Convert the set to a vector
   _ghost_neighbours.insert(std::end(_ghost_faces),
+			   std::begin(tmp_set),std::end(tmp_set));
+
+}
+
+void triangulation::determine_process_ghost_faces_by_distance(double max_distance)
+{
+  // NOTE that this algorithm is not implemented for multithread
+  // - multithread can be implemented similarly to determine_local_boundary_faces
+  //   (though that is currently bugged out too)
+
+  // Ensure that the local boundary faces have been determined, but ghost neighbours have not been set
+  assert( _boundary_faces.size() != 0 );
+  assert( _ghost_faces.size() == 0 );
+
+  // Vector for append speed
+  std::vector< mesh_elem > ghosted_boundary_neighbours;
+
+  for(size_t face_index=0; face_index< _boundary_faces.size(); ++face_index)
+  {
+    // face_index is a local index... get the face handle
+    auto face = _boundary_faces.at(face_index).first;
+    // separate the ghosted and non-ghosted neighbours
+    std::vector<mesh_elem> current_neighbours = find_faces_in_radius(face->center().x(),face->center().y(), max_distance);
+    auto pivot = std::partition(std::begin(current_neighbours),std::end(current_neighbours),
+    				[] (mesh_elem neigh) {
+    				  return neigh->_is_ghost == false;
+    				});
+    current_neighbours.erase(pivot,std::end(current_neighbours));
+
+    ghosted_boundary_neighbours.insert(std::end(ghosted_boundary_neighbours),
+				       current_neighbours.begin(),current_neighbours.end());
+  }
+
+  // Convert to a set to remove duplicates
+  std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_neighbours),
+					std::end(ghosted_boundary_neighbours));
+  // Convert the set to a vector
+  _ghost_faces.insert(std::end(_ghost_faces),
 			   std::begin(tmp_set),std::end(tmp_set));
 
 }
