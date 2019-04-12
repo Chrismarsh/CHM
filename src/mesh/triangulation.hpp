@@ -621,6 +621,11 @@ public:
     * Figures out which faces lie on the boundary of an MPI process' domain
     */
   void determine_local_boundary_faces();
+    /**
+    * Figures out which faces are ghosted nearest neighbours of
+    * This is useful for the communication needed in nearest-neighbour discretizations of spatial operators.
+    */
+  void determine_process_ghost_faces_nearest_neighbours();
 
 
 	/**
@@ -852,6 +857,7 @@ private:
 
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
+    std::vector< mesh_elem > _ghost_neighbours;
 
 
 #ifdef NOMATLAB
