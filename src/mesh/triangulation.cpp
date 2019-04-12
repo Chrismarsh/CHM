@@ -503,6 +503,7 @@ void triangulation::from_json(pt::ptree &mesh)
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
     determine_local_boundary_faces();
+    determine_process_ghost_faces_nearest_neighbours();
 
     // should make this parallel
     for(size_t ii=0; ii < _num_faces; ++ii)
@@ -735,6 +736,41 @@ void triangulation::determine_local_boundary_faces()
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
 
 #endif
+}
+
+void triangulation::determine_process_ghost_faces_nearest_neighbours()
+{
+  // NOTE that this algorithm is not implemented for multithread
+  // - multithread can be implemented similarly to determine_local_boundary_faces
+  //   (though that is currently bugged out too)
+
+  // Ensure that the local boundary faces have been determined, but ghost nearest neighbours have not been set
+  assert( _boundary_faces.size() != 0 );
+  assert( _ghost_neighbours.size() == 0 );
+
+  // Vector for append speed
+  std::vector< mesh_elem > ghosted_boundary_nearest_neighbours;
+
+  for(size_t face_index=0; face_index< _boundary_faces.size(); ++face_index)
+  {
+    // face_index is a local index... get the face handle
+    auto face = _boundary_faces.at(face_index).first;
+    // append the ghosted nearest neighbours
+    for(int i = 0; i < 3; ++i)
+    {
+        auto neigh = face->neighbor(i);
+        if(neigh != nullptr && !neigh->_is_ghost)
+            ghosted_boundary_nearest_neighbours.push_back(neigh);
+    }
+  }
+
+  // Convert to a set to remove duplicates
+  std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_nearest_neighbours),
+					std::end(ghosted_boundary_nearest_neighbours));
+  // Convert the set to a vector
+  _ghost_neighbours.insert(std::end(_ghost_faces),
+			   std::begin(tmp_set),std::end(tmp_set));
+
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
