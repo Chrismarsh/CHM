@@ -671,6 +671,9 @@ void triangulation::determine_local_boundary_faces()
     - Store handles to boundary faces on the locally owned process
     - Also store boolean value "is_global_boundary"
   */
+
+  ompException oe;
+
 #ifdef USE_MPI
   // Need to ensure we're starting from nothing?
   assert( _boundary_faces.size() == 0 );
@@ -683,38 +686,39 @@ void triangulation::determine_local_boundary_faces()
 //#pragma omp parallel for
   for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
   {
+    oe.Run([&] {
 
-    // face_index is a local index... get the face handle
-    auto face = _local_faces.at(face_index);
+	     // face_index is a local index... get the face handle
+	     auto face = _local_faces.at(face_index);
 
-    int num_owned_neighbours = 0;
-    for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
-    {
+	     int num_owned_neighbours = 0;
+	     for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
+	       {
 
-      auto neigh = face->neighbor(neigh_index);
+		 auto neigh = face->neighbor(neigh_index);
 
-      // Test status of neighbour
-      if (neigh == nullptr)
-      {
-        th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
-        num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
-        break;
-      } else
-      {
-        if (neigh->_is_ghost == false)
-        {
-            num_owned_neighbours++;
-        }
-      }
-    }
+		 // Test status of neighbour
+		 if (neigh == nullptr)
+		   {
+		     th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+		     num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
+		     break;
+		   } else
+		   {
+		     if (neigh->_is_ghost == false)
+		       {
+			 num_owned_neighbours++;
+		       }
+		   }
+	       }
 
-    // If we don't own 3 neighbours, we are a local, but not a global boundary face
-    if( num_owned_neighbours<3 ) {
-      th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
-    }
-
+	     // If we don't own 3 neighbours, we are a local, but not a global boundary face
+	     if( num_owned_neighbours<3 ) {
+	       th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
+	     }
+      });
   }
-
+  oe.Rethrow();
   // Join the vectors via a single thread in t operations
   //  NOTE future optimizations:
   //   - reserve space for insertions into _boundary_faces
@@ -726,6 +730,7 @@ void triangulation::determine_local_boundary_faces()
 
   // Some log debug output to see how many boundary faces on each
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
+
 #endif
 }
 
