@@ -39,7 +39,7 @@ p_lapse::p_lapse(config_file cfg)
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
-void p_lapse::init(mesh domain)
+void p_lapse::init(mesh& domain)
 {
     ompException oe;
 #pragma omp parallel for
