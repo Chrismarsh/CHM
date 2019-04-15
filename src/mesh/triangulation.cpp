@@ -675,7 +675,10 @@ void triangulation::determine_local_boundary_faces()
   // Need to ensure we're starting from nothing?
   assert( _boundary_faces.size() == 0 );
 
+  LOG_DEBUG << "Determining local boundary faces";
+
   std::unique_ptr< th_safe_multicontainer_type > th_local_boundary_faces;
+
 #pragma omp parallel
   {
     // We want an array of vectors, so that OMP threads can increment them
@@ -749,6 +752,8 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
   assert( _boundary_faces.size() != 0 );
   assert( _ghost_neighbours.size() == 0 );
 
+  LOG_DEBUG << "Determining ghost region info";
+
   // Vector for append speed
   std::vector< mesh_elem > ghosted_boundary_nearest_neighbours;
 
@@ -771,6 +776,8 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
   // Convert the set to a vector
   _ghost_neighbours.insert(std::end(_ghost_faces),
 			   std::begin(tmp_set),std::end(tmp_set));
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbours.size() << " ghosted nearest neighbours.";
 
 }
 
@@ -800,15 +807,17 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
     current_neighbours.erase(pivot,std::end(current_neighbours));
 
     ghosted_boundary_neighbours.insert(std::end(ghosted_boundary_neighbours),
-				       current_neighbours.begin(),current_neighbours.end());
+    				       current_neighbours.begin(),current_neighbours.end());
   }
 
   // Convert to a set to remove duplicates
   std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_neighbours),
-					std::end(ghosted_boundary_neighbours));
+  					std::end(ghosted_boundary_neighbours));
   // Convert the set to a vector
   _ghost_faces.insert(std::end(_ghost_faces),
-			   std::begin(tmp_set),std::end(tmp_set));
+  			   std::begin(tmp_set),std::end(tmp_set));
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_faces.size() << " ghosted faces.";
 
 }
 
