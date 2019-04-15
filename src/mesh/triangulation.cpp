@@ -674,18 +674,20 @@ void triangulation::determine_local_boundary_faces()
 
   ompException oe;
 
+  using th_safe_multicontainer_type = std::vector< std::pair<mesh_elem,bool> >[];
+
 #ifdef USE_MPI
   // Need to ensure we're starting from nothing?
   assert( _boundary_faces.size() == 0 );
 
-  std::vector< std::pair<mesh_elem,bool> > *th_local_boundary_faces;
+  std::unique_ptr< th_safe_multicontainer_type > th_local_boundary_faces;
 #pragma omp parallel
   {
     // We want an array of vectors, so that OMP threads can increment them
     // separately, then join them afterwards
 #pragma omp single
     {
-      th_local_boundary_faces = new std::vector< std::pair<mesh_elem,bool> >[omp_get_num_threads()];
+      th_local_boundary_faces = std::make_unique< th_safe_multicontainer_type >(omp_get_num_threads());
     }
 #pragma omp for
     for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
@@ -736,11 +738,9 @@ void triangulation::determine_local_boundary_faces()
   }
   oe.Rethrow();
 
-
   // Some log debug output to see how many boundary faces on each
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
 
-  delete[] th_local_boundary_faces;
 #endif
 }
 
