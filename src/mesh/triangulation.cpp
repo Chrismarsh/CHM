@@ -671,59 +671,69 @@ void triangulation::determine_local_boundary_faces()
   // Need to ensure we're starting from nothing?
   assert( _boundary_faces.size() == 0 );
 
-  // We want an array of vectors, so that OMP threads can increment them
-  // separately, then join them afterwards
-  std::unique_ptr< std::vector< std::pair<mesh_elem,bool> >[] > th_local_boundary_faces(new std::vector< std::pair<mesh_elem,bool> >[omp_get_num_threads()]);
-
-// This is not thread safe. why?
-//#pragma omp parallel for
-  for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
+  std::vector< std::pair<mesh_elem,bool> > *th_local_boundary_faces;
+#pragma omp parallel
   {
-    oe.Run([&] {
+    // We want an array of vectors, so that OMP threads can increment them
+    // separately, then join them afterwards
+#pragma omp single
+    {
+      th_local_boundary_faces = new std::vector< std::pair<mesh_elem,bool> >[omp_get_num_threads()];
+    }
+#pragma omp for
+    for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
+      {
+	oe.Run([&] {
 
-	     // face_index is a local index... get the face handle
-	     auto face = _local_faces.at(face_index);
+		 // face_index is a local index... get the face handle
+		 auto face = _local_faces.at(face_index);
 
-	     int num_owned_neighbours = 0;
-	     for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
-	       {
-
-		 auto neigh = face->neighbor(neigh_index);
-
-		 // Test status of neighbour
-		 if (neigh == nullptr)
+		 int num_owned_neighbours = 0;
+		 for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
 		   {
-		     th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
-		     num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
-		     break;
-		   } else
-		   {
-		     if (neigh->_is_ghost == false)
+
+		     auto neigh = face->neighbor(neigh_index);
+
+		     // Test status of neighbour
+		     if (neigh == nullptr)
 		       {
-			 num_owned_neighbours++;
+			 th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+			 num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
+			 break;
+		       } else
+		       {
+			 if (neigh->_is_ghost == false)
+			   {
+			     num_owned_neighbours++;
+			   }
 		       }
 		   }
-	       }
 
-	     // If we don't own 3 neighbours, we are a local, but not a global boundary face
-	     if( num_owned_neighbours<3 ) {
-	       th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
-	     }
-      });
+		 // If we don't own 3 neighbours, we are a local, but not a global boundary face
+		 if( num_owned_neighbours<3 ) {
+		   th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
+		 }
+	       });
+      }
+    // Join the vectors via a single thread in t operations
+    //  NOTE future optimizations:
+    //   - reserve space for insertions into _boundary_faces
+    //   - can be done recursively in log2(t) operations
+#pragma omp single
+    {
+      for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx) {
+	_boundary_faces.insert(_boundary_faces.end(),
+			       th_local_boundary_faces[thread_idx].begin(), th_local_boundary_faces[thread_idx].end());
+      }
+    }
   }
   oe.Rethrow();
-  // Join the vectors via a single thread in t operations
-  //  NOTE future optimizations:
-  //   - reserve space for insertions into _boundary_faces
-  //   - can be done recursively in log2(t) operations
-  for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx) {
-    _boundary_faces.insert(_boundary_faces.end(),
-			   th_local_boundary_faces[thread_idx].begin(), th_local_boundary_faces[thread_idx].end());
-  }
+
 
   // Some log debug output to see how many boundary faces on each
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
 
+  delete[] th_local_boundary_faces;
 #endif
 }
 
