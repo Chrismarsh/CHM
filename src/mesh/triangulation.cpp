@@ -511,7 +511,6 @@ void triangulation::from_json(pt::ptree &mesh)
     _num_faces = _local_faces.size();
     determine_local_boundary_faces();
     determine_process_ghost_faces_nearest_neighbours();
-    determine_process_ghost_faces_by_distance(500.);
 
     // should make this parallel
     for(size_t ii=0; ii < _num_faces; ++ii)
@@ -524,10 +523,12 @@ void triangulation::from_json(pt::ptree &mesh)
     //make the search tree
     dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_local_faces.begin() )),
                                        boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _local_faces.end() ) )
-    );
+				       );
 
 #endif // USE_MPI
 
+    // determining ghost faces requires the dD_tree to be set up
+    determine_process_ghost_faces_by_distance(100.);
 
   std::vector<double> temp_slope(_num_faces);
 
