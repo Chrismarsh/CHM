@@ -5,11 +5,14 @@ cmake_policy(SET CMP0074 NEW)
 project(externalLib)
 include(ExternalProject)
 
+set(USE_MPI OFF)
+set(MPI_FOUND OFF)
 set(USE_OMP ON)
 set(USE_OCL OFF)
 set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Build vars")
 
 #these should always be built and downloaded
+
 ExternalProject_Add(
     sparsehash
     GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
@@ -122,18 +125,30 @@ if(BUILD_ParaView)
 
 endif()
 
-if( BUILD_BOOST)
+if(BUILD_BOOST)
+  if(${USE_MPI} AND ${MPI_FOUND})
     ExternalProject_Add(
-	    boost
-	    URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
-	    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
-	    CONFIGURE_COMMAND bash  <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python
-	     #--with-libraries=system,iostreams,filesystem,date_time,log,thread,regex,program_options
-	    UPDATE_COMMAND ""
-	    BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
-	    INSTALL_COMMAND ./b2 install
-	    BUILD_IN_SOURCE 1
-	    )
+      boost
+      URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
+      INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
+      CONFIGURE_COMMAND bash <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python COMMAND echo "using mpi : ${MPI_CXX_COMPILER} : : ${MPIEXEC_EXECUTABLE} $<SEMICOLON>" >> ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/project-config.jam
+      UPDATE_COMMAND ""
+      BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
+      INSTALL_COMMAND ./b2 install
+      BUILD_IN_SOURCE 1
+      )
+  else()
+    ExternalProject_Add(
+      boost
+      URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
+      INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
+      CONFIGURE_COMMAND bash  <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python
+      UPDATE_COMMAND ""
+      BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
+      INSTALL_COMMAND ./b2 install
+      BUILD_IN_SOURCE 1
+      )
+  endif()
 endif()
 
 if(BUILD_GSL)
@@ -152,7 +167,7 @@ if(BUILD_ARMADILLO)
 	    armadillo
 	    URL http://sourceforge.net/projects/arma/files/armadillo-7.950.1.tar.xz
 	    UPDATE_COMMAND ""
-	    CMAKE_ARGS -DCMAKE_PREFIX_PATH=$ENV{CMAKE_SYSTEM_PREFIX_PATH} -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/armadillo
+	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/armadillo
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
@@ -163,7 +178,7 @@ if(BUILD_VIENNACL)
 	    ViennaCL
 	    URL https://downloads.sourceforge.net/project/viennacl/1.7.x/ViennaCL-1.7.1.tar.gz
 	    UPDATE_COMMAND ""
-	    CMAKE_ARGS -DCMAKE_PREFIX_PATH=$ENV{CMAKE_SYSTEM_PREFIX_PATH} -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ViennaCL -DENABLE_OPENCL=${USE_OCL} -DENABLE_CUDA=OFF -DENABLE_OPENMP=${USE_OMP} -DBUILD_EXAMPLES=OFF
+	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ViennaCL -DENABLE_OPENCL=${USE_OCL} -DENABLE_CUDA=OFF -DENABLE_OPENMP=${USE_OMP} -DBUILD_EXAMPLES=OFF
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
@@ -175,7 +190,7 @@ if(BUILD_CGAL)
 	    CGAL
 	    URL https://github.com/CGAL/cgal/releases/download/releases%2FCGAL-4.10/CGAL-4.10.tar.xz
 	    UPDATE_COMMAND ""
-	    CMAKE_ARGS -DCMAKE_PREFIX_PATH=$ENV{CMAKE_SYSTEM_PREFIX_PATH} -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/CGAL -DBoost_NO_SYSTEM_PATHS=TRUE -DBOOST_ROOT=${CMAKE_BINARY_DIR}/lib/boost -DWITH_CGAL_Qt5=OFF
+	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/CGAL -DBoost_NO_SYSTEM_PATHS=TRUE -DBOOST_ROOT=${CMAKE_BINARY_DIR}/lib/boost -DWITH_CGAL_Qt5=OFF
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
@@ -210,7 +225,7 @@ if(BUILD_GDAL)
 	    #http://osgeo-org.1560.x6.nabble.com/gdal-dev-sprintf-different-exception-specified-td5340324.html
 	    # CXXFLAGS=-DDONT_DEPRECATE_SPRINTF
 
-	    CONFIGURE_COMMAND CXXFLAGS=-DDONT_DEPRECATE_SPRINTF  <SOURCE_DIR>/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
+	    CONFIGURE_COMMAND CXXFLAGS=-DDONT_DEPRECATE_SPRINTF <SOURCE_DIR>/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
@@ -257,7 +272,7 @@ if(BUILD_NETCDF)
             #          --prefix=${CMAKE_BINARY_DIR}/lib/netcdf-c
             #          --enable-netcdf-4 --enable-shared
 
-          CMAKE_ARGS  -DCMAKE_PREFIX_PATH=$ENV{CMAKE_SYSTEM_PREFIX_PATH};${CMAKE_BINARY_DIR}/lib/hdf5
+          CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5
                         -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
                         -DENABLE_NETCDF_4=ON
                         -DBUILD_SHARED_LIBS=ON
