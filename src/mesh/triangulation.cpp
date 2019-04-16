@@ -509,26 +509,30 @@ void triangulation::from_json(pt::ptree &mesh)
     partition_mesh();
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
+    size_t total_num_faces = _faces.size();
     determine_local_boundary_faces();
     determine_process_ghost_faces_nearest_neighbours();
 
     // should make this parallel
-    for(size_t ii=0; ii < _num_faces; ++ii)
+    for(size_t ii=0; ii < total_num_faces; ++ii)
     {
-        auto face = _local_faces.at(ii);
+        auto face = _faces.at(ii);
         Point_2 pt2(face->center().x(),face->center().y());
         center_points.push_back(pt2);
 
     }
     //make the search tree
-    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_local_faces.begin() )),
-                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _local_faces.end() ) )
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
 				       );
 
 #endif // USE_MPI
 
     // determining ghost faces requires the dD_tree to be set up
     determine_process_ghost_faces_by_distance(100.);
+
+    // shrink the local mesh
+    shrink_local_mesh_to_owned_and_distance_neighbours();
 
   std::vector<double> temp_slope(_num_faces);
 
@@ -569,6 +573,9 @@ void triangulation::from_json(pt::ptree &mesh)
     f->normal();
   }
 
+    // TODO need to re-setup dD_tree to only consider the _faces after shrinking
+    // -  Note this likely allows us to remove the the ifndef USE_MPI from earlier in this routine,
+    //    as we have to do a global pass and a local pass anyway
 
 }
 
