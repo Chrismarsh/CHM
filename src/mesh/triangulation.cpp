@@ -826,6 +826,8 @@ void triangulation::shrink_local_mesh_to_owned_and_distance_neighbours()
 {
   // Reset _faces to contain ONLY _local_faces and _ghost_faces.
 
+  LOG_DEBUG << "Shrinking local meshes";
+
   // Ensure that the localized face containers have been set
   assert( _local_faces.size() != 0 );
   assert( _ghost_faces.size() != 0 );
@@ -838,6 +840,9 @@ void triangulation::shrink_local_mesh_to_owned_and_distance_neighbours()
   _faces.reserve( _local_faces.size() + _ghost_faces.size() );
   _faces.insert( _faces.end(), _local_faces.begin(), _local_faces.end() );
   _faces.insert( _faces.end(), _ghost_faces.begin(), _ghost_faces.end() );
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _faces.size() << " faces after shrinking";
+
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
