@@ -321,7 +321,7 @@ void triangulation::from_json(pt::ptree &mesh)
         auto face = this->create_face(vert1,vert2,vert3);
         face->cell_global_id = cid++;
         face->cell_local_id = face->cell_global_id;
-        
+
         if( is_geographic == 1)
         {
             face->_is_geographic = true;
@@ -754,7 +754,7 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
 {
   // NOTE that this algorithm is not implemented for multithread
   // - multithread can be implemented similarly to determine_local_boundary_faces
-  //   (though that is currently bugged out too)
+  //   - not a priority since number of boundary faces should be small
 
   // Ensure that the local boundary faces have been determined, but ghost nearest neighbours have not been set
   assert( _boundary_faces.size() != 0 );
@@ -793,7 +793,7 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
 {
   // NOTE that this algorithm is not implemented for multithread
   // - multithread can be implemented similarly to determine_local_boundary_faces
-  //   (though that is currently bugged out too)
+  //   - not a priority since number of boundary faces should be small
 
   // Ensure that the local boundary faces have been determined, but ghost neighbours have not been set
   assert( _boundary_faces.size() != 0 );
