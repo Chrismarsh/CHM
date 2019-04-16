@@ -632,7 +632,10 @@ public:
     * \param max_distance the maximum distance needed for communication
     */
   void determine_process_ghost_faces_by_distance(double max_distance);
-
+    /**
+    * Shrink the local mesh to only contain owned entries and relevant ghost entries
+    */
+  void shrink_local_mesh_to_owned_and_distance_neighbours();
 
 	/**
 	 * Serializes a mesh attribute to file so it can be read into the model.
