@@ -525,9 +525,9 @@ void triangulation::from_json(pt::ptree &mesh)
 #endif // USE_MPI
 
 
-  std::vector<double> temp_slope(size_faces());
+  std::vector<double> temp_slope(_num_faces);
 
-
+#pragma omp parallel for
   for (size_t i = 0; i < _num_faces; i++)
   {
 
