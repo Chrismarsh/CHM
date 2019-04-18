@@ -70,22 +70,21 @@ Winstral_parameters::Winstral_parameters(config_file cfg)
 
 void Winstral_parameters::run(mesh& domain)
 {
-  ompException oe;
+
 
   #pragma omp parallel for
   for (size_t i = 0; i < domain->size_faces(); i++)
   {
-    oe.Run([&]
-	   {
+
 	     auto face = domain->face(i);
 
 	     // Derive Sx averaged over the angular windows
 	     double sx_mean = Sx(domain,face);
 
 	     (*face)["Sx"_s]= sx_mean;
-	   });
+
   }
-  oe.Rethrow();
+
 }
 
 double Winstral_parameters::Sx(const mesh &domain, mesh_elem& face) const

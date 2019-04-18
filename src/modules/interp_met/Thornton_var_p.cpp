@@ -46,18 +46,17 @@ template <typename T> int signum(T val) {
 }
 void Thornton_var_p::init(mesh& domain)
 {
-    ompException oe;
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 	       auto d = face->make_module_data<data>(ID);
 	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
-	     });
+
     }
-    oe.Rethrow();
+
 }
 void Thornton_var_p::run(mesh_elem& face)
 {

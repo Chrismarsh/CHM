@@ -246,7 +246,7 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
 void triangulation::from_json(pt::ptree &mesh)
 {
 
-    ompException oe;
+
 
     size_t nvertex_toread = mesh.get<size_t>("mesh.nvertex");
     LOG_DEBUG << "Reading in #vertex=" << nvertex_toread;
@@ -433,12 +433,11 @@ void triangulation::from_json(pt::ptree &mesh)
 #pragma omp parallel for
         for (size_t i = 0; i < size_faces(); i++)
         {
-	  oe.Run([&]
-		 {
+
 		   _faces.at(i)->init_parameters(_parameters);
-		 });
+
         }
-	oe.Rethrow();
+
 
         for (auto &itr : mesh.get_child("parameters"))
         {
@@ -578,20 +577,19 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   assert( permutation.size() == size_faces() );
   LOG_DEBUG << "Reordering faces";
 
-  ompException oe;
+
 
   // Update the IDs on all faces
   #pragma omp parallel for
   for (size_t ind = 0; ind < permutation.size(); ++ind)
   {
-    oe.Run([&]
-	   {
+
 	     size_t old_ID = permutation.at(ind);
 	     size_t new_ID = ind;
 
 	     auto face = _faces.at(old_ID);
 	     face->cell_global_id = new_ID;
-	   });
+
   }
 
   // Sort the faces in the new ordering
@@ -611,7 +609,7 @@ void triangulation::partition_mesh()
   // 2. Determine (processor) locally owned indices of faces
   // 3. Set locally owned _is_ghost=false
 
-  ompException oe;
+
 
   size_t total_num_faces = _faces.size();
 
@@ -641,15 +639,14 @@ void triangulation::partition_mesh()
 #pragma omp parallel for
   for(int local_ind=0;local_ind<_local_faces.size();++local_ind)
   {
-    oe.Run([&]
-	   {
+
 	     size_t global_ind = face_start_idx + local_ind;
 	     _faces.at(global_ind)->_is_ghost = false;
 	     _faces.at(global_ind)->cell_local_id = local_ind;
 	     _local_faces[local_ind] = _faces.at(global_ind);
-	   });
+
   }
-  oe.Rethrow();
+
 
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << ": start " << face_start_idx << ", end " << face_end_idx << ", number " << _local_faces.size();
 
@@ -657,11 +654,9 @@ void triangulation::partition_mesh()
 #else // do not USE_MPI
 
 #pragma omp parallel for
-  for(size_t i=0;i<total_num_faces;++i) {
-    oe.Run([&]
-	   {
-	     _faces.at(i)->_is_ghost = false;
-	   });
+  for(size_t i=0;i<total_num_faces;++i)
+  {
+    _faces.at(i)->_is_ghost = false;
   }
 
 #endif // USE_MPI

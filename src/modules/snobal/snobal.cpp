@@ -80,7 +80,6 @@ snobal::snobal(config_file cfg)
 
 void snobal::init(mesh& domain)
 {
-    ompException oe;
 
     drift_density = cfg.get("drift_density",300.);
     const_T_g = cfg.get("const_T_g",-4.0);
@@ -89,8 +88,7 @@ void snobal::init(mesh& domain)
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 
 	       snodata* g = face->make_module_data<snodata>(ID);
@@ -222,9 +220,8 @@ void snobal::init(mesh& domain)
 
 		   (*face)["snowdepthavg"_s]= sbal->z_s;
 	       }
-	     });
     }
-    oe.Rethrow();
+
 }
 snobal::~snobal()
 {

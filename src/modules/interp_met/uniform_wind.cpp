@@ -41,25 +41,24 @@ uniform_wind::uniform_wind(config_file cfg)
 //Calculates the curvature required
 void uniform_wind::init(mesh& domain)
 {
-    ompException oe;
+
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 	       auto d = face->make_module_data<lwinddata>(ID);
 	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
 	       face->coloured = false;
-	     });
+
     }
-    oe.Rethrow();
+
 }
 
 
 void uniform_wind::run(mesh& domain)
 {
-    ompException oe;
+
 
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
@@ -67,8 +66,7 @@ void uniform_wind::run(mesh& domain)
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 
 	       std::vector<boost::tuple<double, double, double> > u;
@@ -107,15 +105,14 @@ void uniform_wind::run(mesh& domain)
 
 	       face->get_module_data<lwinddata>(ID)->corrected_theta = corrected_theta;
 	       face->get_module_data<lwinddata>(ID)->W = W;
-	     });
+
     }
-    oe.Rethrow();
+
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 
 	       double corrected_theta= face->get_module_data<lwinddata>(ID)->corrected_theta;
@@ -128,9 +125,9 @@ void uniform_wind::run(mesh& domain)
 	       Vector_2 v_corr = math::gis::bearing_to_cartesian(corrected_theta * 180.0 / M_PI);
 	       Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
 	       face->set_face_vector("wind_direction", v3);
-	     });
+
     }
-    oe.Rethrow();
+
 }
 
 uniform_wind::~uniform_wind()

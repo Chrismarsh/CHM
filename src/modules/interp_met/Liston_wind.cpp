@@ -46,7 +46,7 @@ Liston_wind::Liston_wind(config_file cfg)
 void Liston_wind::init(mesh& domain)
 {
 
-    ompException oe;
+
 
     ys = cfg.get("ys",0.5);
     yc = cfg.get("yc",0.5);
@@ -54,25 +54,23 @@ void Liston_wind::init(mesh& domain)
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 	       auto d = face->make_module_data<lwinddata>(ID);
 	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
 	       d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
 
 	       face->coloured = false;
-	     });
+
     }
-    oe.Rethrow();
+
 
     double curmax = -9999.0;
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 
 	       Point_3 me = face->center();
@@ -125,15 +123,15 @@ void Liston_wind::init(mesh& domain)
 	       {
 		   curmax = fabs(curve);
 	       }
-	     });
+
     }
-    oe.Rethrow();
+
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
+
 	       auto face = domain->face(i);
 	       auto *c = face->get_module_data<lwinddata>(ID);
 
@@ -144,9 +142,9 @@ void Liston_wind::init(mesh& domain)
 	       c->curvature = std::isnan(value) ? 0 : value;
 
 	       face->parameter("Liston_curvature"_s) =  c->curvature;
-	     });
+
     }
-    oe.Rethrow();
+
 
 
 //    if ( cfg.get("serialize",false) )
@@ -161,7 +159,7 @@ void Liston_wind::init(mesh& domain)
 
 void Liston_wind::run(mesh& domain)
 {
-    ompException oe;
+
 
     // omega_s needs to be scaled on [-0.5,0.5]
     double max_omega_s = -99999.0;
@@ -169,8 +167,7 @@ void Liston_wind::run(mesh& domain)
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 
 	       std::vector<boost::tuple<double, double, double> > u;
@@ -213,15 +210,14 @@ void Liston_wind::run(mesh& domain)
 
 	       face->get_module_data<lwinddata>(ID)->corrected_theta = theta;
 	       face->get_module_data<lwinddata>(ID)->W = W;
-	     });
+
     }
-    oe.Rethrow();
+
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 
 	       double theta= face->get_module_data<lwinddata>(ID)->corrected_theta;
@@ -274,9 +270,9 @@ void Liston_wind::run(mesh& domain)
 
 	       (*face)["vw_dir_divergence"_s]=dirdiff* 180.0 / M_PI;
 	       face->set_face_vector("wind_direction",v3);
-	     });
+
     }
-    oe.Rethrow();
+
 
 //    size_t ntri = domain->number_of_faces();
 //    std::vector< std::map< unsigned int, vcl_scalar_type> > U(ntri);
@@ -327,8 +323,7 @@ void Liston_wind::run(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 	       std::vector<boost::tuple<double, double, double> > u;
 	       for (size_t j = 0; j < 3; j++)
@@ -346,21 +341,19 @@ void Liston_wind::run(mesh& domain)
 	       }
 
 	       face->get_module_data<lwinddata>(ID)->temp_u = new_u;
-	     });
+
     }
-    oe.Rethrow();
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 	       (*face)["U_R"_s]=face->get_module_data<lwinddata>(ID)->temp_u;
-	       //        (*face)["U_R"_s]=x[i] ;
-	     });
+
     }
-    oe.Rethrow();
+
 }
 
 Liston_wind::~Liston_wind()
