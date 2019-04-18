@@ -787,24 +787,6 @@ void core::config_meshes( pt::ptree &value)
 
     _ui.write_mesh_details(_mesh->size_faces());
 
-    LOG_DEBUG << "Initializing DEM mesh attributes";
-
-    ompException oe;
-#pragma omp parallel for
-    for (size_t i = 0; i < _mesh->size_faces(); i++)
-    {
-      oe.Run([&]
-	     {
-	       auto face = _mesh->face(i);
-	       face->slope();
-	       face->aspect();
-	       face->center();
-	       face->normal();
-	     });
-    }
-    oe.Rethrow();
-
-
 
 }
 
