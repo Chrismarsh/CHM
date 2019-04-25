@@ -216,7 +216,7 @@ if(BUILD_GDAL)
     ExternalProject_Add(
 	    GDAL
 	    DEPENDS proj4
-	    URL http://download.osgeo.org/gdal/2.3.2/gdal-2.3.2.tar.gz
+	    URL http://download.osgeo.org/gdal/2.4.1/gdal-2.4.1.tar.gz
 
 	    UPDATE_COMMAND ""
 	    #PATCH_COMMAND patch -p1 < ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch
