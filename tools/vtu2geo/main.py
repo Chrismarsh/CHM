@@ -69,7 +69,7 @@ def stdchannel_redirected(stdchannel, dest_filename):
 # the filename of the raster
 # pixel size, in srsout units. Constant dx,dy
 # attribute The value from the USM we want to burn into the raster
-def rasterize(layer, srsout, target_fname, pixel_size, attribute, constrain_flag=False):
+def rasterize(layer, srsout, target_fname, pixel_size, attribute, all_touched=True):
     x_min, x_max, y_min, y_max = layer.GetExtent()
 
     NoData_value = -9999
@@ -85,8 +85,14 @@ def rasterize(layer, srsout, target_fname, pixel_size, attribute, constrain_flag
     band = target_ds.GetRasterBand(1)
     band.SetNoDataValue(NoData_value)
 
-    # Rasterize
-    gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0], options=['ALL_TOUCHED=TRUE', "ATTRIBUTE=" + attribute])
+    # Rasterize. If all_touched is false, then only the cell centres that are within the triangle are used
+    # if lower resolution rasterization is used, then this can miss cells. When all touched is true, as long as a triangle
+    # touches a cell, then it's counted
+    if all_touched:
+        gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0],
+                            options=['ALL_TOUCHED=TRUE',"ATTRIBUTE=" + attribute])
+    else:
+        gdal.RasterizeLayer(target_ds, [1], layer, burn_values=[0], options=[ "ATTRIBUTE=" + attribute]) ,
 
     target_ds = None
 
@@ -175,6 +181,10 @@ def main():
     if parameters is not None and nc_archive:
         print('Parameters are ignored when writing the nc archive.')
         parameters = []
+
+    all_touched = True
+    if hasattr(X,'all_touched'):
+        all_touched = X.all_touched
 
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
@@ -359,7 +369,7 @@ def main():
             target_fname = os.path.join(output_path,
                                         vtu_file + '_' + var.replace(" ", "_") + str(pixel_size) + 'x' + str(
                                             pixel_size) + '.tif')
-            rasterize(layer, srsout, target_fname, pixel_size, var)
+            rasterize(layer, srsout, target_fname, pixel_size, var,all_touched)
 
             if nc_archive:
                 df = xr.open_rasterio(target_fname).sel(band=1).drop('band')
@@ -375,7 +385,7 @@ def main():
             if parameters is not None:
                 for p in parameters:
                     target_param_fname = os.path.join(output_path, vtu_file + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif')
-                    rasterize(layer, srsout, target_fname, pixel_size, p)
+                    rasterize(layer, srsout, target_fname, pixel_size, p,all_touched)
 
         nc_time_counter += 1
         # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
