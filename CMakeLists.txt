@@ -424,7 +424,7 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 find_package(PROJ4 REQUIRED)
 
-find_package(GDAL 2.1 REQUIRED )
+find_package(GDAL 2.4 REQUIRED )
 
 find_package (Threads REQUIRED)
 
