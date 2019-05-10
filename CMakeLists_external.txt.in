@@ -225,7 +225,58 @@ if(BUILD_GDAL)
 	    #http://osgeo-org.1560.x6.nabble.com/gdal-dev-sprintf-different-exception-specified-td5340324.html
 	    # CXXFLAGS=-DDONT_DEPRECATE_SPRINTF
 
-	    CONFIGURE_COMMAND <SOURCE_DIR>/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
+	    CONFIGURE_COMMAND <SOURCE_DIR>/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4
+                                                      --with-geos
+                                                      --with-geotiff=internal
+                                                      --with-hide-internal-symbols
+                                                      --with-libtiff=internal
+                                                      --with-libz=internal
+                                                      --with-threads
+                                                      --without-bsb
+                                                      --without-cfitsio
+                                                      --without-cryptopp
+                                                      --without-curl
+                                                      --without-ecw
+                                                      --without-expat
+                                                      --without-fme
+                                                      --without-freexl
+                                                      --without-gif
+                                                      --without-gif
+                                                      --without-gnm
+                                                      --without-grass
+                                                      --without-grib
+                                                      --without-hdf4
+                                                      --without-hdf5
+                                                      --without-idb
+                                                      --without-ingres
+                                                      --without-jasper
+                                                      --without-jp2mrsid
+                                                      --without-jpeg
+                                                      --without-kakadu
+                                                      --without-libgrass
+                                                      --without-libkml
+                                                      --without-libtool
+                                                      --without-mrf
+                                                      --without-mrsid
+                                                      --without-mysql
+                                                      --without-netcdf
+                                                      --without-odbc
+                                                      --without-ogdi
+                                                      --without-openjpeg
+                                                      --without-pcidsk
+                                                      --without-pcraster
+                                                      --without-pcre
+                                                      --without-perl
+                                                      --without-pg
+                                                      --without-png
+                                                      --without-python
+                                                      --without-qhull
+                                                      --without-sde
+                                                      --without-sqlite3
+                                                      --without-webp
+                                                      --without-xerces
+                                                      --without-xml2
+
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1
