@@ -115,37 +115,20 @@ mesh_elem triangulation::locate_face(double x, double y)
 
 mesh_elem triangulation::locate_face(Point_2 query)
 {
-    auto face = find_closest_face(query);
+    // In some limited cases triangles can be arranged in a circle around a central vertex
+    // In this case, there could be 360/21.5 = 16 and change triangles.
+    // So just grab the nearest 17 triangles, one of these will hold the point we need
+    K_neighbor_search search(*dD_tree, query, 17);
 
     //check if the closest is what we wanted
-    if(face->contains(query.x(),query.y()))
-        return face;
-
-    //Likely one of the three neighbours
-    for(int i = 0; i < 3; ++i)
+    for(auto itr: search)
     {
-        auto n = face->neighbor(i);
-
-        if(n != nullptr && !n->_is_ghost && n->contains(query.x(),query.y()))
-            return n;
+      auto f = boost::get<1>(itr.first); //grab the triangle from the iterator
+      if(!f->_is_ghost &&
+          f->contains(query.x(),query.y()))
+        return boost::get<1>(itr.first);
     }
 
-    //cover off the edge case where we are on a face opposite a vertex, so not a true neighbour
-    for(int i = 0; i < 3; ++i)
-    {
-        auto n = face->neighbor(i);
-
-        if(n != nullptr && !n->_is_ghost)
-        {
-            //check all 3 neighbours of n
-            for(int j=0; j < 3;j++)
-            {
-                auto nn = n->neighbor(j);
-                if(nn != nullptr && !nn->_is_ghost && nn->contains(query.x(),query.y()))
-                    return nn;
-            }
-        }
-    }
 
     //we tried....
     return nullptr;
