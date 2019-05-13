@@ -320,6 +320,8 @@ void triangulation::from_json(pt::ptree &mesh)
 
         auto face = this->create_face(vert1,vert2,vert3);
         face->cell_global_id = cid++;
+        face->cell_local_id = face->cell_global_id;
+        
         if( is_geographic == 1)
         {
             face->_is_geographic = true;
