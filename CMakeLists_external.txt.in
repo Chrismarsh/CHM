@@ -131,10 +131,10 @@ if(BUILD_BOOST)
       boost
       URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
       INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
-      CONFIGURE_COMMAND bash <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python COMMAND echo "using mpi : ${MPI_CXX_COMPILER} : : ${MPIEXEC_EXECUTABLE} $<SEMICOLON>" >> ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/project-config.jam
+      CONFIGURE_COMMAND bash <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" ${ICU} --without-libraries=python COMMAND echo "using mpi : ${MPI_CXX_COMPILER} : : ${MPIEXEC_EXECUTABLE} $<SEMICOLON>" >> ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/project-config.jam
       UPDATE_COMMAND ""
       BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
-      INSTALL_COMMAND ./b2 install
+      INSTALL_COMMAND ./b2 install cxxflags=-std=c++14
       BUILD_IN_SOURCE 1
       )
   else()
@@ -142,10 +142,10 @@ if(BUILD_BOOST)
       boost
       URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
       INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
-      CONFIGURE_COMMAND bash  <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" --without-libraries=python
+      CONFIGURE_COMMAND bash <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" ${ICU} --without-libraries=python
       UPDATE_COMMAND ""
       BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
-      INSTALL_COMMAND ./b2 install
+      INSTALL_COMMAND ./b2 install cxxflags=-std=c++14
       BUILD_IN_SOURCE 1
       )
   endif()
