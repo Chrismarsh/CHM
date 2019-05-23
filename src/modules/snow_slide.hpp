@@ -48,8 +48,11 @@ public:
 
     struct data : public face_info
     {
-        double maxDepth; // m
+        double maxDepth_vert; // Vertical snow holding depth  m
+        double maxDepth_norm; // Slope-normal snow holding depth  m
         double snowdepthavg_copy; // m
+        double snowdepthavg_vert_copy; // m
+        double slope; // rad
         double swe_copy; // m (Note: swe units outside of snowslide are still mm)
         double delta_avalanche_snowdepth; // m^3
         double delta_avalanche_mass; // m^3
