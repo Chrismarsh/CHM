@@ -1419,8 +1419,7 @@ bool face<Gt, Fb>::has(const uint64_t& hash)
 
     // did the table return garabage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if( idx >=  _variables.size() ||
-            _variables[idx].xxhash != hash)
+    if(_variables[idx].xxhash != hash)
         return false;
 
     return true;
@@ -1433,8 +1432,7 @@ double& face<Gt, Fb>::operator[](const uint64_t& hash)
 
     // did the table return garabage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if (  idx >=  _variables.size() ||
-        _variables[idx].xxhash != hash)
+    if (_variables[idx].xxhash != hash)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
 
 

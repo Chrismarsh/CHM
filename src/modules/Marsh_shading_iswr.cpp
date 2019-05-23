@@ -42,7 +42,7 @@ Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
 
 void Marsh_shading_iswr::run(mesh& domain)
 {
-    ompException oe;
+
 
     //compute the rotation of each vertex
 
@@ -52,8 +52,7 @@ void Marsh_shading_iswr::run(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto vert = domain->vertex(i);
 
 	       double A =  (*vert->face())["solar_az"_s];
@@ -86,9 +85,9 @@ void Marsh_shading_iswr::run(mesh& domain)
 	       vf->org_vertex = vert->point();
 
 	       vert->set_point(vf->prj_vertex); //modify the underlying triangulation to reflect the rotated vertices
-	     });
+
     }
-    oe.Rethrow();
+
 
     auto BBR = domain->AABB(x_AABB,y_AABB);
 
@@ -103,8 +102,7 @@ void Marsh_shading_iswr::run(mesh& domain)
 	(*face)["shadow"_s]= 0;
 	continue;
       }
-      oe.Run([&]
-	     {
+
 	       for (size_t j = 0; j < BBR->n_rows; j++)
 	       {
 		   for (size_t k = 0; k < BBR->n_cols; k++)
@@ -126,9 +124,9 @@ void Marsh_shading_iswr::run(mesh& domain)
 	       // module_shadow_face_info* tv = new module_shadow_face_info;
 	       //face->set_module_data(ID, tv);
 	       tv->z_prime = CGAL::centroid(face->vertex(0)->point(), face->vertex(1)->point(), face->vertex(2)->point()).z();
-	     });
+
     }
-    oe.Rethrow();
+
 
 //    LOG_DEBUG << "AABB is " <<BBR->n_rows << "x" << BBR->n_rows;
 //    for (size_t j = 0; j < BBR->n_rows; j++)
@@ -144,8 +142,7 @@ void Marsh_shading_iswr::run(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < BBR->n_rows; i++)
     {
-      oe.Run([&]
-	     {
+
 	       for (size_t ii = 0; ii < BBR->n_cols; ii++)
 	       {
 		   //sort descending
@@ -205,22 +202,21 @@ void Marsh_shading_iswr::run(mesh& domain)
 		       (*face_j)["z_prime"_s]= face_info->z_prime;
 		   }
 	       }
-	     });
+
     }
-    oe.Rethrow();
+
 
     // here we need to 'undo' the rotation we applied.
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto vert = domain->vertex(i);
 	       auto  vf = vert->get_module_data<vertex_data>(ID);
 	       vert->set_point(vf->org_vertex);
-	     });
+
     }
-    oe.Rethrow();
+
 
 }
 

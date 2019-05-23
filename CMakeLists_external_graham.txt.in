@@ -216,7 +216,7 @@ if(BUILD_GDAL)
     ExternalProject_Add(
 	    GDAL
 	    DEPENDS proj4
-	    URL http://download.osgeo.org/gdal/2.3.2/gdal-2.3.2.tar.gz
+	    URL http://download.osgeo.org/gdal/2.4.1/gdal-2.4.1.tar.gz
 
 	    UPDATE_COMMAND ""
 	    #PATCH_COMMAND patch -p1 < ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch
@@ -225,7 +225,7 @@ if(BUILD_GDAL)
 	    #http://osgeo-org.1560.x6.nabble.com/gdal-dev-sprintf-different-exception-specified-td5340324.html
 	    # CXXFLAGS=-DDONT_DEPRECATE_SPRINTF
 
-	    CONFIGURE_COMMAND CXXFLAGS=-DDONT_DEPRECATE_SPRINTF <SOURCE_DIR>/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf
+	    CONFIGURE_COMMAND CXXFLAGS=-DDONT_DEPRECATE_SPRINTF <SOURCE_DIR>/configure  --prefix=${CMAKE_BINARY_DIR}/lib/gdal --with-static-proj4=${CMAKE_BINARY_DIR}/lib/proj4 --without-hdf5 --without-netcdf --with-sqlite3=$ENV{NIXUSER_PROFILE}
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
 	    BUILD_IN_SOURCE 1

@@ -49,13 +49,12 @@ Gray_inf::~Gray_inf()
 
 void Gray_inf::init(mesh& domain)
 {
-    ompException oe;
+
     //store all of snobals global variables from this timestep to be used as ICs for the next timestep
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 	       auto* d = face->make_module_data<Gray_inf::data>(ID);
 
@@ -69,9 +68,9 @@ void Gray_inf::init(mesh& domain)
 	       d->opportunity_time=0.;
 	       d->total_inf = 0.;
 	       d->total_excess = 0.;
-	     });
+
     }
-    oe.Rethrow();
+
 }
 void Gray_inf::run(mesh_elem &face)
 {

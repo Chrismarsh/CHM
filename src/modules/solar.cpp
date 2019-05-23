@@ -169,7 +169,7 @@ void solar::init(mesh& domain)
     OGRSpatialReference monGeo;
     OGRCoordinateTransformation* coordTrans = nullptr;
 
-    ompException oe;
+
 
     // we are UTM and need to convert internally to lat long to calc the solar position
     if(!domain->is_geographic())
@@ -182,8 +182,7 @@ void solar::init(mesh& domain)
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 
 	       // we are UTM and need to convert internally to lat long to calc the solar position
@@ -239,9 +238,9 @@ void solar::init(mesh& domain)
 		 svf = 1.;
 	       }
 	       face->parameter("svf"_s) = std::max(0.0, svf);
-	     });
+
     }
-    oe.Rethrow();
+
 
     delete coordTrans;
 

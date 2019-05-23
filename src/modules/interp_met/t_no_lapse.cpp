@@ -42,18 +42,17 @@ t_no_lapse::~t_no_lapse()
 }
 void t_no_lapse::init(mesh& domain)
 {
-    ompException oe;
+
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i);
 	       auto d = face->make_module_data<t_no_lapse::data>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
-	     });
+
     }
-    oe.Rethrow();
+
 }
 void t_no_lapse::run(mesh_elem& face)
 {

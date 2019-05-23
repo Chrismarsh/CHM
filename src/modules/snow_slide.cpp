@@ -68,7 +68,7 @@ void snow_slide::load_checkpoint(mesh& domain,  netcdf& chkpt)
 void snow_slide::run(mesh& domain)
 {
 
-    ompException oe;
+
 
     // Make a vector of pairs (elevation + snowdepth, pointer to face)
     tbb::concurrent_vector< std::pair<double, mesh_elem> > sorted_z(domain->size_faces());
@@ -76,8 +76,7 @@ void snow_slide::run(mesh& domain)
 #pragma omp parallel for
     for(size_t i = 0; i  < domain->size_faces(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       auto face = domain->face(i); // Get face
 	       // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
 	       auto data = face->get_module_data<snow_slide::data>(ID); // Get data
@@ -87,9 +86,9 @@ void snow_slide::run(mesh& domain)
 	       data->delta_avalanche_snowdepth = 0.0;
 	       data->delta_avalanche_mass = 0.0; // m
 	       sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s], face) ;
-	     });
+
     }
-    oe.Rethrow();
+
 
     // Sort faces by elevation + snowdepth
 //    std::sort(sorted_z.begin(), sorted_z.end(), [](const std::pair<double, mesh_elem> &a,const std::pair<double, mesh_elem> &b) {
@@ -130,7 +129,7 @@ void snow_slide::run(mesh& domain)
                 auto n = face->neighbor(i); // Pointer to neighbor face
 
                 // Check if not-null (null indicates edge cell)
-                if (n != nullptr) {
+                if (n != nullptr && !n->_is_ghost) {
                     auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
                     // Calc weighting based on height diff
                     // (std::max insures that if one neighbor is higher, its weight will be zero)
@@ -174,7 +173,7 @@ void snow_slide::run(mesh& domain)
             // Route snow to each neighbor based on weights
             for (int j = 0; j < 3; ++j) {
                 auto n = face->neighbor(j);
-                if (n != nullptr) {
+                if (n != nullptr && !n->_is_ghost)  {
                     double n_area = n->get_area(); // Area of neighbor triangle
                     auto   n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
 

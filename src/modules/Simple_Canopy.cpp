@@ -576,13 +576,12 @@ void Simple_Canopy::run(mesh_elem &face)
 
 void Simple_Canopy::init(mesh& domain)
 {
-  ompException oe;
+
     #pragma omp parallel for
     // For each face
     for(size_t i=0;i<domain->size_faces();i++)
     {
-      oe.Run([&]
-	     {
+
         // Get current face
 	       auto face = domain->face(i);
 
@@ -606,9 +605,9 @@ void Simple_Canopy::init(mesh& domain)
 	       } else {
 		 BOOST_THROW_EXCEPTION(missing_value_error() << errstr_info("landcover not defined, but is required for simple_canopy module, please check the configuration file"));
 	       }
-	     });
+
     }
-    oe.Rethrow();
+
 }
 
 double Simple_Canopy::delta(double ta) // Slope of sat vap p vs t, kPa/°C

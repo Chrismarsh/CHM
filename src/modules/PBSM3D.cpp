@@ -194,12 +194,12 @@ void PBSM3D::init(mesh &domain)
 
   LOG_DEBUG << "#face=" << ntri;
 
-  ompException oe;
+
 
 #pragma omp parallel for
   for (size_t i = 0; i < domain->size_faces(); i++)
   {
-    oe.Run([&] {
+
       auto face = domain->face(i);
       auto d = face->make_module_data<data>(ID);
 
@@ -325,9 +325,9 @@ void PBSM3D::init(mesh &domain)
           C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
         }
       }
-    });
+
   }
-  oe.Rethrow();
+
 
   viennacl::copy(C, vl_C); // copy C -> vl_C, sets up the sparsity pattern
   viennacl::copy(A, vl_A); // copy A -> vl_A, sets up the sparsity pattern
@@ -340,7 +340,7 @@ void PBSM3D::init(mesh &domain)
 
 void PBSM3D::run(mesh &domain)
 {
-  ompException oe;
+
 
   // needed for linear system offsets
   size_t ntri = domain->size_faces();
@@ -394,7 +394,7 @@ void PBSM3D::run(mesh &domain)
 #pragma omp for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&] {
+
         auto face = domain->face(i);
 
         auto id = face->cell_local_id;
@@ -1141,11 +1141,11 @@ void PBSM3D::run(mesh &domain)
             }
           }
         } // end z iter
-      });
+
     } // end face iter
 
   } // end pragma omp parallel thread pool
-  oe.Rethrow();
+
 
   // setup the compressed matrix on the compute device, if available
 #ifdef VIENNACL_WITH_OPENCL
@@ -1210,7 +1210,7 @@ void PBSM3D::run(mesh &domain)
 #pragma omp parallel for
   for (size_t i = 0; i < domain->size_faces(); i++)
   {
-    oe.Run([&] {
+
       auto face = domain->face(i);
       auto d = face->get_module_data<data>(ID);
       double Qsusp = 0;
@@ -1245,9 +1245,8 @@ void PBSM3D::run(mesh &domain)
         (*face)["Qsubl"_s] = Qsubl;
 
       (*face)["sum_subl"_s] = d->sum_subl;
-    });
   }
-  oe.Rethrow();
+
 
   // Setup the matrix to be used to the solution of the gradient of the
   // suspension flux this will give us our deposition flux
@@ -1278,7 +1277,7 @@ void PBSM3D::run(mesh &domain)
 #pragma omp parallel for
   for (size_t i = 0; i < domain->size_faces(); i++)
   {
-    oe.Run([&] {
+
       auto face = domain->face(i);
       auto d = face->get_module_data<data>(ID);
       auto &m = d->m;
@@ -1343,9 +1342,9 @@ void PBSM3D::run(mesh &domain)
           bb[i] += -E[j] * Qt * udotm[j];
         }
       }
-    });
+
   } // end face itr
-  oe.Rethrow();
+
 
 // setup the compressed matrix on the compute device, if available
 #ifdef VIENNACL_WITH_OPENCL
@@ -1398,7 +1397,7 @@ void PBSM3D::run(mesh &domain)
 #pragma omp parallel for
   for (size_t i = 0; i < domain->size_faces(); i++)
   {
-    oe.Run([&] {
+
       auto face = domain->face(i);
       auto d = face->get_module_data<data>(ID);
 
@@ -1412,9 +1411,9 @@ void PBSM3D::run(mesh &domain)
       d->sum_drift += mass;
 
       (*face)["sum_drift"_s] = d->sum_drift;
-    });
+
   }
-  oe.Rethrow();
+
 }
 
 PBSM3D::~PBSM3D() {}

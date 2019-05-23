@@ -37,12 +37,11 @@ deform_mesh::~deform_mesh()
 
 void deform_mesh::run(mesh& domain)
 {
-    ompException oe;
+
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
-      oe.Run([&]
-	     {
+
 	       Point_3 p;
 
 	       auto vert = domain->vertex(i);
@@ -55,9 +54,9 @@ void deform_mesh::run(mesh& domain)
 
 	       p = Point_3(vert->point().x(), vert->point().y(), z);
 	       vert->set_point(p);
-	     });
+
     }
-    oe.Rethrow();
+
 
     domain->_terrain_deformed = true;
 }

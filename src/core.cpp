@@ -787,24 +787,6 @@ void core::config_meshes( pt::ptree &value)
 
     _ui.write_mesh_details(_mesh->size_faces());
 
-    LOG_DEBUG << "Initializing DEM mesh attributes";
-
-    ompException oe;
-#pragma omp parallel for
-    for (size_t i = 0; i < _mesh->size_faces(); i++)
-    {
-      oe.Run([&]
-	     {
-	       auto face = _mesh->face(i);
-	       face->slope();
-	       face->aspect();
-	       face->center();
-	       face->normal();
-	     });
-    }
-    oe.Rethrow();
-
-
 
 }
 
@@ -1663,7 +1645,7 @@ void core::init(int argc, char **argv)
         }
     }
 
-    ompException oe;
+
 
     LOG_DEBUG << "Allocating face variable storage";
     #pragma omp parallel for
@@ -1672,12 +1654,11 @@ void core::init(int argc, char **argv)
       auto face = _mesh->face(it);
       if(point_mode.enable && face->_debug_name != _outputs[0].name )
 	continue;
-      oe.Run([&]
-	     {
+
 	       face->init_time_series(_provided_var_module);
-	     });
+
     }
-    oe.Rethrow();
+
 
     if(point_mode.enable)
     {
@@ -1702,12 +1683,11 @@ void core::init(int argc, char **argv)
     for (auto& itr : _modules)
     {
             LOG_VERBOSE << itr.first->ID;
-            ompException oe;
-            oe.Run([&]
-                   {
+
+
                        itr.first->init(_mesh);
-                   });
-            oe.Rethrow();
+
+
     }
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 
@@ -2190,7 +2170,7 @@ void core::run()
 
     timer c;
 
-    ompException oe;
+
     //setup a XML writer for the PVD paraview format
     pt::ptree pvd;
     pvd.add("VTKFile.<xmlattr>.type", "Collection");
@@ -2252,8 +2232,7 @@ void core::run()
                     #pragma omp parallel for
                     for (size_t y = 0; y < nc.get_ysize(); y++)
                     {
-		      oe.Run([&]
-			     {
+
 			       for (size_t x = 0; x < nc.get_xsize(); x++)
 			       {
 				   size_t index = x + y * nc.get_xsize();
@@ -2270,9 +2249,9 @@ void core::run()
 				   s->now().set(itr, d);
 
 			       }
-			     });
+
 		    }
-		    oe.Rethrow();
+
                 }
 
                 LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";
@@ -2280,27 +2259,26 @@ void core::run()
                 c.tic();
                 //do 1 step of the filters. Filters do not have depends!!
                 //asume every filter is run everywhere with the same parameters
-                ompException oe;
+
                 #pragma omp parallel for
                 for(size_t i = 0; i < _global->number_of_stations();i++)
                 {
                     auto s = _global->stations().at(i);
-                    oe.Run([&]
-                           {
+
                                for (auto &f : _netcdf_filters)
                                {
                                    f.second->process(s);
                                }
-                           });
+
                 }
-                oe.Rethrow();
+
                 LOG_DEBUG << "Done filters [ " << c.toc<s>() << "s]";
 
             }
             else
             {
                 //do 1 step of the filters. Filters do not have depends!!
-                ompException oe;
+
                 
                 #pragma omp parallel for
                 for(size_t i = 0; i < _global->number_of_stations();i++)
@@ -2310,15 +2288,14 @@ void core::run()
                     //get the list of filters to run for this station
                     auto filters = _txtmet_filters[s->ID()];
 
-                    oe.Run([&]
-                           {
+
                                for (auto filt : filters)
                                {
                                    filt->process(s);
                                }
-                           });
+
                 }
-                oe.Rethrow();
+
             }
 
             std::stringstream ss;
@@ -2337,15 +2314,14 @@ void core::run()
 
                     if (itr.at(0)->parallel_type() == module_base::parallel::data)
                     {
-                        ompException oe;
+
                         #pragma omp parallel for
                         for (size_t i = 0; i < _mesh->size_faces(); i++)
                         {
                             auto face = _mesh->face(i);
                             if (point_mode.enable && face->_debug_name != _outputs[0].name)
                                 continue;
-                            oe.Run([&]
-                                   {
+
                                        //module calls
                                        for (auto &jtr : itr)
                                        {
@@ -2353,9 +2329,9 @@ void core::run()
                                            jtr->run(face);
                                        }
 
-                                   });
+
                         }
-                        oe.Rethrow();
+
 
                     } else
                     {
@@ -2363,12 +2339,9 @@ void core::run()
                         for (auto &jtr : itr)
                         {
                             LOG_VERBOSE << "Module: "<< jtr->ID;
-                            ompException oe;
-                            oe.Run([&]
-                                   {
+
                                        jtr->run(_mesh);
-                                   });
-                            oe.Rethrow();
+
                         }
                     }
 
