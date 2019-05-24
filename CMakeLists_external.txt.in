@@ -276,6 +276,8 @@ if(BUILD_GDAL)
                                                       --without-webp
                                                       --without-xerces
                                                       --without-xml2
+                                                      --without-crypto
+                                                      --without-kea
 
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
