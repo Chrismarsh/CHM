@@ -2254,7 +2254,7 @@ void core::run()
 
                 }
 
-                LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";
+//                LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";
 
                 c.tic();
                 //do 1 step of the filters. Filters do not have depends!!
@@ -2272,7 +2272,7 @@ void core::run()
 
                 }
 
-                LOG_DEBUG << "Done filters [ " << c.toc<s>() << "s]";
+//                LOG_DEBUG << "Done filters [ " << c.toc<s>() << "s]";
 
             }
             else
@@ -2289,10 +2289,10 @@ void core::run()
                     auto filters = _txtmet_filters[s->ID()];
 
 
-                               for (auto filt : filters)
-                               {
-                                   filt->process(s);
-                               }
+                     for (auto filt : filters)
+                     {
+                         filt->process(s);
+                     }
 
                 }
 
@@ -2309,8 +2309,8 @@ void core::run()
             {
                 for (auto &itr : _chunked_modules)
                 {
-                    LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" <<
-                                (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
+//                    LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" <<
+//                                (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
 
                     if (itr.at(0)->parallel_type() == module_base::parallel::data)
                     {
@@ -2322,14 +2322,11 @@ void core::run()
                             if (point_mode.enable && face->_debug_name != _outputs[0].name)
                                 continue;
 
-                                       //module calls
-                                       for (auto &jtr : itr)
-                                       {
-                                           LOG_VERBOSE << "Module: "<< jtr->ID;
-                                           jtr->run(face);
-                                       }
-
-
+                             //module calls
+                             for (auto &jtr : itr)
+                             {
+                                 jtr->run(face);
+                             }
                         }
 
 
@@ -2338,10 +2335,7 @@ void core::run()
                         //module calls for domain parallel
                         for (auto &jtr : itr)
                         {
-                            LOG_VERBOSE << "Module: "<< jtr->ID;
-
-                                       jtr->run(_mesh);
-
+                          jtr->run(_mesh);
                         }
                     }
 
