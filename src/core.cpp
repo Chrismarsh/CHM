@@ -1606,7 +1606,7 @@ void core::init(int argc, char **argv)
         _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
         _global->_stations.at(i)->reset_itrs();
         auto s= _global->_stations.at(i);
-         LOG_VERBOSE << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
+//         LOG_VERBOSE << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
     }
 
     //ensure all the stations have the same start and end times
