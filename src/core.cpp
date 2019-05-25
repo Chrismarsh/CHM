@@ -2223,7 +2223,7 @@ void core::run()
 
             if(_use_netcdf)
             {
-                c.tic();
+//                c.tic();
                 // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
                 for (auto &itr: nc.get_variable_names() )
                 {
@@ -2256,7 +2256,7 @@ void core::run()
 
 //                LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";
 
-                c.tic();
+//                c.tic();
                 //do 1 step of the filters. Filters do not have depends!!
                 //asume every filter is run everywhere with the same parameters
 
