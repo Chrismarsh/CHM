@@ -682,8 +682,6 @@ void triangulation::determine_local_boundary_faces()
     - Also store boolean value "is_global_boundary"
   */
 
-  ompException oe;
-
   using th_safe_multicontainer_type = std::vector< std::pair<mesh_elem,bool> >[];
 
 #ifdef USE_MPI
@@ -705,8 +703,6 @@ void triangulation::determine_local_boundary_faces()
 #pragma omp for
     for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
       {
-	oe.Run([&] {
-
 		 // face_index is a local index... get the face handle
 		 auto face = _local_faces.at(face_index);
 
@@ -735,7 +731,6 @@ void triangulation::determine_local_boundary_faces()
 		 if( num_owned_neighbours<3 ) {
 		   th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
 		 }
-	       });
       }
     // Join the vectors via a single thread in t operations
     //  NOTE future optimizations:
@@ -749,7 +744,6 @@ void triangulation::determine_local_boundary_faces()
       }
     }
   }
-  oe.Rethrow();
 
   // Some log debug output to see how many boundary faces on each
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
