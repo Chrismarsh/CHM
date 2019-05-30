@@ -65,19 +65,10 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
         module_error() << errstr_info(
             "PBSM3d: Cannot specify both exp_fetch and tanh_fetch"));
 
-  if ((use_exp_fetch && use_PomLi_probability) ||
-      (use_tanh_fetch && use_PomLi_probability))
-    BOOST_THROW_EXCEPTION(
-        module_error() << errstr_info(
-            "PBSM3d: Cannot specify both exp_fetch/tanh_fetch and "
-            "use_PomLi_probability"));
-
   if (use_exp_fetch || use_tanh_fetch)
     depends("fetch");
   else
     depends("p_snow_hours");
-
-  debug_output = cfg.get("debug_output", false);
   use_R94_lambda = cfg.get("use_R94_lambda", true);
 
   if (!use_R94_lambda)
@@ -95,6 +86,8 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
       provides("K" + std::to_string(i));
       provides("c" + std::to_string(i));
       provides("rm" + std::to_string(i));
+
+      debug_output = cfg.get("debug_output", false);
       provides("csubl" + std::to_string(i));
       provides("settling_velocity" + std::to_string(i));
       provides("u_z" + std::to_string(i));
@@ -632,7 +625,9 @@ void PBSM3D::run(mesh &domain)
 
             c_salt *= Lc;
           }
-          else if (use_PomLi_probability) // Pomeroy and Li 2000 upscaled
+
+          // consider the temporal non-steady effects
+          if (use_PomLi_probability) // Pomeroy and Li 2000 upscaled
                                           // probability
           {
             // Essery, Li, and Pomeroy 1999
@@ -649,6 +644,7 @@ void PBSM3D::run(mesh &domain)
             // decrease the saltation by the probability amount
             c_salt *= Pu10;
           }
+
           // wind speed in the saltation layer Pomeroy and Gray 1990
           double uhs = 2.8 * u_star_saltation_threshold; // eqn 7
 
