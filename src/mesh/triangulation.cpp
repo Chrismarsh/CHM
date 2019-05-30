@@ -790,6 +790,43 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
 
 }
 
+void dfs_to_max_distance_aux(mesh_elem starting_face, double max_distance, mesh_elem face, std::unordered_set<mesh_elem> &visited)
+{
+  // DFS auxiliary function, does all of the work constructing the set of faces
+
+  // if we're outside of the distance or already visited, we're done
+  bool is_not_within_distance = (math::gis::distance(starting_face->center(),face->center()) > max_distance);
+  bool is_visited             = (visited.find(face) != visited.end());
+  if(  is_not_within_distance || is_visited  )
+  {
+    return;
+  }
+
+  // otherwise, visit face, and move on to neighbours
+  visited.insert(face);
+  for(int i = 0; i < 3; ++i)
+  {
+      auto neigh = face->neighbor(i);
+      if(neigh != nullptr)
+      {
+	dfs_to_max_distance_aux(starting_face, max_distance, neigh, visited);
+      }
+  }
+}
+
+std::vector<mesh_elem> dfs_to_max_distance(mesh_elem starting_face, double max_distance)
+{
+  // Depth first search out to a maximum distance
+  // - unknown number of graph elements
+
+  // if a mesh_elem appears in this set, it has been visited
+  std::unordered_set<mesh_elem> visited;
+  dfs_to_max_distance_aux(starting_face, max_distance, starting_face, visited);
+  // Convert to vector
+  std::vector<mesh_elem> visited_vec(std::begin(visited), std::end(visited));
+  return visited_vec;
+}
+
 void triangulation::determine_process_ghost_faces_by_distance(double max_distance)
 {
   // NOTE that this algorithm is not implemented for multithread
@@ -808,7 +845,8 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
     // face_index is a local index... get the face handle
     auto face = _boundary_faces.at(face_index).first;
     // separate the ghosted and non-ghosted neighbours
-    std::vector<mesh_elem> current_neighbours = find_faces_in_radius(face->center().x(),face->center().y(), max_distance);
+    // std::vector<mesh_elem> current_neighbours = find_faces_in_radius(face->center().x(),face->center().y(), max_distance);
+    std::vector<mesh_elem> current_neighbours = dfs_to_max_distance(face, max_distance);
     auto pivot = std::partition(std::begin(current_neighbours),std::end(current_neighbours),
     				[] (mesh_elem neigh) {
     				  return neigh->_is_ghost == false;
