@@ -30,6 +30,8 @@ snow_slide::snow_slide(config_file cfg)
     depends("snowdepthavg");
     depends("swe");
 
+    use_vertical_snow = cfg.get("use_vertical_snow",true);
+
     provides("delta_avalanche_mass");
     provides("delta_avalanche_snowdepth");
     provides("maxDepth");
@@ -107,17 +109,24 @@ void snow_slide::run(mesh& domain)
         auto data = face->get_module_data<snow_slide::data>(ID); // Get stored data for face
 
         // Get current triangle snow info at beginning of time step
-        double maxDepth_norm = data->maxDepth_norm;
-        double maxDepth_vert = data->maxDepth_vert;
-        double snowdepthavg = data->snowdepthavg_copy; // m - Snow normal to local slope 
+        double maxDepth;
+        if(use_vertical_snow)
+        {
+             maxDepth= data->maxDepth_vert;
+        }
+        else
+        {
+             maxDepth= data->maxDepth_norm;
+        }
+        double snowdepthavg = data->snowdepthavg_copy; // m - Snow depth perpendicular to the surface 
         double snowdepthavg_vert = data->snowdepthavg_vert_copy; // m - Vertical snow depth
         double swe = data->swe_copy; // m
 
         // Check if face normal snowdepth have exceeded normal maxDepth
-        if (snowdepthavg > maxDepth_norm) {
+        if (snowdepthavg > maxDepth) {
             //LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
-            double del_depth = snowdepthavg - maxDepth_norm; // Amount to be removed (positive) [m]
-            double del_swe   = swe * (1 - maxDepth_norm / snowdepthavg); // Amount of swe to be removed (positive) [m]
+            double del_depth = snowdepthavg - maxDepth; // Amount to be removed (positive) [m]
+            double del_swe   = swe * (1 - maxDepth / snowdepthavg); // Amount of swe to be removed (positive) [m]
             double orig_mass = del_swe * cen_area;
 
             double z_s = face->center().z() + snowdepthavg_vert; // Current face elevation + vertical snowdepth
@@ -151,8 +160,8 @@ void snow_slide::run(mesh& domain)
                 // Don't route and exit loop.
 
                 // Remove snow from initial face
-                data->snowdepthavg_copy = maxDepth_norm;
-                data->swe_copy = swe * maxDepth_norm / snowdepthavg;
+                data->snowdepthavg_copy = maxDepth;
+                data->swe_copy = swe * maxDepth / snowdepthavg;
                 // Update mass transport (m^3)
                 data->delta_avalanche_snowdepth -= del_depth * cen_area;
                 data->delta_avalanche_mass -= del_swe * cen_area;
@@ -201,9 +210,9 @@ void snow_slide::run(mesh& domain)
                 }
             }
             // Remove snow from initial face
-            data->snowdepthavg_copy = maxDepth_norm; // data refers to current/center cell
-            data->snowdepthavg_vert_copy = maxDepth_vert; // data refers to current/center cell
-            data->swe_copy = swe * maxDepth_norm / snowdepthavg; // Uses ratio of depth change to calc new swe
+            data->snowdepthavg_copy = maxDepth; // data refers to current/center cell
+            data->snowdepthavg_vert_copy =  data->snowdepthavg_copy/std::max(0.001,cos(face->slope()));
+            data->swe_copy = swe * maxDepth / snowdepthavg; // Uses ratio of depth change to calc new swe
             // This relys on the assumption of uniform density.
 
             // Update mass transport (m^3)
@@ -252,8 +261,8 @@ void snow_slide::init(mesh& domain)
 
 	    // Parametrize the Minimum snow holding depth (taken vertically)
         double slopeDeg = std::max(10.0,face->slope()*180/M_PI);  // radians to degres, limit to >10 degrees to avoid inf
-        d->maxDepth_vert = std::max(avalache_mult * pow(slopeDeg,avalache_pow),Z_CanTop); // (m) Estimate min depth that avalanche occurs
-        d->maxDepth_norm = d->maxDepth_vert * std::max(0.001,cos(face->slope()));
+        d->maxDepth_norm = std::max(avalache_mult * pow(slopeDeg,avalache_pow),Z_CanTop); // (m) Estimate min depth that avalanche occurs
+        d->maxDepth_vert = d->maxDepth_vert * std::max(0.001,cos(face->slope()));
         // Max of either veg height or derived max holding snow depth.
         (*face)["maxDepth"_s]= d->maxDepth_norm;
     }

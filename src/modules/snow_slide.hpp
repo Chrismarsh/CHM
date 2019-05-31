@@ -57,5 +57,8 @@ public:
         double delta_avalanche_snowdepth; // m^3
         double delta_avalanche_mass; // m^3
     };
+    bool use_vertical_snow; 
+// True: apply the maximal snow holding capacity to snow depth (measured vertically)
+// False: apply the maximal snow holding capacity to snow thickness (perpendicular to the surface)
 
 };
