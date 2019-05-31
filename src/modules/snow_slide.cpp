@@ -90,7 +90,7 @@ void snow_slide::run(mesh& domain)
 	       // Initalize snow transport to zero
 	       data->delta_avalanche_snowdepth = 0.0;
 	       data->delta_avalanche_mass = 0.0; // m
-	       sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s], face) ;
+	       sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s]/std::max(0.001,cos(face->slope())), face) ;
 
     }
 
