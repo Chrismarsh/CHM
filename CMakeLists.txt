@@ -139,6 +139,20 @@ configure_file(${CMAKE_SOURCE_DIR}/gdal-2.2.1.patch ${CMAKE_BINARY_DIR}/gdal-2.2
 configure_file(${CMAKE_SOURCE_DIR}/vtk-8.0.0.patch ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/paraview-5.5.2.patch ${CMAKE_BINARY_DIR}/paraview-5.5.2.patch COPYONLY)
 
+if(MACOSX)
+    find_program(BREW brew)
+    if(BREW)
+        execute_process(COMMAND brew --prefix icu4c  OUTPUT_VARIABLE ICU)
+        string(REGEX REPLACE "\n$" "" ICU "${ICU}")
+        set(ICU "--with-icu=${ICU}" CACHE STRING "icu path for boost build" FORCE)
+        message(WARNING "icu = ${ICU}")
+
+        if(ICU STREQUAL "")
+            message(WARNING "icu4c not found via brew, likely going to result in boost linking issues" )
+        endif()
+    endif()
+endif()
+
 #things covered by the superbuild
 # super build things we are missing
 configure_file(${ext_cmakefile_name}
@@ -164,6 +178,7 @@ if(MACOSX)
         set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}")
     endif()
 endif()
+
 
 #Trigger superbuild
 #If superbuild is not needed, we still need to build sparsehash, gperftools, and eigen3
@@ -409,7 +424,7 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 find_package(PROJ4 REQUIRED)
 
-find_package(GDAL 2.1 REQUIRED )
+find_package(GDAL 2.4 REQUIRED )
 
 find_package (Threads REQUIRED)
 

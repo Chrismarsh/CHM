@@ -128,7 +128,7 @@ def main():
     if len(sys.argv) == 3: # we have a 2nd CLI arg
         input_path = sys.argv[2]
         if hasattr(X,'input_path'):
-            print 'Warning: Overwriting script defined input path with CL path'
+            print('Warning: Overwriting script defined input path with CL path')
     elif hasattr(X,'input_path'):
         input_path = X.input_path
     else:
@@ -162,7 +162,7 @@ def main():
     if hasattr(X,'pixel_size'):
         pixel_size = X.pixel_size
     else:
-        print 'Default pixel size of 10 mx10 m will be used.'
+        print('Default pixel size of 10 mx10 m will be used.')
 
     user_define_extent = False
     if hasattr(X,'user_define_extent'):
@@ -195,7 +195,7 @@ def main():
     pvd = [input_path] # if not given a pvd file, make this iterable for the below code
     timesteps=None
     if file_extension == '.pvd':
-        print 'Detected pvd file, processing all linked vtu files'
+        print('Detected pvd file, processing all linked vtu files')
         is_pvd = True
         parse = ET.parse(input_path)
         pvd = parse.findall(".//*[@file]")
@@ -221,7 +221,7 @@ def main():
             o_xmax = o_xmin + gt[1] * ex_ds.RasterXSize
             o_ymin = o_ymax + gt[5] * ex_ds.RasterYSize
 
-        print "Output pixel size is " + str(pixel_width) + " by " + str(pixel_height)
+        print("Output pixel size is " + str(pixel_width) + " by " + str(pixel_height))
         ex_ds = None
 
     if constrain_flag:
@@ -250,14 +250,14 @@ def main():
         dt = int(timesteps[1].get('timestep')) - int(timesteps[0].get('timestep'))
 
 
-    print('Start epoch: %s, model dt = %i (s)' %(epoch,dt))
+    print(('Start epoch: %s, model dt = %i (s)' %(epoch,dt)))
 
     #because of how the netcdf is built we hold a file of file handles before converting. ensure we can do so
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
     total_output_files = len(pvd) * (len(variables)+len(parameters))
     if soft < total_output_files or hard < total_output_files:
         print('The users soft or hard file limit is less than the total number of tmp files to be created.')
-        print('The system ulimit should be raised to at least ' + total_output_files)
+        print(('The system ulimit should be raised to at least ' + total_output_files))
         return -1
 
     for vtu in pvd:
@@ -292,7 +292,7 @@ def main():
         srsin = osr.SpatialReference()
 
         if not mesh.GetFieldData().HasArray("proj4"):
-            print "VTU file does not contain a proj4 field"
+            print("VTU file does not contain a proj4 field")
             return -1
 
         vtu_proj4 = mesh.GetFieldData().GetAbstractArray("proj4").GetValue(0)
@@ -350,7 +350,7 @@ def main():
                     data = cd.GetArray(v).GetTuple(i)
                     feature.SetField(str(v), float(data[0]))
                 except:
-                    print "Variable %s not present in mesh" % v
+                    print("Variable %s not present in mesh" % v)
                     return -1
 
 
@@ -360,7 +360,7 @@ def main():
                         data = cd.GetArray(p).GetTuple(i)
                         feature.SetField(str(p), float(data[0]))
                     except:
-                        print "Parameter %s not present in mesh" % v
+                        print("Parameter %s not present in mesh" % v)
                         return -1
             layer.CreateFeature(feature)
 
@@ -401,7 +401,7 @@ def main():
 
         datasets = []
 
-        for var, rasters in nc_rasters.iteritems():
+        for var, rasters in nc_rasters.items():
             a = xr.concat(rasters,dim='time')
             datasets.append(a.to_dataset())
 
