@@ -262,7 +262,7 @@ void snow_slide::init(mesh& domain)
 	    // Parametrize the Minimum snow holding depth (taken vertically)
         double slopeDeg = std::max(10.0,face->slope()*180/M_PI);  // radians to degres, limit to >10 degrees to avoid inf
         d->maxDepth_norm = std::max(avalache_mult * pow(slopeDeg,avalache_pow),Z_CanTop); // (m) Estimate min depth that avalanche occurs
-        d->maxDepth_vert = d->maxDepth_vert * std::max(0.001,cos(face->slope()));
+        d->maxDepth_vert = d->maxDepth_norm * std::max(0.001,cos(face->slope()));
         // Max of either veg height or derived max holding snow depth.
         (*face)["maxDepth"_s]= d->maxDepth_norm;
     }
