@@ -41,18 +41,13 @@ p_lapse::p_lapse(config_file cfg)
 }
 void p_lapse::init(mesh& domain)
 {
-    ompException oe;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      oe.Run([&]
-        {
         auto face = domain->face(i);
         auto d = face->make_module_data<p_lapse::data>(ID);
         d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
-        });
     }
-    oe.Rethrow();
 }
 void p_lapse::run(mesh_elem& face)
 {
@@ -78,8 +73,8 @@ void p_lapse::run(mesh_elem& face)
     {
         if( is_nan(s->get("p")))
             continue;
-        double u = s->get("p");
-        ppt.push_back( boost::make_tuple(s->x(), s->y(), u ) );
+        double p = s->get("p");
+        ppt.push_back( boost::make_tuple(s->x(), s->y(), p ) );
         staion_z.push_back( boost::make_tuple(s->x(), s->y(), s->z() ) );
     }
 
