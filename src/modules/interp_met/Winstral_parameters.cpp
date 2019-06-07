@@ -38,7 +38,7 @@ Winstral_parameters::Winstral_parameters(config_file cfg)
     dmax = cfg.get("dmax",300.0);
 
     //size of the step to take
-    size_of_step = cfg.get("size_of_step",30);
+    size_of_step = cfg.get("size_of_step",10);
 
     //number of steps along the search vector to check for a higher point
     //steps = cfg.get("steps",10);
@@ -162,7 +162,7 @@ double Winstral_parameters::Sx(const mesh &domain, mesh_elem& face) const
 
     // Derive Sx averaged over the angular windows
     sx_mean = sx_mean / this->nangle;
-    return sx_mean;
+    return sx_mean*180/M_PI;
 }
 
 Winstral_parameters::~Winstral_parameters()

@@ -1708,7 +1708,10 @@ void sno::_h2o_compact(void)
      *  Maximum density due to compaction by liquid H2O added (kg/m^2).
      */
 
-    double   B    = 0.05;
+    /* double   B    = 0.05; Old value used in snobal*/
+      double   B    = 0.4; /* New value from  https://gitlab.com/ars-snow/ipw/tree/master/src/lib/libsnobal/snobal
+                            Provide more realistic evolution of snow density during rain-on snow events. 
+                           */  
 
     /*
      *  ratio where half the difference between maximum density and

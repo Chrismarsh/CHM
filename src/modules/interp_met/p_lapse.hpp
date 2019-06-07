@@ -23,42 +23,56 @@
 
 #pragma once
 
-#include <boost/shared_ptr.hpp>
-#include <tbb/concurrent_vector.h>
-#include <tbb/parallel_sort.h>
+#include <constants/Atmosphere.h>
+
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "module_base.hpp"
 
+#include <cstdlib>
 #include <string>
-class snow_slide : public module_base
+
+#include <cmath>
+#include <armadillo>
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include <gsl/gsl_fit.h>
+/**
+* \addtogroup modules
+* @{
+* \class Precip
+* \brief Calculates precipitation
+*
+* Spatially distributes liquid water precipitation using a precipitation lapse rate derived from stations
+* for the Marmot Creek reserach basin or the Upper Bow River Wathershed. Monthly lapse rates are used, as
+* in the CRHM model
+*
+* Depends:
+* - Precip from met file "p" [mm]
+*
+* Provides:
+* - Precip "p" [mm]
+* - Precip "p_no_slope" [mm]
+* 
+*/
+class p_lapse : public module_base
 {
-REGISTER_MODULE_HPP(snow_slide);
+REGISTER_MODULE_HPP(p_lapse);
 public:
-    snow_slide(config_file cfg);
-
-    ~snow_slide();
-
-    virtual void run(mesh& domain);
-
+    p_lapse(config_file cfg);
+    ~p_lapse();
+    virtual void run(mesh_elem& face);
     virtual void init(mesh& domain);
-
-    void checkpoint(mesh& domain,  netcdf& chkpt);
-    void load_checkpoint(mesh& domain,  netcdf& chkpt);
-
     struct data : public face_info
     {
-        double maxDepth_vert; // Vertical snow holding depth  m
-        double maxDepth_norm; // Slope-normal snow holding depth  m
-        double snowdepthavg_copy; // m
-        double snowdepthavg_vert_copy; // m
-        double slope; // rad
-        double swe_copy; // m (Note: swe units outside of snowslide are still mm)
-        double delta_avalanche_snowdepth; // m^3
-        double delta_avalanche_mass; // m^3
+        interpolation interp;
     };
-    bool use_vertical_snow; 
-// True: apply the maximal snow holding capacity to snow depth (measured vertically)
-// False: apply the maximal snow holding capacity to snow thickness (perpendicular to the surface)
+
+    // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+    bool apply_cosine_correction;
 
 };
+
+/**
+@}
+*/
