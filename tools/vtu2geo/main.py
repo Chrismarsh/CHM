@@ -353,7 +353,6 @@ def main():
                     print("Variable %s not present in mesh" % v)
                     return -1
 
-
             if parameters is not None:
                 for p in parameters:
                     try:
@@ -383,9 +382,10 @@ def main():
 
 
             if parameters is not None:
+                print parameters
                 for p in parameters:
                     target_param_fname = os.path.join(output_path, vtu_file + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif')
-                    rasterize(layer, srsout, target_fname, pixel_size, p,all_touched)
+                    rasterize(layer, srsout, target_param_fname, pixel_size, p,all_touched)
 
         nc_time_counter += 1
         # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.

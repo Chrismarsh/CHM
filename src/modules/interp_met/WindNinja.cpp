@@ -241,15 +241,20 @@ void WindNinja::run(mesh& domain)
            if(W_transf>1.)
                W_transf = 1.+(Max_spdup-1.)*(W_transf-1.)/(transf_max-1.);
 
-           if (ninja_recirc){  // Need further test
+           if(compute_Sx){
+               if (ninja_recirc){  // Need further test
  
               //Compute what liston calls 'wind slope' using updated wind direction
-              double omega_s = face->slope() * cos(theta - face->aspect());
-              (*face)["omega_s"_s]= omega_s;
+            //  double omega_s = face->slope() * cos(theta - face->aspect());
+            //  (*face)["omega_s"_s]= omega_s;
 
-              if( omega_s<-0.35 and W_transf>1.05)  //Reduce wind speed on the lee side of mountain crest                                                     
-                   W_transf = std::max(0.5,0.5+(omega_s+0.5)/(0.15)*0.5);   // Reduction 0f 50% for omega_s larger than 30 deg
+         //     if( omega_s<-0.35 and W_transf>1.05)  //Reduce wind speed on the lee side of mountain crest                                                    
+          //         W_transf = std::max(0.5,0.5+(omega_s+0.5)/(0.15)*0.5);   // Reduction 0f 50% for omega_s larger than 30 deg
 
+                  double sx_loc = Sx->Sx(domain,face);                                              
+                  if( sx_loc>30. )  //Reduce wind speed on the lee side of mountain crest identified by Sx> 30 deg                                           
+                       W_transf = 0.25;
+            }
             }
 
             (*face)["W_transf"_s]= W_transf;
