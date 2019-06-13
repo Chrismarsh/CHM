@@ -10,6 +10,7 @@ project (CHMprj)
 set(CMAKE_MACOSX_RPATH 1)
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(MACOSX TRUE)
+    set(CMAKE_FIND_FRAMEWORK NEVER) #Can cause frameworks to take priority over superbuild libraries
 endif()
 
 set(ext_cmakefile_name CMakeLists_external.txt.in)
