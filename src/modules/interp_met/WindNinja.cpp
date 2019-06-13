@@ -57,12 +57,13 @@ WindNinja::WindNinja(config_file cfg)
     // and we can then access Sx as if it were any other object. The config for this will need to come from WN's config section
     if(compute_Sx)
     {
-        depends("snowdepthavg");
+        optional("snowdepthavg");
         provides("Sx");
         conflicts("Winstral_parameters"); // we cannot have Winstral_parameters alongside this if we generate the Sx.
 
         config_file tmp;
         tmp.put("angular_window",30.);
+        tmp.put("size_of_step",10.);
         Sx = boost::dynamic_pointer_cast<Winstral_parameters>(module_factory::create("Winstral_parameters",tmp));
     }
 
@@ -129,8 +130,8 @@ void WindNinja::run(mesh& domain)
              * Example use of Sx, modify as needed in the future
              * When we are reusing other modules' members they ofc need to be thread safe
              */
-            if(compute_Sx)
-                (*face)["Sx"_s]= Sx->Sx(domain,face);
+//            if(compute_Sx)
+//                (*face)["Sx"_s]= Sx->Sx(domain,face);
 
             //http://mst.nerc.ac.uk/wind_vect_convs.html
 
@@ -236,25 +237,29 @@ void WindNinja::run(mesh& domain)
             (*face)["Ninja_speed_nodown"_s]= W;   // Wind speed without downscaling
 
 
+           (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
            // Limit speed up value to Max_spdup
            // Can be used to avoid unrelistic values at crest top
            if(W_transf>1.)
                W_transf = 1.+(Max_spdup-1.)*(W_transf-1.)/(transf_max-1.);
 
-           if(compute_Sx){
-               if (ninja_recirc){  // Need further test
- 
+           if(compute_Sx)
+           {
+               if (ninja_recirc)
+               {  // Need further test
+
               //Compute what liston calls 'wind slope' using updated wind direction
             //  double omega_s = face->slope() * cos(theta - face->aspect());
             //  (*face)["omega_s"_s]= omega_s;
 
-         //     if( omega_s<-0.35 and W_transf>1.05)  //Reduce wind speed on the lee side of mountain crest                                                    
+         //     if( omega_s<-0.35 and W_transf>1.05)  //Reduce wind speed on the lee side of mountain crest
           //         W_transf = std::max(0.5,0.5+(omega_s+0.5)/(0.15)*0.5);   // Reduction 0f 50% for omega_s larger than 30 deg
 
-                  double sx_loc = Sx->Sx(domain,face);                                              
-                  if( sx_loc>30. )  //Reduce wind speed on the lee side of mountain crest identified by Sx> 30 deg                                           
+                  double sx_loc = Sx->Sx(domain,face);
+                  (*face)["Sx"_s] =sx_loc;
+                  if( sx_loc>30. )  //Reduce wind speed on the lee side of mountain crest identified by Sx> 30 deg
                        W_transf = 0.25;
-            }
+                }
             }
 
             (*face)["W_transf"_s]= W_transf;
@@ -275,7 +280,7 @@ void WindNinja::run(mesh& domain)
                                            0); // no canopy, no snow, but uses a snow roughness
 
             (*face)["U_R"_s]= W;
-            (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
+
 
             (*face)["Ninja_u"_s]= U; // these are still H_forc
             (*face)["Ninja_v"_s]= V;
