@@ -38,6 +38,9 @@
 #include <cmath>
 #include <vector>
 #include <gsl/gsl_sf_lambert.h>
+#include <gsl/gsl_cdf.h>
+#include <gsl/gsl_randist.h>
+
 
 
 #include <viennacl/linalg/gmres.hpp>
@@ -113,6 +116,8 @@ public:
     bool use_PomLi_probability; // Use areal Pomeroy Li 2000 probability function.
     bool use_exp_fetch; // Enable the exp Liston 2006 fetch
     bool use_tanh_fetch; // Enable the tanh Pomeroy and Male 1986 fetch
+
+    bool use_subgrid_topo; // Enable effect of subgrid topography on snow transport 
 
 
     bool iterative_subl; // if True, enables the iterative sublimation calculation as per Pomeroy and Li 2000

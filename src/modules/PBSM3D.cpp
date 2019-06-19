@@ -60,6 +60,10 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
   use_tanh_fetch = cfg.get("use_tanh_fetch", true);
   use_PomLi_probability = cfg.get("use_PomLi_probability", false);
   z0_ustar_coupling = cfg.get("z0_ustar_coupling",false);
+
+  // Determine if we account for sub-grid topography impact on snow redistribution
+  use_subgrid_topo = cfg.get("use_subgrid_topo", false);
+  
   if (use_exp_fetch && use_tanh_fetch)
     BOOST_THROW_EXCEPTION(
         module_error() << errstr_info(
@@ -133,6 +137,15 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
   provides("Qsalt");
 
   provides("sum_drift");
+
+  if(use_subgrid_topo)
+  {
+  provides("frac_contrib");
+  provides("frac_contrib_nosnw");
+  provides("hold_topo");
+  }
+
+
 }
 
 void PBSM3D::init(mesh &domain)
@@ -405,6 +418,11 @@ void PBSM3D::run(mesh &domain)
         if (use_exp_fetch || use_tanh_fetch)
           fetch = (*face)["fetch"_s];
 
+        double frac_contrib = 1.; // Default value for the fraction of the grid contributing to snow transport
+        double frac_contrib_nosnw = 1.; // Default value for the fraction of the grid contributing to snow transport
+        double min_sd_trans = 0.1; // m Snow holding capacity for flat terrain
+        double min_sd_trans_avg = min_sd_trans;  // Grid-averaged value for the topographic subgrid holding capacity
+
         // get wind from the face
         double uref = (*face)["U_R"_s];
         double snow_depth = (*face)["snowdepthavg"_s];
@@ -430,6 +448,55 @@ void PBSM3D::run(mesh &domain)
           height_diff = 0;
         if (debug_output)
           (*face)["height_diff"_s] = height_diff;
+
+
+
+        //Topographic holding capacity associated with subgrid topographic features
+        if(use_subgrid_topo)
+         {
+             
+
+         if (!is_nan(face->parameter("TPI_neg_frac"_s)))  // Fraction of negative TPI is defined
+           {               
+             double frac_neg = face->parameter("TPI_neg_frac"_s);   // fraction of the grid covered by negative TPI
+             if(frac_neg>0.)
+             {
+                double moy_tpi_neg = std::max(-10.0,std::min(-0.05,face->parameter("TPI_neg_mean"_s)));
+                double std_tpi_neg = std::min(5.0,std::max(0.1,face->parameter("TPI_neg_std"_s)));
+
+//              // Derive parameters of the gamma distribution representing the distrib of TPI
+                double shape_gam = pow(moy_tpi_neg,2.0)/pow(std_tpi_neg,2.0);
+                double scale_gam = - pow(std_tpi_neg,2.0)/moy_tpi_neg;
+//
+                frac_contrib = (1.- frac_neg) +  // f_TPI>0.
+                          frac_neg * gsl_cdf_gamma_P(snow_depth,shape_gam,scale_gam);
+
+                frac_contrib_nosnw =  (1.- frac_neg);
+
+                if(snow_depth>min_sd_trans){
+
+                 //   double fac = shape_gam/(gsl_sf_gamma(shape_gam)*pow(scale_gam,shape_gam));
+                    double hint =  shape_gam*scale_gam - scale_gam * 
+                                  ( snow_depth * gsl_ran_gamma_pdf(snow_depth,shape_gam,scale_gam)
+                                    - min_sd_trans * gsl_ran_gamma_pdf(min_sd_trans,shape_gam,scale_gam)
+                                    + shape_gam * gsl_cdf_gamma_P(min_sd_trans,shape_gam,scale_gam)
+                                    + shape_gam * gsl_cdf_gamma_Q(snow_depth,shape_gam,scale_gam));
+                      
+                    min_sd_trans_avg = (1.- frac_neg) * min_sd_trans + frac_neg *
+                                 ( min_sd_trans * gsl_cdf_gamma_P(min_sd_trans,shape_gam,scale_gam) 
+                                   + hint
+                                   + snow_depth * gsl_cdf_gamma_Q(snow_depth,shape_gam,scale_gam));
+
+               } 
+
+
+            }
+          }
+        (*face)["frac_contrib"_s] = frac_contrib;
+        (*face)["frac_contrib_nosnw"_s] = frac_contrib_nosnw;
+        (*face)["hold_topo"_s] = min_sd_trans_avg;
+        }
+
 
         double ustar = 1.3; // placeholder
 
@@ -462,7 +529,9 @@ void PBSM3D::run(mesh &domain)
           (*face)["u*_th"_s] = u_star_saltation_threshold;
 
         // we don't have too high of veg. Check for blowing snow
-        if (height_diff <= cutoff && swe >= min_mass_for_trans &&
+     //   if (height_diff <= cutoff && swe >= min_mass_for_trans &&
+     //       !is_water(face))
+        if (height_diff <= cutoff && snow_depth >= min_sd_trans_avg &&
             !is_water(face))
         {
 
@@ -646,6 +715,36 @@ void PBSM3D::run(mesh &domain)
             // decrease the saltation by the probability amount
             c_salt *= Pu10;
           }
+
+           // consider subgrid topographic effect
+           if (use_subgrid_topo)
+           {
+
+
+//             if (!is_nan(face->parameter("TPI_neg_frac"_s)))  // Fraction of negative TPI is defined
+//              {               
+//                double frac_neg = face->parameter("TPI_neg_frac"_s);   // fraction of the grid covered by negative TPI
+//               if(frac_neg>0.)
+//               {
+//                  // Derive parameters of the gamma distribution representing the distrib of TPI
+//                  double shape_gam = pow(face->parameter("TPI_neg_mean"_s),2)/pow(face->parameter("TPI_neg_std"_s),2);
+//                  double scale_gam = pow(face->parameter("TPI_neg_std"_s),2)/face->parameter("TPI_neg_mean"_s);
+//
+//                  frac_contrib = (1.- frac_neg) +  // f_TPI>0.
+//                          frac_neg * gsl_cdf_gamma_P((*face)["snowdepthavg"_s],shape_gam,scale_gam);
+//               } 
+//               else // All the grid cell contribute to snow transport
+//               {
+//               frac_contrib = 1. ;
+//               }
+//               }
+
+            // decrease the saltation by the contribution fraction
+//            (*face)["frac_contrib"_s] = frac_contrib;
+            c_salt *= frac_contrib;
+
+           }
+
 
           // wind speed in the saltation layer Pomeroy and Gray 1990
           double uhs = 2.8 * u_star_saltation_threshold; // eqn 7
