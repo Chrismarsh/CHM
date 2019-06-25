@@ -111,6 +111,9 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     provides("U_10m");
 
     provides("csalt");
+      provides("csalt_orig");
+      provides("csalt_reset");
+      provides("mass_qsalt");
     provides("c_salt_fetch_big");
 
     provides("u*_th");
@@ -403,6 +406,7 @@ void PBSM3D::run(mesh &domain)
         double snow_depth = (*face)["snowdepthavg"_s];
         snow_depth = is_nan(snow_depth) ? 0 : snow_depth;
 
+        double u2 = (*face)["U_2m_above_srf"_s];
         double u10 = Atmosphere::log_scale_wind(
             uref, Atmosphere::Z_U_R, 10,
             snow_depth); // used by the pom probability forumuation, so don't
@@ -484,10 +488,13 @@ void PBSM3D::run(mesh &domain)
             // c_4 = 0.5;
             // g   = 9.81;
 
-            return PhysConst::kappa * uref /
-                       log(Atmosphere::Z_U_R /
-                           (0.6131702344e-2 * ustar * ustar + 0.5 * lambda)) -
-                   ustar;
+            //old version
+//            return PhysConst::kappa * uref /
+//                       log(Atmosphere::Z_U_R /
+//                           (0.6131702344e-2 * ustar * ustar + 0.5 * lambda)) -
+//                   ustar;
+
+              return u2*PhysConst::kappa/log(2.0/(0.6131702345e-2*ustar*ustar+.5*lambda))-ustar;
           };
 
           try
@@ -496,16 +503,19 @@ void PBSM3D::run(mesh &domain)
                 ustarFn, 1.0, 1.0, false, tol, max_iter);
             ustar = r.first + (r.second - r.first) / 2.0;
 
-            // This formulation has the following coeffs built in
-            // c_2 = 1.6;
-            // c_3 = 0.07519;
-            // c_4 = 0.5;
-            // g   = 9.81;
-            d->z0 = 0.6131702344e-2 * ustar * ustar +
-                    .5 * lambda; // pom and li 2000, eqn 4
+//              ustar = u2*PhysConst::kappa/log(2.0/Snow::Z0_SNOW);
 
             if (ustar >= u_star_saltation_threshold)
-              d->saltation = true;
+            {
+                d->saltation = true;
+                // This formulation has the following coeffs built in
+                // c_2 = 1.6;
+                // c_3 = 0.07519;
+                // c_4 = 0.5;
+                // g   = 9.81;
+                d->z0 = 0.6131702345e-2 * ustar * ustar + .5 * lambda; // pom and li 2000, eqn 4
+            }
+
           }
           catch (...)
           {
@@ -652,6 +662,46 @@ void PBSM3D::run(mesh &domain)
           Qsalt =
               c_salt * uhs *
               hs; // integrate over the depth of the saltation layer, kg/(m*s)
+
+          double mass = 0;
+          double phi = (*face)["vw_dir"_s];
+          Vector_2 v = -math::gis::bearing_to_cartesian(phi);
+
+            // setup wind vector
+            arma::vec uvw(3);
+            uvw(0) = v.x(); // U_x
+            uvw(1) = v.y(); // U_y
+            uvw(2) = 0;
+            double V = face->get_area();
+            double udotm[3]={0,0,0};
+            double E[3]={0,0,0};
+          for(int j = 0; j < 3; ++j)
+          {
+              udotm[j] = arma::dot(uvw, d->m[j]);
+              E[j] = face->edge_length(j);
+              mass += -E[j]*Qsalt*udotm[j];
+          }
+
+          mass /= V * global_param->dt();
+
+            if (debug_output) {
+                (*face)["csalt_orig"_s] = c_salt;
+                (*face)["mass_qsalt"_s] = mass;
+            }
+
+
+          if( mass > swe)
+          {
+              c_salt = -swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
+              // kg/(m*s)
+              Qsalt =
+                      c_salt * uhs *
+                      hs; // integrate over the depth of the saltation layer, kg/(m*s)
+
+              if (debug_output)
+                  (*face)["csalt_reset"_s] = c_salt;
+          }
+
         }
 
         if (debug_output)
@@ -1040,12 +1090,12 @@ void PBSM3D::run(mesh &domain)
 
             double alpha4 = d->A[4] * K[4] / (hs / 2.0 + v_edge_height / 2.0);
 
-            // bottom face, no advection
-            //                vl_C(idx,idx) += V*csubl-alpha4;
-            //                b[idx] += -alpha4*c_salt;
+            // bottom face, only turbulent diffusion
+              elements[idx_idx_off] += V * csubl - alpha4;
 
-            // includes advection term
-            elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha4;
+
+//            // includes advection term
+//            elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha4;
 
             b[idx] += -alpha4 * c_salt;
 
