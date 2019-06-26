@@ -59,7 +59,7 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
   use_exp_fetch = cfg.get("use_exp_fetch", false);
   use_tanh_fetch = cfg.get("use_tanh_fetch", true);
   use_PomLi_probability = cfg.get("use_PomLi_probability", false);
-
+  z0_ustar_coupling = cfg.get("z0_ustar_coupling",false);
   if (use_exp_fetch && use_tanh_fetch)
     BOOST_THROW_EXCEPTION(
         module_error() << errstr_info(
@@ -394,6 +394,7 @@ void PBSM3D::run(mesh &domain)
         auto face = domain->face(i);
 
         auto id = face->cell_local_id;
+
         auto d = face->get_module_data<data>(ID);
         auto &m = d->m;
 
@@ -447,11 +448,6 @@ void PBSM3D::run(mesh &domain)
 
         d->saltation = false; // default case
 
-        //        if (face->cell_local_id == 4055)
-        //        {
-        //            LOG_DEBUG << "Face found";
-        //        }
-
         // threshold friction velocity. Compute here as it's used below as well
         // Pomeroy and Li, 2000
         // Eqn 7
@@ -478,36 +474,41 @@ void PBSM3D::run(mesh &domain)
           if (debug_output)
             (*face)["lambda"_s] = lambda;
 
-          // Calculate the new value of z0 to take into account partially filled
-          // vegetation and the momentum sink
-          auto ustarFn = [&](double ustar) -> double {
-            // Li and Pomeroy 2000, eqn 5.
-            // This formulation has the following coeffs built in
-            // c_2 = 1.6;
-            // c_3 = 0.07519;
-            // c_4 = 0.5;
-            // g   = 9.81;
-
-            //old version
-//            return PhysConst::kappa * uref /
-//                       log(Atmosphere::Z_U_R /
-//                           (0.6131702344e-2 * ustar * ustar + 0.5 * lambda)) -
-//                   ustar;
-
-              return u2*PhysConst::kappa/log(2.0/(0.6131702345e-2*ustar*ustar+.5*lambda))-ustar;
-          };
-
-          try
+          if(z0_ustar_coupling)
           {
-            auto r = boost::math::tools::bracket_and_solve_root(
-                ustarFn, 1.0, 1.0, false, tol, max_iter);
-            ustar = r.first + (r.second - r.first) / 2.0;
+              // Calculate the new value of z0 to take into account partially filled
+              // vegetation and the momentum sink
+              auto ustarFn = [&](double ustar) -> double {
+                  // Li and Pomeroy 2000, eqn 5.
+                  // This formulation has the following coeffs built in
+                  // c_2 = 1.6;
+                  // c_3 = 0.07519;
+                  // c_4 = 0.5;
+                  // g   = 9.81;
 
-//              ustar = u2*PhysConst::kappa/log(2.0/Snow::Z0_SNOW);
+                  return u2 * PhysConst::kappa / log(2.0 / (0.6131702345e-2 * ustar * ustar + .5 * lambda)) - ustar;
+              };
+              try {
+                  auto r = boost::math::tools::bracket_and_solve_root(
+                          ustarFn, 1.0, 1.0, false, tol, max_iter);
+                  ustar = r.first + (r.second - r.first) / 2.0;
+
+              } catch (...) {
+                  // Didn't converge
+                  d->saltation = false;
+              }
+          } else
+          {
+              //follow PBSM (Pom & Li 2000; Alpine3D) and don't calculate the feedback of z0 on u*
+              ustar = u2*PhysConst::kappa/log(2.0/Snow::Z0_SNOW);
+          }
 
             if (ustar >= u_star_saltation_threshold)
             {
                 d->saltation = true;
+
+                // Regardless of u* method used, update z0 for blowing snow conditions
+                // Li and Pomeroy 2000, eqn 5.
                 // This formulation has the following coeffs built in
                 // c_2 = 1.6;
                 // c_3 = 0.07519;
@@ -516,25 +517,14 @@ void PBSM3D::run(mesh &domain)
                 d->z0 = 0.6131702345e-2 * ustar * ustar + .5 * lambda; // pom and li 2000, eqn 4
             }
 
-          }
-          catch (...)
-          {
-            // Didn't converge
-          }
+
         }
 
         if (!d->saltation)
         {
-          if (height_diff > cutoff) // lots of veg exposed
-          {
-            d->z0 = 0.12 * height_diff;
-          }
-          else
-          {
+            // we still need a u* for spatial K estimation later
             d->z0 = Snow::Z0_SNOW;
-          }
-
-          ustar = std::max(0.01, PhysConst::kappa * uref /
+            ustar = std::max(0.01, PhysConst::kappa * uref /
                                      log(Atmosphere::Z_U_R / d->z0));
         }
 
@@ -606,8 +596,7 @@ void PBSM3D::run(mesh &domain)
                         (ustar * ustar));
 
           // occasionally happens to happen at low wind speeds where the
-          // parameterization breaks. hasn't happened since changed this to the
-          // threshold velocity though...
+          // parameterization breaks. 
           if (c_salt < 0 || std::isnan(c_salt))
           {
             c_salt = 0;
@@ -690,17 +679,17 @@ void PBSM3D::run(mesh &domain)
             }
 
 
-          if( mass > swe)
-          {
-              c_salt = -swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
-              // kg/(m*s)
-              Qsalt =
-                      c_salt * uhs *
-                      hs; // integrate over the depth of the saltation layer, kg/(m*s)
-
-              if (debug_output)
-                  (*face)["csalt_reset"_s] = c_salt;
-          }
+//          if( mass > swe)
+//          {
+//              c_salt = -swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
+//              // kg/(m*s)
+//              Qsalt =
+//                      c_salt * uhs *
+//                      hs; // integrate over the depth of the saltation layer, kg/(m*s)
+//
+//              if (debug_output)
+//                  (*face)["csalt_reset"_s] = c_salt;
+//          }
 
         }
 
@@ -1091,11 +1080,11 @@ void PBSM3D::run(mesh &domain)
             double alpha4 = d->A[4] * K[4] / (hs / 2.0 + v_edge_height / 2.0);
 
             // bottom face, only turbulent diffusion
-              elements[idx_idx_off] += V * csubl - alpha4;
+//              elements[idx_idx_off] += V * csubl - alpha4;
 
 
 //            // includes advection term
-//            elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha4;
+            elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha4;
 
             b[idx] += -alpha4 * c_salt;
 

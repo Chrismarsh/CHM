@@ -136,6 +136,12 @@ public:
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
     double min_mass_for_trans;
+
+    // Couple the calculation of u* and z0 via the z0 value from
+    // Li and Pomeroy 2000, eqn 5.
+    // to modify the u* estimation instead of using a snow z0 for u* estimation
+    bool z0_ustar_coupling;
+
     class data : public face_info
     {
     public:
