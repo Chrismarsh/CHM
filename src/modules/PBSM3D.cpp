@@ -1,4 +1,4 @@
-//
+;//
 // Canadian Hydrological Model - The Canadian Hydrological Model (CHM) is a
 // novel modular unstructured mesh based approach for hydrological modelling
 // Copyright (C) 2018 Christopher Marsh
@@ -39,6 +39,67 @@ inline unsigned int offset(const unsigned int &row_start,
   return -1; // wrap it and index garbage
 }
 
+struct my_fill_topo_params { double a1; double b1; double a2 ; double b2; double m_tpi; double s_tpi;  };
+
+double
+my_fill_topo (double x, void * p)
+  {
+    struct my_fill_topo_params * params = (struct my_fill_topo_params *)p;
+    double a1 = (params->a1);
+    double b1 = (params->b1);
+    double a2 = (params->a2);
+    double b2 = (params->b2);
+    double m_tpi = (params-> m_tpi);
+    double s_tpi = (params-> s_tpi);
+
+    double x2 = x+ 0.25;
+    if(x2<=0)
+       return (1. - a1*tanh(b1*x2))*gsl_ran_gaussian_pdf(x-m_tpi,s_tpi);
+    else 
+       return (1. - a2*tanh(b2*x2))*gsl_ran_gaussian_pdf(x-m_tpi,s_tpi);
+
+  }
+
+struct my_fill_topo2_params { double a1; double b1; double a2 ; double b2; double m_tpi; double s_tpi; double hs; double ii;};
+
+double
+my_fill_topo2 (double x, void * p)
+  {
+   struct my_fill_topo2_params * params = (struct my_fill_topo2_params *)p;
+    double a1 = (params->a1);
+    double b1 = (params->b1);
+    double a2 = (params->a2);
+    double b2 = (params->b2);
+    double m_tpi = (params-> m_tpi);
+    double s_tpi = (params-> s_tpi);
+    double hs = (params->hs);
+    double ii = (params->ii);
+
+
+    double x2 = x+ 0.25;
+    if(x2<=0)
+       return (1. - a1*tanh(b1*x2))*hs/ii*gsl_ran_gaussian_pdf(x-m_tpi,s_tpi);
+    else 
+       return (1. - a2*tanh(b2*x2))*hs/ii*gsl_ran_gaussian_pdf(x-m_tpi,s_tpi);
+
+ }
+
+
+struct my_fill_topo3_params { double m_tpi; double s_tpi; double fac_fill;};
+
+double
+my_fill_topo3 (double x, void * p)
+  {
+   struct my_fill_topo3_params * params = (struct my_fill_topo3_params *)p;
+    double m_tpi = (params-> m_tpi);
+    double s_tpi = (params-> s_tpi);
+    double fac_fill = (params->fac_fill);
+
+    return -fac_fill*x*gsl_ran_gaussian_pdf(x-m_tpi,s_tpi);
+ }
+
+
+
 PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
 {
   depends("U_2m_above_srf");
@@ -63,6 +124,7 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
 
   // Determine if we account for sub-grid topography impact on snow redistribution
   use_subgrid_topo = cfg.get("use_subgrid_topo", false);
+  use_subgrid_topo_V2 = cfg.get("use_subgrid_topo_V2", false);
   
   if (use_exp_fetch && use_tanh_fetch)
     BOOST_THROW_EXCEPTION(
@@ -145,6 +207,15 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
   provides("hold_topo");
   }
 
+  if(use_subgrid_topo_V2)
+  {
+  provides("frac_contrib");
+  provides("hold_topo");
+  provides("test_int");
+  provides("test_err");
+  provides("tpi_lim");
+  }
+
 
 }
 
@@ -208,6 +279,7 @@ void PBSM3D::init(mesh &domain)
 
 
 
+
 #pragma omp parallel for
   for (size_t i = 0; i < domain->size_faces(); i++)
   {
@@ -236,6 +308,10 @@ void PBSM3D::init(mesh &domain)
         d->LAI = 0;
         enable_veg = false;
       }
+
+      d-> F_fill.function = &my_fill_topo;
+      d-> F_fill2.function = &my_fill_topo2;
+      d-> F_fill3.function = &my_fill_topo3;
 
       // pre alloc for the windpseeds
       d->u_z_susp.resize(nLayer);
@@ -452,9 +528,113 @@ void PBSM3D::run(mesh &domain)
 
 
         //Topographic holding capacity associated with subgrid topographic features
+        // This method combines the distribution of TPI with a filling function to obtain 
+        // an estimation of the subgrid snow depth distribution per triangle
+        // A filling criteria is then used to detertmine which fraction of the triangle 
+        // contributes to snow transport (area of positive TPI + filled gullies) 
+        // and which fraction does not (gullies which are not filled). 
+
+        if(use_subgrid_topo_V2)
+         {
+           // Areas with negative TPI are assumed to be filled when SD = fac_fill * TPI.
+           double fac_fill = 0.8;
+
+           // Default values for the TPI threshold above which gullies are filled. 
+           double tpi_lim = -min_sd_trans;
+
+           if (!is_nan(face->parameter("TPI_std"_s))){  // Std value of TPI is defined
+
+             double moy_tpi = std::max(-5.0,std::min(5.0,face->parameter("TPI_mean"_s)));
+             double std_tpi = std::min(5.0,std::max(0.1,face->parameter("TPI_std"_s)));
+
+
+  
+             if(snow_depth > min_sd_trans) 
+               {
+
+                // Coefficient for the filling function that give normalized snow depth as a function of TPI
+
+                double a1 = 1.5; double b1 = 0.3; double a2 = 0.6; double b2=0.55;
+                if(snow_depth > 0.75 and snow_depth<1.25)
+                  {double a1 = 1.15; }
+                else if(snow_depth<1.75)
+                  {double a1 = 1.1; double b2=0.4; }
+               else if(snow_depth<2.25)
+                  {double a1 = 0.9; double b2=0.4; }
+               else if(snow_depth<2.75)
+                {double a1 = 0.85; double b2=0.4; }
+               else if(snow_depth<3.25)
+                  {double a1 = 0.75; double b2=0.4; }
+               else
+                  {double a1 = 0.6; double b2=0.35; }
+
+                // Compute normalization factor 
+                struct my_fill_topo_params params = { a1, b1, a2 ,b2, moy_tpi, std_tpi};
+                d->F_fill.params = &params;
+        
+                gsl_integration_workspace * w = gsl_integration_workspace_alloc (1000);
+                double result,error;
+                int code = gsl_integration_qags(&d-> F_fill,-50,50,0,1e-7,1000,w,&result,&error);
+                gsl_integration_workspace_free (w);
+
+                (*face)["test_int"_s] = result;
+
+                // Determine TPI threshold above which gullies are considered as filled.
+                auto frootFn = [&](double xx) -> double {
+                     return (1-a1*tanh(b1*(xx+0.25)))*snow_depth/result+fac_fill*xx;
+                };
+                try {
+                  auto r = boost::math::tools::bracket_and_solve_root(
+                          frootFn, -1.0, 1.0, true, tol, max_iter);
+                  tpi_lim = r.first + (r.second - r.first) / 2.0;
+
+                } catch (...) {
+                  // Didn't converge
+                }
+   
+                // Determine area-averaged snow depth which is stored in the non-filled gullies
+                struct my_fill_topo2_params params2 = { a1, b1, a2 ,b2, moy_tpi, std_tpi, snow_depth, result };
+                d->F_fill2.params = &params2;
+
+                gsl_integration_workspace * w2 = gsl_integration_workspace_alloc (1000);
+                double h1;
+                int code2 = gsl_integration_qags(&d-> F_fill2,-50,tpi_lim,0,1e-7,1000,w2,&h1,&error);
+                gsl_integration_workspace_free (w2);
+
+                // Determine area-averaged snow depth which is stored in the filled gullies
+                struct my_fill_topo3_params params3 = { moy_tpi, std_tpi, fac_fill };
+                d->F_fill3.params = &params3;
+
+                gsl_integration_workspace * w3 = gsl_integration_workspace_alloc (1000);
+                double h2;
+                int code3 = gsl_integration_qags(&d-> F_fill3,tpi_lim,-min_sd_trans/fac_fill,0,1e-7,1000,w3,&h2,&error);
+                gsl_integration_workspace_free (w3);
+
+                // Determine area-averaged snow depth hold in the area of positive TPI 
+                double h3 = min_sd_trans*gsl_cdf_gaussian_Q(-min_sd_trans/fac_fill-moy_tpi,std_tpi);
+
+                // Compute total holding capacity 
+                min_sd_trans_avg = std::min(h1+h2+h3,snow_depth);
+
+              }
+
+              // Determine fraction of the triangle that contributes to snow transport
+              frac_contrib = gsl_cdf_gaussian_Q(tpi_lim-moy_tpi,std_tpi);
+        
+           }
+           (*face)["tpi_lim"_s] = tpi_lim;
+           (*face)["frac_contrib"_s] = frac_contrib;
+           (*face)["hold_topo"_s] = min_sd_trans_avg;
+
+         }
+
+        // Topographic holding capacity associated with subgrid topographic features
+        // This method uses the distribution of negative TPI and the mean snow depth to determine the
+        // fraction of the triangle which contributes to snow transport and the associated topographic
+        // holding capacity
+
         if(use_subgrid_topo)
          {
-             
 
          if (!is_nan(face->parameter("TPI_neg_frac"_s)))  // Fraction of negative TPI is defined
            {               
@@ -717,30 +897,8 @@ void PBSM3D::run(mesh &domain)
           }
 
            // consider subgrid topographic effect
-           if (use_subgrid_topo)
+           if (use_subgrid_topo or use_subgrid_topo_V2)
            {
-
-
-//             if (!is_nan(face->parameter("TPI_neg_frac"_s)))  // Fraction of negative TPI is defined
-//              {               
-//                double frac_neg = face->parameter("TPI_neg_frac"_s);   // fraction of the grid covered by negative TPI
-//               if(frac_neg>0.)
-//               {
-//                  // Derive parameters of the gamma distribution representing the distrib of TPI
-//                  double shape_gam = pow(face->parameter("TPI_neg_mean"_s),2)/pow(face->parameter("TPI_neg_std"_s),2);
-//                  double scale_gam = pow(face->parameter("TPI_neg_std"_s),2)/face->parameter("TPI_neg_mean"_s);
-//
-//                  frac_contrib = (1.- frac_neg) +  // f_TPI>0.
-//                          frac_neg * gsl_cdf_gamma_P((*face)["snowdepthavg"_s],shape_gam,scale_gam);
-//               } 
-//               else // All the grid cell contribute to snow transport
-//               {
-//               frac_contrib = 1. ;
-//               }
-//               }
-
-            // decrease the saltation by the contribution fraction
-//            (*face)["frac_contrib"_s] = frac_contrib;
             c_salt *= frac_contrib;
 
            }

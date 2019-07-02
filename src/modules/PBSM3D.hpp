@@ -39,6 +39,8 @@
 #include <vector>
 #include <gsl/gsl_sf_lambert.h>
 #include <gsl/gsl_cdf.h>
+#include <gsl/gsl_integration.h>
+#include <gsl/gsl_math.h>
 #include <gsl/gsl_randist.h>
 
 
@@ -118,6 +120,7 @@ public:
     bool use_tanh_fetch; // Enable the tanh Pomeroy and Male 1986 fetch
 
     bool use_subgrid_topo; // Enable effect of subgrid topography on snow transport 
+    bool use_subgrid_topo_V2; // Enable effect of subgrid topography on snow transport 
 
 
     bool iterative_subl; // if True, enables the iterative sublimation calculation as per Pomeroy and Li 2000
@@ -178,6 +181,12 @@ public:
         double sum_drift;
 
         double sum_subl;
+
+        gsl_function F_fill;
+        gsl_function F_fill2;
+        gsl_function F_fill3;
+       // gsl_function F_roots;
+       // struct my_fill_topo_params params = { 1.1, 0.3, 0.6 , 0.4};
     };
 
 
