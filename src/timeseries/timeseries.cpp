@@ -369,7 +369,7 @@ void timeseries::open(std::string path)
                 {
                     //something has gone horribly wrong
                     BOOST_THROW_EXCEPTION(forcing_no_regexmatch()
-                            << errstr_info("Unable to match any regex for " + *itr)
+                            << errstr_info("Unable to match any regex for " + *itr + ". Line: " + std::to_string(lines))
                             << boost::errinfo_file_name(path)
                             );
                 }

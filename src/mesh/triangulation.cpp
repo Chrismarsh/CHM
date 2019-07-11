@@ -445,6 +445,16 @@ void triangulation::from_json(pt::ptree &mesh)
     }catch(pt::ptree_bad_path& e)
     {
         // we don't have this section, no worries
+        // but we still need to build up the face storage as we may have parameters from a module
+        // init the storage, which builds the mphf
+#pragma omp parallel for
+        for (size_t i = 0; i < size_faces(); i++)
+        {
+
+            _faces.at(i)->init_parameters(_parameters);
+
+        }
+
     }
 
     std::set<std::string> ics;
