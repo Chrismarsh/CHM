@@ -93,5 +93,12 @@ void Burridge_iswr::run(mesh_elem &face)
     (*face)["iswr_diffuse_no_slope"_s]=diff;
     (*face)["iswr_direct_no_slope"_s]=dir;
 
-    (*face)["atm_trans"_s]= (dir+diff / 1375.);
+    //constrain to be [0,1]
+    double tau = (dir+diff) / 1375.;
+    if(tau < 0)
+        tau = 0;
+    if(tau > 1)
+        tau = 1;
+
+    (*face)["atm_trans"_s] = tau;
 }
