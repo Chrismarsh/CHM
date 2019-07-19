@@ -1,0 +1,36 @@
+diff -ruN ParaView-v5.4.1/Plugins/StreamLinesRepresentation/CMakeLists.txt ParaView/Plugins/StreamLinesRepresentation/CMakeLists.txt
+--- ParaView-v5.4.1/Plugins/StreamLinesRepresentation/CMakeLists.txt	2017-08-18 07:39:19.000000000 -0600
++++ ParaView/Plugins/StreamLinesRepresentation/CMakeLists.txt	2019-06-03 11:30:19.000000000 -0600
+@@ -43,7 +43,6 @@
+ 
+ add_paraview_plugin(
+   StreamLinesRepresentation "0.1"
+-  DOCUMENTATION_DIR "${CMAKE_CURRENT_SOURCE_DIR}/doc"
+   SERVER_MANAGER_XML StreamLinesRepresentation.xml
+   SERVER_MANAGER_SOURCES
+     vtkStreamLinesRepresentation.cxx
+diff -ruN ParaView-v5.4.1/Qt/Core/pqApplicationCore.h ParaView/Qt/Core/pqApplicationCore.h
+--- ParaView-v5.4.1/Qt/Core/pqApplicationCore.h	2017-08-18 07:39:19.000000000 -0600
++++ ParaView/Qt/Core/pqApplicationCore.h	2019-06-03 11:21:21.000000000 -0600
+@@ -36,6 +36,9 @@
+ #include "vtkSetGet.h" // for VTK_LEGACY
+ #include <QObject>
+ #include <QPointer>
++#include <QStyle>
++#include <QHeaderView>
++#include <QAction>
+ 
+ class pqDisplayPolicy;
+ class pqInterfaceTracker;
+diff -ruN ParaView-v5.4.1/Qt/Core/pqCoreUtilities.h ParaView/Qt/Core/pqCoreUtilities.h
+--- ParaView-v5.4.1/Qt/Core/pqCoreUtilities.h	2017-08-18 07:39:19.000000000 -0600
++++ ParaView/Qt/Core/pqCoreUtilities.h	2019-06-03 11:17:23.000000000 -0600
+@@ -44,6 +44,8 @@
+ #include <QString>
+ #include <QStringList>
+ #include <QWidget>
++#include <QStyle>
++#include <QHeaderView>
+ 
+ class vtkObject;
+ 

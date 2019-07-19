@@ -70,7 +70,6 @@ if(BUILD_VTK)
 	    DEPENDS proj4
 	    URL http://www.vtk.org/files/release/8.1/VTK-8.1.1.tar.gz
 	    UPDATE_COMMAND ""
-	    #PATCH_COMMAND patch -p1  < ${CMAKE_BINARY_DIR}/vtk-8.0.0.patch
 	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/VTK -DCMAKE_BUILD_TYPE=Release
 	                -DVTK_USE_SYSTEM_libproj4=ON
 	                -DLIBPROJ4_LIBRARIES=${CMAKE_BINARY_DIR}/lib/proj4/lib/libproj.so -DLIBPROJ4_INCLUDE_DIR=${CMAKE_BINARY_DIR}/lib/proj4/include
@@ -80,30 +79,26 @@ if(BUILD_VTK)
 	    )
 endif()
 
-#Paraview (<=5.1.2  -- unsure on 5.5+) still needs to build it's own VTK. Since we have to carefully build VTK to avoid netcdf/proj4 compatibility issues, it is best to just let PV do its own thing
+#Paraview (<=5.1.2  -- unsure on 5.5+) still needs to build it's own VTK.
+# Since we have to carefully build VTK to avoid netcdf/proj4 compatibility issues, it is best to just let PV do its own thing
 #https://public.kitware.com/pipermail/paraview/2016-August/037922.html
+#Super build would be nice to use, however it doesn't compile if within a git sub-tree. Unsure how to work around this.
 if(BUILD_ParaView)
 
-     # Patch for Paraview 5.2.2 via
-     # https://trac.macports.org/ticket/56981
-     # https://trac.macports.org/attachment/ticket/56981/paraview-5.5.2.patch
      ExternalProject_Add(
 	    ParaView
-
-	   # GIT_REPOSITORY https://github.com/Kitware/ParaView.git
-	   # GIT_TAG  3a2e6bc # v5.5.2
-
-
-	   #Super build would be nice to rever to, however it doesn't compile if within a git sub-tree. Unsure how to work around this
-       # GIT_REPOSITORY https://gitlab.kitware.com/paraview/paraview-superbuild.git
-       # GIT_PROGRESS true
-	    URL https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.5&type=source&os=Sources&downloadFile=ParaView-v5.5.2.tar.gz
+        #5.4.1 is what is on Graham
+	    URL https://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.4&type=source&os=Sources&downloadFile=ParaView-v5.4.1.tar.gz
 
 	    UPDATE_COMMAND ""
-	    CMAKE_ARGS -DMACOSX_APP_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ParaView -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ParaView -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}# -DCMAKE_PREFIX_PATH=/usr/local/opt/qt    #$(brew --prefix qt5)
+	    CMAKE_ARGS -DMACOSX_APP_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ParaView
+	                -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ParaView
+	                -DCMAKE_BUILD_TYPE=Release
+	                -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+	                -DCMAKE_PREFIX_PATH=/usr/local/opt/qt    #$(brew --prefix qt5)
 	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
 	    INSTALL_COMMAND make install
-	    PATCH_COMMAND patch -p0  < ${CMAKE_BINARY_DIR}/paraview-5.5.2.patch
+	    PATCH_COMMAND patch -p1  < ${CMAKE_BINARY_DIR}/paraview-5.4.1.patch
 	    BUILD_IN_SOURCE 0
 	 )
 
@@ -115,14 +110,14 @@ if(BUILD_ParaView)
 
     	    GIT_REPOSITORY https://github.com/Chrismarsh/vtk-paraview-datetimefilter.git
 
-            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/vtk-datetime-filter -DParaView_DIR=${CMAKE_BINARY_DIR}/lib/ParaView-prefix/src/ParaView-build -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} #$(brew --prefix qt5)
+            CMAKE_ARGS  -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/vtk-datetime-filter
+                        -DParaView_DIR=${CMAKE_BINARY_DIR}/lib/ParaView-prefix/src/ParaView-build
+                        -DCMAKE_PREFIX_PATH=/usr/local/opt/qt #$(brew --prefix qt5)
     	    UPDATE_COMMAND ""
     	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
     	    INSTALL_COMMAND make install
     	    BUILD_IN_SOURCE 1
     	 )
-
-
 endif()
 
 if(BUILD_BOOST)
