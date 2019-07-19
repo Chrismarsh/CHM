@@ -221,7 +221,7 @@ def main():
             o_xmax = o_xmin + gt[1] * ex_ds.RasterXSize
             o_ymin = o_ymax + gt[5] * ex_ds.RasterYSize
 
-        print("Output pixel size is " + str(pixel_width) + " by " + str(pixel_height))
+        print(("Output pixel size is " + str(pixel_width) + " by " + str(pixel_height)))
         ex_ds = None
 
     if constrain_flag:
@@ -350,7 +350,7 @@ def main():
                     data = cd.GetArray(v).GetTuple(i)
                     feature.SetField(str(v), float(data[0]))
                 except:
-                    print("Variable %s not present in mesh" % v)
+                    print(("Variable %s not present in mesh" % v))
                     return -1
 
             if parameters is not None:
@@ -359,7 +359,7 @@ def main():
                         data = cd.GetArray(p).GetTuple(i)
                         feature.SetField(str(p), float(data[0]))
                     except:
-                        print("Parameter %s not present in mesh" % v)
+                        print(("Parameter %s not present in mesh" % v))
                         return -1
             layer.CreateFeature(feature)
 
@@ -382,7 +382,7 @@ def main():
 
 
             if parameters is not None:
-                print parameters
+                print(parameters)
                 for p in parameters:
                     target_param_fname = os.path.join(output_path, vtu_file + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif')
                     rasterize(layer, srsout, target_param_fname, pixel_size, p,all_touched)
@@ -401,7 +401,7 @@ def main():
 
         datasets = []
 
-        for var, rasters in nc_rasters.items():
+        for var, rasters in list(nc_rasters.items()):
             a = xr.concat(rasters,dim='time')
             datasets.append(a.to_dataset())
 
