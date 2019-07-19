@@ -271,9 +271,9 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
 
         //get the parameters that this module will provide
         // we need this now before the mesh call as in the mesh call we will build the static mph hashtable for all parameters
-
-        for(auto& p: *(module->provides_parameter()))
+        for(auto& p: *(module->provides_parameter())) {
             _provided_parameters.insert(p);
+        }
 
         modnum++;
         _modules.push_back(

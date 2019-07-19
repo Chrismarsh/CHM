@@ -201,41 +201,41 @@ void solar::init(mesh& domain)
 
 	       if(svf_compute)
 	       {
-		   Point_3 me = face->center();
-		   auto cosSlope = cos(face->slope());
-		   auto sinSlope = sin(face->slope());
+               Point_3 me = face->center();
+               auto cosSlope = cos(face->slope());
+               auto sinSlope = sin(face->slope());
 
-		   //for each search azimuthal sector
-		   for (int k = 0; k < N; k++)
-		   {
-		       double phi = 0.;
-		       // search along each azimuth in j step increments to find horizon angle
-		       for (int j = 1; j <= steps; ++j)
-		       {
-			   double distance = j * size_of_step;
+               //for each search azimuthal sector
+               for (int k = 0; k < N; k++)
+               {
+                   double phi = 0.;
+                   // search along each azimuth in j step increments to find horizon angle
+                   for (int j = 1; j <= steps; ++j)
+                   {
+                   double distance = j * size_of_step;
 
-			   auto f = domain->find_closest_face(math::gis::point_from_bearing(me, k * azimuthal_width, distance));
+                   auto f = domain->find_closest_face(math::gis::point_from_bearing(me, k * azimuthal_width, distance));
 
-			   double z_diff = (f->center().z() - me.z());
-			   if (z_diff > 0)
-			   {
-			       double dist = math::gis::distance(f->center(), me);
-			       phi = std::max(atan(z_diff / dist), phi);
-			   }
-		       }
+                   double z_diff = (f->center().z() - me.z());
+                   if (z_diff > 0)
+                   {
+                       double dist = math::gis::distance(f->center(), me);
+                       phi = std::max(atan(z_diff / dist), phi);
+                   }
+                   }
 
-		       auto cosPhi = cos(phi);
-		       auto sinPhi = sin(phi);
-		       auto azi_in_rad = (k * azimuthal_width * M_PI / 180.);
+                   auto cosPhi = cos(phi);
+                   auto sinPhi = sin(phi);
+                   auto azi_in_rad = (k * azimuthal_width * M_PI / 180.);
 
-		       svf += cosSlope * cosPhi * cosPhi +
-			 sinSlope * cos(azi_in_rad - face->aspect()) * (M_PI_2 - phi - sinPhi * cosPhi);
+                   svf += cosSlope * cosPhi * cosPhi +
+                 sinSlope * cos(azi_in_rad - face->aspect()) * (M_PI_2 - phi - sinPhi * cosPhi);
 
-		   }
+               }
 
-		   svf /= (double)N;
+               svf /= (double)N;
 	       } else{
-		 svf = 1.;
+		        svf = 1.;
 	       }
 	       face->parameter("svf"_s) = std::max(0.0, svf);
 
