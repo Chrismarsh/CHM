@@ -240,7 +240,7 @@ void WindNinja::run(mesh& domain)
            (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
            // Limit speed up value to Max_spdup
            // Can be used to avoid unrelistic values at crest top
-           if(W_transf>1.)
+           if(W_transf>1. and transf_max>Max_spdup)
                W_transf = 1.+(Max_spdup-1.)*(W_transf-1.)/(transf_max-1.);
 
            if(compute_Sx)
