@@ -415,6 +415,8 @@ void snobal::run(mesh_elem &face)
         sbal->init_snow(); // try to get back a sane internel state
     }
 
+    // if something went wrong and was trapped by the above if, m_s (current mass) is 0 mm.
+    // thus swe_diff will have the previous timestep's mass, which will go directly to runoff and melt
     double swe_diff = prev_ts_swe - sbal->m_s;
     swe_diff = swe_diff > 0. ? swe_diff : 0;
     g->sum_runoff += sbal->ro_predict;
