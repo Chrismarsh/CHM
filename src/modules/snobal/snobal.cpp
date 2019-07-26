@@ -385,7 +385,7 @@ void snobal::run(mesh_elem &face)
         g->dead = 0;
     }
 
-    double swe1 = sbal->m_s;
+    double prev_ts_swe = sbal->m_s;
     try
     {
         sbal->do_data_tstep();
@@ -415,7 +415,7 @@ void snobal::run(mesh_elem &face)
         sbal->init_snow(); // try to get back a sane internel state
     }
 
-    double swe_diff = swe1 - sbal->m_s;
+    double swe_diff = prev_ts_swe - sbal->m_s;
     swe_diff = swe_diff > 0. ? swe_diff : 0;
     g->sum_runoff += sbal->ro_predict;
     g->sum_melt += swe_diff;
