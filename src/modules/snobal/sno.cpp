@@ -1040,12 +1040,14 @@ void sno::_time_compact(void)
  		c11 = 1.0;
  	else
  		c11 = exp(-0.046 * (rho - 100));
- 		d_rho_m = 0.01 * c11 * exp(-0.04 * (Tz - T_s));
- 	        d_rho_m /= rate;
+
+ 	d_rho_m = 0.01 * c11 * exp(-0.04 * (Tz - T_s));
+ 	d_rho_m /= rate;
 
  	/** Proportional Overburden Compaction (d_rho_c) **/
 
- 	d_rho_c = (0.026 * exp(-0.08 * (Tz - T_s)) * m_s * exp(-21.0 * (rho / water))); 	   d_rho_c /= rate;
+ 	d_rho_c = (0.026 * exp(-0.08 * (Tz - T_s)) * m_s * exp(-21.0 * (rho / water)));
+ 	d_rho_c /= rate;
 
 	/**	Compute New snow density	**/
 
