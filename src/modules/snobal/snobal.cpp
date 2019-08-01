@@ -84,11 +84,13 @@ void snobal::init(mesh& domain)
     drift_density = cfg.get("drift_density",300.);
     const_T_g = cfg.get("const_T_g",-4.0);
 
+    //use slope corrected SWE for compaction
+    use_slope_SWE = cfg.get("use_slope_SWE",true);
+
     //store all of snobals global_param variables from this timestep to be used as ICs for the next timestep
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
 	       auto face = domain->face(i);
 
 	       snodata* g = face->make_module_data<snodata>(ID);
@@ -130,7 +132,10 @@ void snobal::init(mesh& domain)
 	       sbal->z_g = cfg.get("z_g",0.1);
 	       sbal->relative_hts = 1; // True (1) -- relative to the snow surface via scale_wind_speed which takes into account snowdepth.
 
-	       sbal->slope = face->slope(); // in rad
+	       // if we don't use the slope corrected SWE for compaction
+	       // set it to -1 here, and we can check for this within snobal
+                sbal->slope = use_slope_SWE ? face->slope() : -1;
+
 
 	       sbal->R_n_bar = 0.0;
 	       sbal->H_bar = 0.0;

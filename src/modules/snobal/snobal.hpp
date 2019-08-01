@@ -53,6 +53,8 @@ public:
     double drift_density; // if we have blowing snow, this is the density of those particles
     double const_T_g; // constant ground temp, degC
 
+    bool use_slope_SWE; // use a slope corrected SWE for compaction eqn
+
     virtual void run(mesh_elem &face);
     virtual void init(mesh& domain);
     void checkpoint(mesh& domain, netcdf& chkpt);

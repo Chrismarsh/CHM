@@ -1046,7 +1046,10 @@ void sno::_time_compact(void)
 
  	/** Proportional Overburden Compaction (d_rho_c) **/
 
- 	double slope_ms = m_s/std::max(0.001,cos(slope));
+ 	double slope_ms = m_s;
+ 	if(slope > 0) // if we have a slope here, apply a cosine correction for compaction
+            slope_ms /= std::max(0.001,cos(slope));
+
  	d_rho_c = (0.026 * exp(-0.08 * (Tz - T_s)) * slope_ms * exp(-21.0 * (rho / water)));
  	d_rho_c /= rate;
 
