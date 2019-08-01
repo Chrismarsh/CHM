@@ -337,6 +337,9 @@ public:
 
 /*   measurement heights/depths   */
 
+//slope of the terrain for this snowpack
+    double slope;
+
     int relative_hts;
     /* TRUE if measurements heights, z_T
                    and z_u, are relative to snow
