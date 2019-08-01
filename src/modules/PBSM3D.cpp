@@ -111,9 +111,9 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     provides("U_10m");
 
     provides("csalt");
-      provides("csalt_orig");
-      provides("csalt_reset");
-      provides("mass_qsalt");
+    provides("csalt_orig");
+    provides("csalt_reset");
+    provides("mass_qsalt");
     provides("c_salt_fetch_big");
 
     provides("u*_th");
@@ -122,13 +122,16 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
 
     provides("dm/dt");
     provides("mm");
+
     provides("Qsubl");
+    provides("Qsubl_mass");
+    provides("sum_subl");
   }
 
   provides("drift_mass"); // kg/m^2
   provides("Qsusp");
   provides("Qsalt");
-  provides("sum_subl");
+
   provides("sum_drift");
 }
 
@@ -1266,20 +1269,23 @@ void PBSM3D::run(mesh &domain)
         Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
         if (debug_output)
-          (*face)["c" + std::to_string(z)] = c;
+        {
+            (*face)["c" + std::to_string(z)] = c;
 
-        if (debug_output)
-          Qsubl += (*face)["csubl" + std::to_string(z)] * c * v_edge_height;
-
-        if (debug_output)
-          d->sum_subl +=
-              (*face)["csubl" + std::to_string(z)] * global_param->dt() * c;
+            // This is an approximation as it uses after transport concentrations.
+            // However this will have already taken into account sublimation during the coupled transport phase
+            // Eqn 20 Pomeroy 1993
+            Qsubl += (*face)["csubl" + std::to_string(z)] * c * v_edge_height; // kg/(m^2 *s) => per unit area of snowcover
+        }
       }
       (*face)["Qsusp"_s] = Qsusp;
       if (debug_output)
-        (*face)["Qsubl"_s] = Qsubl;
+      {
+          (*face)["Qsubl"_s] = Qsubl;
+          (*face)["Qsubl_mass"_s] += Qsubl * global_param->dt();             // kg/m^2 or mm
+          (*face)["sum_subl"_s] += (*face)["Qsubl_mass"_s];
+      }
 
-      (*face)["sum_subl"_s] = d->sum_subl;
   }
 
 
