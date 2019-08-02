@@ -144,6 +144,8 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
   }
 
   provides("blowingsnow_probability");
+  debug_output = cfg.get("debug_output", false);
+
   if (debug_output)
   {
     nLayer = cfg.get("nLayer", 5);
@@ -153,7 +155,6 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
       provides("c" + std::to_string(i));
       provides("rm" + std::to_string(i));
 
-      debug_output = cfg.get("debug_output", false);
       provides("csubl" + std::to_string(i));
       provides("settling_velocity" + std::to_string(i));
       provides("u_z" + std::to_string(i));
