@@ -760,7 +760,9 @@ void PBSM3D::run(mesh &domain)
             {
                 d->saltation = true;
 
-                // Regardless of u* method used, update z0 for blowing snow conditions
+               if(z0_ustar_coupling)
+               {
+                // Update z0 for blowing snow conditions
                 // Li and Pomeroy 2000, eqn 5.
                 // This formulation has the following coeffs built in
                 // c_2 = 1.6;
@@ -768,6 +770,10 @@ void PBSM3D::run(mesh &domain)
                 // c_4 = 0.5;
                 // g   = 9.81;
                 d->z0 = 0.6131702345e-2 * ustar * ustar + .5 * lambda; // pom and li 2000, eqn 4
+               } else 
+               {
+		  d->z0 = Snow::Z0_SNOW;
+                }
             }
 
 
@@ -970,7 +976,7 @@ void PBSM3D::run(mesh &domain)
         for (int z = 0; z < nLayer; ++z)
         {
           // height in the suspension layer, floats above the snow surface
-          double cz = z + hs + v_edge_height / 2.; // cell center height
+          double cz = z * v_edge_height + hs + v_edge_height / 2.; // cell center height
 
           // compute new U_z at this height in the suspension layer
           double u_z = 0;
@@ -1519,8 +1525,6 @@ void PBSM3D::run(mesh &domain)
         c = c < 0 || is_nan(c) ? 0
                                : c; // harden against some numerical issues that
                                     // occasionally come up for unknown reasons.
-
-        double cz = z + hs + v_edge_height / 2.; // cell center height
 
         double u_z = d->u_z_susp.at(z);
 
