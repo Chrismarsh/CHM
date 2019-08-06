@@ -1565,7 +1565,7 @@ void PBSM3D::run(mesh &domain)
       if (debug_output)
       {
           (*face)["Qsubl"_s] = Qsubl;
-          (*face)["Qsubl_mass"_s] += Qsubl * global_param->dt();             // kg/m^2 or mm
+          (*face)["Qsubl_mass"_s] = Qsubl * global_param->dt();             // kg/m^2 or mm
           (*face)["sum_subl"_s] += (*face)["Qsubl_mass"_s];
       }
 
