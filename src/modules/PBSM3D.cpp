@@ -506,10 +506,21 @@ void PBSM3D::run(mesh &domain)
         snow_depth = is_nan(snow_depth) ? 0 : snow_depth;
 
         double u2 = (*face)["U_2m_above_srf"_s];
-        double u10 = Atmosphere::log_scale_wind(
-            uref, Atmosphere::Z_U_R, 10,
+        double z10; // 10-m height above the snow surface
+        z10 = 10. + snow_depth;
+         
+        double u10;
+        if(z10 < Atmosphere::Z_U_R)
+        {
+            u10 = Atmosphere::log_scale_wind(
+            uref, Atmosphere::Z_U_R, z10,
             snow_depth); // used by the pom probability forumuation, so don't
                          // hide behide debug output
+        } else
+        {
+            u10 = uref;      // Extreme case (avalanche gone crazy case)
+        }
+
         if (debug_output)
           (*face)["U_10m"_s] = u10;
 
@@ -980,6 +991,9 @@ void PBSM3D::run(mesh &domain)
 
           // compute new U_z at this height in the suspension layer
           double u_z = 0;
+   
+          // Height above the ground (snow+free) of the suspension layer
+          double hz  = cz + snow_depth;
 
           // the suspension layer discretization 'floats' on top of the snow
           // surface so height_diff = d->CanopyHeight - snowdepth which is
@@ -1011,9 +1025,16 @@ void PBSM3D::run(mesh &domain)
           }
           else
           {
-            u_z = std::max(0.01,
+            if(hz < Atmosphere::Z_U_R)
+            {
+                   u_z = std::max(0.01,
                            Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R,
-                                                      cz, snow_depth, d->z0));
+                                                      hz, snow_depth, d->z0));
+            } else
+            {
+                   u_z =  std::max(0.01,uref);
+            }
+
           }
 
           d->u_z_susp.at(z) = u_z;
