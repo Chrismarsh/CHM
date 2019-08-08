@@ -1178,7 +1178,7 @@ void PBSM3D::run(mesh &domain)
                  0.027 *
                      log(cz)); // undersaturation, Pomeroy and Li 2000, eqn 14
 
-            double rho = (M * ea) / (R * t); // saturation vapour density at t
+            double rho = (M * es) / (R * t); // saturation vapour density at t
             // radiative energy absorebed by the particle -- take from CRHM's
             // PBSM implimentation
             double Qr = 0.9 * M_PI * rm * rm *
@@ -1307,7 +1307,7 @@ void PBSM3D::run(mesh &domain)
           // the sink term is added on for each edge check, which isn't right
           // and ends up double counting it so / by 5 for csubl and V so it's
           // not 5x counted.
-          csubl /= 5.0;
+       //   csubl /= 5.0;
           V /= 5.0;
           if (!do_sublimation)
           {
