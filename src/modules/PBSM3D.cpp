@@ -153,6 +153,7 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     {
       provides("K" + std::to_string(i));
       provides("c" + std::to_string(i));
+      provides("cz" + std::to_string(i));
       provides("rm" + std::to_string(i));
 
       provides("csubl" + std::to_string(i));
@@ -248,6 +249,8 @@ void PBSM3D::init(mesh &domain)
   eps = cfg.get("smooth_coeff", 820);
   limit_mass = cfg.get("limit_mass", false);
   min_mass_for_trans = cfg.get("min_mass_for_trans", 5);
+  min_sd_trans = cfg.get("min_sd_trans", 0.1); // m Snow holding capacity for flat terrain
+
   cutoff = cfg.get(
       "cutoff",
       0.3); // cutoff veg-snow diff (m) that we inhibit saltation entirely
@@ -497,7 +500,6 @@ void PBSM3D::run(mesh &domain)
 
         double frac_contrib = 1.; // Default value for the fraction of the grid contributing to snow transport
         double frac_contrib_nosnw = 1.; // Default value for the fraction of the grid contributing to snow transport
-        double min_sd_trans = 0.1; // m Snow holding capacity for flat terrain
         double min_sd_trans_avg = min_sd_trans;  // Grid-averaged value for the topographic subgrid holding capacity
 
         // get wind from the face
@@ -1053,10 +1055,11 @@ void PBSM3D::run(mesh &domain)
           // Hydrol., 144(1–4), 165–192.
 
           // eqn 18, mean particle radius
-          // This is 'r_r' in Pomeroy and Gray 1995, eqn 50
+          // This is 'r_r' in Pomeroy and Gray 1995, eqn 53
           double rm = 4.6e-5 * pow(cz, -0.258);
           if (debug_output)
             (*face)["rm" + std::to_string(z)] = rm;
+            (*face)["cz" + std::to_string(z)] = cz;
 
           // calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
           // 52, 53 P&G 1995
@@ -1067,7 +1070,7 @@ void PBSM3D::run(mesh &domain)
 
           // mean radius of mean mass particle
           double r_z =
-              pow((3.0 * mm) / (4 * M_PI * rho_p), 0.33); // 50 in p&g 1995
+              pow((3.0 * mm) / (4 * M_PI * rho_p), 0.3333333); // 50 in p&g 1995
           if (debug_output)
             (*face)["mm"_s] = mm;
 
@@ -1086,7 +1089,7 @@ void PBSM3D::run(mesh &domain)
 
           double v = 1.88e-5; // kinematic viscosity of air, below eqn 13 in
                               // Pomeroy 1993
-          double Re = 2.0 * rm * Vr / v; // eqn 13
+          double Re = 2.0 * r_z * Vr / v; // eqn  55 in p&g 1995
 
           double Nu, Sh;
           Nu = Sh = 1.79 + 0.606 * pow(Re, 0.5); // eqn 12
@@ -1108,7 +1111,9 @@ void PBSM3D::run(mesh &domain)
 
           // Standard constant value, e.g.,
           // https://link.springer.com/referenceworkentry/10.1007%2F978-90-481-2642-2_329
-          double L = 2.38e6; // Latent heat of sublimation, J/kg
+//          double L = 2.38e6; // Latent heat of sublimation, J/kg
+          double L = 2.838e6; // Latent heat of sublimation, J/kg, Corrected value
+
 
           double dmdtz = 0;
 
@@ -1176,13 +1181,16 @@ void PBSM3D::run(mesh &domain)
             double rho = (M * ea) / (R * t); // saturation vapour density at t
             // radiative energy absorebed by the particle -- take from CRHM's
             // PBSM implimentation
-            double Qr = 0.9 * M_PI * sqrt(rm) *
+            double Qr = 0.9 * M_PI * rm * rm *
                         120.0; // 120.0 = PBSM_constants::Qstar (Solar Radiation
-                               // Input), no idea where 0.9 comes from
+                               // Input), 0.9 comes from Schmidt (1972) assuming a 
+                               // snow particle albedo of 0.5 and a snow surface 
+                               // albedo of 0.8
+  			       // rm ise used here as in Liston and Sturm (1998)
 
-            // eqn 11 in PGL 1993
+            // eqn 11 in PGL 1993, r_z is used here as in PG95 and Liston ans Sturm (1998)
             dmdtz = Sh * rho * D *
-                    (6.283185308 * Nu * R * rm * sigma * t * t * lambda_t -
+                    (6.283185308 * Nu * R * r_z * sigma * t * t * lambda_t -
                      L * M * Qr + Qr * R * t) /
                     (D * L * Sh * (L * M - R * t) * rho +
                      lambda_t * t * t * Nu * R);
@@ -1194,8 +1202,8 @@ void PBSM3D::run(mesh &domain)
             (*face)["mm"_s] = mm;
           double csubl = dmdtz / mm; // EQN 21 POMEROY 1993 (PBSM)
 
-          if (debug_output)
-            (*face)["csubl" + std::to_string(z)] = dmdtz;
+    //      if (debug_output)
+    //        (*face)["csubl" + std::to_string(z)] = dmdtz;
 
           // eddy diffusivity (m^2/s)
           // 0,1,2 will all be K = 0, as no horizontal diffusion process
@@ -1301,12 +1309,13 @@ void PBSM3D::run(mesh &domain)
           // not 5x counted.
           csubl /= 5.0;
           V /= 5.0;
-          if (debug_output)
-            (*face)["csubl" + std::to_string(z)] = csubl;
           if (!do_sublimation)
           {
             csubl = 0.0;
           }
+
+          if (debug_output)
+            (*face)["csubl" + std::to_string(z)] = csubl;
 
           for (int f = 0; f < 3; f++)
           {
@@ -1566,7 +1575,8 @@ void PBSM3D::run(mesh &domain)
       {
           (*face)["Qsubl"_s] = Qsubl;
           (*face)["Qsubl_mass"_s] = Qsubl * global_param->dt();             // kg/m^2 or mm
-          (*face)["sum_subl"_s] += (*face)["Qsubl_mass"_s];
+          d-> sum_subl += (*face)["Qsubl_mass"_s];
+          (*face)["sum_subl"_s] = d-> sum_subl;
       }
 
   }
