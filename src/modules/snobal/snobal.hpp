@@ -36,6 +36,8 @@ class snodata : public face_info
 public:
     sno data;
     double sum_runoff;
+    double sum_subl;
+    double sum_pcp_sno;
     double sum_melt;
     int dead;
     double delta_avalanche_snowdepth;

@@ -1058,8 +1058,10 @@ void PBSM3D::run(mesh &domain)
           // This is 'r_r' in Pomeroy and Gray 1995, eqn 53
           double rm = 4.6e-5 * pow(cz, -0.258);
           if (debug_output)
+            {
             (*face)["rm" + std::to_string(z)] = rm;
             (*face)["cz" + std::to_string(z)] = cz;
+            }
 
           // calculate mean mass, eqn 23, 24 in Pomeroy 1993 (PBSM)
           // 52, 53 P&G 1995
