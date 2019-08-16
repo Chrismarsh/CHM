@@ -2440,7 +2440,7 @@ void core::run()
 #ifdef USE_MPI
                                             _mesh->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
 #else
-                                            _mesh->write_vtu(base_name + ".vtu");
+                                            _mesh->write_vtu(base_name + "_"+std::to_string(rank)+ ".vtu");
 #endif
 
                                         }
