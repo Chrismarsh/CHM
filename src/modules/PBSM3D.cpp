@@ -1464,8 +1464,8 @@ void PBSM3D::run(mesh& domain)
     viennacl::copy(vl_x, x);
 
     // Log final state of the linear solve
-    LOG_DEBUG << "Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
-    LOG_DEBUG << "Suspension_GMRES final residual : " << suspension_custom_gmres.error();
+//    LOG_DEBUG << "Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
+//    LOG_DEBUG << "Suspension_GMRES final residual : " << suspension_custom_gmres.error();
 
     /*
       Dump matrix to ASCII file
