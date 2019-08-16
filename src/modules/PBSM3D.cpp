@@ -1583,37 +1583,25 @@ void PBSM3D::run(mesh& domain)
             double Qtj = 0;
             double Qsj = 0;
 
+            //Pointing same way, we advect downwind
             if(udotm[j] > 0)
             {
-                //get that upwind neighbour
-                if (d->face_neigh[j])
-                {
-                    auto neigh = face->neighbor(j);
-                    Qtj = (*neigh)["Qsusp"_s];
-                    Qsj = (*neigh)["Qsalt"_s];
-                }
-                else
-                {
-                    //upwind neighbour doesn't exist, susp = 0
-                    Qtj=Qsj=0;
-                }
+                    Qtj = (*face)["Qsusp"_s];
+                    Qsj = (*face)["Qsalt"_s];
             }
-            else
+            else // pointing into the wind, use upwind as donor
             {
                 if (d->face_neigh[j])
                 {
-
                     auto neigh = face->neighbor(j);
                     Qtj = (*neigh)["Qsusp"_s];
                     Qsj = (*neigh)["Qsalt"_s];
-
                 }
                 else
                 {
-                    //neighbour doesn't exist, susp = 0
+                    //neighbour doesn't exist, tran = 0
                     Qtj=Qsj=0;
                 }
-
             }
 
             qdep = qdep - (Qtj+Qsj)*udotm[j];
@@ -1621,8 +1609,14 @@ void PBSM3D::run(mesh& domain)
 
 
         //take 1 fwd euler step
-
         double mass =  qdep/V * global_param->dt(); // kg/s*dt -> kg/m^2
+
+        // could we have eroded more mass than what exists? cap it
+        if( mass < 0 && mass > (*face)["swe"_s] )
+        {
+            mass = -(*face)["swe"_s];
+        }
+
         (*face)["drift_mass"_s] = mass;
         d->sum_drift += mass;
 
