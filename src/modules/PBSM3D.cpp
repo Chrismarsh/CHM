@@ -939,14 +939,18 @@ void PBSM3D::run(mesh& domain)
                 double V = face->get_area();
                 double udotm[3] = {0, 0, 0};
                 double E[3] = {0, 0, 0};
+
+                //compute a divergence mass flux of saltation assuming our neighbours are 0 flux
+                //however, we can't compute it w/ an upwind scheme like we do for the true solution later
+                //as we don't know the neighbours values (might not have been computed yet). So this is just an
                 for (int j = 0; j < 3; ++j)
                 {
                     udotm[j] = arma::dot(uvw, d->m[j]);
                     E[j] = face->edge_length(j);
-                    mass += -E[j] * Qsalt * udotm[j];
+                    mass += E[j] * Qsalt * udotm[j];
                 }
 
-                mass /= V * global_param->dt();
+                mass = mass/V * global_param->dt();
 
                 if (debug_output)
                 {
@@ -954,17 +958,16 @@ void PBSM3D::run(mesh& domain)
                     (*face)["mass_qsalt"_s] = mass;
                 }
 
-                //          if( mass > swe)
-                //          {
-                //              c_salt = -swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
-                //              // kg/(m*s)
-                //              Qsalt =
-                //                      c_salt * uhs *
-                //                      hs; // integrate over the depth of the saltation layer, kg/(m*s)
-                //
-                //              if (debug_output)
-                //                  (*face)["csalt_reset"_s] = c_salt;
-                //          }
+                if( mass > swe)
+                {
+                  c_salt = 0;
+                  //-swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
+                  // kg/(m*s)
+                  Qsalt = c_salt * uhs * hs; // integrate over the depth of the saltation layer, kg/(m*s)
+
+                  if (debug_output)
+                      (*face)["csalt_reset"_s] = c_salt;
+                }
             }
 
             if (debug_output)
@@ -1276,9 +1279,8 @@ void PBSM3D::run(mesh& domain)
                 double V = face->get_area() * v_edge_height;
 
                 // the sink term is added on for each edge check, which isn't right
-                // and ends up double counting it so / by 5 for csubl and V so it's
+                // and ends up double counting it so / by 5 for V so it's
                 // not 5x counted.
-                //   csubl /= 5.0;
                 V /= 5.0;
                 if (!do_sublimation)
                 {
@@ -1343,7 +1345,7 @@ void PBSM3D::run(mesh& domain)
                     // bottom face, only turbulent diffusion
                     //              elements[idx_idx_off] += V * csubl - alpha4;
 
-                    //            // includes advection term
+                    // includes advection term
                     elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha4;
 
                     b[idx] += -alpha4 * c_salt;
@@ -1604,12 +1606,12 @@ void PBSM3D::run(mesh& domain)
                 }
             }
 
-            qdep = qdep - (Qtj+Qsj)*udotm[j];
+            qdep = qdep + E[j]*(Qtj+Qsj)*udotm[j];
         }
 
 
         //take 1 fwd euler step
-        double mass =  qdep/V * global_param->dt(); // kg/s*dt -> kg/m^2
+        double mass =  -qdep/V * global_param->dt(); // kg/s*dt -> kg/m^2
 
         // could we have eroded more mass than what exists? cap it
         if( mass < 0 && mass > (*face)["swe"_s] )
