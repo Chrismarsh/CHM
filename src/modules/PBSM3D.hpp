@@ -139,7 +139,7 @@ public:
     viennacl::compressed_matrix<vcl_scalar_type>  vl_A;
     viennacl::vector<vcl_scalar_type> bb;
 
-    double debug_output;
+    bool debug_output;
     double cutoff; // cutoff veg-snow diff (m) that we inhibit saltation entirely
     // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
