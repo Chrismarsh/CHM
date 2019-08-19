@@ -1614,7 +1614,7 @@ void PBSM3D::run(mesh& domain)
         double mass =  -qdep/V * global_param->dt(); // kg/s*dt -> kg/m^2
 
         // could we have eroded more mass than what exists? cap it
-        if( mass < 0 && mass > (*face)["swe"_s] )
+        if( mass < 0 && std::fabs(mass) > (*face)["swe"_s] )
         {
             mass = -(*face)["swe"_s];
         }
