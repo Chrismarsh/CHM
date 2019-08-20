@@ -1548,7 +1548,7 @@ void PBSM3D::run(mesh& domain)
 //        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), viennacl::traits::context(vl_A));
 
     // zero fill RHS for drift
-    bb.clear();
+//    bb.clear();
 
 //    eps /=3.0;
 #pragma omp parallel for

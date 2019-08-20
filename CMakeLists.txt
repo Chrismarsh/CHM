@@ -279,8 +279,9 @@ remove_cxx_flag("-O3")
 
 
 #reset these back
-if (CMAKE_BUILD_TYPE MATCHES Debug)
 
+if (CMAKE_BUILD_TYPE MATCHES Debug)
+    message(WARNING "Debug mode")
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.7")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0 -fno-inline") #new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
     else()
@@ -290,12 +291,13 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 else()
 
     if(ENABLE_SAFE_CHECKS)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAFE_CHECKS")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS } -DSAFE_CHECKS")
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O3 ")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS } -g -O3 ")
 endif()
 
 #Setup CXX flags
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-unused-variable -Wno-unknown-pragmas")
 
 
