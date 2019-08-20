@@ -1533,25 +1533,25 @@ void PBSM3D::run(mesh& domain)
     // Setup the matrix to be used to the solution of the gradient of the
     // suspension flux this will give us our deposition flux
     // get row buffer
-    unsigned int const* A_row_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
-    unsigned int const* A_col_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
-    vcl_scalar_type* A_elements =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
-
-    // zero CSR vector in vl_A
-    viennacl::vector_base<vcl_scalar_type> init_temporaryA(
-        vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), 0, 1);
-    // write:
-    init_temporaryA = viennacl::zero_vector<vcl_scalar_type>(
-        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), viennacl::traits::context(vl_A));
+//    unsigned int const* A_row_buffer =
+//        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
+//    unsigned int const* A_col_buffer =
+//        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
+//    vcl_scalar_type* A_elements =
+//        viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
+//
+//    // zero CSR vector in vl_A
+//    viennacl::vector_base<vcl_scalar_type> init_temporaryA(
+//        vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), 0, 1);
+//    // write:
+//    init_temporaryA = viennacl::zero_vector<vcl_scalar_type>(
+//        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), viennacl::traits::context(vl_A));
 
     // zero fill RHS for drift
     bb.clear();
 
-    eps /=3.0;
-//#pragma omp parallel for
+//    eps /=3.0;
+#pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
@@ -1587,13 +1587,13 @@ void PBSM3D::run(mesh& domain)
         double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
         swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
         // updated if we override the module order
-        
-        if(face->cell_global_id == 923)
-        {
-            LOG_DEBUG << "hi";
-        }
 
-        size_t i_i_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, i);
+//        if(face->cell_global_id == 923)
+//        {
+//            LOG_DEBUG << "hi";
+//        }
+
+//        size_t i_i_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, i);
 
         for (int j = 0; j < 3; j++)
         {
@@ -1623,23 +1623,23 @@ void PBSM3D::run(mesh& domain)
 
             //we now have an edge Qtj & Qsj estimate
             //build up our neighbours
-            if (d->face_neigh[j])
-            {
-                auto neigh = face->neighbor(j);
-                dx[j] = math::gis::distance(face->center(), neigh->center());
-
-                A_elements[i_i_off] +=  eps*E[j]/(dx[j]*V)+1;
-
-                size_t i_ni_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, neigh->cell_local_id);
-                A_elements[i_ni_off] += -eps*E[j]/(dx[j]*V);
-
-            }
-            else
-            {
-                A_elements[i_i_off] += 1;
-            }
-
-            bb[i] +=  -E[j]*(Qtj+Qsj)*udotm[j]/V;
+//            if (d->face_neigh[j])
+//            {
+//                auto neigh = face->neighbor(j);
+//                dx[j] = math::gis::distance(face->center(), neigh->center());
+//
+//                A_elements[i_i_off] +=  eps*E[j]/(dx[j]*V)+1;
+//
+//                size_t i_ni_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, neigh->cell_local_id);
+//                A_elements[i_ni_off] += -eps*E[j]/(dx[j]*V);
+//
+//            }
+//            else
+//            {
+//                A_elements[i_i_off] += 1;
+//            }
+//
+//            bb[i] +=  -E[j]*(Qtj+Qsj)*udotm[j]/V;
             qdep = qdep + E[j]*(Qtj+Qsj)*udotm[j];
         }
 
@@ -1659,71 +1659,71 @@ void PBSM3D::run(mesh& domain)
         (*face)["sum_drift"_s] = d->sum_drift;
     } // end face itr
 
-// setup the compressed matrix on the compute device, if available
-#ifdef VIENNACL_WITH_OPENCL
-    //    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);  <--- already
-    //    defined above
-    vl_A.switch_memory_context(gpu_ctx);
-    bb.switch_memory_context(gpu_ctx);
-#endif
+//// setup the compressed matrix on the compute device, if available
+//#ifdef VIENNACL_WITH_OPENCL
+//    //    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);  <--- already
+//    //    defined above
+//    vl_A.switch_memory_context(gpu_ctx);
+//    bb.switch_memory_context(gpu_ctx);
+//#endif
 
     // Solve the deposition flux --> how much drifting there is.
 
     // configuration of preconditioner:
-    viennacl::linalg::chow_patel_tag deposition_flux_chow_patel_config;
-    deposition_flux_chow_patel_config.sweeps(3);       //  nonlinear sweeps
-    deposition_flux_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
-    viennacl::linalg::chow_patel_icc_precond<viennacl::compressed_matrix<vcl_scalar_type>>
-        deposition_flux_chow_patel_icc(vl_A, deposition_flux_chow_patel_config);
-
-    // Set up convergence tolerance to have an average value for each unknown
-    double deposition_flux_cg_tol_per_unknown = 1e-7;
-    double deposition_flux_cg_tol = deposition_flux_cg_tol_per_unknown * ntri;
-    // Set max iterations and maximum Krylov dimension before restart
-    size_t deposition_flux_cg_max_iterations = 500;
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::linalg::cg_tag deposition_flux_custom_cg(deposition_flux_cg_tol, deposition_flux_cg_max_iterations);
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt =
-        viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg, deposition_flux_chow_patel_icc);
-    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A,
-    // bb, deposition_flux_custom_cg);
-    std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
-    viennacl::copy(vl_dSdt, dSdt);
-
-    // Log final state of the linear solve
-    LOG_DEBUG << "deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
-    LOG_DEBUG << "deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
+//    viennacl::linalg::chow_patel_tag deposition_flux_chow_patel_config;
+//    deposition_flux_chow_patel_config.sweeps(3);       //  nonlinear sweeps
+//    deposition_flux_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
+//    viennacl::linalg::chow_patel_icc_precond<viennacl::compressed_matrix<vcl_scalar_type>>
+//        deposition_flux_chow_patel_icc(vl_A, deposition_flux_chow_patel_config);
+//
+//    // Set up convergence tolerance to have an average value for each unknown
+//    double deposition_flux_cg_tol_per_unknown = 1e-7;
+//    double deposition_flux_cg_tol = deposition_flux_cg_tol_per_unknown * ntri;
+//    // Set max iterations and maximum Krylov dimension before restart
+//    size_t deposition_flux_cg_max_iterations = 500;
+//
+//    // compute result and copy back to CPU device (if an accelerator was used),
+//    // otherwise access is slow
+//    viennacl::linalg::cg_tag deposition_flux_custom_cg(deposition_flux_cg_tol, deposition_flux_cg_max_iterations);
+//
+//    // compute result and copy back to CPU device (if an accelerator was used),
+//    // otherwise access is slow
+//    viennacl::vector<vcl_scalar_type> vl_dSdt =
+//        viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg, deposition_flux_chow_patel_icc);
+//    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A,
+//    // bb, deposition_flux_custom_cg);
+//    std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
+//    viennacl::copy(vl_dSdt, dSdt);
+//
+//    // Log final state of the linear solve
+//    LOG_DEBUG << "deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
+//    LOG_DEBUG << "deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
 
     // take one FE integration step to get the total mass (SWE) that is eroded or
     // deposited
 
-#pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
-    {
-        auto face = domain->face(i);
-        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
-
-        double mass = 0;
-
-        mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
-
-        // could we have eroded more mass than what exists? cap it
-        double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
-        swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
-        // updated if we override the module order
-        if( mass < 0 && std::fabs(mass) > swe )
-        {
-            mass = -swe;
-        }
-
-        (*face)["drift_mass_smooth"_s] = mass;
-        (*face)["sum_drift_smooth"_s] += mass;
-    }
+//#pragma omp parallel for
+//    for (size_t i = 0; i < domain->size_faces(); i++)
+//    {
+//        auto face = domain->face(i);
+//        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
+//
+//        double mass = 0;
+//
+//        mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
+//
+//        // could we have eroded more mass than what exists? cap it
+//        double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
+//        swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
+//        // updated if we override the module order
+//        if( mass < 0 && std::fabs(mass) > swe )
+//        {
+//            mass = -swe;
+//        }
+//
+//        (*face)["drift_mass_smooth"_s] = mass;
+//        (*face)["sum_drift_smooth"_s] += mass;
+//    }
 }
 
 PBSM3D::~PBSM3D() {}
