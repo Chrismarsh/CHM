@@ -290,7 +290,6 @@ void PBSM3D::init(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
 
@@ -774,7 +773,7 @@ void PBSM3D::run(mesh& domain)
                 else
                 {
                     // follow PBSM (Pom & Li 2000; Alpine3D) and don't calculate the feedback of z0 on u*
-                    ustar = u2 * PhysConst::kappa / log(2.0 / Snow::Z0_SNOW);
+                    ustar = u2 * PhysConst::kappa / log(2.0 / 0.0002);
                 }
 
                 if (ustar >= u_star_saltation_threshold)
