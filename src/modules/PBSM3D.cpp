@@ -207,12 +207,10 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     }
 
     provides("drift_mass"); // kg/m^2
-    provides("drift_mass_smooth"); // kg/m^2
     provides("Qsusp");
     provides("Qsalt");
 
     provides("sum_drift");
-    provides("sum_drift_smooth");
 
     if (use_subgrid_topo)
     {
@@ -716,6 +714,7 @@ void PBSM3D::run(mesh& domain)
             // This is the lamdba from Li and Pomeroy eqn 4 that is used to include
             // exposed vegetation w/ the z0 estimate
             double lambda = 0;
+
 
             d->saltation = false; // default case
 
@@ -1281,7 +1280,7 @@ void PBSM3D::run(mesh& domain)
                 double V = face->get_area() * v_edge_height;
 
                 // the sink term is added on for each edge check, which isn't right
-                // and ends up double counting it so / by 5 for V so it's
+                // and ends up 5x counting it so / by 5 for V so it's
                 // not 5x counted.
                 V /= 5.0;
                 if (!do_sublimation)
@@ -1492,11 +1491,9 @@ void PBSM3D::run(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
         double Qsusp = 0;
-        double hs = d->hs;
 
         double Qsubl = 0;
         for (int z = 0; z < nLayer; ++z)
@@ -1550,7 +1547,6 @@ void PBSM3D::run(mesh& domain)
 //     zero fill RHS for drift
     bb.clear();
 
-    eps /=3.0;
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -1567,33 +1563,22 @@ void PBSM3D::run(mesh& domain)
         uvw(1) = v.y(); // U_y
         uvw(2) = 0;
 
-        double udotm[3];
+        double udotm[3]= {0, 0, 0}; // Qt is in direction u_hat
+        double E[3] = {0, 0, 0}; // edge lengths b/c 2d now
+        double dx[3] = {2.0, 2.0, 2.0}; // cell centre distances
 
-        // edge lengths b/c 2d now
-        double E[3] = {0, 0, 0};
-        double dx[3] = {2.0, 2.0, 2.0};
+        double V = face->get_area(); // V for consistency but actually an area
 
-        for (int j = 0; j < 3; ++j)
+        size_t i_i_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, i);
+        A_elements[i_i_off] = V;
+
+        //iterate over edges
+        for (int j = 0; j < 3; j++)
         {
             // just unit vectors as qsusp/qsalt flux has magnitude
             udotm[j] = arma::dot(uvw, m[j]);
-
             E[j] = face->edge_length(j);
-        }
 
-        double V = face->get_area()/3.0;
-        double qdep = 0;
-
-        double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
-        swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
-        // updated if we override the module order
-
-
-
-        size_t i_i_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, i);
-
-        for (int j = 0; j < 3; j++)
-        {
             double Qtj = 0;
             double Qsj = 0;
 
@@ -1613,8 +1598,9 @@ void PBSM3D::run(mesh& domain)
                 }
                 else
                 {
-                    //neighbour doesn't exist, tran = 0
-                    Qtj=Qsj=0;
+                    //neighbour doesn't exist, treat as duplicate ghost node
+                    Qtj = (*face)["Qsusp"_s];
+                    Qsj = (*face)["Qsalt"_s];
                 }
             }
 
@@ -1625,35 +1611,14 @@ void PBSM3D::run(mesh& domain)
                 auto neigh = face->neighbor(j);
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                A_elements[i_i_off] += V+eps*E[j]/dx[j];
+                A_elements[i_i_off] += eps*E[j]/dx[j];
 
                 size_t i_ni_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, neigh->cell_local_id);
                 A_elements[i_ni_off] += -eps*E[j]/dx[j];
 
             }
-            else
-            {
-                A_elements[i_i_off] += 1;
-            }
-
-            bb[i] +=  -E[j]*(Qtj+Qsj)*udotm[j]/V;
-            qdep = qdep + E[j]*(Qtj+Qsj)*udotm[j];
+            bb[i] +=  -E[j]*(Qtj+Qsj)*udotm[j];
         }
-
-
-        //take 1 fwd euler step
-//        double mass =  -qdep/(V*3.0) * global_param->dt(); // kg/s*dt -> kg/m^2   *3.0 to undo the scaling required for the diffusion variant
-
-        // could we have eroded more mass than what exists? cap it
-//        if( mass < 0 && std::fabs(mass) > swe )
-//        {
-//            mass = -swe;
-//        }
-
-//        (*face)["drift_mass"_s] = mass;
-//        d->sum_drift += mass;
-
-//        (*face)["sum_drift"_s] = d->sum_drift;
     } // end face itr
 
 // setup the compressed matrix on the compute device, if available
@@ -1696,8 +1661,7 @@ void PBSM3D::run(mesh& domain)
     LOG_DEBUG << "deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
     LOG_DEBUG << "deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
 
-//     take one FE integration step to get the total mass (SWE) that is eroded or
-//     deposited
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -1707,6 +1671,7 @@ void PBSM3D::run(mesh& domain)
 
         double mass = 0;
 
+        //     take one FE integration step to get the total mass (SWE) that is eroded or deposited
         mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
 
         // could we have eroded more mass than what exists? cap it
@@ -1719,8 +1684,6 @@ void PBSM3D::run(mesh& domain)
 //        }
         (*face)["drift_mass"_s] = mass;
         (*face)["sum_drift"_s] += mass;
-//        (*face)["drift_mass_smooth"_s] = mass;
-//        (*face)["sum_drift_smooth"_s] += mass;
     }
 }
 
