@@ -382,6 +382,7 @@ void PBSM3D::init(mesh& domain)
 
         d->sum_drift = 0;
         d->sum_subl = 0;
+        (*face)["sum_drift"_s]=0;
 
         // iterate over the vertical layers
         for (int z = 0; z < nLayer; ++z)
