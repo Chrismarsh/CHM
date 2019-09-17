@@ -767,7 +767,7 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
     for(int i = 0; i < 3; ++i)
     {
         auto neigh = face->neighbor(i);
-        if(neigh != nullptr && !neigh->_is_ghost)
+        if(neigh != nullptr && neigh->_is_ghost)
             ghosted_boundary_nearest_neighbours.push_back(neigh);
     }
   }
@@ -842,7 +842,7 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
     std::vector<mesh_elem> current_neighbours = dfs_to_max_distance(face, max_distance);
     auto pivot = std::partition(std::begin(current_neighbours),std::end(current_neighbours),
     				[] (mesh_elem neigh) {
-    				  return neigh->_is_ghost == false;
+    				  return neigh->_is_ghost == true;
     				});
     current_neighbours.erase(pivot,std::end(current_neighbours));
 
