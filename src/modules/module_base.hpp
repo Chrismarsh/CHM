@@ -92,8 +92,78 @@ public:
     boost::shared_ptr<global> global_param;
 
     /**
-    * Default constructor
-    */
+     * \enum SpatialType
+     * Module "depends" variables must specify where the spatial extent the look at for their dependent variables.
+     *  local     = only this face element
+     *  neighbour = this and nearest-neighbour face elements
+     *  distance  = this and all face elements within a fixed distance
+     */
+    enum class SpatialType
+    {
+
+        /**
+         * Sets that dependent variable is local.
+         * That is, this module requires the  compute the solution at this element without needing to communicate with
+         * surrounding elements. There is no guarantee on element ordering
+         */
+        local,
+        /**
+         * Sets that this module is domain parallel.
+         * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the
+         * order of traversal of elements.
+         */
+        neighbour,
+        /**
+         * Sets that this module is domain parallel.
+         * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the
+         * order of traversal of elements.
+         */
+        distance
+    };
+
+    /**
+     * Comprehensive info for spatial variable dependencies
+
+     */
+    struct depends_info
+    {
+        bool is_distance_set;
+        SpatialType spatial_type;
+        double spatial_distance;
+        std::string var_name;
+      // no need for default constructor
+        depends_info() = delete;
+      // constructing by name only assumes local
+        depends_info(std::string name) : spatial_type{SpatialType::local}, var_name{name} {}
+      // constructing by spatial type explicitly
+      //  - if type is distance, need to make sure distance gets set before usage (useful for setting via options)
+        depends_info(std::string name, SpatialType st) : spatial_type{st}, var_name{name}
+        {
+            switch (st)
+            {
+            case SpatialType::distance:
+                is_distance_set = false;
+            }
+        }
+      // explicit construction with distance intended for modules with a fixed distance
+        depends_info(std::string name, SpatialType st, double distance) : var_name{name}, spatial_type{st}
+        {
+            switch (st)
+            {
+            case SpatialType::distance:
+                is_distance_set = true;
+                spatial_distance = distance;
+            default:
+                BOOST_THROW_EXCEPTION(
+                    module_error() << errstr_info(
+                        "Distance specified with local or neighbour SpatialType. This is not allowed."));
+            }
+        }
+    };
+
+    /**
+     * Default constructor
+     */
     module_base(){};
 
     /**
@@ -104,12 +174,13 @@ public:
 		config_file input_cfg = pt::basic_ptree<std::string,std::string>())
       :    ID(name), cfg(input_cfg), IDnum(0),_parallel_type(type)
     {
-        _provides = boost::make_shared<std::vector<std::string> >();
-        _provides_parameters = boost::make_shared<std::vector<std::string> >();
-        _depends = boost::make_shared<std::vector<std::string> >();
-        _depends_from_met = boost::make_shared<std::vector<std::string> >();
-        _optional = boost::make_shared<std::vector<std::string> >();
-        _conflicts = boost::make_shared<std::vector<std::string> >(); //modules that we explicitly cannot be run alongside. Use sparingly
+        _provides = boost::make_shared<std::vector<std::string>>();
+        _provides_parameters = boost::make_shared<std::vector<std::string>>();
+        _depends = boost::make_shared<std::vector<depends_info>>();
+        _depends_from_met = boost::make_shared<std::vector<std::string>>();
+        _optional = boost::make_shared<std::vector<std::string>>();
+        _conflicts = boost::make_shared<std::vector<std::string>>(); // modules that we explicitly cannot be run
+                                                                     // alongside. Use sparingly
         global_param = nullptr;
 
         //nothing
@@ -218,10 +289,7 @@ public:
     /**
      * List of the variables from other modules that this module depends upon
      */
-    boost::shared_ptr<std::vector<std::string> > depends()
-    {
-        return _depends;
-    }
+    boost::shared_ptr<std::vector<depends_info>> depends() { return _depends; }
 
     /**
     * Modules we conflict with and absolutely cannot run alongside. Use sparingly.
@@ -252,10 +320,9 @@ public:
     /**
      * Set a variable, from another module, that this module depends upon
      */
-    void depends(const std::string& variable)
-    {
-        _depends->push_back(variable);
-    }
+    void depends(const std::string& name) { _depends->push_back(depends_info(name)); }
+    void depends(const std::string& name, SpatialType st) { _depends->push_back(depends_info(name,st)); }
+    void depends(const std::string& name, SpatialType st, double distance) { _depends->push_back(depends_info(name,st,distance)); }
 
     /**
     * List of the variables from the met files that this module depends upon
@@ -355,19 +422,15 @@ public:
 
 protected:
     parallel _parallel_type;
-    boost::shared_ptr<std::vector<std::string> > _provides;
-    boost::shared_ptr<std::vector<std::string> > _provides_parameters;
-    boost::shared_ptr<std::vector<std::string> > _depends;
-    boost::shared_ptr<std::vector<std::string> > _depends_from_met;
-    boost::shared_ptr<std::vector<std::string> > _optional;
-    boost::shared_ptr<std::vector<std::string> > _conflicts;
+    boost::shared_ptr<std::vector<std::string>> _provides;
+    boost::shared_ptr<std::vector<std::string>> _provides_parameters;
+    boost::shared_ptr<std::vector<depends_info>> _depends;
+    boost::shared_ptr<std::vector<std::string>> _depends_from_met;
+    boost::shared_ptr<std::vector<std::string>> _optional;
+    boost::shared_ptr<std::vector<std::string>> _conflicts;
 
-
-
-    //lists the options that were found
-    std::map<std::string,bool> _optional_found;
-
-
+    // lists the options that were found
+    std::map<std::string, bool> _optional_found;
 };
 
 /**

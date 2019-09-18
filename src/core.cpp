@@ -1824,9 +1824,14 @@ void core::_determine_module_dep()
         //make a copy of the depends for this module. we will then count references to each dependency
         //this will allow us to know what is missing
         std::map<std::string, size_t> curr_mod_depends;
+	std::vector<std::string> curr_mod_depends_var_names;
+
+        std::transform(module.first->depends()->begin(), module.first->depends()->end(),
+		       std::back_inserter(curr_mod_depends_var_names),
+		       [] (module_base::depends_info const& x) { return x.var_name; } );
 
         //populate a list of all the dependencies
-        for (auto &itr : *(module.first->depends()))
+        for (auto &itr : curr_mod_depends_var_names)
         {
             curr_mod_depends[itr] = 0; //ref count init to 0
         }
@@ -1842,7 +1847,7 @@ void core::_determine_module_dep()
                 {
                     //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
 
-                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var);
+                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var.var_name);
                     if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
                     {
                         LOG_DEBUG << "\t\tAdding edge between " << module.first->ID << "[" << module.first->IDnum <<
