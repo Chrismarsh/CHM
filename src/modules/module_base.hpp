@@ -125,19 +125,19 @@ public:
      * Comprehensive info for spatial variable dependencies
 
      */
-    struct depends_info
+    struct variable_info
     {
         bool is_distance_set;
         SpatialType spatial_type;
         double spatial_distance;
-        std::string var_name;
+        std::string name;
       // no need for default constructor
-        depends_info() = delete;
+        variable_info() = delete;
       // constructing by name only assumes local
-        depends_info(std::string name) : spatial_type{SpatialType::local}, var_name{name} {}
+        variable_info(std::string name) : spatial_type{SpatialType::local}, name{name} {}
       // constructing by spatial type explicitly
       //  - if type is distance, need to make sure distance gets set before usage (useful for setting via options)
-        depends_info(std::string name, SpatialType st) : spatial_type{st}, var_name{name}
+        variable_info(std::string name, SpatialType st) : spatial_type{st}, name{name}
         {
             switch (st)
             {
@@ -146,7 +146,7 @@ public:
             }
         }
       // explicit construction with distance intended for modules with a fixed distance
-        depends_info(std::string name, SpatialType st, double distance) : var_name{name}, spatial_type{st}
+        variable_info(std::string name, SpatialType st, double distance) : name{name}, spatial_type{st}
         {
             switch (st)
             {
@@ -176,7 +176,7 @@ public:
     {
         _provides = boost::make_shared<std::vector<std::string>>();
         _provides_parameters = boost::make_shared<std::vector<std::string>>();
-        _depends = boost::make_shared<std::vector<depends_info>>();
+        _depends = boost::make_shared<std::vector<variable_info>>();
         _depends_from_met = boost::make_shared<std::vector<std::string>>();
         _optional = boost::make_shared<std::vector<std::string>>();
         _conflicts = boost::make_shared<std::vector<std::string>>(); // modules that we explicitly cannot be run
@@ -289,7 +289,7 @@ public:
     /**
      * List of the variables from other modules that this module depends upon
      */
-    boost::shared_ptr<std::vector<depends_info>> depends() { return _depends; }
+    boost::shared_ptr<std::vector<variable_info>> depends() { return _depends; }
 
     /**
     * Modules we conflict with and absolutely cannot run alongside. Use sparingly.
@@ -320,9 +320,9 @@ public:
     /**
      * Set a variable, from another module, that this module depends upon
      */
-    void depends(const std::string& name) { _depends->push_back(depends_info(name)); }
-    void depends(const std::string& name, SpatialType st) { _depends->push_back(depends_info(name,st)); }
-    void depends(const std::string& name, SpatialType st, double distance) { _depends->push_back(depends_info(name,st,distance)); }
+    void depends(const std::string& name) { _depends->push_back(variable_info(name)); }
+    void depends(const std::string& name, SpatialType st) { _depends->push_back(variable_info(name,st)); }
+    void depends(const std::string& name, SpatialType st, double distance) { _depends->push_back(variable_info(name,st,distance)); }
 
     /**
     * List of the variables from the met files that this module depends upon
@@ -424,7 +424,7 @@ protected:
     parallel _parallel_type;
     boost::shared_ptr<std::vector<std::string>> _provides;
     boost::shared_ptr<std::vector<std::string>> _provides_parameters;
-    boost::shared_ptr<std::vector<depends_info>> _depends;
+    boost::shared_ptr<std::vector<variable_info>> _depends;
     boost::shared_ptr<std::vector<std::string>> _depends_from_met;
     boost::shared_ptr<std::vector<std::string>> _optional;
     boost::shared_ptr<std::vector<std::string>> _conflicts;

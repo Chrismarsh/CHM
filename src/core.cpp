@@ -1828,7 +1828,7 @@ void core::_determine_module_dep()
 
         std::transform(module.first->depends()->begin(), module.first->depends()->end(),
 		       std::back_inserter(curr_mod_depends_var_names),
-		       [] (module_base::depends_info const& x) { return x.var_name; } );
+		       [] (module_base::variable_info const& x) { return x.name; } );
 
         //populate a list of all the dependencies
         for (auto &itr : curr_mod_depends_var_names)
@@ -1847,7 +1847,7 @@ void core::_determine_module_dep()
                 {
                     //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
 
-                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var.var_name);
+                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var.name);
                     if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
                     {
                         LOG_DEBUG << "\t\tAdding edge between " << module.first->ID << "[" << module.first->IDnum <<
