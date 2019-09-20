@@ -48,6 +48,76 @@ namespace pt = boost::property_tree;
 
 typedef pt::ptree config_file;
 
+/**
+     * \enum SpatialType
+     * Module "depends" variables must specify where the spatial extent the look at for their dependent variables.
+     *  local     = only this face element
+     *  neighbour = this and nearest-neighbour face elements
+     *  distance  = this and all face elements within a fixed distance
+     */
+    enum class SpatialType
+    {
+
+        /**
+         * Sets that dependent variable is local.
+         * That is, this module requires the  compute the solution at this element without needing to communicate with
+         * surrounding elements. There is no guarantee on element ordering
+         */
+        local,
+        /**
+         * Sets that this module is domain parallel.
+         * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the
+         * order of traversal of elements.
+         */
+        neighbour,
+        /**
+         * Sets that this module is domain parallel.
+         * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the
+         * order of traversal of elements.
+         */
+        distance
+    };
+    /**
+     * Comprehensive info for spatial variable dependencies
+
+     */
+    struct variable_info
+    {
+        bool is_distance_set;
+        SpatialType spatial_type;
+        double spatial_distance;
+        std::string name;
+      // no need for default constructor
+        variable_info() = delete;
+      // constructing by name only assumes local
+        variable_info(std::string name) : spatial_type{SpatialType::local}, name{name} {}
+      // constructing by spatial type explicitly
+      //  - if type is distance, need to make sure distance gets set before usage (useful for setting via options)
+        variable_info(std::string name, SpatialType st) : spatial_type{st}, name{name}
+        {
+            switch (st)
+            {
+            case SpatialType::distance:
+                is_distance_set = false;
+            }
+        }
+      // explicit construction with distance intended for modules with a fixed distance
+        variable_info(std::string name, SpatialType st, double distance) : name{name}, spatial_type{st}
+        {
+            switch (st)
+            {
+            case SpatialType::distance:
+                is_distance_set = true;
+                spatial_distance = distance;
+            default:
+                BOOST_THROW_EXCEPTION(
+                    module_error() << errstr_info(
+                        "Distance specified with local or neighbour SpatialType. This is not allowed."));
+            }
+        }
+    };
+
+
 class module_base
 {
 public:
@@ -90,76 +160,6 @@ public:
      * Global parameter store
      */
     boost::shared_ptr<global> global_param;
-
-    /**
-     * \enum SpatialType
-     * Module "depends" variables must specify where the spatial extent the look at for their dependent variables.
-     *  local     = only this face element
-     *  neighbour = this and nearest-neighbour face elements
-     *  distance  = this and all face elements within a fixed distance
-     */
-    enum class SpatialType
-    {
-
-        /**
-         * Sets that dependent variable is local.
-         * That is, this module requires the  compute the solution at this element without needing to communicate with
-         * surrounding elements. There is no guarantee on element ordering
-         */
-        local,
-        /**
-         * Sets that this module is domain parallel.
-         * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the
-         * order of traversal of elements.
-         */
-        neighbour,
-        /**
-         * Sets that this module is domain parallel.
-         * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the
-         * order of traversal of elements.
-         */
-        distance
-    };
-
-    /**
-     * Comprehensive info for spatial variable dependencies
-
-     */
-    struct variable_info
-    {
-        bool is_distance_set;
-        SpatialType spatial_type;
-        double spatial_distance;
-        std::string name;
-      // no need for default constructor
-        variable_info() = delete;
-      // constructing by name only assumes local
-        variable_info(std::string name) : spatial_type{SpatialType::local}, name{name} {}
-      // constructing by spatial type explicitly
-      //  - if type is distance, need to make sure distance gets set before usage (useful for setting via options)
-        variable_info(std::string name, SpatialType st) : spatial_type{st}, name{name}
-        {
-            switch (st)
-            {
-            case SpatialType::distance:
-                is_distance_set = false;
-            }
-        }
-      // explicit construction with distance intended for modules with a fixed distance
-        variable_info(std::string name, SpatialType st, double distance) : name{name}, spatial_type{st}
-        {
-            switch (st)
-            {
-            case SpatialType::distance:
-                is_distance_set = true;
-                spatial_distance = distance;
-            default:
-                BOOST_THROW_EXCEPTION(
-                    module_error() << errstr_info(
-                        "Distance specified with local or neighbour SpatialType. This is not allowed."));
-            }
-        }
-    };
 
     /**
      * Default constructor

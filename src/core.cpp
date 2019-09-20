@@ -1828,7 +1828,7 @@ void core::_determine_module_dep()
 
         std::transform(module.first->depends()->begin(), module.first->depends()->end(),
 		       std::back_inserter(curr_mod_depends_var_names),
-		       [] (module_base::variable_info const& x) { return x.name; } );
+		       [] (variable_info const& x) { return x.name; } );
 
         //populate a list of all the dependencies
         for (auto &itr : curr_mod_depends_var_names)
