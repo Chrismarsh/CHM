@@ -1764,10 +1764,22 @@ void core::_determine_module_dep()
     //make sure modules cannot override another module's output
     for (auto &m1 : _modules)
     {
+      // Get vector of module m1's variable names
+      std::vector<std::string> m1_provides_var_names;
+      std::transform(m1.first->provides()->begin(), m1.first->provides()->end(),
+		     std::back_inserter(m1_provides_var_names),
+			 [] (variable_info const& x) { return x.name; } );
+
         for (auto &m2 : _modules)
         {
             if(m1.first->ID == m2.first->ID )
                 continue;
+
+      // Get vector of current module's variable names
+      std::vector<std::string> m2_provides_var_names;
+      std::transform(m2.first->provides()->begin(), m2.first->provides()->end(),
+		     std::back_inserter(m2_provides_var_names),
+			 [] (variable_info const& x) { return x.name; } );
 
            if( std::find(m1.first->conflicts()->begin(),
                    m1.first->conflicts()->end(),
@@ -1777,9 +1789,9 @@ void core::_determine_module_dep()
            }
 
 
-            auto itr = std::find_first_of (m1.first->provides()->begin(), m1.first->provides()->end(),
-                                           m2.first->provides()->begin(), m2.first->provides()->end());
-            if( itr != m1.first->provides()->end() )
+            auto itr = std::find_first_of (m1_provides_var_names.begin(), m1_provides_var_names.end(),
+                                           m2_provides_var_names.begin(), m2_provides_var_names.end());
+            if( itr != m1_provides_var_names.end() )
             {
                 overwrite_found=true;
                 LOG_ERROR << "Module " << m1.first->ID << " and " << m2.first->ID << " both provide variable " << *itr;
@@ -1800,8 +1812,14 @@ void core::_determine_module_dep()
     //loop through each module
     for (auto &module : _modules)
     {
+      // Get vector of current module's variable names
+      std::vector<std::string> mod_provides_var_names;
+      std::transform(module.first->provides()->begin(), module.first->provides()->end(),
+		     std::back_inserter(mod_provides_var_names),
+			 [] (variable_info const& x) { return x.name; } );
+
         //Generate a  list of all variables,, provided from this module, and append to the total list, culling duplicates between modules.
-        _provided_var_module.insert(module.first->provides()->begin(), module.first->provides()->end());
+        _provided_var_module.insert(mod_provides_var_names.begin(), mod_provides_var_names.end());
 
 //        vertex v;
 //        v.name = module.first->ID;
@@ -1839,6 +1857,11 @@ void core::_determine_module_dep()
         //iterate over all the modules,
         for (auto &itr : _modules)
         {
+	  // Get vector of current module's variable names
+	  std::vector<std::string> itr_mod_provides_var_names;
+	  std::transform(itr.first->provides()->begin(), itr.first->provides()->end(),
+			 std::back_inserter(itr_mod_provides_var_names),
+			 [] (variable_info const& x) { return x.name; } );
             //don't check against our module
             if (module.first->ID.compare(itr.first->ID) != 0)
             {
@@ -1847,8 +1870,8 @@ void core::_determine_module_dep()
                 {
                     //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
 
-                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var.name);
-                    if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
+                    auto i = std::find(itr_mod_provides_var_names.begin(), itr_mod_provides_var_names.end(), depend_var.name);
+                    if (i != itr_mod_provides_var_names.end()) //itr provides the variable we are looking for
                     {
                         LOG_DEBUG << "\t\tAdding edge between " << module.first->ID << "[" << module.first->IDnum <<
                                   "] -> " << itr.first->ID << "[" << itr.first->IDnum << "] for var=" << *i <<
@@ -1891,8 +1914,13 @@ void core::_determine_module_dep()
                 {
                     //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
 
-                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), optional_var);
-                    if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
+		  std::vector<std::string> itr_mod_provides_var_names;
+		  std::transform(itr.first->provides()->begin(), itr.first->provides()->end(),
+				 std::back_inserter(itr_mod_provides_var_names),
+				 [] (variable_info const& x) { return x.name; } );
+
+                    auto i = std::find(itr_mod_provides_var_names.begin(), itr_mod_provides_var_names.end(), optional_var);
+                    if (i != itr_mod_provides_var_names.end()) //itr provides the variable we are looking for
                     {
                         LOG_DEBUG << "\t\tAdding optional edge between " << module.first->ID << "[" <<
                                   module.first->IDnum << "] -> " << itr.first->ID << "[" << itr.first->IDnum <<
@@ -1902,8 +1930,8 @@ void core::_determine_module_dep()
                         edge e;
                         e.variable = *i;
 
-                        //check if we need to ignore this edge as a result of user specific overrdige
-                        //this will avoid a cycle is this exists.
+                        //check if we need to ignore this edge as a result of user specific override
+                        //this will avoid a cycle if this exists.
                         bool ignore = false;
                         for (auto o : _overrides)
                         {

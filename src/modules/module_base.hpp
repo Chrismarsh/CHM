@@ -174,7 +174,7 @@ public:
 		config_file input_cfg = pt::basic_ptree<std::string,std::string>())
       :    ID(name), cfg(input_cfg), IDnum(0),_parallel_type(type)
     {
-        _provides = boost::make_shared<std::vector<std::string>>();
+        _provides = boost::make_shared<std::vector<variable_info>>();
         _provides_parameters = boost::make_shared<std::vector<std::string>>();
         _depends = boost::make_shared<std::vector<variable_info>>();
         _depends_from_met = boost::make_shared<std::vector<std::string>>();
@@ -250,7 +250,7 @@ public:
     /**
     * List of the variables that this module provides.
     */
-    boost::shared_ptr<std::vector<std::string> > provides()
+    boost::shared_ptr<std::vector<variable_info> > provides()
     {
         return _provides;
     }
@@ -266,12 +266,34 @@ public:
     /**
      * Set a variable that this module provides
      */
-    void provides(const std::string& variable)
+    void provides(const std::string& name)
     {
-        if(variable.find_first_of("\t ") != std::string::npos)
-            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + variable +" has a space. This is not allowed."));
+        if(name.find_first_of("\t ") != std::string::npos)
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + name +" has a space. This is not allowed."));
 
-        _provides->push_back(variable);
+        _provides->push_back(variable_info(name));
+    }
+
+    /**
+     * Set a variable that this module provides
+     */
+    void provides(const std::string& name, SpatialType st)
+    {
+        if(name.find_first_of("\t ") != std::string::npos)
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + name +" has a space. This is not allowed."));
+
+        _provides->push_back(variable_info(name, st));
+    }
+
+    /**
+     * Set a variable that this module provides
+     */
+    void provides(const std::string& name, SpatialType st, double distance)
+    {
+        if(name.find_first_of("\t ") != std::string::npos)
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + name +" has a space. This is not allowed."));
+
+        _provides->push_back(variable_info(name, st, distance));
     }
 
 
@@ -375,7 +397,7 @@ public:
     {
         for(auto& itr: *_provides)
         {
-            (*face)[itr]=-9999.;
+            (*face)[itr.name]=-9999.;
         }
     }
     /**
@@ -422,7 +444,7 @@ public:
 
 protected:
     parallel _parallel_type;
-    boost::shared_ptr<std::vector<std::string>> _provides;
+    boost::shared_ptr<std::vector<variable_info>> _provides;
     boost::shared_ptr<std::vector<std::string>> _provides_parameters;
     boost::shared_ptr<std::vector<variable_info>> _depends;
     boost::shared_ptr<std::vector<std::string>> _depends_from_met;
