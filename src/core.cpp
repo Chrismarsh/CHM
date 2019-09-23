@@ -1765,10 +1765,7 @@ void core::_determine_module_dep()
     for (auto &m1 : _modules)
     {
       // Get vector of module m1's variable names
-      std::vector<std::string> m1_provides_var_names;
-      std::transform(m1.first->provides()->begin(), m1.first->provides()->end(),
-		     std::back_inserter(m1_provides_var_names),
-			 [] (variable_info const& x) { return x.name; } );
+      auto m1_provides_var_names = m1.first->get_variable_names_from_collection(*(m1.first->provides()));;
 
         for (auto &m2 : _modules)
         {
@@ -1776,10 +1773,7 @@ void core::_determine_module_dep()
                 continue;
 
       // Get vector of current module's variable names
-      std::vector<std::string> m2_provides_var_names;
-      std::transform(m2.first->provides()->begin(), m2.first->provides()->end(),
-		     std::back_inserter(m2_provides_var_names),
-			 [] (variable_info const& x) { return x.name; } );
+      auto m2_provides_var_names = m2.first->get_variable_names_from_collection(*(m2.first->provides()));;;
 
            if( std::find(m1.first->conflicts()->begin(),
                    m1.first->conflicts()->end(),
@@ -1813,10 +1807,7 @@ void core::_determine_module_dep()
     for (auto &module : _modules)
     {
       // Get vector of current module's variable names
-      std::vector<std::string> mod_provides_var_names;
-      std::transform(module.first->provides()->begin(), module.first->provides()->end(),
-		     std::back_inserter(mod_provides_var_names),
-			 [] (variable_info const& x) { return x.name; } );
+      auto mod_provides_var_names = module.first->get_variable_names_from_collection(*(module.first->provides()));
 
         //Generate a  list of all variables,, provided from this module, and append to the total list, culling duplicates between modules.
         _provided_var_module.insert(mod_provides_var_names.begin(), mod_provides_var_names.end());
@@ -1842,11 +1833,7 @@ void core::_determine_module_dep()
         //make a copy of the depends for this module. we will then count references to each dependency
         //this will allow us to know what is missing
         std::map<std::string, size_t> curr_mod_depends;
-	std::vector<std::string> curr_mod_depends_var_names;
-
-        std::transform(module.first->depends()->begin(), module.first->depends()->end(),
-		       std::back_inserter(curr_mod_depends_var_names),
-		       [] (variable_info const& x) { return x.name; } );
+	auto curr_mod_depends_var_names = module.first->get_variable_names_from_collection(*(module.first->depends()));
 
         //populate a list of all the dependencies
         for (auto &itr : curr_mod_depends_var_names)
@@ -1858,10 +1845,7 @@ void core::_determine_module_dep()
         for (auto &itr : _modules)
         {
 	  // Get vector of current module's variable names
-	  std::vector<std::string> itr_mod_provides_var_names;
-	  std::transform(itr.first->provides()->begin(), itr.first->provides()->end(),
-			 std::back_inserter(itr_mod_provides_var_names),
-			 [] (variable_info const& x) { return x.name; } );
+	  auto itr_mod_provides_var_names = itr.first->get_variable_names_from_collection(*(itr.first->provides()));;
             //don't check against our module
             if (module.first->ID.compare(itr.first->ID) != 0)
             {
@@ -1914,10 +1898,7 @@ void core::_determine_module_dep()
                 {
                     //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
 
-		  std::vector<std::string> itr_mod_provides_var_names;
-		  std::transform(itr.first->provides()->begin(), itr.first->provides()->end(),
-				 std::back_inserter(itr_mod_provides_var_names),
-				 [] (variable_info const& x) { return x.name; } );
+		  auto itr_mod_provides_var_names = itr.first->get_variable_names_from_collection(*(itr.first->provides()));
 
                     auto i = std::find(itr_mod_provides_var_names.begin(), itr_mod_provides_var_names.end(), optional_var);
                     if (i != itr_mod_provides_var_names.end()) //itr provides the variable we are looking for

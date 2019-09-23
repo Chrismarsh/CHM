@@ -386,7 +386,17 @@ public:
 
         return it->second; //return if we found it
 
+    }
 
+    /*
+     * Get a vector of only the variable names for a given collection type of variables
+     */
+    std::vector<std::string> get_variable_names_from_collection(std::vector<variable_info> collection)
+    {
+        std::vector<std::string> names;
+        std::transform(collection.begin(), collection.end(), std::back_inserter(names),
+                       [](variable_info const& x) { return x.name; });
+        return names;
     }
 
     /**
