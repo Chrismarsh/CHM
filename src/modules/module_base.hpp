@@ -265,13 +265,14 @@ public:
 
     /**
      * Set a variable that this module provides
+     * - default behaviour is to make it of type NEIGHBOUR
      */
     void provides(const std::string& name)
     {
         if(name.find_first_of("\t ") != std::string::npos)
             BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + name +" has a space. This is not allowed."));
 
-        _provides->push_back(variable_info(name));
+        _provides->push_back(variable_info(name,SpatialType::neighbour));
     }
 
     /**
