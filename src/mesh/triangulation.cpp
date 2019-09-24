@@ -901,6 +901,63 @@ void triangulation::populate_face_station_lists()
 
 }
 
+void triangulation::populate_distributed_station_lists()
+{
+
+  assert( _stations.size() == 0 ); // A mesh's stationlist must not have already been set
+
+  using th_safe_multicontainer_type = std::vector< std::shared_ptr<station> >[];
+  std::unique_ptr< th_safe_multicontainer_type > th_local_stations;
+  std::vector< std::shared_ptr<station> > mpi_local_stations;
+
+  LOG_DEBUG << "Populating each MPI process's station list";
+
+#pragma omp parallel
+  {
+    // We want an array of vectors, so that OMP threads can increment them
+    // separately, then join them afterwards
+#pragma omp single
+    {
+      th_local_stations = std::make_unique< th_safe_multicontainer_type >(omp_get_num_threads());
+    }
+#pragma omp for
+    for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
+      {
+	// face_index is a local index... get the face handle
+	auto face = _local_faces.at(face_index);
+	if ( face->_stations.size() == 0 ){ // only perform if faces' stationlists are set
+	  BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Face station lists must be populated before populating distributed MPI station lists."));
+	}
+	for (auto &p : face->_stations)
+	  {
+	    th_local_stations[omp_get_thread_num()].push_back(p);
+	  }
+      }
+    // Join the vectors via a single thread in t operations
+    //  NOTE future optimizations:
+    //   - reserve space for insertions into mpi_local_stations
+    //   - can be done recursively in log2(num_threads) operations
+#pragma omp single
+    {
+      for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx)
+	{
+	  mpi_local_stations.insert(std::end(mpi_local_stations),
+				    std::begin(th_local_stations[thread_idx]), std::end(th_local_stations[thread_idx]));
+	}
+    }
+
+  }
+
+  // Remove duplicates by converting to a set
+  std::unordered_set< std::shared_ptr<station> > tmp_set(std::begin(mpi_local_stations), std::end(mpi_local_stations));
+
+  // Store the local stations in the triangulations mpi-local stationslist vector
+  _stations.insert( std::end(_stations), std::begin(tmp_set), std::end(tmp_set));
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _stations.size() << " locally owned stations.";
+
+}
+
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
 {
     return _vertexes.at(i);

@@ -644,6 +644,11 @@ public:
    */
     void populate_face_station_lists();
 
+  /**
+   * Populates a list of stations needed on each MPI process
+   */
+    void populate_distributed_station_lists();
+
 	/**
 	 * Serializes a mesh attribute to file so it can be read into the model.
 	 * \param output_path Full qualified path to a file to output to.
@@ -876,6 +881,7 @@ private:
     std::vector< mesh_elem > _ghost_neighbours;
     std::vector< mesh_elem > _ghost_faces;
 
+  std::vector< std::shared_ptr<station> > _stations;
 
 #ifdef NOMATLAB
     //ptr to the matlab engine

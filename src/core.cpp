@@ -1390,6 +1390,9 @@ void core::init(int argc, char **argv)
 
     // INSERT STATION TRIMMING HERE (after options for interpolation stuff has occurred)
     _mesh->populate_face_station_lists();
+    _mesh->populate_distributed_station_lists();
+
+
     //if we run under a shitty terminal that doesn't support ncurses, or GDB
     //we do have to turn this off and fall back to just showing cout
     if(_enable_ui)
