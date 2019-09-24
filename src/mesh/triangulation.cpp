@@ -884,6 +884,23 @@ void triangulation::shrink_local_mesh_to_owned_and_distance_neighbours()
 
 }
 
+void triangulation::populate_face_station_lists()
+{
+
+  LOG_DEBUG << "Populating each face's station list";
+
+  for (auto& f : _faces)
+    {
+      if ( f->_stations.size() == 0 ){
+	auto stations = _global->get_stations(f->get_x(), f->get_y());
+	f->_stations.insert(std::end(f->_stations), std::begin(stations), std::end(stations));
+      }  else {
+	BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Face station list already populated."));
+      }
+    }
+
+}
+
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
 {
     return _vertexes.at(i);

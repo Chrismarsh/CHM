@@ -546,6 +546,8 @@ private:
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
 
+    std::vector<std::shared_ptr<station>> _stations;
+
 };
 
 typedef face<Gt> Fb; //custom face class
@@ -636,6 +638,11 @@ public:
     * Shrink the local mesh to only contain owned entries and relevant ghost entries
     */
   void shrink_local_mesh_to_owned_and_distance_neighbours();
+
+  /**
+   * Populates a list of stations needed within each face
+   */
+    void populate_face_station_lists();
 
 	/**
 	 * Serializes a mesh attribute to file so it can be read into the model.
