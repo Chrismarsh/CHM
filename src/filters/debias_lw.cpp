@@ -35,14 +35,14 @@ debias_lw::~debias_lw()
 
 }
 
-void debias_lw::init(boost::shared_ptr<station>& station)
+void debias_lw::init(std::shared_ptr<station>& station)
 {
     //look at the config data to determine what we are modifying
     var = cfg.get<std::string>("variable");
     fac = cfg.get<double>("factor");    // LW correction in W/m2
 
 }
-void debias_lw::process(boost::shared_ptr<station>& station)
+void debias_lw::process(std::shared_ptr<station>& station)
 {
     double data = station->now().get(var);
     if(!is_nan(data))

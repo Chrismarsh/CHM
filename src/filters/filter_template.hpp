@@ -47,6 +47,6 @@ private:
 public:
     filter_template(config_file cfg);
     ~filter_template();
-    void init(boost::shared_ptr<station>& station);
-    void process(boost::shared_ptr<station>& station);
+    void init(std::shared_ptr<station>& station);
+    void process(std::shared_ptr<station>& station);
 };

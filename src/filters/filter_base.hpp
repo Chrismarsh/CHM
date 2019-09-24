@@ -43,8 +43,8 @@ public:
       : cfg(input_cfg),ID(name) {};
     virtual ~filter_base(){};
 
-    virtual void init(boost::shared_ptr<station>& station){};
-    virtual void process(boost::shared_ptr<station>& station){};
+    virtual void init(std::shared_ptr<station>& station){};
+    virtual void process(std::shared_ptr<station>& station){};
 
     bool is_nan(double variable)
     {

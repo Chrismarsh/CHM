@@ -49,6 +49,6 @@ private:
 public:
     macdonald_undercatch(config_file cfg);
     ~macdonald_undercatch();
-    void init(boost::shared_ptr<station>& station);
-    void process(boost::shared_ptr<station>& station);
+    void init(std::shared_ptr<station>& station);
+    void process(std::shared_ptr<station>& station);
 };

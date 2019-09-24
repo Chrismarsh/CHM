@@ -35,11 +35,11 @@ filter_template::~filter_template()
 
 }
 
-void filter_template::init(boost::shared_ptr<station>& station)
+void filter_template::init(std::shared_ptr<station>& station)
 {
 
 }
-void filter_template::process(boost::shared_ptr<station>& station)
+void filter_template::process(std::shared_ptr<station>& station)
 {
 
 }

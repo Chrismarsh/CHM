@@ -390,7 +390,7 @@ void core::config_forcing(pt::ptree &value)
 
 
     _global->_stations.resize(nstations);
-    tbb::concurrent_vector<  boost::shared_ptr<station> > pstations;
+    tbb::concurrent_vector<  std::shared_ptr<station> > pstations;
     pstations.resize(nstations);
 
     OGRSpatialReference insrs;
@@ -481,7 +481,7 @@ void core::config_forcing(pt::ptree &value)
                     double elevation = z;
 
                     //this ctor will init an empty timeseries for us
-                    boost::shared_ptr<station> s = boost::make_shared<station>(station_name, longitude, latitude,
+                    std::shared_ptr<station> s = std::make_shared<station>(station_name, longitude, latitude,
                                                                                elevation);
                     s->raw_timeseries()->init(variables, date_vec);
                     s->reset_itrs();
@@ -534,7 +534,7 @@ void core::config_forcing(pt::ptree &value)
 
             std::string station_name = itr.first;//.data(); n
 
-            boost::shared_ptr<station> s = boost::make_shared<station>();
+            std::shared_ptr<station> s = std::make_shared<station>();
 
             s->ID(station_name);
 
@@ -1453,7 +1453,7 @@ void core::init(int argc, char **argv)
 
         //remove everything but the one forcing
         _global->_stations.erase(std::remove_if(_global->_stations.begin(),_global->_stations.end(),
-                       [this](boost::shared_ptr<station> s){return s->ID() != point_mode.forcing;}),
+                       [this](std::shared_ptr<station> s){return s->ID() != point_mode.forcing;}),
                                 _global->_stations.end());
 
         _outputs.erase(std::remove_if(_outputs.begin(),_outputs.end(),
