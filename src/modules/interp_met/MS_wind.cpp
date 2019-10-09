@@ -59,7 +59,7 @@ void MS_wind::init(mesh& domain)
         auto face = domain->face(i);
 
 		 auto d = face->make_module_data<data>(ID);
-		 d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+		 d->interp.init(global_param->interp_algorithm,face->stations().size() );
 		 d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
 
     }
@@ -79,7 +79,7 @@ void MS_wind::run(mesh& domain)
             auto face = domain->face(i);
 		     std::vector<boost::tuple<double, double, double> > u;
 		     std::vector<boost::tuple<double, double, double> > v;
-		     for (auto &s : global_param->get_stations(face->get_x(), face->get_y()))
+		     for (auto &s : face->stations())
 		     {
 		       if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
 			 continue;
@@ -215,7 +215,7 @@ void MS_wind::run(mesh& domain)
 
 		     std::vector<boost::tuple<double, double, double> > u;
 		     std::vector<boost::tuple<double, double, double> > v;
-		     for (auto &s : global_param->get_stations(face->get_x(), face->get_y()))
+		     for (auto &s : face->stations())
 		     {
 		       if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
 			 continue;
@@ -390,7 +390,7 @@ void MS_wind::run(mesh& domain)
 //
 //        std::vector<boost::tuple<double, double, double> > u;
 //        std::vector<boost::tuple<double, double, double> > v;
-//        for (auto &s : global_param->get_stations(face->get_x(), face->get_y()))
+//        for (auto &s : face->stations())
 //        {
 //            if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
 //                continue;

@@ -51,7 +51,7 @@ void Kunkel_monthlyTd_rh::init(mesh& domain)
 
 	       auto face = domain->face(i);
 	       auto d = face->make_module_data<data>(ID);
-	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
 
     }
 
@@ -83,7 +83,7 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& face)
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
-    for (auto& s : global_param->get_stations( face->get_x(), face->get_y()))
+    for (auto& s : face->stations())
     {
         if( is_nan(s->get("t")) || is_nan(s->get("rh")))
             continue;

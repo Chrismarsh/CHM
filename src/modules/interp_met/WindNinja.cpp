@@ -34,7 +34,7 @@ WindNinja::WindNinja(config_file cfg)
     provides("U_R");
     provides("Ninja_speed");
     provides("Ninja_speed_nodown");
-    
+
     provides("vw_dir");
     provides("Ninja_u");
     provides("Ninja_v");
@@ -78,7 +78,7 @@ void WindNinja::init(mesh& domain)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+        d->interp.init(global_param->interp_algorithm,face->stations().size() );
         d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
     }
 
@@ -104,7 +104,7 @@ void WindNinja::run(mesh& domain)
 
             std::vector<boost::tuple<double, double, double> > u;
             std::vector<boost::tuple<double, double, double> > v;
-            for (auto &s : global_param->get_stations(face->get_x(), face->get_y()))
+            for (auto &s : face->stations())
             {
                 if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
                     continue;
@@ -158,7 +158,7 @@ void WindNinja::run(mesh& domain)
             double U = 0.;
             double V = 0.;
             double W_transf = 0.;
-            
+
 
             if(!ninja_average)  // No Linear interpolation between the closest 2 wind fields from the library
             {
@@ -175,9 +175,9 @@ void WindNinja::run(mesh& domain)
 
            }else // Linear interpolation between the closest 2 wind fields from the library
            {
- 
+
                 // Use this wind dir to figure out which wind fields from the library we need
-                // Wind fields are available each 15 deg.        
+                // Wind fields are available each 15 deg.
                 int d1 = int(theta * 180.0 / M_PI / delta_angle);
                 double theta1 = d1 * delta_angle * M_PI / 180.0;
                 if (d1 == 0) d1 = N_windfield;
@@ -206,7 +206,7 @@ void WindNinja::run(mesh& domain)
 
             if(fabs(W_transf)> transf_max )
                      transf_max  = fabs(W_transf);
-         
+
             // NEW wind direction from the wind field library
             theta = math::gis::zonal2dir(U, V);
 

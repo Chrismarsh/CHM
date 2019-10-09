@@ -925,10 +925,10 @@ void triangulation::populate_distributed_station_lists()
       {
 	// face_index is a local index... get the face handle
 	auto face = _local_faces.at(face_index);
-	if ( face->_stations.size() == 0 ){ // only perform if faces' stationlists are set
+	if ( face->stations().size() == 0 ){ // only perform if faces' stationlists are set
 	  BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Face station lists must be populated before populating distributed MPI station lists."));
 	}
-	for (auto &p : face->_stations)
+	for (auto &p : face->stations())
 	  {
 	    th_local_stations[omp_get_thread_num()].push_back(p);
 	  }

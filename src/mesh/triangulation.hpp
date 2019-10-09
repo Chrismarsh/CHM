@@ -281,6 +281,14 @@ public:
      */
     Vector_2 edge_unit_normal(int i);
 
+
+    /**
+    * Returns the face's vector of stations
+    */
+  std::vector<std::shared_ptr<station>> stations()  {
+    return _stations;
+  }
+
     /**
     * Checks if a point x,y is within the face
     * \return true if this face contains the point x,y
@@ -406,7 +414,7 @@ public:
     double get_z();
 
     /**
-     * Returns the sub-triangle z coordinates of the Point 2 
+     * Returns the sub-triangle z coordinates of the Point 2
      * @return  elevation
      */
     double get_subgrid_z(Point_2 query);
@@ -1768,7 +1776,7 @@ double face<Gt, Fb>::get_subgrid_z(Point_2 query)
             double d =a*x1 + b*y1 + c*z1;
 
             double z = -(a*query.x()+b*query.y()-d)/c;
-           
+
             return z;
 
 

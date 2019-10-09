@@ -48,7 +48,7 @@ void Thornton_p::init(mesh& domain)
 
 	       auto face = domain->face(i);
 	       auto d = face->make_module_data<data>(ID);
-	       d->interp.init(global_param->interp_algorithm,global_param->get_stations( face->get_x(), face->get_y()).size());
+	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
 
     }
 
@@ -63,7 +63,7 @@ void Thornton_p::run(mesh_elem& face)
     }
     std::vector< boost::tuple<double, double, double> > ppt;
     std::vector< boost::tuple<double, double, double> > staion_z;
-    for (auto& s : global_param->get_stations( face->get_x(), face->get_y()))
+    for (auto& s : face->stations())
     {
         if( is_nan(s->get("p")))
             continue;
@@ -92,7 +92,7 @@ void Thornton_p::run(mesh_elem& face)
     {
         P_fin = Atmosphere::corr_precip_slope(P,slp);
     } else
-    { 
+    {
         P_fin = P;
     }
 
