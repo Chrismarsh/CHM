@@ -26,7 +26,20 @@
 //
 
 #include "sno.h"
+#include "func.hpp"
+#include "chm_satw_function.hpp"
+#include "chm_sati_function.hpp"
 using namespace snobalMacros;
+
+MyFunction_satw func_w;
+MyFunction_sati func_i;
+
+UniformLookupTableGenerator gen_w(&func_w, FREEZE - 50.0, FREEZE + 50.0);
+UniformLookupTableGenerator gen_i(&func_i, 90.0, FREEZE);
+std::string implName = "UniformLinearInterpolationTable";
+double tableTol = 1e-8;
+static std::unique_ptr<EvaluationImplementation> impl_w = gen_w.generate_by_tol(implName, tableTol);
+static std::unique_ptr<EvaluationImplementation> impl_i = gen_i.generate_by_tol(implName, tableTol);
 
 double sno::ssxfr(
         double k1,    /* layer 1's thermal conductivity (J / (m K sec))  */
@@ -45,8 +58,8 @@ double sno::ssxfr(
 
 double sno::satw(double tk)        /* air temperature (K)		*/
 {
-    double x;
-    double l10;
+    // double x;
+    // double l10;
 
     if (tk <= 0.)
     {
@@ -54,14 +67,14 @@ double sno::satw(double tk)        /* air temperature (K)		*/
     }
 
 //    errno = 0;
-    l10 = log(1.e1);
+    // l10 = log(1.e1);
 
-    x = -7.90298 * (BOIL / tk - 1.) + 5.02808 * log(BOIL / tk) / l10 -
-        1.3816e-7 * (pow(1.e1, 1.1344e1 * (1. - tk / BOIL)) - 1.) +
-        8.1328e-3 * (pow(1.e1, -3.49149 * (BOIL / tk - 1.)) - 1.) +
-        log(SEA_LEVEL) / l10;
+    // x = -7.90298 * (BOIL / tk - 1.) + 5.02808 * log(BOIL / tk) / l10 -
+    //     1.3816e-7 * (pow(1.e1, 1.1344e1 * (1. - tk / BOIL)) - 1.) +
+    //     8.1328e-3 * (pow(1.e1, -3.49149 * (BOIL / tk - 1.)) - 1.) +
+    //     log(SEA_LEVEL) / l10;
 
-    x = pow(1.e1, x);
+    // x = pow(1.e1, x);
 
 //    if (errno)
 //    {
@@ -69,12 +82,13 @@ double sno::satw(double tk)        /* air temperature (K)		*/
 ////                error("satw: bad return from log or pow");
 //    }
 
-    return (x);
+    // return (x);
+    return ((*impl_w)(tk));
 }
 
 double sno::sati(double tk)        /* air temperature (K)	*/
 {
-    double l10;
+    // double l10;
     double x;
 
     if (tk <= 0.)
@@ -89,13 +103,18 @@ double sno::sati(double tk)        /* air temperature (K)	*/
     }
 
 //    errno = 0;
-    l10 = log(1.e1);
+    // l10 = log(1.e1);
 
-    x = pow(1.e1, -9.09718 * ((FREEZE / tk) - 1.) - 3.56654 * log(FREEZE / tk) / l10 +
-                  8.76793e-1 * (1. - (tk / FREEZE)) + log(6.1071) / l10);
+    // x = pow(1.e1, -9.09718 * ((FREEZE / tk) - 1.) - 3.56654 * log(FREEZE / tk) / l10 +
+    //               8.76793e-1 * (1. - (tk / FREEZE)) + log(6.1071) / l10);
 
-
-    return (x * 1.e2);
+    // return (x * 1.e2);
+    if (tk < 90.0)
+    {   
+        return 0.0;
+    }
+    
+    return ((*impl_i)(tk));
 }
 
 double sno::new_tsno(
