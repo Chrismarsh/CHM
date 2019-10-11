@@ -64,7 +64,7 @@ class global
     };
 
     typedef CGAL::Simple_cartesian<double> Kernel;
-    typedef boost::tuple<Kernel::Point_2, boost::shared_ptr<station> >  Point_and_station;
+    typedef boost::tuple<Kernel::Point_2, std::shared_ptr<station> >  Point_and_station;
     typedef CGAL::Search_traits_2<Kernel> Traits_base;
     typedef CGAL::Search_traits_adapter<Point_and_station,
             CGAL::Nth_of_tuple_property_map<0, Point_and_station>,
@@ -92,7 +92,7 @@ private:
     boost::posix_time::ptime _current_date;
     Tree _dD_tree; //spatial query tree
     //each station where observations are
-    std::vector< boost::shared_ptr<station> > _stations;
+    std::vector< std::shared_ptr<station> > _stations;
     int _dt; //seconds
     bool _is_geographic;
 
@@ -106,7 +106,7 @@ private:
 
 public:
 
-    boost::function< std::vector< boost::shared_ptr<station> > ( double, double) > get_stations;
+    boost::function< std::vector< std::shared_ptr<station> > ( double, double) > get_stations;
 
     bool is_point_mode();
 
@@ -137,13 +137,13 @@ public:
      * Inserts a new station
      * @param s
      */
-    void insert_station(boost::shared_ptr<station> s);
+    void insert_station(std::shared_ptr<station> s);
 
     /**
  * Inserts new stations for a vector of stations
  * @param s
  */
-    void insert_stations(tbb::concurrent_vector< boost::shared_ptr<station> >& stations);
+    void insert_stations(tbb::concurrent_vector< std::shared_ptr<station> >& stations);
 
     /**
      * Returns a set of stations within the search radius (meters) centered on the point x,y
@@ -152,7 +152,7 @@ public:
      * @param radius
      * @return List stations that satisfy search criterion
      */
-    std::vector< boost::shared_ptr<station> > get_stations_in_radius(double x, double y,double radius);
+    std::vector< std::shared_ptr<station> > get_stations_in_radius(double x, double y,double radius);
 
     /**
      * Returns the nearest station to x,y. Ignores elevation
@@ -161,10 +161,10 @@ public:
      * @param N Number neighbours to find
      * @return
      */
-    std::vector< boost::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
+    std::vector< std::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
 
 
-    std::vector< boost::shared_ptr<station> >& stations();
+    std::vector< std::shared_ptr<station> >& stations();
 //    template<class T>
 //    T get_parameter_value(std::string key);
 

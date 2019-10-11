@@ -37,12 +37,12 @@ goodison_undercatch::~goodison_undercatch()
 {
 
 }
-void goodison_undercatch::init(boost::shared_ptr<station>& station)
+void goodison_undercatch::init(std::shared_ptr<station>& station)
 {
     //look at the config data to determine what we are modifying
     var = cfg.get<std::string>("variable");
 }
-void goodison_undercatch::process(boost::shared_ptr<station>& station)
+void goodison_undercatch::process(std::shared_ptr<station>& station)
 {
 
     double data = station->now().get(var);

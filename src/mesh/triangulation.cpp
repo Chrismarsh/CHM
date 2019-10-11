@@ -304,7 +304,7 @@ void triangulation::from_json(pt::ptree &mesh)
         auto face = this->create_face(vert1,vert2,vert3);
         face->cell_global_id = cid++;
         face->cell_local_id = face->cell_global_id;
-        
+
         if( is_geographic == 1)
         {
             face->_is_geographic = true;
@@ -502,23 +502,30 @@ void triangulation::from_json(pt::ptree &mesh)
     partition_mesh();
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
+    size_t total_num_faces = _faces.size();
     determine_local_boundary_faces();
+    determine_process_ghost_faces_nearest_neighbours();
 
     // should make this parallel
-    for(size_t ii=0; ii < _num_faces; ++ii)
+    for(size_t ii=0; ii < total_num_faces; ++ii)
     {
-        auto face = _local_faces.at(ii);
+        auto face = _faces.at(ii);
         Point_2 pt2(face->center().x(),face->center().y());
         center_points.push_back(pt2);
 
     }
     //make the search tree
-    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_local_faces.begin() )),
-                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _local_faces.end() ) )
-    );
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
+				       );
 
 #endif // USE_MPI
 
+    // determining ghost faces requires the dD_tree to be set up
+    determine_process_ghost_faces_by_distance(100.);
+
+    // shrink the local mesh
+    shrink_local_mesh_to_owned_and_distance_neighbours();
 
   std::vector<double> temp_slope(_num_faces);
 
@@ -559,6 +566,9 @@ void triangulation::from_json(pt::ptree &mesh)
     f->normal();
   }
 
+    // TODO need to re-setup dD_tree to only consider the _faces after shrinking
+    // -  Note this likely allows us to remove the the ifndef USE_MPI from earlier in this routine,
+    //    as we have to do a global pass and a local pass anyway
 
 }
 
@@ -664,62 +674,288 @@ void triangulation::determine_local_boundary_faces()
     - Store handles to boundary faces on the locally owned process
     - Also store boolean value "is_global_boundary"
   */
+
+  using th_safe_multicontainer_type = std::vector< std::pair<mesh_elem,bool> >[];
+
 #ifdef USE_MPI
   // Need to ensure we're starting from nothing?
   assert( _boundary_faces.size() == 0 );
 
-  // We want an array of vectors, so that OMP threads can increment them
-  // separately, then join them afterwards
-  std::unique_ptr< std::vector< std::pair<mesh_elem,bool> >[] > th_local_boundary_faces(new std::vector< std::pair<mesh_elem,bool> >[omp_get_num_threads()]);
+  LOG_DEBUG << "Determining local boundary faces";
 
-// This is not thread safe. why?
-//#pragma omp parallel for
-  for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
+  std::unique_ptr< th_safe_multicontainer_type > th_local_boundary_faces;
+
+#pragma omp parallel
   {
-
-    // face_index is a local index... get the face handle
-    auto face = _local_faces.at(face_index);
-
-    int num_owned_neighbours = 0;
-    for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
+    // We want an array of vectors, so that OMP threads can increment them
+    // separately, then join them afterwards
+#pragma omp single
     {
-
-      auto neigh = face->neighbor(neigh_index);
-
-      // Test status of neighbour
-      if (neigh == nullptr)
+      th_local_boundary_faces = std::make_unique< th_safe_multicontainer_type >(omp_get_num_threads());
+    }
+#pragma omp for
+    for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
       {
-        th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
-        num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
-        break;
-      } else
-      {
-        if (neigh->_is_ghost == false)
-        {
-            num_owned_neighbours++;
-        }
+		 // face_index is a local index... get the face handle
+		 auto face = _local_faces.at(face_index);
+
+		 int num_owned_neighbours = 0;
+		 for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
+		   {
+
+		     auto neigh = face->neighbor(neigh_index);
+
+		     // Test status of neighbour
+		     if (neigh == nullptr)
+		       {
+			 th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+			 num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
+			 break;
+		       } else
+		       {
+			 if (neigh->_is_ghost == false)
+			   {
+			     num_owned_neighbours++;
+			   }
+		       }
+		   }
+
+		 // If we don't own 3 neighbours, we are a local, but not a global boundary face
+		 if( num_owned_neighbours<3 ) {
+		   th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
+		 }
+      }
+    // Join the vectors via a single thread in t operations
+    //  NOTE future optimizations:
+    //   - reserve space for insertions into _boundary_faces
+    //   - can be done recursively in log2(t) operations
+#pragma omp single
+    {
+      for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx) {
+	_boundary_faces.insert(_boundary_faces.end(),
+			       th_local_boundary_faces[thread_idx].begin(), th_local_boundary_faces[thread_idx].end());
       }
     }
-
-    // If we don't own 3 neighbours, we are a local, but not a global boundary face
-    if( num_owned_neighbours<3 ) {
-      th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
-    }
-
-  }
-
-  // Join the vectors via a single thread in t operations
-  //  NOTE future optimizations:
-  //   - reserve space for insertions into _boundary_faces
-  //   - can be done recursively in log2(t) operations
-  for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx) {
-    _boundary_faces.insert(_boundary_faces.end(),
-			   th_local_boundary_faces[thread_idx].begin(), th_local_boundary_faces[thread_idx].end());
   }
 
   // Some log debug output to see how many boundary faces on each
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
+
 #endif
+}
+
+void triangulation::determine_process_ghost_faces_nearest_neighbours()
+{
+  // NOTE that this algorithm is not implemented for multithread
+  // - multithread can be implemented similarly to determine_local_boundary_faces
+  //   - not a priority since number of boundary faces should be small
+
+  // Ensure that the local boundary faces have been determined, but ghost nearest neighbours have not been set
+  assert( _boundary_faces.size() != 0 );
+  assert( _ghost_neighbours.size() == 0 );
+
+  LOG_DEBUG << "Determining ghost region info";
+
+  // Vector for append speed
+  std::vector< mesh_elem > ghosted_boundary_nearest_neighbours;
+
+  for(size_t face_index=0; face_index< _boundary_faces.size(); ++face_index)
+  {
+    // face_index is a local index... get the face handle
+    auto face = _boundary_faces.at(face_index).first;
+    // append the ghosted nearest neighbours
+    for(int i = 0; i < 3; ++i)
+    {
+        auto neigh = face->neighbor(i);
+        if(neigh != nullptr && neigh->_is_ghost)
+            ghosted_boundary_nearest_neighbours.push_back(neigh);
+    }
+  }
+
+  // Convert to a set to remove duplicates
+  std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_nearest_neighbours),
+					std::end(ghosted_boundary_nearest_neighbours));
+  // Convert the set to a vector
+  _ghost_neighbours.insert(std::end(_ghost_faces),
+			   std::begin(tmp_set),std::end(tmp_set));
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbours.size() << " ghosted nearest neighbours.";
+
+}
+
+void dfs_to_max_distance_aux(mesh_elem starting_face, double max_distance, mesh_elem face, std::unordered_set<mesh_elem> &visited)
+{
+  // DFS auxiliary function, does all of the work constructing the set of faces
+
+  // if we're outside of the distance or already visited, we're done
+  bool is_not_within_distance = (math::gis::distance(starting_face->center(),face->center()) > max_distance);
+  bool is_visited             = (visited.find(face) != visited.end());
+  if(  is_not_within_distance || is_visited  )
+  {
+    return;
+  }
+
+  // otherwise, visit face, and move on to neighbours
+  visited.insert(face);
+  for(int i = 0; i < 3; ++i)
+  {
+      auto neigh = face->neighbor(i);
+      if(neigh != nullptr)
+      {
+	dfs_to_max_distance_aux(starting_face, max_distance, neigh, visited);
+      }
+  }
+}
+
+std::vector<mesh_elem> dfs_to_max_distance(mesh_elem starting_face, double max_distance)
+{
+  // Depth first search out to a maximum distance
+  // - unknown number of graph elements
+
+  // if a mesh_elem appears in this set, it has been visited
+  std::unordered_set<mesh_elem> visited;
+  dfs_to_max_distance_aux(starting_face, max_distance, starting_face, visited);
+  // Convert to vector
+  std::vector<mesh_elem> visited_vec(std::begin(visited), std::end(visited));
+  return visited_vec;
+}
+
+void triangulation::determine_process_ghost_faces_by_distance(double max_distance)
+{
+  // NOTE that this algorithm is not implemented for multithread
+  // - multithread can be implemented similarly to determine_local_boundary_faces
+  //   - not a priority since number of boundary faces should be small
+
+  // Ensure that the local boundary faces have been determined, but ghost neighbours have not been set
+  assert( _boundary_faces.size() != 0 );
+  assert( _ghost_faces.size() == 0 );
+
+  // Vector for append speed
+  std::vector< mesh_elem > ghosted_boundary_neighbours;
+
+  for(size_t face_index=0; face_index< _boundary_faces.size(); ++face_index)
+  {
+    // face_index is a local index... get the face handle
+    auto face = _boundary_faces.at(face_index).first;
+    // separate the ghosted and non-ghosted neighbours
+    // std::vector<mesh_elem> current_neighbours = find_faces_in_radius(face->center().x(),face->center().y(), max_distance);
+    std::vector<mesh_elem> current_neighbours = dfs_to_max_distance(face, max_distance);
+    auto pivot = std::partition(std::begin(current_neighbours),std::end(current_neighbours),
+    				[] (mesh_elem neigh) {
+    				  return neigh->_is_ghost == true;
+    				});
+    current_neighbours.erase(pivot,std::end(current_neighbours));
+
+    ghosted_boundary_neighbours.insert(std::end(ghosted_boundary_neighbours),
+    				       current_neighbours.begin(),current_neighbours.end());
+  }
+
+  // Convert to a set to remove duplicates
+  std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_neighbours),
+  					std::end(ghosted_boundary_neighbours));
+  // Convert the set to a vector
+  _ghost_faces.insert(std::end(_ghost_faces),
+  			   std::begin(tmp_set),std::end(tmp_set));
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_faces.size() << " ghosted faces.";
+
+}
+
+void triangulation::shrink_local_mesh_to_owned_and_distance_neighbours()
+{
+  // Reset _faces to contain ONLY _local_faces and _ghost_faces.
+
+  LOG_DEBUG << "Shrinking local meshes";
+
+  // Ensure that the localized face containers have been set
+  assert( _local_faces.size() != 0 );
+  assert( _ghost_faces.size() != 0 );
+
+  // remove everything from _faces and force reallocation
+  _faces.clear();
+  std::vector<mesh_elem>().swap(_faces);
+
+  // Put all local and ghost faces into the _faces vector
+  _faces.reserve( _local_faces.size() + _ghost_faces.size() );
+  _faces.insert( _faces.end(), _local_faces.begin(), _local_faces.end() );
+  _faces.insert( _faces.end(), _ghost_faces.begin(), _ghost_faces.end() );
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _faces.size() << " faces after shrinking";
+
+}
+
+void triangulation::populate_face_station_lists()
+{
+
+  LOG_DEBUG << "Populating each face's station list";
+
+  for (auto& f : _faces)
+    {
+      if ( f->_stations.size() == 0 ){
+	auto stations = _global->get_stations(f->get_x(), f->get_y());
+	f->_stations.insert(std::end(f->_stations), std::begin(stations), std::end(stations));
+      }  else {
+	BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Face station list already populated."));
+      }
+    }
+
+}
+
+void triangulation::populate_distributed_station_lists()
+{
+
+  assert( _stations.size() == 0 ); // A mesh's stationlist must not have already been set
+
+  using th_safe_multicontainer_type = std::vector< std::shared_ptr<station> >[];
+  std::unique_ptr< th_safe_multicontainer_type > th_local_stations;
+  std::vector< std::shared_ptr<station> > mpi_local_stations;
+
+  LOG_DEBUG << "Populating each MPI process's station list";
+
+#pragma omp parallel
+  {
+    // We want an array of vectors, so that OMP threads can increment them
+    // separately, then join them afterwards
+#pragma omp single
+    {
+      th_local_stations = std::make_unique< th_safe_multicontainer_type >(omp_get_num_threads());
+    }
+#pragma omp for
+    for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
+      {
+	// face_index is a local index... get the face handle
+	auto face = _local_faces.at(face_index);
+	if ( face->stations().size() == 0 ){ // only perform if faces' stationlists are set
+	  BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Face station lists must be populated before populating distributed MPI station lists."));
+	}
+	for (auto &p : face->stations())
+	  {
+	    th_local_stations[omp_get_thread_num()].push_back(p);
+	  }
+      }
+    // Join the vectors via a single thread in t operations
+    //  NOTE future optimizations:
+    //   - reserve space for insertions into mpi_local_stations
+    //   - can be done recursively in log2(num_threads) operations
+#pragma omp single
+    {
+      for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx)
+	{
+	  mpi_local_stations.insert(std::end(mpi_local_stations),
+				    std::begin(th_local_stations[thread_idx]), std::end(th_local_stations[thread_idx]));
+	}
+    }
+
+  }
+
+  // Remove duplicates by converting to a set
+  std::unordered_set< std::shared_ptr<station> > tmp_set(std::begin(mpi_local_stations), std::end(mpi_local_stations));
+
+  // Store the local stations in the triangulations mpi-local stationslist vector
+  _stations.insert( std::end(_stations), std::begin(tmp_set), std::end(tmp_set));
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _stations.size() << " locally owned stations.";
+
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)

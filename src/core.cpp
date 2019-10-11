@@ -390,7 +390,7 @@ void core::config_forcing(pt::ptree &value)
 
 
     _global->_stations.resize(nstations);
-    tbb::concurrent_vector<  boost::shared_ptr<station> > pstations;
+    tbb::concurrent_vector<  std::shared_ptr<station> > pstations;
     pstations.resize(nstations);
 
     OGRSpatialReference insrs;
@@ -481,7 +481,7 @@ void core::config_forcing(pt::ptree &value)
                     double elevation = z;
 
                     //this ctor will init an empty timeseries for us
-                    boost::shared_ptr<station> s = boost::make_shared<station>(station_name, longitude, latitude,
+                    std::shared_ptr<station> s = std::make_shared<station>(station_name, longitude, latitude,
                                                                                elevation);
                     s->raw_timeseries()->init(variables, date_vec);
                     s->reset_itrs();
@@ -534,7 +534,7 @@ void core::config_forcing(pt::ptree &value)
 
             std::string station_name = itr.first;//.data(); n
 
-            boost::shared_ptr<station> s = boost::make_shared<station>();
+            std::shared_ptr<station> s = std::make_shared<station>();
 
             s->ID(station_name);
 
@@ -1388,6 +1388,11 @@ void core::init(int argc, char **argv)
     }
 
 
+    // INSERT STATION TRIMMING HERE (after options for interpolation stuff has occurred)
+    _mesh->populate_face_station_lists();
+    _mesh->populate_distributed_station_lists();
+
+
     //if we run under a shitty terminal that doesn't support ncurses, or GDB
     //we do have to turn this off and fall back to just showing cout
     if(_enable_ui)
@@ -1453,7 +1458,7 @@ void core::init(int argc, char **argv)
 
         //remove everything but the one forcing
         _global->_stations.erase(std::remove_if(_global->_stations.begin(),_global->_stations.end(),
-                       [this](boost::shared_ptr<station> s){return s->ID() != point_mode.forcing;}),
+                       [this](std::shared_ptr<station> s){return s->ID() != point_mode.forcing;}),
                                 _global->_stations.end());
 
         _outputs.erase(std::remove_if(_outputs.begin(),_outputs.end(),
@@ -1762,27 +1767,35 @@ void core::_determine_module_dep()
 
     bool overwrite_found = false;
     //make sure modules cannot override another module's output
-    for (auto &m1 : _modules)
+    for (auto &m1_pair : _modules)
     {
-        for (auto &m2 : _modules)
+      auto m1 = m1_pair.first;
+      // Get vector of module m1's variable names
+      auto m1_provides_var_names = m1->get_variable_names_from_collection(*(m1->provides()));;
+
+        for (auto &m2_pair : _modules)
         {
-            if(m1.first->ID == m2.first->ID )
+	  auto m2 = m2_pair.first;
+            if(m1->ID == m2->ID )
                 continue;
 
-           if( std::find(m1.first->conflicts()->begin(),
-                   m1.first->conflicts()->end(),
-                   m2.first->ID) != m1.first->conflicts()->end())
+      // Get vector of current module's variable names
+      auto m2_provides_var_names = m2->get_variable_names_from_collection(*(m2->provides()));;;
+
+           if( std::find(m1->conflicts()->begin(),
+                   m1->conflicts()->end(),
+                   m2->ID) != m1->conflicts()->end())
            {
-               BOOST_THROW_EXCEPTION(module_error() << errstr_info("Module " + m1.first->ID + " explicitly conflicts with " + m2.first->ID));
+               BOOST_THROW_EXCEPTION(module_error() << errstr_info("Module " + m1->ID + " explicitly conflicts with " + m2->ID));
            }
 
 
-            auto itr = std::find_first_of (m1.first->provides()->begin(), m1.first->provides()->end(),
-                                           m2.first->provides()->begin(), m2.first->provides()->end());
-            if( itr != m1.first->provides()->end() )
+            auto itr = std::find_first_of (m1_provides_var_names.begin(), m1_provides_var_names.end(),
+                                           m2_provides_var_names.begin(), m2_provides_var_names.end());
+            if( itr != m1_provides_var_names.end() )
             {
                 overwrite_found=true;
-                LOG_ERROR << "Module " << m1.first->ID << " and " << m2.first->ID << " both provide variable " << *itr;
+                LOG_ERROR << "Module " << m1->ID << " and " << m2->ID << " both provide variable " << *itr;
             }
         }
     }
@@ -1798,55 +1811,65 @@ void core::_determine_module_dep()
     }
 
     //loop through each module
-    for (auto &module : _modules)
+    for (auto &module_pair : _modules)
     {
+      auto module = module_pair.first;
+
+      // Get vector of current module's variable names
+      auto mod_provides_var_names = module->get_variable_names_from_collection(*(module->provides()));
+
         //Generate a  list of all variables,, provided from this module, and append to the total list, culling duplicates between modules.
-        _provided_var_module.insert(module.first->provides()->begin(), module.first->provides()->end());
+        _provided_var_module.insert(mod_provides_var_names.begin(), mod_provides_var_names.end());
 
 //        vertex v;
 //        v.name = module.first->ID;
 //        boost::add_vertex(v,g);
-        g[module.first->IDnum].name = module.first->ID;
+        g[module->IDnum].name = module->ID;
 //        output_graph << module.first->IDnum << " [label=\"" << module.first->ID  << "\"];" << std::endl;
 
         //names.at(module.first->IDnum) =  module.first->ID;
 
         //check intermodule depends
-        if (module.first->depends()->size() == 0)  //check if this module requires dependencies
+        if (module->depends()->size() == 0)  //check if this module requires dependencies
         {
-            LOG_DEBUG << "Module [" << module.first->ID << "], no inter-module dependenices";
+            LOG_DEBUG << "Module [" << module->ID << "], no inter-module dependenices";
         } else
         {
-            LOG_DEBUG << "Module [" << module.first->ID << "] checking against...";
+            LOG_DEBUG << "Module [" << module->ID << "] checking against...";
         }
 
 
         //make a copy of the depends for this module. we will then count references to each dependency
         //this will allow us to know what is missing
         std::map<std::string, size_t> curr_mod_depends;
+	auto curr_mod_depends_var_names = module->get_variable_names_from_collection(*(module->depends()));
 
         //populate a list of all the dependencies
-        for (auto &itr : *(module.first->depends()))
+        for (auto &itr : curr_mod_depends_var_names)
         {
             curr_mod_depends[itr] = 0; //ref count init to 0
         }
 
         //iterate over all the modules,
-        for (auto &itr : _modules)
+        for (auto &itr_pair : _modules)
         {
+	  auto itr_module = itr_pair.first;
+
+	  // Get vector of current module's variable names
+	  auto itr_mod_provides_var_names = itr_module->get_variable_names_from_collection(*(itr_module->provides()));;
             //don't check against our module
-            if (module.first->ID.compare(itr.first->ID) != 0)
+            if (module->ID.compare(itr_module->ID) != 0)
             {
                 //loop through each required variable of our current module
-                for (auto &depend_var : *(module.first->depends()))
+                for (auto &depend_var : *(module->depends()))
                 {
-                    //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
+                    //LOG_DEBUG << "\t\t[" << itr_module->ID << "] looking for var=" << depend_var;
 
-                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), depend_var);
-                    if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
+                    auto i = std::find(itr_mod_provides_var_names.begin(), itr_mod_provides_var_names.end(), depend_var.name);
+                    if (i != itr_mod_provides_var_names.end()) //itr provides the variable we are looking for
                     {
-                        LOG_DEBUG << "\t\tAdding edge between " << module.first->ID << "[" << module.first->IDnum <<
-                                  "] -> " << itr.first->ID << "[" << itr.first->IDnum << "] for var=" << *i <<
+                        LOG_DEBUG << "\t\tAdding edge between " << module->ID << "[" << module->IDnum <<
+                                  "] -> " << itr_module->ID << "[" << itr_module->IDnum << "] for var=" << *i <<
                                   std::endl;
 
                         //add the dependency from module -> itr, such that itr will come before module
@@ -1858,8 +1881,8 @@ void core::_determine_module_dep()
                         bool ignore = false;
                         for (auto o : _overrides)
                         {
-                            if (o.first == module.first->ID &&
-                                o.second == itr.first->ID)
+                            if (o.first == module->ID &&
+                                o.second == itr_module->ID)
                             {
                                 ignore = true;
                                 LOG_WARNING << "Skipped adding edge between " << o.first << " and " << o.second <<
@@ -1868,11 +1891,11 @@ void core::_determine_module_dep()
                         }
 
                         if (!ignore)
-                            boost::add_edge(itr.first->IDnum, module.first->IDnum, e, g);
+                            boost::add_edge(itr_module->IDnum, module->IDnum, e, g);
 
                         //even if we ignore, inc our depencies so we don't fail later
 
-                        //output_graph << itr.first->IDnum << "->" << module.first->IDnum << " [label=\"" << *i << "\"];" << std::endl;
+                        //output_graph << itr_module->IDnum << "->" << module->IDnum << " [label=\"" << *i << "\"];" << std::endl;
                         curr_mod_depends[*i]++; //ref count our variable
 
                         //only link in the output if we aren't ignoring
@@ -1882,28 +1905,30 @@ void core::_determine_module_dep()
                 }
 
                 //loop through each required variable of our current module
-                for (auto &optional_var : *(module.first->optionals()))
+                for (auto &optional_var : *(module->optionals()))
                 {
-                    //LOG_DEBUG << "\t\t[" << itr.first->ID << "] looking for var=" << depend_var;
+                    //LOG_DEBUG << "\t\t[" << itr_module->ID << "] looking for var=" << depend_var;
 
-                    auto i = std::find(itr.first->provides()->begin(), itr.first->provides()->end(), optional_var);
-                    if (i != itr.first->provides()->end()) //itr provides the variable we are looking for
+		  auto itr_mod_provides_var_names = itr_module->get_variable_names_from_collection(*(itr_module->provides()));
+
+                    auto i = std::find(itr_mod_provides_var_names.begin(), itr_mod_provides_var_names.end(), optional_var);
+                    if (i != itr_mod_provides_var_names.end()) //itr provides the variable we are looking for
                     {
-                        LOG_DEBUG << "\t\tAdding optional edge between " << module.first->ID << "[" <<
-                                  module.first->IDnum << "] -> " << itr.first->ID << "[" << itr.first->IDnum <<
+                        LOG_DEBUG << "\t\tAdding optional edge between " << module->ID << "[" <<
+                                  module->IDnum << "] -> " << itr_module->ID << "[" << itr_module->IDnum <<
                                   "] for var=" << *i << std::endl;
 
                         //add the dependency from module -> itr, such that itr will come before module
                         edge e;
                         e.variable = *i;
 
-                        //check if we need to ignore this edge as a result of user specific overrdige
-                        //this will avoid a cycle is this exists.
+                        //check if we need to ignore this edge as a result of user specific override
+                        //this will avoid a cycle if this exists.
                         bool ignore = false;
                         for (auto o : _overrides)
                         {
-                            if (o.first == module.first->ID &&
-                                o.second == itr.first->ID)
+                            if (o.first == module->ID &&
+                                o.second == itr_module->ID)
                             {
                                 ignore = true;
                                 LOG_WARNING << "Skipped adding edge between " << o.first << " and " << o.second <<
@@ -1912,14 +1937,14 @@ void core::_determine_module_dep()
                         }
 
                         if (!ignore)
-                            boost::add_edge(itr.first->IDnum, module.first->IDnum, e, g);
+                            boost::add_edge(itr_module->IDnum, module->IDnum, e, g);
 
-                        //output_graph << itr.first->IDnum << "->" << module.first->IDnum << " [label=\"" << *i << "\"];" << std::endl;
+                        //output_graph << itr_module->IDnum << "->" << module->IDnum << " [label=\"" << *i << "\"];" << std::endl;
                         //curr_mod_depends[*i]++; //ref count our variable
 
                         graphviz_vars.insert(*i);
 
-                        module.first->set_optional_found(*i);
+                        module->set_optional_found(*i);
                     }
                 }
             }
@@ -1934,7 +1959,7 @@ void core::_determine_module_dep()
         {
             if (itr.second == 0)
             {
-                ss << "Missing inter-module dependencies for module [" << module.first->ID << "]: " << itr.first << "\n";
+                ss << "Missing inter-module dependencies for module [" << module->ID << "]: " << itr.first << "\n";
                 missing_depends = true;
             }
 
@@ -1946,19 +1971,19 @@ void core::_determine_module_dep()
         }
 
         //check if our module has any met file dependenices
-        if (module.first->depends_from_met()->size() == 0)
+        if (module->depends_from_met()->size() == 0)
         {
-            LOG_DEBUG << "Module [" << module.first->ID << "], no met file dependenices";
+            LOG_DEBUG << "Module [" << module->ID << "], no met file dependenices";
         } else
         {
-            LOG_DEBUG << "Module [" << module.first->ID << "] has met file dependencies";
+            LOG_DEBUG << "Module [" << module->ID << "] has met file dependencies";
         }
 
 
 
 
         //check this modules met dependencies, bail if we are missing any.
-        for (auto &depend_met_var : *(module.first->depends_from_met()))
+        for (auto &depend_met_var : *(module->depends_from_met()))
         {
             auto i = std::find(_provided_var_met_files.begin(), _provided_var_met_files.end(), depend_met_var);
             if (i == _provided_var_met_files.end())
@@ -2279,7 +2304,7 @@ void core::run()
             {
                 //do 1 step of the filters. Filters do not have depends!!
 
-                
+
                 #pragma omp parallel for
                 for(size_t i = 0; i < _global->number_of_stations();i++)
                 {

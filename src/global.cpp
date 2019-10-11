@@ -77,20 +77,20 @@ int global::dt()
     return _dt;
 }
 
-void global::insert_station(boost::shared_ptr<station> s)
+void global::insert_station(std::shared_ptr<station> s)
 {
     _stations.push_back(s);
     _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
 //    _dD_NN_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
 }
 
-void global::insert_stations(tbb::concurrent_vector< boost::shared_ptr<station> >& stations)
+void global::insert_stations(tbb::concurrent_vector< std::shared_ptr<station> >& stations)
 {
     _stations.resize( stations.size() );
 #pragma omp for
     for(size_t i = 0; i< stations.size(); ++i)
     {
-        boost::shared_ptr<station> s (stations.at(i));
+        std::shared_ptr<station> s (stations.at(i));
         _stations.at(i) = s;
         _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
     }
@@ -98,16 +98,16 @@ void global::insert_stations(tbb::concurrent_vector< boost::shared_ptr<station> 
 //    _dD_NN_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
 }
 
-std::vector< boost::shared_ptr<station> > global::get_stations_in_radius(double x, double y, double radius )
+std::vector< std::shared_ptr<station> > global::get_stations_in_radius(double x, double y, double radius )
 {
     // define exact circular range query  (fuzziness=0)
     Kernel::Point_2 center(x, y);
     Fuzzy_circle exact_range(center, radius);
 
-    std::vector<boost::tuple<Kernel::Point_2, boost::shared_ptr<station> > > result;
+    std::vector<boost::tuple<Kernel::Point_2, std::shared_ptr<station> > > result;
     _dD_tree.search(std::back_inserter(result), exact_range);
 
-    std::vector< boost::shared_ptr<station> > stations;
+    std::vector< std::shared_ptr<station> > stations;
 
     for (auto& itr : result)
     {
@@ -117,12 +117,12 @@ std::vector< boost::shared_ptr<station> > global::get_stations_in_radius(double 
 
 }
 
-std::vector< boost::shared_ptr<station> > global::nearest_station(double x, double y,unsigned int N)
+std::vector< std::shared_ptr<station> > global::nearest_station(double x, double y,unsigned int N)
 {
     Kernel::Point_2 query(x,y);
     Neighbor_search search(_dD_tree, query, N);
 
-    std::vector< boost::shared_ptr<station> > stations;
+    std::vector< std::shared_ptr<station> > stations;
 
     for (auto itr : search)
     {
@@ -132,7 +132,7 @@ std::vector< boost::shared_ptr<station> > global::nearest_station(double x, doub
 
 }
 
-std::vector< boost::shared_ptr<station> >& global::stations()
+std::vector< std::shared_ptr<station> >& global::stations()
 {
     return _stations;
 }

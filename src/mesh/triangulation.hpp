@@ -22,6 +22,7 @@
 #include "station.hpp"
 #include "global.hpp"
 
+#include "make_unique.hpp" // While we are using C++11, we need this.
 
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
@@ -40,6 +41,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <cmath>
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <stack>
 #include <fstream>
 #include <utility>
@@ -279,6 +281,14 @@ public:
      */
     Vector_2 edge_unit_normal(int i);
 
+
+    /**
+    * Returns the face's vector of stations
+    */
+  std::vector<std::shared_ptr<station>> stations()  {
+    return _stations;
+  }
+
     /**
     * Checks if a point x,y is within the face
     * \return true if this face contains the point x,y
@@ -404,7 +414,7 @@ public:
     double get_z();
 
     /**
-     * Returns the sub-triangle z coordinates of the Point 2 
+     * Returns the sub-triangle z coordinates of the Point 2
      * @return  elevation
      */
     double get_subgrid_z(Point_2 query);
@@ -544,6 +554,8 @@ private:
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
 
+    std::vector<std::shared_ptr<station>> _stations;
+
 };
 
 typedef face<Gt> Fb; //custom face class
@@ -620,7 +632,30 @@ public:
     * Figures out which faces lie on the boundary of an MPI process' domain
     */
   void determine_local_boundary_faces();
+    /**
+    * Figures out which faces are ghosted nearest neighbours of
+    * This is useful for the communication needed in nearest-neighbour discretizations of spatial operators.
+    */
+  void determine_process_ghost_faces_nearest_neighbours();
+    /**
+    * Figures out which faces are required in the ghost region of an MPI process.
+    * \param max_distance the maximum distance needed for communication
+    */
+  void determine_process_ghost_faces_by_distance(double max_distance);
+    /**
+    * Shrink the local mesh to only contain owned entries and relevant ghost entries
+    */
+  void shrink_local_mesh_to_owned_and_distance_neighbours();
 
+  /**
+   * Populates a list of stations needed within each face
+   */
+    void populate_face_station_lists();
+
+  /**
+   * Populates a list of stations needed on each MPI process
+   */
+    void populate_distributed_station_lists();
 
 	/**
 	 * Serializes a mesh attribute to file so it can be read into the model.
@@ -851,7 +886,10 @@ private:
 
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
+    std::vector< mesh_elem > _ghost_neighbours;
+    std::vector< mesh_elem > _ghost_faces;
 
+  std::vector< std::shared_ptr<station> > _stations;
 
 #ifdef NOMATLAB
     //ptr to the matlab engine
@@ -1738,7 +1776,7 @@ double face<Gt, Fb>::get_subgrid_z(Point_2 query)
             double d =a*x1 + b*y1 + c*z1;
 
             double z = -(a*query.x()+b*query.y()-d)/c;
-           
+
             return z;
 
 
