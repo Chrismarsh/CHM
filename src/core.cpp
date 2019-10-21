@@ -2256,26 +2256,22 @@ void core::run()
                     #pragma omp parallel for
                     for (size_t y = 0; y < nc.get_ysize(); y++)
                     {
+                       for (size_t x = 0; x < nc.get_xsize(); x++)
+                       {
+                           size_t index = x + y * nc.get_xsize();
+                           auto s = _global->_stations.at(index);
 
-			       for (size_t x = 0; x < nc.get_xsize(); x++)
-			       {
-				   size_t index = x + y * nc.get_xsize();
-				   auto s = _global->_stations.at(index);
+                           //sanity check that we are getting the right station for this xy pair
+                           if (s->ID() != std::to_string(index))
+                           {
+                               BOOST_THROW_EXCEPTION(
+                                                     forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
+                           }
 
-				   //sanity check that we are getting the right station for this xy pair
-				   if (s->ID() != std::to_string(index))
-				   {
-				       BOOST_THROW_EXCEPTION(
-							     forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
-				   }
-
-				   double d = data[y][x];
-				   s->now().set(itr, d);
-
-			       }
-
+                           double d = data[y][x];
+                           s->now().set(itr, d);
+                       }
 		    }
-
                 }
 
 //                LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";

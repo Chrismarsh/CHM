@@ -239,7 +239,7 @@ if(STATIC_ANLAYSIS)
 			)
 endif()
 
-if (test)
+if (BUILD_TESTS)
 
 	add_subdirectory (tests/googletest/googletest)
 	include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
