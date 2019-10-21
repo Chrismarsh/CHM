@@ -2213,7 +2213,6 @@ void core::run()
     size_t max_ts = _global->_stations.at(0)->date_timeseries().size();
     bool done = false;
 
-
         while (!done)
         {
             //ensure all the stations are at the same timestep

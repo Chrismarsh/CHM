@@ -778,9 +778,9 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
   // Convert the set to a vector
   _ghost_neighbours.insert(std::end(_ghost_faces),
 			   std::begin(tmp_set),std::end(tmp_set));
-
+#ifdef USE_MPI
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbours.size() << " ghosted nearest neighbours.";
-
+#endif
 }
 
 void dfs_to_max_distance_aux(mesh_elem starting_face, double max_distance, mesh_elem face, std::unordered_set<mesh_elem> &visited)
@@ -857,8 +857,9 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
   _ghost_faces.insert(std::end(_ghost_faces),
   			   std::begin(tmp_set),std::end(tmp_set));
 
+#ifdef USE_MPI
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_faces.size() << " ghosted faces.";
-
+#endif
 }
 
 void triangulation::shrink_local_mesh_to_owned_and_distance_neighbours()
@@ -880,8 +881,9 @@ void triangulation::shrink_local_mesh_to_owned_and_distance_neighbours()
   _faces.insert( _faces.end(), _local_faces.begin(), _local_faces.end() );
   _faces.insert( _faces.end(), _ghost_faces.begin(), _ghost_faces.end() );
 
+#ifdef USE_MPI
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _faces.size() << " faces after shrinking";
-
+#endif
 }
 
 void triangulation::populate_face_station_lists()
@@ -953,9 +955,9 @@ void triangulation::populate_distributed_station_lists()
 
   // Store the local stations in the triangulations mpi-local stationslist vector
   _stations.insert( std::end(_stations), std::begin(tmp_set), std::end(tmp_set));
-
+#ifdef USE_MPI
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _stations.size() << " locally owned stations.";
-
+#endif
 }
 
 Delaunay::Vertex_handle triangulation::vertex(size_t i)
