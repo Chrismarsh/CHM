@@ -89,6 +89,7 @@ public:
     bool ninja_recirc; // Boolean to activate wind speed reduction on the leeside of mountainous terrain
 
     bool compute_Sx; // uses the Sx module to influence the windspeeds so Sx needs to be computed during the windspeed evaluation, instead of a seperate module
+    double Sx_crit;    // Critical values of the Winstral parameter to determine the occurence of flow separation.  
     boost::shared_ptr<Winstral_parameters> Sx;
 };
 

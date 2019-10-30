@@ -88,6 +88,7 @@ void WindNinja::init(mesh& domain)
     ninja_recirc = cfg.get("ninja_recirc",false);
     N_windfield = cfg.get("N_windfield",24);
     L_avg = cfg.get("L_avg",2500);
+    Sx_crit = cfg.get("Sx_crit", 30.);
 }
 
 
@@ -258,7 +259,7 @@ void WindNinja::run(mesh& domain)
 
                   double sx_loc = Sx->Sx(domain,face);
                   (*face)["Sx"_s] =sx_loc;
-                  if( sx_loc>30. )  //Reduce wind speed on the lee side of mountain crest identified by Sx> 30 deg
+                  if( sx_loc>Sx_crit )  //Reduce wind speed on the lee side of mountain crest identified by Sx>Sx_crit
                        W_transf = 0.25;
                 }
             }
