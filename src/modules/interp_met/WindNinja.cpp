@@ -87,7 +87,7 @@ void WindNinja::init(mesh& domain)
     Min_spdup = cfg.get("Min_spdup",0.1);
     ninja_recirc = cfg.get("ninja_recirc",false);
     N_windfield = cfg.get("N_windfield",24);
-    L_avg = cfg.get("L_avg",2500);
+    L_avg = cfg.get("L_avg",-1);
     Sx_crit = cfg.get("Sx_crit", 30.);
 }
 
@@ -171,9 +171,15 @@ void WindNinja::run(mesh& domain)
                 (*face)["lookup_d"_s]= d;
 
                 // get the transfert function and associated wind component for the interpolated wind direction
-                 W_transf = face->parameter("Ninja" + std::to_string(d) +'_' + std::to_string(L_avg));   // transfert function
-                 U = face->parameter("Ninja" + std::to_string(d) + "_U");  // zonal component
-                 V = face->parameter("Ninja" + std::to_string(d) + "_V");  // meridional component
+		if(L_avg == -1)
+                {		                 
+			W_transf = face->parameter("Ninja" + std::to_string(d));   // transfert function
+		}else
+		{
+			W_transf = face->parameter("Ninja" + std::to_string(d) +'_' + std::to_string(L_avg));   // transfert function
+}		
+                U = face->parameter("Ninja" + std::to_string(d) + "_U");  // zonal component
+                V = face->parameter("Ninja" + std::to_string(d) + "_V");  // meridional component
 
            }else // Linear interpolation between the closest 2 wind fields from the library
            {
@@ -191,13 +197,28 @@ void WindNinja::run(mesh& domain)
                 double d = d1*(theta2-theta)/(theta2-theta1)+d2*(theta-theta1)/(theta2-theta1);
                 (*face)["lookup_d"_s]= d;
 
+		double W_transf1 = 0.;
                 // get the transfert function and associated wind component for the interpolated wind direction
-                double W_transf1 = face->parameter("Ninja" + std::to_string(d1)+'_' + std::to_string(L_avg));   // transfert function
+		if(L_avg == -1)
+		{	
+                	W_transf1 = face->parameter("Ninja" + std::to_string(d1));   // transfert function
+                }else
+		{
+			W_transf1 = face->parameter("Ninja" + std::to_string(d1)+'_' + std::to_string(L_avg));   // transfert function
+		}
+
                 double U_lib1 = face->parameter("Ninja" + std::to_string(d1) + "_U");  // zonal component
                 double V_lib1 = face->parameter("Ninja" + std::to_string(d1) + "_V");  // meridional component
 
-                double W_transf2 = face->parameter("Ninja" + std::to_string(d2)+'_' + std::to_string(L_avg));   // transfert function
-                double U_lib2 = face->parameter("Ninja" + std::to_string(d2) + "_U");  // zonal component
+		double W_transf2 = 0.;
+		if(L_avg == -1)
+		{	
+                	W_transf2 = face->parameter("Ninja" + std::to_string(d2));   // transfert function
+                }else
+		{
+			W_transf2 = face->parameter("Ninja" + std::to_string(d2)+'_' + std::to_string(L_avg));   // transfert function
+                }
+		double U_lib2 = face->parameter("Ninja" + std::to_string(d2) + "_U");  // zonal component
                 double V_lib2 = face->parameter("Ninja" + std::to_string(d2) + "_V");  // meridional component
 
                 // Determine wind component from the wind field library using a weighted mean
