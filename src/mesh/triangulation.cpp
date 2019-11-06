@@ -522,10 +522,10 @@ void triangulation::from_json(pt::ptree &mesh)
 #endif // USE_MPI
 
     // determining ghost faces requires the dD_tree to be set up
-    determine_process_ghost_faces_by_distance(100.);
+    // determine_process_ghost_faces_by_distance(100.);
 
     // shrink the local mesh
-    shrink_local_mesh_to_owned_and_distance_neighbours();
+    // shrink_local_mesh_to_owned_and_distance_neighbours();
 
   std::vector<double> temp_slope(_num_faces);
 
