@@ -46,9 +46,9 @@ class VariableStorageTest : public testing::Test
 TEST_F(VariableStorageTest, DefaultInit)
 {
     variablestorage v;
-    ASSERT_EQ(v.size() == 0);
+    ASSERT_EQ(v.size() , 0);
     ASSERT_NO_THROW(v.variables());
-    ASSERT_EQ(v.variables().size() == 0);
+    ASSERT_EQ(v.variables().size() , 0);
     ASSERT_FALSE(v.has("t"));
 }
 
@@ -61,20 +61,20 @@ TEST_F(VariableStorageTest, ctorInit)
     ASSERT_NO_THROW(v.variables());
 
     // check size is correct
-    ASSERT_EQ(v.size() == 4);
-    ASSERT_EQ(v.variables().size() == 4);
+    ASSERT_EQ(v.size() , 4);
+    ASSERT_EQ(v.variables().size() , 4);
 
     // check they got defaulted correctly
-    ASSERT_EQ(v["t"] == -9999);
-    ASSERT_EQ(v["rh"] == -9999);
-    ASSERT_EQ(v["vw"] == -9999);
-    ASSERT_EQ(v["p"] == -9999);
+    ASSERT_EQ(v["t"] , -9999);
+    ASSERT_EQ(v["rh"] , -9999);
+    ASSERT_EQ(v["vw"] , -9999);
+    ASSERT_EQ(v["p"] , -9999);
 
     // check they got defaulted correctly
-    ASSERT_EQ(v["t"_s] == -9999);
-    ASSERT_EQ(v["rh"_s] == -9999);
-    ASSERT_EQ(v["vw"_s] == -9999);
-    ASSERT_EQ(v["p"_s] == -9999);
+    ASSERT_EQ(v["t"_s] ,-9999);
+    ASSERT_EQ(v["rh"_s] , -9999);
+    ASSERT_EQ(v["vw"_s] , -9999);
+    ASSERT_EQ(v["p"_s] , -9999);
 }
 
 TEST_F(VariableStorageTest, valueAccess)
@@ -86,10 +86,10 @@ TEST_F(VariableStorageTest, valueAccess)
     v["vw"] = 3;
     v["p"] = 4;
 
-    ASSERT_EQ(v["t"] == 1);
-    ASSERT_EQ(v["rh"] == 2);
-    ASSERT_EQ(v["vw"] == 3);
-    ASSERT_EQ(v["p"] == 4);
+    ASSERT_EQ(v["t"] , 1);
+    ASSERT_EQ(v["rh"] , 2);
+    ASSERT_EQ(v["vw"] , 3);
+    ASSERT_EQ(v["p"] , 4);
 
 }
 
@@ -102,10 +102,10 @@ TEST_F(VariableStorageTest, valueAccess_s)
     v["vw"_s] = 3;
     v["p"_s] = 4;
 
-    ASSERT_EQ(v["t"_s] == 1);
-    ASSERT_EQ(v["rh"_s] == 2);
-    ASSERT_EQ(v["vw"_s] == 3);
-    ASSERT_EQ(v["p"_s] == 4);
+    ASSERT_EQ(v["t"_s] , 1);
+    ASSERT_EQ(v["rh"_s] , 2);
+    ASSERT_EQ(v["vw"_s] , 3);
+    ASSERT_EQ(v["p"_s] , 4);
 }
 
 TEST_F(VariableStorageTest, has)
@@ -123,4 +123,23 @@ TEST_F(VariableStorageTest, has)
     ASSERT_TRUE(v.has("p"));
 
     ASSERT_FALSE(v.has("tttt"));
+}
+
+TEST_F(VariableStorageTest, size)
+{
+    variablestorage v (variables);
+
+    v["t"] = 1;
+    v["rh"] = 2;
+    v["vw"] = 3;
+    v["p"] = 4;
+
+    ASSERT_EQ(v.size(),4);
+
+}
+
+TEST_F(VariableStorageTest, uninit)
+{
+    variablestorage v;
+    ASSERT_ANY_THROW(v["t"] = 1);
 }

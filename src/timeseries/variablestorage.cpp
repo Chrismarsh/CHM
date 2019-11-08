@@ -25,7 +25,8 @@
 
 variablestorage::variablestorage()
 {
-    size = 0;
+    _size = 0;
+    _variable_bphf = nullptr;
 }
 variablestorage::~variablestorage()
 {
@@ -34,11 +35,16 @@ variablestorage::~variablestorage()
 
 double& variablestorage::operator[](const uint64_t& hash)
 {
+    if(!_variable_bphf)
+    {
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
+    }
     uint64_t  idx = _variable_bphf->lookup(hash);
 
     // did the table return garabage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if (_variables[idx].xxhash != hash)
+    if (idx >=  _size ||
+        _variables[idx].xxhash != hash )
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
 
     return _variables[idx].value;
@@ -47,12 +53,17 @@ double& variablestorage::operator[](const uint64_t& hash)
 
 double& variablestorage::operator[](const std::string& variable)
 {
+    if(!_variable_bphf)
+    {
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
+    }
+
     uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), this->seed);
     uint64_t  idx = _variable_bphf->lookup(hash);
 
     // did the table return garabage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if( idx >=  _variables.size() ||
+    if( idx >=  _size ||
         _variables[idx].xxhash != hash)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
 
@@ -61,7 +72,7 @@ double& variablestorage::operator[](const std::string& variable)
 
 bool variablestorage::has(const uint64_t& hash)
 {
-    if (size == 0) return false;
+    if (_size == 0) return false;
 
     uint64_t  idx = _variable_bphf->lookup(hash);
 
@@ -120,5 +131,9 @@ void variablestorage::init(std::set<std::string>& variables)
         _variables[idx].xxhash = hash;
     }
 
-    size = variables.size();
+    _size = variables.size();
+}
+size_t variablestorage::size()
+{
+    return _size;
 }

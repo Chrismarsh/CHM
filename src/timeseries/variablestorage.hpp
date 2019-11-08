@@ -26,9 +26,15 @@
 // hash functions
 #include "utility/BBhash.h"
 #include "utility/wyhash.h"
+#include "utility/xxh64.hpp"
+
+
+#include "logger.hpp"
+#include "exception.hpp"
 
 #include <string>
 #include <vector>
+#include <set>
 
 class variablestorage
 {
@@ -47,12 +53,14 @@ class variablestorage
 
     void init(std::set<std::string>& variables);
 
+    size_t size();
+
   private:
     const uint64_t seed = 2654435761U;
     template <typename Item> class wyandFunctor
     {
       public:
-        uint64_t operator ()  (const Item& key, uint64_t seed = seed) const
+        uint64_t operator ()  (const Item& key, uint64_t seed = 2654435761U) const
         {
             return wyhash(&key, sizeof(Item), seed);
         }
@@ -61,6 +69,14 @@ class variablestorage
     typedef wyandFunctor<uint64_t> hasher_t;
     typedef boomphf::mphf< uint64_t, hasher_t  > boophf_t;
 
+    // Holds the name-value pair in the variable store hashmap
+    // we do this as we hold a hash and not the name
+    struct var
+    {
+        double value;
+        double xxhash; // holds the xxhash value so we can confirm we get the right thing back from BBHash
+        std::string variable;
+    };
     // Note that we have to explicitly check if what we get back is what we wanted as
     // mphf do not guarantee what asking for something outside of the map returns a sane answer
     // https://github.com/rizkg/BBHash/issues/12
