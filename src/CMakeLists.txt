@@ -110,6 +110,7 @@ set(CHM_SRCS
 		timeseries/timeseries.cpp
 		timeseries/daily.cpp
 		timeseries/netcdf.cpp
+		timeseries/variablestorage.cpp
 
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
@@ -252,6 +253,7 @@ if (BUILD_TESTS)
 			tests/test_interpolation.cpp
 			tests/test_timeseries.cpp
 			tests/test_core.cpp
+			tests/test_variablestorage.cpp
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
