@@ -22,3 +22,103 @@
 //
 
 #include "variablestorage.hpp"
+
+variablestorage::variablestorage()
+{
+    size = 0;
+}
+variablestorage::~variablestorage()
+{
+
+}
+
+double& variablestorage::operator[](const uint64_t& hash)
+{
+    uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if (_variables[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
+
+    return _variables[idx].value;
+}
+
+
+double& variablestorage::operator[](const std::string& variable)
+{
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), this->seed);
+    uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if( idx >=  _variables.size() ||
+        _variables[idx].xxhash != hash)
+        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
+
+    return _variables[idx].value;
+}
+
+bool variablestorage::has(const uint64_t& hash)
+{
+    if (size == 0) return false;
+
+    uint64_t  idx = _variable_bphf->lookup(hash);
+
+    // did the table return garabage?
+    //mphf might return an index, but it isn't actually what we want. double check the hash
+    if(_variables[idx].xxhash != hash)
+        return false;
+
+    return true;
+}
+
+bool variablestorage::has(const std::string& variable)
+{
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
+    return has(hash);
+
+};
+
+std::vector<std::string> variablestorage::variables()
+{
+    std::vector<std::string> vars;
+    for(auto itr:_variables)
+    {
+        vars.push_back(itr.variable);
+    }
+    return vars;
+
+}
+
+variablestorage::variablestorage(std::set<std::string>& variables)
+: variablestorage()
+{
+
+    init(variables);
+}
+void variablestorage::init(std::set<std::string>& variables)
+{
+
+    std::vector<u_int64_t> hash_vec;
+    for(auto& v : variables)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), seed);
+        hash_vec.push_back(hash);
+    }
+
+    _variable_bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
+        new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false));
+
+    _variables.resize(variables.size());
+    for(auto v : variables)
+    {
+        uint64_t hash = xxh64::hash (v.c_str(), v.length(), seed);
+        uint64_t  idx = _variable_bphf->lookup(hash);
+        _variables[idx].value = -9999.0;
+        _variables[idx].variable = v;
+        _variables[idx].xxhash = hash;
+    }
+
+    size = variables.size();
+}
