@@ -40,19 +40,42 @@ class variablestorage
 {
   public:
     variablestorage();
+
+    /// Initialize the storage with a set of variables. Values default to -9999
+    /// @param variables
     variablestorage(std::set<std::string>& variables);
     ~variablestorage();
 
+    /// Get and set the variable to a specific value. Use _s for compile-time hash.
+    /// Throws if not found or init/ctor not yet called.
+    /// @param variable
+    /// @return
     double& operator[](const uint64_t& variable);
+    /// Get and set the variable to a specific value.
+    /// Throws if not found or init/ctor not yet called.
+    /// @param variable
+    /// @return
     double& operator[](const std::string& variable);
 
+    /// Determine if a variable is in the storage. Uses _s for compile time hash
+    /// @param hash
+    /// @return
     bool has(const uint64_t& hash);
+    /// Determine if a variable is in the storage.
+    /// @param variable
+    /// @return
     bool has(const std::string& variable);
 
+    /// Returns a list of the variables stored
+    /// @return
     std::vector<std::string> variables();
 
+    /// Initialize the storage with a set of variables. Values default to -9999
+    /// @param variables
     void init(std::set<std::string>& variables);
 
+    /// Returns the number of variables stored
+    /// @return
     size_t size();
 
   private:
@@ -85,6 +108,7 @@ class variablestorage
     std::unique_ptr<boophf_t> _variable_bphf;
     std::vector<var> _variables;
 
+    // Total number of variables stored 
     size_t _size;
 
 };
