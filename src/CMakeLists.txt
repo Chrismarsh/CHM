@@ -94,6 +94,7 @@ set(CHM_SRCS
 		core.cpp
 		global.cpp
 		station.cpp
+		metdata.cpp
 
         constants/Atmosphere.cpp
 
