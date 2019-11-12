@@ -43,7 +43,7 @@ public:
       : cfg(input_cfg),ID(name) {};
     virtual ~filter_base(){};
 
-    virtual void init(std::shared_ptr<station>& station){};
+    virtual void init(){};
     virtual void process(std::shared_ptr<station>& station){};
 
     /// Denotes a new met variable that this filter provides. Must be specified in the ctor of a filter prior to use

@@ -48,6 +48,6 @@ private:
 public:
     debias_lw(config_file cfg);
     ~debias_lw();
-    void init(std::shared_ptr<station>& station);
+    void init();
     void process(std::shared_ptr<station>& station);
 };

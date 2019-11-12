@@ -38,7 +38,7 @@ macdonald_undercatch::~macdonald_undercatch()
 {
 
 }
-void macdonald_undercatch::init(std::shared_ptr<station>& station)
+void macdonald_undercatch::init()
 {
     //look at the config data to determine what we are modifying
     var = cfg.get<std::string>("variable");

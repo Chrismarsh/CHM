@@ -37,15 +37,13 @@ scale_wind_speed::~scale_wind_speed()
 
 }
 
-void scale_wind_speed::init(std::shared_ptr<station>& station)
+void scale_wind_speed::init()
 {
     //look at the config data to determine what we are modifying
     var = cfg.get<std::string>("variable");
     Z_F          = cfg.get<double>("Z_F"); // Get measurement height [m]
     Z_R          = Atmosphere::Z_U_R; // Reference wind speed height [m]
 
-    // Initialize new wind speed at ref height variable
-    station->add_variable("U_R");
 }
 void scale_wind_speed::process(std::shared_ptr<station>& station)
 {

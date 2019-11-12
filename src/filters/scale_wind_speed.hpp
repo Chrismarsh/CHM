@@ -57,6 +57,6 @@ private:
 public:
     scale_wind_speed(config_file cfg);
     ~scale_wind_speed();
-    void init(std::shared_ptr<station>& station);
+    void init();
     void process(std::shared_ptr<station>& station);
 };

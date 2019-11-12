@@ -35,7 +35,7 @@ debias_lw::~debias_lw()
 
 }
 
-void debias_lw::init(std::shared_ptr<station>& station)
+void debias_lw::init()
 {
     //look at the config data to determine what we are modifying
     var = cfg.get<std::string>("variable");
