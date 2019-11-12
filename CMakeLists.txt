@@ -5,6 +5,9 @@ cmake_minimum_required (VERSION 3.12)
 cmake_policy(SET CMP0074 NEW)
 project (CHMprj)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 #http://stackoverflow.com/questions/31561309/cmake-warnings-under-os-x-macosx-rpath-is-not-specified-for-the-following-targe
 #https://cmake.org/cmake/help/v3.0/policy/CMP0042.html
 set(CMAKE_MACOSX_RPATH 1)
@@ -304,7 +307,7 @@ endif()
 
 #Setup CXX flags
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wno-unused-variable -Wno-unknown-pragmas")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-variable -Wno-unknown-pragmas")
 
 
 #GAL requires strict rounding
