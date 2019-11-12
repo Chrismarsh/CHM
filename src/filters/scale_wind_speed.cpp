@@ -27,7 +27,7 @@ REGISTER_FILTER_CPP(scale_wind_speed);
 scale_wind_speed::scale_wind_speed(config_file cfg)
   : filter_base("scale_wind_speed", cfg)
 {
-
+    provides("U_R");
 }
 
 scale_wind_speed::~scale_wind_speed()

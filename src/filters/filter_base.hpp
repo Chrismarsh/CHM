@@ -46,6 +46,20 @@ public:
     virtual void init(std::shared_ptr<station>& station){};
     virtual void process(std::shared_ptr<station>& station){};
 
+    /// Denotes a new met variable that this filter provides. Must be specified in the ctor of a filter prior to use
+    /// @param name Name of the new meteorological variable
+    void provides(const std::string& name)
+    {
+        if(name.find_first_of("\t ") != std::string::npos)
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + name +" has a space. This is not allowed."));
+
+        _provides.push_back(name);
+    }
+    std::vector<std::string> provides()
+    {
+        return _provides;
+    }
+
     bool is_nan(double variable)
     {
         if( variable == -9999.0)
@@ -68,6 +82,8 @@ public:
     * ID of the module
     */
     std::string ID;
+
+    std::vector<std::string> _provides;
 };
 
 /**
