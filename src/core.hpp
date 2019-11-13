@@ -92,6 +92,7 @@ namespace po = boost::program_options;
 #include "math/coordinates.hpp"
 #include "timeseries/netcdf.hpp"
 #include "gsl/gsl_errno.h"
+#include "metdata.hpp"
 
 #ifdef USE_MPI
 #include <boost/mpi.hpp>
@@ -187,6 +188,10 @@ public:
     void config_checkpoint( pt::ptree& value);
 
     /**
+     * Initializes the forcing data structures, incl the virtual stations
+     */
+    void init_forcing();
+    /**
      * Determines the order modules need to be scheduleled in to maximize parallelism
      */
     void _schedule_modules();
@@ -238,8 +243,7 @@ protected:
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
 
-    //if we use netcdf, store it here
-    netcdf nc;
+
 
 
 #ifdef MATLAB
@@ -255,13 +259,7 @@ protected:
     boost::shared_ptr<global> _global;
 
     bool _use_netcdf; // flag if we are using netcdf. If we are, it enables incremental reads of the netcdf file for speed.
-
-    //if we use netcdf, we need to save the filters and run it once every timestep.
-    std::map<std::string, boost::shared_ptr<filter_base> > _netcdf_filters;
-
-    //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
-    //and run it on a per-station config.
-    std::map<std::string, std::vector<boost::shared_ptr<filter_base>> > _txtmet_filters;
+    metdata _metdata; //met data loader
 
     //calculates the order modules are to be run in
     void _determine_module_dep();

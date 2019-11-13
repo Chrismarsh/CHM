@@ -108,7 +108,7 @@ class variablestorage
     std::unique_ptr<boophf_t> _variable_bphf;
     std::vector<var> _variables;
 
-    // Total number of variables stored 
+    // Total number of variables stored
     size_t _size;
 
 };

@@ -334,10 +334,6 @@ void core::config_forcing(pt::ptree &value)
 {
     LOG_DEBUG << "Found forcing section";
     LOG_DEBUG << "Reading meta data from config";
-    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    vtkSmartPointer<vtkStringArray> labels = vtkSmartPointer<vtkStringArray>::New();
-    labels->SetName("Station name");
-    std::vector< std::pair<std::string, pt::ptree> > forcings;
 
     //positive offset going west. So the normal UTC-6 would be UTC_offset:6
     _global->_utc_offset = value.get("UTC_offset",0);
@@ -348,309 +344,245 @@ void core::config_forcing(pt::ptree &value)
     //need to determine if we have been given a netcdf file
     _use_netcdf = value.get("use_netcdf",false);
 
-    size_t nstations = 0;
-    timer c;
 
+    timer c;
+    c.tic();
+    size_t nstations = 0;
     //we need to treat this very differently than the txt files
     if(_use_netcdf)
     {
-        LOG_DEBUG << "Found NetCDF file";
         std::string file = value.get<std::string>("file");
-
-        // core needs to setup all the stations as timeseries doens't know what to do with a full netcdf file.
-
+        std::map<std::string, boost::shared_ptr<filter_base> > netcdf_filters;
         try
         {
-            nc.open_GEM(file);
-        }catch(netCDF::exceptions::NcException& e)
+            auto filter_section = value.get_child("filter");
+
+            for (auto &jtr: filter_section)
+            {
+                auto filter_name = jtr.first.data();
+                auto cfg  = jtr.second;
+
+                boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
+                filter->init();
+                netcdf_filters[filter_name] = filter;
+            }
+
+        } catch (pt::ptree_bad_path &e)
         {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
+            //ignore bad path, means we don't have a filter
         }
 
-
-        nstations = nc.get_xsize() * nc.get_ysize();
+        // this delegates all filter responsibility to metdata from now on
+        _metdata.load_from_netcdf(file, netcdf_filters);
+        nstations = _metdata.nstations();
     } else
     {
+        std::vector<metdata::ascii_data> ascii_data;
+
         for (auto &itr : value)
         {
             if(itr.first != "UTC_offset")
             {
+                metdata::ascii_data data;
+
                 std::string station_name = itr.first.data();
-                forcings.push_back(make_pair(station_name, value.get_child(station_name)));
-                ++nstations;
+                auto& station = value.get_child(station_name);
+
+                data.name = station_name;
+
+                try
+                {
+                    data.longitude = station.get<double>("longitude");
+                    data.latitude = station.get<double>("latitude");
+                }catch(boost::property_tree::ptree_bad_path& e)
+                {
+                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " missing lat/long coordinate."));
+                }
+
+                data.elevation = station.get<double>("elevation");
+
+
+                std::string file = station.get<std::string>("file");
+                auto f = cwd_dir / file;
+                data.path = f.string();
+
+                //filters with text timeseries behave differently than filters with the netcdf
+                //these will be run once, over the entire timeseries. netcdf will call the filters and run it on every lazyload.
+                try
+                {
+                    auto filter_section = station.get_child("filter");
+
+                    for (auto &jtr: filter_section)
+                    {
+                        auto filter_name = jtr.first.data();
+                        auto cfg = jtr.second;
+
+                        boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
+                        filter->init();
+
+                        //save this filter to run later
+                        //each station is associated with a list of filters to run
+                        //metdata will own the filters after this
+                        data.filters.push_back(filter);
+
+                    }
+
+                } catch (pt::ptree_bad_path &e)
+                {
+                    // no filters
+                }
+
+                ascii_data.push_back(data);
+
             }
         }
-        LOG_DEBUG << "Found # stations = " <<  nstations;
-
-        if(nstations == 0)
-        {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("No input forcing files found!"));
-        }
+        _metdata.load_from_ascii(ascii_data, _global->_utc_offset);
+        nstations = _metdata.nstations();
     }
 
+    LOG_DEBUG << "Found # stations = " <<  nstations;
+    if(nstations == 0)
+    {
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("No input forcing files found!"));
+    }
 
     _global->_stations.resize(nstations);
-    tbb::concurrent_vector<  std::shared_ptr<station> > pstations;
-    pstations.resize(nstations);
-
-    OGRSpatialReference insrs;
-
-    if(_use_netcdf)
-    {
-        insrs.SetWellKnownGeogCS("WGS84");
-    } else
-    {
-        insrs.SetWellKnownGeogCS("WGS84");
-    }
-
-
-    OGRSpatialReference outsrs;
-    auto err = outsrs.importFromProj4(_mesh->proj4().c_str());
-
-    OGRCoordinateTransformation* coordTrans =  nullptr;
-
-    if(!_mesh->is_geographic())
-        coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
-
-    labels->SetNumberOfValues(nstations);
-
-    LOG_DEBUG << "Reading forcing file data";
-    c.tic();
-
-    if(_use_netcdf)
-    {
-        try
-        {
-            auto variables = nc.get_variable_names();
-            auto date_vec = nc.get_datevec();
-
-
-            LOG_DEBUG << "Grid is (y)" << nc.get_ysize() << " by (x)" << nc.get_xsize();
-
-
-            LOG_DEBUG << "Loading lat/long grid...";
-            c.tic();
-
-            auto lat = nc.get_lat();
-            auto lon = nc.get_lon();
-            auto e = nc.get_z();
-            LOG_DEBUG << "Took " << c.toc<s>() << "s";
-
-            LOG_DEBUG << "Initializing datastructure";
-            c.tic();
-
-// #pragma omp parallel for
-// hangs, unclear why, critical sections around the json and gdal calls don't seem to help
-            for (size_t y = 0; y < nc.get_ysize(); y++)
-            {
-                for (size_t x = 0; x < nc.get_xsize(); x++)
-                {
-
-
-                    double latitude = 0;
-                    double longitude = 0 ;
-                    double z = 0;
-
-                    latitude = lat[y][x];;
-                    longitude = lon[y][x];
-                    z = e[y][x];
-
-//                    latitude = nc.get_lat(x, y);
-//                    longitude = nc.get_lon(x, y);
-//                    z = nc.get_z(x, y);
-
-
-//                    LOG_DEBUG << "lat=" << latitude << "\tlong="<<longitude<<"\tz="<<z;
-//                    LOG_DEBUG << "lat=" << lat[y][x] << "\tlong="<<lon[y][x]<<"\tz="<<e[y][x];
-//                    LOG_DEBUG << "------------------------";
-
-
-                    size_t index = x + y * nc.get_xsize();
-                    std::string station_name = std::to_string(index); // these don't really have names
-
-                    //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
-                    if (!_mesh->is_geographic())
-                    {
-                        if (!coordTrans->Transform(1, &longitude, &latitude))
-                        {
-                            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
-                                    "Station=" + station_name + ": unable to convert coordinates to mesh format."));
-                        }
-                    }
-
-                    double elevation = z;
-
-                    //this ctor will init an empty timeseries for us
-                    std::shared_ptr<station> s = std::make_shared<station>(station_name, longitude, latitude,
-                                                                               elevation);
-                    s->raw_timeseries()->init(variables, date_vec);
-                    s->reset_itrs();
-
-                    try
-                    {
-                        auto filter_section = value.get_child("filter");
-
-                        for (auto &jtr: filter_section)
-			{
-                            auto filter_name = jtr.first.data();
-			    auto cfg  = jtr.second;
-
-			    boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
-                            filter->init(s);
-                            _netcdf_filters[filter_name] = filter;
-
-			}
-
-                    } catch (pt::ptree_bad_path &e)
-                    {
-                        //ignore bad path, means we don't have a filter
-                    }
-
-                    //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
-                    //it will allow us to pull out the station for a specific x,y more easily.
-                    pstations.at(index) = s;
-
-                }
-            }
-            LOG_DEBUG << "Took " << c.toc<s>() << "s";
-
-        } catch(netCDF::exceptions::NcException& e)
-        {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
-        }
-
-    } else
-    {
-        if (nstations != forcings.size())
-        {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Something has gone wrong in forcing file read."));
-        }
-
-        //#pragma omp parallel for
-        //TODO: this dead locks, not sure why <-- json reader isn't parallel safe
-        for(size_t i =0; i < nstations; ++i)
-        {
-            auto& itr = forcings.at(i);
-
-            std::string station_name = itr.first;//.data(); n
-
-            std::shared_ptr<station> s = std::make_shared<station>();
-
-            s->ID(station_name);
-
-            double longitude=0;
-            double latitude=0;
-            try
-            {
-                longitude = itr.second.get<double>("longitude");
-                latitude = itr.second.get<double>("latitude");
-            }catch(boost::property_tree::ptree_bad_path& e)
-            {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " missing lat/long coordinate."));
-
-            }
-
-            if( (latitude > 90 || latitude < -90) ||
-                (longitude > 180 || longitude < -180) )
-            {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " coordinate is invalid."));
-            }
-
-            //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
-            if(!_mesh->is_geographic())
-            {
-                if(!coordTrans->Transform(1, &longitude, &latitude))
-                {
-                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station=" + station_name + ": unable to convert coordinates to mesh format."));
-                }
-            }
-
-            s->x(longitude);
-            s->y(latitude);
-
-            double elevation = itr.second.get<double>("elevation");
-            s->z(elevation);
-
-            std::string file = itr.second.get<std::string>("file");
-            auto f = cwd_dir / file;
-            s->open(f.string());
-
-            //filters with text timeseries behave differently than filters with the netcdf
-            //these will be run once, over the entire timeseries. netcdf will call the filters and run it on every lazyload.
-            try
-            {
-                auto filter_section = itr.second.get_child("filter");
-
-                for (auto &jtr: filter_section)
-                {
-                    auto filter_name = jtr.first.data();
-                    auto cfg = jtr.second;
-
-		    boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
-                    filter->init(s);
-
-                    //save this filter to run later
-                    //each station is associated with a list of filters to run
-                    _txtmet_filters[s->ID()].push_back(filter);
-
-                }
-
-            } catch (pt::ptree_bad_path &e)
-            {
-                //ignore
-            }
-
-            pstations.at(i) = s;
-
-        }
-
-    }
 
     for(size_t i = 0; i<nstations;i++)
     {
-        auto s = pstations.at(i);
-        if(_output_station_ptv)
-        {
-            points->InsertNextPoint(s->x(), s->y(), s->z());
-            labels->SetValue(i, s->ID() );
-        }
+        auto s = _metdata.at(i);
+
         auto cf = _mesh->find_closest_face(s->x(),s->y());
         s->set_closest_face(cf->cell_global_id);
 
         //do a few things behind _global's back for efficiency.
-//        auto s = pstations.at(i);
         _global->_stations.at(i) = s;
         _global->_dD_tree.insert(boost::make_tuple(global::Kernel::Point_2(s->x(), s->y()), s));
     }
 
+    auto f = o_path / "stations.vtp";
+    _metdata.write_stations_to_ptv(f.string());
 
-    delete coordTrans;
+    LOG_DEBUG << "Finished reading stations. Took " << c.toc<s>() << "s";
 
-    LOG_DEBUG << "Took " << c.toc<s>() << "s";
+}
+void core::init_forcing()
+{
+    LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
-    LOG_DEBUG << "Finished reading stations";
+    if (_global->_stations.size() == 0)
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
-    if(_output_station_ptv)
+
+    auto start_time = _global->_stations.at(0)->date_timeseries().at(0);
+    auto end_time = _global->_stations.at(0)->date_timeseries().back();
+
+    //if the user gives both a custom start and end time, don't bother with this.
+    //this does assume the user knows what they are doing and subsets a time period that is correct
+    //if they do not, the sanity check after this period that double checks consistent timestepping will catch it
+    if(!_start_ts && !_end_ts)
+    {
+        // find the latest start time and the earliest end time
+        for (size_t i = 0; i < _global->_stations.size(); ++i)
+        {
+            auto tmp = _global->_stations.at(i)->date_timeseries().at(0);
+
+            if (tmp > start_time)
+                start_time = tmp;
+
+            tmp = _global->_stations.at(i)->date_timeseries().back();
+            if (tmp < end_time)
+                end_time = tmp;
+        }
+    }
+
+    // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
+    if(_load_from_checkpoint)
     {
 
-        vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
-        polydata->SetPoints(points);
-        polydata->GetPointData()->AddArray(labels);
-        // Write the file
-        vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-        auto f = o_path / "stations.vtp";
-        writer->SetFileName(f.string().c_str());
+        size_t t = 0;
+        _in_savestate.get_ncfile().getAtt("restart_time_sec").getValues(&t);
+        _start_ts = new boost::posix_time::ptime(boost::posix_time::from_time_t(t));
 
-#if VTK_MAJOR_VERSION <= 5
-        writer->SetInput(polydata);
-#else
-        writer->SetInputData(polydata);
-#endif
+        LOG_WARNING << "Loading from checkpoint. Overriding start time to match. New start time = " << *_start_ts;
+    }
 
-        writer->Write();
+    if (!_start_ts)
+    {
+        _start_ts = new boost::posix_time::ptime(start_time);
+    }
+    else if(*_start_ts < start_time)
+    {
+        std::stringstream ss;
+        ss << "User specified start time starts before the most continuous start time of all input forcing files . ";
+        ss << " User start date: " << *_start_ts;
+        ss << " Continous start date: " << start_time;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+    }
+    if (!_end_ts)
+    {
+        _end_ts = new boost::posix_time::ptime(end_time);
+    }
+    else if(*_end_ts > end_time)
+    {
+        std::stringstream ss;
+        ss << "User specified end time ends after the most continuous end time of all input forcing files . ";
+        ss << " User end date: " << *_end_ts;
+        ss << " Continous end date: " << end_time;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
     }
 
 
+    if( *_start_ts > *_end_ts)
+    {
+        std::stringstream ss;
+        ss << "Start time is after endtime. ";
+        ss << " Start date: " << *_start_ts;
+        ss << " End date: " << *_end_ts;
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+    }
+
+    if( _global->_stations.at(0)->date_timeseries().size() == 1)
+    {
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
+    }
+    //figure out what our timestepping is. Needs to happen before we subset as we may end up with only 1 timestep
+    auto t0 = _global->_stations.at(0)->date_timeseries().at(0);
+    auto t1 = _global->_stations.at(0)->date_timeseries().at(1);
+    auto dt = (t1 - t0);
+    _global->_dt = dt.total_seconds();
+    LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
+
+
+    LOG_DEBUG << "Subsetting station timeseries";
+
+#pragma omp for
+    for(size_t i = 0; i < _global->_stations.size(); ++i)
+    {
+        _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
+        _global->_stations.at(i)->reset_itrs();
+        auto s= _global->_stations.at(i);
+//         LOG_VERBOSE << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
+    }
+
+    //ensure all the stations have the same start and end times
+    // per-timestep agreeent happens during runtime.
+    start_time = _global->_stations.at(0)->date_timeseries().at(0);
+    end_time = _global->_stations.at(0)->date_timeseries().back();
+
+
+    for (size_t i = 1; //on purpose to skip first station
+         i < _global->_stations.size();
+         i++)
+    {
+        if (_global->_stations.at(i)->date_timeseries().at(0) != start_time ||
+            _global->_stations.at(i)->date_timeseries().back() != end_time)
+        {
+            BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
+                                      <<
+                                      errstr_info("Timestep mismatch at station: " + _global->_stations.at(i)->ID()));
+        }
+    }
 }
 void core::config_parameters(pt::ptree &value)
 {
@@ -1512,129 +1444,10 @@ void core::init(int argc, char **argv)
         }
     }
 
-    LOG_DEBUG << "Initializing and allocating memory for timeseries";
-
-    if (_global->_stations.size() == 0)
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
-
-
-    auto start_time = _global->_stations.at(0)->date_timeseries().at(0);
-    auto end_time = _global->_stations.at(0)->date_timeseries().back();
-
-    //if the user gives both a custom start and end time, don't bother with this.
-    //this does assume the user knows what they are doing and subsets a time period that is correct
-    //if they do not, the sanity check after this period that double checks consistent timestepping will catch it
-    if(!_start_ts && !_end_ts)
-    {
-        // find the latest start time and the earliest end time
-        for (size_t i = 0; i < _global->_stations.size(); ++i)
-        {
-            auto tmp = _global->_stations.at(i)->date_timeseries().at(0);
-
-            if (tmp > start_time)
-                start_time = tmp;
-
-            tmp = _global->_stations.at(i)->date_timeseries().back();
-            if (tmp < end_time)
-                end_time = tmp;
-        }
-    }
-
-    // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
-    if(_load_from_checkpoint)
-    {
-        //better but is loading incorrectly, seems to be an off by one?
-//        std::string timestr;
-//        _in_savestate.get_ncfile().getAtt("restart_time").getValues(&timestr);
-
-        size_t t = 0;
-        _in_savestate.get_ncfile().getAtt("restart_time_sec").getValues(&t);
-
-///        _start_ts = new boost::posix_time::ptime(boost::posix_time::time_from_string(timestr));
-        _start_ts = new boost::posix_time::ptime(boost::posix_time::from_time_t(t));
-
-        LOG_WARNING << "Loading from checkpoint. Overriding start time to match. New start time = " << *_start_ts;
-    }
-
-    if (!_start_ts)
-    {
-        _start_ts = new boost::posix_time::ptime(start_time);
-    }
-    else if(*_start_ts < start_time)
-    {
-        std::stringstream ss;
-        ss << "User specified start time starts before the most continuous start time of all input forcing files . ";
-        ss << " User start date: " << *_start_ts;
-        ss << " Continous start date: " << start_time;
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
-    }
-    if (!_end_ts)
-    {
-        _end_ts = new boost::posix_time::ptime(end_time);
-    }
-    else if(*_end_ts > end_time)
-    {
-        std::stringstream ss;
-        ss << "User specified end time ends after the most continuous end time of all input forcing files . ";
-        ss << " User end date: " << *_end_ts;
-        ss << " Continous end date: " << end_time;
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
-    }
-
-
-    if( *_start_ts > *_end_ts)
-    {
-        std::stringstream ss;
-        ss << "Start time is after endtime. ";
-        ss << " Start date: " << *_start_ts;
-        ss << " End date: " << *_end_ts;
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
-    }
-
-    if( _global->_stations.at(0)->date_timeseries().size() == 1)
-    {
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
-    }
-    //figure out what our timestepping is. Needs to happen before we subset as we may end up with only 1 timestep
-    auto t0 = _global->_stations.at(0)->date_timeseries().at(0);
-    auto t1 = _global->_stations.at(0)->date_timeseries().at(1);
-    auto dt = (t1 - t0);
-    _global->_dt = dt.total_seconds();
-    LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
-
-
-    LOG_DEBUG << "Subsetting station timeseries";
-
-#pragma omp for
-    for(size_t i = 0; i < _global->_stations.size(); ++i)
-    {
-        _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
-        _global->_stations.at(i)->reset_itrs();
-        auto s= _global->_stations.at(i);
-//         LOG_VERBOSE << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
-    }
-
-    //ensure all the stations have the same start and end times
-    // per-timestep agreeent happens during runtime.
-    start_time = _global->_stations.at(0)->date_timeseries().at(0);
-    end_time = _global->_stations.at(0)->date_timeseries().back();
-
-
-    for (size_t i = 1; //on purpose to skip first station
-         i < _global->_stations.size();
-         i++)
-    {
-        if (_global->_stations.at(i)->date_timeseries().at(0) != start_time ||
-            _global->_stations.at(i)->date_timeseries().back() != end_time)
-        {
-            BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                                  <<
-                                  errstr_info("Timestep mismatch at station: " + _global->_stations.at(i)->ID()));
-        }
-    }
+    init_forcing();
 
     //set interpolation algorithm
-    _global->interp_algorithm = _interpolation_method;// interp_alg::tpspline;
+    _global->interp_algorithm = _interpolation_method;
 
 
 

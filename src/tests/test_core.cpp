@@ -279,6 +279,5 @@ TEST_F(CoreTest,CmdlOptionsErase)
     ASSERT_ANY_THROW(c1._cfg.get<int>("nproc"));
     ASSERT_ANY_THROW(c1._cfg.get<int>("global.UTC_offset"));
     ASSERT_ANY_THROW(c1._cfg.get_child("output"));  //confirms the entire section got nuked
-
-
 }
+

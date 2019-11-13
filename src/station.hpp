@@ -38,13 +38,6 @@
 * Allows the station to represent a timeseries that has a location (x,y), an elevation, and a station ID.
 * As well, it wraps the iterators of the timeserires instance allowing for easy stepping and access.
 */
-//namespace CGAL
-//{
-//    class Exact_predicates_inexact_constructions_kernel;
-//}
-
-
-
 class station : boost::noncopyable
 {
 public:
