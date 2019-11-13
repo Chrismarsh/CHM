@@ -28,6 +28,9 @@
 #include <set>
 #include <vector>
 
+//boost includes
+#include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
+
 //Gdal includes
 #include <ogr_spatialref.h>
 
@@ -58,7 +61,7 @@ class metdata
     };
 
     metdata();
-    metdata(const boost::shared_ptr< triangulation > mesh);
+    metdata(boost::shared_ptr< triangulation > mesh);
     ~metdata();
 
     /// Loads a netcdf file. Must be a 2D structured grid of stations. Expects times to be in UTC+0
@@ -74,11 +77,32 @@ class metdata
 
     void write_stations_to_ptv(const std::string& path);
 
+    /// For all the stations loaded from ascii files, find the latest start time, and the earliest end time that is consistent across all stations
+    /// @return
+    std::pair<boost::posix_time::ptime, boost::posix_time::ptime> start_end_times();
+
     /// Number of stations
     /// @return
     size_t nstations();
 
     std::shared_ptr<station> at(size_t idx);
+
+    boost::posix_time::ptime start_time();
+    boost::posix_time::ptime end_time();
+
+    /// Subsets all timeseries to begin at [start, end]. For ascii, the underlying timeseries is modified. For nc, internal offsets are computed to start, end
+    /// @param start
+    /// @param end
+    void subset(boost::posix_time::ptime start, boost::posix_time::ptime end);
+
+    /// Check that all ascii stations have the same start/end times
+    /// @return
+    void check_ts_consistency();
+
+    /// Timestep duration in seconds
+    /// @return
+    size_t dt();
+
   private:
 
     // NetCDF specific variables
@@ -105,13 +129,16 @@ class metdata
     size_t _nstations;
 
     //ptr to the core:: owned mesh. Metdata needs it to know what it should load when in MPI mode
-    const boost::shared_ptr< triangulation > _mesh;
+    boost::shared_ptr< triangulation > _mesh;
 
 
 
     //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
     //and run it on a per-station config.
     std::map<std::string, std::vector<boost::shared_ptr<filter_base>> > _txtmet_filters;
+
+
+    boost::posix_time::ptime _start_time, _end_time;
 
 };
 

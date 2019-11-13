@@ -27,8 +27,6 @@ metdata::metdata()
 {
     _nc = nullptr;
     _use_netcdf = false;
-    _mesh = nullptr;
-
 }
 
 metdata::metdata(boost::shared_ptr< triangulation > mesh) :
@@ -76,6 +74,9 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
         auto variables = _nc->get_variable_names();
         auto date_vec = _nc->get_datevec();
+
+        _start_time = date_vec.at(0);
+        _end_time = date_vec.back();
 
         _nstations = _nc->get_xsize() * _nc->get_ysize();
         LOG_DEBUG << "Grid is (y)" << _nc->get_ysize() << " by (x)" << _nc->get_xsize();
@@ -139,7 +140,7 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
 }
 
-void metdata::load_from_ascii(std::vector<ascii_data> stations, int utc_offset, int utc_offset)
+void metdata::load_from_ascii(std::vector<ascii_data> stations, int utc_offset)
 {
     for(auto& itr: stations)
     {
@@ -179,6 +180,82 @@ void metdata::load_from_ascii(std::vector<ascii_data> stations, int utc_offset, 
         s->open(itr.path);
 
     }
+    
+    std::tie(_start_time,_end_time) = start_end_times();
+}
+
+boost::posix_time::ptime metdata::start_time()
+{
+    return _start_time;
+}
+boost::posix_time::ptime metdata::end_time()
+{
+    return _end_time;
+}
+
+size_t metdata::dt()
+{
+    if(_stations.at(0)->date_timeseries().size() == 1)
+    {
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
+    }
+
+    auto t0 = _stations.at(0)->date_timeseries().at(0);
+    auto t1 = _stations.at(0)->date_timeseries().at(1);
+    auto dt = (t1 - t0);
+    return dt.total_seconds();
+}
+
+void metdata::check_ts_consistency()
+{
+    //ensure all the stations have the same start and end times
+    // per-timestep agreeent happens during runtime.
+
+    for (size_t i = 0; i < _stations.size(); i++)
+    {
+        if (_stations.at(i)->date_timeseries().at(0) != _start_time ||
+            _stations.at(i)->date_timeseries().back() != _end_time)
+        {
+            BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
+                                      <<
+                                      errstr_info("Timestep mismatch at station: " + _stations.at(i)->ID()));
+        }
+    }
+}
+void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime end)
+{
+
+    if(_use_netcdf)
+    {
+        CHM_THROW_EXCEPTION(not_impl,"Not implemented");
+    }
+    else //ascii files
+    {
+#pragma omp for
+        for(size_t i = 0; i < _stations.size(); ++i)
+        {
+            _stations.at(i)->raw_timeseries()->subset(start, end);
+            _stations.at(i)->reset_itrs();
+        }
+    }
+
+}
+std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::start_end_times()
+{
+// find the latest start time and the earliest end time
+    for (size_t i = 0; i < _stations.size(); ++i)
+    {
+        auto tmp = _stations.at(i)->date_timeseries().at(0);
+
+        if (tmp > _start_time)
+            _start_time = tmp;
+
+        tmp = _stations.at(i)->date_timeseries().back();
+        if (tmp < _end_time)
+            _end_time = tmp;
+    }
+
+    return std::make_pair(_start_time,_end_time);
 }
 
 size_t metdata::nstations()
@@ -203,7 +280,7 @@ void metdata::write_stations_to_ptv(const std::string& path)
     polydata->GetPointData()->AddArray(labels);
     // Write the file
     vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
-    writer->SetFileName(f.c_str());
+    writer->SetFileName(path.c_str());
 
 #if VTK_MAJOR_VERSION <= 5
     writer->SetInput(polydata);
@@ -214,7 +291,7 @@ void metdata::write_stations_to_ptv(const std::string& path)
     writer->Write();
 }
 
-std::shared_ptr<station> at(size_t idx)
+std::shared_ptr<station> metdata::at(size_t idx)
 {
     return _stations.at(idx);
 }

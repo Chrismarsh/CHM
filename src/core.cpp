@@ -466,16 +466,14 @@ void core::config_forcing(pt::ptree &value)
     LOG_DEBUG << "Finished reading stations. Took " << c.toc<s>() << "s";
 
 }
-void core::init_forcing()
+void core::determine_startend_ts_forcing()
 {
-    LOG_DEBUG << "Initializing and allocating memory for timeseries";
 
-    if (_global->_stations.size() == 0)
+    if (_metdata.nstations() == 0)
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
-
-    auto start_time = _global->_stations.at(0)->date_timeseries().at(0);
-    auto end_time = _global->_stations.at(0)->date_timeseries().back();
+    auto start_time = _metdata.start_time();
+    auto end_time = _metdata.end_time();
 
     //if the user gives both a custom start and end time, don't bother with this.
     //this does assume the user knows what they are doing and subsets a time period that is correct
@@ -483,17 +481,7 @@ void core::init_forcing()
     if(!_start_ts && !_end_ts)
     {
         // find the latest start time and the earliest end time
-        for (size_t i = 0; i < _global->_stations.size(); ++i)
-        {
-            auto tmp = _global->_stations.at(i)->date_timeseries().at(0);
-
-            if (tmp > start_time)
-                start_time = tmp;
-
-            tmp = _global->_stations.at(i)->date_timeseries().back();
-            if (tmp < end_time)
-                end_time = tmp;
-        }
+        std::tie(start_time, end_time) = _metdata.start_end_times();
     }
 
     // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
@@ -542,47 +530,19 @@ void core::init_forcing()
         BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
     }
 
-    if( _global->_stations.at(0)->date_timeseries().size() == 1)
-    {
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
-    }
+
     //figure out what our timestepping is. Needs to happen before we subset as we may end up with only 1 timestep
-    auto t0 = _global->_stations.at(0)->date_timeseries().at(0);
-    auto t1 = _global->_stations.at(0)->date_timeseries().at(1);
-    auto dt = (t1 - t0);
-    _global->_dt = dt.total_seconds();
+    _global->_dt = _metdata.dt();
     LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
 
 
     LOG_DEBUG << "Subsetting station timeseries";
+    _metdata.subset(*_start_ts, *_end_ts);
 
-#pragma omp for
-    for(size_t i = 0; i < _global->_stations.size(); ++i)
-    {
-        _global->_stations.at(i)->raw_timeseries()->subset(*_start_ts, *_end_ts);
-        _global->_stations.at(i)->reset_itrs();
-        auto s= _global->_stations.at(i);
-//         LOG_VERBOSE << s->ID() << " Start = " << s->date_timeseries().front() << " End = " << s->date_timeseries().back();
-    }
 
     //ensure all the stations have the same start and end times
     // per-timestep agreeent happens during runtime.
-    start_time = _global->_stations.at(0)->date_timeseries().at(0);
-    end_time = _global->_stations.at(0)->date_timeseries().back();
-
-
-    for (size_t i = 1; //on purpose to skip first station
-         i < _global->_stations.size();
-         i++)
-    {
-        if (_global->_stations.at(i)->date_timeseries().at(0) != start_time ||
-            _global->_stations.at(i)->date_timeseries().back() != end_time)
-        {
-            BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                                      <<
-                                      errstr_info("Timestep mismatch at station: " + _global->_stations.at(i)->ID()));
-        }
-    }
+    _metdata.check_ts_consistency();
 }
 void core::config_parameters(pt::ptree &value)
 {
@@ -1444,7 +1404,7 @@ void core::init(int argc, char **argv)
         }
     }
 
-    init_forcing();
+    determine_startend_ts_forcing();
 
     //set interpolation algorithm
     _global->interp_algorithm = _interpolation_method;

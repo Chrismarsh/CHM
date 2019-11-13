@@ -188,9 +188,9 @@ public:
     void config_checkpoint( pt::ptree& value);
 
     /**
-     * Initializes the forcing data structures, incl the virtual stations
+     * Determines what the start end times should be, and ensures consistency from a check pointed file
      */
-    void init_forcing();
+    void determine_startend_ts_forcing();
     /**
      * Determines the order modules need to be scheduleled in to maximize parallelism
      */
