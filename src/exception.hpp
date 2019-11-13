@@ -40,7 +40,10 @@ struct io_error: virtual exception_base { };
 struct file_read_error: virtual io_error { };
 struct file_write_error: virtual io_error { };
 
-struct model_init_error: virtual io_error { };
+// Generic CHM errors
+struct chm_error: virtual exception_base { };
+struct model_init_error: virtual chm_error { };
+struct not_impl: virtual chm_error { };
 
 // Module errors
 struct module_error : virtual exception_base { };
@@ -66,6 +69,7 @@ struct forcing_no_stations : virtual forcing_error{};
 //interpolation errors
 struct interp_error : virtual exception_base{};
 struct interp_unknown_type : virtual interp_error {};
+struct interpolation_error : virtual interp_error{};
 
 //configuration errors
 struct config_error : virtual exception_base{};
@@ -78,7 +82,7 @@ struct mesh_error : virtual exception_base{};
 struct mesh_insertion_error : virtual mesh_error{};
 struct mesh_lookup_error : virtual mesh_error{};
 
-struct interpolation_error : virtual exception_base{};
+
 
 //http://stackoverflow.com/questions/11828539/elegant-exceptionhandling-in-openmp
 class ompException
