@@ -377,13 +377,13 @@ void core::config_forcing(pt::ptree &value)
         nstations = _metdata.nstations();
     } else
     {
-        std::vector<metdata::ascii_data> ascii_data;
+        std::vector<metdata::ascii_metadata> ascii_data;
 
         for (auto &itr : value)
         {
             if(itr.first != "UTC_offset")
             {
-                metdata::ascii_data data;
+                metdata::ascii_metadata data;
 
                 std::string station_name = itr.first.data();
                 auto& station = value.get_child(station_name);
@@ -487,7 +487,6 @@ void core::determine_startend_ts_forcing()
     // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
     if(_load_from_checkpoint)
     {
-
         size_t t = 0;
         _in_savestate.get_ncfile().getAtt("restart_time_sec").getValues(&t);
         _start_ts = new boost::posix_time::ptime(boost::posix_time::from_time_t(t));
@@ -2020,50 +2019,8 @@ void core::run()
 
             if(_use_netcdf)
             {
-//                c.tic();
-                // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
-                for (auto &itr: nc.get_variable_names() )
-                {
-                    auto data = nc.get_var(itr, t);
 
-                    #pragma omp parallel for
-                    for (size_t y = 0; y < nc.get_ysize(); y++)
-                    {
-                       for (size_t x = 0; x < nc.get_xsize(); x++)
-                       {
-                           size_t index = x + y * nc.get_xsize();
-                           auto s = _global->_stations.at(index);
 
-                           //sanity check that we are getting the right station for this xy pair
-                           if (s->ID() != std::to_string(index))
-                           {
-                               BOOST_THROW_EXCEPTION(
-                                                     forcing_error() << errstr_info("Station=" + s->ID() + ": wrong ID"));
-                           }
-
-                           double d = data[y][x];
-                           s->now().set(itr, d);
-                       }
-		    }
-                }
-
-//                LOG_DEBUG << "Done loading forcing [" << c.toc<s>() << "s]";
-
-//                c.tic();
-                //do 1 step of the filters. Filters do not have depends!!
-                //asume every filter is run everywhere with the same parameters
-
-                #pragma omp parallel for
-                for(size_t i = 0; i < _global->number_of_stations();i++)
-                {
-                    auto s = _global->stations().at(i);
-
-                               for (auto &f : _netcdf_filters)
-                               {
-                                   f.second->process(s);
-                               }
-
-                }
 
 //                LOG_DEBUG << "Done filters [ " << c.toc<s>() << "s]";
 
