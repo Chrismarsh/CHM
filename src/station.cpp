@@ -35,8 +35,6 @@ station::station()
     _y = 0;
     _z = 0.0;
     _obs = NULL;
-    _face = 0;
-
 }
 
 station::station(std::string ID, double x, double y, double elevation)
@@ -47,18 +45,17 @@ station::station(std::string ID, double x, double y, double elevation)
     _z = elevation;
     _obs = new timeseries();
     _itr = _obs->begin();
-    _face = 0;
-
 }
 
-size_t station::closest_face()
+double& station::operator[](const uint64_t& hash)
 {
-    return _face;
+    return _timestep_data[hash];
 }
-void station::set_closest_face(size_t face)
+double& station::operator[](const std::string& variable)
 {
-    _face = face;
+    return _timestep_data[variable];
 }
+
 void station::open(std::string file)
 {
     try
@@ -70,7 +67,6 @@ void station::open(std::string file)
     }
     catch (exception_base &e)
     {
-        //e << errstr_info( std::string("Station:") + _ID ); //hope like hell we've got the ID at this point
         throw;
     }
 }

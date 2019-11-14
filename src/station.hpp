@@ -28,6 +28,7 @@
 
 #include <boost/utility.hpp>
 
+#include "variablestorage.hpp"
 #include "timeseries.hpp"
 
 /**
@@ -135,7 +136,7 @@ public:
     std::string ID();
 
     /**
-    * Resets the internal iterators to point to the begingin of the timeseries
+    * Resets the internal iterators to point to the begining of the timeseries
     */
     void reset_itrs();
 
@@ -181,17 +182,8 @@ public:
      */
     void tofile(std::string file);
 
-    /**
-     * Obtain the triangle id that is closest to this station
-     * @return
-     */
-    size_t closest_face();
-
-    /**
-     * Set the face id that the station is closest to
-     * @param face
-     */
-    void set_closest_face(size_t face);
+    double& operator[](const uint64_t& hash);
+    double& operator[](const std::string& variable);
 
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
@@ -203,13 +195,8 @@ private:
         double _y;
         double _z;
 
+        variablestorage _timestep_data;
 
-    // There is a circular reference that is created when station knows about the triangulation
-    // I could not get it to properly compile the mesh_elem reference
-    // So this stores the id, which we can easily look up in domain modules
-    // Perhaps rethink this if it becomes a problem later
-        size_t _face; // holds the face that the station is closet to
-   
 };
 
 
