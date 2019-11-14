@@ -22,8 +22,6 @@
 #include "station.hpp"
 #include "global.hpp"
 
-#include "make_unique.hpp" // While we are using C++11, we need this.
-
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
 
