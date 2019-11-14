@@ -418,6 +418,14 @@ netcdf::data netcdf::get_var(std::string var, size_t timestep)
      return array;
 }
 
+double netcdf::get_var(std::string var, boost::posix_time::ptime timestep, size_t x, size_t y)
+{
+    auto diff = timestep - _start; // a duration
+
+    auto offset = diff.total_seconds() / _timestep.total_seconds();
+
+    return get_var(var, offset,x,y);
+}
 netcdf::data netcdf::get_var(std::string var, boost::posix_time::ptime timestep)
 {
     auto diff = timestep - _start; // a duration

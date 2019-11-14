@@ -73,6 +73,7 @@ public:
     data get_var(std::string var, size_t timestep);
     data get_var(std::string var, boost::posix_time::ptime timestep);
     double get_var(std::string var, size_t timestep, size_t x, size_t y);
+    double get_var(std::string var, boost::posix_time::ptime timestep, size_t x, size_t y);
 
     void add_dim1D(const std::string& var, size_t length);
     void create_variable1D(const std::string& var,  size_t length);
