@@ -52,11 +52,14 @@ class metdata
 
     /// Holds the metadata for an ascii file to load
     ///
-    struct ascii_data
+    struct ascii_metadata
     {
         double latitude, longitude, elevation;
         std::string path;
         std::string name;
+
+        //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
+        //and run it on a per-station config.
         std::vector<boost::shared_ptr<filter_base>> filters;
     };
 
@@ -73,7 +76,7 @@ class metdata
     /// @param path
     /// @param filters
     /// @param utc_offset Positive offset going west. So the normal UTC-6 would be UTC_offset:6
-    void load_from_ascii(std::vector<ascii_data> stations, int utc_offset);
+    void load_from_ascii(std::vector<ascii_metadata> stations, int utc_offset);
 
     void write_stations_to_ptv(const std::string& path);
 
@@ -90,7 +93,9 @@ class metdata
     boost::posix_time::ptime start_time();
     boost::posix_time::ptime end_time();
 
-    /// Subsets all timeseries to begin at [start, end]. For ascii, the underlying timeseries is modified. For nc, internal offsets are computed to start, end
+    /// Subsets all timeseries to begin at [start, end]. For ascii, the underlying timeseries is modified.
+    /// For nc, internal offsets are computed to start, end.
+    /// This updates the internal start and end times, as well as resets the current time to be = start
     /// @param start
     /// @param end
     void subset(boost::posix_time::ptime start, boost::posix_time::ptime end);
@@ -103,25 +108,36 @@ class metdata
     /// @return
     size_t dt();
 
+    /// Populates the stations' with the next timesteps' value
+    void next();
+
+    /// Advances 1 timestep in the netcdf files
+    void next_nc();
+
   private:
 
     // NetCDF specific variables
+    // -----------------------------------
+        //if we use netcdf, store it here
+        std::unique_ptr<netcdf> _nc;
 
-    //if we use netcdf, store it here
-    std::unique_ptr<netcdf> _nc;
+        //if we use netcdf, we need to save the filters and run it once every timestep.
+        std::map<std::string, boost::shared_ptr<filter_base>>_netcdf_filters;
 
-    //if we use netcdf, we need to save the filters and run it once every timestep.
-    std::map<std::string, boost::shared_ptr<filter_base>>_netcdf_filters;
+        std::set<std::string> _provides_from_nc_filters;
 
-    std::set<std::string> _provides_from_nc_filters;
+        // if false, we are using ascii files
+        bool _use_netcdf;
 
-    // if false, we are using ascii files
-    bool _use_netcdf;
+    // -----------------------------------
 
-    //if we use ascii files, store them here
-    std::vector< std::unique_ptr<timeseries> > _ascii_timeseries;
-
+    // This is a different approach than how stations used to work
+    // Now, they only hold the current timestep, which is refilled every model timestep by metdata
+    // Our sources of data are netcdf, or ascii (or whatever in the future)
     std::vector< std::shared_ptr<station>> _stations;
+
+
+    std::map< std::string, std::unique_ptr<timeseries> > _ascii_timeseries;
 
 
 
@@ -132,13 +148,12 @@ class metdata
     boost::shared_ptr< triangulation > _mesh;
 
 
-
-    //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
-    //and run it on a per-station config.
-    std::map<std::string, std::vector<boost::shared_ptr<filter_base>> > _txtmet_filters;
-
-
     boost::posix_time::ptime _start_time, _end_time;
+    boost::posix_time::ptime _current_ts;
+    boost::posix_time::time_duration _dt;
+
+    // computes the dt
+    void compute_dt();
 
 };
 

@@ -137,10 +137,13 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
     }
 
     delete coordTrans;
+    _dt = _nc->get_dt();
+
+    _current_ts = _start_time;
 
 }
 
-void metdata::load_from_ascii(std::vector<ascii_data> stations, int utc_offset)
+void metdata::load_from_ascii(std::vector<ascii_metadata> stations, int utc_offset)
 {
     for(auto& itr: stations)
     {
@@ -180,8 +183,20 @@ void metdata::load_from_ascii(std::vector<ascii_data> stations, int utc_offset)
         s->open(itr.path);
 
     }
-    
+
     std::tie(_start_time,_end_time) = start_end_times();
+
+    // computes dt
+    if(_stations.at(0)->date_timeseries().size() == 1)
+    {
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
+    }
+
+    auto t0 = _stations.at(0)->date_timeseries().at(0);
+    auto t1 = _stations.at(0)->date_timeseries().at(1);
+    _dt = (t1 - t0);
+
+    _current_ts = _start_time;
 }
 
 boost::posix_time::ptime metdata::start_time()
@@ -195,15 +210,8 @@ boost::posix_time::ptime metdata::end_time()
 
 size_t metdata::dt()
 {
-    if(_stations.at(0)->date_timeseries().size() == 1)
-    {
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
-    }
 
-    auto t0 = _stations.at(0)->date_timeseries().at(0);
-    auto t1 = _stations.at(0)->date_timeseries().at(1);
-    auto dt = (t1 - t0);
-    return dt.total_seconds();
+    return _dt.total_seconds();
 }
 
 void metdata::check_ts_consistency()
@@ -225,11 +233,8 @@ void metdata::check_ts_consistency()
 void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime end)
 {
 
-    if(_use_netcdf)
-    {
-        CHM_THROW_EXCEPTION(not_impl,"Not implemented");
-    }
-    else //ascii files
+    // the netcdf files are simple and don't need this subsetting
+    if(!_use_netcdf)
     {
 #pragma omp for
         for(size_t i = 0; i < _stations.size(); ++i)
@@ -239,6 +244,9 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
         }
     }
 
+    _start_time = start;
+    _end_time = end;
+    _current_ts = _start_time;
 }
 std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::start_end_times()
 {
@@ -294,4 +302,52 @@ void metdata::write_stations_to_ptv(const std::string& path)
 std::shared_ptr<station> metdata::at(size_t idx)
 {
     return _stations.at(idx);
+}
+
+void metdata::next()
+{
+    _current_ts = _current_ts + _dt;
+
+    if(_use_netcdf)
+    {
+        next_nc();
+    }
+}
+
+void metdata::next_nc()
+{
+    // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
+    for (auto &itr: _nc->get_variable_names() )
+    {
+//        auto data = _nc->get_var(itr, t);
+
+#pragma omp parallel for
+        for (size_t y = 0; y < _nc->get_ysize(); y++)
+        {
+            for (size_t x = 0; x < _nc->get_xsize(); x++)
+            {
+                size_t index = x + y * _nc->get_xsize();
+                auto s = _stations.at(index);
+
+                //sanity check that we are getting the right station for this xy pair
+                if (s->ID() != std::to_string(index))
+                {
+                    CHM_THROW_EXCEPTION(forcing_error, "Station=" + s->ID() + ": wrong ID");
+                }
+
+//                double d = data[y][x];
+                double d =  _nc->get_var(itr, _current_ts, x, y);
+                (*s)[itr] = d;
+//                s->now().set(itr, d);
+
+                for (auto &f : _netcdf_filters)
+                {
+                    f.second->process(s);
+                }
+            }
+        }
+    }
+
+
+
 }
