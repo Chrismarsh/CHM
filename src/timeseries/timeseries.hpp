@@ -109,9 +109,9 @@ public:
 
     /**
     * Returns a list of all the variable names in this timeseries
-    * \return A vector of variable names
+    * \return A set of variable names
     */
-    std::vector<std::string> list_variables();
+    std::set<std::string> list_variables();
 
     /**
     * Returns the length (number of elements) of the timeseries.

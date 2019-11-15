@@ -60,12 +60,12 @@ void timeseries::init(std::set<std::string> variables, date_vec datetime)
  {
      return _date_vec;
  }
-std::vector<std::string> timeseries::list_variables()
+std::set<std::string> timeseries::list_variables()
 {
-    std::vector<std::string> vars;
+    std::set<std::string> vars;
     for(auto& itr : _variables)
     {
-        vars.push_back(itr.first);
+        vars.insert(itr.first);
     }
     
     return vars;
