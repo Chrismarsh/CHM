@@ -377,18 +377,18 @@ void core::config_forcing(pt::ptree &value)
         nstations = _metdata.nstations();
     } else
     {
-        std::vector<metdata::ascii_metadata> ascii_data;
+        std::vector<metdata::ascii_metdata> ascii_data;
 
         for (auto &itr : value)
         {
             if(itr.first != "UTC_offset")
             {
-                metdata::ascii_metadata data;
+                metdata::ascii_metdata data;
 
                 std::string station_name = itr.first.data();
                 auto& station = value.get_child(station_name);
 
-                data.name = station_name;
+                data.id = station_name;
 
                 try
                 {
@@ -451,9 +451,6 @@ void core::config_forcing(pt::ptree &value)
     for(size_t i = 0; i<nstations;i++)
     {
         auto s = _metdata.at(i);
-
-        auto cf = _mesh->find_closest_face(s->x(),s->y());
-        s->set_closest_face(cf->cell_global_id);
 
         //do a few things behind _global's back for efficiency.
         _global->_stations.at(i) = s;
@@ -2017,36 +2014,8 @@ void core::run()
                 LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
             }
 
-            if(_use_netcdf)
-            {
+            _metdata.next();
 
-
-
-//                LOG_DEBUG << "Done filters [ " << c.toc<s>() << "s]";
-
-            }
-            else
-            {
-                //do 1 step of the filters. Filters do not have depends!!
-
-
-                #pragma omp parallel for
-                for(size_t i = 0; i < _global->number_of_stations();i++)
-                {
-                    auto s = _global->stations().at(i);
-
-                    //get the list of filters to run for this station
-                    auto filters = _txtmet_filters[s->ID()];
-
-
-                     for (auto filt : filters)
-                     {
-                         filt->process(s);
-                     }
-
-                }
-
-            }
 
             std::stringstream ss;
             ss << _global->posix_time();

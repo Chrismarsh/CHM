@@ -52,15 +52,27 @@ class metdata
 
     /// Holds the metadata for an ascii file to load
     ///
-    struct ascii_metadata
+    struct ascii_metdata
     {
         double latitude, longitude, elevation;
         std::string path;
-        std::string name;
+        std::string id;
+
 
         //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
         //and run it on a per-station config.
         std::vector<boost::shared_ptr<filter_base>> filters;
+    };
+
+    struct ascii_data
+    {
+        //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
+        //and run it on a per-station config.
+        std::vector<boost::shared_ptr<filter_base>> filters;
+
+        // these are loaded into by metdata. Essentially this becomes like the old station
+        timeseries _obs;
+        timeseries::iterator _itr;
     };
 
     metdata();
@@ -76,7 +88,7 @@ class metdata
     /// @param path
     /// @param filters
     /// @param utc_offset Positive offset going west. So the normal UTC-6 would be UTC_offset:6
-    void load_from_ascii(std::vector<ascii_metadata> stations, int utc_offset);
+    void load_from_ascii(std::vector<ascii_metdata> stations, int utc_offset);
 
     void write_stations_to_ptv(const std::string& path);
 
@@ -130,6 +142,17 @@ class metdata
         bool _use_netcdf;
 
     // -----------------------------------
+    // ASCII met data specific variables
+
+        //Essentially what the old stations turned into.
+        // Holds all the met data to init that stations + the underlying timeseries data
+        // Mapped w/ stations ID -> metdata
+        std::map<std::string, std::unique_ptr<ascii_data>> _ascii_stations;
+
+
+
+
+    // -----------------------------------
 
     // This is a different approach than how stations used to work
     // Now, they only hold the current timestep, which is refilled every model timestep by metdata
@@ -137,16 +160,11 @@ class metdata
     std::vector< std::shared_ptr<station>> _stations;
 
 
-    std::map< std::string, std::unique_ptr<timeseries> > _ascii_timeseries;
-
-
-
     // Total number of stations
     size_t _nstations;
 
     //ptr to the core:: owned mesh. Metdata needs it to know what it should load when in MPI mode
     boost::shared_ptr< triangulation > _mesh;
-
 
     boost::posix_time::ptime _start_time, _end_time;
     boost::posix_time::ptime _current_ts;

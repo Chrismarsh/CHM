@@ -143,14 +143,14 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
 }
 
-void metdata::load_from_ascii(std::vector<ascii_metadata> stations, int utc_offset)
+void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offset)
 {
     for(auto& itr: stations)
     {
         if( (itr.latitude > 90 || itr.latitude < -90) ||
             (itr.longitude > 180 || itr.longitude < -180) )
         {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + itr.name + " coordinate is invalid."));
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + itr.id + " coordinate is invalid."));
         }
 
         // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
@@ -165,37 +165,60 @@ void metdata::load_from_ascii(std::vector<ascii_metadata> stations, int utc_offs
         if(!_mesh->is_geographic())
             coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
-        std::shared_ptr<station> s = std::make_shared<station>();
-
         if (!_mesh->is_geographic())
         {
             if (!coordTrans->Transform(1, &itr.longitude, &itr.latitude))
             {
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
-                    "Station=" + itr.name + ": unable to convert coordinates to mesh format."));
+                    "Station=" + itr.id + ": unable to convert coordinates to mesh format."));
             }
         }
 
+        std::shared_ptr<station> s = std::make_shared<station>();
+        s->ID(itr.id);
         s->x(itr.longitude);
         s->y(itr.latitude);
         s->z(itr.elevation);
 
-        s->open(itr.path);
+        // load the ascii data into the timeseries object
+        _ascii_stations.insert( std::make_pair(s->ID(), std::make_unique<ascii_data>()));
+        _ascii_stations[s->ID()]->_obs.open(itr.path);
+
+        // computes dt
+        if(_ascii_stations[s->ID()]->_obs.get_date_timeseries().size() == 1)
+        {
+            BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
+        }
+
+        _ascii_stations[s->ID()]->_itr =  _ascii_stations[s->ID()]->_obs.begin();
+
+        //copy the ptr for the filters, we own these now
+        for (auto filt : itr.filters)
+        {
+            filt->init();
+            _ascii_stations[s->ID()]->filters.push_back(filt);
+        }
 
     }
 
     std::tie(_start_time,_end_time) = start_end_times();
 
-    // computes dt
-    if(_stations.at(0)->date_timeseries().size() == 1)
+    std::vector<boost::posix_time::time_duration> dts;
+    for(auto& itr: _ascii_stations)
     {
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
+        auto t0 = itr.second->_obs.get_date_timeseries().at(0);
+        auto t1 = itr.second->_obs.get_date_timeseries().at(1);
+        auto dt = (t1 - t0);
+        dts.push_back(dt);
     }
 
-    auto t0 = _stations.at(0)->date_timeseries().at(0);
-    auto t1 = _stations.at(0)->date_timeseries().at(1);
-    _dt = (t1 - t0);
+    if(dts.empty() || !std::all_of(dts.begin(),dts.end(),
+                     [&](const auto& r) {return r==dts.front();}) )
+    {
+        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Input forcing file timesteps are not consistent"));
+    }
 
+    _dt = dts.front();
     _current_ts = _start_time;
 }
 
@@ -219,14 +242,14 @@ void metdata::check_ts_consistency()
     //ensure all the stations have the same start and end times
     // per-timestep agreeent happens during runtime.
 
-    for (size_t i = 0; i < _stations.size(); i++)
+    for (auto& itr : _ascii_stations)
     {
-        if (_stations.at(i)->date_timeseries().at(0) != _start_time ||
-            _stations.at(i)->date_timeseries().back() != _end_time)
+        if (itr.second->_obs.get_date_timeseries().at(0) != _start_time ||
+            itr.second->_obs.get_date_timeseries().back() != _end_time)
         {
             BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
                                       <<
-                                      errstr_info("Timestep mismatch at station: " + _stations.at(i)->ID()));
+                                      errstr_info("Timestep mismatch at station: " + itr.second.id));
         }
     }
 }
@@ -313,7 +336,24 @@ void metdata::next()
         next_nc();
     }
 }
+void metdata::next_ascii()
+{
+#pragma omp parallel for
+    for(size_t i = 0; i < nstations();i++)
+    {
+        auto s = _stations.at(i);
 
+        //get the list of filters to run for this station
+        auto filters = _txtmet_filters[s->ID()];
+
+        for (auto filt : filters)
+        {
+            filt->process(s);
+        }
+
+    }
+
+}
 void metdata::next_nc()
 {
     // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
