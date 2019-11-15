@@ -121,10 +121,14 @@ class metdata
     size_t dt();
 
     /// Populates the stations' with the next timesteps' value
-    void next();
+    /// @return False if no more timesteps
+    bool next();
 
     /// Advances 1 timestep in the netcdf files
-    void next_nc();
+    bool next_nc();
+
+    /// Advances 1 timestep from the ascii timeseries
+    bool next_ascii();
 
   private:
 

@@ -73,6 +73,9 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
         _nc->open_GEM(path);
 
         auto variables = _nc->get_variable_names();
+
+        variables.insert(_provides_from_nc_filters.begin(),_provides_from_nc_filters.end());
+
         auto date_vec = _nc->get_datevec();
 
         _start_time = date_vec.at(0);
@@ -118,11 +121,8 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
                 double elevation = z;
 
-                //this ctor will init an empty timeseries for us
-                std::shared_ptr<station> s = std::make_shared<station>(station_name, longitude, latitude,
-                                                                       elevation);
-                s->raw_timeseries()->init(variables, date_vec);
-                s->reset_itrs();
+                std::shared_ptr<station> s = std::make_shared<station>(station_name,
+                    longitude, latitude, elevation, variables);
 
                 //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
                 //it will allow us to pull out the station for a specific x,y more easily.
@@ -187,19 +187,28 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         // computes dt
         if(_ascii_stations[s->ID()]->_obs.get_date_timeseries().size() == 1)
         {
-            BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Unable to determine model timestep from only 1 input timestep."));
+            CHM_THROW_EXCEPTION(model_init_error,"Unable to determine model timestep from only 1 input timestep.");
         }
 
         _ascii_stations[s->ID()]->_itr =  _ascii_stations[s->ID()]->_obs.begin();
 
+        std::set<std::string> provides;
+        auto obs_variables = _ascii_stations[s->ID()]->_obs.list_variables();
+        provides.insert(obs_variables.begin(), obs_variables.end());
         //copy the ptr for the filters, we own these now
         for (auto filt : itr.filters)
         {
             filt->init();
             _ascii_stations[s->ID()]->filters.push_back(filt);
+
+            auto p = filt->provides();
+            provides.insert(p.begin(),p.end());
         }
 
+        // init the datastore with timeseries variables + anything from the filters
+        s->init(provides);
     }
+
 
     std::tie(_start_time,_end_time) = start_end_times();
 
@@ -259,11 +268,10 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
     // the netcdf files are simple and don't need this subsetting
     if(!_use_netcdf)
     {
-#pragma omp for
-        for(size_t i = 0; i < _stations.size(); ++i)
+        for(auto& itr : _ascii_stations)
         {
-            _stations.at(i)->raw_timeseries()->subset(start, end);
-            _stations.at(i)->reset_itrs();
+            itr.second->_obs.subset(start, end);
+            itr.second->_itr = itr.second->_obs.begin();
         }
     }
 
@@ -273,19 +281,26 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
 }
 std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::start_end_times()
 {
-// find the latest start time and the earliest end time
-    for (size_t i = 0; i < _stations.size(); ++i)
+    if(!_use_netcdf)
     {
-        auto tmp = _stations.at(i)->date_timeseries().at(0);
+        // find the latest start time and the earliest end time
+        for (auto& itr: _ascii_stations)
+        {
+            auto tmp = itr.second->_obs.get_date_timeseries().front();
 
-        if (tmp > _start_time)
-            _start_time = tmp;
+            if (tmp > _start_time)
+                _start_time = tmp;
 
-        tmp = _stations.at(i)->date_timeseries().back();
-        if (tmp < _end_time)
-            _end_time = tmp;
+            tmp = itr.second->_obs.get_date_timeseries().back();
+            if (tmp < _end_time)
+                _end_time = tmp;
+        }
     }
-
+    else
+    {
+        _start_time = _nc->get_start();
+        _end_time = _nc->get_end();
+    }
     return std::make_pair(_start_time,_end_time);
 }
 
@@ -327,39 +342,71 @@ std::shared_ptr<station> metdata::at(size_t idx)
     return _stations.at(idx);
 }
 
-void metdata::next()
+bool metdata::next()
 {
     _current_ts = _current_ts + _dt;
 
     if(_use_netcdf)
     {
-        next_nc();
+        return next_nc();
     }
+    else
+    {
+        return next_ascii();
+    }
+
+    return false;
 }
-void metdata::next_ascii()
+
+bool metdata::next_ascii()
 {
-#pragma omp parallel for
+
     for(size_t i = 0; i < nstations();i++)
     {
         auto s = _stations.at(i);
+        auto& proxy = _ascii_stations[s->ID()];
+
+        ++proxy->_itr;
+        if (proxy->_itr == proxy->_obs.end())
+            return false;
+
+        if(proxy->_itr->get_posix() != _current_ts)
+        {
+            CHM_THROW_EXCEPTION(forcing_error,
+                std::to_string("Mismatch between model timestep and ascii file timestep. Current model = ")+
+                _current_ts + ", ascii was:"+proxy->_itr->get_posix()+" @station id="+s->ID());
+        }
+
+        // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the ascii file
+        for (auto &v: proxy->_obs.list_variables() )
+        {
+            (*s)[v] = proxy->_itr->get(v);
+
+        }
 
         //get the list of filters to run for this station
-        auto filters = _txtmet_filters[s->ID()];
+        auto filters = proxy->filters;
 
-        for (auto filt : filters)
+        for (auto& filt : filters)
         {
             filt->process(s);
         }
 
     }
 
+    return true;
 }
-void metdata::next_nc()
+bool metdata::next_nc()
 {
-    // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
-    for (auto &itr: _nc->get_variable_names() )
+    if(_current_ts > _end_time) //_current_ts is already ++ from the next() call
     {
-//        auto data = _nc->get_var(itr, t);
+        return false; // we've run out of data, we done
+    }
+    // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
+    for (auto &v: _nc->get_variable_names() )
+    {
+        // Need to decide how best to do this as it may be too memory expensive to load the entire thing into ram
+        // auto data = _nc->get_var(itr, t);
 
 #pragma omp parallel for
         for (size_t y = 0; y < _nc->get_ysize(); y++)
@@ -375,10 +422,8 @@ void metdata::next_nc()
                     CHM_THROW_EXCEPTION(forcing_error, "Station=" + s->ID() + ": wrong ID");
                 }
 
-//                double d = data[y][x];
-                double d =  _nc->get_var(itr, _current_ts, x, y);
-                (*s)[itr] = d;
-//                s->now().set(itr, d);
+                double d =  _nc->get_var(v, _current_ts, x, y);
+                (*s)[v] = d;
 
                 for (auto &f : _netcdf_filters)
                 {
@@ -388,6 +433,7 @@ void metdata::next_nc()
         }
     }
 
+    return true;
 
 
 }

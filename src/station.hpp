@@ -36,8 +36,7 @@
 *
 * \brief Concept of a met station.
 *
-* Allows the station to represent a timeseries that has a location (x,y), an elevation, and a station ID.
-* As well, it wraps the iterators of the timeserires instance allowing for easy stepping and access.
+* Allows the station to represent a timestep that has a location (x,y), an elevation, and a station ID.
 */
 class station : boost::noncopyable
 {
@@ -56,33 +55,13 @@ public:
         \param y UTM coord
         \param elevation station elevation
         */
-    station(std::string ID, double x, double y, double elevation);
+    station(std::string ID, double x, double y, double elevation, std::set<std::string> variables = {});
 
     /**
     * Default destructor
     */
     ~station();
     
-    /**
-    * Opens a metfile
-    * \param file Fully qualified path to the file to open
-    */
-    void open(std::string file);
-
-
-    /**
-    * Returns the timestep iterator for the current timestep
-    * \return A timstep iterator
-    */
-     timestep& now() ;
-
-    /**
-    * Increments the internal timestep iterator to the next timestep
-    * \return False if next timestep is one past end of timeseries
-    */
-    bool next();
-
-
     /**
     * Returns the x UTM coordinate of the station
     * \return UTM coordinate
@@ -95,13 +74,11 @@ public:
     */
     double y();
 
-
     /**
     * Sets the X coordinate
     * \param x UTM coordinate
     */
     void x(double x);
-
 
     /**
     * Sets the Y coordinate
@@ -109,13 +86,11 @@ public:
     */
     void y(double y);
 
-
     /**
     * Returns the station elevation (m)
     * \return Station elevation
     */
     double z();
-
 
     /**
     * Sets the station elevation (m).
@@ -136,51 +111,17 @@ public:
     std::string ID();
 
     /**
-    * Resets the internal iterators to point to the begining of the timeseries
-    */
-    void reset_itrs();
-
-    /**
     * List all (including module provided) variables
     * \return Vector containing a list of variable names
     */
     std::vector<std::string> list_variables();
 
     /**
-    * Returns the vector of all the dates in the timeseries
-    * \return
-    */
-    timeseries::date_vec date_timeseries();
-
-    /**
-     * Adds a new variable to the underlying timeseries. Invalidates all internal iterators and resets them to the beging of the timeseries
-     * @param var Variable name to add
+     * Initializes the station to store the specified variables. This will destroy all data
+     * @param variables
      */
-    void add_variable(std::string var);
+    void init(std::set<std::string> variables);
 
-    /**
-    * Returns the underlying timeseries
-    * \return
-    */
-    timeseries* raw_timeseries();
-
-    /**
-    * Returns the length of the timeseries. This is the number of records in the timeseries
-    */
-    size_t timeseries_length();
-
-    /**
-    * Returns the specificed variable of the station at this current timeseries\
-    * \param variable variable name
-    * \return value of the requested variable
-    */
-    double get(std::string variable);
-
-    /**
-     * Save the internal timeseres to a file
-     * \param filename
-     */
-    void tofile(std::string file);
 
     double& operator[](const uint64_t& hash);
     double& operator[](const std::string& variable);
@@ -189,8 +130,6 @@ friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:
         std::string _ID;
-        timeseries * _obs;
-        timeseries::iterator _itr;
         double _x;
         double _y;
         double _z;

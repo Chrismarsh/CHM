@@ -396,11 +396,10 @@ void core::config_forcing(pt::ptree &value)
                     data.latitude = station.get<double>("latitude");
                 }catch(boost::property_tree::ptree_bad_path& e)
                 {
-                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + station_name + " missing lat/long coordinate."));
+                    CHM_THROW_EXCEPTION(forcing_error,"Station " + station_name + " missing lat/long coordinate.");
                 }
 
                 data.elevation = station.get<double>("elevation");
-
 
                 std::string file = station.get<std::string>("file");
                 auto f = cwd_dir / file;
@@ -443,7 +442,7 @@ void core::config_forcing(pt::ptree &value)
     LOG_DEBUG << "Found # stations = " <<  nstations;
     if(nstations == 0)
     {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("No input forcing files found!"));
+        CHM_THROW_EXCEPTION(forcing_error,"No input forcing files found!");
     }
 
     _global->_stations.resize(nstations);

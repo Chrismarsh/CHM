@@ -26,7 +26,7 @@
 
 station::~station()
 {
-    delete _obs;
+
 }
 
 station::station()
@@ -34,17 +34,16 @@ station::station()
     _x = 0;
     _y = 0;
     _z = 0.0;
-    _obs = NULL;
+
 }
 
-station::station(std::string ID, double x, double y, double elevation)
+station::station(std::string ID, double x, double y, double elevation, std::set<std::string> variables )
 {
     _ID = ID;
     _x = x;
     _y = y;
     _z = elevation;
-    _obs = new timeseries();
-    _itr = _obs->begin();
+    init(variables);
 }
 
 double& station::operator[](const uint64_t& hash)
@@ -56,71 +55,7 @@ double& station::operator[](const std::string& variable)
     return _timestep_data[variable];
 }
 
-void station::open(std::string file)
-{
-    try
-    {
-        _obs = new timeseries();
-        _obs->open(file);
 
-        _itr = _obs->begin();
-    }
-    catch (exception_base &e)
-    {
-        throw;
-    }
-}
-
-
-timeseries* station::raw_timeseries()
-{
-    return _obs;
-}
-
-timeseries::date_vec station::date_timeseries()
-{
-    return _obs->get_date_timeseries();
-}
-
-size_t station::timeseries_length()
-{
-    return _obs->get_timeseries_length();
-}
-
-std::vector<std::string> station::list_variables()
-{
-    return _obs->list_variables();
-}
-
-
-timestep& station::now()
-{
-    return *_itr;
-}
-
-double station::get(std::string variable)
-{
-    return _itr->get(variable);
-}
-
-void station::add_variable(std::string var)
-{
-    raw_timeseries()->init_new_variable(var);
-    reset_itrs();
-}
-void station::reset_itrs()
-{
-    _itr = _obs->begin();
-}
-
-bool station::next()
-{
-    ++_itr;
-    if (_itr == _obs->end())
-        return false;
-    else
-        return true;
-}
 
 double station::x()
 {
@@ -164,12 +99,10 @@ std::string station::ID()
 
 std::ostream &operator<<(std::ostream &strm, const station &s)
 {
-    if (s._obs)
-        return strm  << std::fixed<< "ID=" << s._ID << " (x,y,z)=(" << s._x << "," << s._y << "," << s._z << ") ," << "forcing=" << s._obs->get_opened_file();
-    else
-        return strm << std::fixed << "ID=" << s._ID << "; (x,y,z)=(" << s._x << "," << s._y << "," << s._z << "); " << "forcing=Not opened";
+   return strm << std::fixed << "ID=" << s._ID << "; (x,y,z)=(" << s._x << "," << s._y << "," << s._z << "); ";
 }
-void station::tofile(std::string file)
+
+void station::init(std::set<std::string> variables)
 {
-    _obs->to_file(file);
+    _timestep_data.init(variables);
 }
