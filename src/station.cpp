@@ -106,3 +106,63 @@ void station::init(std::set<std::string> variables)
 {
     _timestep_data.init(variables);
 }
+
+boost::gregorian::date station::get_gregorian()
+{
+    boost::gregorian::date date;
+
+    date = boost::gregorian::from_string(boost::lexical_cast<std::string>(_current_ts.date()));
+    return date;
+
+}
+boost::posix_time::ptime station::get_posix()
+{
+    return _current_ts;
+}
+
+void station::set_posix(boost::posix_time::ptime ts )
+{
+    _current_ts = ts;
+}
+
+bool station::has(const std::string &variable)
+{
+    return false;
+//    auto res = _itrs.find(variable);
+//
+//    if(res == _itrs.end())
+//        return false;
+//    else
+//        return true;
+}
+
+
+int station::month()
+{
+    return _current_ts.date().month();
+}
+
+
+int station::day()
+{
+    return _current_ts.date().day();
+
+}
+
+int station::year()
+{
+    return _current_ts.date().year();
+}
+
+int station::hour()
+{
+    return boost::posix_time::to_tm(_current_ts).tm_hour;
+}
+int station::min()
+{
+    return boost::posix_time::to_tm(_current_ts).tm_min;
+}
+int station::sec()
+{
+    return boost::posix_time::to_tm(_current_ts).tm_sec;
+}

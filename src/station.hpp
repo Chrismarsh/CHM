@@ -123,18 +123,75 @@ public:
     void init(std::set<std::string> variables);
 
 
+
+    /**
+    * Returns the current hour, 24-hour format
+    */
+    int hour();
+
+    /**
+    * Returns the current minute
+    */
+    int min();
+
+    /**
+    * Returns the current second
+    */
+    int sec();
+
+    /**
+    *  Current month number, starting with Jan = 1.
+    */
+    int month();
+
+
+    /**
+    *  Current day number starting at 1
+    */
+    int day();
+
+
+    /**
+    * Current year
+    */
+    int year();
+
+    /**
+    * Returns the boost::gregoiran structure for time calculations.
+    */
+    boost::gregorian::date get_gregorian();
+
+    /**
+    * Returns the boost::posix_time structure for time calculations
+    */
+    boost::posix_time::ptime get_posix();
+
+    /**
+    * Returns the boost::posix_time structure for time calculations
+    */
+    void set_posix(boost::posix_time::ptime ts );
+
+    /**
+ * Returns true if the specified variable is available in the timeseries.
+ */
+    bool has(const std::string &variable);
+
     double& operator[](const uint64_t& hash);
     double& operator[](const std::string& variable);
+
+
 
 friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
 private:
-        std::string _ID;
-        double _x;
-        double _y;
-        double _z;
+    std::string _ID;
+    double _x;
+    double _y;
+    double _z;
 
-        variablestorage _timestep_data;
+    variablestorage _timestep_data;
+
+    boost::posix_time::ptime _current_ts;
 
 };
 

@@ -70,6 +70,7 @@ class metdata
         //and run it on a per-station config.
         std::vector<boost::shared_ptr<filter_base>> filters;
 
+        std::string id;
         // these are loaded into by metdata. Essentially this becomes like the old station
         timeseries _obs;
         timeseries::iterator _itr;

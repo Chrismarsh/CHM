@@ -191,7 +191,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         }
 
         _ascii_stations[s->ID()]->_itr =  _ascii_stations[s->ID()]->_obs.begin();
-
+        _ascii_stations[s->ID()]->id = s->ID();
         std::set<std::string> provides;
         auto obs_variables = _ascii_stations[s->ID()]->_obs.list_variables();
         provides.insert(obs_variables.begin(), obs_variables.end());
@@ -258,7 +258,7 @@ void metdata::check_ts_consistency()
         {
             BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
                                       <<
-                                      errstr_info("Timestep mismatch at station: " + itr.second.id));
+                                      errstr_info("Timestep mismatch at station: " + itr.second->id));
         }
     }
 }
@@ -373,8 +373,9 @@ bool metdata::next_ascii()
         if(proxy->_itr->get_posix() != _current_ts)
         {
             CHM_THROW_EXCEPTION(forcing_error,
-                std::to_string("Mismatch between model timestep and ascii file timestep. Current model = ")+
-                _current_ts + ", ascii was:"+proxy->_itr->get_posix()+" @station id="+s->ID());
+                "Mismatch between model timestep and ascii file timestep. Current model = " +
+                boost::posix_time::to_simple_string(_current_ts) + ", ascii was:"+
+                boost::posix_time::to_simple_string(proxy->_itr->get_posix()) +" @station id="+s->ID());
         }
 
         // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the ascii file
@@ -391,6 +392,8 @@ bool metdata::next_ascii()
         {
             filt->process(s);
         }
+
+        s->set_posix(_current_ts);
 
     }
 
@@ -424,6 +427,7 @@ bool metdata::next_nc()
 
                 double d =  _nc->get_var(v, _current_ts, x, y);
                 (*s)[v] = d;
+                s->set_posix(_current_ts);
 
                 for (auto &f : _netcdf_filters)
                 {
