@@ -477,7 +477,7 @@ void core::determine_startend_ts_forcing()
     if(!_start_ts && !_end_ts)
     {
         // find the latest start time and the earliest end time
-        std::tie(start_time, end_time) = _metdata.start_end_times();
+        std::tie(start_time, end_time) = _metdata.find_unified_start_end();
     }
 
     // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
@@ -527,7 +527,7 @@ void core::determine_startend_ts_forcing()
 
 
     //figure out what our timestepping is. Needs to happen before we subset as we may end up with only 1 timestep
-    _global->_dt = _metdata.dt();
+    _global->_dt = _metdata.dt_seconds();
     LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
 
 
@@ -536,7 +536,7 @@ void core::determine_startend_ts_forcing()
 
 
     //ensure all the stations have the same start and end times
-    // per-timestep agreeent happens during runtime.
+    // per-timestep agreement happens during runtime.
     _metdata.check_ts_consistency();
 }
 void core::config_parameters(pt::ptree &value)
@@ -1405,16 +1405,13 @@ void core::init(int argc, char **argv)
     _global->interp_algorithm = _interpolation_method;
 
 
-
-
     //setup output timeseries sinks
-    auto date = _global->_stations.at(0)->date_timeseries();
 
     for (auto &itr : _outputs)
     {
         if (itr.type == output_info::output_type::time_series)
         {
-            itr.ts.init(_provided_var_module, date); /*length of all the vectors to initialize*/
+            itr.ts.init(_provided_var_module, _metdata.start_time(), _metdata.end_time(), _metdata.dt());
         }
     }
 
@@ -1455,12 +1452,8 @@ void core::init(int argc, char **argv)
 
     for (auto& itr : _modules)
     {
-            LOG_VERBOSE << itr.first->ID;
-
-
-                       itr.first->init(_mesh);
-
-
+        LOG_VERBOSE << itr.first->ID;
+        itr.first->init(_mesh);
     }
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 
@@ -1572,11 +1565,10 @@ void core::_determine_module_dep()
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("A module's provides overwrites another module's provides. This is not allowed."));
 
     //build a list of variables provided by the met files, culling duplicate variables from multiple stations.
-    for (size_t i = 0; i < _global->_stations.size(); i++)
-    {
-        auto vars = _global->_stations.at(i)->list_variables();
-        _provided_var_met_files.insert(vars.begin(), vars.end());
-    }
+
+    auto vars = _metdata.list_variables();
+    _provided_var_met_files.insert(vars.begin(), vars.end());
+
 
     //loop through each module
     for (auto &module_pair : _modules)
@@ -1978,43 +1970,19 @@ void core::run()
     double meantime = 0;
     size_t current_ts = 0;
     _global->timestep_counter = 0; //use this to pass the timestep info to the modules for easier debugging specific timesteps
-    size_t max_ts = _global->_stations.at(0)->date_timeseries().size();
+    size_t max_ts = _metdata.n_timestep();
     bool done = false;
 
         while (!done)
         {
-            //ensure all the stations are at the same timestep
             boost::posix_time::ptime t;
-            t = _global->_stations.at(0)->now().get_posix(); //get first stations time
-            for (size_t i = 1; //on purpose to skip first station
-                 i < _global->_stations.size();
-                 i++)
-            {
-                if (t != _global->_stations.at(i)->now().get_posix())
-                {
-                    std::stringstream expected;
-                    expected << _global->_stations.at(0)->now().get_posix();
-                    std::stringstream found;
-                    found << _global->_stations.at(i)->now().get_posix();
-                    BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                                          <<
-                                          errstr_info("Timestep mismatch at station: " + _global->_stations.at(i)->ID()
-                                                      + "\nExpected: " + expected.str()
-                                                      + "\nFound: " + found.str()
-                                          ));
-                }
-            }
 
-            _global->_current_date = _global->_stations.at(0)->now().get_posix();
-
+            _global->_current_date = _metdata.current_time();
 
             if (!_enable_ui)
             {
                 LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
             }
-
-            _metdata.next();
-
 
             std::stringstream ss;
             ss << _global->posix_time();
@@ -2188,15 +2156,8 @@ void core::run()
                 }
             }
 
-            //update all the stations internal iterators to point to the next time step
-            for (auto &itr : _global->_stations)
-            {
-                if (!itr->next()) //this met station has no more met data, so doesn't matter what, we need to end now.
-                {
-                    done = true;
-                    break;
-                }
-            }
+            if(!_metdata.next())
+                done = true;
 
 
             auto timestep = c.toc<ms>();
@@ -2216,14 +2177,11 @@ void core::run()
             std::string s = std::to_string(std::lround(mt)) + (ms == true ? " ms" : "s");
             _ui.write_meantime(s);
 
-
-
             //we need it in seconds now
             if (ms)
             {
                 mt /= 1000.0;
             }
-
 
             boost::posix_time::ptime pt(boost::posix_time::second_clock::local_time());
             pt = pt + boost::posix_time::seconds(size_t(mt) * (max_ts - current_ts));
@@ -2236,7 +2194,6 @@ void core::run()
         }
         double elapsed = c.toc<s>();
         LOG_DEBUG << "Total runtime was " << elapsed << "s";
-
 
 
 
@@ -2281,9 +2238,6 @@ void core::run()
         LOG_DEBUG << "Calling notification script";
         std::system(_notification_script.c_str());
     }
-
-
-
 }
 
 void core::end()

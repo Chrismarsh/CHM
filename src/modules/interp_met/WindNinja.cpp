@@ -108,12 +108,12 @@ void WindNinja::run(mesh& domain)
             std::vector<boost::tuple<double, double, double> > v;
             for (auto &s : face->stations())
             {
-                if (is_nan(s->get("U_R")) || is_nan(s->get("vw_dir")))
+                if (is_nan((*s)["U_R"]) || is_nan((*s)["vw_dir"]))
                     continue;
 
-                double theta = s->get("vw_dir") * M_PI / 180.;
+                double theta = (*s)["vw_dir"] * M_PI / 180.;
 
-                double W = s->get("U_R");
+                double W = (*s)["U_R"];
                 W = std::max(W, 0.1);
 
                 W = Atmosphere::log_scale_wind(W,

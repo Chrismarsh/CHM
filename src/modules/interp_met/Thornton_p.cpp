@@ -65,9 +65,9 @@ void Thornton_p::run(mesh_elem& face)
     std::vector< boost::tuple<double, double, double> > staion_z;
     for (auto& s : face->stations())
     {
-        if( is_nan(s->get("p")))
+        if( is_nan((*s)["p"]))
             continue;
-        double u = s->get("p");
+        double u = (*s)["p"];
         ppt.push_back( boost::make_tuple(s->x(), s->y(), u ) );
         staion_z.push_back( boost::make_tuple(s->x(), s->y(), s->z() ) );
     }

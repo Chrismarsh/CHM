@@ -27,12 +27,18 @@ metdata::metdata()
 {
     _nc = nullptr;
     _use_netcdf = false;
+    _n_timesteps = 0;
 }
 
 metdata::metdata(boost::shared_ptr< triangulation > mesh) :
  metdata()
 {
     _mesh = mesh;
+}
+
+metdata::~metdata()
+{
+
 }
 
 void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boost::shared_ptr<filter_base> > filters)
@@ -72,14 +78,16 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
     {
         _nc->open_GEM(path);
 
-        auto variables = _nc->get_variable_names();
+        _variables = _nc->get_variable_names();
 
-        variables.insert(_provides_from_nc_filters.begin(),_provides_from_nc_filters.end());
+        _variables.insert(_provides_from_nc_filters.begin(),_provides_from_nc_filters.end());
 
         auto date_vec = _nc->get_datevec();
 
         _start_time = date_vec.at(0);
         _end_time = date_vec.back();
+
+        _n_timesteps = date_vec.size();
 
         _nstations = _nc->get_xsize() * _nc->get_ysize();
         LOG_DEBUG << "Grid is (y)" << _nc->get_ysize() << " by (x)" << _nc->get_xsize();
@@ -122,7 +130,7 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 double elevation = z;
 
                 std::shared_ptr<station> s = std::make_shared<station>(station_name,
-                    longitude, latitude, elevation, variables);
+                    longitude, latitude, elevation, _variables);
 
                 //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
                 //it will allow us to pull out the station for a specific x,y more easily.
@@ -192,25 +200,27 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
 
         _ascii_stations[s->ID()]->_itr =  _ascii_stations[s->ID()]->_obs.begin();
         _ascii_stations[s->ID()]->id = s->ID();
+
+        _variables = _ascii_stations[s->ID()]->_obs.list_variables();
+
         std::set<std::string> provides;
-        auto obs_variables = _ascii_stations[s->ID()]->_obs.list_variables();
-        provides.insert(obs_variables.begin(), obs_variables.end());
-        //copy the ptr for the filters, we own these now
+
         for (auto filt : itr.filters)
         {
             filt->init();
-            _ascii_stations[s->ID()]->filters.push_back(filt);
+            _ascii_stations[s->ID()]->filters.push_back(filt);         //copy the ptr for the filters, we own these now
 
             auto p = filt->provides();
             provides.insert(p.begin(),p.end());
         }
 
+        _variables.insert(provides.begin(),provides.end());
         // init the datastore with timeseries variables + anything from the filters
-        s->init(provides);
+        s->init(_variables);
     }
 
 
-    std::tie(_start_time,_end_time) = start_end_times();
+    std::tie(_start_time,_end_time) = find_unified_start_end();
 
     std::vector<boost::posix_time::time_duration> dts;
     for(auto& itr: _ascii_stations)
@@ -229,6 +239,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
 
     _dt = dts.front();
     _current_ts = _start_time;
+    _n_timesteps = _ascii_stations.begin()->second->_obs.get_date_timeseries().size(); //grab the first timeseries, they are all the same period now
 }
 
 boost::posix_time::ptime metdata::start_time()
@@ -240,12 +251,27 @@ boost::posix_time::ptime metdata::end_time()
     return _end_time;
 }
 
-size_t metdata::dt()
+boost::posix_time::time_duration metdata::dt()
 {
-
+    return _dt;
+}
+size_t metdata::dt_seconds()
+{
     return _dt.total_seconds();
 }
 
+size_t metdata::n_timestep()
+{
+    return _n_timesteps;
+}
+boost::posix_time::ptime metdata::current_time()
+{
+    return _current_ts;
+}
+std::set<std::string> metdata::list_variables()
+{
+    return _variables;
+}
 void metdata::check_ts_consistency()
 {
     //ensure all the stations have the same start and end times
@@ -278,8 +304,9 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
     _start_time = start;
     _end_time = end;
     _current_ts = _start_time;
+    _n_timesteps = (_end_time - _start_time).total_seconds() / _dt.total_seconds();
 }
-std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::start_end_times()
+std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::find_unified_start_end()
 {
     if(!_use_netcdf)
     {

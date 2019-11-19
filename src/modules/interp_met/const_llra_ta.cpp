@@ -66,9 +66,9 @@ void const_llra_ta::run(mesh_elem& face)
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : face->stations())
     {
-        if( is_nan(s->get("t")))
+        if( is_nan((*s)["t"]))
             continue;
-        double v = s->get("t") - lapse_rate * (0.0 - s->z());
+        double v = (*s)["t"] - lapse_rate * (0.0 - s->z());
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 

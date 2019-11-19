@@ -125,6 +125,7 @@ void station::set_posix(boost::posix_time::ptime ts )
     _current_ts = ts;
 }
 
+
 bool station::has(const std::string &variable)
 {
     return false;

@@ -64,11 +64,11 @@ void iswr_from_nwp::run(mesh_elem &face)
     std::vector< boost::tuple<double, double, double> > lowered_values2;
     for (auto& s : face->stations())
     {
-        if( (is_nan(s->get("Qsi"))) || (is_nan(s->get("Qsi_diff"))))
+        if( (is_nan((*s)["Qsi"])) || (is_nan((*s)["Qsi_diff"])))
             continue;
-        double v = s->get("Qsi");
+        double v = (*s)["Qsi"];
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
-        double vv = s->get("Qsi_diff");
+        double vv = (*s)["Qsi_diff"];
         lowered_values2.push_back( boost::make_tuple(s->x(), s->y(), vv ) );
     }
 

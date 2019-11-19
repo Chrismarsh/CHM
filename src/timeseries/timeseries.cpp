@@ -43,6 +43,33 @@ void timeseries::init_new_variable(std::string variable)
     _variables[variable].assign(size,-9999.0);
 }
 
+void timeseries::init(std::set<std::string> variables, boost::posix_time::ptime start_time, boost::posix_time::ptime end_time, boost::posix_time::time_duration dt)
+{
+    size_t size = 0;
+    boost::posix_time::ptime ts = start_time;
+
+    //figure out how many timesteps we need
+    while(ts <= end_time)
+    {
+        ts =  ts + dt*size;
+        ++size;
+    }
+
+    _timeseries_length = size;
+
+    for (auto& v: variables)
+    {
+        _variables[v].assign(_timeseries_length,-9999.0);
+    }
+
+
+    _date_vec.resize(_timeseries_length);
+    for(size_t i=0; i<_timeseries_length;i++)
+    {
+        _date_vec[i] = start_time + dt*i;
+    }
+
+}
 void timeseries::init(std::set<std::string> variables, date_vec datetime)
 {
     size_t size = datetime.size();

@@ -226,7 +226,7 @@ namespace maw
     {
         if (m_engine)
         {
-            mxArray* mx =  this->get(name);
+            mxArray* mx =  thi(*s)[name];
             double d = mxGetScalar(mx);
             mxDestroyArray(mx);
             return d;

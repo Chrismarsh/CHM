@@ -85,11 +85,11 @@ void Kunkel_monthlyTd_rh::run(mesh_elem& face)
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : face->stations())
     {
-        if( is_nan(s->get("t")) || is_nan(s->get("rh")))
+        if( is_nan((*s)["t"]) || is_nan((*s)["rh"]))
             continue;
 
-        double t = s->get("t")+273.15;
-        double rh = s->get("rh")/100.;
+        double t = (*s)["t"]+273.15;
+        double rh = (*s)["rh"]/100.;
 
         double Tdz0 = mio::Atmosphere::RhtoDewPoint(rh,t,false) - 273.15; // K
 

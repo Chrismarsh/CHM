@@ -64,9 +64,9 @@ void iswr_from_obs::run(mesh_elem &face)
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : face->stations())
     {
-        if( is_nan(s->get("Qsi")))
+        if( is_nan((*s)["Qsi"]))
             continue;
-        double v = s->get("Qsi");
+        double v = (*s)["Qsi"];
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 

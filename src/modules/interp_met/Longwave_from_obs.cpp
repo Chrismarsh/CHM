@@ -64,9 +64,9 @@ void Longwave_from_obs::run(mesh_elem& face)
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : face->stations())
     {
-        if( is_nan(s->get("Qli")))
+        if( is_nan((*s)["Qli"]))
             continue;
-        double v = s->get("Qli") - lapse_rate * (0.0 - s->z());
+        double v = (*s)["Qli"] - lapse_rate * (0.0 - s->z());
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 

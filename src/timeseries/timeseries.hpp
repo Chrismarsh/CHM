@@ -125,6 +125,8 @@ public:
     */
     void init(std::set<std::string> variables, date_vec datetime);
 
+    void init(std::set<std::string> variables, boost::posix_time::ptime start_time, boost::posix_time::ptime end_time, boost::posix_time::time_duration dt);
+
     /**
      * Adds a new variable and initializes to -9999 to an already initialized timeseries
      * @param variable

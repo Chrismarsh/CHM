@@ -44,11 +44,11 @@ void debias_lw::init()
 }
 void debias_lw::process(std::shared_ptr<station>& station)
 {
-    double data = station->now().get(var);
+    double data = (*station)[var];
     if(!is_nan(data))
     {
          data = data + fac;
     }
     
-    station->now().set(var,data);
+    (*station)[var]=data;
 }

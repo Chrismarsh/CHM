@@ -47,13 +47,13 @@ void scale_wind_speed::init()
 }
 void scale_wind_speed::process(std::shared_ptr<station>& station)
 {
-    double U_F = station->now().get(var); // Here wind u [m/s] at Z_U
+    double U_F = (*station)[var]; // Here wind u [m/s] at Z_U
     double U_R = -9999;
     if(!is_nan(U_F))
     {
         U_R = Atmosphere::log_scale_wind(U_F, Z_F, Z_R, 0); // Assume 0 snow depth
     }
 
-    station->now().set("U_R",U_R);
+    (*station)["U_R"]=U_R;
 
 }

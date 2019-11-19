@@ -117,23 +117,23 @@ void point_mode::run(mesh_elem &face)
 
     if(t)
     {
-        double st = global_param->stations().at(0)->get("t");
+        double st =(* global_param->stations().at(0))["t"];
         (*face)["t"_s]=st;
     }
 
     if(rh)
     {
-        double srh = global_param->stations().at(0)->get("rh");
+        double srh =(* global_param->stations().at(0))["rh"];
         (*face)["rh"_s]= srh;
     }
 
     if(U_2m_above_srf) {
-        double su = global_param->stations().at(0)->get("u");
+        double su =(* global_param->stations().at(0))["u"];
         su = std::max(su,0.1);
         (*face)["U_2m_above_srf"_s]=su;
     } else if (U_R)
     {
-        double su = global_param->stations().at(0)->get("U_R");
+        double su =(* global_param->stations().at(0))["U_R"];
 
         //make sure we don't have zero wind speeds
         su = std::max(su,0.1);
@@ -142,42 +142,42 @@ void point_mode::run(mesh_elem &face)
 
     if(vw_dir)
     {
-        double sdir = global_param->stations().at(0)->get("vw_dir");
+        double sdir =(* global_param->stations().at(0))["vw_dir"];
         (*face)["vw_dir"_s]=sdir;
     }
 
     if(p)
     {
-        double sp = global_param->stations().at(0)->get("p");
+        double sp =(* global_param->stations().at(0))["p"];
         (*face)["p"_s]= sp;
     }
     if(ilwr)
     {
-        double silwr = global_param->stations().at(0)->get("Qli");
+        double silwr =(* global_param->stations().at(0))["Qli"];
         (*face)["ilwr"_s]= silwr;
     }
     if(iswr)
     {
-        double iswr = global_param->stations().at(0)->get("Qsi");
+        double iswr =(* global_param->stations().at(0))["Qsi"];
         (*face)["iswr"_s]= iswr;
 
     }
     if(iswr_diffuse)
     {
-        double iswr_diffuse = global_param->stations().at(0)->get("iswr_diffuse");
+        double iswr_diffuse =(* global_param->stations().at(0))["iswr_diffuse"];
         (*face)["iswr_diffuse"_s]= iswr_diffuse;
 
     }
     if(iswr_direct)
     {
-        double iswr_direct = global_param->stations().at(0)->get("iswr_direct");
+        double iswr_direct =(* global_param->stations().at(0))["iswr_direct"];
         (*face)["iswr_direct"_s]= iswr_direct;
 
     }
 
     if(T_g)
     {
-        double T_g = global_param->stations().at(0)->get("T_g");
+        double T_g =(* global_param->stations().at(0))["T_g"];
         (*face)["T_g"_s]= T_g;
     }
 

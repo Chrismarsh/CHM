@@ -95,14 +95,19 @@ class metdata
 
     /// For all the stations loaded from ascii files, find the latest start time, and the earliest end time that is consistent across all stations
     /// @return
-    std::pair<boost::posix_time::ptime, boost::posix_time::ptime> start_end_times();
+    std::pair<boost::posix_time::ptime, boost::posix_time::ptime> find_unified_start_end();
 
     /// Number of stations
     /// @return
     size_t nstations();
 
+    /// Number of timesteps
+    /// @return
+    size_t n_timestep();
+
     std::shared_ptr<station> at(size_t idx);
 
+    boost::posix_time::ptime current_time();
     boost::posix_time::ptime start_time();
     boost::posix_time::ptime end_time();
 
@@ -117,9 +122,11 @@ class metdata
     /// @return
     void check_ts_consistency();
 
-    /// Timestep duration in seconds
+    /// Timestep duration. Use .dt_seconds() to total seconds
     /// @return
-    size_t dt();
+    boost::posix_time::time_duration dt();
+
+    size_t dt_seconds();
 
     /// Populates the stations' with the next timesteps' value
     /// @return False if no more timesteps
@@ -130,6 +137,12 @@ class metdata
 
     /// Advances 1 timestep from the ascii timeseries
     bool next_ascii();
+
+    /**
+    * List all (including module provided) variables. If ascii files are loaded, this includes variables present in one 1 met file.
+    * \return set containing a list of variable names
+    */
+    std::set<std::string> list_variables();
 
   private:
 
@@ -154,9 +167,6 @@ class metdata
         // Mapped w/ stations ID -> metdata
         std::map<std::string, std::unique_ptr<ascii_data>> _ascii_stations;
 
-
-
-
     // -----------------------------------
 
     // This is a different approach than how stations used to work
@@ -168,6 +178,9 @@ class metdata
     // Total number of stations
     size_t _nstations;
 
+    //number of timesteps
+    size_t _n_timesteps;
+
     //ptr to the core:: owned mesh. Metdata needs it to know what it should load when in MPI mode
     boost::shared_ptr< triangulation > _mesh;
 
@@ -177,6 +190,9 @@ class metdata
 
     // computes the dt
     void compute_dt();
+
+    //all variables provided by met + filter
+    std::set<std::string> _variables;
 
 };
 

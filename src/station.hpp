@@ -111,18 +111,10 @@ public:
     std::string ID();
 
     /**
-    * List all (including module provided) variables
-    * \return Vector containing a list of variable names
-    */
-    std::vector<std::string> list_variables();
-
-    /**
      * Initializes the station to store the specified variables. This will destroy all data
      * @param variables
      */
     void init(std::set<std::string> variables);
-
-
 
     /**
     * Returns the current hour, 24-hour format
@@ -190,7 +182,6 @@ private:
     double _z;
 
     variablestorage _timestep_data;
-
     boost::posix_time::ptime _current_ts;
 
 };

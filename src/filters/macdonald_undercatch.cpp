@@ -46,8 +46,8 @@ void macdonald_undercatch::init()
 void macdonald_undercatch::process(std::shared_ptr<station>& station)
 {
 
-    double data = station->now().get(var);
-    double u = station->now().get("u");
+    double data = (*station)[var];
+    double u = (*station)["u"];
     //trap missing data, just ignore it.
     if( !is_nan(data) && !is_nan(u))
     {
@@ -57,6 +57,6 @@ void macdonald_undercatch::process(std::shared_ptr<station>& station)
         data = -9999;
     }
 
-    station->now().set(var,data);
+    (*station)[var]=data;
 
 }
