@@ -407,7 +407,7 @@ message(STATUS "Found func libraries at ${FUNC_IMPLS_LIBRARY}")
 
 if(USE_MPI AND MPI_FOUND)
   find_package(Boost
-    1.62.0
+    1.71.0
     COMPONENTS
     system
     filesystem
@@ -422,7 +422,7 @@ if(USE_MPI AND MPI_FOUND)
     REQUIRED)
 else()
   find_package(Boost
-    1.62.0
+    1.71.0
     COMPONENTS
     system
     filesystem

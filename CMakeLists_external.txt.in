@@ -136,23 +136,23 @@ if(BUILD_BOOST)
   if(${USE_MPI} AND ${MPI_FOUND})
     ExternalProject_Add(
       boost
-      URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
+      URL https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz
       INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
       CONFIGURE_COMMAND bash <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" ${ICU} --without-libraries=python COMMAND echo "using mpi : ${MPI_CXX_COMPILER} : : ${MPIEXEC_EXECUTABLE} $<SEMICOLON>" >> ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/project-config.jam
       UPDATE_COMMAND ""
-      BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
-      INSTALL_COMMAND ./b2 install cxxflags=-std=c++14
+      BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS} cxxflags="-std=c++14 -O3" -sNO_LZMA=1
+      INSTALL_COMMAND ./b2  install
       BUILD_IN_SOURCE 1
       )
   else()
     ExternalProject_Add(
       boost
-      URL https://downloads.sourceforge.net/project/boost/boost/1.68.0/boost_1_68_0.tar.gz
+      URL https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz
       INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/boost
       CONFIGURE_COMMAND bash <SOURCE_DIR>/bootstrap.sh --prefix="${CMAKE_BINARY_DIR}/lib/boost" ${ICU} --without-libraries=python
       UPDATE_COMMAND ""
-      BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS}
-      INSTALL_COMMAND ./b2 install cxxflags=-std=c++14
+      BUILD_COMMAND ${CMAKE_BINARY_DIR}/lib/boost-prefix/src/boost/b2 -j ${EXTERNAL_BUILD_THREADS} cxxflags="-std=c++14 -O3" -sNO_LZMA=1
+      INSTALL_COMMAND ./b2  install
       BUILD_IN_SOURCE 1
       )
   endif()
