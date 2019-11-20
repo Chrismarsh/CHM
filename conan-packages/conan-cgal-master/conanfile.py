@@ -15,9 +15,10 @@ class CgalConan(ConanFile):
                 "with_qt5" : [True, False],
                 "with_imageio":[True,False],
                 "header_only":[True,False],
-                "with_tbb":[True,False]
+                "with_tbb":[True,False],
+                "with_boost_mp":[True,False]
                 }                
-    default_options = "shared=False", "with_gmp=False", "with_qt5=False", "with_imageio=False","header_only=True","with_tbb=True"
+    default_options = "shared=False", "with_gmp=False", "with_qt5=False", "with_imageio=False","header_only=True","with_tbb=True","with_boost_mp=True"
 
     scm = {
         "type": "git",
@@ -28,8 +29,8 @@ class CgalConan(ConanFile):
     def requirements(self):
         self.requires("boost/[>=1.67]")
         if self.options.with_gmp:
-            self.requires("gmp/[>=5.0]@grif/dev")
-            self.requires("mpfr/[>=3.0]@grif/dev")
+            self.requires("gmp/[>=5.0]@CHM/gmp")
+            self.requires("mpfr/[>=3.0]@CHM/mpfr")
         if self.options.with_tbb:
             self.requires("tbb/2019_u9")
 
@@ -37,11 +38,18 @@ class CgalConan(ConanFile):
         with tools.environment_append(self.cmake_env_vars):
             cmake = CMake(self)
             cmake.definitions["BOOST_ROOT"] = self.deps_cpp_info["boost"].rootpath
+
             cmake.definitions["CGAL_DISABLE_GMP"] = "OFF" if self.options.with_gmp else "ON"
+
+            cmake.definitions["CGAL_DO_NOT_USE_BOOST_MP"] = "OFF" if self.options.with_boost_mp else "ON"
+
+
             cmake.definitions["WITH_CGAL_Qt5"] = "OFF" if self.options.with_qt5 else "ON"
             cmake.definitions["WITH_CGAL_ImageIO"] = "OFF" if self.options.with_imageio else "ON"
             cmake.definitions["CGAL_HEADER_ONLY"] = "ON" if self.options.header_only else "OFF"
             cmake.definitions["CMAKE_POSITION_INDEPENDENT_CODE"] = "True"
+
+
             cmake.configure()
             cmake.build()
             cmake.install()

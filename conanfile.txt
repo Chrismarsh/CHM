@@ -15,6 +15,9 @@
  boost:without_mpi=True
 
  cgal:with_tbb=True
+ cgal:with_gmp=True
+ cgal:with_boost_mp=False
+ 
 # boost:use_icu=True
 
  [imports]

@@ -24,7 +24,6 @@
 
 #define BOOST_SPIRIT_THREADSAFE
 
-
 //vtk includes
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>

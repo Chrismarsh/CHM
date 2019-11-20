@@ -1,0 +1,15 @@
+[settings]
+os_build=Windows
+os=Windows
+arch=x86_64
+arch_build=x86_64
+compiler=gcc
+compiler.version=4.9
+compiler.exception=seh
+compiler.libcxx=libstdc++11
+compiler.threads=posix
+build_type=Release
+[options]
+[build_requires]
+*: mingw_installer/1.0@conan/stable, msys2_installer/latest@bincrafters/stable
+[env]
