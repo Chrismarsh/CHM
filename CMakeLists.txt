@@ -3,10 +3,14 @@ cmake_minimum_required (VERSION 3.12)
 # In CMake 3.12 and above the find_package(<PackageName>) command now searches prefixes specified by the <PackageName>_ROOT CMake variable and the <PackageName>_ROOT environment variable.
 #https://cmake.org/cmake/help/latest/policy/CMP0074.html
 cmake_policy(SET CMP0074 NEW)
-project (CHMprj)
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+
+
+project (CHM-project)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 #http://stackoverflow.com/questions/31561309/cmake-warnings-under-os-x-macosx-rpath-is-not-specified-for-the-following-targe
 #https://cmake.org/cmake/help/v3.0/policy/CMP0042.html
@@ -17,6 +21,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 set(ext_cmakefile_name CMakeLists_external.txt.in)
+
 # Some machines require machine-specific work arounds when building the external libraries. Special casing to a per-machine basis should not be done often
 # and really should only be done if 100% required.
 # End of December 2018 caused the Westgrid machine Graham to require a special CMAKE_PREFIX_PATH from a system ENV var. This special cases that dramatic change until it's
@@ -29,10 +34,6 @@ if(hostname MATCHES "gra-login.*")
     set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};$ENV{CMAKE_SYSTEM_PREFIX_PATH}")
     set(ext_cmakefile_name CMakeLists_external_graham.txt.in)
 endif()
-
-# The version number.
-set (CHM_VERSION_MAJOR 0)
-set (CHM_VERSION_MINOR 1)
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_MPI "Enable MPI"  OFF )
@@ -59,17 +60,18 @@ else()
   message(WARNING "MPI not enabled. Building for single process.")
 endif()
 
+#include(${CMAKE_BINARY_DIR}/conan-build/conanbuildinfo.cmake)
+#conan_basic_setup()
 
 #enable with cmake -DSUPERBUILD=TRUE .
 if(SUPERBUILD)
     set(BUILD_ARMADILLO TRUE CACHE BOOL "Build Armadillo")
-    set(BUILD_CGAL TRUE CACHE BOOL "Build CGAL")
     set(BUILD_GDAL TRUE  CACHE BOOL "Build GDAL")
     set(BUILD_GSL TRUE  CACHE BOOL "Build GSL")
     set(BUILD_VIENNACL TRUE  CACHE BOOL "Build ViennaCL")
-    set(BUILD_BOOST TRUE  CACHE BOOL "Build Boost")
     set(BUILD_PROJ4 TRUE  CACHE BOOL "Build proj4")
     set(BUILD_NETCDF TRUE CACHE BOOL "Build netCDF")
+
     set(BUILD_VTK TRUE CACHE BOOL "Build VTK")
     set(BUILD_TBB TRUE CACHE BOOL "Build Intel TBB")
     set(BUILD_FUNC TRUE CACHE BOOL "Build func")
@@ -103,15 +105,6 @@ endif()
 #To avoid issues #104, newer VTK version needs to be used.
 #8.1+ needs to be used so that proj4 name-collisions are resolved
 # http://vtk.1045678.n5.nabble.com/Don-t-build-vtkproj4-td5746073.html
-if(BUILD_VTK)
-    set(BUILD_PROJ4 TRUE)
-    set(VTK_DIR "${CMAKE_BINARY_DIR}/lib/VTK/lib/cmake/vtk-8.1")
-endif()
-
-if(BUILD_BOOST)
-    set(Boost_NO_SYSTEM_PATHS TRUE)
-    set(BOOST_ROOT "${CMAKE_BINARY_DIR}/lib/boost")
-endif()
 
 if(BUILD_PROJ4)
     set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
@@ -190,19 +183,16 @@ endif()
 #Trigger superbuild
 #If superbuild is not needed, we still need to build sparsehash, gperftools, and eigen3
 execute_process(COMMAND ${CMAKE_COMMAND}
-        -DBUILD_VTK=${BUILD_VTK}
         -DBUILD_ARMADILLO=${BUILD_ARMADILLO}
-        -DBUILD_CGAL=${BUILD_CGAL}
         -DBUILD_GDAL=${BUILD_GDAL}
         -DBUILD_GSL=${BUILD_GSL}
         -DBUILD_VIENNACL=${BUILD_VIENNACL}
-        -DBUILD_BOOST=${BUILD_BOOST}
         -DBUILD_PROJ4=${BUILD_PROJ4}
         -DBUILD_NETCDF=${BUILD_NETCDF}
         -DBUILD_TBB=${BUILD_TBB}
-	-DBUILD_FUNC=${BUILD_FUNC}
+		-DBUILD_FUNC=${BUILD_FUNC}
         -DBUILD_ParaView=${BUILD_ParaView}
-	-DEXTERNAL_BUILD_THREADS=${EXTERNAL_BUILD_THREADS}
+		-DEXTERNAL_BUILD_THREADS=${EXTERNAL_BUILD_THREADS}
         -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
         -DUSE_MPI=${USE_MPI}
         -DMPI_FOUND=${MPI_FOUND}
@@ -261,19 +251,9 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 
-if(BUILD_CGAL)
 
-    # different linux machines build to either lib or lib64. Detect which it is and set the hint tot hat
-    if( IS_DIRECTORY "${CMAKE_BINARY_DIR}/lib/CGAL/lib/CGAL")
-        set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib/CGAL")
-     else()
-        set(CGAL_DIR "${CMAKE_BINARY_DIR}/lib/CGAL/lib64/CGAL")
-    endif()
-
-    find_package(CGAL REQUIRED HINTS ${CGAL_DIR})
-else()
     find_package(CGAL REQUIRED)
-endif()
+
 
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
@@ -462,11 +442,9 @@ message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 #N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
-if(BUILD_VTK)
-    find_package(VTK REQUIRED HINTS ${VTK_DIR})
-else()
+
     find_package(VTK REQUIRED)
-endif()
+
 include(${VTK_USE_FILE})
 
 if(VTK_MAJOR_VERSION LESS 7)

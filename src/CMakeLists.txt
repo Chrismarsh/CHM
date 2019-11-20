@@ -225,7 +225,7 @@ add_executable(
 
 target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH})
 target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
-
+target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 	CHM
 	${LIB_FILES}
@@ -275,8 +275,8 @@ if (BUILD_TESTS)
 			${TEST_SRCS}
 	)
 
-      target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH})
-      target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH})
+    target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 
 	target_link_libraries(
 			runUnitTests

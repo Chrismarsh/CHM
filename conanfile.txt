@@ -1,0 +1,22 @@
+
+
+ [requires]
+ boost/1.71.0
+ cgal/5.0.0@CHM/cgal
+ vtk/8.2.0@CHM/vtk
+
+ [generators]
+ cmake_find_package
+ cmake_paths
+
+ [options]
+ boost:shared=True
+ boost:without_python=True
+ boost:without_mpi=True
+
+ cgal:with_tbb=True
+# boost:use_icu=True
+
+ [imports]
+ lib, *.dylib* -> ./lib
+ lib, *.so* -> ./lib
