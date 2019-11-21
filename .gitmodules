@@ -40,3 +40,6 @@
 [submodule "conan/conan-gdal"]
 	path = conan/conan-gdal
 	url = git@github.com:Chrismarsh/conan-gdal.git
+[submodule "conan/conan-sparsehash"]
+	path = conan/conan-sparsehash
+	url = git@github.com:Chrismarsh/conan-sparsehash.git
