@@ -10,7 +10,7 @@ find_path(SPARSEHASH_INCLUDE_DIR NAMES google/sparse_hash_map
         PATH_SUFFIXES include/
         )
 
-set(SPARSEHASH_INCLUDE_DIRS ${SPARSEHASH_INCLUDE_DIR})
+set(sparsehash_INCLUDE_DIRS ${SPARSEHASH_INCLUDE_DIR})
 
 # handle the QUIETLY and REQUIRED arguments and set SPARSEHASH_FOUND to TRUE if
 # all listed variables are TRUE
