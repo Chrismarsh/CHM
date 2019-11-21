@@ -1,2 +1,2 @@
  [settings]
- cppstd=gnu14
+ compiler.cppstd=14

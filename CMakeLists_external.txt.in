@@ -13,59 +13,6 @@ set(USE_OMP ON)
 set(USE_OCL OFF)
 set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Build vars")
 
-#these should always be built and downloaded
-
-ExternalProject_Add(
-    sparsehash
-    GIT_REPOSITORY https://github.com/sparsehash/sparsehash.git
-    INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/sparsehash
-
-    CONFIGURE_COMMAND bash  <SOURCE_DIR>/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/sparsehash-prefix/src/sparsehash/configure  CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/sparsehash
-    UPDATE_COMMAND ""
-    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-    INSTALL_COMMAND make install
-    BUILD_IN_SOURCE 1
-    )
-
-if(USE_TCMALLOC)
-    ExternalProject_Add(
-        gperftools
-        GIT_REPOSITORY https://github.com/gperftools/gperftools
-        INSTALL_DIR ${CMAKE_BINARY_DIR}/lib/gperftools
-
-        CONFIGURE_COMMAND bash  <SOURCE_DIR>/autogen.sh COMMAND   ${CMAKE_BINARY_DIR}/lib/gperftools-prefix/src/gperftools/configure CPPFLAGS=-D_XOPEN_SOURCE=1 --prefix=${CMAKE_BINARY_DIR}/lib/gperftools
-        UPDATE_COMMAND ""
-        BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-        INSTALL_COMMAND make install
-        BUILD_IN_SOURCE 1
-            )
-endif()
-
-ExternalProject_Add(
-    eigen3
-    URL http://bitbucket.org/eigen/eigen/get/3.3.4.tar.bz2
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/eigen3 -DINCLUDE_INSTALL_DIR=${CMAKE_BINARY_DIR}/lib/eigen3
-    UPDATE_COMMAND ""
-    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-    INSTALL_COMMAND make install
-    BUILD_IN_SOURCE 0
-    )
-
-#GDAL depends on this. If we are building proj4, we need to turn off the VTK proj4
-
-if(BUILD_PROJ4)
-    ExternalProject_Add(
-    	proj4
-        URL http://download.osgeo.org/proj/proj-4.9.3.tar.gz
-        UPDATE_COMMAND ""
-        CONFIGURE_COMMAND bash  <SOURCE_DIR>/configure --prefix=${CMAKE_BINARY_DIR}/lib/proj4
-        BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-        INSTALL_COMMAND make install
-        BUILD_IN_SOURCE 1
-    )
-
-endif()
-
 if(BUILD_VTK)
      ExternalProject_Add(
 	    VTK
@@ -134,45 +81,11 @@ if(BUILD_ParaView)
     	 )
 endif()
 
-if(BUILD_GSL)
-    ExternalProject_Add(
-	    gsl
-	    URL ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz
-	    CONFIGURE_COMMAND  <SOURCE_DIR>/configure --prefix=${CMAKE_BINARY_DIR}/lib/gsl
-	    UPDATE_COMMAND ""
-	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 1)
-endif()
-
-if(BUILD_ARMADILLO)
-    ExternalProject_Add(
-	    armadillo
-	    URL http://sourceforge.net/projects/arma/files/armadillo-7.950.1.tar.xz
-	    UPDATE_COMMAND ""
-	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/armadillo
-	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 1
-	    )
-endif()
-if(BUILD_VIENNACL)
-    ExternalProject_Add(
-	    ViennaCL
-	    URL https://downloads.sourceforge.net/project/viennacl/1.7.x/ViennaCL-1.7.1.tar.gz
-	    UPDATE_COMMAND ""
-	    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/ViennaCL -DENABLE_OPENCL=${USE_OCL} -DENABLE_CUDA=OFF -DENABLE_OPENMP=${USE_OMP} -DBUILD_EXAMPLES=OFF
-	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 1
-	    )
-endif()
-
 if(BUILD_GDAL)
 
     ExternalProject_Add(
 	    GDAL
-	    DEPENDS proj4
+	    #DEPENDS proj4
 	    URL http://download.osgeo.org/gdal/2.4.1/gdal-2.4.1.tar.gz
 
 	    UPDATE_COMMAND ""
@@ -242,76 +155,3 @@ if(BUILD_GDAL)
 	    )
 endif()
 
-if(BUILD_NETCDF)
-    #even if netcdf-c and hdf are installed, there are some API changes and incompatibilities. It is easier to just build it all from scratch.
-
-    #build HDF5 first
-    ExternalProject_Add(
-	    hdf5
-	    URL https://s3.amazonaws.com/hdf-wordpress-1/wp-content/uploads/manual/HDF5/HDF5_1_10_4/hdf5-1.10.4.tar.gz
-
-	    UPDATE_COMMAND ""
-# If HDF5 is build with CMake, the wrong library is looked for when netcdf-cxx is build
-# https://github.com/Unidata/netcdf-c/issues/712#issuecomment-430309449
-       # CMAKE_ARGS  -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/hdf5
-        #            -DHDF5_BUILD_CPP_LIB=ON
-         #           -DBUILD_SHARED_LIBS=ON
-
-        #-DALLOW_UNSUPPORTED=ON
-
-       CONFIGURE_COMMAND bash  <SOURCE_DIR>/configure --prefix=${CMAKE_BINARY_DIR}/lib/hdf5 --enable-cxx --enable-shared
-
-	    BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-	    INSTALL_COMMAND make install
-	    BUILD_IN_SOURCE 1
-	    )
-
-
-        ExternalProject_Add(
-            netcdf-c
-            GIT_REPOSITORY https://github.com/Unidata/netcdf-c.git
-            GIT_TAG 2c68546  #v4.6.1
-            UPDATE_COMMAND ""
-            DEPENDS hdf5
-
-
-            # Only use autoreconf -if  on non-tagged git
-            #CONFIGURE_COMMAND   ${CMAKE_BINARY_DIR}/lib/netcdf-c-prefix/src/netcdf-c/configure
-            #          CPPFLAGS=-I${CMAKE_BINARY_DIR}/lib/hdf5/include
-            #          LDFLAGS=-L${CMAKE_BINARY_DIR}/lib/hdf5/lib
-            #          --prefix=${CMAKE_BINARY_DIR}/lib/netcdf-c
-            #          --enable-netcdf-4 --enable-shared
-
-          CMAKE_ARGS  -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/hdf5
-                        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
-                        -DENABLE_NETCDF_4=ON
-                        -DBUILD_SHARED_LIBS=ON
-                        -DENABLE_PARALLEL4=OFF
-                        -DHDF5_HAS_COLL_METADATA_OPS=OFF
-
-          # With 4.6.1, there appears to be a parallel make regression that causes, randomly compilation failure
-          # https://github.com/Unidata/netcdf-c/issues/896#issuecomment-382823731
-            BUILD_COMMAND make
-            INSTALL_COMMAND make install
-            BUILD_IN_SOURCE 1
-        )
-
-
-        ExternalProject_Add(
-            netcdf-cxx
-            GIT_REPOSITORY https://github.com/Unidata/netcdf-cxx4.git
-            GIT_TAG 50c8b89 # v. 4.3.0
-            UPDATE_COMMAND ""
-            DEPENDS netcdf-c
-
-            #install this to the netcdf directory as that's where the cmake findnetcdf script is going to look
-            CMAKE_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_BINARY_DIR}/lib/netcdf-c
-                        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/netcdf-c
-
-            BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-            INSTALL_COMMAND make install
-            BUILD_IN_SOURCE 1
-        )
-
-
-endif()

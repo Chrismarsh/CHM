@@ -38,7 +38,6 @@ endif()
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_MPI "Enable MPI"  OFF )
 option(USE_OMP "Enable OpenMP"  ON )
-option(USE_OCL "Enable OpenCL with ViennaCL"  OFF )
 option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
@@ -60,70 +59,9 @@ else()
   message(WARNING "MPI not enabled. Building for single process.")
 endif()
 
-#include(${CMAKE_BINARY_DIR}/conan-build/conanbuildinfo.cmake)
-#conan_basic_setup()
-
-#enable with cmake -DSUPERBUILD=TRUE .
-if(SUPERBUILD)
-    set(BUILD_ARMADILLO TRUE CACHE BOOL "Build Armadillo")
-    set(BUILD_GDAL TRUE  CACHE BOOL "Build GDAL")
-    set(BUILD_GSL TRUE  CACHE BOOL "Build GSL")
-    set(BUILD_VIENNACL TRUE  CACHE BOOL "Build ViennaCL")
-    set(BUILD_PROJ4 TRUE  CACHE BOOL "Build proj4")
-    set(BUILD_NETCDF TRUE CACHE BOOL "Build netCDF")
-
-    set(BUILD_VTK TRUE CACHE BOOL "Build VTK")
-    set(BUILD_TBB TRUE CACHE BOOL "Build Intel TBB")
-    set(BUILD_FUNC TRUE CACHE BOOL "Build func")
-endif()
-
-if(BUILD_ARMADILLO)
-    set(Armadillo_DIR "${CMAKE_BINARY_DIR}/lib/armadillo/share/Armadillo/CMake")
-endif()
-
-if(BUILD_TBB)
-    set(TBB_INSTALL_DIR "${CMAKE_BINARY_DIR}/lib/tbb")
-endif()
-
-if(BUILD_FUNC)
-    set(FUNC_DIR "${CMAKE_BINARY_DIR}/lib/func")
-endif()
-
-if(BUILD_GDAL)
-    set(ENV{GDAL_ROOT} "${CMAKE_BINARY_DIR}/lib/gdal")  #this one really does have to be ENV
-    set(BUILD_PROJ4 TRUE) #build our own proj4 if we are building gdal
-endif()
-
-if(BUILD_GSL)
-    set(GSL_ROOT_DIR "${CMAKE_BINARY_DIR}/lib/gsl")
-endif()
-
-if(BUILD_VIENNACL)
-    set(VCL_ROOT "${CMAKE_BINARY_DIR}/lib/ViennaCL")
-endif()
-
 #To avoid issues #104, newer VTK version needs to be used.
 #8.1+ needs to be used so that proj4 name-collisions are resolved
 # http://vtk.1045678.n5.nabble.com/Don-t-build-vtkproj4-td5746073.html
-
-if(BUILD_PROJ4)
-    set(PROJ4_ROOT "${CMAKE_BINARY_DIR}/lib/proj4")
-endif()
-
-
-if(BUILD_NETCDF)
-    set(NETCDF_DIR ${CMAKE_BINARY_DIR}/lib/netcdf-c)
-    set(NETCDF_INCLUDE_DIR ${NETCDF_DIR}/include)
-    set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH};${NETCDF_DIR})
-    set(ENV{HDF5_ROOT} ${CMAKE_BINARY_DIR}/lib/hdf5)
-
-    set( NETCDF_CXX_ROOT ${NETCDF_DIR})
-
-    if(NOT BUILD_GDAL)
-        message(WARNING "You should do a GDAL build to avoid linking against system netCDF and HDF5.")
-    endif()
-
-endif()
 
 ## Any custom boost path.
 #set(Boost_NO_SYSTEM_PATHS TRUE)
@@ -137,7 +75,6 @@ macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
-configure_file(${CMAKE_SOURCE_DIR}/gdal-2.2.1.patch ${CMAKE_BINARY_DIR}/gdal-2.2.1.patch COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/paraview-5.4.1.patch ${CMAKE_BINARY_DIR}/paraview-5.4.1.patch COPYONLY)
 if(MACOSX)
     find_program(BREW brew)
@@ -178,31 +115,6 @@ if(MACOSX)
         set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}/lib/cmake/Qt5")
     endif()
 endif()
-
-
-#Trigger superbuild
-#If superbuild is not needed, we still need to build sparsehash, gperftools, and eigen3
-execute_process(COMMAND ${CMAKE_COMMAND}
-        -DBUILD_ARMADILLO=${BUILD_ARMADILLO}
-        -DBUILD_GDAL=${BUILD_GDAL}
-        -DBUILD_GSL=${BUILD_GSL}
-        -DBUILD_VIENNACL=${BUILD_VIENNACL}
-        -DBUILD_PROJ4=${BUILD_PROJ4}
-        -DBUILD_NETCDF=${BUILD_NETCDF}
-        -DBUILD_TBB=${BUILD_TBB}
-		-DBUILD_FUNC=${BUILD_FUNC}
-        -DBUILD_ParaView=${BUILD_ParaView}
-		-DEXTERNAL_BUILD_THREADS=${EXTERNAL_BUILD_THREADS}
-        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
-        -DUSE_MPI=${USE_MPI}
-        -DMPI_FOUND=${MPI_FOUND}
-        -DUSE_OMP=${USE_OMP}
-        -DUSE_OCL=${USE_OCL}
-        -DUSE_TCMALLOC=${USE_TCMALLOC} -G "${CMAKE_GENERATOR}" .
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
-execute_process(COMMAND ${CMAKE_COMMAND}  --build .
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
-
 
 # lovely CMake script to integrate git hashes
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
@@ -251,9 +163,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 
-
-    find_package(CGAL REQUIRED)
-
+find_package(CGAL REQUIRED)
 
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
@@ -350,17 +260,14 @@ else()
 endif()
 
 
-if(BUILD_ARMADILLO)
-    find_package(Armadillo REQUIRED  HINTS ${Armadillo_DIR} )
-else()
-    find_package(Armadillo REQUIRED)
-endif()
+
+find_package(Armadillo REQUIRED)
 
 
-set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
-message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")
 
-set( SPARSEHASH_ROOT "${CMAKE_BINARY_DIR}/lib/sparsehash")
+#set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
+#message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")
+
 find_package(Sparsehash)
 
 #sparsehash doesn't compile with gcc 4.6.x - 4.8.x because of this
@@ -372,7 +279,6 @@ else()
     set(SPARSEHASH_INCLUDE_DIRS "")
 endif()
 
-set(Tcmalloc_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/gperftools/include")
 find_package(tcmalloc)
 if(Tcmalloc_FOUND)  #gperftools may not compile on machines w/o nanosleep so we need to optionall disable if it fails to compile
     message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
@@ -382,11 +288,9 @@ else()
     set(Tcmalloc_LIBRARY "")
 endif()
 
-if(BUILD_VIENNACL)
-    find_package(ViennaCL 1.7.1 REQUIRED HINTS ${VCL_ROOT})
-else()
-    find_package(ViennaCL 1.7.1 REQUIRED)
-endif()
+
+find_package(ViennaCL 1.7.1 REQUIRED)
+
 
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
@@ -433,7 +337,7 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(PROJ4 REQUIRED)
+find_package(PROJ REQUIRED)
 
 find_package(GDAL 2.4 REQUIRED )
 
@@ -456,7 +360,7 @@ message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
 
-    find_package(VTK REQUIRED)
+find_package(VTK REQUIRED)
 
 include(${VTK_USE_FILE})
 
