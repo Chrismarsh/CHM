@@ -49,3 +49,6 @@
 [submodule "conan/conan-tbb"]
 	path = conan/conan-tbb
 	url = git@github.com:Chrismarsh/conan-tbb.git
+[submodule "conan/conan-boost"]
+	path = conan/conan-boost
+	url = git@github.com:Chrismarsh/conan-boost.git
