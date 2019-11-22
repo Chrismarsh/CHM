@@ -189,25 +189,18 @@ set (EXT_HEADER_FILES
 #        ${LAPACK_LIBRARIES}
 
 set( LIB_FILES
+		Boost::Boost
+		GDAL::GDAL
 
-	    ${Boost_LIBRARIES}
-        ${tbb_LIBRARIES}
-
-        ${gsl_LIBRARIES}
-		${armadillo_LIBRARIES}
-
-		${CMAKE_THREAD_LIBS_INIT}
-
-        ${vtk_LIBRARIES}
-
-		${CURSES_LIBRARIES}
-		${gdal_LIBRARY}
-		${viennacl_LIBRARIES}
-		${OPENCL_LIBRARIES}
-		${Tcmalloc_LIBRARY}
-		${proj_LIBRARY}
-
-		${netcdf-cxx_LIBRARIES}
+		vtk::vtk
+#		gperftools::gperftools
+		gsl::gsl
+		hdf5::hdf5
+		netcdf-cxx::netcdf-cxx
+		proj::proj
+		tbb::tbb
+		viennacl::viennacl
+		sparsehash::sparsehash
 		CACHE INTERNAL "" FORCE
 )
 
@@ -229,11 +222,8 @@ if(MATLAB)
 
 endif()
 
-
-
-include_directories(${HEADER_FILES} ${EXT_HEADER_FILES})
-
 link_directories(${TBB_LIBRARY_DIRS}) # as per https://code.google.com/p/findtbb/wiki/HowTo
+
 add_executable(
 	CHM
 	main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
@@ -243,7 +233,7 @@ add_executable(
 	${LIBMAW_SRCS}
 	)
 
-target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH})
+target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )  #${EXT_HEADER_FILES}
 target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
