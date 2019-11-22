@@ -1,7 +1,7 @@
 
 
  [requires]
- boost/1.71.0
+ boost/1.71.0@CHM/dev
  cgal/5.0.0@CHM/dev
  vtk/8.2.0@CHM/dev
  netcdf-cxx/4.3.1@CHM/dev
