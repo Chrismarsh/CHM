@@ -20,7 +20,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(CMAKE_FIND_FRAMEWORK NEVER) #Can cause frameworks to take priority over superbuild libraries
 endif()
 
-set(ext_cmakefile_name CMakeLists_external.txt.in)
 
 # Some machines require machine-specific work arounds when building the external libraries. Special casing to a per-machine basis should not be done often
 # and really should only be done if 100% required.
@@ -67,7 +66,8 @@ endif()
 #set(Boost_NO_SYSTEM_PATHS TRUE)
 #set(BOOST_ROOT "/opt/boost_1_62_0")
 
-LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
+#LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake/")
+#LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 
 #########
 # Helper macro that removes cxx flag flags
@@ -89,11 +89,6 @@ if(MACOSX)
         endif()
     endif()
 endif()
-
-#things covered by the superbuild
-# super build things we are missing
-configure_file(${ext_cmakefile_name}
-    ${CMAKE_BINARY_DIR}/lib/CMakeLists.txt)
 
 
 #on macos, if qt5 is installed with brew, it won't be picked up
@@ -167,7 +162,7 @@ find_package(CGAL REQUIRED)
 
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
-    include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
+  #  include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
     # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
     # https://bugs.llvm.org/show_bug.cgi?id=43266
@@ -175,7 +170,7 @@ if(CGAL_FOUND)
     # https://stackoverflow.com/questions/57857572/why-does-boost-log-break-boost-gmp-multiprecision
 
     # But CGAL uses boost/mp which appears to cause this problem. So if we see clang, disable boost MP usage.
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
         ADD_DEFINITIONS(-DCGAL_DO_NOT_USE_BOOST_MP)
 
         message(WARNING "Disabling CGAL's use of boost mp to avoid clang compiler parse error.")
@@ -223,16 +218,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") # OR "${CMAKE_CXX_COMPILER_ID}" S
 endif()
 ########
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -Wno-c++11-extensions")
-  set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -stdlib=libc++")
-endif()
-
-
 if(USE_OMP)
     find_package(OpenMP)
-    if(OPENMP_FOUND AND CMAKE_BUILD_TYPE MATCHES Release AND NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang") #osx Clang doesn't have mainline support for openmp
+    if(OpenMP_FOUND)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+     #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
         add_definitions(-DVIENNACL_WITH_OPENMP)
     endif()
 endif()
@@ -351,8 +341,7 @@ find_package(Curses REQUIRED)
 
 
 set(NETCDF_CXX "YES")
-find_package(NetCDF REQUIRED)
-
+find_package(NetCDF-cxx  REQUIRED)
 message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 
 
@@ -361,8 +350,7 @@ message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
 
 find_package(VTK REQUIRED)
-
-include(${VTK_USE_FILE})
+#include(${VTK_USE_FILE})
 
 if(VTK_MAJOR_VERSION LESS 7)
     #https://github.com/Chrismarsh/CHM/issues/104

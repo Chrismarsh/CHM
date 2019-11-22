@@ -12,7 +12,7 @@
  gsl/2.4@CHM/dev
  armadillo/9.800.2@CHM/dev
  viennacl/1.7.1@CHM/dev
- 
+ tbb/2019_u9@CHM/dev
  #eigen3/3.3.4@CHM/dev
 
  [generators]
@@ -31,6 +31,8 @@
  netcdf-c:shared=True
 
  armadillo:use_system_blas=True
+
+ gdal:shared=False
 
  [imports]
  lib, *.dylib* -> ./lib

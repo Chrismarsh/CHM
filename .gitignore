@@ -42,3 +42,4 @@ err.xml
 /cmake-build-release/*
 /CHM.wiki/*
 node_modules/
+/test-build/*
