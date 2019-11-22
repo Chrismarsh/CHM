@@ -43,6 +43,9 @@
 [submodule "conan/conan-sparsehash"]
 	path = conan/conan-sparsehash
 	url = git@github.com:Chrismarsh/conan-sparsehash.git
-[submodule "conan/conan-tbb.git"]
+[submodule "conan/conan-tbb"]
 	path = conan-tbb
 	url = git@github.com:Chrismarsh/conan-tbb.git
+[submodule "conan/conan-viennacl"]
+	path = conan-viennacl
+	url = git@github.com:Chrismarsh/conan-viennacl.git

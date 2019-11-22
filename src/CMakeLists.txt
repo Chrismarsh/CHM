@@ -190,6 +190,7 @@ set (EXT_HEADER_FILES
 
 set( LIB_FILES
 		Boost::Boost
+		proj::proj
 		GDAL::GDAL
 
 		vtk::vtk
@@ -199,8 +200,12 @@ set( LIB_FILES
 		netcdf-cxx::netcdf-cxx
 		proj::proj
 		tbb::tbb
+		OpenMP::OpenMP_CXX
 		viennacl::viennacl
 		sparsehash::sparsehash
+
+		${CURSES_LIBRARIES}
+
 		CACHE INTERNAL "" FORCE
 )
 
