@@ -46,3 +46,6 @@
 [submodule "conan/conan-viennacl"]
 	path = conan/conan-viennacl
 	url = git@github.com:Chrismarsh/conan-viennacl.git
+[submodule "conan/conan-tbb"]
+	path = conan/conan-tbb
+	url = git@github.com:Chrismarsh/conan-tbb.git
