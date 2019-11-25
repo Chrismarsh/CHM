@@ -190,15 +190,14 @@ set (EXT_HEADER_FILES
 
 set( LIB_FILES
 		Boost::Boost
-		proj::proj
-		GDAL::GDAL
 
+		gdal::gdal #proj is brought it via this
+		Iconv::Iconv # This is for unicode  support in gdal and is not conssitently brought in when building gdal
 		vtk::vtk
 #		gperftools::gperftools
 		gsl::gsl
 		hdf5::hdf5
 		netcdf-cxx::netcdf-cxx
-		proj::proj
 		tbb::tbb
 		OpenMP::OpenMP_CXX
 		viennacl::viennacl

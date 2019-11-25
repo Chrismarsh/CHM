@@ -17,7 +17,7 @@
 
  [generators]
  cmake_find_package
- cmake_paths
+ #cmake_paths
 
  [options]
  boost:shared=True

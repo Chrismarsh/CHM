@@ -66,8 +66,11 @@ endif()
 #set(Boost_NO_SYSTEM_PATHS TRUE)
 #set(BOOST_ROOT "/opt/boost_1_62_0")
 
-#LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake/")
-#LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
+LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
+
+LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake/")
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 
 #########
 # Helper macro that removes cxx flag flags
@@ -327,8 +330,9 @@ message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(PROJ REQUIRED)
+#find_package(PROJ REQUIRED)
 
+find_package(Iconv REQUIRED)
 find_package(GDAL 2.4 REQUIRED )
 
 find_package (Threads REQUIRED)
