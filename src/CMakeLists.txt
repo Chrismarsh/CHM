@@ -189,8 +189,10 @@ set (EXT_HEADER_FILES
 #        ${LAPACK_LIBRARIES}
 
 set( LIB_FILES
+	${LAPACK_LIBRARIES}
+	${ARPACK_LIBRARY}
 		Boost::Boost
-
+		armadillo::armadillo
 		gdal::gdal #proj is brought it via this
 		Iconv::Iconv # This is for unicode  support in gdal and is not conssitently brought in when building gdal
 		vtk::vtk

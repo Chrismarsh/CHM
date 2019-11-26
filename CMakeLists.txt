@@ -255,7 +255,11 @@ endif()
 
 
 find_package(Armadillo REQUIRED)
-
+find_package(lapack REQUIRED)
+find_library(ARPACK_LIBRARY
+  NAMES arpack
+  PATHS ${CMAKE_SYSTEM_LIBRARY_PATH} /usr/lib64 /usr/lib /usr/local/lib64 /usr/local/lib /opt/local/lib64 /opt/local/lib
+  )
 
 
 #set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")

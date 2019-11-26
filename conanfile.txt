@@ -30,7 +30,7 @@
  netcdf-c:parallel4=False
  netcdf-c:shared=True
 
- armadillo:use_system_blas=True
+ armadillo:use_wrapper=False
 
  gdal:shared=False
 
