@@ -254,8 +254,8 @@ endif()
 
 
 
-find_package(Armadillo REQUIRED)
-find_package(lapack REQUIRED)
+find_package(armadillo REQUIRED)
+find_package(LAPACK REQUIRED)
 find_library(ARPACK_LIBRARY
   NAMES arpack
   PATHS ${CMAKE_SYSTEM_LIBRARY_PATH} /usr/lib64 /usr/lib /usr/local/lib64 /usr/local/lib /opt/local/lib64 /opt/local/lib
@@ -265,7 +265,7 @@ find_library(ARPACK_LIBRARY
 #set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
 #message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")
 
-find_package(Sparsehash)
+find_package(sparsehash)
 
 #sparsehash doesn't compile with gcc 4.6.x - 4.8.x because of this
 # https://bugs.launchpad.net/ubuntu/+source/gcc-4.6/+bug/1269803
@@ -286,7 +286,7 @@ else()
 endif()
 
 
-find_package(ViennaCL 1.7.1 REQUIRED)
+find_package(viennacl 1.7.1 REQUIRED)
 
 
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
@@ -337,19 +337,19 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 #find_package(PROJ REQUIRED)
 
 find_package(Iconv REQUIRED)
-find_package(GDAL 2.4 REQUIRED )
+find_package(gdal 2.4 REQUIRED )
 
 find_package (Threads REQUIRED)
 
-find_package(TBB REQUIRED tbb)
+find_package(tbb REQUIRED tbb)
 
-find_package(GSL REQUIRED)
+find_package(gsl REQUIRED)
 
 find_package(Curses REQUIRED)
 
 
 set(NETCDF_CXX "YES")
-find_package(NetCDF-cxx  REQUIRED)
+find_package(netcdf-cxx  REQUIRED)
 message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 
 
@@ -357,7 +357,7 @@ message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
 
-find_package(VTK REQUIRED)
+find_package(vtk REQUIRED)
 #include(${VTK_USE_FILE})
 
 if(VTK_MAJOR_VERSION LESS 7)
@@ -380,8 +380,8 @@ if(DOXYGEN_FOUND)
 	add_custom_target(doc #ALL
 		${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-		COMMENT "Generating API documentation with Doxygen" VERBATIM 
-	) 
+		COMMENT "Generating API documentation with Doxygen" VERBATIM
+	)
 
 endif(DOXYGEN_FOUND)
 
