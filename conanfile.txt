@@ -27,6 +27,8 @@
  cgal:with_tbb=True
  cgal:with_gmp=True
 
+ hdf5:shared=True
+
  netcdf-c:parallel4=False
  netcdf-c:shared=True
 
