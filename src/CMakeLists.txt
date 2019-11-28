@@ -122,9 +122,6 @@ set(CHM_SRCS
 		${METEOIO_SRCS}
         math/coordinates.cpp
 
-
-
-
 		CACHE INTERNAL "" FORCE)
 
 
@@ -147,88 +144,64 @@ set (HEADER_FILES
 		CACHE INTERNAL "" FORCE
 		)
 
-#${BOOST_INCLUDE_PATH} #old version of boost???
-#${TBB_INCLUDE_DIRS}
-#		${eigen_INCLUDE_DIR}
-#		${NETCDF_INCLUDE_DIRS}
 
 set (EXT_HEADER_FILES
-
-		${Boost_INCLUDE_DIR}  #watch caps!!
-        ${tbb_INCLUDE_DIRS}
-        ${gsl_INCLUDE_DIRS}
-        ${armadillo_INCLUDE_DIR}
-        ${cgal_INCLUDE_DIRS}
-		${gdal_INCLUDE_DIR}
-		${viennacl_INCLUDE_DIR}
-		${sparsehash_INCLUDE_DIRS}
-		${netcdf-cxx_INCLUDE_DIR}
-		${vtk_INCLUDE_DIRS}
 		${CURSES_INCLUDE_DIR}
-		${OPENCL_INCLUDE_DIRS}
-		${Tcmalloc_INCLUDE_DIR}
-		CACHE INTERNAL "" FORCE
-    )
-
-#${NETCDF_LIBRARIES}
-#${Boost_LIBRARIES}
-#${TBB_LIBRARIES}
-#${tbb_LIBRARIES}
-#${GSL_LIBRARIES}
-#${CMAKE_THREAD_LIBS_INIT}
-#${ARMADILLO_LIBRARIES}
-#${CGAL_3RD_PARTY_LIBRARIES}
-#${VTK_LIBRARIES}
-#${LAPACK_LIBRARIES}
-#${CURSES_LIBRARIES}
-#${GDAL_LIBRARY}
-#${VIENNACL_LIBRARIES}
-#${OPENCL_LIBRARIES}
-#${Tcmalloc_LIBRARY}
-#${PROJ4_LIBRARY}
-#        ${LAPACK_LIBRARIES}
-
-set( LIB_FILES
-	${LAPACK_LIBRARIES}
-	${ARPACK_LIBRARY}
-		Boost::Boost
-		armadillo::armadillo
-		gdal::gdal #proj is brought it via this
-		Iconv::Iconv # This is for unicode  support in gdal and is not conssitently brought in when building gdal
-		vtk::vtk
-#		gperftools::gperftools
-		gsl::gsl
-		hdf5::hdf5
-		netcdf-cxx::netcdf-cxx
-		tbb::tbb
-		OpenMP::OpenMP_CXX
-		viennacl::viennacl
-		sparsehash::sparsehash
-
-		${CURSES_LIBRARIES}
-
 		CACHE INTERNAL "" FORCE
 )
 
+set(EXT_TARGETS
+	${LAPACK_LIBRARIES}
+	${ARPACK_LIBRARY}
+
+	cgal::cgal
+	eigen3::eigen3
+	Boost::Boost
+	armadillo::armadillo
+	gdal::gdal #proj is brought it via this
+	Iconv::Iconv # This is for unicode  support in gdal and is not conssitently brought in when building gdal
+	vtk::vtk
+	gsl::gsl
+	hdf5::hdf5
+	netcdf-cxx::netcdf-cxx
+	tbb::tbb
+
+	viennacl::viennacl
+	sparsehash::sparsehash
+
+	${CURSES_LIBRARIES}
+
+	CACHE INTERNAL "" FORCE
+)
+
+#handle the optionals
+if(OpenMP_FOUND)
+	list( APPEND EXT_TARGETS	OpenMP::OpenMP_CXX)
+endif()
+
+if(USE_OCL AND OPENCL_FOUND)
+	list( APPEND EXT_TARGETS OpenCL::OpenCL)
+endif()
+
+if(gperftools_FOUND)
+	list( APPEND EXT_TARGETS gperftools::gperftools)
+endif()
 
 #are we linking against matlab?
 if(MATLAB)
     set(LIBMAW_SRCS
         libmaw/graphics.cpp
-        libmaw/matlab_engine.cpp )
+        libmaw/matlab_engine.cpp
+		CACHE INTERNAL "" FORCE )
 
-    set( LIB_FILES
-            ${LIB_FILES}
+    list( APPEND EXT_TARGETS
             ${MATLAB_ENG_LIBRARY}
             ${MATLAB_MX_LIBRARY})
 
-    set(EXT_HEADER_FILES
-        ${EXT_HEADER_FILES}
+    list( APPEND EXT_HEADER_FILES
         ${MATLAB_INCLUDE_DIR})
 
 endif()
-
-link_directories(${TBB_LIBRARY_DIRS}) # as per https://code.google.com/p/findtbb/wiki/HowTo
 
 add_executable(
 	CHM
@@ -244,7 +217,7 @@ target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 	CHM
-	${LIB_FILES}
+	${EXT_TARGETS}
 	${MPI_CXX_LIBRARIES}
 	${MPI_CXX_LINK_FLAGS}
 )
@@ -296,7 +269,7 @@ if (BUILD_TESTS)
 
 	target_link_libraries(
 			runUnitTests
-			${LIB_FILES}
+			${EXT_TARGETS}
 			${GTEST_LINK}
 			${MPI_CXX_LIBRARIES}
 			${MPI_CXX_LINK_FLAGS}

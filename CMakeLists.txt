@@ -165,7 +165,6 @@ find_package(CGAL REQUIRED)
 
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
-  #  include(${CGAL_USE_FILE}) #as per https://www.cgal.org/releases.html release 4.2
 
     # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
     # https://bugs.llvm.org/show_bug.cgi?id=43266
@@ -222,7 +221,7 @@ endif()
 ########
 
 if(USE_OMP)
-    find_package(OpenMP)
+    find_package(OpenMP )
     if(OpenMP_FOUND)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
      #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
@@ -246,6 +245,9 @@ if(USE_OCL AND OPENCL_FOUND)
     if(APPLE)
        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
     endif()
+
+
+
 else()
     add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
     unset(OPENCL_LIBRARIES CACHE) ##zero these out so we can use them later without trouble
@@ -256,14 +258,18 @@ endif()
 
 find_package(armadillo REQUIRED)
 find_package(LAPACK REQUIRED)
+
+# we don't need arpack per se but if Armadillo finds it, we also need to link against it
 find_library(ARPACK_LIBRARY
   NAMES arpack
   PATHS ${CMAKE_SYSTEM_LIBRARY_PATH} /usr/lib64 /usr/lib /usr/local/lib64 /usr/local/lib /opt/local/lib64 /opt/local/lib
   )
 
+if(NOT ARPACK_FOUND)
+    set(ARPACK_LIBRARY "")
+endif()
 
-#set(EIGEN3_INCLUDE_DIR "${CMAKE_BINARY_DIR}/lib/")
-#message("${CMAKE_BINARY_DIR}/lib/eigen3/include/")
+find_package(eigen3 REQUIRED)
 
 find_package(sparsehash)
 
@@ -276,8 +282,8 @@ else()
     set(SPARSEHASH_INCLUDE_DIRS "")
 endif()
 
-find_package(tcmalloc)
-if(Tcmalloc_FOUND)  #gperftools may not compile on machines w/o nanosleep so we need to optionall disable if it fails to compile
+find_package(gperftools)
+if(gperftools_FOUND)  #gperftools may not compile on machines w/o nanosleep so we need to optionall disable if it fails to compile
     message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
 else()
@@ -286,7 +292,7 @@ else()
 endif()
 
 
-find_package(viennacl 1.7.1 REQUIRED)
+find_package(viennacl  REQUIRED)
 
 
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
@@ -330,13 +336,10 @@ else()
 endif()
 message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
 message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
-message(STATUS "Found boost lib: ${Boost_LIBRARY_DIRS}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-#find_package(PROJ REQUIRED)
-
-find_package(Iconv REQUIRED)
+find_package(Iconv REQUIRED) #needed for gdal
 find_package(gdal 2.4 REQUIRED )
 
 find_package (Threads REQUIRED)
@@ -356,9 +359,7 @@ message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 #N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
-
 find_package(vtk REQUIRED)
-#include(${VTK_USE_FILE})
 
 if(VTK_MAJOR_VERSION LESS 7)
     #https://github.com/Chrismarsh/CHM/issues/104
