@@ -161,7 +161,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE})
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 
-find_package(CGAL REQUIRED)
+find_package(cgal REQUIRED)
 
 if(CGAL_FOUND)
     message(STATUS "Found CGAL ")
