@@ -28,7 +28,6 @@ core::core()
 {
     BOOST_LOG_FUNCTION();
 
-    _enable_ui=false; //default to no UI
     _start_ts = nullptr;
     _end_ts = nullptr;
     _interpolation_method = interp_alg::tpspline;
@@ -74,13 +73,6 @@ void core::config_options( pt::ptree &value)
             severity >= _log_level
     );
 
-    //enable/disable ncurses UI. default is enable
-    boost::optional<bool> u = value.get_optional<bool>("ui");
-    if (u)
-    {
-        _enable_ui = *u;
-        LOG_DEBUG << "Set ui to " << *u;
-    }
 
     std::string ia = value.get<std::string>("interpolant","spline");
 
@@ -106,8 +98,6 @@ void core::config_options( pt::ptree &value)
     boost::optional<std::string> prj = value.get_optional<std::string>("prj_name");
     if (prj)
     {
-        //_prj_name = *prj;
-        _ui.write_model_name(*prj);
         LOG_DEBUG << "Set project name to " << *prj;
     }
 
@@ -672,7 +662,7 @@ void core::config_meshes( pt::ptree &value)
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 
-    _ui.write_mesh_details(_mesh->size_faces());
+
 
 
 }
@@ -1280,25 +1270,7 @@ void core::init(int argc, char **argv)
     _mesh->populate_distributed_station_lists();
 
 
-    //if we run under a shitty terminal that doesn't support ncurses, or GDB
-    //we do have to turn this off and fall back to just showing cout
-    if(_enable_ui)
-    {
-        try
-        {
-            _ui.init();
-        } catch (model_init_error &e)
-        {
-            LOG_WARNING << "ncurses did not init, falling back to cout";
-            _enable_ui = false;
-        }
-    }
-
-
     boost::filesystem::path full_path(boost::filesystem::current_path());
-    _ui.write_cwd(full_path.string());
-
-
 
     try
     {
@@ -1882,7 +1854,6 @@ void core::_determine_module_dep()
     s = ss.str();
     LOG_DEBUG << "_modules order after sort: " << s.substr(0, s.length() - 2);
 
-//    _ui.write_modules(s.substr(0, s.length() - 2));
     // Parallel compilation ordering
 //    std::vector<int> time(size, 0);
 //    for (auto i = make_order.begin(); i != make_order.end(); ++i)
@@ -1979,15 +1950,12 @@ void core::run()
 
             _global->_current_date = _metdata.current_time();
 
-            if (!_enable_ui)
-            {
-                LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
-            }
+
+            LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
+
 
             std::stringstream ss;
             ss << _global->posix_time();
-            _ui.write_timestep(ss.str());
-            _ui.write_progress(int((double) current_ts / (double) max_ts * 100.0));
 
             c.tic();
             size_t chunks = 0;
@@ -2175,7 +2143,6 @@ void core::run()
             }
 
             std::string s = std::to_string(std::lround(mt)) + (ms == true ? " ms" : "s");
-            _ui.write_meantime(s);
 
             //we need it in seconds now
             if (ms)
@@ -2185,7 +2152,6 @@ void core::run()
 
             boost::posix_time::ptime pt(boost::posix_time::second_clock::local_time());
             pt = pt + boost::posix_time::seconds(size_t(mt) * (max_ts - current_ts));
-            _ui.write_time_estimate(boost::posix_time::to_simple_string(pt));
 
             LOG_DEBUG << "Avg timestep duration " << s << "\tEstimated completion: " << boost::posix_time::to_simple_string(pt);
             _global->first_time_step = false;
@@ -2243,5 +2209,4 @@ void core::run()
 void core::end()
 {
     LOG_DEBUG << "Cleaning up";
-    _ui.end(); //make sure we clean up
 }

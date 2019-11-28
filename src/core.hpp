@@ -84,7 +84,6 @@ namespace po = boost::program_options;
 #include "timer.hpp"
 #include "global.hpp"
 #include "str_format.h"
-#include "ui.h"
 #include "interpolation.hpp"
 #include "readjson.hpp"
 #include "version.h"
@@ -323,8 +322,6 @@ protected:
 
     };
 
-    bool _enable_ui;
-    ui _ui;
     std::vector<output_info> _outputs;
 
     netcdf _savestate; //file to save to when checkpointing.

@@ -348,9 +348,6 @@ find_package(tbb REQUIRED tbb)
 
 find_package(gsl REQUIRED)
 
-find_package(Curses REQUIRED)
-
-
 set(NETCDF_CXX "YES")
 find_package(netcdf-cxx  REQUIRED)
 message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")

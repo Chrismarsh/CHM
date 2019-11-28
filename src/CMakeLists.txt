@@ -98,9 +98,6 @@ set(CHM_SRCS
 
         constants/Atmosphere.cpp
 
-		ui/ui.cpp
-		ui/ncstream.cpp
-
 		mesh/triangulation.cpp
 
 		interpolation/inv_dist.cpp
@@ -127,7 +124,6 @@ set(CHM_SRCS
 
 set (HEADER_FILES
         mesh
-		ui
         modules
 
         modules/interp_met
@@ -144,11 +140,6 @@ set (HEADER_FILES
 		CACHE INTERNAL "" FORCE
 		)
 
-
-set (EXT_HEADER_FILES
-		${CURSES_INCLUDE_DIR}
-		CACHE INTERNAL "" FORCE
-)
 
 set(EXT_TARGETS
 	${LAPACK_LIBRARIES}
@@ -168,8 +159,6 @@ set(EXT_TARGETS
 
 	viennacl::viennacl
 	sparsehash::sparsehash
-
-	${CURSES_LIBRARIES}
 
 	CACHE INTERNAL "" FORCE
 )
