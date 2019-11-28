@@ -176,6 +176,10 @@ if(gperftools_FOUND)
 	list( APPEND EXT_TARGETS gperftools::gperftools)
 endif()
 
+if(MPI_FOUND AND USE_MPI)
+	list( APPEND EXT_TARGETS MPI::MPI_CXX)
+endif()
+
 #are we linking against matlab?
 if(MATLAB)
     set(LIBMAW_SRCS
@@ -207,8 +211,6 @@ target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 	CHM
 	${EXT_TARGETS}
-	${MPI_CXX_LIBRARIES}
-	${MPI_CXX_LINK_FLAGS}
 )
 
 

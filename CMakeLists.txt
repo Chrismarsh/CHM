@@ -54,17 +54,18 @@ find_package(MPI)
 if(MPI_FOUND AND USE_MPI)
   message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
   add_definitions(-DUSE_MPI)
+
+  file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt txt)
+  string(FIND "${txt}" "boost:without_mpi=True" RETCODE)
+
+  # -1 is not found retcode from find
+  if(${RETCODE} GREATER "-1")
+        message(FATAL_ERROR "MPI was asked for, however boost was not built with mpi. Please set boost:without_mpi=True in conanfile.txt.")
+    endif()
 else()
   message(WARNING "MPI not enabled. Building for single process.")
 endif()
 
-#To avoid issues #104, newer VTK version needs to be used.
-#8.1+ needs to be used so that proj4 name-collisions are resolved
-# http://vtk.1045678.n5.nabble.com/Don-t-build-vtkproj4-td5746073.html
-
-## Any custom boost path.
-#set(Boost_NO_SYSTEM_PATHS TRUE)
-#set(BOOST_ROOT "/opt/boost_1_62_0")
 
 LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
@@ -353,6 +354,9 @@ find_package(netcdf-cxx  REQUIRED)
 message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 
 
+#To avoid issues #104, newer VTK version needs to be used.
+#8.1+ needs to be used so that proj4 name-collisions are resolved
+# http://vtk.1045678.n5.nabble.com/Don-t-build-vtkproj4-td5746073.html
 #N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
