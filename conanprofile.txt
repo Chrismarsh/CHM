@@ -1,2 +1,4 @@
+ include(default)
  [settings]
  compiler.cppstd=14
+ compiler.libcxx=libstdc++11
