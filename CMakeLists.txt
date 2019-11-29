@@ -256,19 +256,7 @@ else()
 endif()
 
 
-
 find_package(armadillo REQUIRED)
-find_package(LAPACK REQUIRED)
-
-# we don't need arpack per se but if Armadillo finds it, we also need to link against it
-find_library(ARPACK_LIBRARY
-  NAMES arpack
-  PATHS ${CMAKE_SYSTEM_LIBRARY_PATH} /usr/lib64 /usr/lib /usr/local/lib64 /usr/local/lib /opt/local/lib64 /opt/local/lib
-  )
-
-if(NOT ARPACK_FOUND)
-    set(ARPACK_LIBRARY "")
-endif()
 
 find_package(eigen3 REQUIRED)
 
