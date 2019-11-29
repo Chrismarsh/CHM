@@ -142,24 +142,23 @@ set (HEADER_FILES
 
 
 set(EXT_TARGETS
+		netcdf-cxx::netcdf-cxx
+		Boost::Boost
+		tbb::tbb
+		gsl::gsl
+		Threads::Threads
+		armadillo::armadillo
+		vtk::vtk
+		Iconv::Iconv # This is for unicode  support in gdal and is not conssitently brought in when building gdal
+		gdal::gdal #proj is brought it via this
+		viennacl::viennacl
+		cgal::cgal
+		hdf5::hdf5
+		sparsehash::sparsehash
 
-	cgal::cgal
-	eigen3::eigen3
-	Boost::Boost
-	armadillo::armadillo
-	gdal::gdal #proj is brought it via this
-	Iconv::Iconv # This is for unicode  support in gdal and is not conssitently brought in when building gdal
-	vtk::vtk
-	gsl::gsl
-	hdf5::hdf5
-	netcdf-cxx::netcdf-cxx
-	tbb::tbb
-
-	viennacl::viennacl
-	sparsehash::sparsehash
-
-	CACHE INTERNAL "" FORCE
-)
+		${ARPACK_LIBRARY}
+		eigen3::eigen3
+		CACHE INTERNAL "" FORCE)
 
 #handle the optionals
 if(OpenMP_FOUND)
