@@ -20,21 +20,13 @@
 
 
  [options]
- boost:shared=True
  boost:without_python=True
  boost:without_mpi=False
 
  cgal:with_tbb=True
  cgal:with_gmp=True
 
- hdf5:shared=True
-
  netcdf-c:parallel4=False
- netcdf-c:shared=True
-
- armadillo:use_wrapper=False
-
- gdal:shared=False
 
  [imports]
  lib, *.dylib* -> ./lib
