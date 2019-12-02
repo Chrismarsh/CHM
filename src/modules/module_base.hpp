@@ -97,8 +97,10 @@ typedef pt::ptree config_file;
         {
             switch (st)
             {
-            case SpatialType::distance:
-                is_distance_set = false;
+                case SpatialType::distance:
+                    is_distance_set = false;
+                default:
+                      is_distance_set = false;
             }
         }
       // explicit construction with distance intended for modules with a fixed distance
@@ -106,13 +108,13 @@ typedef pt::ptree config_file;
         {
             switch (st)
             {
-            case SpatialType::distance:
-                is_distance_set = true;
-                spatial_distance = distance;
-            default:
-                BOOST_THROW_EXCEPTION(
-                    module_error() << errstr_info(
-                        "Distance specified with local or neighbour SpatialType. This is not allowed."));
+                case SpatialType::distance:
+                    is_distance_set = true;
+                    spatial_distance = distance;
+                default:
+                    BOOST_THROW_EXCEPTION(
+                        module_error() << errstr_info(
+                            "Distance specified with local or neighbour SpatialType. This is not allowed."));
             }
         }
     };
