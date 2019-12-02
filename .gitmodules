@@ -52,3 +52,6 @@
 [submodule "conan/conan-boost"]
 	path = conan/conan-boost
 	url = git@github.com:Chrismarsh/conan-boost.git
+[submodule "conan/conan-meteoio"]
+	path = conan/conan-meteoio
+	url = git@github.com:Chrismarsh/conan-meteoio.git
