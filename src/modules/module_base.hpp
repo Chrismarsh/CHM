@@ -102,7 +102,7 @@ typedef pt::ptree config_file;
             }
         }
       // explicit construction with distance intended for modules with a fixed distance
-        variable_info(std::string name, SpatialType st, double distance) : name{name}, spatial_type{st}
+        variable_info(std::string name, SpatialType st, double distance) :  spatial_type{st}, name{name}
         {
             switch (st)
             {
