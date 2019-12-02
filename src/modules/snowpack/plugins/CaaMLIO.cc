@@ -127,23 +127,23 @@ void CaaMLIO::init(const SnowpackConfig& cfg)
 	cfg.getValue("PERP_TO_SLOPE", "SnowpackAdvanced", perp_to_slope);
 	cfg.getValue("TIME_ZONE", "Input", in_tz);
 
-	cfg.getValue("SNOW_EXT", "INPUT", snow_ext, IOUtils::nothrow);
+	cfg.getValue("SNOW_EXT", "INPUT", snow_ext);
 	//	if ( IOUtils::strToUpper(snow_ext)=="NONE" ) snow_ext="";
-	cfg.getValue("METEOPATH", "Input", tmpstr, IOUtils::nothrow);
-	cfg.getValue("SNOWPATH", "Input", i_snowpath, IOUtils::nothrow);
+	cfg.getValue("METEOPATH", "Input", tmpstr);
+	cfg.getValue("SNOWPATH", "Input", i_snowpath);
 	if (i_snowpath.empty())
 		i_snowpath = tmpstr;
 
 	cfg.getValue("AGGREGATE_CAAML", "Output", aggregate_caaml);
 	cfg.getValue("EXPERIMENT", "Output", experiment);
-	cfg.getValue("METEOPATH", "Output", tmpstr, IOUtils::nothrow);
-	cfg.getValue("SNOWPATH", "Output", o_snowpath, IOUtils::nothrow);
+	cfg.getValue("METEOPATH", "Output", tmpstr);
+	cfg.getValue("SNOWPATH", "Output", o_snowpath);
 	if (o_snowpath.empty())
 		o_snowpath = tmpstr;
 
 	//input encoding forcing, inherited from CosmoXMLIO
 	tmpstr.clear();
-	cfg.getValue("XML_ENCODING", "INPUT", tmpstr, IOUtils::nothrow);
+	cfg.getValue("XML_ENCODING", "INPUT", tmpstr);
 	if (!tmpstr.empty()) {
 		if (tmpstr=="UTF-8") in_encoding=XML_CHAR_ENCODING_UTF8;
 		else if (tmpstr=="UTF-16-LE") in_encoding=XML_CHAR_ENCODING_UTF16LE;

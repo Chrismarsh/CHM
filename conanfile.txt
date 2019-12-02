@@ -14,7 +14,8 @@
  viennacl/1.7.1@CHM/dev
  tbb/2019_u9@CHM/dev
  eigen3/3.3.7@CHM/dev
-
+ meteoio/2.8.0@CHM/dev
+ 
  [generators]
  cmake_find_package
 

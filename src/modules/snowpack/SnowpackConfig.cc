@@ -170,12 +170,12 @@ SnowpackConfig::SnowpackConfig(const std::string& i_filename) : Config(i_filenam
 void SnowpackConfig::setDefaults()
 { //BUG we have a problem here: we try to keep the user settings if present. But we can not anymore make the difference between
 // default values and user set values... The whole "if xxx.empty()" does not work anymore!
-	string variant; getValue("VARIANT", "SnowpackAdvanced", variant, IOUtils::nothrow);
+	string variant; getValue("VARIANT", "SnowpackAdvanced", variant);
 
 	getValue("ENFORCE_MEASURED_SNOW_HEIGHTS", "Snowpack", enforce_measured_snow_heights);
 
-	string s_minimum_l_element; getValue("MINIMUM_L_ELEMENT", "SnowpackAdvanced", s_minimum_l_element, IOUtils::nothrow);
-	string s_height_new_elem; getValue("HEIGHT_NEW_ELEM", "SnowpackAdvanced", s_height_new_elem, IOUtils::nothrow);
+	string s_minimum_l_element; getValue("MINIMUM_L_ELEMENT", "SnowpackAdvanced", s_minimum_l_element);
+	string s_height_new_elem; getValue("HEIGHT_NEW_ELEM", "SnowpackAdvanced", s_height_new_elem);
 	if (s_minimum_l_element.empty()) addKey("MINIMUM_L_ELEMENT", "SnowpackAdvanced", advancedConfig["MINIMUM_L_ELEMENT"]);
 	double minimum_l_element = get("MINIMUM_L_ELEMENT", "SnowpackAdvanced");
 
@@ -190,15 +190,15 @@ void SnowpackConfig::setDefaults()
 		}
 	}
 
-	string albedo_model; getValue("ALBEDO_MODEL", "SnowpackAdvanced", albedo_model, IOUtils::nothrow);
-	string hn_density; getValue("HN_DENSITY", "SnowpackAdvanced", hn_density, IOUtils::nothrow);
-	string hn_density_parameterization; getValue("HN_DENSITY_PARAMETERIZATION", "SnowpackAdvanced", hn_density_parameterization, IOUtils::nothrow);
-	string metamorphism_model; getValue("METAMORPHISM_MODEL", "SnowpackAdvanced", metamorphism_model, IOUtils::nothrow);
-	string strength_model; getValue("STRENGTH_MODEL", "SnowpackAdvanced", strength_model, IOUtils::nothrow);
-	string viscosity_model; getValue("VISCOSITY_MODEL", "SnowpackAdvanced", viscosity_model, IOUtils::nothrow);
-	string watertransportmodel_snow; getValue("WATERTRANSPORTMODEL_SNOW", "SnowpackAdvanced", watertransportmodel_snow, IOUtils::nothrow);
-	string watertransportmodel_soil; getValue("WATERTRANSPORTMODEL_SOIL", "SnowpackAdvanced", watertransportmodel_soil, IOUtils::nothrow);
-	string lb_cond_waterflux; getValue("LB_COND_WATERFLUX", "SnowpackAdvanced", lb_cond_waterflux, IOUtils::nothrow);
+	string albedo_model; getValue("ALBEDO_MODEL", "SnowpackAdvanced", albedo_model);
+	string hn_density; getValue("HN_DENSITY", "SnowpackAdvanced", hn_density);
+	string hn_density_parameterization; getValue("HN_DENSITY_PARAMETERIZATION", "SnowpackAdvanced", hn_density_parameterization);
+	string metamorphism_model; getValue("METAMORPHISM_MODEL", "SnowpackAdvanced", metamorphism_model);
+	string strength_model; getValue("STRENGTH_MODEL", "SnowpackAdvanced", strength_model);
+	string viscosity_model; getValue("VISCOSITY_MODEL", "SnowpackAdvanced", viscosity_model);
+	string watertransportmodel_snow; getValue("WATERTRANSPORTMODEL_SNOW", "SnowpackAdvanced", watertransportmodel_snow);
+	string watertransportmodel_soil; getValue("WATERTRANSPORTMODEL_SOIL", "SnowpackAdvanced", watertransportmodel_soil);
+	string lb_cond_waterflux; getValue("LB_COND_WATERFLUX", "SnowpackAdvanced", lb_cond_waterflux);
 
 	if ((variant.empty()) || (variant == "DEFAULT")) {
 		// Use default settings
@@ -216,13 +216,13 @@ void SnowpackConfig::setDefaults()
 		addKey("MINIMUM_L_ELEMENT", "SnowpackAdvanced", "0.0001"); //Minimum element length (m)
 		minimum_l_element = get("MINIMUM_L_ELEMENT", "SnowpackAdvanced");
 
-		string hoar_density_buried; getValue("HOAR_DENSITY_BURIED", "SnowpackAdvanced", hoar_density_buried, IOUtils::nothrow);
+		string hoar_density_buried; getValue("HOAR_DENSITY_BURIED", "SnowpackAdvanced", hoar_density_buried);
 		if (hoar_density_buried.empty()) addKey("HOAR_DENSITY_BURIED", "SnowpackAdvanced", "200.0");
 
-		string force_rh_water; getValue("FORCE_RH_WATER", "SnowpackAdvanced", force_rh_water, IOUtils::nothrow);
+		string force_rh_water; getValue("FORCE_RH_WATER", "SnowpackAdvanced", force_rh_water);
 		if (force_rh_water.empty()) addKey("FORCE_RH_WATER", "SnowpackAdvanced", "false");
 
-		string thresh_rh; getValue("THRESH_RH", "SnowpackAdvanced", thresh_rh, IOUtils::nothrow);
+		string thresh_rh; getValue("THRESH_RH", "SnowpackAdvanced", thresh_rh);
 		if (thresh_rh.empty()) addKey("THRESH_RH", "SnowpackAdvanced", "0.7");
 
 		if ( !enforce_measured_snow_heights) {
@@ -241,14 +241,14 @@ void SnowpackConfig::setDefaults()
 		if (hn_density_parameterization.empty()) addKey("HN_DENSITY_PARAMETERIZATION", "SnowpackAdvanced", "ZWART");
 		if (viscosity_model.empty()) addKey("VISCOSITY_MODEL", "SnowpackAdvanced", "CALIBRATION");
 
-		string fixed_positions; getValue("FIXED_POSITIONS", "SnowpackAdvanced", fixed_positions, IOUtils::nothrow);
+		string fixed_positions; getValue("FIXED_POSITIONS", "SnowpackAdvanced", fixed_positions);
 		if (fixed_positions.empty()) addKey("FIXED_POSITIONS", "SnowpackAdvanced", "5");
-		string number_fixed_rates; getValue("NUMBER_FIXED_RATES", "SnowpackAdvanced", number_fixed_rates, IOUtils::nothrow);
+		string number_fixed_rates; getValue("NUMBER_FIXED_RATES", "SnowpackAdvanced", number_fixed_rates);
 		if (number_fixed_rates.empty()) addKey("NUMBER_FIXED_RATES", "SnowpackAdvanced", "0");
 		string max_number_meas_temperatures;
-		getValue("MAX_NUMBER_MEAS_TEMPERATURES", "SnowpackAdvanced", max_number_meas_temperatures, IOUtils::nothrow);
+		getValue("MAX_NUMBER_MEAS_TEMPERATURES", "SnowpackAdvanced", max_number_meas_temperatures);
 		if (max_number_meas_temperatures.empty()) addKey("MAX_NUMBER_MEAS_TEMPERATURES", "SnowpackAdvanced", "5");
-		string min_depth_subsurf; getValue("MIN_DEPTH_SUBSURF", "SnowpackAdvanced", min_depth_subsurf, IOUtils::nothrow);
+		string min_depth_subsurf; getValue("MIN_DEPTH_SUBSURF", "SnowpackAdvanced", min_depth_subsurf);
 		if (min_depth_subsurf.empty()) addKey("MIN_DEPTH_SUBSURF", "SnowpackAdvanced", "0.0");
 	} else {
 		throw UnknownValueException("Unknown variant " + variant, AT);
@@ -260,19 +260,19 @@ void SnowpackConfig::setDefaults()
 	 */
 	for(map<string,string>::const_iterator it = advancedConfig.begin(); it != advancedConfig.end(); ++it) {
 		//[SnowpackAdvanced] section
-		string value; getValue(it->first, "SnowpackAdvanced", value, IOUtils::nothrow);
+		string value; getValue(it->first, "SnowpackAdvanced", value);
 		if (value.empty()) addKey(it->first, "SnowpackAdvanced", it->second);
 	}
 
 	for(map<string,string>::const_iterator it = inputConfig.begin(); it != inputConfig.end(); ++it) {
 		//[Input] section
-		string value; getValue(it->first, "Input", value, IOUtils::nothrow);
+		string value; getValue(it->first, "Input", value);
 		if (value.empty()) addKey(it->first, "Input", it->second);
 	}
 
 	for(map<string,string>::const_iterator it = outputConfig.begin(); it != outputConfig.end(); ++it) {
 		//[Output] section
-		string value; getValue(it->first, "Output", value, IOUtils::nothrow);
+		string value; getValue(it->first, "Output", value);
 		if (value.empty()) addKey(it->first, "Output", it->second);
 	}
 
@@ -301,7 +301,7 @@ void SnowpackConfig::setDefaults()
 	const double calculation_step_length = get("CALCULATION_STEP_LENGTH", "Snowpack");
 
 	string hazard_steps_between;
-	getValue("HAZARD_STEPS_BETWEEN", "Output", hazard_steps_between, IOUtils::nothrow);
+	getValue("HAZARD_STEPS_BETWEEN", "Output", hazard_steps_between);
 	if (hazard_steps_between.empty()) {
 		stringstream ss;
 		const int tmp = (int)(30./calculation_step_length + 0.5);

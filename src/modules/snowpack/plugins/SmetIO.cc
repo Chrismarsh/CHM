@@ -151,17 +151,17 @@ SmetIO::SmetIO(const SnowpackConfig& cfg, const RunInfo& run_info)
 	cfg.getValue("SW_MODE", "Snowpack", sw_mode);
 	cfg.getValue("MIN_DEPTH_SUBSURF", "SnowpackAdvanced", min_depth_subsurf);
 	cfg.getValue("PERP_TO_SLOPE", "SnowpackAdvanced", perp_to_slope);
-	cfg.getValue("AVGSUM_TIME_SERIES", "Output", avgsum_time_series, IOUtils::nothrow);
+	cfg.getValue("AVGSUM_TIME_SERIES", "Output", avgsum_time_series);
 	cfg.getValue("RESEARCH", "SnowpackAdvanced", research_mode);
 
 	cfg.getValue("EXPERIMENT", "Output", experiment);
-	cfg.getValue("METEOPATH", "Output", outpath, IOUtils::nothrow);
-	cfg.getValue("SNOWPATH", "Output", snowpath, IOUtils::nothrow);
+	cfg.getValue("METEOPATH", "Output", outpath);
+	cfg.getValue("SNOWPATH", "Output", snowpath);
 	o_snowpath = (!snowpath.empty())? snowpath : outpath;
 
-	cfg.getValue("METEOPATH", "Input", inpath, IOUtils::nothrow);
+	cfg.getValue("METEOPATH", "Input", inpath);
 	snowpath = string();
-	cfg.getValue("SNOWPATH", "Input", snowpath, IOUtils::nothrow);
+	cfg.getValue("SNOWPATH", "Input", snowpath);
 	i_snowpath = (!snowpath.empty())? snowpath : inpath;
 
 	cfg.getValue("OUT_CANOPY", "Output", out_canopy);

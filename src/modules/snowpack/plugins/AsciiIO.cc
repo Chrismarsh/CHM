@@ -325,15 +325,15 @@ AsciiIO::AsciiIO(const SnowpackConfig& cfg, const RunInfo& run_info)
 	cfg.getValue("SW_MODE", "Snowpack", sw_mode);
 
 	// Input section
-	cfg.getValue("METEOPATH", "Input", inpath, IOUtils::nothrow);
-	const string in_snowpath = cfg.get("SNOWPATH", "Input", IOUtils::nothrow);
+	cfg.getValue("METEOPATH", "Input", inpath);
+	const string in_snowpath = cfg.get("SNOWPATH", "Input");
 	cfg.getValue("TIME_ZONE", "Input", time_zone);
 
 	// Output section
-	cfg.getValue("AVGSUM_TIME_SERIES", "Output", avgsum_time_series, IOUtils::nothrow);
+	cfg.getValue("AVGSUM_TIME_SERIES", "Output", avgsum_time_series);
 	cfg.getValue("EXPERIMENT", "Output", experiment);
 	cfg.getValue("HAZARD_STEPS_BETWEEN", "Output", hazard_steps_between);
-	cfg.getValue("METEOPATH", "Output", outpath, IOUtils::nothrow);
+	cfg.getValue("METEOPATH", "Output", outpath);
 	cfg.getValue("OUT_CANOPY", "Output", out_canopy);
 	cfg.getValue("OUT_HAZ", "Output", out_haz);
 	cfg.getValue("OUT_HEAT", "Output", out_heat);
@@ -345,8 +345,8 @@ AsciiIO::AsciiIO(const SnowpackConfig& cfg, const RunInfo& run_info)
 	cfg.getValue("OUT_STAB", "Output", out_stab);
 	cfg.getValue("OUT_SW", "Output", out_sw);
 	cfg.getValue("OUT_T", "Output", out_t);
-	cfg.getValue("HARDNESS_IN_NEWTON", "Output", r_in_n, IOUtils::nothrow);
-	const string out_snowpath = cfg.get("SNOWPATH", "Output", IOUtils::nothrow);
+	cfg.getValue("HARDNESS_IN_NEWTON", "Output", r_in_n);
+	const string out_snowpath = cfg.get("SNOWPATH", "Output");
 	cfg.getValue("TS_DAYS_BETWEEN", "Output", ts_days_between);
 	cfg.getValue("PROF_FORMAT", "Output", vecProfileFmt);
 	cfg.getValue("AGGREGATE_PRF", "Output", aggregate_prf);

@@ -104,8 +104,8 @@ Snowpack::Snowpack(const SnowpackConfig& i_cfg)
 
 	//Define keys for new snow density computation
 	cfg.getValue("HN_DENSITY", "SnowpackAdvanced", hn_density);
-	cfg.getValue("TEMP_INDEX_DEGREE_DAY", "SnowpackAdvanced", temp_index_degree_day, IOUtils::nothrow);
-	cfg.getValue("TEMP_INDEX_SWR_FACTOR", "SnowpackAdvanced", temp_index_swr_factor, IOUtils::nothrow);
+	cfg.getValue("TEMP_INDEX_DEGREE_DAY", "SnowpackAdvanced", temp_index_degree_day);
+	cfg.getValue("TEMP_INDEX_SWR_FACTOR", "SnowpackAdvanced", temp_index_swr_factor);
 	cfg.getValue("HN_DENSITY_PARAMETERIZATION", "SnowpackAdvanced", hn_density_parameterization);
 	cfg.getValue("HN_DENSITY_FIXEDVALUE", "SnowpackAdvanced", hn_density_fixedValue);
 
@@ -124,7 +124,7 @@ Snowpack::Snowpack(const SnowpackConfig& i_cfg)
 	/* Defines the management of the bottom boundary conditions with soil layers
 	 * - 0 ==> Dirichlet, i.e fixed Temperature
 	 * - 1 ==> Neumann, fixed geothermal heat flux GEO_HEAT */
-	cfg.getValue("SOIL_FLUX", "Snowpack", soil_flux, IOUtils::nothrow);
+	cfg.getValue("SOIL_FLUX", "Snowpack", soil_flux);
 	if (useSoilLayers && soil_flux) {
 		cfg.getValue("GEO_HEAT", "Snowpack", geo_heat); //Constant geothermal heat flux at (great) depth (W m-2)
 	} else {
@@ -266,9 +266,9 @@ Snowpack::Snowpack(const SnowpackConfig& i_cfg)
 	cfg.getValue("ADJUST_HEIGHT_OF_METEO_VALUES", "SnowpackAdvanced", adjust_height_of_meteo_values);
 
 	// Allow for the effect of a known advective heat flux
-	cfg.getValue("ADVECTIVE_HEAT", "SnowpackAdvanced", advective_heat, IOUtils::nothrow);
-	cfg.getValue("HEAT_BEGIN", "SnowpackAdvanced", heat_begin, IOUtils::nothrow);
-	cfg.getValue("HEAT_END", "SnowpackAdvanced", heat_end, IOUtils::nothrow);
+	cfg.getValue("ADVECTIVE_HEAT", "SnowpackAdvanced", advective_heat);
+	cfg.getValue("HEAT_BEGIN", "SnowpackAdvanced", heat_begin);
+	cfg.getValue("HEAT_END", "SnowpackAdvanced", heat_end);
 }
 
 void Snowpack::setUseSoilLayers(const bool& value) { //NOTE is this really needed?

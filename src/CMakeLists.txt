@@ -1,16 +1,9 @@
-#meteoio specific
-SET(_versionString "2.5.0")
-SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/meteoio/CMakeLists.txt)
-
-SET(METEOIO_SRCS "")
-FOREACH(f ${meteoio_sources})
-#	LIST(APPEND METEOIO_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/meteoio/${f}")
-	LIST(APPEND METEOIO_SRCS "meteoio/${f}")
-ENDFOREACH(f)
 
 #snowpack specific
+SET(_versionString "2.8.0")
+SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
+
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/CMakeLists.txt)
 SET(SNOWPACK_SRCS "")
 FOREACH(f ${snowpacklib_sources})
@@ -116,7 +109,6 @@ set(CHM_SRCS
 		utility/readjson.cpp
 
 		interpolation/interpolation.cpp
-		${METEOIO_SRCS}
         math/coordinates.cpp
 
 		CACHE INTERNAL "" FORCE)
@@ -129,8 +121,6 @@ set (HEADER_FILES
         modules/interp_met
 		modules/snobal
         libmaw
-		meteoio
-		meteoio/meteoLaws
         interpolation
         timeseries
         utility
@@ -155,6 +145,7 @@ set(EXT_TARGETS
 		cgal::cgal
 		hdf5::hdf5
 		sparsehash::sparsehash
+		meteoio::meteoio
 
 		${ARPACK_LIBRARY}
 		eigen3::eigen3
