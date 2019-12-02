@@ -89,7 +89,7 @@ set(CHM_SRCS
 		station.cpp
 		metdata.cpp
 
-        constants/Atmosphere.cpp
+		physics/Atmosphere.cpp
 
 		mesh/triangulation.cpp
 

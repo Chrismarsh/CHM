@@ -27,9 +27,9 @@
 #include "logger.hpp"
 #include "module_base.hpp"
 #include <meteoio/MeteoIO.h>
-#include <constants/Atmosphere.h>
-#include <constants/PhysConst.h>
-#include <constants/Vegetation.h>
+#include <physics/Atmosphere.h>
+#include <physics/PhysConst.h>
+#include <physics/Vegetation.h>
 #include <string>
 
 

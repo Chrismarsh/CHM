@@ -84,7 +84,7 @@ class Canopy {
 		void runCanopyModel(CurrentMeteo &Mdata, SnowStation &Xdata, double roughness_length,
 		                    double height_of_wind_val, const bool& adjust_VW_height=true);
 		static void writeTimeSeriesAdd2LCanopy(std::ofstream &fout, const CanopyData *Cdata);
-		static const double can_alb_dry, can_alb_wet, can_alb_snow, krnt_lai; //public constants
+		static const double can_alb_dry, can_alb_wet, can_alb_snow, krnt_lai; //public physics
 
  	private:
 		double get_f1(const double& ris);

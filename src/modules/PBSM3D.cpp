@@ -984,7 +984,7 @@ void PBSM3D::run(mesh& domain)
             (*face)["Qsalt"_s] = Qsalt;
 
             double rh = (*face)["rh"_s] / 100.;
-            double es = mio::Atmosphere::saturatedVapourPressure(t);
+            double es = Atmosphere::saturatedVapourPressure(t);
             double ea = rh * es / 1000.; // ea needs to be in kpa
 
             double v = 1.88e-5; // kinematic viscosity of air, below eqn 13 in Pomeroy 1993

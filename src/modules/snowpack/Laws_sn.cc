@@ -39,7 +39,7 @@
 #include <snowpack/Laws_sn.h>
 #include <snowpack/Utils.h>
 #include <snowpack/Constants.h>
-#include <snowpack/snowpackCore/Snowpack.h> //some constants are necessary
+#include <snowpack/snowpackCore/Snowpack.h> //some physics are necessary
 #include <snowpack/snowpackCore/Metamorphism.h>
 
 using namespace std;
@@ -1548,14 +1548,14 @@ double SnLaws::SnowViscosityMSU(const ElementData& Edata)
 		const double rc = Edata.concaveNeckRadius(); // concave radius of neck
 		const double L = 2.*rg*rc/(rg + rc); // neck length
 
-		//define some constants
+		//define some physics
 		static const double epdot = 1.76e-7;   // unit strain rate (at stress = 1 MPa) (1/sec)
 		static const double Q = 67000.;        // J/mol
 		static const double R = 8.31;          // gas constant J/mol/K
 		static const double Sig1 = 0.5e6;      // unit stress  Pa  from Sinha's formulation
 		static const double Tref = 263.0;      // reference temperature in K
 		static const double SneckYield = 0.4e6;// Yield stress for ice in neck (Pa)
-		static const double th_i_f = 0.35, f_2 = 0.02; // Empirical constants to control dry snow viscosity fudge
+		static const double th_i_f = 0.35, f_2 = 0.02; // Empirical physics to control dry snow viscosity fudge
 
 		// First check to see if neck stress (Sneck) is >= SneckYield = 0.4 MPa.
 		const double Sneck = (4.0/(N3*theta_i)) * Optim::pow2(rg/rb) * (-S);   // Work with absolute value of stress

@@ -413,7 +413,7 @@ double Metamorphism::TGGrainRate(const ElementData& Edata, const double& Tbot, c
 double Metamorphism::ETBondRate(ElementData& Edata)
 {
 	/*
-	* B_1...B_3 are  constants computed with Brown's advanced and sophisticated
+	* B_1...B_3 are  physics computed with Brown's advanced and sophisticated
 	* mixture theory. Bartelt is so jealous of that fine piece of work.   Please note
 	* hist sarcastic tirade later in this  unreadable program.
 	*/

@@ -21,7 +21,7 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include <constants/Atmosphere.h>
+#include <physics/Atmosphere.h>
 
 namespace Atmosphere
 {
@@ -54,5 +54,29 @@ namespace Atmosphere
         return p;
     }
 
+    /**
+    * @brief Saturated vapour pressure
+    * @param T air temperature (K)
+    * @return Saturated vapour pressure (Pa)
+    */
+    double saturatedVapourPressure(const double& T)
+    {
+        double TA = T - 273.15;
+        double Es, E, Rhi, Rhw, Rh;                         //saturation and current water vapro pressure
+        const double Aw = 611.21, Bw = 17.502, Cw = 240.97; //parameters for water
+        const double Ai = 611.15, Bi = 22.452, Ci = 272.55; //parameters for ice
+        const double Tfreeze = 0.;                          //freezing temperature
+
+        if (T >= Tfreeze )
+        {
+            //above freezing point, water
+            Es = Aw * exp((Bw * TA) / (Cw + TA));
+        }
+        else
+        {
+            Es = Ai * exp( (Bi * TA) / (Ci + TA) );
+        }
+        return Es;
+    }
 
 }

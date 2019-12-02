@@ -30,8 +30,8 @@
 
 #include "math/coordinates.hpp"
 
-#include <constants/PhysConst.h>
-#include "constants/Atmosphere.h"
+#include <physics/PhysConst.h>
+#include "physics/Atmosphere.h"
 
 #include <meteoio/MeteoIO.h>
 

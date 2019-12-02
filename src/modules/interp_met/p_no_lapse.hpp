@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <constants/Atmosphere.h>
+#include <physics/Atmosphere.h>
 
 #include "logger.hpp"
 #include "triangulation.hpp"

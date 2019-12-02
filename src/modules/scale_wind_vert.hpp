@@ -24,7 +24,7 @@
 #pragma once
 
 #include <boost/shared_ptr.hpp>
-#include <constants/Atmosphere.h>
+#include <physics/Atmosphere.h>
 #include "module_base.hpp"
 #include <boost/shared_ptr.hpp>
 #include "logger.hpp"

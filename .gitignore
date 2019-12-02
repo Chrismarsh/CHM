@@ -43,3 +43,4 @@ err.xml
 /CHM.wiki/*
 node_modules/
 /test-build/*
+/test/*

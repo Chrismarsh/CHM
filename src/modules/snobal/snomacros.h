@@ -127,7 +127,7 @@ namespace snobalMacros
 #define STEF_BOLTZ      5.67032e-8
 
 /*
- *  Planck radiation constants
+ *  Planck radiation physics
  */
 #define hPLANCK         6.626176e-34    /*  J sec                       */
 #define PLANCK1st       3.741832e-16

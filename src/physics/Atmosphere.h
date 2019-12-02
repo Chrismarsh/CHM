@@ -21,7 +21,7 @@
  */
 
 #include <math.h>
-#include <constants/Snow.h>
+#include <physics/Snow.h>
 
 #pragma once
 
@@ -42,7 +42,7 @@ namespace Atmosphere {
    // See Fig 1 and 2 of Kienzle (2010, Hydrological Processes)
     double corr_precip_slope(double p, double slope);
 
-
+    double saturatedVapourPressure(const double& T);
 }
 
 

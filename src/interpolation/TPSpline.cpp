@@ -30,7 +30,7 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
     if(sample_points.size() +1 != size)
     {
         size = sample_points.size();
-        size++; // need to make room for the constants
+        size++; // need to make room for the physics
         A = MatrixXXd::Zero(size,size);
         b = VectorXd::Zero(size);
         x = VectorXd::Zero(size);
@@ -89,7 +89,7 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         }
 
 
-        //set constants and build b values
+        //set physics and build b values
         for (unsigned int i = 0; i < size; i++)
         {
             A(i, 0) = 1;
@@ -145,7 +145,7 @@ thin_plate_spline::thin_plate_spline(size_t sz, std::map<std::string,std::string
 {
 
     size = sz;
-    size++; // need to make room for the constants
+    size++; // need to make room for the physics
 
     A = MatrixXXd::Zero(size,size);
     b = VectorXd::Zero(size);
