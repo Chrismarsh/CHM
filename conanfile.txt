@@ -15,6 +15,7 @@
  tbb/2019_u9@CHM/dev
  eigen3/3.3.7@CHM/dev
  meteoio/2.8.0@CHM/dev
+ paraview/5.5.2@CHM/dev
  
  [generators]
  cmake_find_package

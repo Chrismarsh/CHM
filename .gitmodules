@@ -55,3 +55,6 @@
 [submodule "conan/conan-meteoio"]
 	path = conan/conan-meteoio
 	url = git@github.com:Chrismarsh/conan-meteoio.git
+[submodule "conan/conan-paraview"]
+	path = conan/conan-paraview
+	url = git@github.com:Chrismarsh/conan-paraview.git
