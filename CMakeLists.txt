@@ -26,13 +26,11 @@ endif()
 # End of December 2018 caused the Westgrid machine Graham to require a special CMAKE_PREFIX_PATH from a system ENV var. This special cases that dramatic change until it's
 # fixed in a more seamless manner
 
-cmake_host_system_information(RESULT hostname QUERY HOSTNAME)
-
-if(hostname MATCHES "gra-login.*")
-    message(WARNING "Detected machine hostname = Compute Canada Graham")
-    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};$ENV{CMAKE_SYSTEM_PREFIX_PATH}")
-    set(ext_cmakefile_name CMakeLists_external_graham.txt.in)
-endif()
+#cmake_host_system_information(RESULT hostname QUERY HOSTNAME)
+#if(hostname MATCHES "gra-login.*")
+#    message(WARNING "Detected machine hostname = Compute Canada Graham")
+#    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};$ENV{CMAKE_SYSTEM_PREFIX_PATH}")
+#endif()
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_MPI "Enable MPI"  OFF )
@@ -43,9 +41,6 @@ option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
-set(SUPERBUILD FALSE CACHE BOOL "Do superbuild")
-set(BUILD_ParaView FALSE CACHE BOOL "Build Paraview and PV date-time filter")
-set(EXTERNAL_BUILD_THREADS 10 CACHE STRING "Number of build threads for superbuild projects")
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
