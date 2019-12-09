@@ -175,7 +175,7 @@ if(MATLAB)
         libmaw/matlab_engine.cpp
 		CACHE INTERNAL "" FORCE )
 
-    list( APPEND HEADER_FILES
+    list( APPEND EXT_TARGETS
             ${MATLAB_ENG_LIBRARY}
             ${MATLAB_MX_LIBRARY})
 
