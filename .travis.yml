@@ -1,9 +1,8 @@
-os: 
+os:
   - linux
-    dist: bionic #18.04lTS
-language: python
+language:
+  - python
 python: "3.7"
-
 compiler:
   - gcc
 install:
@@ -18,7 +17,6 @@ script:
 # Download dependencies and build project
   - python ./init_conan.py
   - conan install . --build missing
-  - cmake . -DBUILD_TESTS=TRUE 
+  - cmake . -DBUILD_TESTS=TRUE
   - cmake --build . --target runUnitTests
-
-
+  
