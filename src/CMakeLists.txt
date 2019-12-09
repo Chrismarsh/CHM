@@ -117,7 +117,7 @@ set(CHM_SRCS
 set (HEADER_FILES
         mesh
         modules
-
+		physics
         modules/interp_met
 		modules/snobal
         libmaw
@@ -175,11 +175,11 @@ if(MATLAB)
         libmaw/matlab_engine.cpp
 		CACHE INTERNAL "" FORCE )
 
-    list( APPEND EXT_TARGETS
+    list( APPEND HEADER_FILES
             ${MATLAB_ENG_LIBRARY}
             ${MATLAB_MX_LIBRARY})
 
-    list( APPEND EXT_HEADER_FILES
+    list( APPEND HEADER_FILES
         ${MATLAB_INCLUDE_DIR})
 
 endif()
@@ -193,12 +193,12 @@ add_executable(
 	${LIBMAW_SRCS}
 	)
 
-target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )  #${EXT_HEADER_FILES}
+target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
 target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
-	CHM
-	${EXT_TARGETS}
+		CHM
+		${EXT_TARGETS}
 )
 
 
@@ -243,7 +243,7 @@ if (BUILD_TESTS)
 			${TEST_SRCS}
 	)
 
-	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH})
+	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES})
     target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 
 	target_link_libraries(

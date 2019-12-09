@@ -21,7 +21,7 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-#include <physics/Atmosphere.h>
+#include "physics/Atmosphere.h"
 
 namespace Atmosphere
 {

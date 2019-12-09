@@ -74,7 +74,6 @@ macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
-configure_file(${CMAKE_SOURCE_DIR}/paraview-5.4.1.patch ${CMAKE_BINARY_DIR}/paraview-5.4.1.patch COPYONLY)
 if(MACOSX)
     find_program(BREW brew)
     if(BREW)
