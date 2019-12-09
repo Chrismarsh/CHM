@@ -1,0 +1,26 @@
+os: 
+  - linux
+    dist: bionic #18.04lTS
+  # - osx
+language: python
+python: "3.7"
+
+compiler:
+  - gcc
+  # - clang
+install:
+# Install conan
+  - pip install conan
+# Automatic detection of your arch, compiler, etc.
+  - conan profile new default --detect
+  - conan remote add bincrafters "https://api.bintray.com/conan/bincrafters/public-conan"
+  - conan profile update settings.compiler.cppstd=14 default
+  - conan profile update settings.compiler.libcxx=libstdc++11 default
+script:
+# Download dependencies and build project
+  - python ./init_conan.py
+  - conan install . --build missing
+  - cmake . -DBUILD_TESTS=TRUE 
+  - cmake --build . --target runUnitTests
+
+
