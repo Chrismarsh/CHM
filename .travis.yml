@@ -16,6 +16,7 @@ install:
 script:
 # Download dependencies and build project
   - python ./init_conan.py
-  - (conan install . --build missing) &> /dev/null
+  - chmod +x travisci-conan_build_missing.sh
+  - ./travisci-conan_build_missing.sh
   - cmake . -DBUILD_TESTS=TRUE
   - cmake --build . --target runUnitTests
