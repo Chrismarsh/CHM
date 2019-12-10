@@ -5,10 +5,9 @@
 # however if travis-ci hasn't seen stdout for   10min, it'll terminate the build.
 # This busy loops waiting for the build to finish while periodically updating stdout
 
-(conan install . --build missing) &> /dev/null &
+(conan install . --build missing) &> output.log &
 PID=$!
 while [ -d /proc/$PID ]
 do
-    echo "Building..."
-    sleep 5
+    tail -n0 -f output.log | grep "@CHM/dev"
 done
