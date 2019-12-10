@@ -16,7 +16,6 @@ install:
 script:
 # Download dependencies and build project
   - python ./init_conan.py
-  - conan install . --build missing
+  - (conan install . --build missing) &> /dev/null
   - cmake . -DBUILD_TESTS=TRUE
   - cmake --build . --target runUnitTests
-  
