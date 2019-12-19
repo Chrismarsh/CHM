@@ -1,24 +1,27 @@
-os:
-  - linux
-language:
-  - python
-python: "3.7"
-compiler:
-  - gcc
+linux: &linux
+   os: linux
+   dist: xenial
+   language: python
+   python: "3.7"
+   services:
+      - docker
+osx: &osx
+   os: osx
+   language: generic
+matrix:
+   include:
+      - <<: *linux
+        env: CONAN_GCC_VERSIONS=8 CONAN_DOCKER_IMAGE=conanio/gcc8 CONAN_CURRENT_PAGE="gcc_shared"
+      - <<: *osx
+        osx_image: xcode11.2
+        env: CONAN_APPLE_CLANG_VERSIONS=11.0 CONAN_CURRENT_PAGE="apple-clang_shared"
+
 install:
-# Install conan
-  - pip install conan
-# Automatic detection of your arch, compiler, etc.
-  - conan profile new default --detect
-  - conan remote add bincrafters "https://api.bintray.com/conan/bincrafters/public-conan"
-  - conan remote add CHM "https://api.bintray.com/conan/chrismarsh/CHM"
-  - conan profile update settings.compiler.cppstd=14 default
-  - conan profile update settings.compiler.libcxx=libstdc++11 default
+   - chmod +x .travis/install.sh
+   - ./.travis/install.sh
+
 script:
-# Download dependencies and build project
-  # - python ./init_conan.py
-  # - chmod +x travisci-conan_build_missing.sh
-  # - ./travisci-conan_build_missing.sh
-  - conan install . 
-  - cmake . -DBUILD_TESTS=TRUE
-  - cmake --build . --target runUnitTests
+   - chmod +x .travis/run.sh
+   - ./.travis/run.sh
+   - cmake . -DBUILD_TESTS=TRUE
+   - cmake --build . --target runUnitTests
