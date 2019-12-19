@@ -250,7 +250,7 @@ find_package(meteoio REQUIRED)
 
 find_package(armadillo REQUIRED)
 
-find_package(eigen3 REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 find_package(sparsehash)
 
@@ -320,7 +320,7 @@ message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(Iconv REQUIRED) #needed for gdal
+#find_package(Iconv REQUIRED) #needed for gdal
 find_package(gdal 2.4 REQUIRED )
 
 find_package (Threads REQUIRED)
