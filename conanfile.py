@@ -18,21 +18,25 @@ class CHMConan(ConanFile):
     "eigen3/3.3.7@CHM/stable",
     "meteoio/2.8.0@CHM/stable"
 
+    name = "CHM"
+    version = "1.0"
+    license = "https://github.com/Chrismarsh/CHM/blob/master/LICENSE"
+    author = "Chris Marsh"
 
-generators = "cmake_find_package"
-default_options = {"boost:without_python": True,
-                   "boost:without_mpi": True}
+    generators = "cmake_find_package"
+    default_options = {"boost:without_python": True,
+                       "boost:without_mpi": True}
 
 
-# [options]
-# boost:without_python=True
-# boost:without_mpi=False
+    # [options]
+    # boost:without_python=True
+    # boost:without_mpi=False
 
-# cgal:with_tbb=True
-# cgal:with_gmp=True
+    # cgal:with_tbb=True
+    # cgal:with_gmp=True
 
-# netcdf-c:parallel4=False
+    # netcdf-c:parallel4=False
 
-def imports(self):
-    self.copy("*.dll", dst="bin", src="bin")  # From bin to bin
-    self.copy("*.dylib*", dst="bin", src="lib")  # From lib to bin
+    def imports(self):
+        self.copy("*.dll", dst="bin", src="bin")  # From bin to bin
+        self.copy("*.dylib*", dst="bin", src="lib")  # From lib to bin
