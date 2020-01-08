@@ -24,8 +24,8 @@ class CHMConan(ConanFile):
     author = "Chris Marsh"
 
     generators = "cmake_find_package"
-    default_options = {"boost:without_python": True,
-                       "boost:without_mpi": True}
+    # default_options = {"boost:without_python": True,
+    #                    "boost:without_mpi": True}
 
 
     # [options]
