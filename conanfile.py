@@ -22,7 +22,8 @@ class CHMConan(ConanFile):
     version = "1.0"
     license = "https://github.com/Chrismarsh/CHM/blob/master/LICENSE"
     author = "Chris Marsh"
-
+    url = "https://github.com/Chrismarsh/CHM"
+    description = "Canadian hydrological model"
     generators = "cmake_find_package"
     # default_options = {"boost:without_python": True,
     #                    "boost:without_mpi": True}
