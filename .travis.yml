@@ -1,6 +1,6 @@
 env:
    global:
-      - CONAN_REMOTES: "https://api.bintray.com/conan/bincrafters/public-conan","https://api.bintray.com/conan/chrismarsh/CHM"
+      - CONAN_REMOTES: "https://api.bintray.com/conan/bincrafters/public-conan, https://api.bintray.com/conan/chrismarsh/CHM"
 linux: &linux
    os: linux
    dist: xenial
