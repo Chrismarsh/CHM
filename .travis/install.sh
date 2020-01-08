@@ -22,10 +22,5 @@ fi
 pip install conan --upgrade
 pip install conan_package_tools
 
-conan profile new default --detect
-conan remote add bincrafters "https://api.bintray.com/conan/bincrafters/public-conan"
-conan remote add CHM "https://api.bintray.com/conan/chrismarsh/CHM"
-conan profile update settings.compiler.cppstd=14 default
-conan profile update settings.compiler.libcxx=libstdc++11 default
 
 conan user
