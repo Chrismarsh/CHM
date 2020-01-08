@@ -6,7 +6,7 @@ if __name__ == "__main__":
                                 archs=["x86_64"],
                                 build_types=["Release"])
                               
-    builder.add_common_builds(pure_c=False,shared_option_name="gdal:shared")
+    builder.add_common_builds(pure_c=False)
 
     builder.remove_build_if(lambda build: build.settings["compiler.libcxx"] == "libstdc++")
 
@@ -14,9 +14,6 @@ if __name__ == "__main__":
     for settings, options, env_vars, build_requires, reference in builder.items:
 
         shared="shared"
-
-        if not options['gdal:shared']:
-            shared = "static" 
 
         named_builds[settings['compiler'] +"_"+shared].append([settings, options, env_vars, build_requires, reference])
 
