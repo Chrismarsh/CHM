@@ -3,20 +3,7 @@ from conans import ConanFile, CMake
 
 class CHMConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    requires = "cgal/5.0.0@CHM/stable",
-    "boost/1.71.0@CHM/stable",
-    "vtk/8.2.0@CHM/stable",
-    "netcdf-cxx/4.3.1@CHM/stable",
-    "proj/4.9.3@CHM/stable",
-    "gdal/2.4.1@CHM/stable",
-    "sparsehash/2.0.3@CHM/stable",
-    "gperftools/2.7@CHM/stable",
-    "gsl/2.4@CHM/stable",
-    "armadillo/9.800.2@CHM/stable",
-    "viennacl/1.7.1@CHM/stable",
-    "tbb/2019_u9@CHM/stable",
-    "eigen3/3.3.7@CHM/stable",
-    "meteoio/2.8.0@CHM/stable"
+   
 
     name = "CHM"
     version = "1.0"
@@ -37,11 +24,26 @@ class CHMConan(ConanFile):
     # cgal:with_gmp=True
 
     # netcdf-c:parallel4=False
-
+    def requirements(self):
+        self.requires( "cgal/5.0.0@CHM/stable" )
+        self.requires( "boost/1.71.0@CHM/stable" )
+        self.requires( "vtk/8.2.0@CHM/stable" )
+        self.requires( "netcdf-cxx/4.3.1@CHM/stable" )
+        self.requires( "proj/4.9.3@CHM/stable" )
+        self.requires( "gdal/2.4.1@CHM/stable" )
+        self.requires( "sparsehash/2.0.3@CHM/stable" )
+        self.requires( "gperftools/2.7@CHM/stable" )
+        self.requires( "gsl/2.4@CHM/stable" )
+        self.requires( "armadillo/9.800.2@CHM/stable" )
+        self.requires( "viennacl/1.7.1@CHM/stable" )
+        self.requires( "tbb/2019_u9@CHM/stable" )
+        self.requires( "eigen3/3.3.7@CHM/stable" )
+        self.requires( "meteoio/2.8.0@CHM/stable")
+        
     def build(self):
         cmake = CMake(self)
         cmake.definitions["BUILD_TESTS"] = True
-        cmake.configure()
+        cmake.configure(source_folder=self.source_folder)
         cmake.build()
         cmake.test()
         cmake.install()
