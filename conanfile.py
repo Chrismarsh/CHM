@@ -3,8 +3,8 @@ from conans import ConanFile, CMake
 
 class CHMConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    requires = "boost/1.71.0@CHM/stable",
-    "cgal/5.0.0@CHM/stable",
+    requires = "cgal/5.0.0@CHM/stable",
+    "boost/1.71.0@CHM/stable",
     "vtk/8.2.0@CHM/stable",
     "netcdf-cxx/4.3.1@CHM/stable",
     "proj/4.9.3@CHM/stable",
