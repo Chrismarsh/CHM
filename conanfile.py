@@ -38,6 +38,14 @@ class CHMConan(ConanFile):
 
     # netcdf-c:parallel4=False
 
+    def build(self):
+        cmake = CMake(self)
+        cmake.definitions["BUILD_TESTS"] = True
+        cmake.configure()
+        cmake.build()
+        cmake.test()
+        cmake.install()
+
     def imports(self):
         self.copy("*.dll", dst="bin", src="bin")  # From bin to bin
         self.copy("*.dylib*", dst="bin", src="lib")  # From lib to bin
