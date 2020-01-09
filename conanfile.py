@@ -15,7 +15,7 @@ class CHMConan(ConanFile):
     # default_options = {"boost:without_python": True,
     #                    "boost:without_mpi": True}
 
-
+    default_options = {"gperftools:heapprof":True}
     # [options]
     # boost:without_python=True
     # boost:without_mpi=False
