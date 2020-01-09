@@ -148,7 +148,7 @@ set(EXT_TARGETS
 		meteoio::meteoio
 
 		${ARPACK_LIBRARY}
-		eigen3::eigen3
+		Eigen3::Eigen3
 		CACHE INTERNAL "" FORCE)
 
 #handle the optionals
