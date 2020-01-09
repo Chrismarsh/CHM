@@ -33,7 +33,7 @@ class CHMConan(ConanFile):
         self.requires( "gdal/2.4.1@CHM/stable" )
         self.requires( "sparsehash/2.0.3@CHM/stable" )
         self.requires( "gperftools/2.7@CHM/stable" )
-        self.requires( "gsl/2.4@CHM/stable" )
+        self.requires( "gsl/2.6@CHM/stable" )
         self.requires( "armadillo/9.800.2@CHM/stable" )
         self.requires( "viennacl/1.7.1@CHM/stable" )
         self.requires( "tbb/2019_u9@CHM/stable" )
