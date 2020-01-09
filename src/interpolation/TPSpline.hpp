@@ -25,8 +25,8 @@
 #include <gsl/gsl_sf_bessel.h>
 #include <gsl/gsl_sf_expint.h>
 
-#include <eigen3/Eigen/LU>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/LU>
+#include <Eigen/Dense>
 #include <armadillo>
 
 #include <boost/throw_exception.hpp>
