@@ -28,7 +28,7 @@ class CHMConan(ConanFile):
     def source(self):
 
         # branch = os.environ.get("TRAVIS_BRANCH","master")
-        branch = os.environ["TEST_BRANCH"]
+        branch = os.environ["CONAN_TEST_BRANCH"]
         git = tools.Git()
         git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
 
