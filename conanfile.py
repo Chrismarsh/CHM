@@ -31,8 +31,8 @@ class CHMConan(ConanFile):
         branch = os.environ["CONAN_TEST_BRANCH"]
         git = tools.Git()
         git.run("clone https://github.com/Chrismarsh/CHM.git")
-        git.run("checkout %s" %branch)
-        git.run("submodule update --init --recursive")
+        git.run("-C CHM checkout %s" %branch)
+        git.run("-C CHM submodule update --init --recursive")
 
 
     def requirements(self):
