@@ -30,9 +30,12 @@ class CHMConan(ConanFile):
         # branch = os.environ.get("TRAVIS_BRANCH","master")
         branch = os.environ["CONAN_TEST_BRANCH"]
         git = tools.Git()
-        git.run("clone https://github.com/Chrismarsh/CHM.git")
-        git.run("-C CHM checkout %s" %branch)
-        git.run("-C CHM submodule update --init --recursive")
+        git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
+        git.run("submodule update --init --recursive")
+
+        # git.run("clone https://github.com/Chrismarsh/CHM.git")
+        # git.run("-C CHM checkout %s" %branch)
+        # git.run("-C CHM submodule update --init --recursive")
 
 
     def requirements(self):
@@ -59,6 +62,6 @@ class CHMConan(ConanFile):
         cmake.test()
         cmake.install()
 
-    def imports(self):
-        self.copy("*.dll", dst="bin", src="bin")  # From bin to bin
-        self.copy("*.dylib*", dst="bin", src="lib")  # From lib to bin
+    # def imports(self):
+    #     self.copy("*.dll", dst="bin", src="bin")  # From bin to bin
+    #     self.copy("*.dylib*", dst="bin", src="lib")  # From lib to bin
