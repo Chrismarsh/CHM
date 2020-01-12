@@ -214,6 +214,8 @@ endif()
 
 if (BUILD_TESTS)
 
+	enable_testing()
+
 	add_subdirectory (tests/googletest/googletest)
 	include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
@@ -256,7 +258,7 @@ if (BUILD_TESTS)
 
 	# You can also omit NAME and COMMAND. The second argument could be some other
 	# test executable.
-	add_test(runUnitTests runUnitTests)
+	add_test(test runUnitTests)
 
 	add_custom_target(check COMMAND ${EXECUTABLE_OUTPUT_PATH}/runUnitTests DEPENDS runUnitTests WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
 

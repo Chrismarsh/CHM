@@ -59,8 +59,8 @@ class CHMConan(ConanFile):
         cmake.definitions["BUILD_TESTS"] = True
         cmake.configure(source_folder=self.source_folder)
         cmake.build()
-        cmake.test()
-        cmake.install()
+        cmake.test(target="check")
+
 
     # def imports(self):
     #     self.copy("*.dll", dst="bin", src="bin")  # From bin to bin
