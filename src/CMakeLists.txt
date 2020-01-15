@@ -185,12 +185,10 @@ if(MATLAB)
 endif()
 
 if (APPLE)
-	set(CMAKE_INSTALL_RPATH "@executable_path/lib")
+	set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
 else()
-	set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+	set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 endif()
-#
-#SET(CMAKE_INSTALL_NAME_DIR @executable_path/lib)
 
 add_executable(
 	CHM
@@ -213,8 +211,26 @@ set_target_properties(CHM
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 		)
 
+# gdal, netcdf-c, and netcdf-cxx all set the install_name incorrectly
+# gdal sets it to be a fixed rpath based on the compile location
+# the netcdfs set it to be just the dylib name
+# the patches suggested by conan https://docs.conan.io/en/latest/howtos/manage_shared_libraries/rpaths.html
+# don't work for these targets (despite working elsewhere) for some reason. So, the strategey here is:
+# 1) Patch the CHM binary to link to the @rpath/dylib for these 3 libraries. This command is brutal but it does the following:
+#    - dump the libraries via otool
+#    - parse out the dylib parts.
+#    - then build up the install_name_tool path. The last regex strips out the dylib name regardless of paths in front of it
+# 2) Patch the netcdf-cxx dylib to look for its netcdf-c dependency at @rpath
+if(APPLE)
+	add_custom_command(TARGET CHM POST_BUILD
+			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep name | grep -v segname |  grep -v sectname | grep -v /usr | grep -v @rpath  | awk '{print $2}' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
+			COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
+			VERBATIM)
+endif()
+
+#make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
 install(TARGETS CHM
-		DESTINATION ${CMAKE_BINARY_DIR}/install)
+		DESTINATION ${CMAKE_BINARY_DIR}/bin)
 
 
 

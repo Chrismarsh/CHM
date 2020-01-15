@@ -63,5 +63,5 @@ class CHMConan(ConanFile):
 
 
     def imports(self):
-        self.copy("*.so", dst="bin/lib", src="lib")  # From bin to bin
-        self.copy("*.dylib*", dst="bin/lib", src="lib")  # From lib to bin
+        self.copy("*.so", dst="lib", src="lib")  # From bin to bin
+        self.copy("*.dylib*", dst="lib", src="lib")  # From lib to bin
