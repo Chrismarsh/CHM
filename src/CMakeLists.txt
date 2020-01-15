@@ -230,7 +230,7 @@ endif()
 
 #make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
 install(TARGETS CHM
-		DESTINATION ${CMAKE_BINARY_DIR}/bin)
+		DESTINATION ${CMAKE_BINARY_DIR}/install)
 
 
 

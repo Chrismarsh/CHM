@@ -63,7 +63,7 @@ class CHMConan(ConanFile):
 
         #cmake.test(target="check")
     def test(self):
-        self.run('bin/CHM -v')
+        self.run('install/CHM -v')
 
     def imports(self):
         self.copy("*.so*", dst="lib", src="lib")  # From bin to bin
