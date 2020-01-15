@@ -148,9 +148,6 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-#Setup output paths
-
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)
 
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
