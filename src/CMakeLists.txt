@@ -184,6 +184,14 @@ if(MATLAB)
 
 endif()
 
+if (APPLE)
+	set(CMAKE_INSTALL_RPATH "@executable_path/lib")
+else()
+	set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+endif()
+#
+#SET(CMAKE_INSTALL_NAME_DIR @executable_path/lib)
+
 add_executable(
 	CHM
 	main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
@@ -200,6 +208,14 @@ target_link_libraries(
 		CHM
 		${EXT_TARGETS}
 )
+set_target_properties(CHM
+		PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		)
+
+install(TARGETS CHM
+		DESTINATION ${CMAKE_BINARY_DIR}/install)
+
 
 
 if(STATIC_ANLAYSIS)
@@ -260,10 +276,16 @@ if (BUILD_TESTS)
 	# test executable.
 	add_test(test runUnitTests)
 
-	add_custom_target(check COMMAND ${EXECUTABLE_OUTPUT_PATH}/runUnitTests DEPENDS runUnitTests WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH})
+	set(TEST_DIR ${CMAKE_BINARY_DIR}/tests)
+	set_target_properties(runUnitTests
+			PROPERTIES
+			RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
+			)
+
+	add_custom_target(check COMMAND ${TEST_DIR}/runUnitTests DEPENDS runUnitTests WORKING_DIRECTORY ${TEST_DIR})
 
 
-	set(COPY_TO_PATH ${EXECUTABLE_OUTPUT_PATH})
+	set(COPY_TO_PATH ${TEST_DIR})
 
 	add_custom_command(TARGET runUnitTests PRE_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
