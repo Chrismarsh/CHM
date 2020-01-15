@@ -309,5 +309,13 @@ if (BUILD_TESTS)
 			$<TARGET_FILE_DIR:runUnitTests>
 			COMMENT "Copying files to $<TARGET_FILE_DIR:runUnitTests> from ${CMAKE_SOURCE_DIR}/src/tests/files/")
 
+	# netcdf-cxx will already be patched from above
+	if(APPLE)
+		add_custom_command(TARGET runUnitTests POST_BUILD
+				COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/tests/runUnitTests | grep name | grep -v segname |  grep -v sectname | grep -v /usr | grep -v @rpath  | awk '{print $2}' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/tests/runUnitTests; done"
+				COMMAND bash -c " install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/tests/runUnitTests "
+				VERBATIM)
+	endif()
+
 
 endif()
