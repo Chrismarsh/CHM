@@ -60,10 +60,11 @@ class CHMConan(ConanFile):
         cmake.configure(source_folder=self.source_folder)
         cmake.build()
         cmake.install()
+        self.run('install/CHM -v')
 
         #cmake.test(target="check")
-    def test(self):
-        self.run('install/CHM -v')
+    # def test(self):
+        
 
     def imports(self):
         self.copy("*.so*", dst="lib", src="lib")  # From bin to bin
