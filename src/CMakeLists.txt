@@ -184,11 +184,7 @@ if(MATLAB)
 
 endif()
 
-if (APPLE)
-	set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
-else()
-	set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
-endif()
+
 
 add_executable(
 	CHM
@@ -211,21 +207,72 @@ set_target_properties(CHM
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 		)
 
+# when we run make install all the RPATHs will be stripped out and set to these
+# n.b. $ORIGIN should have its dollar sign escaped with a backslash to have it end up with proper
+# syntax in the final executable.
+# https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling
+# however this won't do anything for our non install binary. Since we are pulling in all our runtime so/dylib and installing
+# into <build_dir>/lib/ we need to manually patch the binaries to have correct rpaths so we aren't looking for runtimes in the conan dir
+# we do this later
+# we want to absolutely make sure all the correct libraries and their deps are loaded from exactly the right place. Some odd problems have come up
+# where our built netcdf-cxx4 is used but in turn loads a system netcdf-c  causing issues. This way everything is in a runtime path in our directory, and
+# we are in control of all the rpaths
+if (APPLE)
+	set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
+else()
+	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
+endif()
+
+
 # gdal, netcdf-c, and netcdf-cxx all set the install_name incorrectly
 # gdal sets it to be a fixed rpath based on the compile location
-# the netcdfs set it to be just the dylib name
+# the netcdfs set it to be just the dylib name. This causes netcdf-cxx4 to have problems loading netcdf-c
 # the patches suggested by conan https://docs.conan.io/en/latest/howtos/manage_shared_libraries/rpaths.html
-# don't work for these targets (despite working elsewhere) for some reason. So, the strategey here is:
+# don't work for these targets (despite working elsewhere) for some reason. So, the strategy here is:
 # 1) Patch the CHM binary to link to the @rpath/dylib for these 3 libraries. This command is brutal but it does the following:
-#    - dump the libraries via otool
+#    - dump the libraries CHM uses via otool -- critically we need to know the exact names of the dylibs we are loading
 #    - parse out the dylib parts.
 #    - then build up the install_name_tool path. The last regex strips out the dylib name regardless of paths in front of it
 # 2) Patch the netcdf-cxx dylib to look for its netcdf-c dependency at @rpath
 if(APPLE)
 	add_custom_command(TARGET CHM POST_BUILD
+			#patch CHM to look for @rpath/ for all dylibs that aren't looking for @rpath
 			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep name | grep -v segname |  grep -v sectname | grep -v /usr | grep -v @rpath  | awk '{print $2}' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
-			COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
-			VERBATIM)
+			#patch netcdf-cxx to look for an @rpath
+			COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_+\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
+
+			#strip all LC_RPATH from our non-install binary
+			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
+			#update LC_RPATH for our non-install binary
+			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
+			VERBATIM
+	)
+else()
+	# General note for this whole section: it's important to note that RUNPATH has become the default for ld, superceeding RPATH
+	# The search paths are RPATH -> LD_LIBRARY_PATH -> RUNPATH
+	# However, RPATH resolves transient libraries (eg., netcdf-cxx requires netcdf-c) whereas RUNPATH does NOT
+	# https://stackoverflow.com/a/55283740/410074
+	# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=847298
+
+	# So the approach here will be to use the old style dtags -Wl,--disable-new-dtags
+	# ie., use RPATH instead of RUNPATH
+	# and update the RPATH to be like our install path
+
+	target_link_options(CHM
+			PUBLIC "LINKER:--disable-new-dtags" )
+
+	add_custom_command(TARGET CHM POST_BUILD
+			# Some .so will have runpaths, some do not. Just remove them all. The main binary's RPATH will provide the correct search path
+			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
+
+			#see if there are any hard coded paths in your binary and if so replace with just the so name
+			COMMAND bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d  | grep NEEDED |awk '{print $5}' | grep '\[/' | awk -F'[\[\]]' '{print $2}'| while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
+
+			# set our new rpath
+			COMMAND bash -c "patchelf --set-rpath \$ORIGIN/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
+			VERBATIM
+	)
+
 endif()
 
 #make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need

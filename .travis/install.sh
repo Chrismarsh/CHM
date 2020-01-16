@@ -18,7 +18,7 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     pyenv rehash
     pyenv activate conan
 fi
-
+sudo apt-get -y install patchelf
 pip install conan --upgrade
 pip install conan_package_tools
 
