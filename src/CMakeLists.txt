@@ -367,6 +367,13 @@ if (BUILD_TESTS)
 				COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/tests/runUnitTests | grep name | grep -v segname |  grep -v sectname | grep -v /usr | grep -v @rpath  | awk '{print $2}' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/tests/runUnitTests; done"
 				COMMAND bash -c " install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/tests/runUnitTests "
 				VERBATIM)
+	else()
+		add_custom_command(TARGET runUnitTests POST_BUILD
+				#see if there are any hard coded paths in your binary and if so replace with just the so name
+				COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/tests/runUnitTests -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/tests/runUnitTests; done"
+				# set our new rpath
+				COMMAND bash -c "patchelf --set-rpath '\$ORIGIN/../lib' ${CMAKE_BINARY_DIR}/tests/runUnitTests"
+				VERBATIM)
 	endif()
 
 
