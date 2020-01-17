@@ -266,10 +266,10 @@ else()
 			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
 
 			#see if there are any hard coded paths in your binary and if so replace with just the so name
-			COMMAND  bash -c $'readelf ${CMAKE_BINARY_DIR}/bin/CHM -d  | grep NEEDED |awk \'{print $5}\' | grep \'\[/\' | awk -F\'[\[\]]\' \'{print $2}\'| while read x; do patchelf --replace-needed $x `echo $x | grep -Eo \'[a-zA-Z0-9_+\.-]+so.*?\'` ${CMAKE_BINARY_DIR}/bin/CHM; done'
+			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
 			# set our new rpath
-			COMMAND bash -c $'patchelf --set-rpath \'$ORIGIN/../lib\' ${CMAKE_BINARY_DIR}/bin/CHM'
-			
+			COMMAND bash -c "patchelf --set-rpath '\$ORIGIN/../lib' ${CMAKE_BINARY_DIR}/bin/CHM"
+
 			VERBATIM
 	)
 
