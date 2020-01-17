@@ -257,13 +257,18 @@ else()
 	# So the approach here will be to use the old style dtags -Wl,--disable-new-dtags
 	# ie., use RPATH instead of RUNPATH
 	# and update the RPATH to be like our install path
-
-	target_link_options(CHM
-			PUBLIC "LINKER:--disable-new-dtags" )
+	# However, setting this linker flag does not consistently  produce a RPATH instead of RUNPATH. Unclear why.
+	# for now, we will just patch each so to have $ORIGIN/../lib as it's RUNPATH
+	#target_link_options(CHM
+	#        PUBLIC "LINKER:--disable-new-dtags" )
 
 	add_custom_command(TARGET CHM POST_BUILD
-			# Some .so will have runpaths, some do not. Just remove them all. The main binary's RPATH will provide the correct search path
+			# Some .so will have runpaths, some do not. Just remove them all.
 			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
+
+			#The hope was that using the above linker command would cause use of rpath which would solve transient library look up, e.g., netcdf-cxx looks for netcdf-c
+			# however it only produces RUNPATH for some reason. So remove all runpaths above, and then here we will patch each .so to have the correct RUNPATH
+			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
 
 			#see if there are any hard coded paths in your binary and if so replace with just the so name
 			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
@@ -271,7 +276,7 @@ else()
 			COMMAND bash -c "patchelf --set-rpath '\$ORIGIN/../lib' ${CMAKE_BINARY_DIR}/bin/CHM"
 
 			VERBATIM
-	)
+			)
 
 endif()
 
