@@ -217,12 +217,12 @@ set_target_properties(CHM
 # we want to absolutely make sure all the correct libraries and their deps are loaded from exactly the right place. Some odd problems have come up
 # where our built netcdf-cxx4 is used but in turn loads a system netcdf-c  causing issues. This way everything is in a runtime path in our directory, and
 # we are in control of all the rpaths
-if (APPLE)
-	set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
-else()
-	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
-endif()
-set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+#if (APPLE)
+#	set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
+#else()
+#	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
+#endif()
+#set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
 
 # gdal, netcdf-c, and netcdf-cxx all set the install_name incorrectly
 # gdal sets it to be a fixed rpath based on the compile location
@@ -242,9 +242,9 @@ if(APPLE)
 			COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_+\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
 
 			#strip all LC_RPATH from our non-install binary
-#			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
+			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
 			#update LC_RPATH for our non-install binary
-#			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
+			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
 			VERBATIM
 	)
 else()
@@ -273,7 +273,7 @@ else()
 			#see if there are any hard coded paths in your binary and if so replace with just the so name
 			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
 			# set our new rpath
-		#	COMMAND bash -c "patchelf --set-rpath '\$ORIGIN/../lib' ${CMAKE_BINARY_DIR}/bin/CHM"
+			COMMAND bash -c "patchelf --set-rpath '\$ORIGIN/../lib' ${CMAKE_BINARY_DIR}/bin/CHM"
 
 			VERBATIM
 			)
