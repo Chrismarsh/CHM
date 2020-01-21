@@ -184,16 +184,27 @@ if(MATLAB)
 
 endif()
 
+# when we run make install all the RPATHs will be stripped out and set to these
+# n.b. $ORIGIN should have its dollar sign escaped with a backslash to have it end up with proper
+# syntax in the final executable.
+# https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling
+# !!!  these must be done before targets are defined in add_executable !!!!
+if (APPLE)
+	set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
+else()
+	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
+endif()
 
 
 add_executable(
-	CHM
-	main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
-	${CHM_SRCS}
-	${FILTER_SRCS}
-    ${MODULE_SRCS}
-	${LIBMAW_SRCS}
-	)
+		CHM
+		main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
+		${CHM_SRCS}
+		${FILTER_SRCS}
+		${MODULE_SRCS}
+		${LIBMAW_SRCS}
+)
+
 
 target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
 target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
@@ -207,22 +218,8 @@ set_target_properties(CHM
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 		)
 
-# when we run make install all the RPATHs will be stripped out and set to these
-# n.b. $ORIGIN should have its dollar sign escaped with a backslash to have it end up with proper
-# syntax in the final executable.
-# https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling
-# however this won't do anything for our non install binary. Since we are pulling in all our runtime so/dylib and installing
-# into <build_dir>/lib/ we need to manually patch the binaries to have correct rpaths so we aren't looking for runtimes in the conan dir
-# we do this later
-# we want to absolutely make sure all the correct libraries and their deps are loaded from exactly the right place. Some odd problems have come up
-# where our built netcdf-cxx4 is used but in turn loads a system netcdf-c  causing issues. This way everything is in a runtime path in our directory, and
-# we are in control of all the rpaths
-#if (APPLE)
-#	set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
-#else()
-#	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
-#endif()
-#set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+
+
 
 # gdal, netcdf-c, and netcdf-cxx all set the install_name incorrectly
 # gdal sets it to be a fixed rpath based on the compile location
@@ -245,8 +242,9 @@ if(APPLE)
 			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
 			#update LC_RPATH for our non-install binary
 			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
+
 			VERBATIM
-	)
+			)
 else()
 	# General note for this whole section: it's important to note that RUNPATH has become the default for ld, superceeding RPATH
 	# The search paths are RPATH -> LD_LIBRARY_PATH -> RUNPATH
@@ -256,24 +254,20 @@ else()
 
 	# So the approach here will be to use the old style dtags -Wl,--disable-new-dtags
 	# ie., use RPATH instead of RUNPATH
-	# and update the RPATH to be like our install path
-	# However, setting this linker flag does not consistently  produce a RPATH instead of RUNPATH. Unclear why.
-	# for now, we will just patch each so to have $ORIGIN/../lib as it's RUNPATH
-	#target_link_options(CHM
-	#        PUBLIC "LINKER:--disable-new-dtags" )
+	# and update the RPATH to be like our install path. Note RPATH is not used if RUNPATH is present.
+	target_link_options(CHM
+			PUBLIC "LINKER:--disable-new-dtags" )
 
 	add_custom_command(TARGET CHM POST_BUILD
-			# Some .so will have runpaths, some do not. Just remove them all.
+			# Some .so will have runpaths, some do not. Just remove them all. The RUNPATHS override the binarie's rpath (I don't know why)
 			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
 
-			#The hope was that using the above linker command would cause use of rpath which would solve transient library look up, e.g., netcdf-cxx looks for netcdf-c
-			# however it only produces RUNPATH for some reason. So remove all runpaths above, and then here we will patch each .so to have the correct RUNPATH
-			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
+			# RPATH correctly works, so unliekly to be needed but kept just in case.
+			# This removes all runpaths , and then here we will patch each .so to have the correct RUNPATH
+			# 		COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
 
 			#see if there are any hard coded paths in your binary and if so replace with just the so name
 			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
-			# set our new rpath
-			COMMAND bash -c "patchelf --set-rpath '\$ORIGIN/../lib' ${CMAKE_BINARY_DIR}/bin/CHM"
 
 			VERBATIM
 			)
@@ -281,8 +275,9 @@ else()
 endif()
 
 #make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
-install(TARGETS CHM
-		DESTINATION ${CMAKE_BINARY_DIR}/install)
+install(TARGETS CHM RUNTIME)
+install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
+		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 
 
