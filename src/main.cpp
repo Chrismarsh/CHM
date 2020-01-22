@@ -52,5 +52,5 @@ int main (int argc, char *argv[])
 
     boost::filesystem::copy_file(kernel.log_file_path,kernel.o_path / "CHM.log", boost::filesystem::copy_option::overwrite_if_exists);
 
-	return 0;
+    return 0;
 }

@@ -221,27 +221,24 @@ set_target_properties(CHM
 
 
 
-# gdal, netcdf-c, and netcdf-cxx all set the install_name incorrectly
-# gdal sets it to be a fixed rpath based on the compile location
-# the netcdfs set it to be just the dylib name. This causes netcdf-cxx4 to have problems loading netcdf-c
 # the patches suggested by conan https://docs.conan.io/en/latest/howtos/manage_shared_libraries/rpaths.html
-# don't work for these targets (despite working elsewhere) for some reason. So, the strategy here is:
-# 1) Patch the CHM binary to link to the @rpath/dylib for these 3 libraries. This command is brutal but it does the following:
-#    - dump the libraries CHM uses via otool -- critically we need to know the exact names of the dylibs we are loading
-#    - parse out the dylib parts.
-#    - then build up the install_name_tool path. The last regex strips out the dylib name regardless of paths in front of it
-# 2) Patch the netcdf-cxx dylib to look for its netcdf-c dependency at @rpath
+# don't work for the gdal target (despite working elsewhere) for some reason. So, the strategy here is:
+# 1) The gdal libraries are patched at the conan package stage to fix the rpath issue
+# 2) Patch the CHM binary to ensure that we are absolutely looking for @rpath/dylibs
 if(APPLE)
 	add_custom_command(TARGET CHM POST_BUILD
 			#patch CHM to look for @rpath/ for all dylibs that aren't looking for @rpath
 			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep name | grep -v segname |  grep -v sectname | grep -v /usr | grep -v @rpath  | awk '{print $2}' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
-			#patch netcdf-cxx to look for an @rpath
-			COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_+\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
 
-			#strip all LC_RPATH from our non-install binary
-			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
-			#update LC_RPATH for our non-install binary
-			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
+			# These are likely no longer needed
+				#patch netcdf-cxx to look for an @rpath
+				#COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_+\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
+
+				#strip all LC_RPATH from our non-install binary
+				#COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
+
+				#update LC_RPATH for our non-install binary
+				#COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
 
 			VERBATIM
 			)
@@ -262,7 +259,7 @@ else()
 			# Some .so will have runpaths, some do not. Just remove them all. The RUNPATHS override the binarie's rpath (I don't know why)
 			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
 
-			# RPATH correctly works, so unliekly to be needed but kept just in case.
+			# RPATH correctly works, so unlikely to be needed but kept just in case.
 			# This removes all runpaths , and then here we will patch each .so to have the correct RUNPATH
 			# 		COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
 

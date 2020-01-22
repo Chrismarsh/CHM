@@ -53,17 +53,28 @@ class CHMConan(ConanFile):
         self.requires( "tbb/2019_u9@CHM/stable" )
         self.requires( "eigen3/3.3.7@CHM/stable" )
         self.requires( "meteoio/2.8.0@CHM/stable")
-        
-    def build(self):
+
+    def _configure_cmake(self):
         cmake = CMake(self)
         cmake.definitions["BUILD_TESTS"] = True
         cmake.configure(source_folder=self.source_folder)
-        cmake.build()
-        # cmake.install()
-        self.run('bin/CHM -v')
 
-        #cmake.test(target="check")
+        return cmake
+
+    def build(self):
+        cmake = self._configure_cmake()
+        cmake.build()
+
     # def test(self):
+    #     print(os.path.abspath(os.getcwd()))
+    #
+    #     with tools.chdir(self.build_folder):
+    #         print(os.path.abspath(os.getcwd()))
+    #         self.run(self.build_folder+'/bin/CHM -v')
+
+    def package(self):
+        cmake = self._configure_cmake()
+        cmake.install()
 
 
     def imports(self):

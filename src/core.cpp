@@ -936,12 +936,12 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if (vm.count("help"))
     {
         cout << desc << std::endl;
-        exit(1);
+        exit(0);
     }
     else if (vm.count("version"))
     {
         cout << version << std::endl;
-        exit(1);
+        exit(0);
     }
 
     std::vector<std::pair<std::string, std::string>> config_extra;
