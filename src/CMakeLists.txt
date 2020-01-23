@@ -344,9 +344,10 @@ if (BUILD_TESTS)
 						DEPENDS runUnitTests
 						WORKING_DIRECTORY ${TEST_DIR})
 
-	target_link_options(runUnitTests
-			PUBLIC "LINKER:--disable-new-dtags" )
-
+	if (UNIX)
+		target_link_options(runUnitTests
+				PUBLIC "LINKER:--disable-new-dtags" )
+	endif()
 	#copy the data files from test_data to the dir that holds the test binary
 	add_custom_command(TARGET runUnitTests PRE_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
