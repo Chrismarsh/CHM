@@ -377,10 +377,4 @@ endif()
 #setup src dirs
 add_subdirectory(src)
 
-if (BUILD_TESTS)
-    message(STATUS "Tests enabled. Run with make check")
-    enable_testing()
-endif()
-
-
 message(STATUS "${CMAKE_CXX_FLAGS}")

@@ -289,11 +289,8 @@ if(STATIC_ANLAYSIS)
 endif()
 
 if (BUILD_TESTS)
-
-	enable_testing()
-
+	message(STATUS "Tests enabled. Run with make check")
 	add_subdirectory (tests/googletest/googletest)
-	include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 	set(TEST_SRCS
 			#   test_station.cpp
@@ -332,41 +329,22 @@ if (BUILD_TESTS)
 			${MPI_CXX_LINK_FLAGS}
 	)
 
-	# You can also omit NAME and COMMAND. The second argument could be some other
-	# test executable.
-	add_test(test runUnitTests)
-
-	set(TEST_DIR ${CMAKE_BINARY_DIR}/tests)
 	set_target_properties(runUnitTests
 			PROPERTIES
 			RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
 			)
 
+	#add the `make check` target that runs the unit tests
+	set(TEST_DIR ${CMAKE_BINARY_DIR}/tests)
 	add_custom_target(check COMMAND ${TEST_DIR}/runUnitTests DEPENDS runUnitTests WORKING_DIRECTORY ${TEST_DIR})
 
-
-	set(COPY_TO_PATH ${TEST_DIR})
-
+	#copy the data files from test_data to the dir that holds the test binary
 	add_custom_command(TARGET runUnitTests PRE_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_directory
-			${CMAKE_SOURCE_DIR}/src/tests/files
+			${CMAKE_SOURCE_DIR}/test_data
 			$<TARGET_FILE_DIR:runUnitTests>
-			COMMENT "Copying files to $<TARGET_FILE_DIR:runUnitTests> from ${CMAKE_SOURCE_DIR}/src/tests/files/")
+			COMMENT "Copying files to $<TARGET_FILE_DIR:runUnitTests> from ${CMAKE_SOURCE_DIR}/test_data/")
 
-	# netcdf-cxx will already be patched from above
-	if(APPLE)
-		add_custom_command(TARGET runUnitTests POST_BUILD
-				COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/tests/runUnitTests | grep name | grep -v segname |  grep -v sectname | grep -v /usr | grep -v @rpath  | awk '{print $2}' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/tests/runUnitTests; done"
-				COMMAND bash -c " install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/tests/runUnitTests "
-				VERBATIM)
-	else()
-		add_custom_command(TARGET runUnitTests POST_BUILD
-				#see if there are any hard coded paths in your binary and if so replace with just the so name
-				COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/tests/runUnitTests -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/tests/runUnitTests; done"
-				# set our new rpath
-				COMMAND bash -c "patchelf --set-rpath '\$ORIGIN/../lib' ${CMAKE_BINARY_DIR}/tests/runUnitTests"
-				VERBATIM)
-	endif()
 
 
 endif()
