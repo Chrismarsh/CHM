@@ -336,7 +336,12 @@ if (BUILD_TESTS)
 
 	#add the `make check` target that runs the unit tests
 	set(TEST_DIR ${CMAKE_BINARY_DIR}/tests)
-	add_custom_target(check COMMAND ${TEST_DIR}/runUnitTests DEPENDS runUnitTests WORKING_DIRECTORY ${TEST_DIR})
+	add_custom_target(check COMMAND ${TEST_DIR}/runUnitTests
+						DEPENDS runUnitTests
+						WORKING_DIRECTORY ${TEST_DIR})
+
+	target_link_options(runUnitTests
+			PUBLIC "LINKER:--disable-new-dtags" )
 
 	#copy the data files from test_data to the dir that holds the test binary
 	add_custom_command(TARGET runUnitTests PRE_BUILD
