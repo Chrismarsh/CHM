@@ -56,7 +56,7 @@ class CHMConan(ConanFile):
 
     def _configure_cmake(self):
         cmake = CMake(self)
-        #cmake.definitions["BUILD_TESTS"] = True
+        cmake.definitions["BUILD_TESTS"] = True
         cmake.configure(source_folder=self.source_folder)
 
         return cmake
