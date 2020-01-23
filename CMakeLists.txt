@@ -373,6 +373,22 @@ else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
+find_program(iwyu_path NAMES include-what-you-use iwyu)
+if(NOT iwyu_path)
+    message(STATUS "Could not find iwyu")
+else()
+    message(STATUS "Found iwyu at: ${iwyu_path}")
+endif()
+
+set(iwyu_path_and_options
+        ${iwyu_path}
+        -Xiwyu
+        any
+        -Xiwyu
+        iwyu
+        -Xiwyu
+        args
+        )
 
 #setup src dirs
 add_subdirectory(src)
