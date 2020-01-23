@@ -344,7 +344,7 @@ if (BUILD_TESTS)
 						DEPENDS runUnitTests
 						WORKING_DIRECTORY ${TEST_DIR})
 
-	if (UNIX)
+	if (NOT APPLE)
 		target_link_options(runUnitTests
 				PUBLIC "LINKER:--disable-new-dtags" )
 	endif()
