@@ -34,6 +34,14 @@
 //Gdal includes
 #include <ogr_spatialref.h>
 
+// vtk includes for station output into vtk format
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkPoints.h>
+#include <vtkStringArray.h>
+#include <vtkPolyData.h>
+#include <vtkXMLPolyDataWriter.h>
+#include <vtkPointData.h>
+
 //CHM includes
 #include "exception.hpp"
 #include "logger.hpp"

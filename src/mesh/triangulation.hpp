@@ -92,33 +92,18 @@ namespace pt = boost::property_tree;
 #include <CGAL/property_map.h>
 #include <boost/iterator/zip_iterator.hpp>
 
-//http://www.paraview.org/Bug/print_bug_page.php?bug_id=14164
-//http://review.source.kitware.com/#/c/11956/
-//until 6.0.1 comes out
-//#define VTK_HAS_STD_ISNAN
-//#define VTK_HAS_STD_ISINF
-
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
 #include <vtkStringArray.h>
 #include <vtkTriangle.h>
 #include <vtkCellArray.h>
+#include <vtkCellData.h> 
+#include <vtkFloatArray.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkUnstructuredGrid.h>
-#include <vtkCellData.h> //pointdata
-#include <vtkFloatArray.h>
-#include <vtkPolyData.h>
-#include <vtkProbeFilter.h>
-#include <vtkDelaunay2D.h>
-#include <vtkXMLPolyDataWriter.h>
-#include <vtkPointData.h>
-#include <vtkPlaneSource.h>
-#include <vtkGeometryFilter.h>
-#include <vtkTransform.h>
-#include <vtkTransformFilter.h>
-#include <vtkElevationFilter.h>
-#include <vtkCurvatures.h>
-#include <vtkXMLPolyDataWriter.h>
+#include <vtkPoints.h>
+
+
 #ifdef NOMATLAB
 #include "libmaw.h"
 #endif

@@ -44,6 +44,16 @@ option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
+
+option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
+if (${FORCE_COLORED_OUTPUT})
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        add_compile_options (-fdiagnostics-color=always)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        add_compile_options (-fcolor-diagnostics)
+    endif ()
+endif ()
+
 # Need to check for MPI before building external libraries
 find_package(MPI)
 if(MPI_FOUND AND USE_MPI)
@@ -337,7 +347,18 @@ message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 #N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
-find_package(vtk REQUIRED)
+find_package(vtk
+            COMPONENTS
+            CommonCore
+            CommonDataModel
+            CommonTransforms
+            FiltersCore
+            FiltersGeneral
+            FiltersGeometry
+            FiltersSources
+            IOXML
+
+            REQUIRED)
 
 if(VTK_MAJOR_VERSION LESS 7)
     #https://github.com/Chrismarsh/CHM/issues/104
@@ -373,22 +394,6 @@ else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
-find_program(iwyu_path NAMES include-what-you-use iwyu)
-if(NOT iwyu_path)
-    message(STATUS "Could not find iwyu")
-else()
-    message(STATUS "Found iwyu at: ${iwyu_path}")
-endif()
-
-set(iwyu_path_and_options
-        ${iwyu_path}
-        -Xiwyu
-        any
-        -Xiwyu
-        iwyu
-        -Xiwyu
-        args
-        )
 
 #setup src dirs
 add_subdirectory(src)
