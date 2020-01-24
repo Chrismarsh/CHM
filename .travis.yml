@@ -29,5 +29,3 @@ install:
 script:
    - chmod +x .travis/run.sh
    - ./.travis/run.sh
-   # - cmake . -DBUILD_TESTS=TRUE
-   # - cmake --build . --target runUnitTests
