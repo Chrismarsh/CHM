@@ -97,7 +97,7 @@ namespace pt = boost::property_tree;
 #include <vtkStringArray.h>
 #include <vtkTriangle.h>
 #include <vtkCellArray.h>
-#include <vtkCellData.h> 
+#include <vtkCellData.h>
 #include <vtkFloatArray.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkUnstructuredGrid.h>

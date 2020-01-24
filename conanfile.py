@@ -33,10 +33,6 @@ class CHMConan(ConanFile):
         git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
         git.run("submodule update --init --recursive")
 
-        # git.run("clone https://github.com/Chrismarsh/CHM.git")
-        # git.run("-C CHM checkout %s" %branch)
-        # git.run("-C CHM submodule update --init --recursive")
-
 
     def requirements(self):
         self.requires( "cgal/5.0.0@CHM/stable" )
