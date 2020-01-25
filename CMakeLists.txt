@@ -125,6 +125,10 @@ endif()
 
 message(STATUS "About to find boost")
 message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+message(STATUS "CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
+message(STATUS "BOOST_ROOT=${BOOST_ROOT}")
+
+
 if(USE_MPI AND MPI_FOUND)
     find_package(Boost
             1.71.0
