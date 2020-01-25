@@ -192,7 +192,7 @@ message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-set(BOOST_ROOT ${Boost_INCLUDE_DIR}../)
+set(BOOST_ROOT ${Boost_INCLUDE_DIR}/../)
 
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
