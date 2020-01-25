@@ -4,14 +4,13 @@ from sys import platform
 
 if __name__ == "__main__":
 
-    command=""
+    command="echo \"foo\""
     if platform == "linux":
         command = "sudo apt-get -qq update && sudo apt-get -qq install -y patchelf"
 
     builder = ConanMultiPackager(cppstds=[14],
                                 archs=["x86_64"],
                                 build_types=["Release"],
-                                use_docker=True,
                                 docker_entry_script = command)
                               
     builder.add_common_builds(pure_c=False)
