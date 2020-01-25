@@ -99,25 +99,6 @@ if(MACOSX)
 endif()
 
 
-#on macos, if qt5 is installed with brew, it won't be picked up
-
-#The FindQt5.cmake is the “old way”, and it is still searched for. Qt 5
-#distributes CMake config files, such as Qt5Config.cmake that contain paths,
-#macros, functions, etc. They are unfortunately a little deeper in the tree, so
-#you would have to set Qt5_DIR to “/usr/lib64/cmake/Qt5” in my case. I use this
-#approach on Windows, macOS, and Linux. The reduction in Qt5*_DIR variables, and
-#the assurance that all modules come from the same Qt5 is worth it.
-#https://blog.kitware.com/cmake-finding-qt5-the-right-way/#comment-7191
-
-
-if(MACOSX)
-    find_program(BREW brew)
-    if(BREW)
-        execute_process(COMMAND brew --prefix qt5  OUTPUT_VARIABLE qt5path)
-        message(WARNING "Ammending CMAKE_PREFIX_PATH to include brew qt5 -- ${qt5path}" )
-        set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${qt5path}/lib/cmake/Qt5")
-    endif()
-endif()
 
 # lovely CMake script to integrate git hashes
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
