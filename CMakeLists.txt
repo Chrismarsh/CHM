@@ -128,6 +128,9 @@ message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
 message(STATUS "CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
 message(STATUS "BOOST_ROOT=${BOOST_ROOT}")
 
+execute_process(COMMAND "ls -la")
+execute_process(COMMAND "cmake -version")
+
 
 if(USE_MPI AND MPI_FOUND)
     find_package(Boost
