@@ -158,6 +158,41 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+if(USE_MPI AND MPI_FOUND)
+    find_package(Boost
+            1.71.0
+            COMPONENTS
+            system
+            filesystem
+            date_time
+            log
+            thread
+            regex
+            iostreams
+            program_options
+            mpi
+            serialization
+            REQUIRED)
+else()
+    find_package(Boost
+            1.71.0
+            COMPONENTS
+            system
+            filesystem
+            date_time
+            log
+            thread
+            regex
+            iostreams
+            program_options
+            REQUIRED)
+endif()
+message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
+message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
+#need this for calling the logger from multiple modules
+ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
+
+set(BOOST_ROOT ${Boost_INCLUDE_DIR}../)
 
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
@@ -285,47 +320,6 @@ find_package(viennacl  REQUIRED)
 
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
-if(BUILD_FUNC)
-    find_package(func REQUIRED)
-endif()
-message(STATUS "Found func at ${FUNC_INCLUDE_DIR}")
-message(STATUS "Found func libraries at ${FUNC_LIBRARY}")
-message(STATUS "Found func libraries at ${FUNC_IMPLS_LIBRARY}")
-
-
-if(USE_MPI AND MPI_FOUND)
-  find_package(Boost
-    1.71.0
-    COMPONENTS
-    system
-    filesystem
-    date_time
-    log
-    thread
-    regex
-    iostreams
-    program_options
-    mpi
-    serialization
-    REQUIRED)
-else()
-  find_package(Boost
-    1.71.0
-    COMPONENTS
-    system
-    filesystem
-    date_time
-    log
-    thread
-    regex
-    iostreams
-    program_options
-    REQUIRED)
-endif()
-message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
-message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
-#need this for calling the logger from multiple modules
-ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 #find_package(Iconv REQUIRED) #needed for gdal
 find_package(gdal 2.4 REQUIRED )
