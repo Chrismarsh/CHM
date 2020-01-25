@@ -84,22 +84,6 @@ macro(remove_cxx_flag flag)
     string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endmacro()
 
-if(MACOSX)
-    find_program(BREW brew)
-    if(BREW)
-        execute_process(COMMAND brew --prefix icu4c  OUTPUT_VARIABLE ICU)
-        string(REGEX REPLACE "\n$" "" ICU "${ICU}")
-        set(ICU "--with-icu=${ICU}" CACHE STRING "icu path for boost build" FORCE)
-        message(WARNING "icu = ${ICU}")
-
-        if(ICU STREQUAL "")
-            message(WARNING "icu4c not found via brew, likely going to result in boost linking issues" )
-        endif()
-    endif()
-endif()
-
-
-
 # lovely CMake script to integrate git hashes
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
 # Get the current working branch
