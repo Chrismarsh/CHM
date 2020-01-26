@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.15)
 
 # In CMake 3.12 and above the find_package(<PackageName>) command now searches prefixes specified by the <PackageName>_ROOT CMake variable and the <PackageName>_ROOT environment variable.
 #https://cmake.org/cmake/help/latest/policy/CMP0074.html
-cmake_policy(SET CMP0074 NEW)
+cmake_policy(SET CMP0074 OLD)
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 
 
