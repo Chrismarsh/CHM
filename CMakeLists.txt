@@ -128,13 +128,8 @@ message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
 message(STATUS "CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
 message(STATUS "BOOST_ROOT=${BOOST_ROOT}")
 
-execute_process(COMMAND "bash -c \"ls -la\"" COMMAND_ECHO STDOUT OUTPUT_VARIABLE ls_out)
-message(STATUS "${ls_out}")
-execute_process(COMMAND "bash -c \"cmake -version\"" COMMAND_ECHO STDOUT OUTPUT_VARIABLE cmkout)
-message(STATUS "${cmkout}")
-
-file(GLOB fnames ${CMAKE_BINARY_DIR} )
-message(STATUS "GLOB")
+file(GLOB fnames * )
+message(STATUS "GLOB files:")
 message(STATUS "${fnames}")
 
 
