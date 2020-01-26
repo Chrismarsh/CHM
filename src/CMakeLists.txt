@@ -216,11 +216,11 @@ target_link_libraries(
 set_target_properties(CHM
 		PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-		UNITY_BUILD ON
-		UNITY_BUILD_BATCH_SIZE 2
+#		UNITY_BUILD ON
+#		UNITY_BUILD_BATCH_SIZE 2
 		)
-set_property(TARGET CHM
-		PROPERTY CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path_and_options})
+#set_property(TARGET CHM
+#		PROPERTY CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path_and_options})
 
 
 
