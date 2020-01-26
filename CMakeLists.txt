@@ -21,24 +21,12 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 
-# Some machines require machine-specific work arounds when building the external libraries. Special casing to a per-machine basis should not be done often
-# and really should only be done if 100% required.
-# End of December 2018 caused the Westgrid machine Graham to require a special CMAKE_PREFIX_PATH from a system ENV var. This special cases that dramatic change until it's
-# fixed in a more seamless manner
-
-#cmake_host_system_information(RESULT hostname QUERY HOSTNAME)
-#if(hostname MATCHES "gra-login.*")
-#    message(WARNING "Detected machine hostname = Compute Canada Graham")
-#    set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};$ENV{CMAKE_SYSTEM_PREFIX_PATH}")
-#endif()
-
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_MPI "Enable MPI"  OFF )
 option(USE_OMP "Enable OpenMP"  ON )
 option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
-
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 
@@ -53,6 +41,18 @@ if (${FORCE_COLORED_OUTPUT})
         add_compile_options (-fcolor-diagnostics)
     endif ()
 endif ()
+
+LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
+
+LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake/")
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
+
+set(CMAKE_FIND_USE_PACKAGE_ROOT_PATH FALSE)
+# ---------------------------------------------------------------
+# ------ Start of find_package section --------------------------
+# ---------------------------------------------------------------
+
 
 # Need to check for MPI before building external libraries
 find_package(MPI)
@@ -71,12 +71,6 @@ else()
   message(WARNING "MPI not enabled. Building for single process.")
 endif()
 
-
-LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
-LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
-
-LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake/")
-LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 
 #########
 # Helper macro that removes cxx flag flags
@@ -160,7 +154,8 @@ else()
             regex
             iostreams
             program_options
-            REQUIRED)
+            REQUIRED
+            )
 endif()
 message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
 message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
@@ -291,12 +286,8 @@ endif()
 
 
 find_package(viennacl  REQUIRED)
-
-
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
-
-#find_package(Iconv REQUIRED) #needed for gdal
 find_package(gdal 2.4 REQUIRED )
 
 find_package (Threads REQUIRED)
