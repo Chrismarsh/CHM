@@ -72,12 +72,6 @@ class CHMConan(ConanFile):
         cmake = self._configure_cmake()
         cmake.build()
         cmake.test(target="check")
-    # def test(self):
-    #     print(os.path.abspath(os.getcwd()))
-    #
-    #     with tools.chdir(self.build_folder):
-    #         print(os.path.abspath(os.getcwd()))
-    #         self.run(self.build_folder+'/bin/CHM -v')
 
     def package(self):
         cmake = self._configure_cmake()
