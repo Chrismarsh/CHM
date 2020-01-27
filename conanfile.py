@@ -14,7 +14,7 @@ class CHMConan(ConanFile):
     generators = "cmake_find_package"
     # default_options = {"boost:without_python": True,
     #                    "boost:without_mpi": True}
-    options = {"verbose_cmake", "build_tests" }
+    options = {"verbose_cmake":[True,False], "build_tests":[True,False] }
 
     default_options = {"gperftools:heapprof":True,
                        "verbose_cmake":False,
