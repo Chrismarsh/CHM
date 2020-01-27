@@ -128,7 +128,7 @@ message(STATUS "${fnames}")
 
 
 if(USE_MPI AND MPI_FOUND)
-    find_package(Boost
+    find_package(boost
             1.71.0
             COMPONENTS
             system
@@ -143,7 +143,7 @@ if(USE_MPI AND MPI_FOUND)
             serialization
             REQUIRED)
 else()
-    find_package(Boost
+    find_package(boost
             1.71.0
             COMPONENTS
             system
