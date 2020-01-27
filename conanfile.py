@@ -54,6 +54,7 @@ class CHMConan(ConanFile):
         cmake = CMake(self)
         cmake.definitions["BUILD_TESTS"] = True
         cmake.verbose = True
+        cmake.definitions["CMAKE_FIND_DEBUG_MODE"]=1
         cmake.configure(source_folder=self.source_folder)
 
         return cmake

@@ -128,7 +128,7 @@ message(STATUS "${fnames}")
 
 
 if(USE_MPI AND MPI_FOUND)
-    find_package(boost
+    find_package(Boost
             1.71.0
             COMPONENTS
             system
@@ -143,7 +143,7 @@ if(USE_MPI AND MPI_FOUND)
             serialization
             REQUIRED)
 else()
-    find_package(boost
+    find_package(Boost
             1.71.0
             COMPONENTS
             system
@@ -159,11 +159,12 @@ else()
 endif()
 message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
 message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
+message(STATUS "Boost found? ${Boost_FOUND}")
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 set(BOOST_ROOT ${Boost_INCLUDE_DIR}/../)
-
+message(STATUS "BOOST_ROOT=${BOOST_ROOT}")
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
