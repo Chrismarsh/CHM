@@ -168,6 +168,9 @@ set(BOOST_ROOT ${Boost_INCLUDE_DIR}/../)
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 
+message(STATUS "---------- done boost ------------")
+message(STATUS "About to find cgal")
+
 find_package(cgal REQUIRED)
 
 if(CGAL_FOUND)
