@@ -1,7 +1,7 @@
 env:
    global:
       - CONAN_REMOTES="https://api.bintray.com/conan/chrismarsh/CHM,https://api.bintray.com/conan/bincrafters/public-conan"
-      - CONAN_TEST_BRANCH="travis-ci"
+      - CONAN_TEST_BRANCH=`git rev-parse --abbrev-ref HEAD`
       - CONAN_CPU_COUNT=4
       - CONAN_CMAKE_GENERATOR="Ninja"
 #      - CONAN_PRINT_RUN_COMMANDS=TRUE
