@@ -14,8 +14,11 @@ class CHMConan(ConanFile):
     generators = "cmake_find_package"
     # default_options = {"boost:without_python": True,
     #                    "boost:without_mpi": True}
+    options = {"verbose_cmake", "build_tests" }
 
-    default_options = {"gperftools:heapprof":True}
+    default_options = {"gperftools:heapprof":True,
+                       "verbose_cmake":False,
+                       "build_tests":True}
     # [options]
     # boost:without_python=True
     # boost:without_mpi=False
@@ -52,9 +55,15 @@ class CHMConan(ConanFile):
 
     def _configure_cmake(self):
         cmake = CMake(self)
-        cmake.definitions["BUILD_TESTS"] = True
-        cmake.verbose = True
-        cmake.definitions["CMAKE_FIND_DEBUG_MODE"]=1
+
+        if self.options.build_tests:
+            cmake.definitions["BUILD_TESTS"] = True
+
+        if self.options.verbose_cmake:
+            cmake.verbose = True
+            cmake.definitions["CMAKE_FIND_DEBUG_MODE"]=1
+
+
         cmake.configure(source_folder=self.source_folder)
 
         return cmake

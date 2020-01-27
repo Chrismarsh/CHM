@@ -1,12 +1,9 @@
-cmake_minimum_required (VERSION 3.15)
+cmake_minimum_required (VERSION 3.16)
+project (CHM-project)
 
 # In CMake 3.12 and above the find_package(<PackageName>) command now searches prefixes specified by the <PackageName>_ROOT CMake variable and the <PackageName>_ROOT environment variable.
 #https://cmake.org/cmake/help/latest/policy/CMP0074.html
 cmake_policy(SET CMP0074 OLD)
-set(CMAKE_FIND_PACKAGE_PREFER_CONFIG FALSE)
-
-
-project (CHM-project)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,7 +29,6 @@ option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
-
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
 if (${FORCE_COLORED_OUTPUT})
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -47,30 +43,6 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
 
 LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
-
-set(CMAKE_FIND_USE_PACKAGE_ROOT_PATH FALSE)
-# ---------------------------------------------------------------
-# ------ Start of find_package section --------------------------
-# ---------------------------------------------------------------
-
-
-# Need to check for MPI before building external libraries
-find_package(MPI)
-if(MPI_FOUND AND USE_MPI)
-  message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
-  add_definitions(-DUSE_MPI)
-
-  file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt txt)
-  string(FIND "${txt}" "boost:without_mpi=True" RETCODE)
-
-  # -1 is not found retcode from find
-  if(${RETCODE} GREATER "-1")
-        message(FATAL_ERROR "MPI was asked for, however boost was not built with mpi. Please set boost:without_mpi=True in conanfile.txt.")
-    endif()
-else()
-  message(WARNING "MPI not enabled. Building for single process.")
-endif()
-
 
 #########
 # Helper macro that removes cxx flag flags
@@ -117,15 +89,27 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-message(STATUS "About to find boost")
-message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
-message(STATUS "CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
-message(STATUS "BOOST_ROOT=${BOOST_ROOT}")
+# ---------------------------------------------------------------
+# ------ Start of find_package section --------------------------
+# ---------------------------------------------------------------
 
-file(GLOB fnames * )
-message(STATUS "GLOB files:")
-message(STATUS "${fnames}")
 
+# Need to check for MPI before building external libraries
+find_package(MPI)
+if(MPI_FOUND AND USE_MPI)
+  message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
+  add_definitions(-DUSE_MPI)
+
+  file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt txt)
+  string(FIND "${txt}" "boost:without_mpi=True" RETCODE)
+
+  # -1 is not found retcode from find
+  if(${RETCODE} GREATER "-1")
+        message(FATAL_ERROR "MPI was asked for, however boost was not built with mpi. Please set boost:without_mpi=True in conanfile.txt.")
+    endif()
+else()
+  message(WARNING "MPI not enabled. Building for single process.")
+endif()
 
 if(USE_MPI AND MPI_FOUND)
     find_package(Boost
@@ -157,20 +141,15 @@ else()
             REQUIRED
             )
 endif()
-message(STATUS "Found boost incl: ${Boost_INCLUDE_DIR}")
-message(STATUS "Boost libs to link: ${Boost_LIBRARIES}")
-message(STATUS "Boost found? ${Boost_FOUND}")
-#need this for calling the logger from multiple modules
+ #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
+#Set this as CGAL, etc can try to look for Boost as well
 set(BOOST_ROOT ${Boost_INCLUDE_DIR}/../)
-message(STATUS "BOOST_ROOT=${BOOST_ROOT}")
+
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
 set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
-
-message(STATUS "---------- done boost ------------")
-message(STATUS "About to find cgal")
 
 find_package(cgal REQUIRED)
 
