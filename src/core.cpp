@@ -38,6 +38,7 @@ core::core()
     _use_netcdf=false;
     _load_from_checkpoint=false;
     _do_checkpoint=false;
+    _metdata= nullptr;
 }
 
 core::~core()
@@ -363,8 +364,8 @@ void core::config_forcing(pt::ptree &value)
         }
 
         // this delegates all filter responsibility to metdata from now on
-        _metdata.load_from_netcdf(file, netcdf_filters);
-        nstations = _metdata.nstations();
+        _metdata->load_from_netcdf(file, netcdf_filters);
+        nstations = _metdata->nstations();
     } else
     {
         std::vector<metdata::ascii_metdata> ascii_data;
@@ -425,8 +426,8 @@ void core::config_forcing(pt::ptree &value)
 
             }
         }
-        _metdata.load_from_ascii(ascii_data, _global->_utc_offset);
-        nstations = _metdata.nstations();
+        _metdata->load_from_ascii(ascii_data, _global->_utc_offset);
+        nstations = _metdata->nstations();
     }
 
     LOG_DEBUG << "Found # stations = " <<  nstations;
@@ -439,7 +440,7 @@ void core::config_forcing(pt::ptree &value)
 
     for(size_t i = 0; i<nstations;i++)
     {
-        auto s = _metdata.at(i);
+        auto s = _metdata->at(i);
 
         //do a few things behind _global's back for efficiency.
         _global->_stations.at(i) = s;
@@ -447,7 +448,7 @@ void core::config_forcing(pt::ptree &value)
     }
 
     auto f = o_path / "stations.vtp";
-    _metdata.write_stations_to_ptv(f.string());
+    _metdata->write_stations_to_ptv(f.string());
 
     LOG_DEBUG << "Finished reading stations. Took " << c.toc<s>() << "s";
 
@@ -455,11 +456,11 @@ void core::config_forcing(pt::ptree &value)
 void core::determine_startend_ts_forcing()
 {
 
-    if (_metdata.nstations() == 0)
+    if (_metdata->nstations() == 0)
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
 
-    auto start_time = _metdata.start_time();
-    auto end_time = _metdata.end_time();
+    auto start_time = _metdata->start_time();
+    auto end_time = _metdata->end_time();
 
     //if the user gives both a custom start and end time, don't bother with this.
     //this does assume the user knows what they are doing and subsets a time period that is correct
@@ -467,7 +468,7 @@ void core::determine_startend_ts_forcing()
     if(!_start_ts && !_end_ts)
     {
         // find the latest start time and the earliest end time
-        std::tie(start_time, end_time) = _metdata.find_unified_start_end();
+        std::tie(start_time, end_time) = _metdata->find_unified_start_end();
     }
 
     // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
@@ -517,17 +518,17 @@ void core::determine_startend_ts_forcing()
 
 
     //figure out what our timestepping is. Needs to happen before we subset as we may end up with only 1 timestep
-    _global->_dt = _metdata.dt_seconds();
+    _global->_dt = _metdata->dt_seconds();
     LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
 
 
     LOG_DEBUG << "Subsetting station timeseries";
-    _metdata.subset(*_start_ts, *_end_ts);
+    _metdata->subset(*_start_ts, *_end_ts);
 
 
     //ensure all the stations have the same start and end times
     // per-timestep agreement happens during runtime.
-    _metdata.check_ts_consistency();
+    _metdata->check_ts_consistency();
 }
 void core::config_parameters(pt::ptree &value)
 {
@@ -1241,6 +1242,10 @@ void core::init(int argc, char **argv)
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
 
+    // This needs to be initialized with the mesh prior to the forcing and output being dealt with. 
+    // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further
+    _metdata = std::make_unique<metdata>(_mesh);
+    
     //output should come before forcing, controls if we should output the vtp file of station locations
     try
     {
@@ -1383,7 +1388,7 @@ void core::init(int argc, char **argv)
     {
         if (itr.type == output_info::output_type::time_series)
         {
-            itr.ts.init(_provided_var_module, _metdata.start_time(), _metdata.end_time(), _metdata.dt());
+            itr.ts.init(_provided_var_module, _metdata->start_time(), _metdata->end_time(), _metdata->dt());
         }
     }
 
@@ -1538,7 +1543,7 @@ void core::_determine_module_dep()
 
     //build a list of variables provided by the met files, culling duplicate variables from multiple stations.
 
-    auto vars = _metdata.list_variables();
+    auto vars = _metdata->list_variables();
     _provided_var_met_files.insert(vars.begin(), vars.end());
 
 
@@ -1941,14 +1946,14 @@ void core::run()
     double meantime = 0;
     size_t current_ts = 0;
     _global->timestep_counter = 0; //use this to pass the timestep info to the modules for easier debugging specific timesteps
-    size_t max_ts = _metdata.n_timestep();
+    size_t max_ts = _metdata->n_timestep();
     bool done = false;
 
         while (!done)
         {
             boost::posix_time::ptime t;
 
-            _global->_current_date = _metdata.current_time();
+            _global->_current_date = _metdata->current_time();
 
 
             LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
@@ -2124,7 +2129,7 @@ void core::run()
                 }
             }
 
-            if(!_metdata.next())
+            if(!_metdata->next())
                 done = true;
 
 

@@ -47,6 +47,7 @@
 #include <cstdlib>
 #include <chrono>
 #include <algorithm>
+#include <memory> //unique ptr
 
 //boost includes
 #include <boost/graph/graph_traits.hpp>
@@ -257,7 +258,7 @@ protected:
     boost::shared_ptr<global> _global;
 
     bool _use_netcdf; // flag if we are using netcdf. If we are, it enables incremental reads of the netcdf file for speed.
-    metdata _metdata; //met data loader
+    std::unique_ptr<metdata> _metdata; //met data loader
 
     //calculates the order modules are to be run in
     void _determine_module_dep();
