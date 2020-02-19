@@ -60,8 +60,17 @@ class metdata
 
     /// Holds the metadata for an ascii file to load
     ///
-    struct ascii_metdata
+    class ascii_metdata
     {
+      public:
+        ascii_metdata()
+        {
+            path = "";
+            id = "";
+
+            latitude = longitude = elevation = -9999;
+        }
+
         double latitude, longitude, elevation;
         std::string path;
         std::string id;
@@ -72,20 +81,11 @@ class metdata
         std::vector<boost::shared_ptr<filter_base>> filters;
     };
 
-    struct ascii_data
-    {
-        //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
-        //and run it on a per-station config.
-        std::vector<boost::shared_ptr<filter_base>> filters;
 
-        std::string id;
-        // these are loaded into by metdata. Essentially this becomes like the old station
-        timeseries _obs;
-        timeseries::iterator _itr;
-    };
+//    metdata() = delete;
 
-    metdata();
-    metdata(boost::shared_ptr< triangulation > mesh);
+    metdata(std::string mesh_proj4);
+
     ~metdata();
 
     /// Loads a netcdf file. Must be a 2D structured grid of stations. Expects times to be in UTC+0
@@ -101,9 +101,7 @@ class metdata
 
     void write_stations_to_ptv(const std::string& path);
 
-    /// For all the stations loaded from ascii files, find the latest start time, and the earliest end time that is consistent across all stations
-    /// @return
-    std::pair<boost::posix_time::ptime, boost::posix_time::ptime> find_unified_start_end();
+
 
     /// Number of stations
     /// @return
@@ -126,6 +124,9 @@ class metdata
     /// @param end
     void subset(boost::posix_time::ptime start, boost::posix_time::ptime end);
 
+    /// Returns the start and endtime of the timeseries.
+    std::pair<boost::posix_time::ptime,boost::posix_time::ptime> start_end_time();
+
     /// Check that all ascii stations have the same start/end times
     /// @return
     void check_ts_consistency();
@@ -140,11 +141,6 @@ class metdata
     /// @return False if no more timesteps
     bool next();
 
-    /// Advances 1 timestep in the netcdf files
-    bool next_nc();
-
-    /// Advances 1 timestep from the ascii timeseries
-    bool next_ascii();
 
     /**
     * List all (including module provided) variables. If ascii files are loaded, this includes variables present in one 1 met file.
@@ -152,7 +148,31 @@ class metdata
     */
     std::set<std::string> list_variables();
 
+
   private:
+
+    struct ascii_data
+    {
+        //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
+        //and run it on a per-station config.
+        std::vector<boost::shared_ptr<filter_base>> filters;
+
+        std::string id;
+        // these are loaded into by metdata. Essentially this becomes like the old station
+        timeseries _obs;
+        timeseries::iterator _itr;
+    };
+
+    /// Advances 1 timestep in the netcdf files
+    bool next_nc();
+
+    /// Advances 1 timestep from the ascii timeseries
+    bool next_ascii();
+
+    /// For all the stations loaded from ascii files, find the latest start time, and the earliest end time that is consistent across all stations
+    /// @return
+    std::pair<boost::posix_time::ptime, boost::posix_time::ptime> find_unified_start_end();
+
 
     // NetCDF specific variables
     // -----------------------------------
@@ -189,9 +209,6 @@ class metdata
     //number of timesteps
     size_t _n_timesteps;
 
-    //ptr to the core:: owned mesh. Metdata needs it to know what it should load when in MPI mode
-    boost::shared_ptr< triangulation > _mesh;
-
     boost::posix_time::ptime _start_time, _end_time;
     boost::posix_time::ptime _current_ts;
     boost::posix_time::time_duration _dt;
@@ -201,6 +218,10 @@ class metdata
 
     //all variables provided by met + filter
     std::set<std::string> _variables;
+
+    //holds the proj4 string of the mesh. we need this to be able to reproject input data to the mesh
+    std::string _mesh_proj4;
+    bool _is_geographic; // geographic mesh that requires further reprojection?
 
 };
 

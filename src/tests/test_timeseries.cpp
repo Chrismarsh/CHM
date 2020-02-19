@@ -101,6 +101,18 @@ TEST_F(TimeseriesTest, read_comma_delimited)
     ASSERT_EQ(0, itr->sec());
 }
 
+TEST_F(TimeseriesTest, read_longer_messy)
+{
+    timeseries s;
+    ASSERT_NO_THROW(s.open("test_met_data_longer1.txt"));
+}
+
+TEST_F(TimeseriesTest, read_longer_messy2)
+{
+    timeseries s;
+    ASSERT_NO_THROW(s.open("test_met_data_longer2.txt"));
+}
+
 TEST_F(TimeseriesTest, Advance)
 {
     auto itr = s1.begin();

@@ -468,7 +468,7 @@ void core::determine_startend_ts_forcing()
     if(!_start_ts && !_end_ts)
     {
         // find the latest start time and the earliest end time
-        std::tie(start_time, end_time) = _metdata->find_unified_start_end();
+        std::tie(start_time, end_time) = _metdata->start_end_time();
     }
 
     // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
@@ -1244,7 +1244,7 @@ void core::init(int argc, char **argv)
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with. 
     // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further
-    _metdata = std::make_unique<metdata>(_mesh);
+    _metdata = std::make_unique<metdata>(_mesh->proj4());
     
     //output should come before forcing, controls if we should output the vtp file of station locations
     try

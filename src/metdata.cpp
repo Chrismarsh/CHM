@@ -23,17 +23,16 @@
 
 #include "metdata.hpp"
 
-metdata::metdata()
+metdata::metdata(std::string mesh_proj4)
 {
     _nc = nullptr;
     _use_netcdf = false;
     _n_timesteps = 0;
-}
+    _mesh_proj4 = mesh_proj4;
 
-metdata::metdata(boost::shared_ptr< triangulation > mesh) :
- metdata()
-{
-    _mesh = mesh;
+    OGRSpatialReference srs;
+    srs.importFromProj4(_mesh_proj4.c_str());
+    _is_geographic = srs.IsGeographic();
 }
 
 metdata::~metdata()
@@ -43,8 +42,8 @@ metdata::~metdata()
 
 void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boost::shared_ptr<filter_base> > filters)
 {
-    if(!_mesh)
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "metdata class not initialized with a mesh ptr" ));
+    if(_mesh_proj4 == "")
+        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Met loader not initialized with proj4 string" ));
 
     LOG_DEBUG << "Found NetCDF file";
 
@@ -65,13 +64,13 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
     // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
     OGRSpatialReference insrs, outsrs;
     insrs.SetWellKnownGeogCS("WGS84");
-    bool err = outsrs.importFromProj4(_mesh->proj4().c_str());
+    bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
     if(err)
     {
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
     }
     OGRCoordinateTransformation* coordTrans =  nullptr;
-    if(!_mesh->is_geographic())
+    if(!_is_geographic)
         coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
     try
@@ -118,7 +117,7 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 std::string station_name = std::to_string(index); // these don't really have names
 
                 //need to convert the input lat/long into the coordinate system our mesh is in
-                if (!_mesh->is_geographic())
+                if (!_is_geographic)
                 {
                     if (!coordTrans->Transform(1, &longitude, &latitude))
                     {
@@ -153,6 +152,14 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
 void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offset)
 {
+    if(_mesh_proj4 == "")
+    {
+        CHM_THROW_EXCEPTION(config_error,"Metdata has not been initialized with the mesh and has no CRS.");
+    }
+
+    // a set of the ids we've loaded, ensure there are no duplicated IDs as there is some assumption we are not loading the same thing twic
+    std::set<std::string> loaded_ids;
+
     for(auto& itr: stations)
     {
         if( (itr.latitude > 90 || itr.latitude < -90) ||
@@ -164,16 +171,16 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
         OGRSpatialReference insrs, outsrs;
         insrs.SetWellKnownGeogCS("WGS84");
-        bool err = outsrs.importFromProj4(_mesh->proj4().c_str());
+        bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
         if(err)
         {
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
         }
         OGRCoordinateTransformation* coordTrans =  nullptr;
-        if(!_mesh->is_geographic())
+        if(!_is_geographic)
             coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
-        if (!_mesh->is_geographic())
+        if (!_is_geographic)
         {
             if (!coordTrans->Transform(1, &itr.longitude, &itr.latitude))
             {
@@ -187,6 +194,11 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         s->x(itr.longitude);
         s->y(itr.latitude);
         s->z(itr.elevation);
+
+        if(loaded_ids.find(s->ID()) == loaded_ids.end())
+            loaded_ids.insert(s->ID());
+        else
+            CHM_THROW_EXCEPTION(forcing_error, "Stations with duplicated ID (" + s->ID() + ") inserted.");
 
         // load the ascii data into the timeseries object
         _ascii_stations.insert( std::make_pair(s->ID(), std::make_unique<ascii_data>()));
@@ -217,6 +229,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         _variables.insert(provides.begin(),provides.end());
         // init the datastore with timeseries variables + anything from the filters
         s->init(_variables);
+        _stations.push_back(s);
     }
 
 
@@ -240,6 +253,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
     _dt = dts.front();
     _current_ts = _start_time;
     _n_timesteps = _ascii_stations.begin()->second->_obs.get_date_timeseries().size(); //grab the first timeseries, they are all the same period now
+    _nstations = _ascii_stations.size();
 }
 
 boost::posix_time::ptime metdata::start_time()
@@ -306,10 +320,18 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
     _current_ts = _start_time;
     _n_timesteps = (_end_time - _start_time).total_seconds() / _dt.total_seconds();
 }
+std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::start_end_time()
+{
+    return std::make_pair(_start_time,_end_time);
+}
 std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::find_unified_start_end()
 {
     if(!_use_netcdf)
     {
+
+        _start_time = _ascii_stations.begin()->second->_obs.get_date_timeseries().at(0);
+        _end_time = _ascii_stations.begin()->second->_obs.get_date_timeseries().back();
+
         // find the latest start time and the earliest end time
         for (auto& itr: _ascii_stations)
         {

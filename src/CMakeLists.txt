@@ -298,6 +298,7 @@ if (BUILD_TESTS)
 			tests/test_timeseries.cpp
 			tests/test_core.cpp
 			tests/test_variablestorage.cpp
+			tests/test_metdata.cpp
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
