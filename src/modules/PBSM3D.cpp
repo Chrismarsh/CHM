@@ -431,6 +431,8 @@ void PBSM3D::init(mesh& domain)
 void PBSM3D::run(mesh& domain)
 {
 
+    LOG_DEBUG << "PBSM: ";
+
     // needed for linear system offsets
     size_t ntri = domain->size_faces();
 
@@ -1467,8 +1469,8 @@ void PBSM3D::run(mesh& domain)
     viennacl::copy(vl_x, x);
 
     // Log final state of the linear solve
-//    LOG_DEBUG << "Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
-//    LOG_DEBUG << "Suspension_GMRES final residual : " << suspension_custom_gmres.error();
+    LOG_DEBUG << "  Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
+    LOG_DEBUG << "  Suspension_GMRES final residual : " << suspension_custom_gmres.error();
 
     /*
       Dump matrix to ASCII file
@@ -1658,8 +1660,8 @@ void PBSM3D::run(mesh& domain)
     viennacl::copy(vl_dSdt, dSdt);
 
     // Log final state of the linear solve
-    LOG_DEBUG << "deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
-    LOG_DEBUG << "deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
+    LOG_DEBUG << "  deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
+    LOG_DEBUG << "  deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
 
 
 
