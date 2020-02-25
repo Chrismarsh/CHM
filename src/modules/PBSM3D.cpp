@@ -1463,11 +1463,9 @@ if (suspension_present) {
     // This solves the steady-state suspension layer concentration
 
     // configuration of preconditioner:
-    viennacl::linalg::chow_patel_tag chow_patel_ilu_config;
-    chow_patel_ilu_config.sweeps(3);       //  nonlinear sweeps
-    chow_patel_ilu_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
-    viennacl::linalg::chow_patel_ilu_precond<viennacl::compressed_matrix<vcl_scalar_type>> chow_patel_ilu(
-        vl_C, chow_patel_ilu_config);
+    viennacl::linalg::ilut_tag ilut_config(20,1e-4); // defaults: 20 entries/row, 1e-4 drop tol
+    viennacl::linalg::ilut_precond<viennacl::compressed_matrix<vcl_scalar_type>> ilut(
+        vl_C, ilut_config);
 
     // Set up convergence tolerance to have an average value for each unknown
     double suspension_gmres_tol = 1e-8;
@@ -1479,7 +1477,7 @@ if (suspension_present) {
     // otherwise access is slow
     viennacl::linalg::gmres_tag suspension_custom_gmres(suspension_gmres_tol, suspension_gmres_max_iterations,
                                                         suspension_gmres_krylov_dimension);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, suspension_custom_gmres, chow_patel_ilu);
+    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, suspension_custom_gmres, ilut);
     viennacl::copy(vl_x, x);
 
     // Log final state of the linear solve
