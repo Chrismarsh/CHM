@@ -467,6 +467,11 @@ void PBSM3D::run(mesh& domain)
     vcl_scalar_type* elements =
         viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
 
+
+    // Set this flag if the RHS of the suspension system is ever nonzero
+    // Thread-safe because it is only ever switched in one direction
+    suspension_present=false;
+
 #pragma omp parallel
     {
         // Helpers for the u* iterative solver
@@ -1431,11 +1436,22 @@ void PBSM3D::run(mesh& domain)
                         elements[idx_nidx_off] += -d->A[4] * udotm[4] + alpha[4];
                     }
                 }
+
+		// Set flag if RHS component is non-zero
+		if ( abs(b[idx]) > suspension_present_threshold ) {
+		  suspension_present = true;
+		}
+
             } // end z iter
 
         } // end face iter
 
     } // end pragma omp parallel thread pool
+
+
+    std::vector<vcl_scalar_type> x(ntri*nLayer,0.0);
+
+if (suspension_present) {
 
     // setup the compressed matrix on the compute device, if available
 #ifdef VIENNACL_WITH_OPENCL
@@ -1464,7 +1480,6 @@ void PBSM3D::run(mesh& domain)
     viennacl::linalg::gmres_tag suspension_custom_gmres(suspension_gmres_tol, suspension_gmres_max_iterations,
                                                         suspension_gmres_krylov_dimension);
     viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, suspension_custom_gmres, chow_patel_ilu);
-    std::vector<vcl_scalar_type> x(vl_x.size());
     viennacl::copy(vl_x, x);
 
     // Log final state of the linear solve
@@ -1488,6 +1503,11 @@ void PBSM3D::run(mesh& domain)
     //    ofile.close();
 
     // Now we have the concentration, compute the suspension flux
+ } else {
+    LOG_DEBUG << "  No suspension present.";
+ }
+
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -1547,6 +1567,9 @@ void PBSM3D::run(mesh& domain)
 
 //     zero fill RHS for drift
     bb.clear();
+
+    saltation_present=false;
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -1620,7 +1643,14 @@ void PBSM3D::run(mesh& domain)
             }
             bb[i] +=  -E[j]*(Qtj+Qsj)*udotm[j];
         }
+	if (abs(bb[i]) > saltation_present_threshold) {
+	  saltation_present=true;
+	}
     } // end face itr
+
+    std::vector<vcl_scalar_type> dSdt(ntri,0.0);
+
+    if (saltation_present) {
 
 // setup the compressed matrix on the compute device, if available
 #ifdef VIENNACL_WITH_OPENCL
@@ -1654,14 +1684,16 @@ void PBSM3D::run(mesh& domain)
         viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg, deposition_flux_chow_patel_icc);
     // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A,
     // bb, deposition_flux_custom_cg);
-    std::vector<vcl_scalar_type> dSdt(vl_dSdt.size());
     viennacl::copy(vl_dSdt, dSdt);
 
     // Log final state of the linear solve
     LOG_DEBUG << "  deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
     LOG_DEBUG << "  deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
 
-
+    } // if saltation_present
+    else {
+      LOG_DEBUG << "  No saltation present. ";
+    }
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)

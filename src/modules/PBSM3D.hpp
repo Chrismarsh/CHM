@@ -192,7 +192,12 @@ public:
        // struct my_fill_topo_params params = { 1.1, 0.3, 0.6 , 0.4};
     };
 
+private:
 
+  // For detecting if there is suspension and/or saltation
+  bool suspension_present, saltation_present;
+  constexpr static double suspension_present_threshold=1e-12;
+  constexpr static double saltation_present_threshold=1e-12;
 };
 
 /**
