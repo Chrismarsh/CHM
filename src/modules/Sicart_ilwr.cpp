@@ -61,7 +61,7 @@ void Sicart_ilwr::run(mesh_elem& face)
     double Lin = 1.24*pow(e/T,1.0/7.0)*(1.0+0.44*RH-0.18*tau)*sigma*pow(T,4.0);
 
     double svf = 1.; //default open view
-    if (face->has_parameter("svf") && !is_nan(face->parameter("svf"_s)))
+    if (face->has_parameter("svf"_s) && !is_nan(face->parameter("svf"_s)))
     {
         svf = face->parameter("svf"_s);
     }

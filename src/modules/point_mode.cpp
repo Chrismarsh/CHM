@@ -181,7 +181,6 @@ void point_mode::run(mesh_elem &face)
         (*face)["T_g"_s]= T_g;
     }
 
-
-    face->parameter("svf") = cfg.get("override.svf", face->parameter("ssvf"_s));
+    face->parameter("svf") = cfg.get("override.svf", face->parameter("svf"_s));
 
 }
