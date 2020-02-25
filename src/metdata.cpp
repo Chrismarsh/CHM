@@ -232,9 +232,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         _stations.push_back(s);
     }
 
-
-    std::tie(_start_time,_end_time) = find_unified_start_end();
-
+    // compute the dt for all stations and ensure they match
     std::vector<boost::posix_time::time_duration> dts;
     for(auto& itr: _ascii_stations)
     {
@@ -251,6 +249,10 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
     }
 
     _dt = dts.front();
+
+    std::tie(_start_time,_end_time) = find_unified_start_end();
+    subset(_start_time,_end_time); //subset assumes we have a valid dt
+
     _current_ts = _start_time;
     _n_timesteps = _ascii_stations.begin()->second->_obs.get_date_timeseries().size(); //grab the first timeseries, they are all the same period now
     _nstations = _ascii_stations.size();
@@ -282,10 +284,25 @@ boost::posix_time::ptime metdata::current_time()
 {
     return _current_ts;
 }
+
+std::string metdata::current_time_str()
+{
+    return boost::posix_time::to_iso_string(current_time());
+}
+std::string metdata::start_time_str()
+{
+    return boost::posix_time::to_iso_string(start_time());
+}
+std::string metdata::end_time_str()
+{
+    return boost::posix_time::to_iso_string(end_time());
+}
+
 std::set<std::string> metdata::list_variables()
 {
     return _variables;
 }
+
 void metdata::check_ts_consistency()
 {
     //ensure all the stations have the same start and end times
@@ -304,7 +321,10 @@ void metdata::check_ts_consistency()
 }
 void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime end)
 {
-
+    if( _dt.total_seconds() == 0)
+    {
+        CHM_THROW_EXCEPTION(forcing_error,"dt = 0");
+    }
     // the netcdf files are simple and don't need this subsetting
     if(!_use_netcdf)
     {
@@ -357,6 +377,7 @@ size_t metdata::nstations()
 {
     return _nstations;
 }
+
 void metdata::write_stations_to_ptv(const std::string& path)
 {
     assert(_nstations > 0);

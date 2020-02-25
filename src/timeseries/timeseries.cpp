@@ -162,8 +162,6 @@ void timeseries::subset(boost::posix_time::ptime start,boost::posix_time::ptime 
     date_vec temp(start_itr,end_itr);
     _date_vec = temp;
 
-
-
 }
 boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost::posix_time::ptime start_time,boost::posix_time::ptime end_time)
 {

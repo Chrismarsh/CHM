@@ -117,6 +117,10 @@ class metdata
     boost::posix_time::ptime start_time();
     boost::posix_time::ptime end_time();
 
+    std::string current_time_str();
+    std::string start_time_str();
+    std::string end_time_str();
+
     /// Subsets all timeseries to begin at [start, end]. For ascii, the underlying timeseries is modified.
     /// For nc, internal offsets are computed to start, end.
     /// This updates the internal start and end times, as well as resets the current time to be = start

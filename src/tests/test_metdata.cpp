@@ -167,5 +167,71 @@ TEST_F(MetdataTest, ASCII_TwoStationStartEndTime)
     ASSERT_EQ(end_time,e);
 
 }
+TEST_F(MetdataTest, ASCII_TestCurrentTime)
+{
+    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+
+    metdata::ascii_metdata station;
+    station.path = "test_met_data_longer1.txt";
+    station.latitude = 60.56726;
+    station.longitude = -135.184652;
+    station.elevation = 1559;
+    station.id = "station1";
+
+    std::vector<metdata::ascii_metdata> s;
+    s.push_back(station);
+
+    ASSERT_NO_THROW(md.load_from_ascii(s, -8));
+
+    auto cur_time = md.current_time_str();
+
+    ASSERT_EQ(cur_time,"20101001T090000");
+}
+
+TEST_F(MetdataTest, ASCII_TestNext)
+{
+    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+
+    metdata::ascii_metdata station;
+    station.path = "test_met_data_longer1.txt";
+    station.latitude = 60.56726;
+    station.longitude = -135.184652;
+    station.elevation = 1559;
+    station.id = "station1";
+
+    metdata::ascii_metdata station2;
+    station2.path = "test_met_data_longer2.txt";
+    station2.latitude = 60.56726;
+    station2.longitude = -135.184652;
+    station2.elevation = 1559;
+    station2.id = "station2";
+
+    std::vector<metdata::ascii_metdata> s;
+
+    s.push_back(station2);
+    s.push_back(station);
+
+    ASSERT_NO_THROW(md.load_from_ascii(s, -8));
+
+    std::string cur_time = "";
+    //returns false when no ts left
+
+    bool done = !md.next();
+    //we should not be done yet
+    ASSERT_EQ(done,false);
+
+    cur_time = md.current_time_str();
+    ASSERT_EQ(cur_time,"20101001T110000");
+
+    done = !md.next();
+    ASSERT_EQ(done,false);
+    cur_time = md.current_time_str();
+    ASSERT_EQ(cur_time,"20101001T120000");
+
+    done = !md.next();
+    ASSERT_EQ(done,true);
+    cur_time = md.current_time_str();
+    ASSERT_EQ(cur_time,"20101001T130000");
 
 
+}
