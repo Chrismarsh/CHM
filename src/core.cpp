@@ -396,8 +396,6 @@ void core::config_forcing(pt::ptree &value)
                 auto f = cwd_dir / file;
                 data.path = f.string();
 
-                //filters with text timeseries behave differently than filters with the netcdf
-                //these will be run once, over the entire timeseries. netcdf will call the filters and run it on every lazyload.
                 try
                 {
                     auto filter_section = station.get_child("filter");
@@ -1955,9 +1953,7 @@ void core::run()
 
             _global->_current_date = _metdata->current_time();
 
-
             LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
-
 
             std::stringstream ss;
             ss << _global->posix_time();
@@ -1968,8 +1964,6 @@ void core::run()
             {
                 for (auto &itr : _chunked_modules)
                 {
-//                    LOG_VERBOSE << "Working on chunk[" << chunks << "]:parallel=" <<
-//                                (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain");
 
                     if (itr.at(0)->parallel_type() == module_base::parallel::data)
                     {
@@ -2131,7 +2125,6 @@ void core::run()
 
             if(!_metdata->next())
                 done = true;
-
 
             auto timestep = c.toc<ms>();
             meantime += timestep;

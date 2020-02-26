@@ -29,6 +29,7 @@ metdata::metdata(std::string mesh_proj4)
     _use_netcdf = false;
     _n_timesteps = 0;
     _mesh_proj4 = mesh_proj4;
+    is_first_timestep = true;
 
     OGRSpatialReference srs;
     srs.importFromProj4(_mesh_proj4.c_str());
@@ -256,6 +257,9 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
     _current_ts = _start_time;
     _n_timesteps = _ascii_stations.begin()->second->_obs.get_date_timeseries().size(); //grab the first timeseries, they are all the same period now
     _nstations = _ascii_stations.size();
+
+    // Populate the stations with the first timestep's data. We can do this _once_ without incrementing the internal iterators
+    next();
 }
 
 boost::posix_time::ptime metdata::start_time()
@@ -273,7 +277,7 @@ boost::posix_time::time_duration metdata::dt()
 }
 size_t metdata::dt_seconds()
 {
-    return _dt.total_seconds();
+    return dt().total_seconds();
 }
 
 size_t metdata::n_timestep()
@@ -414,18 +418,23 @@ std::shared_ptr<station> metdata::at(size_t idx)
 
 bool metdata::next()
 {
-    _current_ts = _current_ts + _dt;
+    bool has_next = false;
+
+    // allows for doing first timestep loading without incrementing the timestep
+    if(!is_first_timestep)
+        _current_ts = _current_ts + _dt;
 
     if(_use_netcdf)
     {
-        return next_nc();
+        has_next = next_nc();
     }
     else
     {
-        return next_ascii();
+        has_next = next_ascii();
     }
 
-    return false;
+    is_first_timestep = false;
+    return has_next;
 }
 
 bool metdata::next_ascii()
@@ -436,9 +445,14 @@ bool metdata::next_ascii()
         auto s = _stations.at(i);
         auto& proxy = _ascii_stations[s->ID()];
 
-        ++proxy->_itr;
-        if (proxy->_itr == proxy->_obs.end())
-            return false;
+        //the very first timestep needs to handle loading the data without incrementing the internal iterators
+        if(!is_first_timestep)
+        {
+            ++proxy->_itr;
+            if (proxy->_itr == proxy->_obs.end())
+                return false;
+        }
+
 
         if(proxy->_itr->get_posix() != _current_ts)
         {

@@ -49,9 +49,9 @@ void timeseries::init(std::set<std::string> variables, boost::posix_time::ptime 
     boost::posix_time::ptime ts = start_time;
 
     //figure out how many timesteps we need
-    while(ts <= end_time)
+    while(ts < end_time)
     {
-        ts =  ts + dt*size;
+        ts =  start_time + dt*size;
         ++size;
     }
 
@@ -64,7 +64,7 @@ void timeseries::init(std::set<std::string> variables, boost::posix_time::ptime 
 
 
     _date_vec.resize(_timeseries_length);
-    for(size_t i=0; i<_timeseries_length;i++)
+    for(size_t i=0; i <_timeseries_length;i++)
     {
         _date_vec[i] = start_time + dt*i;
     }

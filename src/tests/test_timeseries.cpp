@@ -305,3 +305,34 @@ TEST_F(TimeseriesTest, MissingTimeStep)
 {
     ASSERT_ANY_THROW(s0.open("missing_timestep.txt"));
 }
+
+TEST_F(TimeseriesTest, Init)
+{
+    timeseries s;
+
+    std::set<std::string> vars = {"t","rh"};
+    boost::posix_time::ptime start_time = boost::posix_time::from_iso_string("20051001T010000");
+    boost::posix_time::ptime start_time2 = boost::posix_time::from_iso_string("20051001T020000");
+
+    boost::posix_time::ptime end_time = boost::posix_time::from_iso_string("20171001T000000");
+    boost::posix_time::time_duration dt =  start_time2-start_time;
+
+        //boost::posix_time::seconds(3600);
+
+    ASSERT_NO_THROW(s.init(vars, start_time, end_time, dt));
+//    ASSERT_EQ(s.get_timeseries_length(),4);
+
+    auto date = s.get_date_timeseries();
+    std::vector<std::string> lol;
+    for(auto& itr : date)
+    {
+        lol.push_back( boost::posix_time::to_iso_string(itr) );
+    }
+    ASSERT_EQ(boost::posix_time::to_iso_string( date.at(0) ), "20051001T010000");
+    ASSERT_EQ(boost::posix_time::to_iso_string( date.at(1) ), "20051001T020000");
+    ASSERT_EQ(boost::posix_time::to_iso_string( date.at(2) ), "20051001T030000");
+    ASSERT_EQ(boost::posix_time::to_iso_string( date.at(3) ), "20051001T040000");
+
+
+    ASSERT_EQ(lol.back(),"20171001T000000");
+}

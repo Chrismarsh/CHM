@@ -141,7 +141,7 @@ class metdata
 
     size_t dt_seconds();
 
-    /// Populates the stations' with the next timesteps' value
+    /// Populates the stations' with the next timesteps' value.
     /// @return False if no more timesteps
     bool next();
 
@@ -170,7 +170,9 @@ class metdata
     /// Advances 1 timestep in the netcdf files
     bool next_nc();
 
+
     /// Advances 1 timestep from the ascii timeseries
+    /// @return
     bool next_ascii();
 
     /// For all the stations loaded from ascii files, find the latest start time, and the earliest end time that is consistent across all stations
@@ -209,6 +211,8 @@ class metdata
 
     // Total number of stations
     size_t _nstations;
+
+    bool is_first_timestep;
 
     //number of timesteps
     size_t _n_timesteps;
