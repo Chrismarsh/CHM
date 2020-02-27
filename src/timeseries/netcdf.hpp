@@ -50,6 +50,7 @@ public:
     boost::posix_time::ptime get_end();
 
     std::set<std::string> get_variable_names();
+    std::set<std::string> get_coordinate_names();
     void open_GEM(const std::string &file);
     void open(const std::string &file);
 
@@ -88,9 +89,6 @@ public:
 
     double get_var2D(std::string var, size_t x, size_t y);
 
-    date_vec get_datevec();
-
-
     netCDF::NcFile& get_ncfile();
 private:
 
@@ -104,7 +102,6 @@ private:
     size_t _datetime_length; //number of records
 
     boost::posix_time::ptime _start, _epoch, _end;
-    date_vec _datetime; //holds all the datetimes
     std::string dt_unit;
 
     boost::posix_time::time_duration _timestep; // we will multiply this later to get proper offset

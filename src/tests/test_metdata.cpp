@@ -388,11 +388,11 @@ TEST_F(MetdataTest, ASCII_TestInconsistentTs)
     station.id = "station1";
 
     metdata::ascii_metdata station3;
-    station.path = "test_met_data_longer3_3hr_dt.txt";
-    station.latitude = 60.56726;
-    station.longitude = -135.184652;
-    station.elevation = 1559;
-    station.id = "station3";
+    station3.path = "test_met_data_longer3_3hr_dt.txt";
+    station3.latitude = 60.56726;
+    station3.longitude = -135.184652;
+    station3.elevation = 1559;
+    station3.id = "station3";
 
 
     std::vector<metdata::ascii_metdata> s;
@@ -400,6 +400,42 @@ TEST_F(MetdataTest, ASCII_TestInconsistentTs)
     s.push_back(station3);
 
     ASSERT_ANY_THROW(md.load_from_ascii(s, -8));
+
+}
+
+TEST_F(MetdataTest, ASCII_TestSubset)
+{
+    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+
+    metdata::ascii_metdata station;
+    station.path = "test_met_data_longer1.txt";
+    station.latitude = 60.56726;
+    station.longitude = -135.184652;
+    station.elevation = 1559;
+    station.id = "station1";
+
+    metdata::ascii_metdata station2;
+    station2.path = "test_met_data_longer2.txt";
+    station2.latitude = 60.56726;
+    station2.longitude = -135.184652;
+    station2.elevation = 1559;
+    station2.id = "station2";
+
+
+    std::vector<metdata::ascii_metdata> s;
+    s.push_back(station);
+    s.push_back(station2);
+
+    ASSERT_NO_THROW(md.load_from_ascii(s, -8));
+
+    boost::posix_time::ptime start = boost::posix_time::from_iso_string("20101001T110000");
+    boost::posix_time::ptime end = boost::posix_time::from_iso_string("20101001T120000");
+
+    ASSERT_NO_THROW(md.subset(start,end));
+
+    ASSERT_EQ(md.start_time_str(),"20101001T110000");
+    ASSERT_EQ(md.end_time_str(),"20101001T120000");
+    ASSERT_EQ(md.n_timestep(),2);
 
 }
 
@@ -426,4 +462,42 @@ TEST_F(MetdataTest, ASCII_TestListVars)
     ASSERT_EQ(vars.size(),variable_list.size());
     ASSERT_TRUE(vars == variable_list );
 
+}
+
+
+
+TEST_F(MetdataTest, NC_TestBasicLoad)
+{
+    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+
+    ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
+
+    ASSERT_EQ(md.nstations(), 151*151 );
+
+    auto vars = md.list_variables();
+    std::set<std::string> variable_list = {"p","press","Qli","Qsi","Qsi_diff","rh","t","u","vw_dir"};
+
+    ASSERT_EQ(vars.size(),variable_list.size());
+    ASSERT_TRUE(vars == variable_list );
+
+    ASSERT_EQ(md.start_time_str(),"20180115T060000");
+    ASSERT_EQ(md.end_time_str(),"20180116T050000");
+
+    ASSERT_EQ(md.current_time_str(),"20180115T060000");
+}
+
+TEST_F(MetdataTest, NC_TestNext)
+{
+    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+
+    ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
+}
+
+TEST_F(MetdataTest, NC_TestnTimeSteps)
+{
+    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+
+    ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
+
+    ASSERT_EQ(md.n_timestep(),24);
 }

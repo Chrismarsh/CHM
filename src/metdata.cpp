@@ -82,14 +82,13 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
         _variables.insert(_provides_from_nc_filters.begin(),_provides_from_nc_filters.end());
 
-        auto date_vec = _nc->get_datevec();
-
-        _start_time = date_vec.at(0);
-        _end_time = date_vec.back();
-
-        _n_timesteps = date_vec.size();
+        _start_time = _nc->get_start();
+        _end_time = _nc->get_end();
+        _n_timesteps = _nc->get_ntimesteps();
 
         _nstations = _nc->get_xsize() * _nc->get_ysize();
+        _stations.resize(_nstations);
+
         LOG_DEBUG << "Grid is (y)" << _nc->get_ysize() << " by (x)" << _nc->get_xsize();
 
         LOG_DEBUG << "Loading lat/long grid...";
@@ -148,6 +147,9 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
     _dt = _nc->get_dt();
 
     _current_ts = _start_time;
+
+    // load the first timestep's data
+    next();
 
 }
 
@@ -342,7 +344,7 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
     _start_time = start;
     _end_time = end;
     _current_ts = _start_time;
-    _n_timesteps = (_end_time - _start_time).total_seconds() / _dt.total_seconds();
+    _n_timesteps = ( (_end_time+_dt) - _start_time).total_seconds() / _dt.total_seconds(); // need to add +dt so that we are inclusive of the last timestep
 }
 std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::start_end_time()
 {

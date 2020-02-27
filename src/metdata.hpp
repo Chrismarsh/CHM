@@ -91,7 +91,7 @@ class metdata
     /// Loads a netcdf file. Must be a 2D structured grid of stations. Expects times to be in UTC+0
     /// @param path
     /// @param filters
-    void load_from_netcdf(const std::string& path, std::map<std::string, boost::shared_ptr<filter_base> > filters);
+    void load_from_netcdf(const std::string& path, std::map<std::string, boost::shared_ptr<filter_base> > filters = {});
 
     /// Loads the standard ascii timeseries. Needs to be in UTC+0
     /// @param path

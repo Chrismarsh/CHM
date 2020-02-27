@@ -220,12 +220,6 @@ void netcdf::open_GEM(const std::string &file)
 
     LOG_DEBUG << "NetCDF grid is " << xgrid << " (x) by " << ygrid << " (y)";
 
-    //build up the datetime vector so we can easily use it later
-    _datetime.resize(_datetime_length);
-    for(size_t i=0; i<_datetime_length;i++)
-    {
-        _datetime[i] = _start + _timestep*i;
-    }
 
 }
 
@@ -234,10 +228,6 @@ size_t netcdf::get_ntimesteps()
     return _datetime_length;
 }
 
-netcdf::date_vec netcdf::get_datevec()
-{
-    return _datetime;
-}
 boost::posix_time::time_duration netcdf::get_dt()
 {
     return _timestep;
@@ -263,7 +253,7 @@ std::set<std::string> netcdf::get_variable_names()
     {
         auto vars = _data.getVars();
 
-        std::vector<std::string> exclude = {"HGT_P0_L1_GST", "gridlat_0", "gridlon_0", "xgrid_0", "ygrid_0"};
+        std::vector<std::string> exclude = {"datetime","leadtime", "reftime", "HGT_P0_L1_GST", "gridlat_0", "gridlon_0", "xgrid_0", "ygrid_0"};
 
         for (auto itr: vars)
         {
@@ -277,6 +267,21 @@ std::set<std::string> netcdf::get_variable_names()
     }
 
     return _variable_names;
+}
+
+std::set<std::string> netcdf::get_coordinate_names()
+{
+    std::set<std::string> names;
+    auto vars = _data.getCoordVars();
+
+    for (auto itr: vars)
+    {
+        auto v = itr.first;
+        names.insert(v);
+    }
+
+    return names;
+
 }
 
 double netcdf::get_var1D(std::string var, size_t index)

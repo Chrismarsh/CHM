@@ -299,6 +299,7 @@ if (BUILD_TESTS)
 			tests/test_core.cpp
 			tests/test_variablestorage.cpp
 			tests/test_metdata.cpp
+			tests/test_netcdf.cpp
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
