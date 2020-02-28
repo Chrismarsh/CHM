@@ -1,9 +1,0 @@
-diff -r /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal copy.h /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal.h
-65,66d64
-< #include <boost/exception/all.hpp>
-< 
-1080,1081c1078
-<     catch (boost::exception &e) { \
-<       std::cout << boost::diagnostic_information(e) << std::endl;  \
----
->     catch (...) { \
