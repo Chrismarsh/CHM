@@ -662,9 +662,7 @@ void triangulation::partition_mesh()
   for(size_t i=0;i<total_num_faces;++i)
   {
     _faces.at(i)->_is_ghost = false;
-    _faces.at(i)->cell_local_id = i; // Mesh has been (potentially) reordered
-				     // before this point. Set the local_id
-				     // correctly
+    _faces.at(i)->cell_local_id = i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
   }
   LOG_DEBUG << "Face numbering : start 0, end " << (total_num_faces-1) << ", number " << _local_faces.size();
 
