@@ -100,12 +100,11 @@ if(MPI_FOUND AND USE_MPI)
   message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
   add_definitions(-DUSE_MPI)
 
-  file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt txt)
-  string(FIND "${txt}" "boost:without_mpi=True" RETCODE)
+  file(READ ${CMAKE_BINARY_DIR}/FindBoost.cmake txt)
+  string(FIND "${txt}" "boost_mpi" RETCODE)
 
-  # -1 is not found retcode from find
-  if(${RETCODE} GREATER "-1")
-        message(FATAL_ERROR "MPI was asked for, however boost was not built with mpi. Please set boost:without_mpi=True in conanfile.txt.")
+  if(${RETCODE} EQUAL -1) # -1 is not found retcode from find
+        message(FATAL_ERROR "MPI was asked for, however boost was not built with mpi. Please build boost (--build boost) locally with a working MPI. See wiki for more information.")
     endif()
 else()
   message(WARNING "MPI not enabled. Building for single process.")
