@@ -486,12 +486,41 @@ TEST_F(MetdataTest, NC_TestBasicLoad)
     ASSERT_EQ(md.current_time_str(),"20180115T060000");
 }
 
+TEST_F(MetdataTest, NC_TestAcess)
+{
+    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+
+    ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
+
+    auto value = (*md.at(0))["t"];
+    ASSERT_DOUBLE_EQ(value, -1.4661178588867188);
+
+    value = (*md.at(150+150*151))["t"];
+    ASSERT_DOUBLE_EQ(value, -18.4973678588867188);
+
+}
+
 TEST_F(MetdataTest, NC_TestNext)
 {
     metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
 
     ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
+
+    auto value = (*md.at(0))["t"];
+    ASSERT_DOUBLE_EQ(value, -1.4661178588867188);
+
+    ASSERT_NO_THROW(md.next());
+
+    ASSERT_EQ(md.current_time_str(),"20180115T070000");
+
+    value = (*md.at(0))["t"];
+    ASSERT_DOUBLE_EQ(value, -1.5229721069335938);
+
+    value = (*md.at(150+150*151))["t"];
+    ASSERT_DOUBLE_EQ(value, -18.5444564819335938);
+
 }
+
 
 TEST_F(MetdataTest, NC_TestnTimeSteps)
 {
