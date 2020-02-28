@@ -497,7 +497,8 @@ bool metdata::next_nc()
         // Need to decide how best to do this as it may be too memory expensive to load the entire thing into ram
         // auto data = _nc->get_var(itr, t);
 
-#pragma omp parallel for
+        //The call to netCDF isn't thread safe. It is protected by a critical section but it's costly, and not running this
+        // in parallel is about 2x faster  #pragma omp parallel for
         for (size_t y = 0; y < _nc->get_ysize(); y++)
         {
             for (size_t x = 0; x < _nc->get_xsize(); x++)

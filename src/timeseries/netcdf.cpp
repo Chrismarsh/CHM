@@ -392,7 +392,10 @@ double netcdf::get_var(std::string var, size_t timestep, size_t x, size_t y)
     double val=-9999;
 
     auto itr = vars.find(var);
-    itr->second.getVar(startp,countp, &val);
+#pragma omp critical
+    {
+        itr->second.getVar(startp, countp, &val);
+    }
 
     return val;
 }
