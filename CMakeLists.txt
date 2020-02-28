@@ -110,6 +110,10 @@ else()
   message(WARNING "MPI not enabled. Building for single process.")
 endif()
 
+if(USE_MPI AND NOT MPI_FOUND)
+    message(FATAL_ERROR "MPI was asked for, but not found")
+endif()
+
 if(USE_MPI AND MPI_FOUND)
     find_package(Boost
             1.71.0
