@@ -54,6 +54,6 @@ void scale_wind_speed::process(std::shared_ptr<station>& station)
         U_R = Atmosphere::log_scale_wind(U_F, Z_F, Z_R, 0); // Assume 0 snow depth
     }
 
-    (*station)["U_R"]=U_R;
+    (*station)["U_R"_s]=U_R;
 
 }
