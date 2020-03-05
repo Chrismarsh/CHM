@@ -1454,8 +1454,7 @@ void PBSM3D::run(mesh& domain)
         vl_C, chow_patel_ilu_config);
 
     // Set up convergence tolerance to have an average value for each unknown
-    double suspension_gmres_tol_per_unknown = 1e-8;
-    double suspension_gmres_tol = suspension_gmres_tol_per_unknown * nLayer * ntri;
+    double suspension_gmres_tol = 1e-8;
     // Set max iterations and maximum Krylov dimension before restart
     size_t suspension_gmres_max_iterations = 1000;
     size_t suspension_gmres_krylov_dimension = 30;
@@ -1641,8 +1640,7 @@ void PBSM3D::run(mesh& domain)
         deposition_flux_chow_patel_icc(vl_A, deposition_flux_chow_patel_config);
 
     // Set up convergence tolerance to have an average value for each unknown
-    double deposition_flux_cg_tol_per_unknown = 1e-7;
-    double deposition_flux_cg_tol = deposition_flux_cg_tol_per_unknown * ntri;
+    double deposition_flux_cg_tol = 1e-8;
     // Set max iterations and maximum Krylov dimension before restart
     size_t deposition_flux_cg_max_iterations = 500;
 
