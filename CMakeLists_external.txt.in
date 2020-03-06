@@ -79,18 +79,6 @@ if(BUILD_VTK)
 	    )
 endif()
 
-if(BUILD_FUNC)
-    ExternalProject_Add(
-        func
-        GIT_REPOSITORY https://github.com/uofs-simlab/func.git
-        UPDATE_COMMAND ""
-        CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/lib/func
-        BUILD_COMMAND make -j${EXTERNAL_BUILD_THREADS}
-        INSTALL_COMMAND make install
-        BUILD_IN_SOURCE 1
-        )
-endif()
-
 #Paraview (<=5.1.2  -- unsure on 5.5+) still needs to build it's own VTK.
 # Since we have to carefully build VTK to avoid netcdf/proj4 compatibility issues, it is best to just let PV do its own thing
 #https://public.kitware.com/pipermail/paraview/2016-August/037922.html

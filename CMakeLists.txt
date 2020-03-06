@@ -69,7 +69,6 @@ if(SUPERBUILD)
     set(BUILD_NETCDF TRUE CACHE BOOL "Build netCDF")
     set(BUILD_VTK TRUE CACHE BOOL "Build VTK")
     set(BUILD_TBB TRUE CACHE BOOL "Build Intel TBB")
-    set(BUILD_FUNC TRUE CACHE BOOL "Build func")
 endif()
 
 if(BUILD_ARMADILLO)
@@ -78,10 +77,6 @@ endif()
 
 if(BUILD_TBB)
     set(TBB_INSTALL_DIR "${CMAKE_BINARY_DIR}/lib/tbb")
-endif()
-
-if(BUILD_FUNC)
-    set(FUNC_DIR "${CMAKE_BINARY_DIR}/lib/func")
 endif()
 
 if(BUILD_GDAL)
@@ -197,7 +192,6 @@ execute_process(COMMAND ${CMAKE_COMMAND}
         -DBUILD_PROJ4=${BUILD_PROJ4}
         -DBUILD_NETCDF=${BUILD_NETCDF}
         -DBUILD_TBB=${BUILD_TBB}
-	-DBUILD_FUNC=${BUILD_FUNC}
         -DBUILD_ParaView=${BUILD_ParaView}
 	-DEXTERNAL_BUILD_THREADS=${EXTERNAL_BUILD_THREADS}
         -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
@@ -393,14 +387,6 @@ else()
 endif()
 
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
-
-if(BUILD_FUNC)
-    find_package(func REQUIRED)
-endif()
-message(STATUS "Found func at ${FUNC_INCLUDE_DIR}")
-message(STATUS "Found func libraries at ${FUNC_LIBRARY}")
-message(STATUS "Found func libraries at ${FUNC_IMPLS_LIBRARY}")
-
 
 if(USE_MPI AND MPI_FOUND)
   find_package(Boost
