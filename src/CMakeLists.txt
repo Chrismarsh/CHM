@@ -303,7 +303,7 @@ if (BUILD_TESTS)
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-            )
+            tests/test_triangulation.cpp)
 
 
 	set( GTEST_LINK
