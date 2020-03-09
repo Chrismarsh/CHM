@@ -766,11 +766,14 @@ public:
     */
     void timeseries_to_file(mesh_elem m, std::string fname);
 
-	/**
-	 * If output to the mesh vtk/vtu format is required, this will be allocate the vtk data structure.
-	 */
-	void init_vtkUnstructured_Grid(std::vector<std::string> output_variables);
+    /**
+     * If output to the mesh vtk/vtu format is required, this will be allocate the vtk data structure.
+     */
+    void init_vtkUnstructured_Grid(std::vector<std::string> output_variables);
 
+    /// Initializes all the face timeseries to hold the selected variables
+    /// @param variables
+    void init_timeseries(std::set< std::string > variables);
 
 	/**
 	 * Updates the internal vtk structure with this timesteps data.

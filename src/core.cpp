@@ -1393,16 +1393,7 @@ void core::init(int argc, char **argv)
 
 
     LOG_DEBUG << "Allocating face variable storage";
-    #pragma omp parallel for
-    for (size_t it = 0; it < _mesh->size_faces(); it++)
-    {
-      auto face = _mesh->face(it);
-      if(point_mode.enable && face->_debug_name != _outputs[0].name )
-	continue;
-
-	       face->init_time_series(_provided_var_module);
-
-    }
+    _mesh->init_timeseries(_provided_var_module);
 
 
     if(point_mode.enable)
