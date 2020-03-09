@@ -25,6 +25,7 @@
 
 #include "triangulation.hpp"
 #include "gtest/gtest.h"
+#include "readjson.hpp"
 #include <boost/property_tree/ptree.hpp>
 
 class TriangulationTest : public testing::Test
@@ -51,13 +52,18 @@ class TriangulationTest : public testing::Test
             std::string key = ktr.first.data();
             mesh_json.put_child( "initial_conditions." + key ,ktr.second);
         }
-
+        mesh.from_json(mesh_json);
+        mesh.init_timeseries(variables);
 
     }
 
     pt::ptree mesh_json;
     pt::ptree param_json;
     pt::ptree ic_json;
+
+    std::set<std::string> variables = {"t","rh","u"};
+
+    triangulation mesh;
 };
 
 
@@ -67,13 +73,36 @@ TEST_F(TriangulationTest, DefaultInit)
 {
     triangulation mesh;
     ASSERT_NO_THROW(mesh.from_json(mesh_json));
-}
 
-TEST_F(TriangulationTest, VarReadValue)
+
+}
+TEST_F(TriangulationTest, DefaultInitWithVars)
 {
     triangulation mesh;
     ASSERT_NO_THROW(mesh.from_json(mesh_json));
+    ASSERT_NO_THROW(mesh.init_timeseries(variables));
 
+}
+
+
+TEST_F(TriangulationTest, VarReadValue)
+{
     auto f = mesh.face(0);
+    ASSERT_EQ((*f)["t"],-9999.0);
 
+
+}
+
+TEST_F(TriangulationTest, VarReadWriteValue)
+{
+    auto f = mesh.face(0);
+    ASSERT_EQ((*f)["t"],-9999.0);
+
+    (*f)["t"] = -10;
+    (*f)["rh"] = 80;
+    (*f)["u"] = 15.0;
+
+    ASSERT_EQ((*f)["t"],-10.0);
+    ASSERT_EQ((*f)["rh"],80.0);
+    ASSERT_EQ((*f)["u"],15.0);
 }

@@ -1150,9 +1150,9 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 void triangulation::init_timeseries(std::set< std::string > variables)
 {
     #pragma omp parallel for
-    for (size_t it = 0; it < _mesh->size_faces(); it++)
+    for (size_t it = 0; it < size_faces(); it++)
     {
-        auto face = _mesh->face(it);
+        auto face = this->face(it);
         face->init_time_series(variables);
     }
 
