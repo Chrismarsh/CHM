@@ -118,6 +118,8 @@ namespace pt = boost::property_tree;
 #include "math/coordinates.hpp"
 #include "utility/xxh64.hpp"
 
+#include "timeseries/variablestorage.hpp"
+
 
 /**
 * \struct face_info
@@ -314,15 +316,6 @@ public:
      */
     Vector_3 face_vector(const std::string& variable);
 
-
-    /**
-     * Removes the face data associated with a given ID. Throws if ID not found.
-     * Assumes memory was allocated in a module. This just makes it easier to cleanup.
-     * \param ID Module ID
-     * \return none
-     */
-    void remove_face_data(const std::string &ID);
-
     /**
     * Initializes  this faces variable storage
     * \param variables Names of the variables to add
@@ -330,10 +323,22 @@ public:
     void init_time_series(std::set<std::string>& variables);
 
     /**
-        * Initializes  this faces parameter storage
+    * Initializes  this faces vector storage
+    * \param variables Names of the vectors to add
+    */
+    void init_vectors(std::set<std::string>& variables);
+
+    /**
+        * Initializes  this face's parameter storage
         * \param variables Names of the variables to add
-        */
+    */
     void init_parameters(std::set<std::string>& parameters);
+
+    /**
+    * Initializes this face's module data storage
+    * \param variables Names of the modules that will store data
+*/
+    void init_module_data(std::set<std::string>& modules);
 
     /**
     * Obtains the timeseries associated with the given variable
@@ -482,57 +487,16 @@ private:
     //const so we can't modify the domain via this as thar be dragons
     triangulation* _domain;
 
-
     boost::shared_ptr<Point_3> _center;
     boost::shared_ptr<Vector_3> _normal;
 
 
-    // Holds the name-value pair in the variable store hashmap
-    // we do this as we hold a hash and not the name
-    struct var
-    {
-        double value;
-        double xxhash; // holds the xxhash value so we can confirm we get the right thing back from BBHash
-        std::string variable;
-    };
-#ifdef USE_SPARSEHASH
-    typedef google::dense_hash_map<std::string,face_info*> face_data_hashmap;
-    typedef google::dense_hash_map<std::string,double> face_param_hashmap;
-    typedef google::dense_hash_map<std::string,Vector_3> face_vec_hashmap;
-#else
-    typedef std::unordered_map<std::string,face_info*> face_data_hashmap;
-    typedef std::unordered_map<std::string,double> face_param_hashmap;
-    typedef std::unordered_map<std::string,Vector_3> face_vec_hashmap;
-#endif
+    variablestorage<double> _variables;
+    variablestorage<double> _parameters;
 
-
-    template <typename Item> class wyandFunctor
-    {
-    public:
-        uint64_t operator ()  (const Item& key, uint64_t seed=2654435761U) const
-        {
-            return wyhash(&key, sizeof(Item), seed);
-        }
-
-    };
-    typedef wyandFunctor<uint64_t> hasher_t;
-    typedef boomphf::mphf< uint64_t, hasher_t  > boophf_t;
-
-    // Note that we have to explicitly check if what we get back is what we wanted as
-    // mphf do not guarantee what asking for something outside of the map returns a sane answer
-    // https://github.com/rizkg/BBHash/issues/12
-
-    // perfect hashfn + variable storage
-    std::unique_ptr<boophf_t> _variable_bphf;
-    std::vector<var> _variables;
-
-    // perfect hashfn + parameter storage
-    std::unique_ptr<boophf_t> _parameters_bphf;
-    std::vector<var> _parameters;
-
-    face_data_hashmap _module_face_data;
-    face_param_hashmap _initial_conditions;
-    face_vec_hashmap _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
+    variablestorage<face_info*> _module_face_data;
+    variablestorage<double> _initial_conditions;
+    variablestorage< Vector_3> _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
 
     boost::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
@@ -775,6 +739,24 @@ public:
     /// @param variables
     void init_timeseries(std::set< std::string > variables);
 
+    /// Initializes the face vectors
+    /// @param variables
+    void init_vectors(std::set<std::string>& variables);
+
+    /// Initializes all the faces to hold module data
+    /// @param modules
+    void init_module_data(std::set< std::string > modules);
+
+    /// Initalizes all the face-data data structures: variables, module data, vectors.
+    /// Can be done individually but this only requires one pass over the triangulation and is thus faster
+    /// @param timeseries
+    /// @param vectors
+    /// @param modules
+    /// @param module_data
+    void init_face_data(std::set< std::string >& timeseries,
+                  std::set< std::string >& vectors,
+                  std::set< std::string >& module_data);
+
 	/**
 	 * Updates the internal vtk structure with this timesteps data.
 	 * Must be called prior to calling the write_vt* functions.
@@ -998,54 +980,26 @@ private:
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has_parameter(const std::string& variable)
 {
-    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-    return has_parameter(hash);
+    return _parameters.has(variable);
 }
 
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has_parameter(const uint64_t& hash)
 {
-    auto idx = _parameters_bphf->lookup(hash);
-
-    // did the table return garabage?
-    //mphf might return an index, but it isn't actually what we want. double check the hash
-    if( idx >=  _parameters.size() ||
-            _parameters[idx].xxhash != hash)
-        return false;
-
-    return true;
+    return _parameters.has(hash);
 
 }
 
 template < class Gt, class Fb >
 double& face<Gt, Fb>::parameter(const std::string& variable)
 {
-    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-    uint64_t  idx = _parameters_bphf->lookup(hash);
-
-    //duplicate the code of the other paramter here for speed so we don't lookup 2x
-    // did the table return garabage?
-    //mphf might return an index, but it isn't actually what we want. double check the hash
-    if( idx >=  _parameters.size() ||
-            _parameters[idx].xxhash != hash)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + variable + " does not exist."));
-
-    return _parameters[idx].value;
+    return _parameters[variable];
 };
 
 template < class Gt, class Fb >
 double& face<Gt, Fb>::parameter(const uint64_t& hash)
 {
-    uint64_t  idx = _parameters_bphf->lookup(hash);
-
-    //duplicate the code of the other paramter here for speed so we don't lookup 2x
-    // did the table return garabage?
-    //mphf might return an index, but it isn't actually what we want. double check the hash
-    if( idx >= _parameters.size() ||
-            _parameters[idx].xxhash != hash)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Parameter " + std::to_string(hash)+ " does not exist."));
-
-    return _parameters[idx].value;
+    return _parameters[hash];
 
 
 };
@@ -1053,7 +1007,7 @@ double& face<Gt, Fb>::parameter(const uint64_t& hash)
 template < class Gt, class Fb >
 bool face<Gt, Fb>::has_initial_condition(std::string key)
 {
-    return _initial_conditions.find( key ) != _initial_conditions.end();
+    return _initial_conditions.has(key);
 }
 
 template < class Gt, class Fb >
@@ -1071,44 +1025,25 @@ double face<Gt, Fb>::get_initial_condition(std::string key)
 template < class Gt, class Fb >
 std::vector<std::string>  face<Gt, Fb>::parameters()
 {
-    std::vector<std::string> params;
-    for(auto& itr : _parameters)
-    {
-        params.push_back(itr.variable);
-    }
-    return params;
+    return _parameters.variables();
 };
 
 template < class Gt, class Fb >
 std::vector<std::string>  face<Gt, Fb>::initial_conditions()
 {
-    std::vector<std::string> ics;
-    for(auto& itr : _initial_conditions)
-    {
-        ics.push_back(itr.first);
-    }
-    return ics;
+    return _initial_conditions.variables();
 };
 
 template < class Gt, class Fb >
 std::vector<std::string>  face<Gt, Fb>::vectors()
 {
-    std::vector<std::string> vecs;
-    for(auto& itr : _module_face_vectors)
-    {
-        vecs.push_back(itr.first);
-    }
-    return vecs;
+    return _module_face_vectors.variables();
 };
 
 template < class Gt, class Fb >
 face<Gt, Fb>::~face()
 {
 
-    for(auto itr : _module_face_data)
-    {
-        delete itr.second;
-    }
 };
 template < class Gt, class Fb >
 face<Gt, Fb>::face()
@@ -1121,13 +1056,6 @@ face<Gt, Fb>::face()
     _area = -1.;
     _is_geographic = false;
 
-#ifdef USE_SPARSEHASH
-    _module_face_data.set_empty_key("");
-    _parameters.set_empty_key("");
-    _initial_conditions.set_empty_key("");
-    _module_face_vectors.set_empty_key("");
-
-#endif
 
 
 }
@@ -1145,13 +1073,6 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _normal = NULL;
     _area = -1.;
     _is_geographic = false;
-
-#ifdef USE_SPARSEHASH
-    _module_face_data.set_empty_key("");
-    _initial_conditions.set_empty_key("");
-    _module_face_vectors.set_empty_key("");
-
-#endif
 
 }
 
@@ -1171,13 +1092,6 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _normal = NULL;
     _area = -1.;
     _is_geographic = false;
-
-#ifdef USE_SPARSEHASH
-    _module_face_data.set_empty_key("");
-    _initial_conditions.set_empty_key("");
-    _module_face_vectors.set_empty_key("");
-#endif
-
 
 }
 
@@ -1201,12 +1115,6 @@ face<Gt, Fb>::face(Vertex_handle v0,
     _area = -1.;
     _is_geographic = false;
 
-#ifdef USE_SPARSEHASH
-    _module_face_data.set_empty_key("");
-    _initial_conditions.set_empty_key("");
-    _module_face_vectors.set_empty_key("");
-
-#endif
 
 }
 
@@ -1418,64 +1326,34 @@ bool face<Gt, Fb>::contains(double x, double y)
 template < class Gt, class Fb>
 std::vector<std::string> face<Gt, Fb>::variables()
 {
-    std::vector<std::string> vars;
-    for(auto itr:_variables)
-    {
-        vars.push_back(itr.variable);
-    }
-    return vars;
 
+    return _variables.variables();
 }
 
 
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has(const std::string& variable)
 {
-    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-    return has(hash);
+    return _variables.has(variable);
 
 };
 
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has(const uint64_t& hash)
 {
-    uint64_t  idx = _variable_bphf->lookup(hash);
-
-    // did the table return garabage?
-    //mphf might return an index, but it isn't actually what we want. double check the hash
-    if(_variables[idx].xxhash != hash)
-        return false;
-
-    return true;
+    return _variables.has(hash);
 }
 
 template < class Gt, class Fb>
 double& face<Gt, Fb>::operator[](const uint64_t& hash)
 {
-    uint64_t  idx = _variable_bphf->lookup(hash);
-
-    // did the table return garabage?
-    //mphf might return an index, but it isn't actually what we want. double check the hash
-    if (_variables[idx].xxhash != hash)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
-
-
-    return _variables[idx].value;
+     return _variables[hash];
 }
 
 template < class Gt, class Fb>
 double& face<Gt, Fb>::operator[](const std::string& variable)
 {
-    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), 2654435761U);
-    uint64_t  idx = _variable_bphf->lookup(hash);
-
-    // did the table return garabage?
-    //mphf might return an index, but it isn't actually what we want. double check the hash
-    if( idx >=  _variables.size() ||
-            _variables[idx].xxhash != hash)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
-
-    return _variables[idx].value;
+    return _variables[variable];
 }
 
 template < class Gt, class Fb >
@@ -1517,63 +1395,32 @@ double face<Gt, Fb>::veg_attribute(const std::string &variable)
 template < class Gt, class Fb>
 Vector_3 face<Gt, Fb>::face_vector(const std::string& variable)
 {
-    auto res = _module_face_vectors.find(variable);
-    if(res == _module_face_vectors.end())
-    {
-        return Vector_3(nan(""),nan(""),nan(""));
-    }
-//        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
-
     return _module_face_vectors[variable];
 };
 
 template < class Gt, class Fb>
 void face<Gt, Fb>::init_time_series(std::set<std::string>& variables)
 {
+    _variables.init(variables);
+}
 
-    std::vector<u_int64_t> hash_vec;
-    for(auto& v : variables)
-    {
-        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
-        hash_vec.push_back(hash);
-    }
-
-    _variable_bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
-            new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false));
-
-    _variables.resize(variables.size());
-    for(auto v : variables)
-    {
-        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
-        uint64_t  idx = _variable_bphf->lookup(hash);
-        _variables[idx].value = -9999.0;
-        _variables[idx].variable = v;
-        _variables[idx].xxhash = hash;
-    }
+template < class Gt, class Fb>
+void face<Gt, Fb>::init_vectors(std::set<std::string>& variables)
+{
+    _module_face_vectors.init(variables);
 }
 
 template < class Gt, class Fb>
 void face<Gt, Fb>::init_parameters(std::set<std::string>& parameters)
 {
-    std::vector<u_int64_t> hash_vec;
-    for(auto& v : parameters)
-    {
-        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
-        hash_vec.push_back(hash);
-    }
 
-    _parameters_bphf = std::unique_ptr<boomphf::mphf<u_int64_t,hasher_t>>(
-            new boomphf::mphf<u_int64_t,hasher_t>(hash_vec.size(),hash_vec,1,2,false,false));
+    _parameters.init(parameters);
+}
 
-    _parameters.resize(parameters.size());
-    for(auto& v : parameters)
-    {
-        uint64_t hash = xxh64::hash (v.c_str(), v.length(), 2654435761U);
-        uint64_t  idx = _parameters_bphf->lookup(hash);
-        _parameters[idx].value = -9999.0;
-        _parameters[idx].variable = v;
-        _parameters[idx].xxhash = hash;
-    }
+template < class Gt, class Fb>
+void face<Gt, Fb>::init_module_data(std::set<std::string>& modules)
+{
+    _module_face_data.init(modules);
 }
 
 template < class Gt, class Fb>
@@ -1645,11 +1492,8 @@ template<typename T>
 T* face<Gt, Vb>::make_module_data(const std::string &module)
 {
 
-
-    auto it = _module_face_data.find(module);
-
     //we don't already have this, make a new one.
-    if(it == _module_face_data.end())
+    if(!_module_face_data[module])
     {
         T* data = new T;
         _module_face_data[module] = data;
@@ -1663,39 +1507,15 @@ template < class Gt, class Fb>
 template < typename T>
 T* face<Gt, Fb>::get_module_data(const std::string &module)
 {
-    auto it = _module_face_data.find(module);
-
-    //we don't already have this
-    if(it == _module_face_data.end())
-    {
-        BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
-    }
-
-    return dynamic_cast<T*>(it->second);
-
-
+    return dynamic_cast<T*>(_module_face_data[module]);
 }
+
 template < class Gt, class Fb>
 void face<Gt, Fb>::set_face_vector(const std::string& variable, Vector_3 v)
 {
     _module_face_vectors[variable] = v;
 };
 
-template < class Gt, class Fb>
-void face<Gt, Fb>::remove_face_data(const std::string &module)
-{
-    try
-    {
-        auto ptr =  _module_face_data[module];
-        //split it up to catch the exception if ID not found
-        delete ptr;
-        _module_face_data.erase(module);
-    }
-    catch(...)
-    {
-        BOOST_THROW_EXCEPTION(module_data_error() << errstr_info ("No data for module " + module));
-    }
-};
 template < class Gt, class Fb>
 void face<Gt, Fb>::set_module_data(const std::string &module, face_info *fi)
 {

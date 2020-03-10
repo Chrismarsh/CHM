@@ -169,6 +169,8 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
             provides("csubl" + std::to_string(i));
             provides("settling_velocity" + std::to_string(i));
             provides("u_z" + std::to_string(i));
+
+            provides_vector("uvw"+std::to_string(i));
         }
 
         provides("is_drifting");

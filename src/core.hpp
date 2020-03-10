@@ -269,10 +269,12 @@ protected:
     std::set<std::string> _provided_var_met_files;
     //unique list of all variables provided by all the modules
     std::set<std::string> _provided_var_module;
+    std::set<std::string> _provided_var_vector;
 
     //unique set of all the paramters provided by the meshes
     std::set<std::string> _provided_parameters;
     std::set<std::string> _provided_initial_conditions;
+
 
     boost::posix_time::ptime* _start_ts;
     boost::posix_time::ptime* _end_ts;

@@ -100,7 +100,7 @@ typedef pt::ptree config_file;
                 case SpatialType::distance:
                     is_distance_set = false;
                 default:
-                      is_distance_set = false;
+                    is_distance_set = false;
             }
         }
       // explicit construction with distance intended for modules with a fixed distance
@@ -178,6 +178,7 @@ public:
     {
         _provides = boost::make_shared<std::vector<variable_info>>();
         _provides_parameters = boost::make_shared<std::vector<std::string>>();
+        _vectors = boost::make_shared<std::vector<std::string>>();
         _depends = boost::make_shared<std::vector<variable_info>>();
         _depends_from_met = boost::make_shared<std::vector<std::string>>();
         _optional = boost::make_shared<std::vector<std::string>>();
@@ -258,11 +259,38 @@ public:
     }
 
     /**
+    * List of the vetors that this module provides.
+    */
+    boost::shared_ptr<std::vector<std::string> > provides_vector()
+    {
+        return _vectors;
+    }
+
+    /**
     * List of the parameters that this module provides.
     */
     boost::shared_ptr<std::vector<std::string> > provides_parameter()
     {
         return _provides_parameters;
+    }
+
+    /**
+     *
+     * - default behaviour is to make it of type NEIGHBOUR
+    */
+
+
+    /// Set a vector variable that this module provides.
+    /// ** Currently not used to resolve dependencies **
+    /// This is a list of variables that are stored as x,y,z vectors, such as wind velocities
+    ///  Vector_3 so magnitude needs to be stored in a normal _provides variable
+    /// @param name
+    void provides_vector(const std::string& name)
+    {
+        if(name.find_first_of("\t ") != std::string::npos)
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + name +" has a space. This is not allowed."));
+
+        _vectors->push_back(name);
     }
 
     /**
@@ -463,6 +491,11 @@ protected:
     boost::shared_ptr<std::vector<std::string>> _depends_from_met;
     boost::shared_ptr<std::vector<std::string>> _optional;
     boost::shared_ptr<std::vector<std::string>> _conflicts;
+
+    // Currently not used to resolve dependencies
+    // This is a list of variables that are stored as x,y,z vectors, such as wind velocities
+    // Vector_3 so magnitude needs to be stored in a normal _provides variable
+    boost::shared_ptr<std::vector<std::string>> _vectors;
 
     // lists the options that were found
     std::map<std::string, bool> _optional_found;

@@ -229,8 +229,6 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
 void triangulation::from_json(pt::ptree &mesh)
 {
 
-
-
     size_t nvertex_toread = mesh.get<size_t>("mesh.nvertex");
     LOG_DEBUG << "Reading in #vertex=" << nvertex_toread;
     size_t i=0;
@@ -414,13 +412,11 @@ void triangulation::from_json(pt::ptree &mesh)
 
         }
 
-        // init the storage, which builds the mphf
+        // init the storage
 #pragma omp parallel for
         for (size_t i = 0; i < size_faces(); i++)
         {
-
-		   _faces.at(i)->init_parameters(_parameters);
-
+             _faces.at(i)->init_parameters(_parameters);
         }
 
 
@@ -450,9 +446,7 @@ void triangulation::from_json(pt::ptree &mesh)
 #pragma omp parallel for
         for (size_t i = 0; i < size_faces(); i++)
         {
-
-            _faces.at(i)->init_parameters(_parameters);
-
+             _faces.at(i)->init_parameters(_parameters);
         }
 
     }
@@ -1156,6 +1150,40 @@ void triangulation::init_timeseries(std::set< std::string > variables)
         face->init_time_series(variables);
     }
 
+}
+
+void triangulation::init_vectors(std::set<std::string>& variables)
+{
+#pragma omp parallel for
+    for (size_t it = 0; it < size_faces(); it++)
+    {
+        auto face = this->face(it);
+        face->init_vectors(variables);
+    }
+}
+
+void triangulation::init_module_data(std::set< std::string > modules)
+{
+#pragma omp parallel for
+    for (size_t it = 0; it < size_faces(); it++)
+    {
+        auto face = this->face(it);
+        face->init_module_data(modules);
+    }
+}
+
+void triangulation::init_face_data(std::set< std::string >& timeseries,
+                    std::set< std::string >& vectors,
+                    std::set< std::string >& module_data)
+{
+    #pragma omp parallel for
+        for (size_t it = 0; it < size_faces(); it++)
+        {
+            auto face = this->face(it);
+            face->init_time_series(timeseries);
+            face->init_module_data(module_data);
+            face->init_vectors(vectors);
+        }
 }
 
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)

@@ -181,7 +181,7 @@ private:
     double _y;
     double _z;
 
-    variablestorage _timestep_data;
+    variablestorage<double> _timestep_data;
     boost::posix_time::ptime _current_ts;
 
 };

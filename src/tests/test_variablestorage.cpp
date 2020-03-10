@@ -45,7 +45,7 @@ class VariableStorageTest : public testing::Test
 //basic default init sanity checks
 TEST_F(VariableStorageTest, DefaultInit)
 {
-    variablestorage v;
+    variablestorage<double> v;
     ASSERT_EQ(v.size() , 0);
     ASSERT_NO_THROW(v.variables());
     ASSERT_EQ(v.variables().size() , 0);
@@ -55,7 +55,7 @@ TEST_F(VariableStorageTest, DefaultInit)
 // check if the ctor correctly inits the storage pool
 TEST_F(VariableStorageTest, ctorInit)
 {
-    variablestorage v(variables);
+    variablestorage<double> v(variables);
 
     // check no odd throw on var access
     ASSERT_NO_THROW(v.variables());
@@ -79,7 +79,7 @@ TEST_F(VariableStorageTest, ctorInit)
 
 TEST_F(VariableStorageTest, valueAccess)
 {
-    variablestorage v (variables);
+    variablestorage<double> v (variables);
 
     v["t"] = 1;
     v["rh"] = 2;
@@ -95,7 +95,7 @@ TEST_F(VariableStorageTest, valueAccess)
 
 TEST_F(VariableStorageTest, valueAccess_s)
 {
-    variablestorage v (variables);
+    variablestorage<double> v (variables);
 
     v["t"_s] = 1;
     v["rh"_s] = 2;
@@ -110,7 +110,7 @@ TEST_F(VariableStorageTest, valueAccess_s)
 
 TEST_F(VariableStorageTest, has)
 {
-    variablestorage v (variables);
+    variablestorage<double> v (variables);
 
     v["t"] = 1;
     v["rh"] = 2;
@@ -127,7 +127,7 @@ TEST_F(VariableStorageTest, has)
 
 TEST_F(VariableStorageTest, size)
 {
-    variablestorage v (variables);
+    variablestorage<double> v (variables);
 
     v["t"] = 1;
     v["rh"] = 2;
@@ -140,6 +140,6 @@ TEST_F(VariableStorageTest, size)
 
 TEST_F(VariableStorageTest, uninit)
 {
-    variablestorage v;
+    variablestorage<double> v;
     ASSERT_ANY_THROW(v["t"] = 1);
 }

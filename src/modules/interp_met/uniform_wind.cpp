@@ -35,6 +35,8 @@ uniform_wind::uniform_wind(config_file cfg)
     provides("U_R");
     provides("vw_dir");
 
+    provides_vector("wind_direction");
+
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
 }
 

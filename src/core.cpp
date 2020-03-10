@@ -266,10 +266,16 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
             _provided_parameters.insert(p);
         }
 
+        for(auto& p: *(module->provides_vector())) {
+            _provided_var_vector.insert(p);
+        }
+
+
         modnum++;
         _modules.push_back(
                 std::make_pair(module, 1)); //default to 1 for make ordering, we will set it later in determine_module_dep
     }
+
 
     if (modnum == 0)
     {
@@ -1393,8 +1399,16 @@ void core::init(int argc, char **argv)
 
 
     LOG_DEBUG << "Allocating face variable storage";
-    _mesh->init_timeseries(_provided_var_module);
 
+    //we are going to make the assumption that every module can store face data.
+    // However if this is onerous we can add a flag to the modules later
+    std::set<std::string> module_list;
+    for(auto& itr: _modules)
+    {
+        module_list.insert(itr.first->ID);
+    }
+
+    _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
 
     if(point_mode.enable)
     {

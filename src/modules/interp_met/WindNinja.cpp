@@ -49,6 +49,9 @@ WindNinja::WindNinja(config_file cfg)
 
     provides("vw_dir_orig");
 
+    provides_vector("wind_direction_original");
+    provides_vector("wind_direction");
+
     ninja_average = cfg.get("ninja_average",true);
 
     compute_Sx = cfg.get("compute_Sx",true);
@@ -82,11 +85,27 @@ void WindNinja::init(mesh& domain)
         d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
     }
 
+    N_windfield = 0;
+    for(auto& itr: domain->parameters() )
+    {
+        if( itr.find("Ninja") != std::string::npos)
+        {
+          ++N_windfield;
+        }
+    }
+    N_windfield /= 3; // _U, _V, and speedup maps
+
+    LOG_DEBUG << "Found " << N_windfield << " windfields";
+    if (N_windfield == 0)
+    {
+        CHM_THROW_EXCEPTION(module_error,"Could not find any required wind ninja maps");
+    }
+
     H_forc = cfg.get("H_forc",40.0);
     Max_spdup = cfg.get("Max_spdup",3.);
     Min_spdup = cfg.get("Min_spdup",0.1);
     ninja_recirc = cfg.get("ninja_recirc",false);
-    N_windfield = cfg.get("N_windfield",24);
+//    N_windfield = cfg.get("N_windfield",24);
     L_avg = cfg.get("L_avg",-1);
     Sx_crit = cfg.get("Sx_crit", 30.);
 }

@@ -35,6 +35,8 @@ Liston_wind::Liston_wind(config_file cfg)
     provides("vw_dir");
     provides("vw_dir_divergence");
 
+    provides_vector("wind_direction");
+
     provides_parameter("Liston_curvature");
     distance = cfg.get<double>("distance",300);
     Ww_coeff = cfg.get<double>("Ww_coeff",1.0);

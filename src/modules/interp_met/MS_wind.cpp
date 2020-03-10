@@ -44,6 +44,8 @@ MS_wind::MS_wind(config_file cfg)
 
     provides("vw_dir_orig");
 
+    provides_vector("wind_direction");
+
     speedup_height = cfg.get("speedup_height",2.0);
     use_ryan_dir = cfg.get("use_ryan_dir",false);
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
