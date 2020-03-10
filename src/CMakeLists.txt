@@ -101,7 +101,6 @@ set(CHM_SRCS
 		timeseries/timeseries.cpp
 		timeseries/daily.cpp
 		timeseries/netcdf.cpp
-		timeseries/variablestorage.cpp
 
 		utility/regex_tokenizer.cpp
 		utility/timer.cpp
@@ -216,7 +215,7 @@ target_link_libraries(
 set_target_properties(CHM
 		PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-		UNITY_BUILD ON
+		UNITY_BUILD OFF
 		UNITY_BUILD_BATCH_SIZE 2
 		)
 
