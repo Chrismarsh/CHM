@@ -292,7 +292,7 @@ if (BUILD_TESTS)
 	add_subdirectory (tests/googletest/googletest)
 
 	set(TEST_SRCS
-			#   test_station.cpp
+			tests/test_station.cpp
 			tests/test_interpolation.cpp
 			tests/test_timeseries.cpp
 			tests/test_core.cpp

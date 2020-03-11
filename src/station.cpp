@@ -92,7 +92,7 @@ void station::ID(std::string ID)
     _ID = ID;
 }
 
-std::string station::ID()
+std::string station::ID() const
 {
     return _ID;
 }
@@ -160,4 +160,9 @@ int station::min()
 int station::sec()
 {
     return boost::posix_time::to_tm(_current_ts).tm_sec;
+}
+
+bool station::operator==(const station& s) const
+{
+    return s.ID() == this->ID();
 }

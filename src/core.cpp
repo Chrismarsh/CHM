@@ -1935,8 +1935,12 @@ void core::run()
     pvd.add("VTKFile.<xmlattr>.version", "0.1");
 
 
-    LOG_DEBUG << "Starting model run";
+    LOG_DEBUG << "Loading first timestep's met data";
+    // Populate the stations with the first timestep's data.
+    // We can do this _once_ without incrementing the internal iterators
+    _metdata->next();
 
+    LOG_DEBUG << "Starting model run";
 
     c.tic();
 
@@ -2280,11 +2284,13 @@ void core::populate_distributed_station_lists()
     }
 
     // Remove duplicates by converting to a set
-    std::unordered_set< std::string > remove_set;
+    std::unordered_set< std::shared_ptr<station>  > keep_set(std::begin(mpi_local_stations), std::end(mpi_local_stations));
 
-    for(auto& itr: mpi_local_stations)
+    std::unordered_set< std::string > remove_set;
+    for(auto& itr: _metdata->stations())
     {
-        remove_set.insert(itr->ID());
+        if( keep_set.find(itr) == keep_set.end() ) // not found in the set we want to keep, mark for removal
+            remove_set.insert(itr->ID());
     }
 
     // Store the local stations in the triangulations mpi-local stationslist vector

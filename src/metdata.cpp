@@ -149,10 +149,6 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
     _dt = _nc->get_dt();
 
     _current_ts = _start_time;
-
-    // load the first timestep's data
-    next();
-
 }
 
 void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offset)
@@ -264,8 +260,6 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
     _n_timesteps = _ascii_stations.begin()->second->_obs.get_date_timeseries().size(); //grab the first timeseries, they are all the same period now
     _nstations = _ascii_stations.size();
 
-    // Populate the stations with the first timestep's data. We can do this _once_ without incrementing the internal iterators
-    next();
 }
 
 boost::posix_time::ptime metdata::start_time()

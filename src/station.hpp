@@ -23,10 +23,7 @@
 
 #pragma once
 
-
 #include <string>
-
-#include <boost/utility.hpp>
 
 #include "variablestorage.hpp"
 #include "timeseries.hpp"
@@ -38,7 +35,7 @@
 *
 * Allows the station to represent a timestep that has a location (x,y), an elevation, and a station ID.
 */
-class station : boost::noncopyable
+class station
 {
 public:
         
@@ -108,7 +105,7 @@ public:
     * Returns the station ID
     * \return Station ID
     */
-    std::string ID();
+    std::string ID() const;
 
     /**
      * Initializes the station to store the specified variables. This will destroy all data
@@ -170,6 +167,11 @@ public:
 
     double& operator[](const uint64_t& hash);
     double& operator[](const std::string& variable);
+
+    /// Stations are equal if they have the same id
+    /// @param s
+    /// @return
+    bool operator==(const station& s) const;
 
 
 
