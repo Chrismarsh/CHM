@@ -23,12 +23,24 @@
 
 #pragma once
 
+// spatial tree  -- cgal includes
+#include <CGAL/Simple_cartesian.h>
+#include <CGAL/Kd_tree.h>
+#include <CGAL/algorithm.h>
+#include <CGAL/Fuzzy_sphere.h>
+#include <CGAL/Search_traits_2.h>
+#include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/Splitters.h>
+#include <CGAL/Euclidean_distance.h>
+
 //std includes
 #include <string>
 #include <set>
+#include <unordered_set>
 #include <vector>
 
 //boost includes
+#include <boost/function.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 
 //Gdal includes
@@ -101,7 +113,26 @@ class metdata
 
     void write_stations_to_ptv(const std::string& path);
 
+    /**
+      * Returns a set of stations within the search radius (meters) centered on the point x,y
+    * @param x
+    * @param y
+    * @param radius
+    * @return List stations that satisfy search criterion
+    */
+    std::vector< std::shared_ptr<station> > get_stations_in_radius(double x, double y,double radius);
 
+    /**
+     * Returns the nearest station to x,y. Ignores elevation
+     * @param x
+     * @param y
+     * @param N Number neighbours to find
+     * @return
+     */
+    std::vector< std::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
+
+    /// Return a list of stations for a point x,y corresponding to a search radius, or nearest station
+    boost::function< std::vector< std::shared_ptr<station> > ( double, double) > get_stations;
 
     /// Number of stations
     /// @return
@@ -145,6 +176,9 @@ class metdata
     /// @return False if no more timesteps
     bool next();
 
+    /// Removes a subset of stations from the  station list
+    /// @param stations The set of station IDs to remove
+    void prune_stations(std::unordered_set<std::string>& station_ids);
 
     /**
     * List all (including module provided) variables. If ascii files are loaded, this includes variables present in one 1 met file.
@@ -152,6 +186,7 @@ class metdata
     */
     std::set<std::string> list_variables();
 
+    std::vector< std::shared_ptr<station>>& stations();
 
   private:
 
@@ -230,6 +265,31 @@ class metdata
     //holds the proj4 string of the mesh. we need this to be able to reproject input data to the mesh
     std::string _mesh_proj4;
     bool _is_geographic; // geographic mesh that requires further reprojection?
+
+    // spatial searching data structure
+    typedef CGAL::Simple_cartesian<double> Kernel;
+    typedef boost::tuple<Kernel::Point_2, std::shared_ptr<station> >  Point_and_station;
+    typedef CGAL::Search_traits_2<Kernel> Traits_base;
+    typedef CGAL::Search_traits_adapter<Point_and_station,
+        CGAL::Nth_of_tuple_property_map<0, Point_and_station>,
+        Traits_base>                                              Traits;
+
+
+    //Sliding_midpoint spatial search tree. Better stability for searching with the coordinate systems we use
+    typedef CGAL::Sliding_midpoint<Traits> Splitter;
+    typedef CGAL::Kd_tree<Traits,Splitter> Tree;
+
+    // used for get_stations_in_radius
+    typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
+
+    // This is used by nearest_station to find a single nearest station
+    typedef CGAL::Orthogonal_k_neighbor_search <
+        Traits,
+        typename CGAL::internal::Spatial_searching_default_distance<Traits>::type,
+        Splitter > Neighbor_search;
+
+    Tree _dD_tree; //spatial query tree
+
 
 };
 

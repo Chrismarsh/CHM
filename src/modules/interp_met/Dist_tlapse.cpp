@@ -47,11 +47,9 @@ void Dist_tlapse::init(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
-	       auto face = domain->face(i);
-	       auto d = face->make_module_data<data>(ID);
-	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
-
+       auto face = domain->face(i);
+       auto d = face->make_module_data<data>(ID);
+       d->interp.init(global_param->interp_algorithm,face->stations().size() );
     }
 
 }
@@ -61,10 +59,10 @@ void Dist_tlapse::run(mesh_elem& face)
     //lapse_rate=0.0047;
 
     // Find nearest station
-    auto s_near = global_param->nearest_station(face->center().x(),face->center().y());
+    auto s_near = face->nearest_station();
 
     // Get the lapse rate from that station
-    double lapse_rate = (*s_near.at(0))["t_lapse_rate"];
+    double lapse_rate = (*s_near)["t_lapse_rate"];
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;

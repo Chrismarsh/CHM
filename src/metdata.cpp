@@ -134,6 +134,8 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
                 //it will allow us to pull out the station for a specific x,y more easily.
                 _stations.at(index) = s;
+
+                _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
             }
         }
 
@@ -233,6 +235,8 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         // init the datastore with timeseries variables + anything from the filters
         s->init(_variables);
         _stations.push_back(s);
+
+        _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
     }
 
     // compute the dt for all stations and ensure they match
@@ -527,4 +531,55 @@ bool metdata::next_nc()
     return true;
 
 
+}
+
+std::vector< std::shared_ptr<station> > metdata::get_stations_in_radius(double x, double y, double radius )
+{
+    // define exact circular range query  (fuzziness=0)
+    Kernel::Point_2 center(x, y);
+    Fuzzy_circle exact_range(center, radius);
+
+    std::vector<boost::tuple<Kernel::Point_2, std::shared_ptr<station> > > result;
+    _dD_tree.search(std::back_inserter(result), exact_range);
+
+    std::vector< std::shared_ptr<station> > stations;
+    stations.reserve(result.size());
+    for (auto& itr : result)
+    {
+        stations.push_back( boost::get<1>(itr));
+    }
+    return stations;
+
+}
+
+std::vector< std::shared_ptr<station> > metdata::nearest_station(double x, double y,unsigned int N)
+{
+    Kernel::Point_2 query(x,y);
+    Neighbor_search search(_dD_tree, query, N);
+
+    std::vector< std::shared_ptr<station> > stations;
+    for (auto itr : search)
+    {
+        stations.push_back( boost::get<1>(itr.first));
+    }
+    return stations;
+
+}
+
+void metdata::prune_stations(std::unordered_set<std::string>& station_ids)
+{
+    _stations.erase(
+        std::remove_if(std::begin(_stations), std::end(_stations),
+        [&](auto const& it)
+        {
+          return (station_ids.find(it->ID()) != std::end(station_ids));
+        }),
+        std::end(_stations));
+
+    _nstations = _stations.size();
+}
+
+std::vector< std::shared_ptr<station>>& metdata::stations()
+{
+    return _stations;
 }

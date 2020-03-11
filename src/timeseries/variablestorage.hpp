@@ -96,11 +96,15 @@ class variablestorage
     typedef wyandFunctor<uint64_t> hasher_t;
     typedef boomphf::mphf< uint64_t, hasher_t  > boophf_t;
 
+    // sets the default value of newly created variables
+    // needs to be like this because of the template and do specialization
+    T get_default_value();
+
     // Holds the name-value pair in the variable store hashmap
     // we do this as we hold a hash and not the name
     struct var
     {
-        T value{};
+        T value;
         double xxhash; // holds the xxhash value so we can confirm we get the right thing back from BBHash
         std::string variable;
     };
@@ -232,6 +236,8 @@ void variablestorage<T>::init(std::set<std::string>& variables)
         uint64_t hash = xxh64::hash (v.c_str(), v.length(), seed);
         uint64_t  idx = _variable_bphf->lookup(hash);
 
+
+        _variables[idx].value = get_default_value();
         _variables[idx].variable = v;
         _variables[idx].xxhash = hash;
     }
@@ -245,3 +251,17 @@ size_t variablestorage<T>::size()
 {
     return _size;
 }
+
+template<typename T> inline
+T variablestorage<T>::get_default_value()
+{
+    return T{};
+}
+
+template<> inline
+double variablestorage<double>::get_default_value()
+{
+    return -9999;
+}
+
+

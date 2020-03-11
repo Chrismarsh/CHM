@@ -151,12 +151,11 @@ void core::config_options( pt::ptree &value)
 
     if(radius)
     {
-        _global->station_search_radius = *radius;
-        _global->get_stations = boost::bind( &global::get_stations_in_radius,_global,_1,_2, *radius);
+        _metdata->get_stations = boost::bind( &metdata::get_stations_in_radius,_metdata,_1,_2, *radius);
     }
     else
     {
-	    int n = 0 ; // Number of stations to interp
+        int n = 0 ; // Number of stations to interp
         if(N) // If user specified N in config
         {
             n = *N;
@@ -179,8 +178,7 @@ void core::config_options( pt::ptree &value)
             BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
         }
 
-        _global->N = n;
-        _global->get_stations = boost::bind( &global::nearest_station,_global,_1,_2, n);
+        _metdata->get_stations = boost::bind( &metdata::nearest_station,_metdata,_1,_2, n);
     }
 
 
@@ -440,16 +438,6 @@ void core::config_forcing(pt::ptree &value)
         CHM_THROW_EXCEPTION(forcing_error,"No input forcing files found!");
     }
 
-    _global->_stations.resize(nstations);
-
-    for(size_t i = 0; i<nstations;i++)
-    {
-        auto s = _metdata->at(i);
-
-        //do a few things behind _global's back for efficiency.
-        _global->_stations.at(i) = s;
-        _global->_dD_tree.insert(boost::make_tuple(global::Kernel::Point_2(s->x(), s->y()), s));
-    }
 
     auto f = o_path / "stations.vtp";
     _metdata->write_stations_to_ptv(f.string());
@@ -1248,7 +1236,7 @@ void core::init(int argc, char **argv)
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with. 
     // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further
-    _metdata = std::make_unique<metdata>(_mesh->proj4());
+    _metdata = std::make_shared<metdata>(_mesh->proj4());
     
     //output should come before forcing, controls if we should output the vtp file of station locations
     try
@@ -1275,8 +1263,8 @@ void core::init(int argc, char **argv)
 
 
     // INSERT STATION TRIMMING HERE (after options for interpolation stuff has occurred)
-    _mesh->populate_face_station_lists();
-    _mesh->populate_distributed_station_lists();
+    populate_face_station_lists();
+    populate_distributed_station_lists();
 
 
     boost::filesystem::path full_path(boost::filesystem::current_path());
@@ -1324,28 +1312,34 @@ void core::init(int argc, char **argv)
     {
         LOG_INFO << "Running in point mode";
 
+        std::unordered_set< std::string > remove_set;
         //remove everything but the one forcing
-        _global->_stations.erase(std::remove_if(_global->_stations.begin(),_global->_stations.end(),
-                       [this](std::shared_ptr<station> s){return s->ID() != point_mode.forcing;}),
-                                _global->_stations.end());
+
+        for(auto& itr : _metdata->stations())
+        {
+            if( itr->ID() != point_mode.forcing)
+                remove_set.insert(itr->ID());
+        }
+
+
+        _metdata->prune_stations(remove_set);
 
         _outputs.erase(std::remove_if(_outputs.begin(),_outputs.end(),
-                                      [this](output_info o){return o.name  != point_mode.output;}),
+                                      [this](const output_info& o){return o.name  != point_mode.output;}),
                        _outputs.end());
 
-        LOG_DEBUG << _global->_stations.size();
+
         LOG_DEBUG << _outputs.size();
-        if ( _global->_stations.size() != 1 ||
+        if ( _metdata->nstations() != 1 ||
                 _outputs.size() !=1)
         {
             BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(">1 station or outputs in point mode"));
 
         }
-        for(auto s: _global->_stations)
+        for(auto s: _metdata->stations())
         {
             LOG_DEBUG << *s;
         }
-
 
         for(auto o:_outputs)
         {
@@ -2212,4 +2206,91 @@ void core::run()
 void core::end()
 {
     LOG_DEBUG << "Cleaning up";
+}
+
+void core::populate_face_station_lists()
+{
+
+    LOG_DEBUG << "Populating each face's station list";
+
+    for (size_t i = 0; i < _mesh->size_faces(); i++)
+    {
+        auto f = _mesh->face(i);
+
+        if ( f->stations().size() == 0 )
+        {
+            auto stations = _metdata->get_stations(f->get_x(), f->get_y());
+            f->stations().insert(std::end(f->stations()), std::begin(stations), std::end(stations));
+
+            f->nearest_station() = _metdata->nearest_station(f->get_x(), f->get_y()).at(0);
+
+        }  else
+        {
+            CHM_THROW_EXCEPTION(mesh_error,"Face station list already populated.");
+        }
+    }
+
+}
+
+void core::populate_distributed_station_lists()
+{
+    std::vector<std::shared_ptr<station>> _stations; //stations to cull
+
+    using th_safe_multicontainer_type = std::vector< std::shared_ptr<station> >[];
+    std::unique_ptr< th_safe_multicontainer_type > th_local_stations;
+    std::vector< std::shared_ptr<station> > mpi_local_stations;
+
+    LOG_DEBUG << "Populating each MPI process's station list";
+
+#pragma omp parallel
+    {
+        // We want an array of vectors, so that OMP threads can increment them
+        // separately, then join them afterwards
+#pragma omp single
+        {
+            th_local_stations = std::make_unique< th_safe_multicontainer_type >(omp_get_num_threads());
+        }
+#pragma omp for
+        for(size_t face_index=0; face_index< _mesh->size_faces(); ++face_index)
+        {
+            // face_index is a local index... get the face handle
+            auto face = _mesh->face(face_index);
+            if ( face->stations().empty() )
+            { // only perform if faces' stationlists are set
+                BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Face station lists must be populated before populating distributed MPI station lists."));
+            }
+            for (auto &p : face->stations())
+            {
+                th_local_stations[omp_get_thread_num()].push_back(p);
+            }
+        }
+        // Join the vectors via a single thread in t operations
+        //  NOTE future optimizations:
+        //   - reserve space for insertions into mpi_local_stations
+        //   - can be done recursively in log2(num_threads) operations
+#pragma omp single
+        {
+            for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx)
+            {
+                mpi_local_stations.insert(std::end(mpi_local_stations),
+                                          std::begin(th_local_stations[thread_idx]), std::end(th_local_stations[thread_idx]));
+            }
+        }
+
+    }
+
+    // Remove duplicates by converting to a set
+    std::unordered_set< std::string > remove_set;
+
+    for(auto& itr: mpi_local_stations)
+    {
+        remove_set.insert(itr->ID());
+    }
+
+    // Store the local stations in the triangulations mpi-local stationslist vector
+    _metdata->prune_stations(remove_set);
+
+#ifdef USE_MPI
+    LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _metdata->nstations() << " locally owned stations.";
+#endif
 }

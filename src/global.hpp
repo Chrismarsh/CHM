@@ -28,29 +28,16 @@
 #include <string>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/function.hpp>
 
 namespace pt = boost::property_tree;
-
 
 #include <tbb/concurrent_vector.h>
 
 #include "interpolation.hpp"
-#include "station.hpp"
+
 #include "math/coordinates.hpp"
 
-#include <CGAL/Simple_cartesian.h>
-#include <CGAL/Kd_tree.h>
-#include <CGAL/algorithm.h>
-#include <CGAL/Fuzzy_sphere.h>
-#include <CGAL/Search_traits_2.h>
-#include <CGAL/Orthogonal_k_neighbor_search.h>
-#include <CGAL/Splitters.h>
 
-
-#include <CGAL/Euclidean_distance.h>
-
-class station;
 /**
  * Basin wide parameters such as transmissivity, solar elevation, solar aspect, etc.
  *
@@ -63,25 +50,7 @@ class global
 
     };
 
-    typedef CGAL::Simple_cartesian<double> Kernel;
-    typedef boost::tuple<Kernel::Point_2, std::shared_ptr<station> >  Point_and_station;
-    typedef CGAL::Search_traits_2<Kernel> Traits_base;
-    typedef CGAL::Search_traits_adapter<Point_and_station,
-            CGAL::Nth_of_tuple_property_map<0, Point_and_station>,
-            Traits_base>                                              Traits;
 
-    //Sliding_midpoint spatial search tree. Better stability for searching with the coordinate systems we use
-    typedef CGAL::Sliding_midpoint<Traits> Splitter;
-    typedef CGAL::Kd_tree<Traits,Splitter> Tree;
-
-    // used for get_stations_in_radius
-    typedef CGAL::Fuzzy_sphere<Traits> Fuzzy_circle;
-
-    // This is used by nearest_station to find a single nearest station
-    typedef CGAL::Orthogonal_k_neighbor_search <
-             Traits,
-             typename CGAL::internal::Spatial_searching_default_distance<Traits>::type,
-            Splitter > Neighbor_search;
 
     //want to let core modify date time, etc without showing a public interface.
     //This is because global gets passed to all modules and a rogue module could do something dumb
@@ -90,27 +59,17 @@ class global
 
 private:
     boost::posix_time::ptime _current_date;
-    Tree _dD_tree; //spatial query tree
-    //each station where observations are
-    std::vector< std::shared_ptr<station> > _stations;
+
     int _dt; //seconds
     bool _is_geographic;
-
     bool _is_point_mode;
 
-    //if radius selection for stations is chosen this holds that
-    double radius;
-    double N; // meters, radius for station search
-
-    double _n_stations; //total number of stations
 
 public:
 
-    boost::function< std::vector< std::shared_ptr<station> > ( double, double) > get_stations;
-
     bool is_point_mode();
 
-    //approximate UTC offset
+    // UTC offset
     int _utc_offset;
     bool is_geographic();
     global();
@@ -118,7 +77,7 @@ public:
     int day();
     interp_alg interp_algorithm;
     /*
-     * Montboosth on [1,12]
+     * Month on [1,12]
      */
     int month();
     int hour();
@@ -130,55 +89,11 @@ public:
 
     size_t timestep_counter; // the timestep we are on, start = 0
 
-    double station_search_radius;
+
     bool first_time_step;
 
-    /**
-     * Inserts a new station
-     * @param s
-     */
-    void insert_station(std::shared_ptr<station> s);
-
-    /**
- * Inserts new stations for a vector of stations
- * @param s
- */
-    void insert_stations(tbb::concurrent_vector< std::shared_ptr<station> >& stations);
-
-    /**
-     * Returns a set of stations within the search radius (meters) centered on the point x,y
-     * @param x
-     * @param y
-     * @param radius
-     * @return List stations that satisfy search criterion
-     */
-    std::vector< std::shared_ptr<station> > get_stations_in_radius(double x, double y,double radius);
-
-    /**
-     * Returns the nearest station to x,y. Ignores elevation
-     * @param x
-     * @param y
-     * @param N Number neighbours to find
-     * @return
-     */
-    std::vector< std::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
-
-
-    std::vector< std::shared_ptr<station> >& stations();
-//    template<class T>
-//    T get_parameter_value(std::string key);
 
     pt::ptree parameters;
 
-    /**
-     * Total number of stations
-     * @return
-     */
-    size_t number_of_stations();
+
 };
-//
-//template<class T>
-//T global::get_parameter_value(std::string key)
-//{
-//    return parameters.get<T>(key);
-//}

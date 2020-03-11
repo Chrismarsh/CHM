@@ -22,8 +22,6 @@
 
 #pragma once
 
-#define BOOST_SPIRIT_THREADSAFE
-
 //vtk includes
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
@@ -57,9 +55,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/algorithm/cxx11/any_of.hpp>
-
-#include <tbb/concurrent_vector.h>
-
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
@@ -71,6 +66,8 @@
 #include <boost/bind.hpp>
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
+
+#include <tbb/concurrent_vector.h>
 
 #include <ogr_spatialref.h>
 
@@ -196,6 +193,16 @@ public:
     void _schedule_modules();
     void _find_and_insert_subjson(pt::ptree& value);
 
+    /**
+     * Populates a list of stations needed within each face
+     */
+    void populate_face_station_lists();
+
+    /**
+     * Populates a list of stations needed on each MPI process
+     */
+    void populate_distributed_station_lists();
+
     // .first = config file to use
     // .second = extra options, if any.
     typedef boost::tuple<
@@ -245,6 +252,11 @@ protected:
 
 
 
+    //if radius selection for stations is chosen this holds that
+    double radius;
+    double N; // meters, radius for station search
+
+
 #ifdef MATLAB
     //matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
@@ -258,7 +270,7 @@ protected:
     boost::shared_ptr<global> _global;
 
     bool _use_netcdf; // flag if we are using netcdf. If we are, it enables incremental reads of the netcdf file for speed.
-    std::unique_ptr<metdata> _metdata; //met data loader
+    std::shared_ptr<metdata> _metdata; //met data loader, shared for use with boost::bind
 
     //calculates the order modules are to be run in
     void _determine_module_dep();

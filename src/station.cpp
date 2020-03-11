@@ -128,13 +128,7 @@ void station::set_posix(boost::posix_time::ptime ts )
 
 bool station::has(const std::string &variable)
 {
-    return false;
-//    auto res = _itrs.find(variable);
-//
-//    if(res == _itrs.end())
-//        return false;
-//    else
-//        return true;
+    return _timestep_data.has(variable);
 }
 
 

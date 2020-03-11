@@ -24,6 +24,15 @@
 
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
+// spatial tree  -- cgal includes
+#include <CGAL/Simple_cartesian.h>
+#include <CGAL/Kd_tree.h>
+#include <CGAL/algorithm.h>
+#include <CGAL/Fuzzy_sphere.h>
+#include <CGAL/Search_traits_2.h>
+#include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/Splitters.h>
+#include <CGAL/Euclidean_distance.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -266,13 +275,14 @@ public:
      */
     Vector_2 edge_unit_normal(int i);
 
+    /// Returns the nearest station to the face
+    /// @return
+    std::shared_ptr<station>& nearest_station();
 
     /**
     * Returns the face's vector of stations
     */
-  std::vector<std::shared_ptr<station>> stations()  {
-    return _stations;
-  }
+  std::vector<std::shared_ptr<station>>& stations();
 
     /**
     * Checks if a point x,y is within the face
@@ -503,6 +513,8 @@ private:
 
     std::vector<std::shared_ptr<station>> _stations;
 
+    std::shared_ptr<station> _nearest_station;
+
 };
 
 typedef face<Gt> Fb; //custom face class
@@ -594,15 +606,7 @@ public:
     */
   void shrink_local_mesh_to_owned_and_distance_neighbours();
 
-  /**
-   * Populates a list of stations needed within each face
-   */
-    void populate_face_station_lists();
 
-  /**
-   * Populates a list of stations needed on each MPI process
-   */
-    void populate_distributed_station_lists();
 
 	/**
 	 * Serializes a mesh attribute to file so it can be read into the model.
@@ -857,8 +861,6 @@ private:
     std::vector< mesh_elem > _ghost_neighbours;
     std::vector< mesh_elem > _ghost_faces;
 
-  std::vector< std::shared_ptr<station> > _stations;
-
 #ifdef NOMATLAB
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
@@ -976,6 +978,18 @@ private:
 	tbb::concurrent_vector<tbb::concurrent_vector<rect*> > m_grid;
 
 };
+
+template < class Gt, class Fb>
+std::vector<std::shared_ptr<station>>& face<Gt, Fb>::stations()
+{
+    return _stations;
+}
+
+template < class Gt, class Fb>
+std::shared_ptr<station>& face<Gt, Fb>::nearest_station()
+{
+    return _nearest_station;
+}
 
 template < class Gt, class Fb>
 bool face<Gt, Fb>::has_parameter(const std::string& variable)
