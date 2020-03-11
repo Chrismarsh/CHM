@@ -36,13 +36,14 @@ class MetdataTest : public testing::Test
         logging::core::get()->set_logging_enabled(false);
 
     }
+    std::string proj4str = "+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ";
 
 };
 
 //basic default init sanity checks
 TEST_F(MetdataTest, LoadAsciiData)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -59,7 +60,7 @@ TEST_F(MetdataTest, LoadAsciiData)
 
 TEST_F(MetdataTest, ASCII_TwoStationDuplicatedID)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -86,7 +87,7 @@ TEST_F(MetdataTest, ASCII_TwoStationDuplicatedID)
 
 TEST_F(MetdataTest, ASCII_TwoStation)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -112,7 +113,7 @@ TEST_F(MetdataTest, ASCII_TwoStation)
 }
 TEST_F(MetdataTest, ASCII_StartEndTime)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -140,7 +141,7 @@ TEST_F(MetdataTest, ASCII_StartEndTime)
 
 TEST_F(MetdataTest, ASCII_TwoStationStartEndTime)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -173,7 +174,7 @@ TEST_F(MetdataTest, ASCII_TwoStationStartEndTime)
 }
 TEST_F(MetdataTest, ASCII_TestCurrentTimeStr)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -194,7 +195,7 @@ TEST_F(MetdataTest, ASCII_TestCurrentTimeStr)
 
 TEST_F(MetdataTest, ASCII_TestNext)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -240,7 +241,7 @@ TEST_F(MetdataTest, ASCII_TestNext)
 
 TEST_F(MetdataTest, ASCII_TestAccessData)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -260,7 +261,7 @@ TEST_F(MetdataTest, ASCII_TestAccessData)
 
 TEST_F(MetdataTest, ASCII_TestStartTimeStr)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -280,7 +281,7 @@ TEST_F(MetdataTest, ASCII_TestStartTimeStr)
 
 TEST_F(MetdataTest, ASCII_TestEndTimeStr)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -300,7 +301,7 @@ TEST_F(MetdataTest, ASCII_TestEndTimeStr)
 
 TEST_F(MetdataTest, ASCII_TestNStations)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -329,7 +330,7 @@ TEST_F(MetdataTest, ASCII_TestNStations)
 
 TEST_F(MetdataTest, ASCII_TestDt)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -358,7 +359,7 @@ TEST_F(MetdataTest, ASCII_TestDt)
 
 TEST_F(MetdataTest, ASCII_TestMissingTs)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "missing_timestep.txt";
@@ -378,7 +379,7 @@ TEST_F(MetdataTest, ASCII_TestMissingTs)
 
 TEST_F(MetdataTest, ASCII_TestInconsistentTs)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -405,7 +406,7 @@ TEST_F(MetdataTest, ASCII_TestInconsistentTs)
 
 TEST_F(MetdataTest, ASCII_TestSubset)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -441,7 +442,7 @@ TEST_F(MetdataTest, ASCII_TestSubset)
 
 TEST_F(MetdataTest, ASCII_TestListVars)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     metdata::ascii_metdata station;
     station.path = "test_met_data_longer1.txt";
@@ -468,7 +469,7 @@ TEST_F(MetdataTest, ASCII_TestListVars)
 
 TEST_F(MetdataTest, NC_TestBasicLoad)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
 
@@ -488,7 +489,7 @@ TEST_F(MetdataTest, NC_TestBasicLoad)
 
 TEST_F(MetdataTest, NC_TestAcess)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
 
@@ -502,7 +503,7 @@ TEST_F(MetdataTest, NC_TestAcess)
 
 TEST_F(MetdataTest, NC_TestNext)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
 
@@ -524,9 +525,33 @@ TEST_F(MetdataTest, NC_TestNext)
 
 TEST_F(MetdataTest, NC_TestnTimeSteps)
 {
-    metdata md("+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ");
+    metdata md(proj4str);
 
     ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
 
     ASSERT_EQ(md.n_timestep(),24);
+}
+
+TEST_F(MetdataTest, NC_TestPrune)
+{
+    metdata md(proj4str);
+
+    ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
+
+    std::unordered_set<std::string> ids_to_remove;
+
+    for(size_t i = 1; i < 151; i++)
+    {
+        for(size_t j = 0; j < 151; j++)
+        {
+            size_t index = i + j * 151;
+            std::string station_name = std::to_string(index); // these don't really have name
+            ids_to_remove.insert(station_name);
+        }
+    }
+
+    md.prune_stations(ids_to_remove);
+
+    ASSERT_EQ((151*151)-(151*150),md.nstations());
+    ASSERT_EQ(md.stations().at(0)->ID(),"0");
 }
