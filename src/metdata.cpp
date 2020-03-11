@@ -493,13 +493,12 @@ bool metdata::next_nc()
         return false; // we've run out of data, we done
     }
 
-#pragma omp parallel for
+
+    //The call to netCDF isn't thread safe. It is protected by a critical section but it's costly, and not running this
+    // in parallel is about 2x faster  #pragma omp parallel for
     for(size_t i = 0; i < nstations();i++)
     {
         auto s = _stations.at(i);
-
-        //The call to netCDF isn't thread safe. It is protected by a critical section but it's costly, and not running this
-        // in parallel is about 2x faster  #pragma omp parallel for
 
         // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
         for (auto &v: _nc->get_variable_names() )
