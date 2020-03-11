@@ -1395,7 +1395,8 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 			_levels[i].bitset =  bitVector(_levels[i].hash_domain); ;
 
 			//printf("---process level %i   wr %i fast %i ---\n",i,_writeEachLevel,_fastmode);
-
+                    if(_writeEachLevel)
+                    {
 			char fname_old[1000];
 			sprintf(fname_old,"temp_p%i_level_%i",_pid,i-2);
 
@@ -1405,8 +1406,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 			char fname_prev[1000];
 			sprintf(fname_prev,"temp_p%i_level_%i",_pid,i-1);
 
-			if(_writeEachLevel)
-			{
+
 				//file management :
 
 				if(i>2) //delete previous file
@@ -1441,7 +1441,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 			if(_writeEachLevel && (i > 1))
 			{
 
-				auto data_iterator_level = file_binary<elem_t>(fname_prev);
+				auto data_iterator_level = file_binary<elem_t>(""); //fname_prev
 
 				typedef decltype(data_iterator_level.begin()) disklevel_it_type;
 
@@ -1515,7 +1515,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 
 				if(i== _nb_levels- 1) //delete last file
 				{
-					unlink(fname_prev);
+//					unlink(fname_prev);
 				}
 			}
 
