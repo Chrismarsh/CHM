@@ -254,19 +254,19 @@ else()
 	target_link_options(CHM
 			PUBLIC "LINKER:--disable-new-dtags" )
 
-	add_custom_command(TARGET CHM POST_BUILD
-			# Some .so will have runpaths, some do not. Just remove them all. The RUNPATHS override the binarie's rpath (I don't know why)
-			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
-
-			# RPATH correctly works, so unlikely to be needed but kept just in case.
-			# This removes all runpaths , and then here we will patch each .so to have the correct RUNPATH
-			# 		COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
-
-			#see if there are any hard coded paths in your binary and if so replace with just the so name
-			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
-
-			VERBATIM
-			)
+#	add_custom_command(TARGET CHM POST_BUILD
+#			# Some .so will have runpaths, some do not. Just remove them all. The RUNPATHS override the binarie's rpath (I don't know why)
+#			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
+#
+#			# RPATH correctly works, so unlikely to be needed but kept just in case.
+#			# This removes all runpaths , and then here we will patch each .so to have the correct RUNPATH
+#			# 		COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
+#
+#			#see if there are any hard coded paths in your binary and if so replace with just the so name
+#			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
+#
+#			VERBATIM
+#			)
 
 endif()
 
