@@ -228,6 +228,9 @@ public:
     boost::filesystem::path o_path; //path to output folder
     boost::filesystem::path log_file_path; // fully qualified path to the log file
 protected:
+
+    std::string version = "CHM 1.0 " GIT_BRANCH "/" GIT_COMMIT_HASH;
+
     //current level of the logger. Defaults to debug, but can be changed via configuration settings
     log_level _log_level;
 

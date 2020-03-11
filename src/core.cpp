@@ -887,7 +887,7 @@ void core::config_global( pt::ptree &value)
 
 core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
 {
-    std::string version = "CHM 0.1 " GIT_BRANCH "/" GIT_COMMIT_HASH;
+
 
     std::string config_file = "";
     std::string start;
@@ -1041,6 +1041,7 @@ void core::init(int argc, char **argv)
    rank = "."+std::to_string(_comm_world.rank());
 #endif
 
+
     std::string log_name = "CHM_" + log_start_time + rank + ".log";
 
     boost::filesystem::create_directories(log_path);
@@ -1096,6 +1097,8 @@ void core::init(int argc, char **argv)
     logging::core::get()->add_sink(_log_sink);
 
     LOG_DEBUG << "Logger initialized. Writing to cout and " + log_name;
+    LOG_DEBUG << version;
+
 
 
 #ifdef NOMATLAB
