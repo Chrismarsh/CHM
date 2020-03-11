@@ -35,6 +35,8 @@ station::station()
     _y = 0;
     _z = 0.0;
 
+    _nc_x = _nc_y = -1;
+
 }
 
 station::station(std::string ID, double x, double y, double elevation, std::set<std::string> variables )
@@ -43,7 +45,9 @@ station::station(std::string ID, double x, double y, double elevation, std::set<
     _x = x;
     _y = y;
     _z = elevation;
-    init(variables);
+
+    _nc_x = _nc_y = -1;
+    init(std::move(variables));
 }
 
 double& station::operator[](const uint64_t& hash)

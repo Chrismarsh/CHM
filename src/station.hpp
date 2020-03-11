@@ -173,15 +173,20 @@ public:
     /// @return
     bool operator==(const station& s) const;
 
+    friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
 
-
-friend std::ostream& operator<<(std::ostream &strm, const station &s) ;
+    //holds the corresponding x,y grid cell of the netcdf file
+    // speeds up loading the stations' data on the metdata->next() call
+    // shouldn't be used
+    double _nc_x;
+    double _nc_y;
 
 private:
     std::string _ID;
     double _x;
     double _y;
     double _z;
+
 
     variablestorage<double> _timestep_data;
     boost::posix_time::ptime _current_ts;

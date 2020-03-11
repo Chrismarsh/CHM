@@ -217,6 +217,7 @@ TEST_F(MetdataTest, ASCII_TestNext)
     s.push_back(station);
 
     ASSERT_NO_THROW(md.load_from_ascii(s, -8));
+    md.next(); // load first timestep
 
     std::string cur_time = "";
     //returns false when no ts left
@@ -254,6 +255,7 @@ TEST_F(MetdataTest, ASCII_TestAccessData)
     s.push_back(station);
 
     ASSERT_NO_THROW(md.load_from_ascii(s, -8));
+    md.next(); // load first timestep
 
     ASSERT_DOUBLE_EQ(md.at(0)->operator[]("Qsi"_s),112.101);
 
@@ -473,6 +475,8 @@ TEST_F(MetdataTest, NC_TestBasicLoad)
 
     ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
 
+    md.next(); // load first timestep
+
     ASSERT_EQ(md.nstations(), 151*151 );
 
     auto vars = md.list_variables();
@@ -493,6 +497,8 @@ TEST_F(MetdataTest, NC_TestAcess)
 
     ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
 
+    md.next(); // load first timestep
+
     auto value = (*md.at(0))["t"];
     ASSERT_DOUBLE_EQ(value, -1.4661178588867188);
 
@@ -506,6 +512,8 @@ TEST_F(MetdataTest, NC_TestNext)
     metdata md(proj4str);
 
     ASSERT_NO_THROW(md.load_from_netcdf("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc"));
+    md.next(); // load first timestep
+
 
     auto value = (*md.at(0))["t"];
     ASSERT_DOUBLE_EQ(value, -1.4661178588867188);

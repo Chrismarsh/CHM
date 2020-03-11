@@ -131,6 +131,9 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 std::shared_ptr<station> s = std::make_shared<station>(station_name,
                     longitude, latitude, elevation, _variables);
 
+                s->_nc_x = x;
+                s->_nc_y = y;
+
                 //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
                 //it will allow us to pull out the station for a specific x,y more easily.
                 _stations.at(index) = s;
@@ -492,32 +495,21 @@ bool metdata::next_nc()
     // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
     for (auto &v: _nc->get_variable_names() )
     {
-        // Need to decide how best to do this as it may be too memory expensive to load the entire thing into ram
-        // auto data = _nc->get_var(itr, t);
 
-        //The call to netCDF isn't thread safe. It is protected by a critical section but it's costly, and not running this
-        // in parallel is about 2x faster  #pragma omp parallel for
-        for (size_t y = 0; y < _nc->get_ysize(); y++)
+        for(size_t i = 0; i < nstations();i++)
         {
-            for (size_t x = 0; x < _nc->get_xsize(); x++)
+            auto s = _stations.at(i);
+
+            //The call to netCDF isn't thread safe. It is protected by a critical section but it's costly, and not running this
+            // in parallel is about 2x faster  #pragma omp parallel for
+
+            double d =  _nc->get_var(v, _current_ts, s->_nc_x, s->_nc_y);
+            (*s)[v] = d;
+            s->set_posix(_current_ts);
+
+            for (auto &f : _netcdf_filters)
             {
-                size_t index = x + y * _nc->get_xsize();
-                auto s = _stations.at(index);
-
-                //sanity check that we are getting the right station for this xy pair
-                if (s->ID() != std::to_string(index))
-                {
-                    CHM_THROW_EXCEPTION(forcing_error, "Station=" + s->ID() + ": wrong ID");
-                }
-
-                double d =  _nc->get_var(v, _current_ts, x, y);
-                (*s)[v] = d;
-                s->set_posix(_current_ts);
-
-                for (auto &f : _netcdf_filters)
-                {
-                    f.second->process(s);
-                }
+                f.second->process(s);
             }
         }
     }
