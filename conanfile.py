@@ -52,6 +52,7 @@ class CHMConan(ConanFile):
         self.requires( "tbb/2019_u9@CHM/stable" )
         self.requires( "eigen3/3.3.7@CHM/stable" )
         self.requires( "meteoio/2.8.0@CHM/stable")
+        self.requires( "func/0.1@CHM/stable")
 
     def _configure_cmake(self):
         cmake = CMake(self)

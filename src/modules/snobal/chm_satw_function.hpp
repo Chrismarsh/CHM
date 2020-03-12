@@ -1,5 +1,5 @@
 #pragma once
-#include "EvaluationFunctor.hpp"
+#include <func/EvaluationFunctor.hpp>
 #include <cmath>
 #define SEA_LEVEL 1.013246e5
 #define BOIL 3.7315e2

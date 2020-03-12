@@ -270,6 +270,7 @@ else()
     set(Tcmalloc_LIBRARY "")
 endif()
 
+find_package(func REQUIRED)
 
 find_package(viennacl  REQUIRED)
 message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")

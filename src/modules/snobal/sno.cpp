@@ -26,7 +26,7 @@
 //
 
 #include "sno.h"
-#include "func.hpp"
+#include <func/func.hpp>
 #include "chm_satw_function.hpp"
 #include "chm_sati_function.hpp"
 using namespace snobalMacros;
