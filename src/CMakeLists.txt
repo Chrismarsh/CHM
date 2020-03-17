@@ -79,6 +79,9 @@ set(MODULE_SRCS
 		modules/crop_rotation.cpp
         modules/PBSM3D.cpp
 
+		modules/FSM/FSM.cpp
+		modules/FSM/FSM2_CHM.f90
+
 		CACHE INTERNAL "" FORCE )
 
 
@@ -205,7 +208,7 @@ add_executable(
 
 
 target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
-target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS} -std=f2003 -fno-underscoring)
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 		CHM
