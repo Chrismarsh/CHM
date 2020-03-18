@@ -79,7 +79,7 @@ set(MODULE_SRCS
 		modules/crop_rotation.cpp
         modules/PBSM3D.cpp
 
-		modules/FSM/FSM.cpp
+		modules/FSM/fsm.cpp
 		modules/FSM/FSM2_CHM.f90
 
 		CACHE INTERNAL "" FORCE )
