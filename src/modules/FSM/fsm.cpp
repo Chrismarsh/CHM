@@ -38,7 +38,16 @@ FSM::FSM(config_file cfg)
     depends("iswr_direct");
     depends("iswr_diffuse");
 
+    optional("iswr_subcanopy");
+    optional("rh_subcanopy");
+    optional("ta_subcanopy");
+    optional("ilwr_subcanopy");
+
     provides("swe");
+    provides("snowdepthavg");
+    provides("snowdepthavg_vert");
+
+    conflicts("snow_slide"); // for now don't run w/ snowslide
 }
 
 void FSM::init(mesh& domain)
@@ -59,6 +68,11 @@ void FSM::init(mesh& domain)
 }
 void FSM::run(mesh_elem& face)
 {
+    if(is_water(face))
+    {
+        set_all_nan_on_skip(face);
+        return;
+    }
 
     // met data
 
@@ -68,20 +82,48 @@ void FSM::run(mesh_elem& face)
 
     float dt = (float)global_param->dt();
 
-    float Qs = __constants_MOD_eps * (__constants_MOD_e0 / Ps) *
-               exp((float)17.5043 * (*face)["t"_s] / ((float)241.3 + (*face)["t"_s]));
-    float Qa = ((*face)["rh"_s] / (float)100.0) * Qs; // specific humidity
 
+    float rh = -9999;
+    if(has_optional("rh_subcanopy")) {
+        rh = (*face)["rh_subcanopy"_s];
+    } else {
+        rh = (*face)["rh"_s];
+    }
+
+    //TODO: needs to have subcanopy added?
     float Rf = (*face)["p_rain"_s] / dt; // rainfall rate
     float Sf = (*face)["p_snow"_s] / dt; // snowfall rate
 
     auto d = face->get_module_data<data>(ID);
 
     float elev = (float)(*face)["solar_el"_s];
-    float ilwr = (float)(*face)["ilwr"_s];
+    float ilwr = -9999;
+    if(has_optional("ilwr_subcanopy")) {
+        ilwr = (float)(*face)["ilwr_subcanopy"_s];
+    } else {
+        ilwr = (float)(*face)["ilwr"_s];
+    }
+
+
+    // TODO: needs subcanopy
     float Sdiff = (float)(*face)["iswr_diffuse"_s];
     float Sdir = (float)(*face)["iswr_direct"_s];
-    float t = (float)(*face)["t"_s]+271.15;
+
+    //TODO: needs avalanching mass
+
+    float t = -9999;
+    if(has_optional("ta_subcanopy")) {
+        t = (float)(*face)["ta_subcanopy"_s];
+    } else {
+        t = (float)(*face)["t"_s];
+    }
+    t += 271.15;
+
+    float tc = t - 273.15;
+    float Qs = __constants_MOD_eps * (__constants_MOD_e0 / Ps) *
+               exp((float)17.5043 * tc / ((float)241.3 + tc));
+    float Qa = (rh/ (float)100.0) * Qs; // specific humidity
+
     float U = (float)(*face)["U_2m_above_srf"_s];
 
 
@@ -104,6 +146,8 @@ void FSM::run(mesh_elem& face)
         &d->diag.Usub);
 
     (*face)["swe"_s] = d->diag.SWE;
+    (*face)["snowdepthavg"_s] = d->diag.snd;
+    (*face)["snowdepthavg_vert"_s] = d->diag.snd/std::max(0.001,cos(face->slope()));
 
 }
 
