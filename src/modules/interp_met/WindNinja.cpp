@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "openmp-use-default-none"
 //
 // Canadian Hydrological Model - The Canadian Hydrological Model (CHM) is a novel
 // modular unstructured mesh based approach for hydrological modelling
@@ -90,23 +92,75 @@ void WindNinja::init(mesh& domain)
     {
         if( itr.find("Ninja") != std::string::npos)
         {
-          ++N_windfield;
+            ++N_windfield;
         }
     }
     N_windfield /= 3; // _U, _V, and speedup maps
 
     LOG_DEBUG << "Found " << N_windfield << " windfields";
+    try
+    {
+        // see if we have a manually specified number
+        int user_nwindfield = cfg.get<int>("N_windfield");
+
+        LOG_WARNING << "Override auto-detected windfield count with user specified value = " << user_nwindfield;
+
+        // we may have more in the param file than we specify if we have multiple averaging radii. Probably not an error but warn the user this makes sense!
+        if( user_nwindfield < N_windfield)
+            LOG_WARNING << "User specified " << user_nwindfield << " wind fields, but there are " << N_windfield << " in the param file. Make sure this makes sense.";
+
+        if(user_nwindfield > N_windfield)
+        {
+            CHM_THROW_EXCEPTION(module_error, "More wind fields were requested than what exist!");
+        }
+
+        N_windfield = user_nwindfield;
+    }
+    catch(...)
+    {
+        // not user specified, is ok
+    }
+
     if (N_windfield == 0)
     {
         CHM_THROW_EXCEPTION(module_error,"Could not find any required wind ninja maps");
     }
 
+    // ensure a user-specified L_avg value makes sense
+    L_avg = -1;
+    try
+    {
+        L_avg = cfg.get<int>("L_avg");
+
+        int n_lavg = 0; // number of params that have a specific l_avg
+        auto s_lavg = std::to_string(L_avg);
+
+        for(auto& itr: domain->parameters() )
+        {
+            if( itr.find("Ninja") != std::string::npos &&
+                 itr.find("_"+s_lavg) != std::string::npos
+            )
+            {
+                ++n_lavg;
+            }
+        }
+
+        if(n_lavg != N_windfield)
+        {
+            CHM_THROW_EXCEPTION(module_error,"The user specified value of L_avg=" +
+                s_lavg + " does not match the number of wind fields.");
+        }
+    }
+    catch(...)
+    {
+        // not user specified, is ok
+    }
+
+
     H_forc = cfg.get("H_forc",40.0);
     Max_spdup = cfg.get("Max_spdup",3.);
     Min_spdup = cfg.get("Min_spdup",0.1);
     ninja_recirc = cfg.get("ninja_recirc",false);
-//    N_windfield = cfg.get("N_windfield",24);
-    L_avg = cfg.get("L_avg",-1);
     Sx_crit = cfg.get("Sx_crit", 30.);
 }
 
@@ -372,3 +426,5 @@ WindNinja::~WindNinja()
 {
 
 }
+
+#pragma clang diagnostic pop
