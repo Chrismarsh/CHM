@@ -58,9 +58,9 @@ void rh_no_lapse::run(mesh_elem &face)
     std::vector<boost::tuple<double, double, double> > lowered_values;
     for (auto &s : face->stations())
     {
-        if( is_nan((*s)["rh"]))
+        if( is_nan((*s)["rh"_s]))
             continue;
-        double rh = (*s)["rh"];
+        double rh = (*s)["rh"_s];
 
         lowered_values.push_back(boost::make_tuple(s->x(), s->y(), rh));
     }

@@ -75,13 +75,13 @@ void uniform_wind::run(mesh& domain)
 	       std::vector<boost::tuple<double, double, double> > v;
 	       for (auto &s : face->stations())
 	       {
-		   if (is_nan((*s)["U_R"]) || is_nan((*s)["vw_dir"]))
+		   if (is_nan((*s)["U_R"_s]) || is_nan((*s)["vw_dir"_s]))
 		     continue;
 
-		   double W = (*s)["U_R"];
+		   double W = (*s)["U_R"_s];
 		   W = std::max(W, 0.1);
 
-		   double theta = (*s)["vw_dir"] * M_PI / 180.;
+		   double theta = (*s)["vw_dir"_s] * M_PI / 180.;
 		   double zonal_u = -W * sin(theta);
 		   double zonal_v = -W * cos(theta);
 		   u.push_back(boost::make_tuple(s->x(), s->y(), zonal_u));

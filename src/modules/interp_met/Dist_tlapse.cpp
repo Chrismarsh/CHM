@@ -62,15 +62,15 @@ void Dist_tlapse::run(mesh_elem& face)
     auto s_near = face->nearest_station();
 
     // Get the lapse rate from that station
-    double lapse_rate = (*s_near)["t_lapse_rate"];
+    double lapse_rate = (*s_near)["t_lapse_rate"_s];
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : face->stations())
     {
-        if( is_nan((*s)["t"]))
+        if( is_nan((*s)["t"_s]))
             continue;
-        double v = (*s)["t"] - lapse_rate * (0.0 - s->z());
+        double v = (*s)["t"_s] - lapse_rate * (0.0 - s->z());
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 

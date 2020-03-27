@@ -63,9 +63,9 @@ void lw_no_lapse::run(mesh_elem& face)
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : face->stations())
     {
-        if( is_nan((*s)["Qli"]))
+        if( is_nan((*s)["Qli"_s]))
             continue;
-        double v = (*s)["Qli"];
+        double v = (*s)["Qli"_s];
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 

@@ -64,9 +64,9 @@ void t_no_lapse::run(mesh_elem& face)
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : face->stations())
     {
-        if( is_nan((*s)["t"]))
+        if( is_nan((*s)["t"_s]))
             continue;
-        double v = (*s)["t"] - lapse_rate * (0.0 - s->z());
+        double v = (*s)["t"_s] - lapse_rate * (0.0 - s->z());
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 
