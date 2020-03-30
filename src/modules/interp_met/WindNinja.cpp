@@ -208,6 +208,33 @@ void WindNinja::init(mesh& domain)
         }
     }
 
+    // Ensure that L_avg, either given or found, is valid
+    int valid_Lavg_params=0;
+
+    for(int theta = 0; theta<=2*M_PI;theta++)
+    {
+        auto delta_angle = 360. / N_windfield;
+        auto d = int(theta * 180.0 / M_PI / delta_angle);
+        if (d == 0) d = N_windfield;
+        auto face = domain->face(0);
+
+        std::string param="";
+        bool missing = false;
+        if(L_avg == -1)
+        {
+            param = "Ninja" + std::to_string(d);
+        }else
+        {
+            param = "Ninja" + std::to_string(d) +'_' + std::to_string(L_avg);   // transfert function
+        }
+
+        if( !face->has_parameter(param))
+        {
+            CHM_THROW_EXCEPTION(module_error,"WindNinja: Missing parameter: " + param);
+        }
+    }
+
+
     H_forc = cfg.get("H_forc",40.0);
     Max_spdup = cfg.get("Max_spdup",3.);
     Min_spdup = cfg.get("Min_spdup",0.1);
@@ -301,7 +328,7 @@ void WindNinja::run(mesh& domain)
 		}else
 		{
 			W_transf = face->parameter("Ninja" + std::to_string(d) +'_' + std::to_string(L_avg));   // transfert function
-}		
+                }
                 U = face->parameter("Ninja" + std::to_string(d) + "_U");  // zonal component
                 V = face->parameter("Ninja" + std::to_string(d) + "_V");  // meridional component
 
