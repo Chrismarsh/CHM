@@ -90,33 +90,22 @@ void WindNinja::init(mesh& domain)
     N_windfield = 0;
     for(auto& itr: domain->parameters() )
     {
-        if( itr.find("Ninja") != std::string::npos)
+        if( itr.find("Ninja") != std::string::npos &&
+            itr.find("_") == std::string::npos) // ignore all _U, _V, and _LAvg params
         {
             ++N_windfield;
         }
     }
-    N_windfield /= 3; // _U, _V, and speedup maps
 
     LOG_DEBUG << "Found " << N_windfield << " windfields";
     try
     {
-        // see if we have a manually specified number
-        int user_nwindfield = cfg.get<int>("N_windfield");
-
-        LOG_WARNING << "Override auto-detected windfield count with user specified value = " << user_nwindfield;
-
-        // we may have more in the param file than we specify if we have multiple averaging radii. Probably not an error but warn the user this makes sense!
-        if( user_nwindfield < N_windfield)
-            LOG_WARNING << "User specified " << user_nwindfield << " wind fields, but there are " << N_windfield << " in the param file. Make sure this makes sense.";
-
-        if(user_nwindfield > N_windfield)
-        {
-            CHM_THROW_EXCEPTION(module_error, "More wind fields were requested than what exist!");
-        }
-
-        N_windfield = user_nwindfield;
+        // see if we have a manually specified number, error out as this is deprecated
+        // favour error as we dont want the user to think something is working when it's not
+        cfg.get<int>("N_windfield");
+        CHM_THROW_EXCEPTION(module_error, "N_windfield is deprecated and no longer used");
     }
-    catch(...)
+    catch(pt::ptree_bad_path& e)
     {
         // not user specified, is ok
     }
