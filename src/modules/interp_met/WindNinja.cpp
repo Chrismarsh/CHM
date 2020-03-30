@@ -156,6 +156,57 @@ void WindNinja::init(mesh& domain)
         // not user specified, is ok
     }
 
+    // We need to handle the following case:
+    // if L_avg is not defined in the cfg file BUT the mesh contains only WN parameters with an explicit values for L_avg.
+    if(L_avg == -1)
+    {
+        std::set<int> param_found_L_avg={};
+        for(auto& itr: domain->parameters() )
+        {
+            if( itr.find("Ninja") != std::string::npos &&
+                itr.find("_") != std::string::npos  &&
+                itr.find("_U") == std::string::npos && // AND these are the U and V fields as the Lavg isn't on U or V
+                itr.find("_V") == std::string::npos
+                )
+            {
+                // see if we can auto detect an Lavg value
+                auto pos = itr.find("_") + 1;
+                auto param_L_avg = -1;
+                try
+                {
+                    param_L_avg = std::stoi(itr.substr(pos));
+                    param_found_L_avg.insert(param_L_avg);
+                }
+                catch(std::invalid_argument& e)
+                {
+
+                    CHM_THROW_EXCEPTION(module_error,"Found a WindNinja L_avg parameter that has a malformed name. Param = " + itr + ". L_avg = " + itr.substr(pos) );
+                }
+
+
+            }
+        }
+
+        if(param_found_L_avg.size() == 1) // we found only 1 possible Lavg set of values, so we can use it.
+        {
+            L_avg = *(param_found_L_avg.begin());
+            LOG_DEBUG << "Using L_avg from parameters. L_avg = " << L_avg;
+        }
+        else
+        {
+            std::string found = "[   ";
+            for(auto& f : param_found_L_avg)
+            {
+                found += std::to_string(f);
+                found += "   ";
+            }
+            found += " ]";
+            // Ok we have a problem. There are multiple NinjaX_LAVG params in the file
+            CHM_THROW_EXCEPTION(module_error,"WindNinja: Multiple parameters with possible L_avg values found, but L_avg was not specified. "
+                                             "Please set L_avg in the config file. Found the following L_avg values: " + found );
+
+        }
+    }
 
     H_forc = cfg.get("H_forc",40.0);
     Max_spdup = cfg.get("Max_spdup",3.);
