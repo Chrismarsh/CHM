@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "openmp-use-default-none"
 //
 // Canadian Hydrological Model - The Canadian Hydrological Model (CHM) is a novel
 // modular unstructured mesh based approach for hydrological modelling
@@ -88,25 +90,157 @@ void WindNinja::init(mesh& domain)
     N_windfield = 0;
     for(auto& itr: domain->parameters() )
     {
-        if( itr.find("Ninja") != std::string::npos)
+        if( itr.find("Ninja") != std::string::npos &&
+            itr.find("_U") != std::string::npos) // ignore all _U, _V, and _LAvg params
         {
-          ++N_windfield;
+            ++N_windfield;
         }
     }
-    N_windfield /= 3; // _U, _V, and speedup maps
 
     LOG_DEBUG << "Found " << N_windfield << " windfields";
+    try
+    {
+        // see if we have a manually specified number, error out as this is deprecated
+        // favour error as we dont want the user to think something is working when it's not
+        cfg.get<int>("N_windfield");
+        CHM_THROW_EXCEPTION(module_error, "N_windfield is deprecated and no longer used");
+    }
+    catch(pt::ptree_bad_path& e)
+    {
+        // not user specified, is ok
+    }
+
     if (N_windfield == 0)
     {
         CHM_THROW_EXCEPTION(module_error,"Could not find any required wind ninja maps");
     }
 
+    // ensure a user-specified L_avg value makes sense
+    L_avg = -1;
+    try
+    {
+        L_avg = cfg.get<int>("L_avg");
+
+        int n_lavg = 0; // number of params that have a specific l_avg
+        auto s_lavg = std::to_string(L_avg);
+
+        for(auto& itr: domain->parameters() )
+        {
+            if( itr.find("Ninja") != std::string::npos &&
+                 itr.find("_"+s_lavg) != std::string::npos
+            )
+            {
+                ++n_lavg;
+            }
+        }
+
+        if(n_lavg != N_windfield)
+        {
+            CHM_THROW_EXCEPTION(module_error,"The user specified value of L_avg=" +
+                s_lavg + " does not match the number of wind fields.");
+        }
+    }
+    catch(...)
+    {
+        // not user specified, is ok
+    }
+
+    // We need to handle the following case:
+    // if L_avg is not defined in the cfg file BUT the mesh contains only WN parameters with an explicit values for L_avg.
+    if(L_avg == -1)
+    {
+        std::set<int> param_found_L_avg={};
+        for(auto& itr: domain->parameters() )
+        {
+            if( itr.find("Ninja") != std::string::npos &&
+                itr.find("_") != std::string::npos  &&
+                itr.find("_U") == std::string::npos && // AND these are the U and V fields as the Lavg isn't on U or V
+                itr.find("_V") == std::string::npos
+                )
+            {
+                // see if we can auto detect an Lavg value
+                auto pos = itr.find("_") + 1;
+                auto param_L_avg = -1;
+                try
+                {
+                    param_L_avg = std::stoi(itr.substr(pos));
+                    param_found_L_avg.insert(param_L_avg);
+                }
+                catch(std::invalid_argument& e)
+                {
+
+                    CHM_THROW_EXCEPTION(module_error,"Found a WindNinja L_avg parameter that has a malformed name. Param = " + itr + ". L_avg = " + itr.substr(pos) );
+                }
+
+
+            }
+        }
+
+        if(param_found_L_avg.size() == 1) // we found only 1 possible Lavg set of values, so we can use it.
+        {
+            L_avg = *(param_found_L_avg.begin());
+            LOG_DEBUG << "Using L_avg from parameters. L_avg = " << L_avg;
+        }
+        else
+        {
+            std::string found = "[   ";
+            for(auto& f : param_found_L_avg)
+            {
+                found += std::to_string(f);
+                found += "   ";
+            }
+            found += " ]";
+            // Ok we have a problem. There are multiple NinjaX_LAVG params in the file
+            CHM_THROW_EXCEPTION(module_error,"WindNinja: Multiple parameters with possible L_avg values found, but L_avg was not specified. "
+                                             "Please set L_avg in the config file. Found the following L_avg values: " + found );
+
+        }
+    }
+
+    // Ensure that L_avg, either given or found, is valid
+    int valid_Lavg_params=0;
+
+    for(int theta = 0; theta<=2*M_PI;theta++)
+    {
+        auto delta_angle = 360. / N_windfield;
+        auto d = int(theta * 180.0 / M_PI / delta_angle);
+        if (d == 0) d = N_windfield;
+        auto face = domain->face(0);
+
+        std::string param="";
+
+        if(L_avg == -1)
+        {
+            param = "Ninja" + std::to_string(d);
+        }else
+        {
+            param = "Ninja" + std::to_string(d) +'_' + std::to_string(L_avg);   // transfert function
+        }
+
+        if( !face->has_parameter(param))
+        {
+            CHM_THROW_EXCEPTION(module_error,"WindNinja: Missing parameter: " + param);
+        }
+
+        param = "Ninja" + std::to_string(d) + "_U";
+        if( !face->has_parameter(param))
+        {
+            CHM_THROW_EXCEPTION(module_error,"WindNinja: Missing parameter: " + param);
+        }
+
+        param = "Ninja" + std::to_string(d) + "_V";
+        if( !face->has_parameter(param))
+        {
+            CHM_THROW_EXCEPTION(module_error,"WindNinja: Missing parameter: " + param);
+        }
+
+    }
+
+
     H_forc = cfg.get("H_forc",40.0);
     Max_spdup = cfg.get("Max_spdup",3.);
     Min_spdup = cfg.get("Min_spdup",0.1);
     ninja_recirc = cfg.get("ninja_recirc",false);
-//    N_windfield = cfg.get("N_windfield",24);
-    L_avg = cfg.get("L_avg",-1);
     Sx_crit = cfg.get("Sx_crit", 30.);
 }
 
@@ -127,12 +261,12 @@ void WindNinja::run(mesh& domain)
             std::vector<boost::tuple<double, double, double> > v;
             for (auto &s : face->stations())
             {
-                if (is_nan((*s)["U_R"]) || is_nan((*s)["vw_dir"]))
+                if (is_nan((*s)["U_R"_s]) || is_nan((*s)["vw_dir"_s]))
                     continue;
 
-                double theta = (*s)["vw_dir"] * M_PI / 180.;
+                double theta = (*s)["vw_dir"_s] * M_PI / 180.;
 
-                double W = (*s)["U_R"];
+                double W = (*s)["U_R"_s];
                 W = std::max(W, 0.1);
 
                 W = Atmosphere::log_scale_wind(W,
@@ -196,7 +330,7 @@ void WindNinja::run(mesh& domain)
 		}else
 		{
 			W_transf = face->parameter("Ninja" + std::to_string(d) +'_' + std::to_string(L_avg));   // transfert function
-}		
+                }
                 U = face->parameter("Ninja" + std::to_string(d) + "_U");  // zonal component
                 V = face->parameter("Ninja" + std::to_string(d) + "_V");  // meridional component
 
@@ -372,3 +506,5 @@ WindNinja::~WindNinja()
 {
 
 }
+
+#pragma clang diagnostic pop
