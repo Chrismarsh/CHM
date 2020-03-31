@@ -202,11 +202,10 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
 
         provides("dm/dt");
         provides("mm");
-
-        provides("Qsubl");
-        provides("Qsubl_mass");
-        provides("sum_subl");
     }
+    provides("Qsubl");
+    provides("Qsubl_mass");
+    provides("sum_subl");
 
     provides("drift_mass"); // kg/m^2
     provides("Qsusp");
@@ -382,6 +381,7 @@ void PBSM3D::init(mesh& domain)
 
         d->sum_drift = 0;
         d->sum_subl = 0;
+        d->csubl.resize(nLayer);
         (*face)["sum_drift"_s]=0;
 
         // iterate over the vertical layers
@@ -1190,9 +1190,6 @@ void PBSM3D::run(mesh& domain)
                     (*face)["mm"_s] = mm;
                 double csubl = dmdtz / mm; // EQN 21 POMEROY 1993 (PBSM)
 
-                //      if (debug_output)
-                //        (*face)["csubl" + std::to_string(z)] = dmdtz;
-
                 // eddy diffusivity (m^2/s)
                 // 0,1,2 will all be K = 0, as no horizontal diffusion process
                 double K[5] = {0, 0, 0, 0, 0};
@@ -1297,8 +1294,8 @@ void PBSM3D::run(mesh& domain)
                     csubl = 0.0;
                 }
 
-                if (debug_output)
-                    (*face)["csubl" + std::to_string(z)] = csubl;
+                d->csubl[z] = csubl;
+
 
                 for (int f = 0; f < 3; f++)
                 {
@@ -1530,22 +1527,21 @@ if (suspension_present) {
             if (debug_output)
             {
                 (*face)["c" + std::to_string(z)] = c;
-
+                (*face)["csubl" + std::to_string(z)] = d->csubl[z];
                 // This is an approximation as it uses after transport concentrations.
                 // However this will have already taken into account sublimation during the coupled transport phase
                 // Eqn 20 Pomeroy 1993
-                Qsubl += (*face)["csubl" + std::to_string(z)] * c *
-                         v_edge_height; // kg/(m^2 *s) => per unit area of snowcover
+
             }
+            Qsubl += d->csubl[z] * c * v_edge_height; // kg/(m^2 *s) => per unit area of snowcover
         }
         (*face)["Qsusp"_s] = Qsusp;
-        if (debug_output)
-        {
-            (*face)["Qsubl"_s] = Qsubl;
-            (*face)["Qsubl_mass"_s] = Qsubl * global_param->dt(); // kg/m^2 or mm
-            d->sum_subl += (*face)["Qsubl_mass"_s];
-            (*face)["sum_subl"_s] = d->sum_subl;
-        }
+
+        (*face)["Qsubl"_s] = Qsubl;
+        (*face)["Qsubl_mass"_s] = Qsubl * global_param->dt(); // kg/m^2 or mm
+        d->sum_subl += (*face)["Qsubl_mass"_s];
+        (*face)["sum_subl"_s] = d->sum_subl;
+
     }
 
     // Setup the matrix to be used to the solution of the gradient of the

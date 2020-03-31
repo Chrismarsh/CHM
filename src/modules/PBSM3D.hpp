@@ -182,8 +182,8 @@ public:
         double z0;
 
         double sum_drift;
-
         double sum_subl;
+        std::vector<double> csubl; //vertical col of sublimation coeffs
 
         gsl_function F_fill;
         gsl_function F_fill2;
