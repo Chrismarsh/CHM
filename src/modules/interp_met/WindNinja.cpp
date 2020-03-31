@@ -91,7 +91,7 @@ void WindNinja::init(mesh& domain)
     for(auto& itr: domain->parameters() )
     {
         if( itr.find("Ninja") != std::string::npos &&
-            itr.find("_") == std::string::npos) // ignore all _U, _V, and _LAvg params
+            itr.find("_U") != std::string::npos) // ignore all _U, _V, and _LAvg params
         {
             ++N_windfield;
         }
