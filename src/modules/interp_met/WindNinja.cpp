@@ -208,7 +208,7 @@ void WindNinja::init(mesh& domain)
         auto face = domain->face(0);
 
         std::string param="";
-        bool missing = false;
+
         if(L_avg == -1)
         {
             param = "Ninja" + std::to_string(d);
@@ -221,6 +221,19 @@ void WindNinja::init(mesh& domain)
         {
             CHM_THROW_EXCEPTION(module_error,"WindNinja: Missing parameter: " + param);
         }
+
+        param = "Ninja" + std::to_string(d) + "_U";
+        if( !face->has_parameter(param))
+        {
+            CHM_THROW_EXCEPTION(module_error,"WindNinja: Missing parameter: " + param);
+        }
+
+        param = "Ninja" + std::to_string(d) + "_V";
+        if( !face->has_parameter(param))
+        {
+            CHM_THROW_EXCEPTION(module_error,"WindNinja: Missing parameter: " + param);
+        }
+
     }
 
 
