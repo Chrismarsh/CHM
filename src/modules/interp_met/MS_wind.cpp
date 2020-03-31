@@ -83,12 +83,12 @@ void MS_wind::run(mesh& domain)
 		     std::vector<boost::tuple<double, double, double> > v;
 		     for (auto &s : face->stations())
 		     {
-		       if (is_nan((*s)["U_R"]) || is_nan((*s)["vw_dir"]))
+		       if (is_nan((*s)["U_R"_s]) || is_nan((*s)["vw_dir"_s]))
 			 continue;
 
-		       double theta = (*s)["vw_dir"] * M_PI / 180.;
+		       double theta = (*s)["vw_dir"_s] * M_PI / 180.;
 
-		       double W = (*s)["U_R"];
+		       double W = (*s)["U_R"_s];
 		       W = std::max(W, 0.1);
 
 		       W = Atmosphere::log_scale_wind(W,
@@ -219,10 +219,10 @@ void MS_wind::run(mesh& domain)
              std::vector<boost::tuple<double, double, double> > v;
              for (auto &s : face->stations())
              {
-               if (is_nan((*s)["U_R"]) || is_nan((*s)["vw_dir"]))
+               if (is_nan((*s)["U_R"_s]) || is_nan((*s)["vw_dir"_s]))
                  continue;
 
-               double theta = (*s)["vw_dir"] * M_PI / 180.;
+               double theta = (*s)["vw_dir"_s] * M_PI / 180.;
 
                auto f = domain->find_closest_face(s->x(),s->y());
                //figure out which lookup map we need
@@ -230,7 +230,7 @@ void MS_wind::run(mesh& domain)
                if (d == 0) d = 8;
                double speedup = f->parameter("MS"+std::to_string(d));
 
-               double W = (*s)["U_R"] / speedup;
+               double W = (*s)["U_R"_s] / speedup;
                W = std::max(W, 0.1);
                W = Atmosphere::log_scale_wind(W,
                                               Atmosphere::Z_U_R,  // UR is at our reference height
@@ -394,10 +394,10 @@ void MS_wind::run(mesh& domain)
 //        std::vector<boost::tuple<double, double, double> > v;
 //        for (auto &s : face->stations())
 //        {
-//            if (is_nan((*s)["U_R"]) || is_nan((*s)["vw_dir"]))
+//            if (is_nan((*s)["U_R"_s]) || is_nan((*s)["vw_dir"_s]))
 //                continue;
 //
-//            double theta = (*s)["vw_dir"] * M_PI / 180.;
+//            double theta = (*s)["vw_dir"_s] * M_PI / 180.;
 //
 //            auto f = domain->face(s->closest_face());
 //            //figure out which lookup map we need
@@ -405,7 +405,7 @@ void MS_wind::run(mesh& domain)
 //            if (d == 0) d = 8;
 //            double speedup = f->parameter("MS"+std::to_string(d));
 //
-//            double W = (*s)["U_R"] / speedup;
+//            double W = (*s)["U_R"_s] / speedup;
 //            W = std::max(W, 0.1);
 //
 //

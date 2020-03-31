@@ -67,13 +67,13 @@ void Dodson_NSA_ta::run(mesh_elem &face)
 
     for (auto& s : face->stations())
     {
-        if( is_nan((*s)["t"]))
+        if( is_nan((*s)["t"_s]))
             continue;
 
         double elev = s->z(); //station elevation
         //pressure at station's elevation
         double Pz = Po * pow(Tb/(Tb+lapse*elev),(m*g)/(lapse*R));
-        double ta = (*s)["t"] + 273.15; //to K
+        double ta = (*s)["t"_s] + 273.15; //to K
 
         //calculate virtual temp (eqn 1)
         double ratio = (Po/Pz);

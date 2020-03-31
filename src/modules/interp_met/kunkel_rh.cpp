@@ -74,9 +74,9 @@ void kunkel_rh::run(mesh_elem &face)
     std::vector<boost::tuple<double, double, double> > lowered_values;
     for (auto &s : face->stations())
     {
-        if( is_nan((*s)["rh"]))
+        if( is_nan((*s)["rh"_s]))
             continue;
-        double rh = (*s)["rh"];
+        double rh = (*s)["rh"_s];
 
         double rh_z = rh * exp(lapse * (0.0 - s->z()));
 

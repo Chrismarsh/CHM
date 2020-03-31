@@ -46,7 +46,7 @@ void goodison_undercatch::process(std::shared_ptr<station>& station)
 {
 
     double data = (*station)[var];
-    double u = (*station)["u"];
+    double u = (*station)["u"_s];
     //trap missing data, just ignore it.
     if(data != 0) //  CE * 0 will still be zero, but if u is NaN, we will NaN our precip, which we don't want if p = 0
     {

@@ -68,10 +68,10 @@ void rh_from_obs::run(mesh_elem& face)
     {
         for (auto& s : face->stations())
         {
-            if( is_nan((*s)["t"]) || is_nan((*s)["rh"]))
+            if( is_nan((*s)["t"_s]) || is_nan((*s)["rh"_s]))
                 continue;
-            double rh = (*s)["rh"]/100.;
-            double t = (*s)["t"];
+            double rh = (*s)["rh"_s]/100.;
+            double t = (*s)["t"_s];
             double es = mio::Atmosphere::vaporSaturationPressure(t+273.15);
             double ea = rh * es;
             sea.push_back( ea  );
@@ -92,11 +92,11 @@ void rh_from_obs::run(mesh_elem& face)
     std::vector< boost::tuple<double, double, double> > lowered_values;
     for (auto& s : face->stations())
     {
-        if( is_nan((*s)["t"]) || is_nan((*s)["rh"]))
+        if( is_nan((*s)["t"_s]) || is_nan((*s)["rh"_s]))
             continue;
 
-        double rh = (*s)["rh"]/100.;
-        double t = (*s)["t"];
+        double rh = (*s)["rh"_s]/100.;
+        double t = (*s)["t"_s];
         double es = mio::Atmosphere::vaporSaturationPressure(t+273.15);
         double ea = rh * es;
         double z = s->z();

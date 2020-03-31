@@ -176,14 +176,14 @@ void Liston_wind::run(mesh& domain)
 	       std::vector<boost::tuple<double, double, double> > v;
 	       for (auto &s : face->stations())
 	       {
-		   if (is_nan((*s)["U_R"]) || is_nan((*s)["vw_dir"]))
+		   if (is_nan((*s)["U_R"_s]) || is_nan((*s)["vw_dir"_s]))
 		     continue;
 
-		   double W = (*s)["U_R"];
+		   double W = (*s)["U_R"_s];
 		   W = std::max(W, 0.1);
 
-		   double theta = (*s)["vw_dir"] * M_PI / 180.;
-		   double phi = math::gis::bearing_to_polar((*s)["vw_dir"] );
+		   double theta = (*s)["vw_dir"_s] * M_PI / 180.;
+		   double phi = math::gis::bearing_to_polar((*s)["vw_dir"_s] );
 
 		   double zonal_u = -W * sin(theta);//negate as it needs to be the direction the wind is *going*
 		   double zonal_v = -W * cos(theta);

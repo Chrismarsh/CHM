@@ -58,9 +58,9 @@ void p_no_lapse::run(mesh_elem& face)
     std::vector< boost::tuple<double, double, double> > staion_z;
     for (auto& s : face->stations())
     {
-        if( is_nan((*s)["p"]))
+        if( is_nan((*s)["p"_s]))
             continue;
-        double u = (*s)["p"];
+        double u = (*s)["p"_s];
         ppt.push_back( boost::make_tuple(s->x(), s->y(), u ) );
         staion_z.push_back( boost::make_tuple(s->x(), s->y(), s->z() ) );
     }
