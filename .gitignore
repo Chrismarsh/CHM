@@ -25,8 +25,6 @@ modules.pdf
 /tools/mesher/*
 /tools/MSwind/*
 /tools/vtu2geo/*
-!/tools/vtu2geo/main.py
-!/tools/mesher/main.py
 meshes/*
 cmake_install.cmake
 CMakeCache.txt
@@ -34,7 +32,6 @@ compile_commands.json
 Doxyfile
 err.xml
 /tools/meshstats/*
-!/tools/meshstats/meshstats.py
 /src/version.h
 /modules.dot
 /CMake_fedora/*
@@ -44,3 +41,4 @@ err.xml
 node_modules/
 /test-build/*
 /test/*
+/docs/api/*
