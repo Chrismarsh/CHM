@@ -316,21 +316,6 @@ if(VTK_MAJOR_VERSION EQUAL 8 AND VTK_MINOR_VERSION LESS 1)
     message( FATAL_ERROR "VTK >= 8.1 is required to avoid libproj4 name collision. You can build a compatible VTK using -DBUILD_VTK=ON." )
 endif()
 
-#endif()
-
-# add a target to generate API documentation with Doxygen
-# generate this via 'make doc'
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-	configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
-
-	add_custom_target(doc #ALL
-		${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-		COMMENT "Generating API documentation with Doxygen" VERBATIM
-	)
-
-endif(DOXYGEN_FOUND)
 
 find_program(GVPR gvpr)
 find_program(DOT dot)
@@ -341,8 +326,6 @@ else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
-
 #setup src dirs
 add_subdirectory(src)
-
-message(STATUS "${CMAKE_CXX_FLAGS}")
+add_subdirectory(docs)
