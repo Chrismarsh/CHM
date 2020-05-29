@@ -10,12 +10,14 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
 import sphinx_rtd_theme
 from sphinx.locale import _
+
+read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 # -- Project information -----------------------------------------------------
 
@@ -37,7 +39,17 @@ extensions = [ "breathe", "exhale",
 autosectionlabel_prefix_document = True
 autosectionlabel_maxdepth = 3
 
+# in source build on RTD. If we build with cmake it will have the correct path injected via cmake
+if read_the_docs_build:
+    breathe_projects = {
+        "CHM": "./doxygen/xml"
+    }
+
+
 breathe_default_project = "CHM"
+
+input = "INPUT = "
+input += "../src/filters "
 
 # Setup the exhale extension
 exhale_args = {
@@ -51,8 +63,8 @@ exhale_args = {
     # TIP: if using the sphinx-bootstrap-theme, you need
     # "treeViewIsBootstrap": True,
     "exhaleExecutesDoxygen": True,
-    # "exhaleDoxygenStdin":    "INPUT = ../src",
-    "exhaleUseDoxyfile": True,
+    "exhaleDoxygenStdin":    input,
+    "exhaleUseDoxyfile": False,
     "verboseBuild": True
 
 }
