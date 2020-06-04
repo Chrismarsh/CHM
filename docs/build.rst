@@ -1,5 +1,5 @@
-Background
-==========
+Compilation
+============
 
 CHM uses `conan <https://conan.io/>`__ to manage and build all
 dependencies. Because of the various requirements on build
@@ -13,36 +13,47 @@ supported compilers and operating system (described later), the
 dependencies do not need to be built by the end user.
 
 Build requirements
-==================
+*******************
 
-Linux and MacOS are the only supported environments.
+Linux and MacOS are the only supported environments. The following have been tested
 
-If bintray binaries can be used, the only requirements are: \* conan
->=1.21 \* cmake >=3.16 \* C++14 compiler (gcc 7.2+)
+=======  =====  ========  =====
+   Linux          MacOS
+--------------  ---------------
+Ubuntu   18.04  Moajave   10.x
+  -      20.04  Catalina  15.15
+=======  =====  ========  =====        
+
+
+gcc (libc 2.27+): 7.x, 8.x
+
+If bintray binaries can be used, the only requirements are: 
+
+   - conan >=1.21 
+   - cmake >=3.16 
+   - C++14 compiler (gcc 7.2+)
+   - Fortran 90+ compiler (gfortran)
 
 If some dependencies need to be built from source, ensure the following
-are also installed \* autotools \* m4
+are also installed 
 
-Optionally: \* MPI (OpenMPI/&c)
+   - autotools 
+   - m4
+
+.. note::
+   For distributed MPI support, optionally ensure MPI is installed
+
 
 On MacOS, `homebrew <https://brew.sh/>`__ should be used to install
 cmake and conan. Macport based installs likely work, but have not been
 tested.
 
-Supported environments
-======================
-
-Linux: Ubuntu 18.04
-
-MacOs: Mojave, Catalina
-
-gcc (libc 2.27+): 7.x, 8.x
 
 Compile
-=======
+********
 
 Throughout, this document assumes a working development environment, but
-a blank conan environment
+a blank conan environment. 
 
 Setup conan
 -----------
@@ -80,7 +91,7 @@ settings need to be reapplied once this is done.
 Intel compiler
 ~~~~~~~~~~~~~~
 
-Ensure the Intel compilervars is sourced, e.g.,
+If the Intel compiler is being used (this is optional), ensure the Intel compilervars is sourced, e.g.,
 
 ::
 
@@ -91,7 +102,7 @@ prior to running the conan. Use the above gcc settings for conan.
 Setup CHM source folders
 ------------------------
 
-An out of source build should be used. This makes it easier to clean up
+An out of source build should be used. That is, build in a seperate folder removed from the CHM source. This makes it easier to clean up
 and start from scratch. An example is given below:
 
 ::
@@ -102,19 +113,22 @@ and start from scratch. An example is given below:
 
    mkdir ~/build-CHM && cd ~/build-CHM
 
+.. note::
+   The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
+
 Setup dependencies
 ------------------
 
 Install the dependencies into your local conan cache (``~/.conan/data``)
 
 ::
-
+   
    conan install ~/CHM -if=.
 
-The ``-if=.`` will produce the ``FindXXX.cmake`` files required for the
-CHM build into the current directory.
+Further, this command will produce the ``FindXXX.cmake`` files required for the
+CHM build.
 
-If you need to build dependencies from source, use the
+If you need to build dependencies from source (this is likely), use the
 ``--build missing`` option like:
 
 ::
@@ -131,6 +145,8 @@ MPI configuration is correctly used:
 ::
 
    conan install ~/CHM -if=. --build boost
+
+
 
 OpenMP
 ~~~~~~
@@ -151,8 +167,8 @@ example below
 
    cmake ~/CHM -DCMAKE_INSTALL_PREFIX=/opt/chm-install
 
-This should complete without any errors. Both ``Ninja`` and ``make``
-(this is the default) are supported. To use ``Ninja``, add
+This should complete without any errors. Both ``ninja`` and ``make``
+(this is the default) are supported. To use ``ninja``, add
 
 ::
 
@@ -163,12 +179,11 @@ Ninja speeds up compilation of CHM by ~6%.
 The default build option creates an optimizted “release” build. To build
 a debug build, use ``-DCMAKE_BUILD_TYPE=Debug``.
 
-.. _intel-compiler-1:
 
 Intel compiler
 ~~~~~~~~~~~~~~
 
-Add the following cmake flags:
+If the Intel compiler is used, add the following cmake flags:
 
 ::
 
@@ -203,7 +218,7 @@ Install
 ``make install``/``ninja install``
 
 Troubleshooting
-===============
+***************
 
 TCMALLOC
 --------
@@ -235,29 +250,9 @@ Linux:
 
 Usage of the matlab engine requires installing ``csh``
 
-Google test
------------
-
-Google test can be patched following
-
-http://stackoverflow.com/questions/4655439/print-exception-what-in-google-test
-
-to print the boost::exception diagnostic information
-
-::
-
-   diff -r /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal copy.h /Users/chris/Documents/PhD/code/CHM/tests/gtest/include/gtest/internal/gtest-internal.h
-   65,66d64
-   < #include <boost/exception/all.hpp>
-   < 
-   1080,1081c1078
-   <     catch (boost::exception &e) { \
-   <       std::cout << boost::diagnostic_information(e) << std::endl;  \
-   ---
-   >     catch (...) { \
 
 Building on WestGrid
-====================
+*********************
 
 To build on WestGrid’s Graham machine, all dependencies must be built
 from source to ensure the correct optimizations are used. As well, Conan
@@ -265,7 +260,6 @@ detects libc versions via compiler version, however on the CentOS 7
 system on Graham, the libc is much older than the compiler would
 suggest, thus the prebuilt libraries will not link correctly.
 
-.. _setup-conan-1:
 
 Setup Conan
 -----------
