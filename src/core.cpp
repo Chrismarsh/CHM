@@ -93,15 +93,7 @@ void core::config_options( pt::ptree &value)
     {
         LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
     }
-
-
-    // project name
-    boost::optional<std::string> prj = value.get_optional<std::string>("prj_name");
-    if (prj)
-    {
-        LOG_DEBUG << "Set project name to " << *prj;
-    }
-
+    
     // custom start time
     boost::optional<std::string> start = value.get_optional<std::string>("startdate");
     if (start)
