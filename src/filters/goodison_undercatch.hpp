@@ -40,7 +40,7 @@
  *
  * References:
  * - ﻿Goodison, B. E. (1998), WMO Solid Solid Precipitiation Measurement Intercomparison. https://globalcryospherewatch.org/bestpractices/docs/WMOtd872.pdf
- *
+ * @}
  * **/
 class goodison_undercatch : public filter_base
 {

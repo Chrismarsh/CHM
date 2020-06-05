@@ -37,7 +37,7 @@
  *
  *
  * Provides:
- *
+ * @}
  */
 class debias_lw : public filter_base
 {

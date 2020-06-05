@@ -37,7 +37,7 @@
  *
  *
  * Provides:
- *
+ * @}
  */
 class filter_template : public filter_base
 {

@@ -29,13 +29,14 @@ Contributors
 - `Wenxian Guo <https://github.com/WXGopher/>`__ 
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 4
    :caption: Contents:
    :hidden:
 
    build
+   configuration
 .. cli
-.. configuration
+
 .. faq
 .. filters
 .. home

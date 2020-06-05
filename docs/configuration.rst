@@ -1,82 +1,148 @@
-Configuration for CHM is via a structured json file.
+Configuration
+===============
 
-Below, all options are detailed, however please note some configuration
-options may be incompatible with other options.
 
-**An important note!** Do not prefix a number with zero (0). This is the
-octal prefix and it will cause the JSON parser to choke on lines that
-otherwise look fine.
+.. note::
 
-**Coordinate system** Currently, mesher produces meshes that projected
-in Albers Conic equal area. Support for full geographic exists, but
-there is an issue with computing surface normals.
+   Support for full geographic meshes exists, however there is currently an issue with computing surface normals. Thus projected coordinate systems should only be used.
 
-Regardless of input coordinate system **all** input points are specified
-in latitude and longitude in WSG84.
 
-The config file is structured into key:value pairs separated by commas.
-Key names are enclosed in quotes (" ").
+.. note::
+   Regardless of input coordinate system **all** input points are specified in latitude and longitude in WSG84.
 
-.. code:: json
+
+Layout
+------------
+
+The config file is a JSON file. However, it does support C-style comments: ``//`` and ``/** **/`` are both valid. 
+
+There are a few required sections: ``option``, ``modules``, ``meshes``, ``forcing``.
+
+The general layout of a CHM config JSON file is
+
+
+.. code:: 
 
    {
-     "key":
+      "option":
       {
-         "value1":123
+         // values here
+         "option_a":True,
+         "option_b": 1234
       },
-      "key2":
+      "modules":
+      [
+         //list of modules here. Note [ ] 
+         "module1",
+         "module2"
+      ],
+      "meshes":
       {
-       "value2":True
+         // values here
+      },
+      "forcing":
+      {
+         // values here
       }
    }
 
+For every section, if a top-level key:value pair is found and the value contains ".json", that file is loaded and inserted into this option. The key-value is not used, and may be anything.
+
+.. note::
+   The ``modules`` key is an array and requires the use of [ ]
+
+Key names are enclosed in quotes (" "). Although it tends to make more sense to arrange the keys in the shown order, the order does not matter (anywhere) and will be read correctly.
+
+.. warning::
+
+   Do not prefix a number with zero (0). This is the
+   octal prefix and it will cause the JSON parser to choke on lines that
+   otherwise look fine.
+
+.. note::
+   A user can specify a number as "5" or 5. Internally to CHM it will be converted to a numeric type. Thus, both are fine, however a non-string should be preferred. This is similar for "True" and True. 
+
+.. note::
+   Boolean types are not case sensitive.
+
+
 option
-======
+-------
 
-These are under ``option.X``:
+.. code::
 
-station_search_radius
-~~~~~~~~~~~~~~~~~~~~~
+   {
+      "option":
+      {
+           "station_N_nearest": 1,
+           "interpolant": "nearest",
+           "per_triangle_timeseries": "false",
+           "ui": "false",
+           "debug_level": "debug",
+           "prj_name": "SnowCast",
+           "enddate": "20180501T050000"
 
-The search radius (meters) of stations to include for the interpolation
-at a triangle. Based off the center of the triangle. Defaults to 1000 m.
+      }
+   }
 
-station_N_nearest
-~~~~~~~~~~~~~~~~~
+.. confval:: station_search_radius
 
-Use the nearest N stations to include for the interpolation at a
-triangle. Based off the center of the triangle. Defaults to 5.
+   :type: double
+   :default: None
 
-Both ``station_search_radius`` and ``station_N_nearest`` cannot be
-simultaneously specified. If neither is specific, then
-``station_N_nearest:5`` is used as default.
+   
+   The search radius (meters) surrounding any given triangle within which to search for a station. This is used to ensure only "close" stations are used. Cannot be used when ``station_N_nearest`` is set. Based off the center of the triangle. 
 
-interpolant
-~~~~~~~~~~~
 
-Chooses either thin plate spline with tension (spline) or inverse
-distance weighting (idw). Defaults to spline. Nearest selects the closes
-station and only uses that with no interpolation. Not compatible with
-the above options.
+.. confval:: station_N_nearest
+   
+   :type: int
+   :default: 5
 
-.. code:: json
+   Use the nearest N stations to include for the interpolation at a triangle. Based off the center of the triangle. 
 
-   "interpolant" : "idw"
-   "interpolant" : "spline"
-   "interpolant" : "nearest"
+   Both ``station_search_radius`` and ``station_N_nearest`` cannot be
+   simultaneously specified. If neither is specific, then ``station_N_nearest:5`` is used as default. If the :confval:`interpolant` mode is ``nearest``, then this is automatically set to 1.
 
-point_mode
-~~~~~~~~~~
 
-Point mode selects that the model should be run in point mode, versus
-distributed mode. For point model to work, there must be an input and
-output station of the appropriate name. All other points will be
-ignored. Requires adding ``point_mode`` to the module list. Lastly, no
-modules which are defined ``parallel:domain`` may be used when
-``point_mode:true`` is enabled.
+.. confval:: interpolant
 
-.. code:: json
+   :type: string
+   :default: "spline"
 
+   Chooses either thin plate spline with tension (spline) or inverse
+   distance weighting (idw). Nearest selects the closest
+   station and only uses that with no interpolation. 
+
+   .. code:: 
+
+      "interpolant" : "idw"
+      "interpolant" : "spline"
+      "interpolant" : "nearest"
+
+.. confval::  point_mode
+   
+   :type: ``{ }``
+   :required: No
+
+   Point mode selects that the model should be run in point mode, versus
+   distributed mode. 
+
+   There are two keys that need to be specified:
+
+   - ``output`` (string)
+   - ``forcing`` (string)
+
+   ``output`` needs to correspond to a specific output point of type timeseries as defined in the output section.
+
+   ``forcing`` needs to correspond to a specific input point as defined in the forcing section
+
+   If other points are specified, these points will be ignored.
+
+   Usage of this key also requires adding ``point_mode`` to the module list. Lastly, no
+   modules which are defined ``parallel:domain`` may be used when point_mode is enabled.
+
+.. code:: 
 
        "point_mode":
        {
@@ -84,101 +150,91 @@ modules which are defined ``parallel:domain`` may be used when
          "forcing":"UpperClearing"
        },
 
-notification_script
-~~~~~~~~~~~~~~~~~~~
+.. confval:: notification_script
 
-This specifies the script to call upon model execution. This is useful
-for sending a notification to a computer or phone upon the completion of
-a long model run.
+   :type: string
+   :default: None
 
-.. code:: json
+   Path to a script to call upon model execution. This is useful
+   for sending a notification to a computer or phone upon the completion of
+   a long model run.
+
+.. code:: 
 
        "notification_script":"./finished.sh"
 
 And example of what ``finished.sh`` might do is below, which triggers a
-notifcation to Pushbullet thus showing up on all computers and phones
+notification to Pushbullet thus showing up on all computers and phones
 that the account is active on:
 
-.. code:: bash
+.. code:: 
 
    #!/bin/bash
 
    curl -s -u <token here>: https://api.pushbullet.com/v2/pushes -d type=note -d title="Finished model run" >/dev/null
 
-per_triangle_timeseries
-~~~~~~~~~~~~~~~~~~~~~~~
 
-Keeping a continuous timeseries on all triangles is memory intensive and
-generally shouldn’t be used. At the moment this is a legacy option and
-should be kept ‘false’ (also it’s default behaviour).
 
-.. code:: json
+.. confval:: debug_level
 
-       "per_triangle_timeseries":"false"
+   :type: string
+   :default: "Debug"
 
-ui
-~~
+   This controls the verbosity of the output. Options are: 
 
-There is a ncurses ui. However it is currently a little buggy and often
-requires a ``stty sane;clear`` call at the end.
+   - verbose [ all messages ] 
+   - debug [ most messages useful for debugging ] 
+   - warning [only warnings] 
+   - error [ only errors which terminate model execution ]
 
-::
+   Currently most useful internal messages are debug level.
 
-       "ui":true
-
-debug_level
-~~~~~~~~~~~
-
-This controls the verbosity of the output. Options are: - verbose [ all
-messages ] - debug [ most messages useful for debugging ] - warning [
-only warnings] - error [ only errors which terminate model execution ]
-Currently most internal messages are debug level.
-
-.. code:: json
+.. code:: 
 
        "debug_level":"debug"
 
-prj_name
-~~~~~~~~
 
-Project name for reference in the ncurses ui
+.. confval:: startdate
+   
+   :type: string
+   :default: None
 
-.. code:: json
 
-       "prj_name":"Granger creek"
+Allows for a different start start time that that specified by the input timeseries.
+In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 
-startdate
-~~~~~~~~~
+.. code:: 
 
-By default, the model runs for the entirety of the input timeseries.
-``startdate`` allows for starting at a time *after* the start of the
-timeseries
+   "startdate":"20010501T000000"
 
-.. code:: json
+.. confval:: enddate
+   
+   :type: string
+   :default: None
 
-       "startdate":"20010501T000000"
+Allows for a different start start time that that specified by the input timeseries.
+In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 
-enddate
-~~~~~~~
+.. code:: 
 
-By default, the model runs for the entirety of the input timeseries.
-``enddate`` allows for ending at a time *before* the end of the
-timeseries
-
-.. code:: json
-
-          "enddate":"20010502T000000"
+   "enddate":"20010502T000000"
 
 modules
-=======
+-------
 
-Modules order as defined in this list has no bearing on the order they
-are run. Note modules are in a list ([ ]). Modules may be commented out
-to remove them from execution. Module names are case sensitive. The
-``point_mode`` module is required to enable point mode, in addition to
-being enable in ``option.point_mode``.
+Modules to run. These are a comma separated list of keys. 
 
-.. code:: json
+A few notes:
+
+- order as defined in this list has no bearing on the order modules execute
+- may be commented out to remove them from execution
+- names are case sensitive
+- ``point_mode`` module is required to enable point mode, in addition to being enabled in ``option.point_mode``.
+
+.. note::
+   Modules are in a list (``[ ]``) 
+
+.. code:: 
 
      "modules": //important these are [ ]
      [
@@ -198,165 +254,118 @@ being enable in ``option.point_mode``.
      ]
 
 remove_depency
-==============
+--------------
 
-Under some edge cases, a cyclic dependency is created when a module
-depends on A’s output, and A depends on B’s output. There is no way to
-automatically resolve this. It requires the modeller to manually break
-the cycle and force one module to run ahead of another (essentially
-time-lagged).
+   Under some edge cases, a cyclic dependency is created when a module
+   depends on A’s output, and A depends on B’s output. There is no way to
+   automatically resolve this. It requires the modeller to manually break
+   the cycle and force one module to run ahead of another (essentially
+   time-lagged).
 
-An example of this occurring is that the albedo models require knowledge
-of SWE, provided by the snowmodel. However, the snowmodel requires
-albedo to run. Therefore, the modeller may define that the albedo
-routine is run first, then the snowpack model.
+   An example of this occurring is that the albedo model requires knowledge
+   of SWE, provided by the snowmodel. However, the snowmodel requires
+   albedo to run. Therefore, the modeller may define that the albedo
+   routine is run first, then the snowpack model.
 
-In detail: if module A depends on B (A->B), then to remove the decency
-of B from A, specify it as ``"A":"B"``
+   Specifically: if module A depends on B (A->B), then to remove the decency
+   of B from A, specify it as ``"A":"B"``
 
-.. code:: json
+   This can be thought of as ``A`` needs to come before ``B``.
 
-     "remove_depency":
-     {
-       "Richard_albedo":"snobal"
-     }
+   .. code:: 
 
-Essentially, think of it as ``A`` needs to come before ``B``.
+        "remove_depency":
+        {
+          "Richard_albedo":"snobal"
+        },
+
+   
 
 config
-======
+------
 
-Each module, upon creation is provided a configuration instance (see
-`modules <modules>`__). These configuration data are set by creating a
-key that exactly matches the module name. For example
+Each module, upon creation is provided a configuration instance. These configuration data are set by creating a
+key that exactly matches the module name. For example:
 
-.. code:: json
+.. code:: 
 
-   "slope_iswr":
-       {
-         "no_slope":true
-       }
+   "config":
+   {
 
-would be accessed by the module as
+      "slope_iswr":
+          {
+            "no_slope":true
+          }
+   },
 
-.. code:: cpp
-
-   cfg.get<bool>("no_slope")
 
 If the configuration is sufficiently large or cumbersome, it may be best
 to have it in a separate file. This can be specified as
 
-.. code:: json
+.. code:: 
 
-   "snowpack":"snowpack.json"
-
-where ``snowpack.json`` looks like:
-
-.. code:: json
-
-   {
-       "Snowpack":
-       {
-           "HEIGHT_OF_WIND_VALUE" : 2,
-           "ATMOSPHERIC_STABILITY" : "MONIN_OBUKHOV"
-       },
-       "SnowpackAdvanced":
-       {
-           "MAX_NUMBER_MEAS_TEMPERATURES":1
-           }
-   }
-
-In the snowpack module, ``ATMOSPHERIC_STABILITY`` would be accessed as
-
-.. code:: cpp
-
-   cfg.get<bool>("SnowpackAdvanced.ATMOSPHERIC_STABILITY");
-
-Consider this in a CHM.json file
-
-::
-
-   "config":
-   {
-   //this is the name of the module (this->ID in the code)
-   //everything below this key gets put into cfg
-   // you never have to incl the module name in the cfg call,
-   // is done automatically for the module
-       "simple_canopy":  
-       {
-   //these are sub keys, within the module's cfg. These can be anything
-           "canopy": 
-           {
-   // cfg.get<double>("canopy.LAI")
-               "LAI":3 
-           }
-           
-       }
-   }
-   ​
    //consider this in CHM.json
    "config":
    {
        "simple_canopy":"canopy.json"   
-       
    }
+
    ​
-   //and canopy.json has
+And ``canopy.json`` is 
+
+.. code::
+
    {
-   //these are sub keys, within the module's cfg. These can be anything
-       "canopy": 
-       {
-   // cfg.get<double>("canopy.LAI")
-           "LAI":3 
-       }
-       
-   }```
-
-   What the code does it put everything in the main {} of the <module-name>.json file under the module's name key in CHM.json, turning this 2nd example into EXACTLY the top example within the code.
+      "canopy": 
+      {
+        "LAI":3 
+      }
+   }
 
 
-   # meshes
-   The meshes section has two sections:
-   - mesh
-   - parameters
+Note that the sub-keys for a module's configuration are entirely dependent upon the module. Please see the module's help for specific options.
 
-   ```mesh``` is the file path  to the main .mesh file that contains the DEM information, as well as optionally, parameters. 
+meshes
+-------
+The meshes section has two keys:
 
-   ```parameters``` is a set of key:value pairs to other mesh files that contain extra parameters to be used.
-   ```json
-     "meshes":
-     {
-       "mesh":"meshes/granger30.mesh",
-       "parameters":
-       {
-         "file":"meshes/granger30_liston_curvature.mesh"
-       }
+.. confval:: mesh
 
-     }
+   :type: string
 
-Mesh parameters are not guaranteed to cover the entire extent of the of
-the DEM. A module may test for a parameter on a triangle as follows:
 
-.. code:: cpp
+   File path  to the ``.mesh`` file produced by mesher.
 
-    if (face->has_parameter("swe2"))
-           {
-               if( !is_nan(face->get_parameter("swe2")))
-               {
-                   sbal->z_s = face->get_parameter("swe2") / sbal->rho;
-               }
-           }
+.. confval:: parameters
+
+   :type: ``{ }``
+
+   Optionally, A set of key:value pairs to other ``.param`` files that contain extra parameters to be used.
+   These are in the format ``{ "file":"<path>"" }``
+
+
+.. code::
+
+   "meshes":
+   {
+    "mesh":"meshes/granger30.mesh",
+    "parameters":
+    {
+      "file":"meshes/granger30.param",
+      "file":"meshes/granger30_surface.param"
+    }
+   }
+
+
+
+
 
 parameter_mapping
-=================
+-----------------
 
-Often, the parameters in the mesh may requires information. For example,
-landcover might be a numeric class value. The parameters can thus be
-arbitrary extra data. These can be thought of the meta-data for the
-on-mesh parameters. These parameters may be either located in another
-file:
+The parameters may be classified values for use in a look-up table. For example, the landcover may be a numeric class value and values such as LAI need to be obtained from a lookup table. These parameters may be either specified directly in the file or located in another file:
 
-.. code:: json
+.. code:: 
 
      "parameter_mapping":
      {
@@ -368,168 +377,293 @@ be referenced in the module that is looking for it.
 
 .. code:: json
 
-       "landcover":
-       {
-         "20":
+      {
+         "landcover":
          {
-           "desc":"lake",
-           "is_waterbody":true
-         },
-         "31":
-         {
-           "desc":"snow ice"
+            "20":
+            {
+              "desc":"lake",
+              "is_waterbody":true
+            },
+            "31":
+            {
+              "desc":"snow ice"
+            }
          }
       }
 
 output
-======
+------
 
-Output may be either to a timeseries for a specific location on the mesh
-or it may be the entirety of the mesh. Specify ``output_dir`` to change
-the output directory.
+Output may be either to an ascii-timeseries for a specific triangle on the mesh
+or it may be the entirety of the mesh. The two output types are set by:
 
-timeseries
-~~~~~~~~~~
+   - a key named ``"mesh":{ ... }`` will enable the entire mesh output
+   - all other keys (``"some_name":{...}```) are assumed to be the names of output timeseries
 
-The name of the timeseries key is used to uniquely identify this output.
-A x,y coordinate (given as ``longitude`` and ``latitude``) is provided.
-The triangle that contains this point is then selected for output. An
-error is raised if no triangle contains the point. ``file`` denotes the
-output file name. The output is in csv format. ``timeseries`` is a
-legacy option and should be set to “timeseries” and forgotten.
+Both mesh and timeseries can be used together.
 
-.. code:: json
+
+.. confval:: output_dir
+
+   :type: string
+   :default: "output"
+
+   The output directory name.
+
+
+
+timeseries output
+~~~~~~~~~~~~~~~~~~
+
+The name of the ``timeseries`` key is used to uniquely identify this output: ``"output_name"{ ... }``. 
+
+If using ``point_mode``, this name corresponds to the ``output`` key. If a lot of stations are to be
+output, consider keeping them in a separate file and inserting using the top-level ".json" behaviour.
+
+.. confval:: longitude
+
+   :type: float
+
+   WGS84 longitude of output point. The triangle that contains this point is then selected for output. An error is raised if no triangle contains the point.
+
+.. confval:: latitude
+
+   :type: float
+
+   WGS84 latitude of output point. The triangle that contains this point is then selected for output. An error is raised if no triangle contains the point.
+
+.. confval:: file
+
+   The output file name. The output is in csv format and each column is a variable.
+
+
+.. code:: 
 
      "output":
      {
-       "northface":
-       {
-         "easting": 489857.879,
-         "northing": 6712108.525,
-         "file": "granger_northface.txt",
-         "type": "timeseries"
-       }
+        "more_stations":"mystations.json",
+        "UpperClearing": 
+        {
+            "longitude": "-115.175362",
+            "latitude": "50.956547",
+            "file": "uc.txt"
+        }
     }
+
+where ``mystations.json`` would look like
+
+.. code::
+
+   {
+        "some_station": 
+        {
+            "longitude": "-115.175362",
+            "latitude": "50.956547",
+            "file": "somestation.txt"
+        }
+   }
 
 mesh
 ~~~~
 
-Alternatively, the entire mesh is written to Paraview’s vtu format for
-visulatization in Paraview and for analysis. ``base_name`` is the base
-file name to be used. In this case the files will be named sequentially
-``granger.0001.vtu``, ``granger.0002.vtu``, &c in the output directory.
+The entire mesh may be written to Paraview’s vtu format for
+visualization in Paraview and for analysis. This is denoted by a ``"mesh":{ ... }`` key.
 
-If mesh output is enabled, the default behaviour to is write every
-variable at each timestep. Only variables defined in the ``provides``
-call is eligible for output.
+The naming scheme of these vtu files is ``base_name`` + ``posix datetime`` + ``_MPIrank``.
 
-variables
-^^^^^^^^^
+For example: ``SC1506837600_0.vtu``
 
-``"variables":[ ]`` can be set to write a subset of variables. This is
-useful for reducing the size of output files.
+Even if MPI is not used, a _0 will always be added for consistency. In addition to the vtu files, a ``base_name.pvd`` is written. This is an XML file that holds a reference to all
+the vtu files:
 
-frequency
-^^^^^^^^^
+.. code::
+   
+   <?xml version="1.0" encoding="utf-8"?>
+   <VTKFile type="Collection" version="0.1">
+    <Collection>
+        <DataSet timestep="1506837600" group="" part="0" file="SC1506837600_0.vtu"/> 
+         ...
 
-Frequency can be set to write ever N timesteps. The pvd file will
-properly display the time of each output.
+Although the ``vtu`` files may be loaded directly into Paraview, it is preferred to load the ``pvd`` file. Due to the ``timestep`` field, the `Paraview plugin <https://github.com/Chrismarsh/vtk-paraview-datetimefilter>`_ can then show an overlay with the date-time for easier analysis. 
 
-.. code:: json
+.. image:: images/datetime.gif
 
-        "mesh":
-        {
-          "base_name":"output/granger",
-          "variables":["swe","t","rh"],
-          "frequency":1 
+
+
+
+
+.. confval:: base_name
+   
+   :type: string
+   
+   The base file name to be used. 
+
+.. confval:: variables
+
+   :type: ``[ "variable", ... ]``
+
+   The default behaviour to is write every variable at each timestep. This may produce an undesirable amount of output. This takes a list of variables to output.
+
+.. code::
+
+   "variables": [
+                "t",
+                "U_2m_above_srf",
+                "swe",
+                "iswr"
+            ],
+
+.. confval frequency::
+
+   :type: int
+   :default: 1
+
+   Frequency can be set to write ever *N* timesteps. 
+
+.. confval write_parameters::
+
+   :type: boolean
+   :default: true
+
+   Disables/enables writing parameters to the output.
+
+Example:
+
+.. code::
+
+   "output":
+   {
+    "mesh": {
+            "base_name": "SC",
+            "variables": [
+                "t",
+                "U_2m_above_srf",
+                "swe",
+                "iswr"
+            ],
+            "frequency": "24",
+            "write_parameters": "false"
         }
+   }
 
-global
-======
 
-Global defines a set of globally applicable parameters. The key name is
-a unique identifier. If ``point_mode`` is being used, then the station
-used in ``point_mode`` must exist in this list.
 
-##UTC_offset The utc offset is used to determine solar parameters.
-Positive west.
 
-.. code:: json
 
-       "UTC_offset":8
 
-##forcing Forcing data are defined as an input
-`timeseries <timeseries>`__ in tab delineated format with ISO datetime.
+
+Forcing
+--------
+
+Input forcing can be either a ASCII timeseries or a NetCDF.
+
 Input forcing stations do not need to be located within the simulation
 domain. Therefore they can act as ‘virtual stations’ so-as to use
 reanalysis data, or met stations located outside of the basin.
 
-file
-~~~~
+An example of this is shown below, where each black point is a virtual station, representing the center for a NetCDF grid cell from a NWP product.
 
-``file`` is a relative or absolute path
+.. image:: images/netcdf.png
 
-.. code:: json
 
-   "file":"bb_1999-2002"
+.. confval:: UTC_offset
 
-latitude, longitude
-~~~~~~~~~~~~~~~~~~~
+   :type: int
+   :default: 0
 
-Latitude and longitude of the input station
+ If the input timeseries it not UTC, then this is the correction to account for UTC offset (all solar radiation calculations are in UTC).
+ This is Positive west!
 
-.. code:: json
+.. confval:: use_netcdf
 
-            "latitude": 489216.601,
-            "longitude": 6709533.168
+   :type: boolean
+   :default: false
 
-elevation
-~~~~~~~~~
+   Specify if a NetCDF (.nc) file will be used. Cannot be used along with ASCII inputs!
 
-Elevation is given in meters. It does *not* need to be equal to the
-elevation of the triangle upon which it lies if the station is located
-in the simulation domain.
 
-filter
-~~~~~~
+ASCII timeseries
+~~~~~~~~~~~~~~~~~
 
-If a `filter <filters>`__ is defined, it must be defined on the forcing
-file and operate upon a variable that exists in the forcing data.
+Forcing data are defined as a delineated format with ISO datetime. This is given as ``"station_name":{ ... }``. If using ``point_mode``, then the value ``station_name`` must exactly match the ``input`` used for ``option.point_mode``.
 
-.. code:: json
+.. code::
 
-         "buckbrush":
-          {
-            "file":"bb_1999-2002", 
-            "easting": 489216.601,
-            "northing": 6709533.168,
-            "elevation": 1305,
-            "filter":
-            {
-              "macdonald_undercatch":
-              {
-                "variable":"p"
-              }
-           }
-        }
+ Date                 Rh   Tair  Precip
+   20080220T000000    50      -12      2
+   20080221T000015    40      -10      0
+
+where the input variable names correspond to the variable names the selected modules expect. Please refer to those modules' documentation.
+
+Some restrictions:
+        - No more than 2147483647 steps. At 1s intervals, this equates to roughly 68 years.
+        - Consistent units. You mustn't have mm on one line, then meters on the next, for the same observation
+        - Has to be on a constant time step. The first interval is taken as the interval for the rest of the file
+        - Missing values are not currently allowed - that is, each row must be complete with n entries where n is number of variables.
+        - However, a missing value value (i.e., -9999) can be used to represent missing data
+        - Whitespace, tab or comma delimited. Allows for mixed usage. ex 1234, 4543 890 is legal
+        - Values must be numeric
+
+Integer styles:
+      -   +1234
+      -   -1234
+      -   1234567890
+
+Floating point:
+      -   12.34
+      -   12.
+      -   .34
+      -   12.345
+      -   1234.45
+      -   +12.34
+      -   -12.34
+      -   +1234.567e-89
+      -   -1234.567e89
+
+Time:
+        - Must be in one column in the following ISO 8601 date time form:
+        - YYYYMMDDThhmmss   e.g., 20080131T235959
+
+
+.. confval:: file
+
+   A relative or absolute path to an input forcing file
+
+
+.. confval:: latitude
+
+   :type: double
+
+   Latitude of the input station, WGS84. Positive North. Not "N" or "S" suffix
+
+.. confval:: longitude
+
+   :type: double
+
+   Longitude of the input station, WGS84. Positive East. Not "N" or "S" suffix
+
+.. confval:: elevation
+
+   :type: double
+
+   Elevation is given in meters. It does *not* need to be equal to the elevation of the triangle upon which it lies if the station is located in the simulation domain.
+   This value is used in the lapse rate equations to interpolate the data.
 
 If required, forcing station definitions can be located in an external
 file. For the external file, the name of the key doesn’t matter. The
 external file should contain the stations in the format as per above. It
-does *not* require an adition ``"forcing":`` section definition.
+does *not* require an addition ``"forcing":`` section definition.
 
-.. code:: json
+.. code:: 
 
    "forcing":
      {
-       "buckbrush":
+       "some_station":
         {
-          "file":"bb_1999-2002", // hm_oct2010 hm_oct2_4_2010 hm_sep_15_2006
-          "easting": 489216.601,
-          "northing": 6709533.168,
-          "elevation": 1305
+          //definition
         },
-       "reanalysis_extract_": "external_file_1.json",
+       "reanalysis_extract_1": "external_file_1.json",
       "reanalysis_extract_2": "external_file_2.json",
    }
 
@@ -539,11 +673,70 @@ where ``external_file_*.json`` looks like
 
    {
     "station1":
-   {
-    //details here
-   },
+      {
+       //details here
+      },
     "station2":
-   {
-    //details here
+      {
+       //details here
+      }
    }
-   }
+
+
+Filters
+*********
+
+Filters perform an operation on the data prior to being passed to a module. They allow for things such as wind-undercatch corrections to be done on the fly. 
+
+If a filter is defined, it must be defined on the forcing file and operate upon a variable that exists in the forcing data. They are given as:
+
+``"filter_name": { ... }```. The configuration values are filter-specific; please see the filter documentation for what is required. Multiple filters may be specified.
+
+.. code::
+      "buckbrush": 
+        {
+          "file": "bb_m_2000-2008",
+          "latitude": 60.52163,
+          "longitude": -135.197151,
+          "elevation": 1305,
+          "filter":  
+            {
+            "scale_wind_speed": 
+                {
+                "Z_F": 4.6,
+                "variable": "u"
+            },
+            "goodison_undercatch":
+            {
+                "variable":"p"
+            }
+         }
+      },
+
+
+NetCDF
+-------
+
+The use NetCDF assumes that a regular grid of x,y 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

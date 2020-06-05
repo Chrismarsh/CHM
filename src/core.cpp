@@ -93,7 +93,7 @@ void core::config_options( pt::ptree &value)
     {
         LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
     }
-    
+
     // custom start time
     boost::optional<std::string> start = value.get_optional<std::string>("startdate");
     if (start)
@@ -717,7 +717,7 @@ void core::config_output(pt::ptree &value)
             continue;
         }
 
-	    if ((out_type != "mesh"))  // anything else *should* be a time series*......
+        if ((out_type != "mesh"))  // anything else *should* be a time series*......
         {
             out.type = output_info::time_series;
             out.name = out_type;

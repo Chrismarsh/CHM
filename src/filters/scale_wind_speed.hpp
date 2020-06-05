@@ -45,7 +45,7 @@
  * Depends:
  * - U_F [m/s]
  * - Z_F [m] - Height of wind speed measurement/model layer
- *
+ * @}
  */
 class scale_wind_speed : public filter_base
 {

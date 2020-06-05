@@ -1,36 +1,7 @@
-Introduction
-============
+Getting Started
+================
 
-The Canadian Hydrological Model (CHM) uses a novel, modular, mesh-based
-approach for developing and testing process representations in
-hydrological modelling. It can move between spatial scales, temporal
-scales, and spatial extents. Its key features include the abilities to
-i) capture spatial heterogeneity in surface discretizations in an
-efficient manner, ii) include multiple process representations; iii)
-change, remove, and decouple hydrological process algorithms, iv) work
-both with spatially localized (point) and non-localized (distributed)
-models, v) span multiple spatial extents and scales, and vi) utilize a
-variety of forcing fields for boundary and initial conditions. You can
-visit the project Github `page <https://github.com/Chrismarsh/CHM>`__.
-Contact its core developer
-`Chris Marsh <https://github.com/Chrismarsh>`__ for further
-details/inquiries.
-
-Contributions
-~~~~~~~~~~~~~
-
-Thanks to:
-
-`Nic Wayand <https://github.com/Nicwayand>`__ for helping with many
-feature requests, testing, and implementation of CHM for
-`snowcast.ca <http://www.snowcast.ca>`__.
-
-`Wenxian Guo <https://github.com/WXGopher/>`__ for compiling the main
-tutorial page, clarifications and additions to documentation, scaling
-tests, and test the build system.
-
-Installation
-============
+This page serves as a broad overview of 
 
 For the general installation procedure, refer to the `build
 page <https://github.com/Chrismarsh/CHM/wiki/Building-CHM>`__.
