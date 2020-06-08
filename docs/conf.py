@@ -11,13 +11,15 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
-# import sys
+import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
 import sphinx_rtd_theme
 from sphinx.locale import _
 
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
+
+sys.path.insert(0, os.path.abspath('_ext'))
 
 # -- Project information -----------------------------------------------------
 
@@ -33,7 +35,8 @@ author = 'Chris Marsh'
 # ones.
 extensions = [ "breathe", "exhale",
                "sphinx_rtd_theme",
-               'sphinx.ext.autosectionlabel'
+               'sphinx.ext.autosectionlabel',
+               'jsonlexer'
 ]
 
 autosectionlabel_prefix_document = True

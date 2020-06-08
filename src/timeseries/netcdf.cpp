@@ -179,7 +179,7 @@ void netcdf::open_GEM(const std::string &file)
 
         if(strs.size() != 3)
         {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Epoch did not split properlys, unknown units/ Epoch as read was: " + epoch));
+            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Epoch did not split properly, unknown units/ Epoch as read was: " + epoch));
         }
 
         //If it's 3, means there is a T b/w date and time, remove it.

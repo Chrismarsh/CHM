@@ -11,7 +11,7 @@ Configuration
    Regardless of input coordinate system **all** input points are specified in latitude and longitude in WSG84.
 
 
-Layout
+Schema
 ------------
 
 The config file is a JSON file. However, it does support C-style comments: ``//`` and ``/** **/`` are both valid. 
@@ -21,37 +21,50 @@ There are a few required sections: ``option``, ``modules``, ``meshes``, ``forcin
 The general layout of a CHM config JSON file is
 
 
-.. code:: 
+.. code:: json 
 
    {
       "option":
       {
-         // values here
-         "option_a":True,
-         "option_b": 1234
+         "option_a": true,
+         "option_b": 1234,
+         ...
       },
       "modules":
       [
-         //list of modules here. Note [ ] 
          "module1",
-         "module2"
+         "module2",
+         ...
       ],
+      "config":
+      {
+         "module1":
+         {
+            ...
+         },
+
+         ...
+      }
       "meshes":
       {
-         // values here
+         ...
       },
       "forcing":
       {
-         // values here
+        ...
+      },
+      "output":
+      {
+         ...
       }
    }
 
-For every section, if a top-level key:value pair is found and the value contains ".json", that file is loaded and inserted into this option. The key-value is not used, and may be anything.
+For every section, if a top-level key:value pair is found and the value contains ".json", that file is loaded and inserted into this option. The key-value is not used, and may be anything. Key names are enclosed in quotes (" "). Although it tends to make more sense to arrange the keys in the shown order, the order does not matter (anywhere) and will be read correctly.
 
-.. note::
+
+.. warning::
    The ``modules`` key is an array and requires the use of [ ]
 
-Key names are enclosed in quotes (" "). Although it tends to make more sense to arrange the keys in the shown order, the order does not matter (anywhere) and will be read correctly.
 
 .. warning::
 
@@ -60,24 +73,26 @@ Key names are enclosed in quotes (" "). Although it tends to make more sense to 
    otherwise look fine.
 
 .. note::
-   A user can specify a number as "5" or 5. Internally to CHM it will be converted to a numeric type. Thus, both are fine, however a non-string should be preferred. This is similar for "True" and True. 
+   A user can specify a number as ``"5"`` or ``5``. Internally to CHM it will be converted to a numeric type. Thus, both are fine, however a non-string should be preferred. This is similar for ``"true"`` and ``true``. 
 
 .. note::
-   Boolean types are not case sensitive.
+   Boolean types are case sensitive.
 
+Sections
+---------
 
 option
--------
+********
 
-.. code::
+.. code:: json
 
    {
       "option":
       {
            "station_N_nearest": 1,
            "interpolant": "nearest",
-           "per_triangle_timeseries": "false",
-           "ui": "false",
+           "per_triangle_timeseries": false,
+           "ui": false,
            "debug_level": "debug",
            "prj_name": "SnowCast",
            "enddate": "20180501T050000"
@@ -114,7 +129,7 @@ option
    distance weighting (idw). Nearest selects the closest
    station and only uses that with no interpolation. 
 
-   .. code:: 
+   .. code:: json 
 
       "interpolant" : "idw"
       "interpolant" : "spline"
@@ -142,7 +157,7 @@ option
    Usage of this key also requires adding ``point_mode`` to the module list. Lastly, no
    modules which are defined ``parallel:domain`` may be used when point_mode is enabled.
 
-.. code:: 
+.. code:: json 
 
        "point_mode":
        {
@@ -159,7 +174,7 @@ option
    for sending a notification to a computer or phone upon the completion of
    a long model run.
 
-.. code:: 
+.. code:: json 
 
        "notification_script":"./finished.sh"
 
@@ -167,7 +182,7 @@ And example of what ``finished.sh`` might do is below, which triggers a
 notification to Pushbullet thus showing up on all computers and phones
 that the account is active on:
 
-.. code:: 
+.. code:: json 
 
    #!/bin/bash
 
@@ -189,7 +204,7 @@ that the account is active on:
 
    Currently most useful internal messages are debug level.
 
-.. code:: 
+.. code:: json 
 
        "debug_level":"debug"
 
@@ -203,7 +218,7 @@ that the account is active on:
 Allows for a different start start time that that specified by the input timeseries.
 In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 
-.. code:: 
+.. code:: json 
 
    "startdate":"20010501T000000"
 
@@ -215,12 +230,12 @@ In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 Allows for a different start start time that that specified by the input timeseries.
 In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 
-.. code:: 
+.. code:: json 
 
    "enddate":"20010502T000000"
 
 modules
--------
+********
 
 Modules to run. These are a comma separated list of keys. 
 
@@ -234,7 +249,7 @@ A few notes:
 .. note::
    Modules are in a list (``[ ]``) 
 
-.. code:: 
+.. code:: json 
 
      "modules": //important these are [ ]
      [
@@ -254,7 +269,7 @@ A few notes:
      ]
 
 remove_depency
---------------
+***************
 
    Under some edge cases, a cyclic dependency is created when a module
    depends on A’s output, and A depends on B’s output. There is no way to
@@ -272,7 +287,7 @@ remove_depency
 
    This can be thought of as ``A`` needs to come before ``B``.
 
-   .. code:: 
+   .. code:: json 
 
         "remove_depency":
         {
@@ -282,12 +297,12 @@ remove_depency
    
 
 config
-------
+*******
 
 Each module, upon creation is provided a configuration instance. These configuration data are set by creating a
 key that exactly matches the module name. For example:
 
-.. code:: 
+.. code:: json 
 
    "config":
    {
@@ -302,7 +317,7 @@ key that exactly matches the module name. For example:
 If the configuration is sufficiently large or cumbersome, it may be best
 to have it in a separate file. This can be specified as
 
-.. code:: 
+.. code:: json 
 
    //consider this in CHM.json
    "config":
@@ -313,20 +328,19 @@ to have it in a separate file. This can be specified as
    ​
 And ``canopy.json`` is 
 
-.. code::
+.. code:: json
 
+   "canopy": 
    {
-      "canopy": 
-      {
-        "LAI":3 
-      }
+     "LAI":3 
    }
+   
 
 
 Note that the sub-keys for a module's configuration are entirely dependent upon the module. Please see the module's help for specific options.
 
 meshes
--------
+*******
 The meshes section has two keys:
 
 .. confval:: mesh
@@ -344,7 +358,7 @@ The meshes section has two keys:
    These are in the format ``{ "file":"<path>"" }``
 
 
-.. code::
+.. code:: json
 
    "meshes":
    {
@@ -361,11 +375,11 @@ The meshes section has two keys:
 
 
 parameter_mapping
------------------
+******************
 
 The parameters may be classified values for use in a look-up table. For example, the landcover may be a numeric class value and values such as LAI need to be obtained from a lookup table. These parameters may be either specified directly in the file or located in another file:
 
-.. code:: 
+.. code:: json 
 
      "parameter_mapping":
      {
@@ -393,7 +407,7 @@ be referenced in the module that is looking for it.
       }
 
 output
-------
+*********
 
 Output may be either to an ascii-timeseries for a specific triangle on the mesh
 or it may be the entirety of the mesh. The two output types are set by:
@@ -438,7 +452,7 @@ output, consider keeping them in a separate file and inserting using the top-lev
    The output file name. The output is in csv format and each column is a variable.
 
 
-.. code:: 
+.. code:: json 
 
      "output":
      {
@@ -453,7 +467,7 @@ output, consider keeping them in a separate file and inserting using the top-lev
 
 where ``mystations.json`` would look like
 
-.. code::
+.. code:: json
 
    {
         "some_station": 
@@ -477,7 +491,7 @@ For example: ``SC1506837600_0.vtu``
 Even if MPI is not used, a _0 will always be added for consistency. In addition to the vtu files, a ``base_name.pvd`` is written. This is an XML file that holds a reference to all
 the vtu files:
 
-.. code::
+.. code:: json
    
    <?xml version="1.0" encoding="utf-8"?>
    <VTKFile type="Collection" version="0.1">
@@ -505,7 +519,7 @@ Although the ``vtu`` files may be loaded directly into Paraview, it is preferred
 
    The default behaviour to is write every variable at each timestep. This may produce an undesirable amount of output. This takes a list of variables to output.
 
-.. code::
+.. code:: json
 
    "variables": [
                 "t",
@@ -530,7 +544,7 @@ Although the ``vtu`` files may be loaded directly into Paraview, it is preferred
 
 Example:
 
-.. code::
+.. code:: json
 
    "output":
    {
@@ -543,7 +557,7 @@ Example:
                 "iswr"
             ],
             "frequency": "24",
-            "write_parameters": "false"
+            "write_parameters": false
         }
    }
 
@@ -583,12 +597,17 @@ An example of this is shown below, where each black point is a virtual station, 
    Specify if a NetCDF (.nc) file will be used. Cannot be used along with ASCII inputs!
 
 
+
+.. note::
+
+   ASCII and NetCDF inputs cannot be mixed. It is one or the other.
+
 ASCII timeseries
-~~~~~~~~~~~~~~~~~
+*****************
 
 Forcing data are defined as a delineated format with ISO datetime. This is given as ``"station_name":{ ... }``. If using ``point_mode``, then the value ``station_name`` must exactly match the ``input`` used for ``option.point_mode``.
 
-.. code::
+.. code:: json
 
  Date                 Rh   Tair  Precip
    20080220T000000    50      -12      2
@@ -655,7 +674,7 @@ file. For the external file, the name of the key doesn’t matter. The
 external file should contain the stations in the format as per above. It
 does *not* require an addition ``"forcing":`` section definition.
 
-.. code:: 
+.. code:: json 
 
    "forcing":
      {
@@ -669,7 +688,7 @@ does *not* require an addition ``"forcing":`` section definition.
 
 where ``external_file_*.json`` looks like
 
-.. code:: json
+.. code:: json 
 
    {
     "station1":
@@ -684,7 +703,7 @@ where ``external_file_*.json`` looks like
 
 
 Filters
-*********
+~~~~~~~~
 
 Filters perform an operation on the data prior to being passed to a module. They allow for things such as wind-undercatch corrections to be done on the fly. 
 
@@ -692,46 +711,194 @@ If a filter is defined, it must be defined on the forcing file and operate upon 
 
 ``"filter_name": { ... }```. The configuration values are filter-specific; please see the filter documentation for what is required. Multiple filters may be specified.
 
-.. code::
-      "buckbrush": 
-        {
-          "file": "bb_m_2000-2008",
-          "latitude": 60.52163,
-          "longitude": -135.197151,
-          "elevation": 1305,
-          "filter":  
-            {
-            "scale_wind_speed": 
-                {
-                "Z_F": 4.6,
+.. code-block:: json
+
+  "buckbrush": 
+  {
+    "file": "bb_m_2000-2008",
+    "latitude": 60.52163,
+    "longitude": -135.197151,
+    "elevation": 1305,
+    "filter": 
+    {
+      "scale_wind_speed": {
+        "Z_F": 4.6,
+        "variable": "u"
+      },
+      "goodison_undercatch": {
+        "variable": "p"
+      }
+    }
+  }
+
+
+Example
+~~~~~~~~
+.. code:: json
+
+   "forcing": 
+       {
+
+         "UTC_offset": 8,
+
+         "buckbrush": 
+           {
+             "file": "bb_m_2000-2008",
+             "latitude": 60.52163,
+             "longitude": -135.197151,
+             "elevation": 1305,
+             "filter":  
+               {
+               "scale_wind_speed": 
+                   {
+                   "Z_F": 4.6,
+                   "variable": "u"
+               },
+               "goodison_undercatch":
+               {
+                   "variable":"p"
+               }
+            }
+         },
+         "alpine": 
+           {
+             "file": "alp_m_2000-2008",
+             "latitude": 60.567267,
+             "longitude": -135.184652,
+             "elevation": 1559,
+             "filter": {
+            "scale_wind_speed": {
+                "Z_F": 2.5,
                 "variable": "u"
             },
             "goodison_undercatch":
             {
                 "variable":"p"
             }
+
+             }
          }
-      },
+      }
 
 
 NetCDF
--------
+********
 
-The use NetCDF assumes that a regular grid of x,y 
-
-
-
+The use NetCDF as input creates virtual stations at the cell-centres. The NetCDF file is lazy loaded as required for each triangle, so only the values required are loaded.
+The variable names, like for ASCII inputs, needs to correspond to the values expected by the filters.
 
 
+.. warning::
+   
+   NetCDF and ``point_mode`` are not supported.
+
+Grid
+~~~~~~
+
+- the nc file is a regular grid of x,y values
+- WGS84 lat/long
+- consistent grid between model timesteps
+- The underlying grid is specified in coordinates: ``ygrid_0`` and ``xgrid_0``
+- The lat/long is specififed in variables ``gridlat_0`` and ``gridlon_0``
+- The elevation of the observation is given in ``HGT_P0_L1_GST`` (m)
+
+Timesteps
+~~~~~~~~~~
+
+- at least two timesteps
+- named ``datetime``
+- time is in UTC+0
+- the difference between these is used to determine model dt
+- timesteps are offsets from an epoch (format ``YYYY-mm-dd HH:MM:SS`` or ``YYYY-mm-ddTHH:MM:SS``)
+- units are hours, minutes, seconds
+- This is specified as the units: ``datetime:units = "hours since 2017-09-01 06:00:00" ;``
+- offset are given as ``int64``
+
+Schema
+~~~~~~~
+
+In detail the following is the schema for the required NetCDF files:
+
+.. code:: 
+
+   dimensions:
+      datetime = UNLIMITED ; 
+      ygrid_0 = int ;
+      xgrid_0 = int ;
+
+   variables:
+      double VAR_NAME(datetime, ygrid_0, xgrid_0) ;
+         VAR_NAME:_FillValue = NaN ;
+         VAR_NAME:coordinates = "gridlat_0 gridlon_0" ;
+
+      double HGT_P0_L1_GST(datetime, ygrid_0, xgrid_0) ;
+         HGT_P0_L1_GST:_FillValue = NaN ;
+         HGT_P0_L1_GST:coordinates = "gridlat_0 gridlon_0" ;
 
 
+      int64 datetime(datetime) ;
+         datetime:standard_name = "time" ;
+         datetime:long_name = "Validity time" ;
+         datetime:axis = "T" ;
+         datetime:units = "hours since 2017-09-01 06:00:00" ;
+         datetime:calendar = "proleptic_gregorian" ;
+
+      double gridlat_0(ygrid_0, xgrid_0) ;
+         gridlat_0:_FillValue = NaN ;
+         gridlat_0:long_name = "latitude" ;
+         gridlat_0:standard_name = "latitude" ;
+         gridlat_0:units = "degrees_north" ;
+
+      double gridlon_0(ygrid_0, xgrid_0) ;
+         gridlon_0:_FillValue = NaN ;
 
 
+      double xgrid_0(xgrid_0) ;
+         xgrid_0:_FillValue = NaN ;
+         xgrid_0:long_name = "longitude in rotated pole grid" ;
+         xgrid_0:standard_name = "grid_longitude" ;
+         xgrid_0:units = "degrees" ;
+         xgrid_0:axis = "X" ;
+
+      double ygrid_0(ygrid_0) ;
+         ygrid_0:_FillValue = NaN ;
+         ygrid_0:long_name = "latitude in rotated pole grid" ;
+         ygrid_0:standard_name = "grid_latitude" ;
+         ygrid_0:units = "degrees" ;
+         ygrid_0:axis = "Y" ;
 
 
+Filters
+~~~~~~~~
+
+Filters are the same as for ASCII with one important distinction: every specified filter is run for every virtual station (i.e., grid cell centre).
+
+.. code:: json
+
+    "filter": {
+               "scale_wind_speed": {
+                   "Z_F": "40",
+                   "variable": "u"
+               }
+           }
 
 
+Example
+~~~~~~~
 
+.. code:: json
+
+   "forcing": {
+           "UTC_offset": "0",
+           "use_netcdf": true,
+           "file": "GEM-CHM_2p5_west_2017100106_2018080105.nc",
+           "filter": {
+               "scale_wind_speed": {
+                   "Z_F": "40",
+                   "variable": "u"
+               }
+           }
+       }
 
 
 
