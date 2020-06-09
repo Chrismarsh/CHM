@@ -35,7 +35,7 @@ Contributors
 
    build
    configuration
-.. cli
+   cli
 
 .. faq
 .. filters

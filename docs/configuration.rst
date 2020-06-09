@@ -287,7 +287,7 @@ remove_depency
    Specifically: if module A depends on B (A->B), then to remove the decency
    of B from A, specify it as ``"A":"B"``
 
-   This can be thought of as ``A`` needs to come before ``B``.
+   This can be thought of as ``A`` needs to come before ``B``. If the specified modules are not added to the modules list, they are ignored.
 
    .. code:: json 
 
@@ -302,7 +302,7 @@ config
 *******
 
 Each module, upon creation is provided a configuration instance. These configuration data are set by creating a
-key that exactly matches the module name. 
+key that exactly matches the module name. If a section is added, but that module isn't specified, the section is ignored.
 
 .. confval:: module_name
 
