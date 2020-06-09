@@ -16,7 +16,7 @@ Schema
 
 The config file is a JSON file. However, it does support C-style comments: ``//`` and ``/** **/`` are both valid. 
 
-There are a few required sections: ``option``, ``modules``, ``meshes``, ``forcing``.
+There are a few required sections: ``modules``, ``meshes``, ``forcing``.
 
 The general layout of a CHM config JSON file is
 
@@ -83,6 +83,8 @@ Sections
 
 option
 ********
+
+This section contains options for CHM and the simulation in general. 
 
 .. code:: json
 
@@ -182,7 +184,7 @@ And example of what ``finished.sh`` might do is below, which triggers a
 notification to Pushbullet thus showing up on all computers and phones
 that the account is active on:
 
-.. code:: json 
+.. code::  
 
    #!/bin/bash
 
@@ -237,7 +239,7 @@ In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 modules
 ********
 
-Modules to run. These are a comma separated list of keys. 
+Modules to run. These are a comma separated list of keys. This is a required section.
 
 A few notes:
 
@@ -251,19 +253,19 @@ A few notes:
 
 .. code:: json 
 
-     "modules": //important these are [ ]
+     "modules":
      [
         "Liston_wind",
-       "Burridge_iswr",
-       "slope_iswr",
+        "Burridge_iswr",
+        "slope_iswr",
         "Liston_monthly_llra_ta",
         "kunkel_rh",
         "Thornton_p",
         "Walcek_cloud",
         "Sicart_ilwr",
         "Harder_precip_phase",
-       "snobal",
-       "Gray_inf",
+        "snobal",
+        "Gray_inf",
         "Richard_albedo"
 
      ]
@@ -271,8 +273,8 @@ A few notes:
 remove_depency
 ***************
 
-   Under some edge cases, a cyclic dependency is created when a module
-   depends on A’s output, and A depends on B’s output. There is no way to
+   Under some edge cases, a cyclic dependency is created when a module B
+   depends on module A’s output, and module A depends on module B’s output. There is no way to
    automatically resolve this. It requires the modeller to manually break
    the cycle and force one module to run ahead of another (essentially
    time-lagged).
@@ -292,7 +294,7 @@ remove_depency
         "remove_depency":
         {
           "Richard_albedo":"snobal"
-        },
+        }
 
    
 
@@ -300,7 +302,15 @@ config
 *******
 
 Each module, upon creation is provided a configuration instance. These configuration data are set by creating a
-key that exactly matches the module name. For example:
+key that exactly matches the module name. 
+
+.. confval:: module_name
+
+   :type: ``{ }``
+
+
+
+For example:
 
 .. code:: json 
 
@@ -341,7 +351,9 @@ Note that the sub-keys for a module's configuration are entirely dependent upon 
 
 meshes
 *******
-The meshes section has two keys:
+
+This section defines the mesh and optional the parameter files to use. It is a require section.
+This section has two keys:
 
 .. confval:: mesh
 
@@ -386,8 +398,8 @@ The parameters may be classified values for use in a look-up table. For example,
        "soil":"parameters/wolf_soil_param.json"
      }
 
-or as a key:value set. In all cases, the parameter name is how it will
-be referenced in the module that is looking for it.
+or as a key:value pair. In all cases, the parameter name is how it will
+be referenced in the module that is looking for it. Please see the module's documentation for what the expected format is.
 
 .. code:: json
 
@@ -799,7 +811,7 @@ Grid
 - WGS84 lat/long
 - consistent grid between model timesteps
 - The underlying grid is specified in coordinates: ``ygrid_0`` and ``xgrid_0``
-- The lat/long is specififed in variables ``gridlat_0`` and ``gridlon_0``
+- The lat/long is specified in variables ``gridlat_0`` and ``gridlon_0``
 - The elevation of the observation is given in ``HGT_P0_L1_GST`` (m)
 
 Timesteps
