@@ -496,28 +496,7 @@ mesh
 The entire mesh may be written to Paraview’s vtu format for
 visualization in Paraview and for analysis. This is denoted by a ``"mesh":{ ... }`` key.
 
-The naming scheme of these vtu files is ``base_name`` + ``posix datetime`` + ``_MPIrank``.
-
-For example: ``SC1506837600_0.vtu``
-
-Even if MPI is not used, a _0 will always be added for consistency. In addition to the vtu files, a ``base_name.pvd`` is written. This is an XML file that holds a reference to all
-the vtu files:
-
-.. code:: json
-   
-   <?xml version="1.0" encoding="utf-8"?>
-   <VTKFile type="Collection" version="0.1">
-    <Collection>
-        <DataSet timestep="1506837600" group="" part="0" file="SC1506837600_0.vtu"/> 
-         ...
-
-Although the ``vtu`` files may be loaded directly into Paraview, it is preferred to load the ``pvd`` file. Due to the ``timestep`` field, the `Paraview plugin <https://github.com/Chrismarsh/vtk-paraview-datetimefilter>`_ can then show an overlay with the date-time for easier analysis. 
-
-.. image:: images/datetime.gif
-
-
-
-
+For more details, please see the `output`__ section.
 
 .. confval:: base_name
    
