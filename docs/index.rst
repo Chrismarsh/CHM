@@ -37,6 +37,7 @@ Contributors
    configuration
    cli
    meshgen
+   forcing
    output
    visualization
 

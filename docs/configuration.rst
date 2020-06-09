@@ -496,7 +496,7 @@ mesh
 The entire mesh may be written to Paraview’s vtu format for
 visualization in Paraview and for analysis. This is denoted by a ``"mesh":{ ... }`` key.
 
-For more details, please see the `output`__ section.
+For more details, please see the :ref:`output` section.
 
 .. confval:: base_name
    
@@ -558,10 +558,10 @@ Example:
 
 
 
-Forcing
---------
+forcing
+*********
 
-Input forcing can be either a ASCII timeseries or a NetCDF.
+Input forcing can be either a ASCII timeseries or a NetCDF. Please see :ref:`forcing` for more details.
 
 Input forcing stations do not need to be located within the simulation
 domain. Therefore they can act as ‘virtual stations’ so-as to use
@@ -593,48 +593,11 @@ An example of this is shown below, where each black point is a virtual station, 
 
    ASCII and NetCDF inputs cannot be mixed. It is one or the other.
 
+
 ASCII timeseries
-*****************
+~~~~~~~~~~~~~~~~~
 
-Forcing data are defined as a delineated format with ISO datetime. This is given as ``"station_name":{ ... }``. If using ``point_mode``, then the value ``station_name`` must exactly match the ``input`` used for ``option.point_mode``.
-
-.. code:: json
-
- Date                 Rh   Tair  Precip
-   20080220T000000    50      -12      2
-   20080221T000015    40      -10      0
-
-where the input variable names correspond to the variable names the selected modules expect. Please refer to those modules' documentation.
-
-Some restrictions:
-        - No more than 2147483647 steps. At 1s intervals, this equates to roughly 68 years.
-        - Consistent units. You mustn't have mm on one line, then meters on the next, for the same observation
-        - Has to be on a constant time step. The first interval is taken as the interval for the rest of the file
-        - Missing values are not currently allowed - that is, each row must be complete with n entries where n is number of variables.
-        - However, a missing value value (i.e., -9999) can be used to represent missing data
-        - Whitespace, tab or comma delimited. Allows for mixed usage. ex 1234, 4543 890 is legal
-        - Values must be numeric
-
-Integer styles:
-      -   +1234
-      -   -1234
-      -   1234567890
-
-Floating point:
-      -   12.34
-      -   12.
-      -   .34
-      -   12.345
-      -   1234.45
-      -   +12.34
-      -   -12.34
-      -   +1234.567e-89
-      -   -1234.567e89
-
-Time:
-        - Must be in one column in the following ISO 8601 date time form:
-        - YYYYMMDDThhmmss   e.g., 20080131T235959
-
+This is given as ``"station_name":{ ... }``. If using ``point_mode``, then the value ``station_name`` must exactly match the ``input`` used for ``option.point_mode``.
 
 .. confval:: file
 
@@ -694,7 +657,7 @@ where ``external_file_*.json`` looks like
 
 
 Filters
-~~~~~~~~
+########
 
 Filters perform an operation on the data prior to being passed to a module. They allow for things such as wind-undercatch corrections to be done on the fly. 
 
@@ -722,9 +685,12 @@ If a filter is defined, it must be defined on the forcing file and operate upon 
     }
   }
 
+.. warning::
+   Filters run in the order defined in the configuration file.
+
 
 Example
-~~~~~~~~
+#######
 .. code:: json
 
    "forcing": 
@@ -773,7 +739,7 @@ Example
 
 
 NetCDF
-********
+~~~~~~~
 
 The use NetCDF as input creates virtual stations at the cell-centres. The NetCDF file is lazy loaded as required for each triangle, so only the values required are loaded.
 The variable names, like for ASCII inputs, needs to correspond to the values expected by the filters.
@@ -783,84 +749,11 @@ The variable names, like for ASCII inputs, needs to correspond to the values exp
    
    NetCDF and ``point_mode`` are not supported.
 
-Grid
-~~~~~~
 
-- the nc file is a regular grid of x,y values
-- WGS84 lat/long
-- consistent grid between model timesteps
-- The underlying grid is specified in coordinates: ``ygrid_0`` and ``xgrid_0``
-- The lat/long is specified in variables ``gridlat_0`` and ``gridlon_0``
-- The elevation of the observation is given in ``HGT_P0_L1_GST`` (m)
-
-Timesteps
-~~~~~~~~~~
-
-- at least two timesteps
-- named ``datetime``
-- time is in UTC+0
-- the difference between these is used to determine model dt
-- timesteps are offsets from an epoch (format ``YYYY-mm-dd HH:MM:SS`` or ``YYYY-mm-ddTHH:MM:SS``)
-- units are hours, minutes, seconds
-- This is specified as the units: ``datetime:units = "hours since 2017-09-01 06:00:00" ;``
-- offset are given as ``int64``
-
-Schema
-~~~~~~~
-
-In detail the following is the schema for the required NetCDF files:
-
-.. code:: 
-
-   dimensions:
-      datetime = UNLIMITED ; 
-      ygrid_0 = int ;
-      xgrid_0 = int ;
-
-   variables:
-      double VAR_NAME(datetime, ygrid_0, xgrid_0) ;
-         VAR_NAME:_FillValue = NaN ;
-         VAR_NAME:coordinates = "gridlat_0 gridlon_0" ;
-
-      double HGT_P0_L1_GST(datetime, ygrid_0, xgrid_0) ;
-         HGT_P0_L1_GST:_FillValue = NaN ;
-         HGT_P0_L1_GST:coordinates = "gridlat_0 gridlon_0" ;
-
-
-      int64 datetime(datetime) ;
-         datetime:standard_name = "time" ;
-         datetime:long_name = "Validity time" ;
-         datetime:axis = "T" ;
-         datetime:units = "hours since 2017-09-01 06:00:00" ;
-         datetime:calendar = "proleptic_gregorian" ;
-
-      double gridlat_0(ygrid_0, xgrid_0) ;
-         gridlat_0:_FillValue = NaN ;
-         gridlat_0:long_name = "latitude" ;
-         gridlat_0:standard_name = "latitude" ;
-         gridlat_0:units = "degrees_north" ;
-
-      double gridlon_0(ygrid_0, xgrid_0) ;
-         gridlon_0:_FillValue = NaN ;
-
-
-      double xgrid_0(xgrid_0) ;
-         xgrid_0:_FillValue = NaN ;
-         xgrid_0:long_name = "longitude in rotated pole grid" ;
-         xgrid_0:standard_name = "grid_longitude" ;
-         xgrid_0:units = "degrees" ;
-         xgrid_0:axis = "X" ;
-
-      double ygrid_0(ygrid_0) ;
-         ygrid_0:_FillValue = NaN ;
-         ygrid_0:long_name = "latitude in rotated pole grid" ;
-         ygrid_0:standard_name = "grid_latitude" ;
-         ygrid_0:units = "degrees" ;
-         ygrid_0:axis = "Y" ;
 
 
 Filters
-~~~~~~~~
+########
 
 Filters are the same as for ASCII with one important distinction: every specified filter is run for every virtual station (i.e., grid cell centre).
 
@@ -875,7 +768,7 @@ Filters are the same as for ASCII with one important distinction: every specifie
 
 
 Example
-~~~~~~~
+########
 
 .. code:: json
 
