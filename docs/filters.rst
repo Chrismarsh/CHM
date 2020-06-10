@@ -2,13 +2,15 @@ Filters
 ========
 Filters are a mechanism whereby the input forcing data can be modified
 in some way prior to the model run. For example, this could be use to
-apply a gauge undercatch to precip. Filters modify the data of a station
+apply a gauge undercatch to precip. Filters modify the data of a virtual station
 *in situ*.
 
-Note! Filters run in the order defined in the configuration file.
+.. warning::
+
+   Filters run in the order defined in the configuration file.
 
 Implementation
-==============
+---------------
 
 Filters inherent from the base ``filter_base`` class.
 
@@ -19,20 +21,28 @@ station.
 
    void process(boost::shared_ptr<station> station);
 
-process
-=======
+init()
+-------
 
-The timeseries data have a ``next()`` iterator so can be traversed in a
-do…while loop.
-
-An example for wind undercatch is as follows:
+``init`` can be used to determine what variable names should be used and accessed. For example,
 
 .. code:: cpp
 
-       std::string var = cfg.get<std::string>("variable");
-       do{
-           double data = station->now().get(var);
-           double u = station->now().get("u");
-           data = data * (1.010 * exp(-0.09*u));
-           station->now().set(var,data);
-       }while(station->next());
+    var = cfg.get<std::string>("variable");
+    fac = cfg.get<double>("factor");    
+
+
+process
+--------
+
+The filter is given the current timestep to modify
+
+.. code:: cpp
+
+   double data = (*station)[var];
+    if(!is_nan(data))
+    {
+         data = data + fac;
+    }
+    
+    (*station)[var]=data;

@@ -40,17 +40,10 @@ Contributors
    forcing
    output
    visualization
+   modules
+   filters
+   tools
 
-.. faq
-.. filters
-.. home
-.. index
-
-
-.. modules
-.. timeseries
-
-.. vtuconversion
    api/library_root
 
 Indices and tables

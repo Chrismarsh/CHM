@@ -1,5 +1,9 @@
-Conversion
+Tools
 ============
+
+
+vtu2geo
+--------
 The conversion of the vtu format to arbitrary GIS formats is provided by
 ``vtu2geo`` located in ``tools/vtu2geo/main.py``. Requires vtk and gdal
 + python bindings for each.
