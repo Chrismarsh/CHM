@@ -19,8 +19,7 @@ if [[ "$(uname -s)" == 'Darwin' ]]; then
     pyenv virtualenv 2.7.16 conan
     pyenv rehash
     pyenv activate conan
-else
-  sudo apt-get -qq install -y gfortran
+
 fi
 
 pip install conan --upgrade

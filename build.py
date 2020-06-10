@@ -4,9 +4,8 @@ from sys import platform
 
 if __name__ == "__main__":
 
-    command="echo \"foo\""
     if platform == "linux":
-        command = "sudo apt-get -qq update && sudo apt-get -qq install -y patchelf"
+        command = "sudo apt-get -qq update && sudo apt-get -qq install -y patchelf && sudo apt-get -qq install -y gfortran"
 
     builder = ConanMultiPackager(cppstds=[14],
                                 archs=["x86_64"],
