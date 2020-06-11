@@ -322,7 +322,7 @@ if (BUILD_TESTS)
 	)
 
 	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES})
-    target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+    target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS}  -std=f2003 -fno-underscoring)
 
 	target_link_libraries(
 			runUnitTests
