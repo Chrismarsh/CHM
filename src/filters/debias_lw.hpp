@@ -27,16 +27,18 @@
 
 
 /**
- * \addtogroup filters
+ * \ingroup filters lw
+ *
  * @{
  * \class debias_lw
- * \brief Debias GEM incoming lw 
+ * \brief Debias GEM incoming longwave radiation
  *
  *
  * Depends:
  *
  *
  * Provides:
+ *
  * @}
  */
 class debias_lw : public filter_base
@@ -51,3 +53,4 @@ public:
     void init();
     void process(std::shared_ptr<station>& station);
 };
+

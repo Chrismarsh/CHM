@@ -35,6 +35,15 @@ namespace pt = boost::property_tree;
 
 typedef pt::ptree config_file;
 
+
+/**
+ * These are the groups to sort the filters by
+ * \defgroup filters Filters
+ * \defgroup lw Longwave
+ * \defgroup tair Air temperature
+ * \defgroup wind Wind
+ * \defgroup precip Precipitation
+ */
 class filter_base
 {
 public:

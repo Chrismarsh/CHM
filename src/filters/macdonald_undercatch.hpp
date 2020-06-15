@@ -27,8 +27,7 @@
 
 
 /**
- * \addtogroup filters
- * @{
+ * \ingroup filters precip
  * \class macdonald_undercatch
  * \brief Computes undercatch correction
  *
@@ -40,7 +39,6 @@
  *
  * References:
  * - Macdonald, J., & Pomeroy, J. (2007). Gauge Undercatch of Two Common Snowfall Gauges in a Prairie Environment. Proceedings of the 64th Eastern Snow Conference, St. John‘s, Canada., 119–126.
- *  @}
  * */
 class macdonald_undercatch : public filter_base
 {

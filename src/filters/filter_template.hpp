@@ -27,8 +27,6 @@
 
 
 /**
- * \addtogroup filters
- * @{
  * \class filter_template_name
  * \brief Template header file for new filter implementations.
  *
@@ -37,7 +35,6 @@
  *
  *
  * Provides:
- * @}
  */
 class filter_template : public filter_base
 {

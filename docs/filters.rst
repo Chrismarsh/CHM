@@ -46,3 +46,12 @@ The filter is given the current timestep to modify
     }
     
     (*station)[var]=data;
+
+Available filters
+---------------------
+
+.. filters::
+   :group: filters
+
+
+
