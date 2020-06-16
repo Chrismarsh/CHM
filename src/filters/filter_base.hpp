@@ -44,19 +44,40 @@ typedef pt::ptree config_file;
  * \defgroup wind Wind
  * \defgroup precip Precipitation
  */
+
+/**
+ *
+ */
 class filter_base
 {
 public:
+  /***
+   * Constructor
+   * @param name Name of the filter
+   * @param input_cfg Configuration tree
+   */
     filter_base( std::string name = "",
 		 config_file input_cfg = pt::basic_ptree<std::string,std::string>() )
       : cfg(input_cfg),ID(name) {};
+
+
     virtual ~filter_base(){};
 
+    /**
+     * Initializes the filter. Useful for obtaining configuration params and storing them locally
+     */
     virtual void init(){};
+
+    /**
+     * Apply the filter for one timestep for the given station
+     * @param station Station to operate on
+     */
     virtual void process(std::shared_ptr<station>& station){};
 
-    /// Denotes a new met variable that this filter provides. Must be specified in the ctor of a filter prior to use
-    /// @param name Name of the new meteorological variable
+    /**
+     * Denotes a new met variable that this filter provides. Must be used in the ctor of a filter prior to use
+     * @param name Name of the new meteorological variable
+     */
     void provides(const std::string& name)
     {
         if(name.find_first_of("\t ") != std::string::npos)
@@ -64,11 +85,21 @@ public:
 
         _provides.push_back(name);
     }
+
+    /**
+     * List of new meterological variables this filter provides
+     * @return
+     */
     std::vector<std::string> provides()
     {
         return _provides;
     }
 
+    /**
+     * Determine if the variable value is a Nan. Checks for -9999, NaN, and Inf
+     * @param variable
+     * @return True if is nan
+     */
     bool is_nan(double variable)
     {
         if( variable == -9999.0)
@@ -82,6 +113,7 @@ public:
 
         return false;
     }
+
     /**
      * Configuration file. If filter does not need one, then this will contain nothing
      */
@@ -92,6 +124,9 @@ public:
     */
     std::string ID;
 
+    /**
+     * List of new variables that are provided
+     */
     std::vector<std::string> _provides;
 };
 

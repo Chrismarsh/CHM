@@ -31,14 +31,38 @@
  *
  * @{
  * \class debias_lw
- * \brief Debias GEM incoming longwave radiation
+ * Debias an incoming longwave radiation using an additive constant factor.
  *
  *
- * Depends:
+ * **Requires:**
+ * - Longwave \f$[W \cdot m^{-2}]\f$
  *
+ * **Modifies:**
+ * - Input longwave
  *
- * Provides:
+ * **Configuration keys:**
+ * \rst
+ * .. code:: json
  *
+ *    {
+ *       "variable": "lw",
+ *       "factor": 3.5
+ *    }
+ *
+ * .. confval:: variable
+ *
+ *    :type: string
+ *
+ *    Name of the variable to modify that coincides with the input met file.
+ *
+ * .. confval:: factor
+ *
+ *    :type: double
+ *    :units: :math:`[W \cdot m^{-2}]`
+ *
+ *    The amount to add to the input longwave by: `lw = lw + factor`
+ *
+ * \endrst
  * @}
  */
 class debias_lw : public filter_base

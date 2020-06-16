@@ -28,24 +28,50 @@
 
 /**
  * \ingroup filters precip
- *
+ * @{
  * \class goodison_undercatch
- * \brief Computes undercatch correction
- *
  * Undercatch correction for a Nipher shielded guage via Goodison 1998 for solid precipitation
  *
- * Depends:
- * - p [mm]
- * - u [m/s]
+ * **Requires:**
+ * - Precipitation [\f$ mm\f$ ]
+ * - Windspeed at gauge height  [\f$m \cdot s^{-1} \f$ ]
  *
- * References:
+ * **Modifies**:
+ * - Input precipitation
+ *
+ * **Configuration keys:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "precip_var": "ppt",
+ *       "wind_var": "u"
+ *    }
+ *
+ * .. confval:: precip_var
+ *
+ *    :type: string
+ *
+ *    Name of the precipitation variable in the met file.
+ *
+ * .. confval:: wind_var
+ *
+ *    :type: string
+ *
+ *    Name of the wind speed variable in the met file.
+ *
+ * \endrst
+ *
+ * **References:**
  * - ﻿Goodison, B. E. (1998), WMO Solid Solid Precipitiation Measurement Intercomparison. https://globalcryospherewatch.org/bestpractices/docs/WMOtd872.pdf
+ * @}
  * **/
 class goodison_undercatch : public filter_base
 {
 REGISTER_FILTER_HPP(goodison_undercatch);
 private:
-    std::string var;
+    std::string precip_var;
+    std::string wind_var;
 public:
     goodison_undercatch(config_file cfg);
     ~goodison_undercatch();

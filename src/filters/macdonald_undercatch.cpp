@@ -41,13 +41,14 @@ macdonald_undercatch::~macdonald_undercatch()
 void macdonald_undercatch::init()
 {
     //look at the config data to determine what we are modifying
-    var = cfg.get<std::string>("variable");
+    precip_var = cfg.get<std::string>("precip_var");
+    wind_var = cfg.get<std::string>("wind_var");
 }
 void macdonald_undercatch::process(std::shared_ptr<station>& station)
 {
 
-    double data = (*station)[var];
-    double u = (*station)["u"_s];
+    double data = (*station)[precip_var];
+    double u = (*station)[wind_var];
     //trap missing data, just ignore it.
     if( !is_nan(data) && !is_nan(u))
     {
@@ -57,6 +58,6 @@ void macdonald_undercatch::process(std::shared_ptr<station>& station)
         data = -9999;
     }
 
-    (*station)[var]=data;
+    (*station)[precip_var]=data;
 
 }

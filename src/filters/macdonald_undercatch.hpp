@@ -28,23 +28,50 @@
 
 /**
  * \ingroup filters precip
+ * @{
  * \class macdonald_undercatch
- * \brief Computes undercatch correction
- *
  * Undercatch correction for a Alter shielded Geonor and tipping bucket via Macdonald, et al. 2007
  *
- * Depends:
- * - p [mm]
- * - u [m/s]
+ * **Requires:**
+ * - Precipitation [\f$ mm\f$ ]
+ * - Windspeed at gauge height  [\f$m \cdot s^{-1} \f$ ]
  *
- * References:
+ * **Modifies**:
+ * - Input precipitation
+ *
+ * **Configuration keys:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "precip_var": "ppt",
+ *       "wind_var": "u"
+ *    }
+ *
+ * .. confval:: precip_var
+ *
+ *    :type: string
+ *
+ *    Name of the precipitation variable in the met file.
+ *
+ * .. confval:: wind_var
+ *
+ *    :type: string
+ *
+ *    Name of the wind speed variable in the met file.
+ *
+ * \endrst
+ *
+ * **References:**
  * - Macdonald, J., & Pomeroy, J. (2007). Gauge Undercatch of Two Common Snowfall Gauges in a Prairie Environment. Proceedings of the 64th Eastern Snow Conference, St. John‘s, Canada., 119–126.
+ * @}
  * */
 class macdonald_undercatch : public filter_base
 {
 REGISTER_FILTER_HPP(macdonald_undercatch);
 private:
-    std::string var;
+    std::string precip_var;
+    std::string wind_var;
 public:
     macdonald_undercatch(config_file cfg);
     ~macdonald_undercatch();
