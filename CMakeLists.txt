@@ -327,5 +327,6 @@ else()
 endif()
 
 #setup src dirs
+include(third_party/CMakeLists.txt)
 add_subdirectory(src)
 add_subdirectory(docs)

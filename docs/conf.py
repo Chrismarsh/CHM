@@ -53,6 +53,7 @@ breathe_default_project = "CHM"
 
 input = "INPUT = "
 input += "../src/filters "
+input += "../src/modules "
 
 # Setup the exhale extension
 exhale_args = {

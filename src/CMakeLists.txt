@@ -1,15 +1,4 @@
 
-#snowpack specific
-SET(_versionString "2.8.0")
-SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
-
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/CMakeLists.txt)
-SET(SNOWPACK_SRCS "")
-FOREACH(f ${snowpacklib_sources})
-#	LIST(APPEND SNOWPACK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/${f}")
-LIST(APPEND SNOWPACK_SRCS "modules/snowpack/${f}")
-ENDFOREACH(f)
 
 set(FILTER_SRCS
 		filters/macdonald_undercatch.cpp
@@ -19,10 +8,7 @@ set(FILTER_SRCS
 		CACHE INTERNAL "" FORCE
 		)
 
-set(SNOBAL_SRC
-		modules/snobal/snobal.cpp #<-- main module files
-		modules/snobal/sno.cpp
-	)
+
 
 set(MODULE_SRCS
 
@@ -70,17 +56,16 @@ set(MODULE_SRCS
 		modules/scale_wind_vert.cpp
 		modules/sub_grid.cpp
     	modules/snow_slide.cpp
-		${SNOBAL_SRC}
 		modules/threshold_p_phase.cpp
-		${SNOWPACK_SRCS}
 		modules/solar.cpp
 		modules/fast_shadow.cpp
         modules/deform_mesh.cpp
 		modules/crop_rotation.cpp
         modules/PBSM3D.cpp
 
-		modules/FSM/fsm.cpp
-		modules/FSM/FSM2_CHM.f90
+		modules/fsm.cpp
+
+
 
 		CACHE INTERNAL "" FORCE )
 
@@ -203,11 +188,12 @@ add_executable(
 		${CHM_SRCS}
 		${FILTER_SRCS}
 		${MODULE_SRCS}
+		${CHM_THIRD_PARTY}
 		${LIBMAW_SRCS}
 )
 
 
-target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
+target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
 target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS} -std=f2003 -fno-underscoring)
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
@@ -317,6 +303,7 @@ if (BUILD_TESTS)
 			${CHM_SRCS}
 			${FILTER_SRCS}
 			${MODULE_SRCS}
+			${CHM_THIRD_PARTY}
 			${LIBMAW_SRCS}
 			${TEST_SRCS}
 	)
