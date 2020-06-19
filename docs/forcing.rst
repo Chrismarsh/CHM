@@ -132,18 +132,21 @@ In detail the following is the schema for the required NetCDF files:
 
       double gridlon_0(ygrid_0, xgrid_0) ;
          gridlon_0:_FillValue = NaN ;
+         gridlon_0:long_name = "longitude" ;
+         gridlon_0:standard_name = "longitude" ;
+         gridlon_0:units = "degrees_east" ;
 
 
       double xgrid_0(xgrid_0) ;
          xgrid_0:_FillValue = NaN ;
-         xgrid_0:long_name = "longitude in rotated pole grid" ;
-         xgrid_0:standard_name = "grid_longitude" ;
+         xgrid_0:long_name = "longitude ;
+         xgrid_0:standard_name = "longitude" ;
          xgrid_0:units = "degrees" ;
          xgrid_0:axis = "X" ;
 
       double ygrid_0(ygrid_0) ;
          ygrid_0:_FillValue = NaN ;
-         ygrid_0:long_name = "latitude in rotated pole grid" ;
-         ygrid_0:standard_name = "grid_latitude" ;
+         ygrid_0:long_name = "latitude" ;
+         ygrid_0:standard_name = "latitude" ;
          ygrid_0:units = "degrees" ;
          ygrid_0:axis = "Y" ;
