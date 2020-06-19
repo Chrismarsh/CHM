@@ -29,8 +29,6 @@ Longwave_from_obs::Longwave_from_obs(config_file cfg)
 
 {
     provides("ilwr");
-    //provides("lw_lapse_rate");
-
     depends_from_met("Qli");
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -46,11 +44,9 @@ void Longwave_from_obs::init(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
-	       auto face = domain->face(i);
-	       auto d = face->make_module_data<data>(ID);
-	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
-
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,face->stations().size() );
     }
 
 }
@@ -70,7 +66,6 @@ void Longwave_from_obs::run(mesh_elem& face)
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 
-
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
     double value = face->get_module_data<data>(ID)->interp(lowered_values, query);
 
@@ -78,7 +73,5 @@ void Longwave_from_obs::run(mesh_elem& face)
     value =  value + lapse_rate * (0.0 - face->get_z());
 
     (*face)["ilwr"_s]=value;
-
-    //(*face)["lw_lapse_rate"_s]=lapse_rate;
 
 }

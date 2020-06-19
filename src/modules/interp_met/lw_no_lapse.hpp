@@ -34,19 +34,25 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class lw_no_lapse
-* \brief No longwave adjustment for elevation 9constant)
-*
-*
-* Depends:
-* - None
-*
-* Provides:
-* - Longwave "ilwr" [W/m^2]
-*
-*/
+ * \ingroup modules lw met
+ * @{
+ * \class lw_no_lapse
+ * Spatially interpolates incoming longwave with no adjustment for elevation.
+ *
+ * **Depends from met:**
+ * - Incoming longwave radiation "Qli"  \f$[W \cdot m^{-2}\f$]
+ *
+ * **Provides:**
+ * - Incoming longwave "ilwr"  \f$[W \cdot m^{-2}\f$]
+ *
+ * **Depends:**
+ * - None
+ *
+ * **Configuration keys:**
+ * - None
+ *
+ * @}
+ */
 class lw_no_lapse : public module_base
 {
 REGISTER_MODULE_HPP(lw_no_lapse);
@@ -61,6 +67,3 @@ public:
     };
 };
 
-/**
-@}
-*/

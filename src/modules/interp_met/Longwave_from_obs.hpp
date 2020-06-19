@@ -34,21 +34,27 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class Longwave_from_obs
-* \brief Annual longwave lapse rate adjustment to longwave from observations
-*
-* Annual longwave lapse rate adjustment to longwave from observations.
-*
-* Depends:
-* - None
-*
-* Provides:
-* - Longwave "ilwr" [W/m^2]
-*
-* Reference:
-* Marty et al. (2002) (add full ref here)
+ * \ingroup modules lw met
+ * @{
+ * \class Longwave_from_obs
+ * Annually constant longwave lapse rate adjustment to longwave from observations.
+ * Lapse rate of 2.8 W/m^2 / 100 meters
+ *
+ * **Depends from met:**
+ * - Incoming longwave radiation "Qli"  \f$[W \cdot m^{-2}\f$]
+ *
+ * **Provides:**
+ * - Incoming longwave "ilwr"  \f$[W \cdot m^{-2}\f$]
+ *
+ * **Configuration keys:**
+ * - None
+ *
+ * **Reference:**
+ * Marty, C., Philipona, R., Fröhlich, C., Ohmura, A. (2002).
+ * Altitude dependence of surface radiation fluxes and cloud forcing in the alps: results from the alpine surface
+ * radiation budget network Theoretical and Applied Climatology  72(3), 137-155. https://dx.doi.org/10.1007/s007040200019
+ *
+ * @}
 */
 class Longwave_from_obs : public module_base
 {
@@ -63,7 +69,3 @@ public:
         interpolation interp;
     };
 };
-
-/**
-@}
-*/

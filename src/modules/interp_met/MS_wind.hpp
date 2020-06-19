@@ -42,21 +42,59 @@
 #include <viennacl/linalg/ilu.hpp>
 
 /**
-* \addtogroup modules
-* @{
-* \class MS_wind
-* \brief Calculates wind speed and direction following Mason Sykes
-*
-* Calculates windspeeds using the Mason Sykes wind speed from Essery 1999, using lookup map from DBSM.
- * Calculates the speedup in the mean wind direction defined by all the stations
-* Depends:
-* - Wind at reference height "U_R" [m/s]
-* - Direction at reference height 'vw_dir' [degrees]
-*
-* Provides:
-* - Wind "U_R" [m/s] at reference height
-* - Wind direction 'vw_dir' [degrees]
-*/
+ * \ingroup modules met wind
+ * @{
+ * \class MS_wind
+ * Calculates windspeeds using the Mason Sykes wind speed from Essery, et al (1999), using 8 lookup map from DBSM.
+ * Optionally uses Ryan, et al. for wind direction correction.
+ *
+ * **Depends from met:**
+ * - Wind at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Direction at reference height "vw_dir" [degrees]
+ *
+ * **Provides:**
+ * - Wind speed at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Wind direction 'vw_dir' at reference height [degrees]
+ * - Speedup magnitude "W_speedup" [-]
+ * - Zonal u speed component at 2m "2m_zonal_u" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Zonal v speed component at 2m "2m_zonal_v" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Original interpolated wind direction "vw_dir_orig" [degrees]
+ *
+ * **Parameters:**
+ *
+ * Requires speedup, u, and v parameters named "MS%i_U" and "MS%i_V" and "MS%i" for each of the 8 directions.
+ * These need to be generated using DBSM in ``tools/MSwind``.
+ *
+ * **Configuration:**
+ * \rst
+ * .. code::
+ *    {
+ *       "speedup_height": 2.0,
+ *       "use_ryan_dir", false
+ *    }
+ *
+ * .. confval:: speedup_height
+ *
+ *    :type: double
+ *    :default: 2.0
+ *
+ *    The height at which the MS Wind tool was run for. The default is 2 m and shouldn't be changed.
+ *
+ * .. confval:: use_ryan_dir
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    Instead of using the _u and _v components to compute direction perturbation, use the algorithm of Ryan as per Liston and Elder (2006)
+ * \endrst
+ *
+ * **Reference:**
+ *
+ * Essery, R., Li, L., Pomeroy, J. (1999). A distributed model of blowing snow over complex terrain
+ * Hydrological Processes  13(), 2423-2438.
+ *
+ * @}
+ */
 class MS_wind : public module_base
 {
 REGISTER_MODULE_HPP(MS_wind);
@@ -82,6 +120,3 @@ public:
     double speedup_height; // height at which the speedup is for
 };
 
-/**
-@}
-*/

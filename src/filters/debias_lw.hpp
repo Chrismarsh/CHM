@@ -35,7 +35,7 @@
  *
  *
  * **Requires:**
- * - Longwave \f$[W \cdot m^{-2}]\f$
+ * - Incoming longwave radiation \f$[W \cdot m^{-2}\f$]
  *
  * **Modifies:**
  * - Input longwave

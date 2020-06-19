@@ -54,25 +54,20 @@ MS_wind::MS_wind(config_file cfg)
 //Calculates the curvature required
 void MS_wind::init(mesh& domain)
 {
-
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
 
-		 auto d = face->make_module_data<data>(ID);
-		 d->interp.init(global_param->interp_algorithm,face->stations().size() );
-		 d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
-
+         auto d = face->make_module_data<data>(ID);
+         d->interp.init(global_param->interp_algorithm,face->stations().size() );
+         d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
     }
-
 }
 
 
 void MS_wind::run(mesh& domain)
 {
-
-
     if(!use_ryan_dir)
     {
         #pragma omp parallel for
