@@ -41,21 +41,68 @@
 #include <viennacl/linalg/ilu.hpp>
 
 /**
-* \addtogroup modules
-* @{
-* \class Liston_wind
-* \brief Calculates wind speed and direction following Liston 2006
-*
-* Calculates windspeeds using a terrain curvature following Liston 2006.
-* Defaults to 300 m distance. Configurable using "distance".
- * Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
-* Depends:
-* - Wind at reference height "U_R" [m/s]p
-* - Direction at reference height 'vw_dir' [degrees]
-*
-* Provides:
-* - Wind "U_R" [m/s] at reference height
-* - Wind direction 'vw_dir' [degrees]
+ * \ingroup modules wind met
+ * @{
+ * \class Liston_wind
+ *
+ * Calculates windspeeds using a terrain curvature following Liston and Elder 2006. Direction convention is
+ * (North = 0, clockwise from North)
+ *
+ * **Depends from met:**
+ * - Wind at reference height "U_R" [\f$m \cdot s^{-1}\f$]
+ * - Direction at reference height 'vw_dir' [degrees] (North = 0, clockwise from North)
+ *
+ * **Provides:**
+ * - Wind "U_R" [\f$m \cdot s^{-1}\f$] at reference height
+ * - Wind direction "vw_dir" [degrees]
+ * - Amount the wind vector has moved "vw_dir_divergence" [degrees]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code::
+ *
+ *    {
+ *       "distance": 300,
+ *       "Ww_coeff: 1,
+ *       "ys": 0.5,
+ *       "yc": 0.5
+ *    }
+ *
+ * .. confval:: distance
+ *
+ *    :type: double
+ *    :default: 300
+ *
+ *    Distance to "look" to compute the terrain curvature.
+ *
+ * .. confval:: Ww_coeff
+ *
+ *    :type: int
+ *    :default: 1
+ *
+ *    Leading coefficient in equation 16. Used for compatibility with calibration approach such as done by Pohl.
+ *
+ * .. confval:: ys
+ *
+ *    :type: double
+ *    :default: 0.5
+ *
+ *    Slope weight. Valid range [0,1]. The value of 0.5 gives equal weight to slope and curvature
+ *
+ * .. confval:: yc
+ *
+ *    :type: double
+ *    :default: 0.5
+ *
+ *    Curvature weight. Valid range [0,1]. The value of 0.5 gives equal weight to slope and curvature
+ *
+ * \endrst
+ *
+ * **References:**
+ *
+ * Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet).
+ * Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
+ * @}
 */
 class Liston_wind : public module_base
 {
@@ -81,6 +128,3 @@ public:
     double Ww_coeff;
 };
 
-/**
-@}
-*/

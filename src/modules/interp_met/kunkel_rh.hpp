@@ -28,22 +28,25 @@
 #include "module_base.hpp"
 
 /**
-* \addtogroup modules
-* @{
-* \class kunkel_rh
-* \brief RH interpolation
-*
-* Interpolates RH with elevation. Uses eqn 15 in Kunkel to directly interplate RH.
-*
-* Depends from met:
-* - Relative Humidity 'rh' [%]
-*
-* Provides:
-* - Relative Humidity 'rh' [%]
+ * \ingroup modules rh met
+ * @{
+ * \class kunkel_rh
+ * Directly lapses RH values with elevation. Based on equation 15 in Kunkel (1989).
  *
- * References:
- * - Kunkel, K. E. (1989). Simple procedures for extrapolation of humidity variables in the mountainous western United States. Journal of Climate, 2(7), 656–669. Retrieved from http://ams.allenpress.com/perlserv/?request=get-abstract&amp;doi=10.1175/1520-0442(1989)002<0656:SPFEOH>2.0.CO;2
-*/
+ * **Depends from met:**
+ * - Relative Humidity "rh" [\f$ % \f$]
+ *
+ * **Provides:**
+ * - Relative Humidity "rh" [\f$ % \f$]
+ *
+ * **Configuration keys:**
+ * - None
+ *
+ * **References:**
+ * Kunkel, K. E. (1989). Simple procedures for extrapolation of humidity variables in the mountainous western United States.
+ * Journal of Climate, 2(7), 656–669.
+ * @}
+ */
 class kunkel_rh : public module_base
 {
 REGISTER_MODULE_HPP(kunkel_rh);
@@ -59,9 +62,3 @@ public:
         interpolation interp;
     };
 };
-
-
-
-/**
-@}
-*/

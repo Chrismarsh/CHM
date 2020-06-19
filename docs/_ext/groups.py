@@ -21,6 +21,8 @@ class Filter(Directive):
     def should_remove(self, x):
         if 'filter' in x:
             return True
+        if 'modules' in x:
+            return True
 
         return False
 
@@ -34,12 +36,13 @@ class Filter(Directive):
 
         what = self.options['group']
 
+        # for our current group (filter or modules), find what is in it
         try:
             filter_xml = ET.parse(folder+'/group__%s.xml' % what).getroot()[0]
         except FileNotFoundError as e:
             return []
 
-        # these are all of our filters
+        # these are all of our filters/modules
         filters = set()
         for child in filter_xml:
             if child.tag == 'innerclass':
@@ -56,7 +59,7 @@ class Filter(Directive):
 
             tmp =[]
             for child in xml:
-                if child.tag == 'innerclass':
+                if child.tag == 'innerclass' and child.text in filters:
                     tmp.append(child.text)
                     seen_filters.add(child.text)
                 if child.tag == 'title':
@@ -91,7 +94,7 @@ class Filter(Directive):
 
 def setup(app):
 
-    app.add_directive("filters", Filter)
+    app.add_directive("groups", Filter)
     app.add_config_value('groups_doxygen_dir', './doxygen/xml/', 'html')
     return {
         'version': '0.1',

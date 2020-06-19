@@ -28,22 +28,25 @@
 
 
 /**
-* \addtogroup modules
-* @{
-* \class iswr_from_nwp
-* \brief Spatially interpolates shortwave data from NWP system 
-*
-* Spatially interpolates total and diffuse shortwave radiation from NWP system and compute direct diffuse beams
-*
-* Depends:
-* -  Total shortwave radiation met file "Qsi" [W/m^2]
-* -  Total diffuse shortwave radiation met file "Qsi_diff" [W/m^2]
-*
-* Provides:
-* - Shortwave all beam "iswr" [W/m^2]
-* - Shortwave direct "iswr_direct" [W/m^2]
-* - Shortwave diffuse "iswr_diffuse" [W/m^2]
-*/
+ * \ingroup modules iswr nwp
+ * @{
+ * \class iswr_from_nwp
+ * Spatially interpolates total and diffuse shortwave radiation. Computes direct beam as a residual.
+ * Best used from NWP system.
+ *
+ * **Requires from met:**
+ * - Total shortwave radiation met file - "Qsi" [ \f$ W \cdot m^2 \f$]
+ * - Total diffuse shortwave radiation met file - "Qsi_diff" [ \f$ W \cdot m^2 \f$]
+ *
+ * **Provides:**
+ * - Shortwave all beam - "iswr" [ \f$ W \cdot m^2 \f$]
+ * - Shortwave direct - "iswr_direct" [ \f$ W \cdot m^2 \f$]
+ * - Shortwave diffuse - "iswr_diffuse" [ \f$ W \cdot m^2 \f$]
+ *
+ * **Configuration keys:**
+ * - None
+ * @}
+ */
 class iswr_from_nwp : public module_base
 {
 REGISTER_MODULE_HPP(iswr_from_nwp);

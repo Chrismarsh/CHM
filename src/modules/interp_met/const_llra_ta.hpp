@@ -36,20 +36,23 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class const_llra_ta
-* \brief Constant linear lapse rate adjustment.
-*
-* Constant linear lapse rate adjustment for air temperature of 0.0065 degC/m.
-*
-* Depends:
-* - None
-*
-* Provides:
-* - Air temperatue "t" [degC]
-* - Air temperatue "const_llra_ta" [degC]
-*/
+ * \ingroup modules tair met
+ * @{
+ * \class const_llra_ta
+ *
+ * Constant linear lapse rate adjustment for air temperature of 0.0065  \f${}^\circ C \cdot m^{-1}\f$.
+ *
+ * **Requires from met:**
+ * - Air temperature - "t" [\f$  {}^\circ C \f$]
+ *
+ *
+ * Provides:
+ * - Lapsed air temperature - "t" [\f$  {}^\circ C \f$]
+ *
+ * **Configuration keys:**
+ * - None
+ * @}
+ */
 class const_llra_ta : public module_base
 {
 REGISTER_MODULE_HPP(const_llra_ta);
@@ -65,6 +68,3 @@ public:
 
 };
 
-/**
-@}
-*/

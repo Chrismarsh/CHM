@@ -28,23 +28,30 @@
 
 
 /**
-* \addtogroup modules
-* @{
-* \class iswr_from_obs
-* \brief Spatially interpolates observed shortwave measurements
-*
-* Spatially interpolates observed shortwave measurements and splits it into direct and diffuse beams. This split
- * is via Iqbal
-*
-* Depends:
-* -  Shortwave radiation met file "Qsi" [W/m^2]
-*
-* Provides:
-* - Shortwave all beam "iswr" [W/m^2]
-* - Shortwave direct "iswr_direct" [W/m^2]
-* - Shortwave diffuse "iswr_diffuse" [W/m^2]
-* - Atmospheric transmittance, [0,1] "atm_trans" [-]
-*/
+ * \ingroup modules iswr
+ * @{
+ * \class iswr_from_obs
+ *
+ * Spatially interpolates observed shortwave measurements and estimates direct and diffuse beam components
+ * using Nijssen and Lettenmaier (1999).
+ *
+ * **Depends from met:**
+ * -  Shortwave radiation - "Qsi" [ \f$ W \cdot m^2 \f$]
+ *
+ * **Provides:**
+ * - Shortwave all beam "iswr" [ \f$ W \cdot m^2 \f$]
+ * - Shortwave direct "iswr_direct" [ \f$ W \cdot m^2 \f$]
+ * - Shortwave diffuse "iswr_diffuse" [ \f$ W \cdot m^2 \f$]
+ * - Atmospheric transmittance, [0,1] "atm_trans" [-]
+ *
+ * **Configuration keys:**
+ * - None
+ *
+ * **References:**
+ *  Nijssen, B., Lettenmaier, D. (1999). A simplified approach for predicting shortwave radiation transfer through
+ * boreal forest canopies Journal of Geophysical Research  104(D22), 27859. https://dx.doi.org/10.1029/1999jd900377
+ * @}
+ */
 class iswr_from_obs : public module_base
 {
 REGISTER_MODULE_HPP(iswr_from_obs);

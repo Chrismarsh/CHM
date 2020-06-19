@@ -29,7 +29,6 @@ const_llra_ta::const_llra_ta(config_file cfg)
 
 {
     provides("t");
-    provides("const_llra_ta");
 
     depends_from_met("t");
 
@@ -78,6 +77,5 @@ void const_llra_ta::run(mesh_elem& face)
     value =  value + lapse_rate * (0.0 - face->get_z());
 
     (*face)["t"_s]=value;
-    (*face)["const_llra_ta"_s]=value;
 
 }

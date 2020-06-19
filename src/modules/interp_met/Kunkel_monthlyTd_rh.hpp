@@ -35,25 +35,30 @@
 #include <meteoio/MeteoIO.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class Kunkel_monthlyTd_rh
-* \brief Linear lapse rate adjust for relative humidity
-*
-* Monthly-variable linear lapse rate adjustment for relative humidity based upon Kunkel. RH is lapsed via dew point temperatures
-*
-* Depends:
-* -  Air temperature "t" [deg C]
-*
- * Depends from Met:
- * - Relative Humidity "rh" [%]
+ * \ingroup modules rh met
+ * @{
+ * \class Kunkel_monthlyTd_rh
+ * Monthly-variable linear lapse rate adjustment for relative humidity based upon Kunkel (1989).
+ * RH is lapsed via dew point temperatures.
  *
-* Provides:
-* - Relative humidity "rh" [%]
-*
-* Reference:
-* Kunkel, K. E. (1989). Simple procedures for extrapolation of humidity variables in the mountainous western United States. Journal of Climate, 2(7), 656–669. Retrieved from http://ams.allenpress.com/perlserv/?request=get-abstract&amp;doi=10.1175/1520-0442(1989)002<0656:SPFEOH>2.0.CO;2
-*/
+ * **Depends:**
+ * -  Air temperature "t" [\f$  {}^\circ C \f$]
+ *
+ * **Depends from Met:**
+ * - Relative Humidity "rh" [\f$ % \f$]
+ *
+ * **Provides:**
+ * - Relative humidity "rh" [\f$ % \f$]
+ *
+ * **Configuration keys:**
+ * - None
+ *
+ * **Reference:**
+ * Kunkel, K. E. (1989). Simple procedures for extrapolation of humidity variables in the mountainous western United States.
+ * Journal of Climate, 2(7), 656–669.
+ *
+ * @}
+ */
 class Kunkel_monthlyTd_rh : public module_base
 {
 REGISTER_MODULE_HPP(Kunkel_monthlyTd_rh);
@@ -67,8 +72,3 @@ public:
         interpolation interp;
     };
 };
-
-
-/**
-@}
-*/

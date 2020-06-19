@@ -22,13 +22,32 @@
 
 #pragma once
 
-
-
 #include "module_base.hpp"
 #include <meteoio/MeteoIO.h>
 
 /**
- * Dodson, R. and Marks, D.: Daily air temperature interpolated at high spatial resolution over a large mountainous region, Clim. Res., 8(Myers 1994), 1–20, doi:10.3354/cr008001, 1997.
+ * \ingroup modules tair met
+ * @{
+ * \class Dodson_NSA_ta
+ * Implements the neutral stability algorithm for air temperature from Dodson and Marks (1994).
+ * The neutral stability algorithm (NSA), uses the hydrostatic and potential temperature equations to convert measured
+ * temperatures and elevations to sea-level potential temperatures. The potential temperatures are spatially
+ * interpolated and then mapped to the elevation.
+ *
+ * **Requires from met:**
+ * - Air temperature "t" [\f$  {}^\circ C \f$]
+ *
+ * **Provides:**
+ * - Air temperature "t" [\f$  {}^\circ C \f$ ]
+ * - Lapse rate "t_lapse_rate" [\f$  {}^\circ C \cdot m^{-1} \f$]
+ *
+ * **Configuration keys:**
+ * - None *
+ *
+ * **Reference:**
+ * Dodson, R. and Marks, D.: Daily air temperature interpolated at high spatial resolution over a large mountainous region,
+ * Clim. Res., 8(Myers 1994), 1–20, doi:10.3354/cr008001, 1997.
+ * @}
  */
 class Dodson_NSA_ta : public module_base
 {

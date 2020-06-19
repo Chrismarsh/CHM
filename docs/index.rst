@@ -44,6 +44,8 @@ Contributors
    filters
    tools
 
+   development
+
    api/library_root
 
 Indices and tables

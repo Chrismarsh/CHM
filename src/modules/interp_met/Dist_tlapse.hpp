@@ -34,22 +34,23 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class Dist_tlapse
-* \brief Distributed lapse rate from forcing file, changes per timestep
-*
-*
-*
-* Depends:
-* - Air temperature "t" [degC]
-* - Lapse rate "t_lapse_rate" [degC/m]
-*
-* Provides:
-* - Air temperature "t" [degC]
-* - Lapse rate "t_lapse_rate" [degC/m]
-*
-*/
+ * \ingroup modules tair met
+ * @{
+ * \class Dist_tlapse
+ *  Spatially interpolates provided lapse rates from virtual stations
+ *
+ * **Depends from met:**
+ * - Air temperature - "t" [\f$ \circ C ] \f$
+ * - Lapse rate - "t_lapse_rate" [\f$ \circ C \cdot m^{-1}] \f$
+ *
+ * **Provides:**
+ * - Air temperature "t" [\f$ \circ C ] \f$
+ * - Lapse rate "t_lapse_rate" [\f$ \circ C \cdot m^{-1}] \f$
+ *
+ * **Configuration keys:**
+ * - None
+ * @}
+ */
 class Dist_tlapse : public module_base
 {
 REGISTER_MODULE_HPP(Dist_tlapse);
@@ -64,6 +65,3 @@ public:
     };
 };
 
-/**
-@}
-*/

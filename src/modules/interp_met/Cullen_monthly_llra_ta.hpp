@@ -34,23 +34,28 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class Cullen_monthly_llra_ta
-* \brief Constant monthly linear lapse rate adjustment
-*
-* Constant monthly linear lapse rate adjustment for air temperature.
-*
-* Depends:
-* - None
-*
-* Provides:
-* - Air temperature "t" [degC]
+ * \ingroup modules tair met
+ * @{
+ * \class Cullen_monthly_llra_ta
+ *
+ * Monthly linear lapse rate adjustment for air temperature using Cullen, et al (2011) for the Rocky Mountains
+ *
+ * **Requires from met:**
+ * - Air temperature  [\f$  {}^\circ C \f$]
+ *
+ * **Provides:**
+ * - Lapsed air temperature - "t" [\f$  {}^\circ C  \f$]
+ *
+ * **Configuration keys:**
+ * - None
+ *
+ * **Reference:**
+ *
+ * Cullen, R. M., and S. J. Marshall (2011), Mesoscale temperature patterns in the Rocky Mountains and foothills region
+ * of southern Alberta, Atmos. - Ocean, 49(3), 189–205, doi:10.1080/07055900.2011.592130.
+ * @}
+ */
 
-*
-* Reference:
-* >Cullen, R. M., and S. J. Marshall (2011), Mesoscale temperature patterns in the Rocky Mountains and foothills region of southern Alberta, Atmos. - Ocean, 49(3), 189–205, doi:10.1080/07055900.2011.592130.
-*/
 class Cullen_monthly_llra_ta : public module_base
 {
 REGISTER_MODULE_HPP(Cullen_monthly_llra_ta);

@@ -76,7 +76,7 @@ void iswr_from_obs::run(mesh_elem &face)
 
 
     // This is what is used in SUMMA
-    //! compute the fraction of direct radiation using the parameterization of Nijssen and Lettenmaier (1999)
+    // compute the fraction of direct radiation using the parameterization of Nijssen and Lettenmaier (1999)
     double Frad_direct = 0.7000;
     double directScale = 0.0900;
     double cosZenith = cos( M_PI/2.0 -  ((*face)["solar_el"_s]*mio::Cst::to_rad)) ; //zenith is from 90 vert -> 0 horz

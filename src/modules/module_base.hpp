@@ -36,8 +36,17 @@ namespace pt = boost::property_tree;
 
 //Create a process modules group in the doxygen docs to add individual modules to
 /**
-* \defgroup modules Process modules
-*/
+ * These are the groups to sort the filters by
+ * \defgroup modules Modules
+ * \defgroup met Meteorological forcing
+ * \defgroup lw Longwave
+ * \defgroup tair Air temperature
+ * \defgroup rh Relative humidity
+ * \defgroup wind Wind
+ * \defgroup precip Precipitation
+ * \defgroup iswr Shortwave radiation
+ * \defgroup nwp NWP
+ */
 
 /**
 * \class module_base
