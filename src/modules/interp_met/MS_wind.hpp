@@ -68,6 +68,7 @@
  * **Configuration:**
  * \rst
  * .. code::
+ * 
  *    {
  *       "speedup_height": 2.0,
  *       "use_ryan_dir", false
