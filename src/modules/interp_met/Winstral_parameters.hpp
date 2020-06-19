@@ -41,20 +41,97 @@
 #include <viennacl/linalg/ilu.hpp>
 
 /**
-* \addtogroup modules
-* @{
-* \class Winstral parameter
-* \brief Compute the Winstral parameter that can be used to redistribute
-*     wind and precipitation in complex terrain to improve simulation of snow 
-*     cover variability. 
-*
-* Depends:
-* - Direction at reference height 'vw_dir' [degrees]
-* - Snow depth [m] (optional)
-*
-* Provides:
-* - Sx, Winstral paramter [degrees]
-*/
+ * \ingroup modules param
+ * @{
+ * \class Winstral parameter
+ *
+ * Compute the Winstral parameter that can be used to redistribute
+ *     wind and precipitation in complex terrain to improve simulation of snow
+ *     cover variability.
+ *
+ * **Depends:**
+ * - Direction at reference height 'vw_dir' [degrees]
+ * - Snow depth [m] (optional)
+ *
+ * **Provides:**
+ * - Winstral parameter "Sx" [degrees]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "dmax": 300,
+ *       "size_of_step": 10.0,
+ *       "height_param": 0.0,
+ *       "angular_window": 30.0,
+ *       "delta_angle" : 5.0,
+ *       "incl_veg": false,
+ *       "incl_snw": false
+ *       "use_subgridz": true
+ *    }
+ *
+ * .. confval:: dmax
+ *
+ *    :type: double
+ *    :default: 300 m
+ *
+ *    Max distance to search
+ *
+ * .. confval:: size_of_step
+ *
+ *    :type: double
+ *    :default: 10.0 m
+ *
+ *    Size of the step to take when searching
+ *
+ * .. confval:: height_param
+ *
+ *    :type: double
+ *    :default: 0.0
+ *
+ *    Height parameter to account for instrument height or the impact of small terrain perturbation on Sx .
+ *    See Winstral et al. (2013) for more details
+ *
+ * .. confval:: angular_window
+ *
+ *    :type: double
+ *    :default: 30 deg
+ *
+ *    The angle for which to bin the wind directions in
+ *
+ * .. confval:: delta_angle
+ *
+ *    :type: double
+ *    :default: 5.0
+ *
+ * .. confval:: incl_veg
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    Should vegetation height be added to terrain height for the calculation
+ *
+ * .. confval:: incl_snw
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    Should snow height be added to terrain height for the calculation
+ *
+ * .. confval:: use_subgridz
+ *
+ *    :type: boolean
+ *    :default: true
+ *
+ *    Use an interpolated height within the triangle instead of just the triangle cell centre. Avoids step function results.
+ *
+ * \endrst
+ *
+ * **References:**
+ * - Winstral, A., Marks, D., Gurney, R. (2013). Simulating wind-affected snow accumulations at catchment to basin scales
+ * Advances in Water Resources  55(), 64-79. https://dx.doi.org/10.1016/j.advwatres.2012.08.011
+ */
 class Winstral_parameters : public module_base
 {
 REGISTER_MODULE_HPP(Winstral_parameters);

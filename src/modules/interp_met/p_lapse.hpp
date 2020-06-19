@@ -38,23 +38,45 @@
 #include <math.h>
 #include <gsl/gsl_fit.h>
 /**
-* \addtogroup modules
-* @{
-* \class Precip
-* \brief Calculates precipitation
-*
-* Spatially distributes liquid water precipitation using a precipitation lapse rate derived from stations
-* for the Marmot Creek reserach basin or the Upper Bow River Wathershed. Monthly lapse rates are used, as
-* in the CRHM model
-*
-* Depends:
-* - Precip from met file "p" [mm]
-*
-* Provides:
-* - Precip "p" [mm]
-* - Precip "p_no_slope" [mm]
-* 
-*/
+ * \ingroup modules met precip
+ * @{
+ * \class p_lapse
+ *
+ * Spatially distributes liquid water precipitation using a precipitation lapse rate derived from stations
+ * for the Marmot Creek reserach basin or the Upper Bow River Wathershed. Monthly lapse rates are used as
+ * in the CRHM model.
+ *
+ * **Depends from met:**
+ * - Precip from met file "p" [\f$mm \cdot dt^{-1}\f$]
+ *
+ * **Provides:**
+ * - Lapsed precipitation "p" [\f$mm \cdot dt^{-1}\f$]
+ * - Lapse precipitation corrected for triangle slope. If ``"apply_cosine_correction": false``, then no change.  "p_no_slope" [\f$mm \cdot dt^{-1}\f$]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "apply_cosine_correction": false
+ *    }
+ *
+ *
+ * .. confval:: apply_cosine_correction
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+ *
+ * \endrst
+ *
+ * **References:**
+ *
+ * Precipitation lapse rate derived from Marmot Creek stations by Logan Fang (used in CRHM for Marmot Creek domain)
+ *
+ * @}
+ */
 class p_lapse : public module_base
 {
 REGISTER_MODULE_HPP(p_lapse);
@@ -72,7 +94,3 @@ public:
     bool apply_cosine_correction;
 
 };
-
-/**
-@}
-*/

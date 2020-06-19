@@ -37,19 +37,20 @@
 
 
 /**
-* \addtogroup modules
-* @{
-* \class uniform_wind
-* \brief Calculates wind speed and direction without any modification
-*
-* Depends:
-* - Wind at reference height "U_R" [m/s]
-* - Direction at reference height 'vw_dir' [degrees]
-*
-* Provides:
-* - Wind "U_R" [m/s] at reference height
-* - Wind direction 'vw_dir' [degrees]
-*/
+ * \ingroup modules met wind
+ * @{
+ * \class uniform_wind
+ * Spatially interpolates wind speed and direction without any terrain speed-up modification
+ *
+ * **Depends from met:**
+ * - Wind at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Direction at reference height "vw_dir" [degrees]
+ *
+ * **Provides:**
+ * - Wind speed at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Wind direction 'vw_dir' at reference height [degrees]
+ *
+ */
 class uniform_wind : public module_base
 {
 REGISTER_MODULE_HPP(uniform_wind);

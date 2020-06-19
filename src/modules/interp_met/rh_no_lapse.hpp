@@ -28,18 +28,22 @@
 #include "module_base.hpp"
 
 /**
-* \addtogroup modules
-* @{
-* \class rh_no_lapse
-* \brief RH interpolation
-*
-*
-* Depends from met:
-* - Relative Humidity 'rh' [%]
-*
-* Provides:
-* - Relative Humidity 'rh' [%]
-*/
+ * \ingroup modules met rh
+ * @{
+ * \class rh_no_lapse
+ * Spatially interpolates relative humidity without any lapse adjustments. Bounds RH on [10%, 100%].
+ *
+ * **Depends from met:**
+ * - Relative Humidity "rh" [%]
+ *
+ * **Provides:**
+ * - Relative Humidity "rh" [%]
+ *
+ * **Configuration keys:**
+ * - None
+ *
+ * @}
+ */
 class rh_no_lapse : public module_base
 {
 REGISTER_MODULE_HPP(rh_no_lapse);
@@ -58,6 +62,3 @@ public:
 
 
 
-/**
-@}
-*/

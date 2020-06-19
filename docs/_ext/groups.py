@@ -77,11 +77,11 @@ class Filter(Directive):
                 continue
 
             rst.append(k, "", 0)
-            rst.append('~~~~~~~~~~~~~~~~~~~~~~', "", 0)
+            rst.append('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~', "", 0)
 
             for f in groups[k]:
                 rst.append(f, "", 0)
-                rst.append('++++++++++++++++++++++', "", 0)
+                rst.append('+++++++++++++++++++++++++++++++++++++++++++', "", 0)
                 rst.append('.. doxygenclass:: ' + f, "", 0)
                 rst.append('\n' , "", 0)
 

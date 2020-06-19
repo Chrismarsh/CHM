@@ -34,27 +34,57 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class t_monthly_lapse
-* \brief Constant monthly linear lapse rate adjustment
-*
-* Constant monthly linear lapse rate adjustment for air temperature.
-* Taken as input from user or default values for Canadian Rockies from:
- * *
-* Joseph M. Shea, Shawn J. Marshall and Joanne M. Livingston
-* Arctic, Antarctic, and Alpine Research
-* Vol. 36, No. 2 (May, 2004), pp. 272-279
-*
-* Depends:
-* - None
-*
-* Provides:
-* - Air temperature "t" [degC]
-* - Air temperatue "t_monthly_lapse" [degC]
-*
-
-*/
+ * \ingroup modules tair
+ * @{
+ * \class t_monthly_lapse
+ *
+ *
+ * Monthly linear lapse rate adjustment for air temperature.
+ * Taken as input from user or default values for Canadian Rockies from:
+ *
+ * Joseph M. Shea, Shawn J. Marshall and Joanne M. Livingston
+ * Arctic, Antarctic, and Alpine Research
+ * Vol. 36, No. 2 (May, 2004), pp. 272-279
+ *
+ * **Depends from met:**
+ * - Air temperature "t" [ \f$ {}^\circ C \f$]
+ *
+ * **Provides:**
+ * - Air temperature "t"  [ \f$ {}^\circ C \f$]
+ * - Lapse rate "t_monthly_lapse"  [ \f$ {}^\circ C \f$]
+ *
+ * **Configuration keys:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "MLR_1":0.0049
+ *       "MLR_2":0.0049
+ *       "MLR_3":0.0060
+ *       "MLR_4":0.0060
+ *       "MLR_5":0.0060
+ *       "MLR_6":0.0053
+ *       "MLR_7":0.0053
+ *       "MLR_8":0.0053
+ *       "MLR_9":0.0046
+ *       "MLR_10":0.0046
+ *       "MLR_11":0.0049
+ *       "MLR_12":0.0049
+ *   }
+ *
+ *
+ * .. confval:: MLR_n
+ *
+ *    :type: double
+ *
+ *    The Monthly Lapse Rate given in \f${}^\circ C \cdot m^{-1}\f$ for n=[1,12] months.
+ *
+ * \endrst
+ * **References:**
+ * Joseph M. Shea, Shawn J. Marshall and Joanne M. Livingston
+ * Arctic, Antarctic, and Alpine Research, Vol. 36, No. 2 (May, 2004), pp. 272-279
+ *
+ */
 class t_monthly_lapse : public module_base
 {
 REGISTER_MODULE_HPP(t_monthly_lapse);

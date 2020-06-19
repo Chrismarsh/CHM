@@ -26,6 +26,30 @@
 #include "module_base.hpp"
 #include <gsl/gsl_fit.h>
 #include <meteoio/MeteoIO.h>
+
+/**
+ * \ingroup modules rh met
+ * \class rh_from_obs
+ *
+ * Creates an elevation-vapour pressure lapse rate from observed RH values.
+ * Depends on the stations to compute the vapour pressure, but it uses an already lapsed temperature from another
+ * module to recompute the RH at a triangle.
+ *
+ * **Depends from met:**
+ * - Air temperature "t" [\f$  {}^\circ C \f$]
+ * - Relative humidity "rh" [%]
+ *
+ * **Depends:**
+ * - Air temperature "t" [\f$  {}^\circ C \f$]
+ *
+ * **Provides:**
+ * - Relative humidity "rh" [%]
+ *
+ * **Configuration keys:**
+ * - None *
+ *
+ * @}
+ */
 class rh_from_obs : public module_base
 {
 REGISTER_MODULE_HPP(rh_from_obs);

@@ -41,7 +41,6 @@ WindNinja::WindNinja(config_file cfg)
     provides("Ninja_u");
     provides("Ninja_v");
 
-    provides("omega_s");
     provides("W_transf");
 
     provides("interp_zonal_u");
@@ -248,7 +247,6 @@ void WindNinja::init(mesh& domain)
 void WindNinja::run(mesh& domain)
 {
         double transf_max = -9999.0;
-        double max_omega_s = -9999.0;
 
         double delta_angle = 360. / N_windfield;
 
@@ -386,12 +384,6 @@ void WindNinja::run(mesh& domain)
             // NEW wind direction from the wind field library
             theta = math::gis::zonal2dir(U, V);
 
-            //Compute what liston calls 'wind slope' using updated wind direction
-     //       double omega_s = face->slope() * cos(theta - face->aspect());
-
-     //       if (fabs(omega_s) > max_omega_s)
-     //           max_omega_s = fabs(omega_s);
-
             double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
 
             face->get_module_data<data>(ID)->corrected_theta = theta;
@@ -423,13 +415,6 @@ void WindNinja::run(mesh& domain)
            {
                if (ninja_recirc)
                {  // Need further test
-
-              //Compute what liston calls 'wind slope' using updated wind direction
-            //  double omega_s = face->slope() * cos(theta - face->aspect());
-            //  (*face)["omega_s"_s]= omega_s;
-
-         //     if( omega_s<-0.35 and W_transf>1.05)  //Reduce wind speed on the lee side of mountain crest
-          //         W_transf = std::max(0.5,0.5+(omega_s+0.5)/(0.15)*0.5);   // Reduction 0f 50% for omega_s larger than 30 deg
 
                   double sx_loc = Sx->Sx(domain,face);
                   (*face)["Sx"_s] =sx_loc;

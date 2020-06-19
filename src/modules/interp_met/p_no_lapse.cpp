@@ -43,11 +43,9 @@ void p_no_lapse::init(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
-	       auto face = domain->face(i);
-	       auto d = face->make_module_data<p_no_lapse::data>(ID);
-	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
-
+        auto face = domain->face(i);
+        auto d = face->make_module_data<p_no_lapse::data>(ID);
+        d->interp.init(global_param->interp_algorithm,face->stations().size() );
     }
 
 }
@@ -67,15 +65,13 @@ void p_no_lapse::run(mesh_elem& face)
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
     double p0 = face->get_module_data<data>(ID)->interp(ppt, query);
-    double slp = face->slope();
 
-    //(*face)["p"_s]= std::max(0.0,p0);
-
-    double P_fin;
+    double P_fin = -9999;
 
    // Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
     if(apply_cosine_correction)
     {
+        double slp = face->slope();
         P_fin = Atmosphere::corr_precip_slope(p0,slp);
     } else
     {

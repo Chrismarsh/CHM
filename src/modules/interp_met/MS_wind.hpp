@@ -67,8 +67,8 @@
  *
  * **Configuration:**
  * \rst
- * .. code::
- * 
+ * .. code:: json
+ *
  *    {
  *       "speedup_height": 2.0,
  *       "use_ryan_dir", false

@@ -38,19 +38,36 @@
 #include <math.h>
 #include <gsl/gsl_fit.h>
 /**
-* \addtogroup modules
-* @{
-* \class Precip
-* \brief Calculates precipitation
-*
-* Spatially distributes liquid water precipitation using a constant lapse rate
-*
-* Depends:
-* - Precip from met file "p" [mm]
-*
-* Provides:
-* - Precip "p" [mm]
-* - Precip "p_no_slope" [mm]
+ * \ingroup modules precip met
+ * @{
+ * \class p_no_lapse
+ * Spatially distributes liquid water precipitation with no lapsing
+ *
+ * **Depends from met**:
+ * - Precipitation "p" [\f$mm \cdot dt^{-1}\f$]
+ *
+ * **Provides:**
+ * -  Precipitation "p" [\f$mm \cdot dt^{-1}\f$]
+ * - Precipitation corrected for triangle slope. If ``"apply_cosine_correction": false``, then no change.  "p_no_slope" [\f$mm \cdot dt^{-1}\f$]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "apply_cosine_correction": false
+ *    }
+ *
+ *
+ * .. confval:: apply_cosine_correction
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+ *
+ * \endrst
+ * @}
 */
 class p_no_lapse : public module_base
 {
@@ -70,6 +87,3 @@ public:
 
 };
 
-/**
-@}
-*/

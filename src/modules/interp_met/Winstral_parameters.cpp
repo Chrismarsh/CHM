@@ -44,8 +44,8 @@ Winstral_parameters::Winstral_parameters(config_file cfg)
     //steps = cfg.get("steps",10);
     steps = dmax / size_of_step;
 
-    //height parameter to accound for instrument height or the impact of small terrain perturbation on Sx 
-    // see Winstral et al. (2013) for me details
+    //height parameter to account for instrument height or the impact of small terrain perturbation on Sx
+    // see Winstral et al. (2013) for more details
     height_param = cfg.get("height_param",0.0);
 
     //separation distance to compute drift separators

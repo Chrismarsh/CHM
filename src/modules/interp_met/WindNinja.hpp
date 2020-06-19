@@ -44,20 +44,119 @@
 #include <viennacl/linalg/ilu.hpp>
 
 /**
-* \addtogroup modules
-* @{
-* \class WindNinja
-* \brief Calculates wind speed and direction following the downscaling stategy of Barcons et al. (Wind Energy, 2018)
-*
-* Calculates windspeeds and direction from GEM input and a library of high-resolution wind field generated with the WindNinja wind flow model
-* Depends:
-* - Wind at reference height "U_R" [m/s]
-* - Direction at reference height 'vw_dir' [degrees]
-*
-* Provides:
-* - Wind "U_R" [m/s] at reference height
-* - Wind direction 'vw_dir' [degrees]
-*/
+ * \ingroup modules met wind
+ * @{
+ * \class WindNinja
+ *
+ * Calculates wind speed and direction following the downscaling stategy of Barcons et al. (2018). This is via a library
+ * of high-resolution wind field generated with the WindNinja wind flow model.
+ *
+ * **Depends from met:**
+ * - Wind at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Direction at reference height "vw_dir" [degrees]
+ *
+ * **Provides:**
+ * - Wind speed at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Wind direction 'vw_dir' at reference height [degrees]
+ *
+ * **Diagnostics:**
+ * - Downscaled windspeed "Ninja_speed" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Windspeed without downscaling "Ninja_speed_nodown" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Zonal U at level H_Forc "Ninja_u"  [ \f$ m \cdot s^{-1}\f$ ]
+ * - Zonal V at level H_Forc "Ninja_v"  [ \f$ m \cdot s^{-1}\f$ ]
+ * - Interpolated zonal U at level H_Forc "interp_zonal_u"  [ \f$ m \cdot s^{-1}\f$ ]
+ * - Interpolated zonal V at level H_Forc "interp_zonal_v"  [ \f$ m \cdot s^{-1}\f$ ]
+ * - What lookup map was used "lookup_d"  [-]
+ * - Original wind direction "vw_dir_orig" [degrees]
+ *
+ * **Configuration:**:
+ * \rst
+ * .. code::
+ *
+ *    {
+ *       "ninja_average": true,
+ *       "compute_Sx": true,
+ *       "ninja_recirc": false,
+ *       "Sx_crit", 30.
+ *       "L_avg": 1000.
+ *       "H_forc": 40,
+ *       "Max_spdup": 3.0,
+ *       "Min_spdup": 0.1,
+ *    }
+ *
+ *
+ * .. confval:: ninja_average
+ *
+ *    :type: boolean
+ *    :default: true
+ *
+ *    Linear interpolation between the closest 2 wind fields from the library
+ *
+ * .. confval:: compute_Sx
+ *
+ *    :type: boolean
+ *    :default: true
+ *
+ *   Use the Winstral Sx parameterization to idenitify and modify lee-side windfield. This will cause a runtime error (conflict) if
+ *   ``Winstral_parameters`` is also a module. This uses an angular window of 30 degrees and a step size of 10 m.
+ *
+ * .. confval:: ninja_recirc
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    Enables the leeside slow down via ``compute_Sx``. Requires ``"compute_Sx":true``.
+ *
+ * .. confval:: Sx_crit
+ *
+ *    :type: double
+ *    :default: 30.
+ *
+ *    Reduce wind speed on the lee side of mountain crest identified by Sx>Sx_crit
+ *
+ * ..confval:: L_avg
+ *
+ *    :type: int
+ *    :default: None
+ *
+ *    The WindMapper tool uses a radius to compute a mean. This is the length over which that average is done. Normally this will be
+ *    baked into the parameter name (e.g., Ninja_1000). However, there may be reasons to specifiy it directly.
+ *    Cannot be used if the parameters have the _Lavg suffix.
+ *    You likely don't need to set this.
+ *
+ * .. confval:: H_forc
+ *
+ *    :type: double
+ *    :default: 40.0
+ *
+ *     Reference height for input forcing and WindNinja wind field library
+ *
+ * .. confval:: Max_spdup
+ *
+ *    :type: double
+ *    :default: 3.0
+ *
+ *    Limit speed up value to Max_spdup to avoid unrelistic values at crest top
+ *
+ * .. confval:: Min_spdup
+ *
+ *    :type: double
+ *    :default: 3.0
+ *
+ *    Limit speed up value to Max_spdup to avoid unrelistic values at crest top
+ *
+ * \endrst
+ *
+ * **Parameters:**
+ *
+ * Requires speedup, u, and v parameters named "Ninja%i_U" and "Ninja%i_V" and "Ninja%i" for each of the _n_ directions.
+ * Should be generated with WindMapper. The number of directions will be automatically determined as will the Lavg value
+ *
+ *
+ * **References:**
+ * - Barcons, J., Avila, M., Folch, A. (2018). A wind field downscaling strategy based on domain segmentation and transfer functions Wind Energy  21(6)https://dx.doi.org/10.1002/we.2169
+ *
+ */
 class WindNinja : public module_base
 {
 REGISTER_MODULE_HPP(WindNinja);

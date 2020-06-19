@@ -25,10 +25,10 @@
 // Created by chris on 17/11/15.
 //
 
-#include "Thornton_var_p.hpp"
+#include "p_from_obs.hpp"
 REGISTER_MODULE_CPP(Thornton_var_p);
 
-Thornton_var_p::Thornton_var_p(config_file cfg)
+p_from_obs::p_from_obs(config_file cfg)
   : module_base("Thornton_var_p", parallel::data, cfg)
 {
     depends_from_met("p");
@@ -37,28 +37,26 @@ Thornton_var_p::Thornton_var_p(config_file cfg)
     provides("p_lapse");
 
 }
-Thornton_var_p::~Thornton_var_p()
+p_from_obs::~p_from_obs()
 {
 
 }
 template <typename T> int signum(T val) {
     return (T(0) < val) - (val < T(0));
 }
-void Thornton_var_p::init(mesh& domain)
+void p_from_obs::init(mesh& domain)
 {
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
-	       auto face = domain->face(i);
-	       auto d = face->make_module_data<data>(ID);
-	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
-
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->interp.init(global_param->interp_algorithm,face->stations().size() );
     }
 
 }
-void Thornton_var_p::run(mesh_elem& face)
+void p_from_obs::run(mesh_elem& face)
 {
 
     //generate lapse rates
@@ -133,8 +131,6 @@ void Thornton_var_p::run(mesh_elem& face)
         ppt.push_back( boost::make_tuple(s->x(), s->y(), u ) );
         station_z.push_back( boost::make_tuple(s->x(), s->y(), s->z() ) );
     }
-
-
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
     double p0 = face->get_module_data<data>(ID)->interp(ppt, query);

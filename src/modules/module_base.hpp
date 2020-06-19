@@ -46,6 +46,7 @@ namespace pt = boost::property_tree;
  * \defgroup precip Precipitation
  * \defgroup iswr Shortwave radiation
  * \defgroup nwp NWP
+ * \defgroup param Parameters
  */
 
 /**

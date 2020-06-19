@@ -38,25 +38,40 @@
 #include <math.h>
 #include <gsl/gsl_fit.h>
 /**
-* \addtogroup modules
-* @{
-* \class Precip
-* \brief Calculates precipitation
-*
-* Spatially distributes liquid water precipitation using Thornton, et al. 1997. Monthly scaling factors are used, as
- * summarized in Liston, 2006.
-*
-* Depends:
-* - Precip from met file "p" [mm]
-*
-* Provides:
-* - Precip "p" [mm]
-* - Precip "p_no_slope" [mm]
-* 
- * Reference:
+ * \ingroup modules met precip
+ * @{
+ * \class Thornton_p
+ * Spatially distributes liquid water precipitation using Thornton, et al. 1997 via monthly lapse rates.
+ *
+ * **Depends from met:**
+ * - Precipitation  "p" [\f$mm \cdot dt^{-1}\f$]
+ *
+ * Provides:
+ * - Lapsed precipitation "p" [\f$mm \cdot dt^{-1}\f$]
+ * - Precipitation corrected for triangle slope. If ``"apply_cosine_correction": false``, then no change. "p_no_slope" [\f$mm \cdot dt^{-1}\f$]
+ *
+* **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "apply_cosine_correction": false
+ *    }
+ *
+ *
+ * .. confval:: apply_cosine_correction
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    Correct precipitation input using triangle slope when input preciptation are given for the horizontally projected area.
+ * \endrst
+ *
+ * **References:**
  * - Thornton, P. E., Running, S. W., & White, M. A. (1997). Generating surfaces of daily meteorological variables over large regions of complex terrain. Journal of Hydrology, 190(3-4), 214–251. http://doi.org/10.1016/S0022-1694(96)03128-9
- * - Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
-*/
+ *
+ * @}
+ */
 class Thornton_p : public module_base
 {
 REGISTER_MODULE_HPP(Thornton_p);
@@ -74,7 +89,3 @@ public:
     bool apply_cosine_correction;
 
 };
-
-/**
-@}
-*/

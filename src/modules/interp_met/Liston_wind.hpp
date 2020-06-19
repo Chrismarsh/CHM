@@ -59,7 +59,7 @@
  *
  * **Configuration:**
  * \rst
- * .. code::
+ * .. code:: json
  *
  *    {
  *       "distance": 300,

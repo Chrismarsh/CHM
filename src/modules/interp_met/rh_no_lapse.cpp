@@ -44,14 +44,12 @@ void rh_no_lapse::init(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
-	       auto face = domain->face(i);
-	       auto d = face->make_module_data<rh_no_lapse::data>(ID);
-	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
-
+        auto face = domain->face(i);
+        auto d = face->make_module_data<rh_no_lapse::data>(ID);
+        d->interp.init(global_param->interp_algorithm,face->stations().size() );
     }
-
 }
+
 void rh_no_lapse::run(mesh_elem &face)
 {
 

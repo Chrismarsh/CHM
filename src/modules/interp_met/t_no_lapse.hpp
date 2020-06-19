@@ -34,19 +34,22 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class t_no_lapse
-* \brief No adjustment
-*
-* Depends:
-* - None
-*
-* Provides:
-* - Air temperature "t" [degC]
-* - Air temperatue "t_no_lapse" [degC]
-*
-*/
+ * \ingroup modules met tair
+ * @{
+ * \class t_no_lapse
+ * Spatially interpolate air temperature with no lapse rate adjustment
+ *
+ * **Depends from met:**
+ * - Air temperature "t" [ \f$ {}^\circ C \f$]
+ *
+ * **Provides:**
+ * - Air temperature "t"  [ \f$ {}^\circ C \f$]
+ * - Lapse rate "t_monthly_lapse"  [ \f$ {}^\circ C \f$]
+ *
+ * **Configuration keys:**
+ * - None
+ * @}
+ */
 class t_no_lapse : public module_base
 {
 REGISTER_MODULE_HPP(t_no_lapse);
@@ -60,7 +63,3 @@ public:
         interpolation interp;
     };
 };
-
-/**
-@}
-*/
