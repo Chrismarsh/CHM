@@ -47,6 +47,8 @@ namespace pt = boost::property_tree;
  * \defgroup iswr Shortwave radiation
  * \defgroup nwp NWP
  * \defgroup param Parameters
+ * \defgroup ag Agriculture
+ * \defgroup exp Experimental
  */
 
 /**

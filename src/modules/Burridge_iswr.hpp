@@ -27,24 +27,29 @@
 #include "module_base.hpp"
 #include <meteoio/MeteoIO.h>
 /**
- * \addtogroup modules
+ * \ingroup modules iswr
  * @{
  * \class Burridge_iswr
- * \brief Computes incoming shortwave radiation using a cloud fraction.
  *
- * Computes incoming direct and diff shortwave radiation using a cloud fraction based on RH at 700mb.
+ * Computes incoming shortwave direct and diffuse beam radiation using a cloud fraction.
  *
- * Depends:
- * - cloud_frac (-)
+ * **Depends:**
+ * - Cloud fraction "cloud_frac" (-)
+ * - Solar elevation "solar_el" (degrees)
  *
- * Provides:
- * - Shortwave all beam "iswr" [W/m^2]
- * - Shortwave direct "iswr_direct" [W/m^2]
- * - Shortwave diffuse "iswr_diffuse" [W/m^2]
+ * **Provides:**
+ * - Shortwave direct beam without slope correction "iswr_direct_no_slope" \f$[W \cdot m^{-2}\f$]
+ * - Shortwave diffuse beam without slope correction  "iswr_diffuse_no_slope" \f$[W \cdot m^{-2}\f$]
  * - Atmospheric transmittance, [0,1] "atm_trans" [-]
+ *
+ * **Configuration:**
+ * - None
+ *
  * References:
  * - Burridge, D. M., and A. J. Gadd, 1974: The Meteorological Office operational 10 level numerical weather prediction model (December 1974). U.K. Met. Office Tech. Notes 12 and 48, 57 pp.
  * - Described in Liston, G. E., & Elder, K. (2006). A meteorological distribution system for high-resolution terrestrial modeling (MicroMet). Journal of Hydrometeorology, 7(2), 217–234. http://doi.org/10.1175/JHM486.1
+ *
+ * @}
  */
 class Burridge_iswr : public module_base
 {

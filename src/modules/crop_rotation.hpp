@@ -29,7 +29,28 @@
 
 
 /**
- * Proof of concept for crop_rotation
+ * \ingroup modules ag
+ * @{
+ * \class crop_rotation
+ *
+ * Basic crop rotation. Changes between two different landcovers on even/odd years.
+ * On even years, it sets the "crop" parameter to the parameter "annual_crop_inventory_1", and on odd years
+ * it sets it to "annual_crop_inventory_2".
+ * Mostly a proof-of-concept.
+ *
+ * **Depends:**
+ * - None
+ *
+ * **Provides:**
+ * - None
+ *
+ * **Configuration:**
+ * - None
+ *
+ * **Parameters:**
+ * - Year even crop "annual_crop_inventory_1"
+ * - Year odd crop "annual_crop_inventory_2"
+ * @}
  */
 class crop_rotation : public module_base
 {
@@ -40,5 +61,6 @@ public:
     ~crop_rotation();
 
     void run(mesh_elem &face);
-
+  private:
+    int crop_year1
 };

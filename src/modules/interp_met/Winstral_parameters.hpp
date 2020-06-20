@@ -131,6 +131,8 @@
  * **References:**
  * - Winstral, A., Marks, D., Gurney, R. (2013). Simulating wind-affected snow accumulations at catchment to basin scales
  * Advances in Water Resources  55(), 64-79. https://dx.doi.org/10.1016/j.advwatres.2012.08.011
+ *
+ * @}
  */
 class Winstral_parameters : public module_base
 {

@@ -28,9 +28,60 @@
 #include "module_base.hpp"
 #include "TPSpline.hpp"
 
+
+
 /**
- * Impliments the fetch algorithm of
- * Lapen, D. R., and L. W. Martz (1993), The measurement of two simple topographic indices of wind sheltering-exposure from raster digital elevation models, Comput. Geosci., 19(6), 769–779, doi:10.1016/0098-3004(93)90049-B.
+ * \ingroup modules wind param
+ * @{
+ * \class fetchr
+ *
+ * Calculates upwind fetch distances. The fetch is broken if a triangle at distance ``d * I`` > current triangle's elevation.
+ *
+ * **Depends:**
+ * - Wind direction "vw_dir" [degrees]
+ *
+ * **Provides:**
+ * - Fetch distance "fetch" [m]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "steps": 10,
+ *       "max_distance": 1000
+ *    }
+ *
+ *
+ * .. confval:: steps
+ *
+ *    :type: int
+ *    :default: 10
+ *
+ *    Number of steps along the search vector to check for a higher point
+ *
+ * .. confval:: max_distance
+ *
+ *    :type: double
+ *    :default: 1000 m
+ *
+ *    Maximum search distance to look for a higher point
+ *
+ * .. confval:: I
+ *
+ *    :type: double
+ *    :default: 0.06
+ *
+ *    Rise/run threshold to multiply against the distance of a test triangle.
+ *
+ * \endrst
+ *
+ * **References:**
+ * - Lapen, D. R., and L. W. Martz (1993), The measurement of two simple topographic indices of wind
+ * sheltering-exposure from raster digital elevation models, Comput. Geosci., 19(6), 769–779,
+ * doi:10.1016/0098-3004(93)90049-B.
+
+ * @]
  */
 class fetchr : public module_base
 {

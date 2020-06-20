@@ -40,9 +40,9 @@ void crop_rotation::run(mesh_elem& face)
 
     int year = global_param->year();
 
-    if(year == 2010)
-        face->parameter("crop"_s) = face->parameter("annual_crop_inventory_2010"_s);
-    else if( year == 2011)
-        face->parameter("crop"_s) = face->parameter("annual_crop_inventory_2011"_s);
+    if(year % 2 == 0)
+        face->parameter("crop"_s) = face->parameter("annual_crop_inventory_1"_s);
+    else
+        face->parameter("crop"_s) = face->parameter("annual_crop_inventory_2"_s);
 
 }

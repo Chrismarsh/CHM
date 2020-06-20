@@ -84,6 +84,7 @@
  * Joseph M. Shea, Shawn J. Marshall and Joanne M. Livingston
  * Arctic, Antarctic, and Alpine Research, Vol. 36, No. 2 (May, 2004), pp. 272-279
  *
+ * @}
  */
 class t_monthly_lapse : public module_base
 {
@@ -99,7 +100,3 @@ public:
     };
     double MLR[12];
 };
-
-/**
-@}
-*/

@@ -50,6 +50,7 @@
  * - Wind speed at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
  * - Wind direction 'vw_dir' at reference height [degrees]
  *
+ * @}
  */
 class uniform_wind : public module_base
 {
@@ -69,6 +70,3 @@ public:
     };
 };
 
-/**
-@}
-*/

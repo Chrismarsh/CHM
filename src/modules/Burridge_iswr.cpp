@@ -30,10 +30,10 @@ Burridge_iswr::Burridge_iswr(config_file cfg)
 {
 
     depends("cloud_frac");
-    depends("solar_el");
+    depends("solar_el"); //degrees
 
-    provides("iswr_diffuse_no_slope");
-    provides("iswr_direct_no_slope");
+    provides("iswr_diffuse_no_slope"); //Shortwave diffuse beam without slope correction
+    provides("iswr_direct_no_slope"); //Shortwave direct beam without slope correction
 
     provides("atm_trans");
 }

@@ -29,7 +29,17 @@
 
 
 /**
- * Proff of concept for deformable mesh
+ * \ingroup modules exp
+ * @{
+ * \class deform_meshs
+ *
+ * Example of how to deform the mesh's z-coords.
+ * \rst
+ * .. warning::
+ *    There is currently no way for CHM to be updated that the mesh z has changed to recompute slopes/aspect/etc.
+ *
+ * \endrst
+ * @}
  */
 class deform_mesh : public module_base
 {
