@@ -57,23 +57,56 @@ struct vertex_data : vertex_info
 };
 
 /**
-* \addtogroup modules
-* @{
-* \class Marsh_shading_iswr
-* \brief Computes self and horizon shading
-*
-* Computes the self- and horizon-shadows for a basin. Numerically intensive.
-*
-* Depends:
-* - None
-*
-* Provides:
-* - Value that provides a metric for triangle 'nearness' to the sun "z_prime" [-]
-* - Binary shadow value "shadowed" [1 (true) / 2 (false)]
-*
-*
-* Reference:
-* > Marsh, C.B., J.W. Pomeroy, and R.J. Spiteri. “Implications of Mountain Shading on Calculating Energy for Snowmelt Using Unstructured Triangular Meshes.” Hydrological Processes 26, no. 12 (June 15, 2012): 1767–78. doi:10.1002/hyp.9329.
+ * \ingroup modules iswr
+ * @{
+ * \class Marsh_shading_iswr
+ *
+ * Computes the horizon-shadows using the parallel point plane projection from Marsh, et al (2011). The :ref:`fast_shadow` routine
+ * provides almost as good of a result with less computational overhead.
+ *
+ * **Depends:**
+ * - Solar azimuth "solar_az" [degrees]
+ * - Solar elevation "solar_el" [degrees]
+ *
+ * **Provides:**
+ * - Value that provides a metric for triangle 'nearness' to the sun "z_prime" [-]
+ * - Binary shadow value "shadowed" [1 (true) / 0 (false)]
+ *
+ * **Configuration:**
+ *
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "x_AABB":10,
+ *       "y_AABB":10
+ *    }
+ *
+ *
+ *    The domain is split into an x/y grid in projection space.
+ *    Triangles are only compared to triangles in their bin to compute shadows. Thus, the smaller the value the
+ *    more chance of missing a triangle intersection. It also decreases the number of comparisons and can dramatically
+ *    decrease the computational time.
+ *
+ * .. confval:: x_AABB
+ *
+ *    :type: int
+ *    :default: 10
+ *
+ *    This is the size number of bins in the x direction.
+ *
+ *
+ * .. confval:: y_AABB
+ *
+ *    :type: int
+ *    :default: 10
+ *
+ *    This is the size number of bins in the y direction.
+ *
+ * \endrst
+ * Reference:
+ * - Marsh, C.B., J.W. Pomeroy, and R.J. Spiteri. “Implications of Mountain Shading on Calculating Energy for Snowmelt
+ * Using Unstructured Triangular Meshes.” Hydrological Processes 26, no. 12 (June 15, 2012): 1767–78. doi:10.1002/hyp.9329.
 */
 class Marsh_shading_iswr : public module_base
 {

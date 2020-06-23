@@ -121,8 +121,8 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     depends("rh");
     depends("U_R");
 
-    depends("p_snow");
-    depends("p");
+//    depends("p_snow");
+//    depends("p");
 
     // Determine if we want fetch, and if so, which one. Default is to use Pomeroy
     // Tanh
@@ -232,7 +232,7 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
 
 void PBSM3D::init(mesh& domain)
 {
-    nLayer = cfg.get("nLayer", 5);
+    nLayer = cfg.get("nLayer", 10);
 
     susp_depth = 5;                      // 5m as per pomeroy
     v_edge_height = susp_depth / nLayer; // height of each vertical prism
@@ -1533,7 +1533,7 @@ if (suspension_present) {
                 // Eqn 20 Pomeroy 1993
 
             }
-            Qsubl += d->csubl[z] * c * v_edge_height; // kg/(m^2 *s) => per unit area of snowcover
+            Qsubl += d->csubl[z] * c * v_edge_height; //  kg/(m^2 *s)=> per unit area of snowcover
         }
         (*face)["Qsusp"_s] = Qsusp;
 

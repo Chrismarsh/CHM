@@ -30,7 +30,42 @@
 #include <cmath>
 
 
-
+/**
+ * \ingroup modules infil soils exp
+ * @{
+ * \class Gray_inf
+ *
+ *
+ * Estimates areal snowmelt infiltration into frozen soils for:
+ *    a) Restricted -  Water entry impeded by surface conditions
+ *    b) Limited - Capiliary flow dominates and water flow influenced by soil physical properties
+ *    c) Unlimited - Gravity flow dominates
+ *
+ * **Depends:**
+ * - Snow water equivalent "swe" [mm]
+ * - Snow melt for interval "snowmelt_int" [\f$mm \cdot dt^{-1}\f$]
+ *
+ * **Provides:**
+ * - Infiltration "inf" [\f$mm \cdot dt^{-1}\f$]
+ * - Total infiltration "total_inf" [mm]
+ * - Total infiltration excess "total_excess" [mm]
+ * - Total runoff "runoff" [mm]
+ * - Total soil storage "soil_storage"
+ * - Potential infiltration "potential_inf"
+ * - Opportunity time for infiltration to occur "opportunity_time"
+ * - Available storage for water of the soil "available_storage"
+ *
+ * \rst
+ * .. note::
+ *    Has hardcoded soil parameters that need to be read from the mesh parameters.
+ *
+ * \endrst
+ *
+ * **References:**
+ * - Gray, D., Toth, B., Zhao, L., Pomeroy, J., Granger, R. (2001). Estimating areal snowmelt infiltration into frozen soils
+ * Hydrological Processes  15(16), 3095-3111. https://dx.doi.org/10.1002/hyp.320
+ * @}
+ */
 class Gray_inf : public module_base
 {
 REGISTER_MODULE_HPP(Gray_inf)

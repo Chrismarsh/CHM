@@ -1,8 +1,13 @@
 Forcing
 ========
 
+
 ASCII timeseries
 *****************
+
+.. warning::
+    If using ground-based observations for incoming shortwave radiation, please look at the ``already_cosine_corrected`` for the module ``iswr``.
+
 
 Forcing data are defined as a delineated format. Datetime format is ISO standard as
 

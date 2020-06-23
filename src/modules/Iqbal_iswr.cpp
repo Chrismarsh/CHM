@@ -21,10 +21,6 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-//
-// Created by chris on 06/11/15.
-//
-
 #include "Iqbal_iswr.hpp"
 REGISTER_MODULE_CPP(Iqbal_iswr);
 

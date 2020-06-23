@@ -49,6 +49,9 @@ namespace pt = boost::property_tree;
  * \defgroup param Parameters
  * \defgroup ag Agriculture
  * \defgroup exp Experimental
+ * \defgroup snow Snow
+ * \defgroup soil Soils
+ * \defgroup infil Soil Infiltration
  */
 
 /**

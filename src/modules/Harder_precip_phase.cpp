@@ -65,13 +65,11 @@ void Harder_precip_phase::init(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-
-	       auto face = domain->face(i);
-	       auto d = face->make_module_data<data>(ID);
-	       d->hours_since_snowfall = 0;
-	       d->acc_rain = 0;
-	       d->acc_snow = 0;
-
+        auto face = domain->face(i);
+        auto d = face->make_module_data<data>(ID);
+        d->hours_since_snowfall = 0;
+        d->acc_rain = 0;
+        d->acc_snow = 0;
     }
 
 }

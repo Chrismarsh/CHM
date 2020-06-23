@@ -63,27 +63,181 @@
 #include <boost/math/tools/roots.hpp>
 
 /**
-* \addtogroup modules
-* @{
-* PBSM3D blowing snow implements a 3D scalar transport model using some PBSM formulations
- * scalar transport using snow concentrations is outlined here
- * Lehning, M., H. Löwe, M. Ryser, and N. Raderschall (2008), Inhomogeneous precipitation distribution and snow transport in steep terrain, Water Resour. Res., 44(7), 1–19, doi:10.1029/2007WR006545.
- * saltation concentration is given in
- * Pomeroy, J. W., and D. M. Gray (1990), Saltation of snow, Water Resour. Res., 26(7), 1583–1594.
- * but clearly given in
- * Pomeroy, J. W., and D. Male (1992), Steady-state suspension of snow, J. Hydrol., 136(1–4), 275–301, doi:10.1016/0022-1694(92)90015-N. [online] Available from: http://linkinghub.elsevier.com/retrieve/pii/002216949290015N
- * deposition flux shown as divergence taken from
- * Liston, G., and M. Sturm (1998), A snow-transport model for complex terrain, J. Glaciol., 44(148), 498–516.
- * sublimation update taken from
- * Pomeroy, J. W., and L. Li (2000), Prairie and arctic areal snow cover mass balance using a blowing snow model, J. Geophys. Res., 105(D21), 26619–26634, doi:10.1029/2000JD900149. [online] Available from: http://www.agu.org/pubs/crossref/2000/2000JD900149.shtml
- * Depends:
-* - Air temp (t), [C]
- * - Relative humidity (RH), [%]
- * - SWE [kg/m^2], can come before a snowmodel though.
+ * \ingroup modules snow
+ * @{
+ * \class PBSM3D
+ *
+ * A 3D scalar-transport blowing snow model that is spatially discretized using the finite volume method. The methods are
+ * detailed in Marsh, et al (2020) but are ultimately based upon the work of Pomeroy, et al from the late 1980s and early 1990s.
+ * Due to the use of the FVM, neither simplifying assumptions about wind direction nor domain rotations into the wind direction
+ * are needed. This allows use where the wind ﬂow is divergent and over large extents. Erosion and deposition are computed as
+ * the spatial and temporal divergence of the suspension and saltation ﬂuxes, that is, their rate of change over space and over
+ * model time steps.
+ *
+ * The nonsteady effects of upwind fetch are represented by a downwind increase with fetch to a fully developed saturation
+ * level in the saltation concentrations. This is used to calculate suspended concentrations and the increasing height of
+ * the suspended snow layer with fetch. The steady‐state saltation ﬂux parameterizations (Pomeroy & Gray, 1990) are
+ * used to calculate the saltation layer mass concentration based on an observed relationship between saltation trajectory
+ * height and shear stress.
+ *
+ * Precipitation is not currently blown simultaneously
+ *
+ * This should be used with a wind parameterziation such as the WindNinja module.
+ *
+ * **Depends:**
+ * - Air temp "t" [\f$ {}^\circ C \f$]
+ * - Relative humidity "rh" [%]
+ * - Snow water equivalent "swe" [mm]
+ * - Wind speed @2m "U_2m_above_srf" [ \f$ m \cdot s^{-1} \f$ ]
+ * - Wind direction @2m "vw_dir" [degrees]
+ * - Wind speed @reference height "U_R" [ \f$ m \cdot s^{-1} \f$ ]
+ *
+ * **Provides:**
+ * - Blowing snow probability. Only active if ``use_PomLi_probability:true`` "blowingsnow_probability" [0-1]
+ * - Sublimation flux "Qsubl" [ \f$ kg \cdot (m^2 \cdot s)^{-1} \f$ ]
+ * - Sublimation mass "Qsubl_mass" [ \f$ kg \cdot m^{-2} \f$ ]
+ * - Total sublimation "sum_subl"
+ * - Mass eroded or deposited during blowing snow. Positive for mass deposition, negative for mass removal. [ \f$ kg \cdot m^{-2} \f$ ]
+ * - Down wind suspension flux "Qsusp" [ \f$ kg \cdot (m \cdot s)^{-1} \f$ ]
+ * - Saltation flux "Qsalt" [\f$ kg \cdot (m \cdot s)^{-1} \f$]
+ * - Cumulative mass erorded or desposited during model run "sum_drift"  [\f$ kg \cdot m^{-2} \f$ ]
+ * - Upwind fetch if ``exp_fetch`` or ``tanh_fetch`` are used "fetch" [m]
+ * - Hours since last snowfall if only ``use_PomLi_probability`` is used "p_snow_hours" [hr]
+ *
+ * **Configuration:**
+ * - None
+ *
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "use_exp_fetch": false,
+ *       "use_tanh_fetch": true,
+ *       "use_PomLi_probability": false,
+ *       "z0_ustar_coupling": false,
+ *       "use_R94_lambda": true
+ *
+ *    }
+ *
+ *
+ *
+ * .. confval:: use_exp_fetch
+ *
+ *    :default: false
+ *
+ *    Use the exp fetch proposed by Liston Liston, G., & Sturm, M. (1998). A snow-transport model for complex terrain. Journal of Glaciology
+ *
+ * .. confval:: use_tanh_fetch
+ *
+ *    :default: true
+ *
+ *    Use the tanh formulation of Pomeroy & Male (1986). Has more physical basis than  ``use_exp_fetch``.
+ *
+ * .. confval:: use_PomLi_probability
+ *
+ *    :default: false
+ *
+ *    Considers temporal non-steady effects on blowing snow occurence via the upscaled Pomeroy and Li (2000) parameterization.
+ *    Requires hours since last snowfall "p_snow_hours" [hr]. This has not been extensively tested for applicability to triangles and
+ *    should be used with caution.
+ *
 *
-* Provides:
-* - mass_drift (kg/m^2) Positive for mass deposition, negative for mass removal.
-*/
+ * .. confval:: z0_ustar_coupling
+ *
+ *    :default: false
+ *
+ *    To test if blowing snow occurs, a friction velocity is compared to a threshold. This friction velcoity needs a z0 estimated to be computed.
+ *    If there is blowing snow, the z0 value is larger than under non-blowing snow conditions. Therefore an execution order problem occurs: should
+ *    the blowing snow z0 and impact on u* be used to test for blowing snow? Setting this to true uses the blowing snow z0. Testing suggests this can
+ *    overestiamte blowing snow occurence.
+ *
+ * .. confval:: use_subgrid_topo
+ *
+ *    Experimental sub-grid topographic impacts. Do not use.
+ *
+ * .. confval:: use_subgrid_topo_V2
+ *
+ *    Experimental sub-grid topographic impacts v2. Do not use.
+ *
+ * .. confval:: use_R94_lambda
+ *
+ *    :default: true
+ *
+ *    Estimate vegetation characteristics from LAI observation. This has been tested less extensively than the N, dv
+ *    options below.   Raupach (1994) (DOI:10.1007/BF00709229)
+ *
+
+ *
+ * .. confval:: N
+ *
+ *    :default: 1
+ *
+ *    If ``use_R94_lambda:false`` then use the vegetation number dnesity (number/m^2)
+ *
+ * .. confval:: dv
+ *
+ *    :default: 0.8
+ *
+ *    If ``use_R94_lambda:false`` then use the vegetation stalk diameter (m)
+ *
+ * .. confval:: debug_output
+ *
+ *    :default: false
+ *
+ *    Write extra run-time diangostics such as per-layer suspension concentration to the output file. Adds significant computtional overhead.
+ *
+ * .. confval:: nLayer
+ *
+ *    :default: 10
+ *
+ *    Number of vertical discretization layers. 10-15 have been found to generally work well
+ *
+ * .. confval:: do_fixed_settling
+ *
+ *    :default: false
+ *
+ *    If true, instead of computing a settling velocity a fixed value given by ``settling_velocity`` is used.
+ *
+ *
+ * .. confval:: settling_velocity
+ *
+ *    :default: 0.5 [m/s]
+ *
+ *    Fixed settling velocity. Requires setting ``do_fixed_settling:true``
+ *
+ *
+ * .. confval:: do_sublimation
+ *
+ *    :default: true
+ *
+ *    Compute sublimation losses from the saltation and suspension layers.
+ *
+ * .. confval:: do_lateral_diff
+ *
+ *    :default: true
+ *
+ *    Add a very small amount of lateral diffusion for numerical robustness. Should be left alone.
+ *
+ * .. confval:: smooth_coeff
+ *
+ *    :default: 820
+ *
+ *    Multidimensional transport equations may have spurious oscillations in the solution (Kuzmin, 2010). This term is a
+ *    Laplacian smoothing (Kuzmin, 2010) term, without which oscillations between erosion and deposition may appear. This should be set
+ *    to be the largest distance over which oscillations are allowed. It should be a few times the average triangle length scale (:math:`\alpha`):
+ *
+ *    .. math::
+ *
+ *       \frac{\alpha^2}{\pi^2}.
+ *
+ *
+ * \endrst
+ *
+ * **References:**
+ * - Marsh, C., Pomeroy, J., Spiteri, R., Wheater, H. (2020). A Finite Volume Blowing Snow Model for Use With Variable
+ * Resolution Meshes Water Resources Research  56(2)https://dx.doi.org/10.1029/2019wr025307
+ * @}
+ */
 class PBSM3D : public module_base
 {
 REGISTER_MODULE_HPP(PBSM3D);

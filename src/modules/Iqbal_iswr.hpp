@@ -28,7 +28,29 @@
 #include "TPSpline.hpp"
 #include <meteoio/MeteoIO.h>
 
-
+/**
+ * \ingroup modules iswr
+ * @{
+ * \class Iqbal_iswr
+ *
+ * Estimates incoming shortwave direct and diffuse beams without slope correction.
+ *
+ * **Depends:**
+ * - Air temperature "t" [ \f${}^\circ C \f$]
+ * - Relative humidity "rh" [%]
+ * - Cloud fraction "cloud_frac" [-]
+ * - Solar elevation "solar_el" [degrees]
+ *
+ * **Provides:**
+ * - Incoming solar shortwave radiation, direct beam, no slope adjustment "iswr_direct_no_slope" [ \f$ W \cdot m^{-2}\f$]
+ * - Incoming solar shortwave radiation, diffuse beam, no slope adjustment "iswr_diffuse_no_slope" [ \f$ W \cdot m^{-2}\f$]
+ * - Atmospheric transmittance "atm_trans" [-]
+ *
+ * **References:**
+ * - Code ported from SUMMA
+ * - Iqbal, M. (1983). An Introduction to Solar Radiation https://dx.doi.org/10.1016/b978-0-12-373750-2.50015-x
+ * @}
+ */
 class Iqbal_iswr : public module_base
 {
 REGISTER_MODULE_HPP(Iqbal_iswr);

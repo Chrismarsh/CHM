@@ -37,27 +37,32 @@
 
 #include <boost/math/tools/roots.hpp>
 
-//#include <meteoio/MeteoIO.h>
+
 /**
-* \addtogroup modules
-* @{
-* \class Harder_precip_phase
-* \brief Calculates precip phase based
-*
-* Calculates precipitation phase via falling hydrometeor energy balance
-*
-* Depends:
-* - Air temperature "t" [C]
-* - Relative Humidity 'rh' [C]
-* - Precip "p" [mm]
-*
-* Provides:
-* - Snow precip p_snow [mm]
-* - Liquid precip p_rain [mm]
-* - Fractional rain frac_precip_rain [-]
-* - Fractional snow frac_precip_snow [-]
-* - Cumulated Snow precip p_snow [mm]
-* - Cumulated Liquid precip p_rain [mm]
+ * \ingroup modules precip snow
+ * @{
+ * \class Harder_precip_phase
+ * Calculates precipitation phase via falling hydrometeor energy balance following Harder, et al (2013)
+ *
+ * **Depends:**
+ * - Air temperature "t" [ \f$ {}^\circ C\f$ ]
+ * - Relative Humidity "rh"  [%]
+ * - Precip "p" [ \f$mm \cdot dt^{-1}\f$ ]
+ *
+ * **Provides:**
+ * - Snow precip p_snow [\f$mm \cdot dt^{-1}\f$]
+ * - Liquid precip p_rain [\f$mm \cdot dt^{-1}\f$]
+ * - Fraction of rain "frac_precip_rain" [-]
+ * - Fraction of snow "frac_precip_snow" [-]
+ * - Cumulated snow precip "acc_snow" [mm]
+ * - Cumulated liquid precip "acc_rain" [mm]
+ *
+ *
+ * **References:**
+ * - Harder, P., Pomeroy, J. (2013). Estimating precipitation phase using a psychrometric energy balance method
+ * Hydrological Processes  27(13), 1901-1914. https://dx.doi.org/10.1002/hyp.9799
+ *
+ * @}
 */
 class Harder_precip_phase : public module_base
 {
@@ -82,6 +87,3 @@ public:
 
 };
 
-/**
-@}
-*/

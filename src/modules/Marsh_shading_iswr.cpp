@@ -52,42 +52,39 @@ void Marsh_shading_iswr::run(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
+        auto vert = domain->vertex(i);
 
-	       auto vert = domain->vertex(i);
-
-	       double A =  (*vert->face())["solar_az"_s];
-	       double E = (*vert->face())["solar_el"_s];
-
-
-	       //euler rotation matrix K
-	       arma::mat K;
-	       // eqns(6) & (7) in Montero
-	       double z0 = M_PI - A * M_PI / 180.0;
-	       double q0 = M_PI / 2.0 - E * M_PI / 180.0;
-
-	       K << cos(z0) << sin(z0) << 0 << arma::endr
-		 << -cos(q0) * sin(z0) << cos(q0) * cos(z0) << sin(q0) << arma::endr
-		 << sin(q0) * sin(z0) << -cos(z0) * sin(q0) << cos(q0) << arma::endr;
+        double A =  (*vert->face())["solar_az"_s];
+        double E = (*vert->face())["solar_el"_s];
 
 
-	       auto vf = vert->make_module_data<vertex_data>(ID);
+        //euler rotation matrix K
+        arma::mat K;
+        // eqns(6) & (7) in Montero
+        double z0 = M_PI - A * M_PI / 180.0;
+        double q0 = M_PI / 2.0 - E * M_PI / 180.0;
 
-	       arma::vec coord(3);
+        K << cos(z0) << sin(z0) << 0 << arma::endr
+         << -cos(q0) * sin(z0) << cos(q0) * cos(z0) << sin(q0) << arma::endr
+         << sin(q0) * sin(z0) << -cos(z0) * sin(q0) << cos(q0) << arma::endr;
 
-	       Point_3 p;
-	       coord(0) = vert->point().x();
-	       coord(1) = vert->point().y();
-	       coord(2) = vert->point().z();
 
-	       coord = K*coord;
-	       p = Point_3(coord(0), coord(1), coord(2));
-	       vf->prj_vertex = p;
-	       vf->org_vertex = vert->point();
+        auto vf = vert->make_module_data<vertex_data>(ID);
 
-	       vert->set_point(vf->prj_vertex); //modify the underlying triangulation to reflect the rotated vertices
+        arma::vec coord(3);
 
+        Point_3 p;
+        coord(0) = vert->point().x();
+        coord(1) = vert->point().y();
+        coord(2) = vert->point().z();
+
+        coord = K*coord;
+        p = Point_3(coord(0), coord(1), coord(2));
+        vf->prj_vertex = p;
+        vf->org_vertex = vert->point();
+
+        vert->set_point(vf->prj_vertex); //modify the underlying triangulation to reflect the rotated vertices
     }
-
 
     auto BBR = domain->AABB(x_AABB,y_AABB);
 
@@ -211,9 +208,9 @@ void Marsh_shading_iswr::run(mesh& domain)
     for (size_t i = 0; i < domain->size_vertex(); i++)
     {
 
-	       auto vert = domain->vertex(i);
-	       auto  vf = vert->get_module_data<vertex_data>(ID);
-	       vert->set_point(vf->org_vertex);
+        auto vert = domain->vertex(i);
+        auto  vf = vert->get_module_data<vertex_data>(ID);
+        vert->set_point(vf->org_vertex);
 
     }
 

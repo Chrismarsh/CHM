@@ -36,23 +36,59 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class iswr
-* \brief
-*
-* This aggregates the _no_slope direct and diffuse flat plane estimates provided by other modules and calculates a unified
+ * \ingroup modules iswr
+ * @{
+ * \class iswr
+ *
+ * This aggregates the _no_slope direct and diffuse flat plane estimates provided by other modules and calculates a unified
  * variant that includes (if required) slope effects and applies shadow masks from shadowing modules.
-*
-* Depends:
-* - Shortwave direct on a flat plane "iswr_direct_no_slope" [W/m^2]
-* - Shortwave diffuse on a flat plane "iswr_diffuse_no_slope" [W/m^2]
-
-* Provides:
-* - Shortwave all beam "iswr" [W/m^2]
-* - Shortwave direct "iswr_direct" [W/m^2]
-* - Shortwave diffuse "iswr_diffuse" [W/m^2]
-*/
+ *
+ * \rst
+ * .. warning::
+ *    If using ground-based observations, please look at the ``already_cosine_corrected`` configuration option!
+ *
+ * \endrst
+ *
+ * **Depends:**
+ * - Shortwave direct on a flat plane "iswr_direct_no_slope" [ \f$ W \cdot m^{-2}\f$]
+ * - Shortwave diffuse on a flat plane "iswr_diffuse_no_slope" [ \f$ W \cdot m^{-2}\f$]
+ *
+ * Provides:
+ * - Shortwave all beam "iswr" [ \f$ W \cdot m^{-2}\f$]
+ * - Shortwave direct "iswr_direct" [ \f$ W \cdot m^{-2}\f$]
+ * - Shortwave diffuse "iswr_diffuse" [ \f$ W \cdot m^{-2}\f$]
+ *
+ * **Configuration:**
+ *
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "no_slope": false,
+ *       "already_cosine_corrected": false
+ *    }
+ *
+ *
+ * .. confval:: no_slope
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    Disables slope correction.
+ *
+ * .. confval:: already_cosine_corrected
+ *
+ *    :type: boolean
+ *    :default: false
+ *
+ *    "Most observations implicitly have a cosine-correction built in by virtu of the flat-plane observation.
+ *     When using observed, ground based observations, you probably want to set this to true, so that a cosine correction
+ *     is not applied twice.
+ *
+ *     If the forcing input is out of a NWP, then this should be ``false``.
+ *
+ * \endrst
+ */
 class iswr : public module_base
 {
 REGISTER_MODULE_HPP(iswr);
@@ -70,6 +106,4 @@ REGISTER_MODULE_HPP(iswr);
 
 };
 
-/**
-@}
-*/
+/

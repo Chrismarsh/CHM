@@ -61,17 +61,53 @@ extern "C"
 }
 
 /**
- * \addtogroup modules
+ * \ingroup modules snow
  * @{
  * \class FSM
- * \brief FSM Essery, 2019
+ * Flexible Snow Model (FSM) 2.0
  *
+ * "The Flexible Snow Model (FSM2) is a multi-physics energy balance model of snow accumulation and melt,
+ * extending the Factorial Snow Model (Essery, 2015) with additional physics, driving and output options."
  *
- * Depends:
+ * This version of FSM has been customized to have the sophisticated process parametrizations selected in every case,
+ * except atmospheric stability corrections.
  *
+ * **Depends:**
+ * - Solar elevation "solar_el" [degrees]
+ * - Incoming longwave radiation "ilwr" \f$[W \cdot m^{-2}\f$]
+ * - Relative Humidy "rh" [%]
+ * - Air temperature "t" [ \f$ {}^\circ C \f$]
+ * - Precipitation snow "p_snow" [\f$mm \cdot dt^{-1}\f$]
+ * - Precipitation rain "p_rain" [\f$mm \cdot dt^{-1}\f$]
+ * - Wind speed 2 m above surface "U_2m_above_srf" [ \f$ m \cdot s^{-1}\f$ ]
+ * - Incoming shortwave radiation, direct beam "iswr_direct" \f$[W \cdot m^{-2}\f$]
+ * - Incoming shortwave radiation, diffuse beam "iswr_diffuse" \f$[W \cdot m^{-2}\f$]
  *
- * Provides:
+ * **Provides:**
+ * - Snow Water Equivalent "swe" [mm]
+ * - Snow depth "snowdepthavg" [m]
+ * - Snow depth slope corrected "snowdepthavg_vert" [m]
  *
+ * **Optional:**
+ *
+ * Sub-canopy forcing:
+ * - Subcanopy incoming shortwave radiation "iswr_subcanopy" \f$[W \cdot m^{-2}\f$]
+ * - Subcanopy relative humidity "rh_subcanopy" [%]
+ * - Subcanopy air temperatue "ta_subcanopy" [ \f$ {}^\circ C \f$]
+ * - Subcanopy incoming longwave radidation "ilwr_subcanopy" \f$[W \cdot m^{-2}\f$]
+ *
+ * **Conflicts:**
+ *
+ * Does not support avalanching or blowing snow
+ * - ``snow_slide``
+ * - ``PBSM3D``
+ *
+ * **References:**
+ * - https://github.com/RichardEssery/FSM2
+ * - Essery, R. (2015). A factorial snowpack model (FSM 1.0) Geoscientific Model Development  8(12), 3867 3876.
+ * https://dx.doi.org/10.5194/gmd-8-3867-2015
+ *
+ * @}
  */
 class FSM : public module_base
 {
@@ -137,7 +173,3 @@ class FSM : public module_base
     virtual void run(mesh_elem& face);
     virtual void init(mesh& domain);
 };
-
-/**
-@}
-*/
