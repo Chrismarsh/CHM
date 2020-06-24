@@ -28,8 +28,81 @@
 #include "module_base.hpp"
 #include "TPSpline.hpp"
 
-/*
- * When using the model in point mode. Doesn't do any interp, but rather uses a specific input station as input.
+/**
+ * \ingroup modules pointmode met
+ * @{
+ * \class point_mode
+ *
+ * Use this module to enable using CHM in point mode. This module does not to any spatial interpolation. Instead, it passes
+ * input met through to the per-triangle variables storages. This is suitable for using CHM like a point scale model, such as at a
+ * research site. Specifically this sets ``depends_from_met(...)`` inputs such that ``depends(...)`` in other modules can work.
+ *
+ * \rst
+ * .. note::
+ *    The configuration allows for fine-tuning what is passed through. So although ``Depends from met`` below lists all of the possible depends,
+ *    whatever is set in the configuration will be what is required at runtime.
+ *
+ * \endrst
+ *
+ * **Depends from met::**
+ * - Air temp "t" [\f$ {}^\circ C \f$]
+ * - Relative humidity "rh" [%]
+ * - Wind speed "u" [ \f$ m \cdot s^{-1} \f$ ]
+ * - Precipitation "p" [mm]
+ * - Incoming longwave radiation "Qli" [ \f$ W \cdot m^{-2}\f$]
+ * - Incoming shortwave radiation "Qsi" [ \f$ W \cdot m^{-2}\f$]
+ * - Incomging shortwave radiation, diffuse beam "iswr_diffuse" [ \f$ W \cdot m^{-2}\f$]
+ * - Incomging shortwave radiation, direct beam "iswr_direct" [ \f$ W \cdot m^{-2}\f$]
+ * - Wind direction @2m "vw_dir" [degrees]
+ * - Ground temperature "T_g" [\f$ {}^\circ C \f$]
+ *
+ * **Provides:**
+ * - Air temp "t" [\f$ {}^\circ C \f$]
+ * - Relative humidity "rh" [%]
+ * - Wind speed @2m "U_2m_above_srf" [ \f$ m \cdot s^{-1} \f$ ]
+ * - Wind speed @reference height "U_R" [ \f$ m \cdot s^{-1} \f$ ]
+ * - Precipitation "p" [mm]
+ * - Incoming longwave radiation "ilwr" [ \f$ W \cdot m^{-2}\f$]
+ * - Incoming shortwave radiation "iswr" [ \f$ W \cdot m^{-2}\f$]
+ * - Incomging shortwave radiation, diffuse beam "iswr_diffuse" [ \f$ W \cdot m^{-2}\f$]
+ * - Incomging shortwave radiation, direct beam "iswr_direct" [ \f$ W \cdot m^{-2}\f$]
+ * - Wind direction @2m "vw_dir" [degrees]
+ * - Ground temperature "T_g" [\f$ {}^\circ C \f$]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "t": true,
+ *       "rh": true,
+ *       "U_R": true,
+ *       "U_2m_above_srf": true,
+ *       "p": true,
+ *       "ilwr": true,
+ *       "iswr": true,
+ *       "vw_dir": true,
+ *       "iswr_diffuse": false,
+ *       "iswr_direct": false,
+ *       "T_g": false,
+ *
+ *       "override":
+ *       {
+ *          "svf":0.8
+ *       }
+ *
+ *   }
+ *
+ * .. confval:: X
+ *    :type: boolean
+ *
+ *    When ``true``, pass _X_ through from the forcing file.
+ *
+ * .. confval:: override.svf
+ *
+ *    Allows for setting the sky view factor at the point to be different than what was calculated from the mesh.
+ * \endrst
+ * @}
  */
 class point_mode : public module_base
 {

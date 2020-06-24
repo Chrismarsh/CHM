@@ -29,8 +29,93 @@
 #include <meteoio/MeteoIO.h>
 
 /**
- * Eqn 4, 5
- * Essery, R., and P. Etchevers (2004), Parameter sensitivity in simulations of snowmelt, J. Geophys. Res., 109(D20111), 1–15, doi:10.1029/2004JD005036.
+ * \ingroup modules snow
+ * @{
+ * \class Richard_albedo
+ *
+ * Slow albedo changes for cold snow are neglected, but an exponential decay to an asymptotic minimum of 0.5
+ * with an adjustable time constant applied to melting snow.
+ *
+ * Somewhat mis-named as although this is detailed in Essery and Etchevers (2004), the original source is from CLASS
+ * detailed in Verseghy, et al (1991).
+ *
+ * **Depends:**
+ * - Snow Water Equivalent "swe" [mm]
+ * - Snow surface temperature "T_s_0" [\f$ K \f$ ]
+ * - Precipitation, snow phase "p_snow" [\f$ mm \cdot dt^{-1} \f$ ]
+ *
+ * **Provides:**
+ * - Snow albedo "snow_albedo" [0-1]
+ * - True if a melting snow albedo is being used "melting_albedo" [0 or 1]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "albedo_min": 0.5,
+ *       "albedo_max": 0.84,
+ *       "a1": 1.08e7,
+ *       "a2": 7.2e5,
+ *       "min_swe_refresh": 1.0,
+ *       "init_albedo_snow": 0.85,
+ *       "init_albedo_bare": 0.17
+ *    }
+ * .. confval:: albedo_min
+ *
+ *    :type: double
+ *    :default: 0.5
+ *
+ *    Minimum snow albedo
+ *
+ * .. confval:: albedo_max
+ *
+ *    :type: double
+ *    :default: 0.84
+ *
+ *    Maximum snow albedo
+ *
+ * .. confval:: a1
+ *
+ *    :type: double
+ *    :default: 1.08e7 s
+ *
+ *    Cold snow decay constant
+ *
+ * .. confval:: a2
+ *
+ *    :type: double
+ *    :default: 7.2e5 s
+ *
+ *    Melting snow decay constant
+ *
+ * .. confval: min_swe_refresh
+ *
+ *    :type: double
+ *    :default: 1 mm
+ *
+ *    Minimum precipitation required to fully refresh the snow albedo to max
+ *
+ * .. confval:: init_albedo_snow
+ *
+ *    :type: double
+ *    :default: 0.85
+ *
+ *    Initial fresh snow albedo
+ *
+ * .. confval:: init_albedo_bare
+ *
+ *    :type: double
+ *    :default: 0.17
+ *
+ *    Bare ground albedo
+ * \endrst
+ *
+ * **References:**
+ * - Equation 4 and 5
+ * - Essery, R., and P. Etchevers (2004), Parameter sensitivity in simulations of snowmelt, J. Geophys. Res., 109(D20111), 1–15, doi:10.1029/2004JD005036.
+ * - Verseghy, D. L.: Class – A Canadian land surface scheme for GCMS, I. Soil model, Int. J. Climatol., 11, 111–133, https://doi.org/10.1002/joc.3370110202, 1991
+ * @}
  */
 class Richard_albedo : public module_base
 {

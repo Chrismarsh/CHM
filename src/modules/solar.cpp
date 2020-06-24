@@ -44,7 +44,6 @@ void solar::run(mesh_elem &face)
     {
         Lon = face->center().x();
         Lat = face->center().y();
-
     }
     else{
         auto data = face->get_module_data<solar::data>(ID);

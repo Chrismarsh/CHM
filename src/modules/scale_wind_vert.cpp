@@ -52,10 +52,6 @@ scale_wind_vert::~scale_wind_vert()
 
 void scale_wind_vert::point_scale(mesh_elem &face)
 {
-//    if (face->cell_local_id == 1248)
-//    {
-//        LOG_DEBUG << "Face found";
-//    }
 
     // Get meteorological data for current face
     double U_R = (*face)["U_R"_s]; // Wind speed at reference height Z_R (m/s)
@@ -67,7 +63,6 @@ void scale_wind_vert::point_scale(mesh_elem &face)
 
     if (!ignore_canopy && face->has_vegetation())
     {
-
         Z_CanTop = face->veg_attribute("CanopyHeight");
     }
     double Z_CanBot = Z_CanTop /
@@ -158,8 +153,8 @@ void scale_wind_vert::init(mesh& domain)
       auto face = domain->face(i);
       // Exception throwing from OpenMP needs to be here
 
-	       auto data = face->make_module_data<d>(ID);
-	       data->interp.init(interp_alg::tpspline,3,{{"reuse_LU","true"}});
+       auto data = face->make_module_data<d>(ID);
+       data->interp.init(interp_alg::tpspline,3,{{"reuse_LU","true"}});
 
     }
 
@@ -179,10 +174,9 @@ void scale_wind_vert::run(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      auto face = domain->face(i);
-      // Exception throwing from OpenMP needs to be here
+        auto face = domain->face(i);
 
-	       point_scale(face);
+        point_scale(face);
 
     }
 
@@ -191,28 +185,27 @@ void scale_wind_vert::run(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-      // Exception throwing from OpenMP needs to be here
 
-	       std::vector<boost::tuple<double, double, double> > u;
-	       for (size_t j = 0; j < 3; j++)
-	       {
-		 auto neigh = face->neighbor(j);
+        std::vector<boost::tuple<double, double, double> > u;
+        for (size_t j = 0; j < 3; j++)
+        {
+         auto neigh = face->neighbor(j);
 
-		 if (neigh != nullptr && !neigh->_is_ghost)
-		   u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_2m_above_srf"_s]));
-	       }
+         if (neigh != nullptr && !neigh->_is_ghost)
+           u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_2m_above_srf"_s]));
+        }
 
-	       auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
 
-	       if(u.size()>0)
-	       {
-		 double new_u =  face->get_module_data<d>(ID)->interp(u, query);
-		 face->get_module_data<d>(ID)->temp_u = std::max(0.1,new_u);
-	       }
-	       else
-	       {
-		 face->get_module_data<d>(ID)->temp_u = std::max(0.1,(*face)["U_2m_above_srf"_s]);
-	       }
+        if(u.size()>0)
+        {
+         double new_u =  face->get_module_data<d>(ID)->interp(u, query);
+         face->get_module_data<d>(ID)->temp_u = std::max(0.1,new_u);
+        }
+        else
+        {
+         face->get_module_data<d>(ID)->temp_u = std::max(0.1,(*face)["U_2m_above_srf"_s]);
+        }
 
     }
 

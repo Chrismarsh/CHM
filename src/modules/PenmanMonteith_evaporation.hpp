@@ -35,24 +35,25 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class PenmanMonteith_evaporation
-* \brief Calculates Penman Monteith evaportation
-*
-* Calculates evapotranspiration via Penman-Monteith
-*
-* Depends:
-* -  slope_iswr shortwave "Qsi" [W/m^-1]
-* -  Incoming Longwave radiation "Lin" [W/m^2]
-* -  Albedo "albedo" [-]
-* -  Saturated vapour pressure "es" [kpa]
-* -  Actual vapour pressure "ea" [kpa]
-*
-* Provides:
-* -
-* - ET "ET" [mm/time]
-*/
+ * \ingroup modules exp evap
+ * @{
+ * \class PenmanMonteith_evaporation
+
+ * Calculates evapo-transpiration via Penman-Monteith.
+ *
+ * Not currently maintained.
+ *
+ * Depends:
+ * - Incoming shortwave radaition "iswr" [\f$ W \cdot m^{-2} \f$ ]
+ * - Incoming longwave radiation "ilwr" [\f$ W \cdot m^{-2} \f$ ]
+ * - Relative humidity "rh" [%]
+ * - Windspeed at 2m "U_2m_above_srf" [\f$ m \cdot s^{-1} \f$ ]
+ *
+ * Provides:
+ * - Evapotranspiration "ET" [\f$ mm \cdot dt^{-1} \f$ ]
+ *
+ * @}
+ */
 class PenmanMonteith_evaporation : public module_base
 {
 REGISTER_MODULE_HPP(PenmanMonteith_evaporation);
@@ -62,7 +63,3 @@ public:
     virtual void run(mesh_elem& face);
 
 };
-
-/**
-@}
-*/

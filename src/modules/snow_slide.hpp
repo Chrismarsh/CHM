@@ -31,6 +31,62 @@
 #include "module_base.hpp"
 
 #include <string>
+
+/**
+ * \ingroup modules snow
+ * @{
+ * \class snow_slide
+ *
+ * SnowSlide is a simple topographically-driven model that simulates the effects of gravitational snow transport.
+ * It uses a snow holding depth that decreases exponentially with increasing slope angle, limiting snow accumulation
+ * in steep terrain. The algorithm moves mass from the highest triangle of the mesh to the lowest one. If the snow
+ * depth exceeds the snow holding capacity for a given triangle, excess snow is redistributed to the lower adjacent
+ * triangles, proportionally to the elevation difference between the neighboring triangles and the original one.
+ * SnowSlide uses the total elevation (snow depth plus surface elevation) to operate. In this study, the default
+ * formulation of the snow holding depth proposed by Bernhardt and Schulz (2010) is used which leads to a maximal
+ * snow thickness (taken perpendicular to the slope) of 3.08 m, 1.11 m, 0.45 m, and 0.15 m for slopes of 30° 45°, 60°,
+ * and 75°, respectively.
+ *
+ * **Depends:**
+ * - Snow depth "snowdepthavg" [m]
+ * - Snow Water Equivalent "swe" [mm]
+ *
+ * **Provides:**
+ * - Change in snow mass due to avalanching "delta_avalanche_mass" [mm]
+ * - Change in snow depth due to avalanching "delta_avalanche_snowdepth" [mm]
+ * - Maximum snowdepth holding capacity of a triangle "maxDepth" [m]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "avalache_mult": 3178.4,
+ *       "avalache_pow": -1.998,
+ *       "use_vertical_snow": true
+ *   }
+ *
+ * .. confval:: avalache_mult
+ *
+ *    :default: 3178.4
+ *
+ * .. confval:: avalache_pow
+ *
+ *    :default: -1.998
+ *
+ * .. confval:: use_vertical_snow
+ *
+ *    :default: true
+ *
+ *    Use snowdepths vertical (ie, that corresponds to a gravitational load) or normal to the surface.
+ *
+ * \endrst
+ *
+ * **References:**
+ * - Bernhardt, M., Schulz, K. (2010). SnowSlide: A simple routine for calculating gravitational snow transport
+ * Geophysical Research Letters  37(11), 1-6. https://dx.doi.org/10.1029/2010gl043086
+ * @}
+ */
 class snow_slide : public module_base
 {
 REGISTER_MODULE_HPP(snow_slide);

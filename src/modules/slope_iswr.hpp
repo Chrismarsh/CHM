@@ -36,23 +36,44 @@
 #include <math.h>
 
 /**
-* \addtogroup modules
-* @{
-* \class slope_iswr
-* \brief Shortwave radiation on a slope
-*
-* Calculates incoming direct-beam shortwave solar radiation to slope
-*
-* Depends:
-* - Shortwave all beam "iswr" [W/m^2]
-* - Shortwave direct "iswr_direct" [W/m^2]
-* - Shortwave diffuse "iswr_diffuse" [W/m^2]
-
-* Provides:
-* - Shortwave all beam "iswr" [W/m^2]
-* - Shortwave direct "iswr_direct" [W/m^2]
-* - Shortwave diffuse "iswr_diffuse" [W/m^2]
-*/
+ * \ingroup modules iswr
+ * @{
+ * \class slope_iswr
+ *
+ * Calculates incoming direct-beam shortwave solar radiation to slope
+ *
+ * **Depends:**
+ * - Incoming solar shortwave radiation, all beam "iswr"  [\f$ W \cdot m^{-2} \f$ ]
+ * - Incoming solar shortwave radiation, direct beam "iswr_direct"  [\f$ W \cdot m^{-2} \f$ ]
+ * - Incoming solar shortwave radiation, diffuse beam "iswr_diffuse"  [\f$ W \cdot m^{-2} \f$ ]
+ * - Solar elevation "solar_el" [degrees]
+ * - Solar azimuth "solar_az" [degrees]
+ *
+ * **Optional:**
+ * - Shadow map "shadow" [0,1]
+ *
+ * **Provides:**
+ * - Slope corrected shortwave all beam "iswr" [W/m^2]
+ * - Slope corrected shortwave direct "iswr_direct" [W/m^2]
+ * - Solar angle "solar_angle" [degrees]
+ *
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "no_slope": false
+ *    }
+ *
+ * .. confval:: no_slope
+ *
+ *    :default: false
+ *
+ *    Disables slope correction calcuation when ``true``
+ *
+ * \endrst
+ *
+ * @}
+ */
 class slope_iswr : public module_base
 {
 REGISTER_MODULE_HPP(slope_iswr);
@@ -65,6 +86,3 @@ REGISTER_MODULE_HPP(slope_iswr);
         bool assume_no_slope;
 };
 
-/**
-@}
-*/

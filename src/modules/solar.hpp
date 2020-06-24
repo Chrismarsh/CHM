@@ -28,14 +28,66 @@
 
 
 /**
- * \addtogroup modules
+ * \ingroup modules iswr
  * @{
  * \class solar
- * \brief Calculates solar position. Deals with UTM/geographic meshes.
- * This could have be it's own function, however was put into a module so-as to be able to cache the results if it is a UTM grid
+ * Calculates solar position
  *
- * Depends:
+ * **Depends:**
+ * - None
  *
+ * **Provides:**
+ * - Solar elevation "solar_el" [degrees]
+ * - Solar azimuth "solar_az" [degrees]
+ *
+ * **Provides:**
+ * - Sky view view "svf" [-]
+ *
+ * **Configuration:**
+ *
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "svf":
+ *       {
+ *          "steps": 10.
+ *          "max_distance": 1000.0,
+ *          "nsectors": 12,
+ *          "compute": true
+ *       }
+ *    }
+ *
+ * .. confval:: steps
+ *
+ *    :type: int
+ *    :default: 10
+ *
+ *    Number of search steps
+ *
+ * .. confval:: max_distance
+ *
+ *    :default: 1000.0
+ *
+ *    Maximum search distance
+ *
+ * .. confval:: nsectors
+ *
+ *    :type: int
+ *    :default: 12
+ *
+ *    Number of azimuthal search bins
+ *
+ * .. confval:: compute
+ *
+ *    :default: true
+ *
+ *    Compute the sky view factor
+ *
+ *
+ * \endrst
+ *
+ * @}
  */
 class solar : public module_base
 {

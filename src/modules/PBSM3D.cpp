@@ -254,15 +254,13 @@ void PBSM3D::init(mesh& domain)
     do_sublimation = cfg.get("do_sublimation", true);
     do_lateral_diff = cfg.get("do_lateral_diff", true);
     eps = cfg.get("smooth_coeff", 820);
-    limit_mass = cfg.get("limit_mass", false);
-    min_mass_for_trans = cfg.get("min_mass_for_trans", 5);
     min_sd_trans = cfg.get("min_sd_trans", 0.1); // m Snow holding capacity for flat terrain
 
     cutoff = cfg.get("cutoff",
                      0.3); // cutoff veg-snow diff (m) that we inhibit saltation entirely
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",
-                                   0.9); // Beta * K, this is beta and scales the eddy diffusivity
+                                   0.3); // Beta * K, this is beta and scales the eddy diffusivity
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef", false);
 
     enable_veg = cfg.get("enable_veg", true);
@@ -737,8 +735,6 @@ void PBSM3D::run(mesh& domain)
                 (*face)["u*_th"_s] = u_star_saltation_threshold;
 
             // we don't have too high of veg. Check for blowing snow
-            //   if (height_diff <= cutoff && swe >= min_mass_for_trans &&
-            //       !is_water(face))
             if (height_diff <= cutoff && snow_depth >= min_sd_trans_avg && !is_water(face))
             {
 

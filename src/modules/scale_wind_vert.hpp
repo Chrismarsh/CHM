@@ -34,18 +34,45 @@
 #include <viennacl/compressed_matrix.hpp>
 #include <viennacl/linalg/ilu.hpp>
 /**
- * \addtogroup modules
+ * \ingroup modules wind
  * @{
  * \class scale_wind_vert
- * \brief Scales wind speed from reference height to defined heights
+ * Scales wind speed from reference height to defined heights. Scales the wind vertically using a neutral stability
+ * log relationship. If snow depth is present, the height is taken into account. A fixed z0 of 0.01m is currently used.
+ * If a canopy is present then an exp sub-canopy scaling is used.
  *
- * Depends:
- * - U_R [m/s]
- * - Z_R [m] - Height of wind speed measurement/model layer
+ * **Depends:**
+ * - Wind speed @reference height "U_R" [ \f$ m \cdot s^{-1} \f$ ]
  *
+ * **Optional:**
+ * - Snow depth to take into account for the scaling "snowdepthavg" [m]
+ *
+ * **Provides:**
+ * - Wind speed @2m "U_2m_above_srf" [ \f$ m \cdot s^{-1} \f$ ]
+ *
+ * **Parameters:**
+ * - If ``ignore_canopy=False``, then Leaf Area Index "LAI" [-]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "ignore_canopy": false
+ *    }
+ *
+ * .. confval:: ignore_canopy
+ *
+ *    :default: false
+ *
+ *    Ignores the vegetation canopy
+ *
+ * \endrst
+ *
+ * @}
  */
-
-class scale_wind_vert : public module_base {
+class scale_wind_vert : public module_base
+{
 REGISTER_MODULE_HPP(scale_wind_vert);
 public:
     scale_wind_vert(config_file cfg);

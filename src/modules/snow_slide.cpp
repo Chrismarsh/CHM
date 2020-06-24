@@ -79,18 +79,18 @@ void snow_slide::run(mesh& domain)
     for(size_t i = 0; i  < domain->size_faces(); i++)
     {
 
-	       auto face = domain->face(i); // Get face
-	       // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
-               // snowdepthavg_vert is taken vertically 
-	       auto data = face->get_module_data<snow_slide::data>(ID); // Get data
-	       data->snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
-	       data->snowdepthavg_vert_copy = (*face)["snowdepthavg"_s]/std::max(0.001,cos(face->slope())); // Vertical snow depth
-	       data->swe_copy = (*face)["swe"_s]/1000; // mm to m
-	       data->slope = face->slope(); // slope in rad
-	       // Initalize snow transport to zero
-	       data->delta_avalanche_snowdepth = 0.0;
-	       data->delta_avalanche_mass = 0.0; // m
-	       sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s]/std::max(0.001,cos(face->slope())), face) ;
+        auto face = domain->face(i); // Get face
+        // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
+        // snowdepthavg_vert is taken vertically
+        auto data = face->get_module_data<snow_slide::data>(ID); // Get data
+        data->snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
+        data->snowdepthavg_vert_copy = (*face)["snowdepthavg"_s]/std::max(0.001,cos(face->slope())); // Vertical snow depth
+        data->swe_copy = (*face)["swe"_s]/1000; // mm to m
+        data->slope = face->slope(); // slope in rad
+        // Initalize snow transport to zero
+        data->delta_avalanche_snowdepth = 0.0;
+        data->delta_avalanche_mass = 0.0; // m
+        sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s]/std::max(0.001,cos(face->slope())), face) ;
 
     }
 

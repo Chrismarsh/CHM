@@ -33,19 +33,41 @@
 #include <string>
 
 /**
-* \addtogroup modules
-* @{
-* \class threshold_p_phase : public module_base
-{
-* \brief Precip phase from air temp
-*
-* Calculates phase from air temperature. Defaults to 2degC, looks for the config parameter "threshold_temperature".
-* Depends:
-* - Air temperature (t)
-*
-* Provides:
-* - Atmospheric transmittance "cloud_frac" [-]
-*/
+ * \ingroup modules snow precipitation
+ * @{
+ * \class threshold_p_phase
+ *
+ * Calculates phase from air temperature. Defaults to 2 \f$ {}^\circ C \f$, looks for the config parameter "threshold_temperature".
+ * Binary snow/rain at 2 \f$ {}^\circ C \f$ threshold.
+ *
+ * **Depends:**
+ * - Air temperature "t" [ \f$ {}^\circ C \f$ ]
+ * - Precipitation "p" [ \f$ mm \cdot dt^{-1} \f$ ]
+ *
+ * **Provides:**
+ * - Fractional precipitation that is rain "frac_precip_rain" [0-1]
+ * - Fractional precipitation that is snow "frac_precip_snow" [0-1]
+ * - Precipitation, rain "p_rain" [\f$ mm \cdot dt^{-1} \f$]
+ * - Precipitation, snow "p_snow" [\f$ mm \cdot dt^{-1} \f$]
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "threshold_temperature": 2.0
+ *    }
+ *
+ * .. confval:: threshold_temperature
+ *
+ *    :default: 2.0  :math:`{}^\circ C`
+ *
+ *    Threshold air temperature for rain/snow delineation
+ *
+ * \endrst
+ *
+ * @}
+ */
 class threshold_p_phase : public module_base
 {
 REGISTER_MODULE_HPP(threshold_p_phase);

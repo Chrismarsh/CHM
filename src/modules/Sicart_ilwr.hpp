@@ -37,20 +37,30 @@
 #include <math.h>
 #include <meteoio/MeteoIO.h>
 /**
-* \addtogroup modules
-* @{
-* \class Sicart_ilwr
-* \brief Calculates longwave radiation from the atmosphere (no skyview correction) for clear and cloudy days.
-*
-* Calculates evapotranspiration via Penman-Monteith
-*
-* Depends:
-* -  Transmittance "atm_trans" [-]
-* -  Daily atmospheric transmittance "atm_trans" [-]
-*
-* Provides:
-* - Incoming longwave  "ilwr" [W/m^2]
-*/
+ * \ingroup modules lw
+ * @{
+ * \class Sicart_ilwr
+ * Calculates longwave radiation from the atmosphere (including skyview correction) for clear and cloudy days following Sicart, et al (2006)
+ *
+ * **Depends:**
+ * - Air temp "t" [\f$ {}^\circ C \f$]
+ * - Relative humidity "rh" [%]
+ * - Incoming shortwave radiation "iswr" [ \f$ W \cdot m^{-2}\f$]
+ * - Atmospheric transmittance "atm_trans" [-]
+ * - Cloud fraction "cloud_frac" [-]
+ *
+ * **Provides:**
+ * - Incoming longwave  "ilwr" [W/m^2]
+ *
+ * **Parameters:**
+ * - Optionally Sky View Factor "svf" [-]
+ *
+ * **References:**
+ * - Sicart, J., Pomeroy, J., Essery, R., Bewley, D. (2006). Incoming longwave radiation to melting snow: observations,
+ * sensitivity and estimation in Northern environments Hydrological Processes  20(17), 3697-3708. https://dx.doi.org/10.1002/hyp.6383
+ *
+ * @}
+ */
 class Sicart_ilwr : public module_base
 {
 REGISTER_MODULE_HPP(Sicart_ilwr);
@@ -62,7 +72,3 @@ public:
 
 
 };
-
-/**
-@}
-*/

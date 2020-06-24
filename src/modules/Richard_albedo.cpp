@@ -29,7 +29,7 @@ Richard_albedo::Richard_albedo(config_file cfg)
 {
 
     depends("swe");
-    depends("T_s"); // snow temp
+    depends("T_s_0"); // snow temp
     depends("p_snow");
 
     provides("snow_albedo");
@@ -133,9 +133,9 @@ void Richard_albedo::init(mesh& domain)
     for (size_t i=0; i < domain->size_faces(); ++i)
     {
 
-	       auto face = domain->face(i);
-	       auto* d = face->make_module_data<data>(ID);
-	       d->albedo = albedo_bare;
+        auto face = domain->face(i);
+        auto* d = face->make_module_data<data>(ID);
+        d->albedo = albedo_bare;
 
     }
 

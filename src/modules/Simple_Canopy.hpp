@@ -33,11 +33,20 @@
 #include <string>
 
 
-/*
- * @Brief Solves energy and mass equations for canopy states using parameterizations based on LAI and canopy closure.
+/**
+ * \ingroup modules canopy
+ * @{
+ * Solves energy and mass equations for canopy states using parameterizations based on LAI and canopy closure. Direct port from CRHM
  *
+ * \rst
+ * .. warning::
+ *    Needs substantial updating
+ * \endrst
+ *
+ *
+ *
+ * @}
  */
-
 class Simple_Canopy : public module_base
 {
 REGISTER_MODULE_HPP(Simple_Canopy);

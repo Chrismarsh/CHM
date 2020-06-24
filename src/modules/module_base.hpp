@@ -38,7 +38,7 @@ namespace pt = boost::property_tree;
 /**
  * These are the groups to sort the filters by
  * \defgroup modules Modules
- * \defgroup met Meteorological forcing
+ * \defgroup met From meteorological forcing
  * \defgroup lw Longwave
  * \defgroup tair Air temperature
  * \defgroup rh Relative humidity
@@ -52,6 +52,10 @@ namespace pt = boost::property_tree;
  * \defgroup snow Snow
  * \defgroup soil Soils
  * \defgroup infil Soil Infiltration
+ * \defgroup evap Evaporation
+ * \defgroup pointmode Point Mode
+ * \defgroup canopy Canopy
+ * \defgroup atm Atmosphere
  */
 
 /**

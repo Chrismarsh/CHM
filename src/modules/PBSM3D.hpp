@@ -104,8 +104,11 @@
  * - Upwind fetch if ``exp_fetch`` or ``tanh_fetch`` are used "fetch" [m]
  * - Hours since last snowfall if only ``use_PomLi_probability`` is used "p_snow_hours" [hr]
  *
+ * **Parameters:**
+ * - If ``enable_veg=True``, then the vegetation height "CanopyHeight" [m]
+ * - If ``use_R94_lambda=True`` then leaf area index "LAI" [-]
+ *
  * **Configuration:**
- * - None
  *
  * \rst
  * .. code:: json
@@ -115,7 +118,22 @@
  *       "use_tanh_fetch": true,
  *       "use_PomLi_probability": false,
  *       "z0_ustar_coupling": false,
- *       "use_R94_lambda": true
+ *       "use_R94_lambda": true,
+ *       "N":1,
+ *       "dv":0.8,
+ *       "debug_output": false,
+ *       "nLayer": 10,
+ *       "do_fixed_settling": false,
+ *       "settling_velocity":0.5,
+ *       "do_sublimation": true,
+ *       "do_lateral_diff": true,
+ *       "smooth_coeff":820,
+ *       "min_sd_trans": 0.1,
+ *       "cutoff": 0.3,
+ *       "snow_diffusion_const":0.3,
+ *       "rouault_diffusion_coef": false,
+ *       "enable_veg": true,
+ *       "iterative_subl": false,
  *
  *    }
  *
@@ -230,8 +248,61 @@
  *
  *       \frac{\alpha^2}{\pi^2}.
  *
+ * .. confval:: min_sd_trans
+ *
+ *    :type: double
+ *    :default: 0.1
+ *
+ *    Minimum snowdepth below which blowing snow saltation is not computed for this triangle. A basic form of sub-grid variability.
+ *
+ * .. confval:: cutoff
+ *
+ *    :type: double
+ *    :default: 0.3
+ *
+ *    If (vegetation heigh - snow depth) <= cutoff, blowing snow (saltation) is inhibilited for this triangle. Used to allow
+ *    some in-shrub blowing snow to occur.
+ *
+ * .. confval:: snow_diffusion_const
+ *
+ *    :type: double
+ *    :default: 0.3
+ *
+ *    Scales the eddy diffusivity. There is some physical basis for it, but this parameter has quite a bit of
+ *    variability in the literature 0.3 to 1. In PBSM3D better results have been found for values ~0.3 such that these
+ *    results closely match QSusp estimates from Pomeroy, et al. This accounts for lower than reported in the literature values
+ *    for the settling velocity. Thus, this parameter, for larger triangles (versus point models) accounts for spatial variability
+ *    in fall velocities and turbulent diffusion. The larger triangles require setting this lower than what is generally reported
+ *    for a point-scale model.
+ *
+ * .. confval:: rouault_diffusion_coef
+ *
+ *    :default: false
+ *
+ *    This over rides the ``snow_diffusion_const`` by using the Rouault diffusion coefficient estimation (e.g., used by Déry, et al (1999)).
+ *    This approach tends to produce a diffusion coefficient that is a bit too high.
+ *
+ *    Rouault, M., Mestayer, P., Schiestel, R. (1991).
+ *    A model of evaporating spray droplet dispersion Journal of Geophysical Research: Oceans  96(C4), 7181-7200. https://dx.doi.org/10.1029/90jc02569
+ *
+ * .. confval:: enable_veg
+ *
+ *    :default: true
+ *
+ *    Set to false to ignore vegetation impacts
+ *
+ * .. confval:: iterative_subl
+ *
+ *    :default: false
+ *
+ *    Use the Pomeroy and Li (2000) iterative solution for Schimdt's sublimation equation. This code path has not had
+ *    extensive testing and should not be used at the moment.
+ *
+ *
  *
  * \endrst
+ *
+ *
  *
  * **References:**
  * - Marsh, C., Pomeroy, J., Spiteri, R., Wheater, H. (2020). A Finite Volume Blowing Snow Model for Use With Variable
@@ -264,7 +335,6 @@ public:
     double settling_velocity; // Variable used if do_fixed_settling = true
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.
-    bool limit_mass; // do not saltate more snow than what exists in a cell.
     bool do_sublimation; // should we have a sink sublimation term?
     bool do_lateral_diff; // should have lateral diffusion
     bool enable_veg; // should we consider vegetation ?
@@ -295,10 +365,8 @@ public:
 
     bool debug_output;
     double cutoff; // cutoff veg-snow diff (m) that we inhibit saltation entirely
-    // don't allow transport if below this threshold.
-    // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
-    double min_mass_for_trans;
 
+    // don't allow transport if below this threshold.
     // This gives models like snobal a chance to build up their snowpack and avoid convergence issues with thin snowcovers
     double min_sd_trans;
 

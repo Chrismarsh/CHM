@@ -37,6 +37,76 @@
 #include <snowpack/libsnowpack.h>
 
 #include <string>
+
+/**
+ * \ingroup modules snow
+ * @{
+ * \class Lehning_snowpack
+ *
+ * SNOWPACK (Bartelt and Lehning, 2002) is a multilayer finite-element energy balance snow model originally developed for avalanche hazard forecasting.
+ * It has the greatest computational burden of all snowpack models in CHM. This version of SNOWPACK has been modified to allow unlimited removal of snow
+ * layers by the blowing snow and avalanche routines.
+ *
+ * \rst
+ * .. note::
+ *    Currently SNOWPACK is setup to be run an external albedo model and should be changed to default back to the SNOWPACK one.
+ * \endrst
+ *
+ * **Depends:**
+ * - Incoming shortwave radiation, all beams "iswr" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Incomging longwaver radiation "ilwr" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Realative humidity "rh" [%]
+ * - Air temperature "t" [\f$ {}^\circ C \f$]
+ * - Windspeed at 2m "U_2m_above_srf" [\f$ m \cdot s^{-1}    \f$]
+ * - Precipitation "p" [\f$ mm \cdot dt^{-1} \f$]
+ * - Precipitation rain fraction "frac_precip_rain" [-]
+ * - Snow albedo "snow_albedo" [-]
+ *
+ * **Optional:**
+ * - Optionally, depend on the ``_subcanopy`` variants of the above
+ * - Blowing snow erosion/deposition mass "drift_mass" [mm]
+ * - Ground temperature "T_g" [\f$  {}^\circ C   \f$]
+ *
+ * **Provides:**
+ * - Change in internal energy "dQ" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Snow water equivalent "swe" [mm]
+ * - Bulk snow temperature "T_s" [\f$ {}^\circ C \f$]
+ * - Surface exchange layer temperature "T_s_0"
+ * - Number of discretization nodes "n_nodes"
+ * - Number of discretization layers "n_elem"
+ * - Snowdepth "snowdepthavg"
+ * - Sensible heat flux "H" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Latent heat flux "E" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Ground heat flux "G" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Outgoing longwave radiation "ilwr_out" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Reflected shortwave radiation "iswr_out" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Net allwave radiation "R_n" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Snowpack runoff "runoff" [mm]
+ * - Snow mass removed "mass_snowpack_removed" [mm]
+ * - Total snowpack runoff "sum_runoff"
+ * - Total surface sublimation loss "sum_subl"
+ * - Sublimation loss "sublimation"
+ * - Evaporation loss "evap"
+ * - "MS_SWE"
+ * - "MS_WATER"
+ * - "MS_TOTALMASS"
+ * - "MS_SOIL_RUNOFF"
+ *
+ * **Configuration:**
+ * \rst
+ * .. code:: json
+ *
+ *    {
+ *       "sno":
+ *       {
+ *          "SoilAlbedo": 0.09,
+ *          "BareSoil_z0": 0.2,
+ *          "WindScalingFactor": 1,
+ *          "TimeCountDeltaHS": 0.0 *
+ *       }
+ * \endrst
+ * @}
+ */
 class Lehning_snowpack : public module_base
 {
 REGISTER_MODULE_HPP(Lehning_snowpack);

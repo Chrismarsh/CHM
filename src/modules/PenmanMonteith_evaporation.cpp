@@ -29,13 +29,11 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
         :module_base("PenmanMonteith_evaporation", parallel::data, cfg)
 {
 
-    depends("Qsi");
-    depends("Lin");
-//    depends("albdeo");
-    depends("es");
-    depends("ea");
+    depends("iswr");
+    depends("ilwr");
+    depends("rh");
     depends("t");
-    depends("u");
+    depends("U_2m_above_srf");
 
     provides("ET");
 
@@ -47,12 +45,16 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
 {
 
     double albedo = 0.23; //grass and crops
-    double qsi = (*face)["Qsi"_s];
-    double Lin = (*face)["Lin"_s];
-    double es = (*face)["es"_s]/1000.0;
-    double ea = (*face)["ea"_s]/1000.0;
+    double qsi = (*face)["iswr"_s];
+    double Lin = (*face)["ilwr"_s];
+
+    double rh = (*face)["rh"_s] / 100.;
+    double es = Atmosphere::saturatedVapourPressure(t);
+    double ea = rh * es / 1000.; // kpa
+
+
     double T = (*face)["t"_s];
-    double u = (*face)["u"_s];
+    double u = (*face)["U_2m_above_srf"_s];
 
 
     double grass_emissivity = 0.9;
