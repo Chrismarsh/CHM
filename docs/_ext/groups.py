@@ -6,7 +6,7 @@ from docutils.parsers.rst import directives
 from docutils.parsers.rst import Directive
 from docutils.statemachine import ViewList
 from sphinx.util.nodes import nested_parse_with_titles
-import ipdb as pdb
+
 
 class Provides(Directive):
     has_content = False
