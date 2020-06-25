@@ -54,8 +54,8 @@
  *
  * **Depends:**
  * - Incoming shortwave radiation, all beams "iswr" [ \f$ W \cdot m^{-2} \f$ ]
- * - Incomging longwaver radiation "ilwr" [ \f$ W \cdot m^{-2} \f$ ]
- * - Realative humidity "rh" [%]
+ * - Incomging longwave radiation "ilwr" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Relative humidity "rh" [%]
  * - Air temperature "t" [\f$ {}^\circ C \f$]
  * - Windspeed at 2m "U_2m_above_srf" [\f$ m \cdot s^{-1}    \f$]
  * - Precipitation "p" [\f$ mm \cdot dt^{-1} \f$]
@@ -74,7 +74,7 @@
  * - Surface exchange layer temperature "T_s_0"
  * - Number of discretization nodes "n_nodes"
  * - Number of discretization layers "n_elem"
- * - Snowdepth "snowdepthavg"
+ * - Snowdepth "snowdepthavg" [m]
  * - Sensible heat flux "H" [ \f$ W \cdot m^{-2} \f$ ]
  * - Latent heat flux "E" [ \f$ W \cdot m^{-2} \f$ ]
  * - Ground heat flux "G" [ \f$ W \cdot m^{-2} \f$ ]

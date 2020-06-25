@@ -14,7 +14,6 @@ ENDFOREACH(f)
 
 ###################################
 set(SNOBAL_SRC
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/snobal/snobal.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/snobal/sno.cpp
         )
 ###################################

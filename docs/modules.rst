@@ -55,4 +55,9 @@ Available modules
 
 By provides variable
 ------------------------
+
+.. note::
+   These provides are automatically produced from the module code. They do not include provides that are dynamically generated
+    i.e.,  :code:`provides("t_"+some_var);`
+
 .. provides::

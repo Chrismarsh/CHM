@@ -62,7 +62,7 @@ set(MODULE_SRCS
         modules/deform_mesh.cpp
 		modules/crop_rotation.cpp
         modules/PBSM3D.cpp
-
+		modules/snobal.cpp
 		modules/fsm.cpp
 
 
