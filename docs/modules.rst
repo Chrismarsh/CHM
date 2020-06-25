@@ -51,3 +51,8 @@ Available modules
 ---------------------
 .. groups::
    :group: modules
+
+
+By provides variable
+------------------------
+.. provides::
