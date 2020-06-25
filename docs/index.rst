@@ -23,7 +23,8 @@ The paper describing CHM can be found `here <https://www.geosci-model-dev.net/13
 
 Contributors
 ~~~~~~~~~~~~~
-- `Chris Marsh <https://github.com/Chrismarsh>`__ 
+- `Chris Marsh <https://github.com/Chrismarsh>`__
+- `Kevin Green <https://github.com/kevinrichardgreen/>`__
 - `Nic Wayand <https://github.com/Nicwayand>`__
 - `Vincent Vionnet <https://github.com/VVionnet/>`__ 
 - `Wenxian Guo <https://github.com/WXGopher/>`__ 

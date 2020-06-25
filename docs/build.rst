@@ -217,6 +217,27 @@ Install
 
 ``make install``/``ninja install``
 
+Build docs
+***********
+To build the documentation requires Doxygen and Sphinx.
+
+The documentation can be built out of source with:
+
+.. code::
+
+   make docs
+
+or it can be built in source tree with
+
+.. code::
+
+   cd docs
+   READTHEDOCS="True" make html
+
+
+The env var is required to ensure the correct directories are searched.
+
+
 Troubleshooting
 ***************
 
