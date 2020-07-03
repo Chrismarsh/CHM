@@ -219,7 +219,16 @@ Install
 
 Build docs
 ***********
-To build the documentation requires Doxygen and Sphinx.
+To build the documentation requires `Doxygen <https://www.doxygen.nl/download.html>`__ and Sphinx+Breathe+Exhale.
+
+.. code::
+
+   pip install sphinx
+   pip install sphinx-rtd-theme
+   pip install breathe<4.13.0
+   pip install exhale
+
+The Breathe version requirement is for Read the Docs compatibility. See `issue#89 <https://github.com/svenevs/exhale/issues/89>`__.
 
 The documentation can be built out of source with:
 
@@ -235,7 +244,7 @@ or it can be built in source tree with
    READTHEDOCS="True" make html
 
 
-The env var is required to ensure the correct directories are searched.
+The env var is required to ensure the correct directories are searched for in-source builds. 
 
 
 Troubleshooting
