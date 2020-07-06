@@ -26,7 +26,7 @@
 //
 
 #include "p_from_obs.hpp"
-REGISTER_MODULE_CPP(Thornton_var_p);
+REGISTER_MODULE_CPP(p_from_obs);
 
 p_from_obs::p_from_obs(config_file cfg)
   : module_base("Thornton_var_p", parallel::data, cfg)

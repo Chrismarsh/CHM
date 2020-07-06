@@ -49,6 +49,7 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
     double Lin = (*face)["ilwr"_s];
 
     double rh = (*face)["rh"_s] / 100.;
+    double t = (*face)["t"_s];
     double es = Atmosphere::saturatedVapourPressure(t);
     double ea = rh * es / 1000.; // kpa
 

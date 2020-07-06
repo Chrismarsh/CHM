@@ -61,6 +61,5 @@ public:
     ~crop_rotation();
 
     void run(mesh_elem &face);
-  private:
-    int crop_year1
+
 };

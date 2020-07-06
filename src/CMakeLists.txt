@@ -308,7 +308,7 @@ if (BUILD_TESTS)
 			${TEST_SRCS}
 	)
 
-	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES})
+	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
     target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS}  -std=f2003 -fno-underscoring)
 
 	target_link_libraries(

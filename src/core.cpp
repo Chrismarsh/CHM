@@ -2095,9 +2095,6 @@ void core::run()
 #endif
 
                                         }
-
-
-
                                     }
                                 }
                             }
