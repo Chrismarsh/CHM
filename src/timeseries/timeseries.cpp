@@ -49,11 +49,16 @@ void timeseries::init(std::set<std::string> variables, boost::posix_time::ptime 
     boost::posix_time::ptime ts = start_time;
 
     //figure out how many timesteps we need
+    // < end_time as we will do +1 to equal end_time
     while(ts < end_time)
     {
         ts =  start_time + dt*size;
         ++size;
     }
+
+    // if we have exactly 1 timestep, special case this
+    if(size == 0 && start_time == end_time)
+        size = 1;
 
     _timeseries_length = size;
 

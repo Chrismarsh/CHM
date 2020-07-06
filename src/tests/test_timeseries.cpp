@@ -317,22 +317,72 @@ TEST_F(TimeseriesTest, Init)
     boost::posix_time::ptime end_time = boost::posix_time::from_iso_string("20171001T000000");
     boost::posix_time::time_duration dt =  start_time2-start_time;
 
-        //boost::posix_time::seconds(3600);
-
     ASSERT_NO_THROW(s.init(vars, start_time, end_time, dt));
-//    ASSERT_EQ(s.get_timeseries_length(),4);
 
     auto date = s.get_date_timeseries();
-    std::vector<std::string> lol;
+
+    std::vector<std::string> dates;
     for(auto& itr : date)
     {
-        lol.push_back( boost::posix_time::to_iso_string(itr) );
+        dates.push_back( boost::posix_time::to_iso_string(itr) );
     }
     ASSERT_EQ(boost::posix_time::to_iso_string( date.at(0) ), "20051001T010000");
     ASSERT_EQ(boost::posix_time::to_iso_string( date.at(1) ), "20051001T020000");
     ASSERT_EQ(boost::posix_time::to_iso_string( date.at(2) ), "20051001T030000");
     ASSERT_EQ(boost::posix_time::to_iso_string( date.at(3) ), "20051001T040000");
 
+    ASSERT_EQ(dates.back(),"20171001T000000");
+    ASSERT_EQ(dates.size(),(end_time-start_time).total_seconds()/dt.total_seconds()+1); // +1 as we are inclusive of start/end points
+}
 
-    ASSERT_EQ(lol.back(),"20171001T000000");
+TEST_F(TimeseriesTest, Init_at)
+{
+    timeseries s;
+
+    std::set<std::string> vars = {"t","rh"};
+    boost::posix_time::ptime start_time = boost::posix_time::from_iso_string("20051001T010000");
+    boost::posix_time::ptime start_time2 = boost::posix_time::from_iso_string("20051001T020000");
+
+    boost::posix_time::ptime end_time = boost::posix_time::from_iso_string("20171001T000000");
+    boost::posix_time::time_duration dt =  start_time2-start_time;
+
+    ASSERT_NO_THROW(s.init(vars, start_time, end_time, dt));
+    ASSERT_NO_THROW(s.at("rh",0) = 1);
+    ASSERT_EQ(s.at("rh",0),1);
+
+    auto date = s.get_date_timeseries();
+    std::vector<std::string> dates;
+    for(auto& itr : date)
+    {
+        dates.push_back( boost::posix_time::to_iso_string(itr) );
+    }
+    ASSERT_EQ(dates.back(),"20171001T000000");
+
+}
+
+TEST_F(TimeseriesTest, Init_at_1ts)
+{
+    timeseries s;
+
+    std::set<std::string> vars = {"t","rh"};
+    boost::posix_time::ptime start_time = boost::posix_time::from_iso_string("20051001T010000");
+    boost::posix_time::ptime end_time = boost::posix_time::from_iso_string("20051001T010000");
+
+    boost::posix_time::ptime start_time2 = boost::posix_time::from_iso_string("20051001T020000");
+    boost::posix_time::time_duration dt =  start_time2-start_time;
+
+    ASSERT_NO_THROW(s.init(vars, start_time, end_time, dt));
+    ASSERT_NO_THROW(s.at("rh",0) = 1);
+    ASSERT_EQ(s.at("rh",0),1);
+
+    auto date = s.get_date_timeseries();
+    std::vector<std::string> dates;
+    for(auto& itr : date)
+    {
+        dates.push_back( boost::posix_time::to_iso_string(itr) );
+    }
+
+    ASSERT_EQ(dates.size(),1);
+    ASSERT_EQ(dates.back(),"20051001T010000");
+
 }
