@@ -1,5 +1,6 @@
 import vtk
 from osgeo import gdal,ogr,osr
+from osgeo.gdalconst import GA_ReadOnly
 import math
 import imp
 import sys
@@ -7,7 +8,7 @@ import xml.etree.ElementTree as ET
 import subprocess
 import numpy as np
 import os
-from gdalconst import GA_ReadOnly
+
 import resource
 
 from rasterio.warp import transform
@@ -69,14 +70,13 @@ def stdchannel_redirected(stdchannel, dest_filename):
 # the filename of the raster
 # pixel size, in srsout units. Constant dx,dy
 # attribute The value from the USM we want to burn into the raster
-def rasterize(layer, srsout, target_fname, pixel_size, attribute, all_touched=True):
+def rasterize(layer, srsout, target_fname, pixel_size, attribute, user_define_extent=False, o_xmin=None, o_ymin=None, o_xmax=None, o_ymax=None, all_touched=True):
     x_min, x_max, y_min, y_max = layer.GetExtent()
 
     NoData_value = -9999
     # width/height of created raster in pixels.
     xsize = int((x_max - x_min) / pixel_size)
     ysize = int((y_max - y_min) / pixel_size)
-
 
 
     target_ds = gdal.GetDriverByName('GTiff').Create(target_fname, xsize, ysize, 1, gdal.GDT_Float32)
@@ -98,14 +98,16 @@ def rasterize(layer, srsout, target_fname, pixel_size, attribute, all_touched=Tr
 
     # re-enable this later
     # Optional clip file
-    # if constrain_flag:
-    #     subprocess.check_call(
-    #         ['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
-    #          (srsout.ExportToProj4(), srsout.ExportToProj4(),
-    #           o_xmin, o_ymin, o_xmax, o_ymax,
-    #           var_resample_method[var],
-    #           pixel_width, pixel_height,
-    #           path[:-4] + '_' + var + '.tif', path[:-4] + '_' + var + '_clipped.tif')], shell=True)
+    if user_define_extent: # or constrain_flag:
+        subprocess.check_call(
+            ['gdalwarp -overwrite -s_srs \"%s\" -t_srs \"%s\" -te %s %s %s %s -r \"%s\" -tr %s %s \"%s\" \"%s\"' %
+             (srsout.ExportToProj4(),
+              srsout.ExportToProj4(),
+              o_xmin, o_ymin, o_xmax, o_ymax,
+              'average', #var_resample_method[var]
+              pixel_size, pixel_size,
+              target_fname,
+              target_fname[:-4] + '_clipped.tif')], shell=True)
 
 def main():
     gdal.UseExceptions()  # Enable errors
@@ -158,6 +160,9 @@ def main():
     if hasattr(X,'output_path'):
         output_path = X.output_path
 
+        if not os.path.isdir(output_path):
+            os.makedirs(output_path)
+
     pixel_size = 10
     if hasattr(X,'pixel_size'):
         pixel_size = X.pixel_size
@@ -197,11 +202,21 @@ def main():
     if file_extension == '.pvd':
         print('Detected pvd file, processing all linked vtu files')
         is_pvd = True
+        if not os.path.exists(input_path):
+            print(f'ERROR: Path does not exists: {input_path}')
+            exit(-1)
+
         parse = ET.parse(input_path)
         pvd = parse.findall(".//*[@file]")
 
         timesteps = parse.findall(".//*[@timestep]")
 
+    o_xmin = o_xmax = o_ymin = o_ymax = None
+    if user_define_extent:
+        o_xmin = X.o_xmin
+        o_xmax = X.o_xmax
+        o_ymin = X.o_ymin
+        o_ymax = X.o_ymax
 
     # Get info for constrained output extent/resolution if selected
     if constrain_flag :
@@ -233,8 +248,9 @@ def main():
 
     #information to build up the nc meta data
     nc_rasters = {}
-    for v in variables:
-        nc_rasters[v]=[]
+    if nc_archive:
+        for v in variables:
+            nc_rasters[v]=[]
 
     nc_time_counter=0
     tifs_to_remove = []
@@ -253,12 +269,13 @@ def main():
     print(('Start epoch: %s, model dt = %i (s)' %(epoch,dt)))
 
     #because of how the netcdf is built we hold a file of file handles before converting. ensure we can do so
-    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    total_output_files = len(pvd) * (len(variables)+len(parameters))
-    if soft < total_output_files or hard < total_output_files:
-        print('The users soft or hard file limit is less than the total number of tmp files to be created.')
-        print(('The system ulimit should be raised to at least ' + total_output_files))
-        return -1
+    if nc_archive:
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        total_output_files = len(pvd) * (len(variables)+len(parameters))
+        if soft < total_output_files or hard < total_output_files:
+            print('The users soft or hard file limit is less than the total number of tmp files to be created.')
+            print(('The system ulimit should be raised to at least ' + total_output_files))
+            return -1
 
     for vtu in pvd:
         path = vtu
@@ -270,13 +287,16 @@ def main():
             base = os.path.basename(path) # since we have a full path to vtu, we need to get just the vtu filename
             vtu_file = os.path.splitext(base)[0] #we strip out vtu later so keep here
 
+        if not os.path.exists(path):
+            print(f'ERROR: Path does not exists: {path}')
+            exit(-1)
 
         printProgress(files_processed,len(pvd),decimals=0)
         reader.SetFileName(path)
-
+        reader.Update()
         #shut up a deprecated warning from vtk 8.1
-        with stdchannel_redirected(sys.stderr, os.devnull):
-            reader.Update()
+        # with stdchannel_redirected(sys.stderr, os.devnull):
+        #     reader.Update()
 
         mesh = reader.GetOutput()
 
@@ -341,9 +361,11 @@ def main():
             feature.SetGeometry(tpoly)
 
             if variables is None:
+                variables = []
                 for j in range(0, cd.GetNumberOfArrays()):
                     name = cd.GetArrayName(j)
-                    variables.append(name)
+                    if not '[param]' in name:
+                        variables.append(name)
 
             for v in variables:
                 try:
@@ -364,11 +386,11 @@ def main():
             layer.CreateFeature(feature)
 
         for var in variables:
-
+            print(var)
             target_fname = os.path.join(output_path,
                                         vtu_file + '_' + var.replace(" ", "_") + str(pixel_size) + 'x' + str(
                                             pixel_size) + '.tif')
-            rasterize(layer, srsout, target_fname, pixel_size, var,all_touched)
+            rasterize(layer, srsout, target_fname, pixel_size, var, user_define_extent, o_xmin, o_ymin, o_xmax, o_ymax, all_touched)
 
             if nc_archive:
                 df = xr.open_rasterio(target_fname).sel(band=1).drop('band')
@@ -381,11 +403,11 @@ def main():
                 tifs_to_remove.append(target_fname)
 
 
-            if parameters is not None:
-                print(parameters)
-                for p in parameters:
-                    target_param_fname = os.path.join(output_path, vtu_file + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif')
-                    rasterize(layer, srsout, target_param_fname, pixel_size, p,all_touched)
+        if parameters is not None:
+            print(parameters)
+            for p in parameters:
+                target_param_fname = os.path.join(output_path, vtu_file + '_'+ p.replace(" ","_") + str(pixel_size)+'x'+str(pixel_size)+'.tif')
+                rasterize(layer, srsout, target_param_fname, pixel_size, p, all_touched = all_touched)
 
         nc_time_counter += 1
         # we don't need to dump parameters for each timestep as they are currently assumed invariant with time.
