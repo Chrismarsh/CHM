@@ -53,9 +53,13 @@
  * - Direction at reference height 'vw_dir' [degrees] (North = 0, clockwise from North)
  *
  * **Provides:**
- * - Wind "U_R" [\f$m \cdot s^{-1}\f$] at reference height
+ * - Wind  at reference height "U_R"
+ * - Interpolated wind field at reference height prior to downscaling "U_R_orig"  [\f$m \cdot s^{-1}\f$]
  * - Wind direction "vw_dir" [degrees]
- * - Amount the wind vector has moved "vw_dir_divergence" [degrees]
+ * - Original wind direction "vw_dir_orig" [degrees]
+ * - Amount the wind vector direction has been changed "vw_dir_divergence" [degrees]
+ * - Zonal U at reference height  "zonal_u"  [ \f$ m \cdot s^{-1}\f$ ]
+ * - Zonal V at reference height "zonal_v"  [ \f$ m \cdot s^{-1}\f$ ]
  *
  * **Configuration:**
  * \rst

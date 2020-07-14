@@ -58,16 +58,18 @@
  * **Provides:**
  * - Wind speed at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
  * - Wind direction 'vw_dir' at reference height [degrees]
+ * - Zonal U at reference height  "zonal_u"  [ \f$ m \cdot s^{-1}\f$ ]
+ * - Zonal V at reference height "zonal_v"  [ \f$ m \cdot s^{-1}\f$ ]
  *
  * **Diagnostics:**
  * - Downscaled windspeed "Ninja_speed" [ \f$ m \cdot s^{-1}\f$ ]
- * - Windspeed without downscaling "Ninja_speed_nodown" [ \f$ m \cdot s^{-1}\f$ ]
- * - Zonal U at level H_Forc "Ninja_u"  [ \f$ m \cdot s^{-1}\f$ ]
- * - Zonal V at level H_Forc "Ninja_v"  [ \f$ m \cdot s^{-1}\f$ ]
+ * - Interpolated wind field at reference height prior to downscaling "U_R_orig"  [\f$m \cdot s^{-1}\f$]
+
  * - Interpolated zonal U at level H_Forc "interp_zonal_u"  [ \f$ m \cdot s^{-1}\f$ ]
  * - Interpolated zonal V at level H_Forc "interp_zonal_v"  [ \f$ m \cdot s^{-1}\f$ ]
  * - What lookup map was used "lookup_d"  [-]
  * - Original wind direction "vw_dir_orig" [degrees]
+ * - Amount the wind vector direction has been changed "vw_dir_divergence" [degrees]
  *
  * **Configuration:**
  * \rst
@@ -157,6 +159,7 @@
  * **References:**
  * - Barcons, J., Avila, M., Folch, A. (2018). A wind field downscaling strategy based on domain segmentation and transfer functions Wind Energy  21(6)https://dx.doi.org/10.1002/we.2169
  *
+ * @}
  */
 class WindNinja : public module_base
 {
@@ -194,6 +197,3 @@ public:
     boost::shared_ptr<Winstral_parameters> Sx;
 };
 
-/**
-@}
-*/

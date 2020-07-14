@@ -34,12 +34,16 @@ WindNinja::WindNinja(config_file cfg)
     depends_from_met("vw_dir");
 
     provides("U_R");
+    provides("U_R_orig");
     provides("Ninja_speed");
-    provides("Ninja_speed_nodown");
+
 
     provides("vw_dir");
-    provides("Ninja_u");
-    provides("Ninja_v");
+    provides("vw_dir_orig");
+    provides("vw_dir_divergence");
+
+    provides("zonal_u");
+    provides("zonal_v");
 
     provides("W_transf");
 
@@ -48,7 +52,7 @@ WindNinja::WindNinja(config_file cfg)
 
     provides("lookup_d");
 
-    provides("vw_dir_orig");
+
 
     provides_vector("wind_direction_original");
     provides_vector("wind_direction");
@@ -312,7 +316,6 @@ void WindNinja::run(mesh& domain)
             double V = 0.;
             double W_transf = 0.;
 
-
             if(!ninja_average)  // No Linear interpolation between the closest 2 wind fields from the library
             {
                 // Use this wind dir to figure out which wind field from the library we need
@@ -396,23 +399,23 @@ void WindNinja::run(mesh& domain)
         for (size_t i = 0; i < domain->size_faces(); i++)
        {
 
-           auto face = domain->face(i);
+            auto face = domain->face(i);
 
-           double theta= face->get_module_data<data>(ID)->corrected_theta;
-           double W= face->get_module_data<data>(ID)->W;
-           double W_transf= face->get_module_data<data>(ID)->W_transf;
+            double theta= face->get_module_data<data>(ID)->corrected_theta;
+            double W= face->get_module_data<data>(ID)->W;
+            double W_transf= face->get_module_data<data>(ID)->W_transf;
 
-            (*face)["Ninja_speed_nodown"_s]= W;   // Wind speed without downscaling
+            (*face)["U_R_orig"_s]= W;   // Wind speed without downscaling
 
 
-           (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
-           // Limit speed up value to Max_spdup
-           // Can be used to avoid unrelistic values at crest top
-           if(W_transf>1. and transf_max>Max_spdup)
+            (*face)["vw_dir"_s]= theta * 180.0 / M_PI;
+            // Limit speed up value to Max_spdup
+            // Can be used to avoid unrelistic values at crest top
+            if(W_transf>1. and transf_max>Max_spdup)
                W_transf = 1.+(Max_spdup-1.)*(W_transf-1.)/(transf_max-1.);
 
-           if(compute_Sx)
-           {
+            if(compute_Sx)
+            {
                if (ninja_recirc)
                {  // Need further test
 
@@ -443,14 +446,15 @@ void WindNinja::run(mesh& domain)
             (*face)["U_R"_s]= W;
 
 
-            (*face)["Ninja_u"_s]= U; // these are still H_forc
-            (*face)["Ninja_v"_s]= V;
+            (*face)["zonal_u"_s]= U; // these are still H_forc
+            (*face)["zonal_v"_s]= V;
 
             Vector_2 v_corr = math::gis::bearing_to_cartesian(theta * 180.0 / M_PI);
             Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
             face->set_face_vector("wind_direction", v3);
 
-
+            double dtheta = (theta * 180.0 / M_PI) -  (*face)["vw_dir_orig"_s];
+           (*face)["vw_dir_divergence"_s] = fabs(dtheta);
         }
 
 
