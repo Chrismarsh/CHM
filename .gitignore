@@ -12,6 +12,7 @@
 *.json
 Makefile
 modules.pdf
+/python/.idea/
 /output/*
 /bin/
 /CHM.log
