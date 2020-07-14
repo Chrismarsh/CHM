@@ -185,9 +185,9 @@ remove_cxx_flag("-O3")
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     message(WARNING "Debug mode")
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.7")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0 -fno-inline") #new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O1 -fno-inline") #new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
     else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O0 -fno-inline -ggdb")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O1 -fno-inline -ggdb")
     endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAFE_CHECKS")
 else()
