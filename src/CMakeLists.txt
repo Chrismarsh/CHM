@@ -127,7 +127,6 @@ set(EXT_TARGETS
 		armadillo::armadillo
 		vtk::vtk
 		gdal::gdal #proj is brought it via this
-		viennacl::viennacl
 		cgal::cgal
 		hdf5::hdf5
 		sparsehash::sparsehash
