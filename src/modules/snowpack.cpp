@@ -247,7 +247,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     {
 
         double bulk_T_s=0;
-        for(int i = 0; i < data->Xdata->getNumberOfElements(); ++i)
+        for(size_t i = 0; i < data->Xdata->getNumberOfElements(); ++i)
         {
             bulk_T_s += data->Xdata->Ndata[i].T;
         }
