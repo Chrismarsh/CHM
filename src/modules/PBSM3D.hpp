@@ -22,11 +22,43 @@
 //
 
 #pragma once
+
+#include <BelosSolverFactory.hpp>
+#include <BelosTpetraAdapter.hpp>
+#include <Ifpack2_Factory.hpp>
+#include <MatrixMarket_Tpetra.hpp>
+#include <Teuchos_CommandLineProcessor.hpp>
+#include <Teuchos_ParameterXMLFileReader.hpp>
+#include <Teuchos_TimeMonitor.hpp>
+#include <Tpetra_Core.hpp>
+#include <Tpetra_CrsMatrix.hpp>
+
+// Typedefs/aliases for ease of Trilinos use
+using Teuchos::arcp;
+using Teuchos::ArrayRCP;
+using Teuchos::Comm;
+using Teuchos::ParameterList;
+using Teuchos::RCP;
+using Teuchos::rcp;
+using Teuchos::Time;
+using Teuchos::tuple;
+typedef Tpetra::CrsGraph<> graph_type;
+typedef Tpetra::CrsMatrix<double, int, int> crs_matrix_type;
+typedef Tpetra::Map<> map_type;
+typedef Tpetra::MultiVector<> MV;
+typedef Tpetra::Operator<> OP;
+typedef Tpetra::RowMatrix<> row_matrix_type;
+typedef MV::scalar_type scalar_type;
+typedef Ifpack2::Preconditioner<> prec_type;
+typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
+typedef Belos::SolverManager<scalar_type, MV, OP> solver_type;
+typedef Tpetra::MatrixMarket::Reader<crs_matrix_type> reader_type;
+
 //#define BOOST_MATH_INSTRUMENT
-#include "logger.hpp"
-#include "triangulation.hpp"
-#include "module_base.hpp"
 #include "interpolation.hpp"
+#include "logger.hpp"
+#include "module_base.hpp"
+#include "triangulation.hpp"
 
 #include "math/coordinates.hpp"
 
@@ -36,21 +68,12 @@
 #include <meteoio/MeteoIO.h>
 
 #include <cmath>
-#include <vector>
-#include <gsl/gsl_sf_lambert.h>
 #include <gsl/gsl_cdf.h>
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_randist.h>
-
-
-
-#include <viennacl/linalg/gmres.hpp>
-#include <viennacl/compressed_matrix.hpp>
-#include <viennacl/linalg/ilu.hpp>
-#include <viennacl/linalg/cg.hpp>
-
-
+#include <gsl/gsl_sf_lambert.h>
+#include <vector>
 
 #include <armadillo>
 
@@ -59,8 +82,9 @@
 //#define _USE_MATH_DEFINES
 //#include <math.h>
 
-#include <boost/math/tools/tuple.hpp>
 #include <boost/math/tools/roots.hpp>
+#include <boost/math/tools/tuple.hpp>
+
 
 /**
  * \ingroup modules snow
@@ -311,57 +335,55 @@
  */
 class PBSM3D : public module_base
 {
-REGISTER_MODULE_HPP(PBSM3D);
-public:
+    REGISTER_MODULE_HPP(PBSM3D);
+
+  public:
     PBSM3D(config_file cfg);
     ~PBSM3D();
     void run(mesh& domain);
     void init(mesh& domain);
+
+    RCP<const Teuchos::Comm<int>> comm;
 
     double nLayer;
     double susp_depth;
     double v_edge_height;
 
     // Beta * K, this is beta and scales the eddy diffusivity
-    double snow_diffusion_const ;
-    double l__max; // vertical mixing length (m)
-    bool rouault_diffusion_coeff; //use the spatially variable diffusivity coefficient of Rouault 1991
+    double snow_diffusion_const;
+    double l__max;                // vertical mixing length (m)
+    bool rouault_diffusion_coeff; // use the spatially variable diffusivity coefficient of Rouault 1991
 
-    bool do_fixed_settling; // should we have a constant settling velocity? 
-                            // true: constant settling velocity = settling_velocity (see below)
-                            // false: use the parameterization of Pomeroy et al. (1993) and Pomeroy and Gray (1995):
-                            //        In this case, the settling velocity decreases with height above the snow surface 
-                            //        due to a decrease with height in the mean particle size. 
+    bool do_fixed_settling;   // should we have a constant settling velocity?
+                              // true: constant settling velocity = settling_velocity (see below)
+                              // false: use the parameterization of Pomeroy et al. (1993) and Pomeroy and Gray (1995):
+                              //        In this case, the settling velocity decreases with height above the snow surface
+                              //        due to a decrease with height in the mean particle size.
     double settling_velocity; // Variable used if do_fixed_settling = true
     double n_non_edge_tri;
     double eps; //lapacian smoothing epilson.
     bool do_sublimation; // should we have a sink sublimation term?
     bool do_lateral_diff; // should have lateral diffusion
-    bool enable_veg; // should we consider vegetation ?
+    bool enable_veg;      // should we consider vegetation ?
 
     bool use_PomLi_probability; // Use areal Pomeroy Li 2000 probability function.
-    bool use_exp_fetch; // Enable the exp Liston 2006 fetch
-    bool use_tanh_fetch; // Enable the tanh Pomeroy and Male 1986 fetch
+    bool use_exp_fetch;         // Enable the exp Liston 2006 fetch
+    bool use_tanh_fetch;        // Enable the tanh Pomeroy and Male 1986 fetch
 
-    bool use_subgrid_topo; // Enable effect of subgrid topography on snow transport 
-    bool use_subgrid_topo_V2; // Enable effect of subgrid topography on snow transport 
-
+    bool use_subgrid_topo;    // Enable effect of subgrid topography on snow transport
+    bool use_subgrid_topo_V2; // Enable effect of subgrid topography on snow transport
 
     bool iterative_subl; // if True, enables the iterative sublimation calculation as per Pomeroy and Li 2000
-    bool use_R94_lambda; //use the ﻿Raupach 1990 lambda expression using LAI/2 instead of pomeroy stalk density
+    bool use_R94_lambda; // use the ﻿Raupach 1990 lambda expression using LAI/2 instead of pomeroy stalk density
 
-    double N; //vegetation number density
-    double dv; //stalk diameter
+    double N;  // vegetation number density
+    double dv; // stalk diameter
 
     // this is the suspension transport matrix
-    double nnz; //number none zero
-    viennacl::compressed_matrix<vcl_scalar_type>  vl_C;
-    viennacl::vector<vcl_scalar_type> b;
+    double nnz; // number non zero
 
-    //this is the drift matrix
-    double nnz_drift; //number none zero
-    viennacl::compressed_matrix<vcl_scalar_type>  vl_A;
-    viennacl::vector<vcl_scalar_type> bb;
+    // this is the drift matrix
+    double nnz_drift; // number non zero
 
     bool debug_output;
     double cutoff; // cutoff veg-snow diff (m) that we inhibit saltation entirely
@@ -377,28 +399,28 @@ public:
 
     class data : public face_info
     {
-    public:
-        //edge unit normals
+      public:
+        // edge unit normals
         arma::vec m[5];
 
-        //prism areas
+        // prism areas
         double A[5];
 
-        //face neighbours
+        // face neighbours
         bool face_neigh[3];
 
-        std::vector<double> u_z_susp; //suspension layer windspeeds
+        std::vector<double> u_z_susp; // suspension layer windspeeds
         size_t cell_local_id;
 
         double CanopyHeight;
         double LAI;
 
-        //saltation height
+        // saltation height
         double hs;
 
         bool is_edge;
 
-        //used to flag the large vegetation areas or other via landcover types to not do any saltation at this point.
+        // used to flag the large vegetation areas or other via landcover types to not do any saltation at this point.
         bool saltation;
 
         double z0;
@@ -410,16 +432,32 @@ public:
         gsl_function F_fill;
         gsl_function F_fill2;
         gsl_function F_fill3;
-       // gsl_function F_roots;
-       // struct my_fill_topo_params params = { 1.1, 0.3, 0.6 , 0.4};
+        // gsl_function F_roots;
+        // struct my_fill_topo_params params = { 1.1, 0.3, 0.6 , 0.4};
     };
 
 private:
 
   // For detecting if there is suspension and/or saltation
-  bool suspension_present, saltation_present;
+  bool suspension_present, deposition_present;
   constexpr static double suspension_present_threshold=1e-12;
-  constexpr static double saltation_present_threshold=1e-12;
+  constexpr static double deposition_present_threshold=1e-12;
+
+    RCP<crs_matrix_type> suspension_matrix;
+    RCP<MV> suspension_rhs, suspension_solution;
+    RCP<solver_type> suspension_solver;
+    RCP<prec_type> suspension_preconditioner;
+    RCP<problem_type> suspension_problem;
+
+    RCP<crs_matrix_type> deposition_matrix;
+    RCP<MV> deposition_rhs, deposition_solution;
+    RCP<solver_type> deposition_solver;
+    RCP<prec_type> deposition_preconditioner;
+    RCP<problem_type> deposition_problem;
+
+    RCP<const map_type > mesh_map, suspension_map;
+    RCP<graph_type> mesh_graph, suspension_graph;
+
 };
 
 /**

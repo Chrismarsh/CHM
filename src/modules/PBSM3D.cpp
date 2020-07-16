@@ -1,4 +1,4 @@
-; //
+//
 // Canadian Hydrological Model - The Canadian Hydrological Model (CHM) is a
 // novel modular unstructured mesh based approach for hydrological modelling
 // Copyright (C) 2018 Christopher Marsh
@@ -24,18 +24,6 @@
 #include "PBSM3D.hpp"
 
 REGISTER_MODULE_CPP(PBSM3D);
-
-// starting at row_start until row_end find offset for col
-inline unsigned int offset(const unsigned int& row_start, const unsigned int& row_end, const unsigned int* col_buffer,
-                           const unsigned int& col)
-{
-    for (unsigned int i = row_start; i < row_end; ++i)
-    {
-        if (col_buffer[i] == col)
-            return i;
-    }
-    return -1; // wrap it and index garbage
-}
 
 struct my_fill_topo_params
 {
@@ -275,17 +263,20 @@ void PBSM3D::init(mesh& domain)
 
     n_non_edge_tri = 0;
 
-    // use this to build the sparsity pattern for suspension matrix
+    // Size of the domain
     size_t ntri = domain->size_faces();
-    std::vector<std::map<unsigned int, vcl_scalar_type>> C(ntri * nLayer);
-
-    // sparsity pattern for drift
-    std::vector<std::map<unsigned int, vcl_scalar_type>> A(ntri);
+    size_t n_global_tri = domain->size_global_faces();
 
     LOG_DEBUG << "#face=" << ntri;
 
+    // **************************************************************
+    // **************************************************************
+    // TODO can this loop be combined with the trilinos GrsGraph creations?
+    // - it's easier to follow along with separated loops, but likely less efficient
+    // **************************************************************
+    // **************************************************************
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < ntri; i++)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
@@ -356,10 +347,8 @@ void PBSM3D::init(mesh& domain)
         // which faces have neighbours? Ie, are we an edge?
         for (int a = 0; a < 3; ++a)
         {
-            A[i][i] = -9999;
-
             auto neigh = face->neighbor(a);
-            if (neigh == nullptr || neigh->_is_ghost)
+            if (neigh == nullptr)
             {
                 d->face_neigh[a] = false;
                 d->is_edge = true;
@@ -367,8 +356,6 @@ void PBSM3D::init(mesh& domain)
             else
             {
                 d->face_neigh[a] = true;
-
-                A[i][neigh->cell_local_id] = -9999;
             }
         }
         if (!d->is_edge)
@@ -382,50 +369,248 @@ void PBSM3D::init(mesh& domain)
         d->csubl.resize(nLayer);
         (*face)["sum_drift"_s]=0;
 
-        // iterate over the vertical layers
-        for (int z = 0; z < nLayer; ++z)
-        {
-            size_t idx = ntri * z + face->cell_local_id;
-            for (int f = 0; f < 3; f++)
-            {
-                if (d->face_neigh[f])
-                {
-                    size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
-                    C[idx][idx] = -9999;
-                    C[idx][nidx] = -9999;
-                }
-                else
-                {
-                    C[idx][idx] = -9999;
-                }
-            }
-
-            if (z == 0)
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_local_id] = -9999;
-            }
-            else if (z == nLayer - 1)
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
-            }
-            else // middle layers
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_local_id] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
-            }
-        }
     }
 
-    viennacl::copy(C, vl_C); // copy C -> vl_C, sets up the sparsity pattern
-    viennacl::copy(A, vl_A); // copy A -> vl_A, sets up the sparsity pattern
+    // ****************************************************************************
+    // ****************************************************************************
+    // Set up Trilinos mat sparsity here
+    // ****************************************************************************
+    // ****************************************************************************
+    // Need to set the Teuchos::Comm for using Trilinos
+    comm = Tpetra::getDefaultComm();
 
-    b.resize(ntri * nLayer);
-    bb.resize(ntri);
-    nnz = vl_C.nnz();
-    nnz_drift = vl_A.nnz();
+    /*
+      Initialize the local-global index map for the mesh elements.
+    */
+    auto global_IDs = domain->get_global_IDs();
+    // explicitly make this int* to get proper type matching in the Tpetra::Map<>() constructor
+    int* data_IDs = global_IDs.data();
+    // Construct a Map that puts approximately the same number of
+    // equations on each processor.
+    int indexBase = 0;
+    mesh_map = rcp(new map_type(n_global_tri, data_IDs, (int)domain->size_faces(), indexBase, comm));
+
+    // loop over locally owned rows, figure out number of neighbors (owned or
+    // otherwise!), and what their global indices are.
+    std::vector<size_t> num_entries(ntri,1);
+    std::vector<int[4]> neighbor_global_idx(ntri);
+    #pragma omp parallel for
+    for (size_t i = 0; i < ntri; ++i) {
+      auto face = domain->face(i);
+      neighbor_global_idx[i][0] = face->cell_global_id;
+      for (size_t f = 0; f < 3; f++){
+	  auto neighbor = face->neighbor(f);
+	  if (neighbor != nullptr)  {
+	    neighbor_global_idx[i][num_entries[i]] = neighbor->cell_global_id;
+	    ++num_entries[i];
+	  }
+      }
+    }
+
+    /*
+      Set up the CrsGraph structure for creating the distributed CrsMatrix and
+      Vectors for the deposition system
+
+      Graph for deposition system (equivalent to the neighbour graph of mesh)
+      4 entries (max) per row: self and up to three neighbors
+      (fewer entries for boundary elements)
+
+      Preferred construction of CrsGraph uses a Teuchos::ArrayView<T> for num entries/row
+     */
+    Teuchos::ArrayView<size_t> num_entries_view(num_entries.data(),ntri);
+    mesh_graph = rcp (new graph_type (mesh_map, num_entries_view, Tpetra::StaticProfile));
+
+    // Set all of the desired columns in the graph
+    // due to insertGlobalIndices args
+    // DO NOT DO THIS THREAD PARALLEL
+    for (size_t i = 0; i < domain->size_faces(); ++i) {
+      auto face = domain->face(i);
+      mesh_graph->insertGlobalIndices(face->cell_global_id, num_entries_view[i], &(neighbor_global_idx.data()[i][0]));
+    }
+    mesh_graph->fillComplete();
+
+    // Create a Tpetra::Matrix using the Map, with a static allocation
+    // dictated by NumNz.  (We know exactly how many elements there will
+    // be in each row, so we use static profile for efficiency.)
+    deposition_matrix = rcp (new crs_matrix_type (mesh_graph));
+    deposition_matrix->fillComplete();
+    deposition_rhs = rcp(new MV(mesh_map, 1));
+    deposition_solution = rcp(new MV(mesh_map, deposition_rhs->getNumVectors()));
+
+    /*
+      Belos solver and Ifpack2 preconditioner setup - deposition system
+     */
+    // Create Belos iterative linear solver.
+    RCP<ParameterList> deposition_solverParams(new ParameterList()); // solve parameters go in here
+    deposition_solverParams->set( "Block Size", 1 );
+    deposition_solverParams->set( "Num Blocks", 30 );
+    deposition_solverParams->set( "Maximum Iterations", 1000 );
+    deposition_solverParams->set( "Convergence Tolerance", 1e-8 );
+    {
+        Belos::SolverFactory<scalar_type, MV, OP> belosFactory;
+        deposition_solver = belosFactory.create("GMRES", deposition_solverParams);
+    }
+    if (deposition_solver.is_null())
+    {
+      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D failed to create deposition_solver"));
+    }
+
+    deposition_preconditioner = Ifpack2::Factory::create<row_matrix_type>("ILUT", deposition_matrix);
+    if (deposition_preconditioner.is_null())
+    {
+      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D failed to create deposition_preconditioner"));
+    }
+    ParameterList deposition_precondOptions;
+    deposition_precondOptions.set("fact: drop tolerance", 1e-4);
+    deposition_precondOptions.set("fact: ilut level-of-fill", 3.0); // Note this is different from num_entries_per_row: https://docs.trilinos.org/dev/packages/ifpack2/doc/html/classIfpack2_1_1ILUT.html#aee2011b313e3070ee43b2cfc2d183634
+    deposition_preconditioner->setParameters(deposition_precondOptions);
+    deposition_preconditioner->initialize();
+
+    // Specify the deposition problem
+    deposition_problem = rcp (new problem_type (deposition_matrix, deposition_solution, deposition_rhs));
+    if (! deposition_preconditioner.is_null ()) {
+      deposition_problem->setRightPrec (deposition_preconditioner);
+    }
+    deposition_problem->setProblem ();
+    deposition_solver->setProblem (deposition_problem);
+
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+    // Create the suspension linear system
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    std::vector<int> suspension_global_IDs(ntri*nLayer);
+    // Create the global IDs for the suspension system
+    // Ordering:
+    // - mesh elements and then layers successively
+    auto suspension_ID_iterator = suspension_global_IDs.begin();
+    for (int i=0; i<nLayer; ++i) {
+      std::transform(global_IDs.begin(),global_IDs.end(),suspension_ID_iterator,
+		     [=](int id) -> int { return i*n_global_tri + id; } );
+      suspension_ID_iterator += ntri;
+    }
+
+    int* data_suspension_IDs = suspension_global_IDs.data();
+    suspension_map = rcp(new map_type(n_global_tri*nLayer, data_suspension_IDs, (int)(ntri*nLayer), indexBase, comm));
+
+    // loop over locally owned rows, figure out number of neighbors (owned or
+    // otherwise!), and what their global indices are.
+    // NOTE That for the constructor we use, num_entries must be templated on size_t
+    std::vector<size_t> num_suspension_entries(ntri*nLayer,1);
+    std::vector<int[6]> neighbor_suspension_global_idx(ntri*nLayer);
+    #pragma omp parallel for
+    for (size_t i = 0; i < ntri; ++i) {
+      auto face = domain->face(i);
+      int face_bottom_idx = face->cell_global_id;
+      int face_bottom_local_idx = face->cell_local_id;
+      // Lateral neighbors and self
+      for (int layer=0; layer<nLayer; ++layer ) {
+	int element_idx = n_global_tri*layer + face_bottom_idx;
+	int local_array_idx = ntri*layer + face_bottom_local_idx;
+	neighbor_suspension_global_idx[local_array_idx][0] = element_idx;
+	for (int f = 0; f < 3; f++){
+    	  auto neighbor = face->neighbor(f);
+    	  if (neighbor != nullptr)  {
+    	    int neigh_bottom_idx = neighbor->cell_global_id;
+	    int neigh_global_idx = n_global_tri*layer + neigh_bottom_idx;
+	    neighbor_suspension_global_idx[local_array_idx][num_suspension_entries[local_array_idx]] = neigh_global_idx;
+	    ++num_suspension_entries[local_array_idx];
+    	    }
+    	  }
+      }
+      // Neighbor below
+      for (int layer=1; layer<nLayer; ++layer ) {
+    	int element_idx = n_global_tri*layer + face_bottom_idx;
+	int local_array_idx = ntri*layer + face_bottom_local_idx;
+    	int below_idx = n_global_tri*(layer-1) + face_bottom_idx;
+    	neighbor_suspension_global_idx[local_array_idx][num_suspension_entries[local_array_idx]] = below_idx;
+    	++num_suspension_entries[local_array_idx];
+      }
+      // Neighbor above
+      for (int layer=0; layer<nLayer-1; ++layer ) {
+    	int element_idx = n_global_tri*layer + face_bottom_idx;
+	int local_array_idx = ntri*layer + face_bottom_local_idx;
+    	int above_idx = n_global_tri*(layer+1) + face_bottom_idx;
+    	neighbor_suspension_global_idx[local_array_idx][num_suspension_entries[local_array_idx]] = above_idx;
+    	++num_suspension_entries[local_array_idx];
+      }
+    }
+
+    /*
+      Set up the CrsGraph structure for creating the distributed CrsMatrix and
+      Vectors for the suspension system
+
+      Graph for suspension system
+      6 entries (max) per row: self, three neighbors, above and below
+      (fewer entries for boundary elements)
+
+      Preferred construction of CrsGraph uses a Teuchos::ArrayView<T> for num entries/row
+    */
+    Teuchos::ArrayView<size_t> num_suspension_entries_view(num_suspension_entries.data(),ntri*nLayer);
+    suspension_graph = rcp (new graph_type (suspension_map, num_suspension_entries_view, Tpetra::StaticProfile));
+
+    // Set all of the desired nonzero columns in the graph
+    // due to insertGlobalIndices args
+    // DO NOT DO THIS THREAD PARALLEL
+    for (size_t i = 0; i < ntri; ++i) {
+      auto face = domain->face(i);
+      int face_bottom_idx = face->cell_global_id;
+      int face_bottom_local_idx = face->cell_local_id;
+      for (int layer = 0; layer<nLayer; ++layer) {
+    	int element_idx = n_global_tri*layer + face_bottom_idx;
+    	int local_array_idx = ntri*layer + face_bottom_local_idx;
+	// std::cout << "insertGlobal : " << element_idx << " : " << num_suspension_entries[element_idx] << "\n";
+    	suspension_graph->insertGlobalIndices(element_idx, num_suspension_entries[local_array_idx], &(neighbor_suspension_global_idx.data()[local_array_idx][0]));
+      }
+    }
+    suspension_graph->fillComplete();
+
+    // Create a Tpetra::Matrix using the Map, with a static allocation
+    // dictated by NumNz.  (We know exactly how many elements there will
+    // be in each row, so we use static profile for efficiency.)
+    suspension_matrix = rcp (new crs_matrix_type (suspension_graph));
+    suspension_matrix->fillComplete();
+    suspension_rhs = rcp(new MV(suspension_map, 1));
+    suspension_solution = rcp(new MV(suspension_map, suspension_rhs->getNumVectors()));
+
+    /*
+      Belos solver and Ifpack2 preconditioner setup - suspension system
+     */
+    // Create Belos iterative linear solver.
+    RCP<ParameterList> suspension_solverParams(new ParameterList()); // solve parameters go in here
+    suspension_solverParams->set( "Block Size", 1 );
+    suspension_solverParams->set( "Num Blocks", 30 );
+    suspension_solverParams->set( "Maximum Iterations", 1000 );
+    suspension_solverParams->set( "Convergence Tolerance", 1e-8 );
+    {
+        Belos::SolverFactory<scalar_type, MV, OP> belosFactory;
+        suspension_solver = belosFactory.create("GMRES", suspension_solverParams);
+    }
+    if (suspension_solver.is_null())
+    {
+      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D failed to create suspension_solver"));
+    }
+
+    suspension_preconditioner = Ifpack2::Factory::create<row_matrix_type>("ILUT", suspension_matrix);
+    if (suspension_preconditioner.is_null())
+    {
+      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D failed to create suspension_preconditioner"));
+    }
+    ParameterList suspension_precondOptions;
+    suspension_precondOptions.set("fact: drop tolerance", 1e-4);
+    suspension_precondOptions.set("fact: ilut level-of-fill", 3.0); // Note this is different from num_entries_per_row: https://docs.trilinos.org/dev/packages/ifpack2/doc/html/classIfpack2_1_1ILUT.html#aee2011b313e3070ee43b2cfc2d183634
+    suspension_preconditioner->setParameters(suspension_precondOptions);
+    suspension_preconditioner->initialize();
+
+    // Specify the suspension problem
+    suspension_problem = rcp (new problem_type (suspension_matrix, suspension_solution, suspension_rhs));
+    if (! suspension_preconditioner.is_null ()) {
+      suspension_problem->setRightPrec (suspension_preconditioner);
+    }
+    suspension_problem->setProblem ();
+    suspension_solver->setProblem (suspension_problem);
+
 }
 
 void PBSM3D::run(mesh& domain)
@@ -435,42 +620,17 @@ void PBSM3D::run(mesh& domain)
 
     // needed for linear system offsets
     size_t ntri = domain->size_faces();
-
-    // vcl_scalar_type is defined in the main CMakeLists.txt file.
-    // Some GPUs do not have double precision so the run will fail if the wrong
-    // precision is used
-
-#ifdef VIENNACL_WITH_OPENCL
-    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
-    vl_C.switch_memory_context(host_ctx);
-    vl_A.switch_memory_context(host_ctx);
-
-    b.switch_memory_context(host_ctx);
-    bb.switch_memory_context(host_ctx);
-#endif
-
-    // zero CSR vector in vl_C
-    viennacl::vector_base<vcl_scalar_type> init_temporary(
-        vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz + 1), 0, 1);
-    // write:
-    init_temporary = viennacl::zero_vector<vcl_scalar_type>(
-        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz + 1), viennacl::traits::context(vl_C));
-
-    // zero-fill RHS
-    b.clear();
-
-    // get row buffer
-    unsigned int const* row_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
-    unsigned int const* col_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
-    vcl_scalar_type* elements =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
+    size_t n_global_tri = domain->size_global_faces();
 
 
+    suspension_matrix->resumeFill();
+    // Zero out suspension system
+    suspension_matrix->setAllToScalar(0);
+    suspension_rhs->putScalar(0.0);
     // Set this flag if the RHS of the suspension system is ever nonzero
     // Thread-safe because it is only ever switched in one direction
-    suspension_present=false;
+    suspension_present = false;
+    deposition_present = false;
 
 #pragma omp parallel
     {
@@ -722,7 +882,6 @@ void PBSM3D::run(mesh& domain)
             // exposed vegetation w/ the z0 estimate
             double lambda = 0;
 
-
             d->saltation = false; // default case
 
             // threshold friction velocity. Compute here as it's used below as well
@@ -946,9 +1105,9 @@ void PBSM3D::run(mesh& domain)
                 double udotm[3] = {0, 0, 0};
                 double E[3] = {0, 0, 0};
 
-                //compute a divergence mass flux of saltation assuming our neighbours are 0 flux
-                //however, we can't compute it w/ an upwind scheme like we do for the true solution later
-                //as we don't know the neighbours values (might not have been computed yet). So this is just an
+                // compute a divergence mass flux of saltation assuming our neighbours are 0 flux
+                // however, we can't compute it w/ an upwind scheme like we do for the true solution later
+                // as we don't know the neighbours values (might not have been computed yet). So this is just an
                 for (int j = 0; j < 3; ++j)
                 {
                     udotm[j] = arma::dot(uvw, d->m[j]);
@@ -956,7 +1115,7 @@ void PBSM3D::run(mesh& domain)
                     mass += -E[j] * Qsalt * udotm[j];
                 }
 
-                mass = mass/V * global_param->dt();
+                mass = mass / V * global_param->dt();
 
                 if (debug_output)
                 {
@@ -964,15 +1123,15 @@ void PBSM3D::run(mesh& domain)
                     (*face)["mass_qsalt"_s] = mass;
                 }
 
-                if( mass < 0 && std::fabs(mass) > swe)
+                if (mass < 0 && std::fabs(mass) > swe)
                 {
-                  c_salt = 0;
-                  //-swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
-                  // kg/(m*s)
-                  Qsalt = c_salt * uhs * hs; // integrate over the depth of the saltation layer, kg/(m*s)
+                    c_salt = 0;
+                    //-swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
+                    // kg/(m*s)
+                    Qsalt = c_salt * uhs * hs; // integrate over the depth of the saltation layer, kg/(m*s)
 
-                  if (debug_output)
-                      (*face)["csalt_reset"_s] = c_salt;
+                    if (debug_output)
+                        (*face)["csalt_reset"_s] = c_salt;
                 }
             }
 
@@ -1201,7 +1360,7 @@ void PBSM3D::run(mesh& domain)
                 {
                     for (int a = 0; a < 3; ++a)
                     {
-                        auto neigh = face->neighbor(a);
+                        // auto neigh = face->neighbor(a);
                         alpha[a] = d->A[a];
 
                         // do just very low horz diffusion for numerics
@@ -1274,17 +1433,14 @@ void PBSM3D::run(mesh& domain)
                     udotm[j] = arma::dot(uvw, m[j]);
                 }
                 // lateral
-                size_t idx = ntri * z + face->cell_local_id;
+                int idx = n_global_tri * z + face->cell_global_id;
 
-                //[idx][idx]
-                size_t idx_idx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, idx);
-                b[idx] = 0;
                 double V = face->get_area() * v_edge_height;
-
                 // the sink term is added on for each edge check, which isn't right
                 // and ends up 5x counting it so / by 5 for V so it's
                 // not 5x counted.
                 V /= 5.0;
+
                 if (!do_sublimation)
                 {
                     csubl = 0.0;
@@ -1300,41 +1456,44 @@ void PBSM3D::run(mesh& domain)
 
                         if (d->face_neigh[f])
                         {
-                            size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
+                            int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
 
-                            elements[idx_idx_off] += V * csubl - d->A[f] * udotm[f] - alpha[f];
-
-                            size_t idx_nidx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, nidx);
-
-                            elements[idx_nidx_off] += alpha[f];
+			    // Diagonal value
+			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+								  tuple(V * csubl - d->A[f] * udotm[f] - alpha[f]));
+			    // Off diagonal value
+                            suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[f]));
                         }
                         else // missing neighbour case
                         {
                             // no mass in
-//                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+                            //                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
                             // allow mass into the domain from ghost cell
-                            elements[idx_idx_off] += -0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V;
+			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+								  tuple(-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
                         }
                     }
                     else
                     {
                         if (d->face_neigh[f])
                         {
-                            size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
-
-                            size_t idx_nidx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, nidx);
-
-                            elements[idx_idx_off] += V * csubl - alpha[f];
-                            elements[idx_nidx_off] += -d->A[f] * udotm[f] + alpha[f];
+                            int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
+			    // Diagonal entry
+			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+								   tuple(V * csubl - alpha[f]));
+			    // Off diagonal entry
+			    suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx),
+								   tuple(-d->A[f] * udotm[f] + alpha[f]));
                         }
                         else
                         {
                             // No mass in
-//                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
+                            //                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
 
                             // allow mass in
-                            elements[idx_idx_off] += -0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V;
+			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+								   tuple(-0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V));
                         }
                     }
                 }
@@ -1349,23 +1508,32 @@ void PBSM3D::run(mesh& domain)
                     //              elements[idx_idx_off] += V * csubl - alpha4;
 
                     // includes advection term
-                    elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha4;
-
-                    b[idx] += -alpha4 * c_salt;
+		    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+							   tuple(V * csubl - d->A[4] * udotm[4] - alpha4));
+		    // RHS
+		    double val = -alpha4 * c_salt;
+		    suspension_rhs->sumIntoGlobalValue(idx,0,val);
 
                     // ntri * (z + 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z + 1) + face->cell_local_id);
+		    int nidx = n_global_tri*(z+1) + face->cell_global_id;
 
                     if (udotm[3] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        elements[idx_nidx_off] += alpha[3];
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+							     tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      // Off diagonal
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[3]));
+
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        elements[idx_nidx_off] += -d->A[3] * udotm[3] + alpha[3];
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+							     tuple(V * csubl - alpha[3]));
+		      // Off diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx),
+							     tuple(-d->A[3] * udotm[3] + alpha[3]));
                     }
                 }
                 else if (z == nLayer - 1) // top z layer
@@ -1378,64 +1546,78 @@ void PBSM3D::run(mesh& domain)
 
                     if (udotm[3] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        b[idx] += -alpha[3] * cprecip;
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+							     tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      // RHS
+		      double val = -alpha[3] * cprecip;
+		      suspension_rhs->sumIntoGlobalValue(idx,0,val);
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        b[idx] += d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+							     tuple(V * csubl - alpha[3]));
+		      // RHS
+		      double val = d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
+		      suspension_rhs->sumIntoGlobalValue(idx,0,val);
                     }
 
                     // ntri * (z - 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z - 1) + face->cell_local_id);
+		    int nidx = n_global_tri*(z-1)+face->cell_global_id;
                     if (udotm[4] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha[4];
-                        elements[idx_nidx_off] += alpha[4];
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
+							     tuple(V * csubl - d->A[4] * udotm[4] - alpha[4]));
+
+		      // Off diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[4]));
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[4];
-                        elements[idx_nidx_off] += -d->A[4] * udotm[4] + alpha[4];
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[4]));
+		      // Off diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[4] * udotm[4] + alpha[4]));
                     }
                 }
                 else // middle layers
                 {
-                    // ntri * (z + 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z + 1) + face->cell_local_id);
+		  // ntri * (z + 1) + face->cell_local_id (looking up)
+		  int nidx = n_global_tri*(z+1) + face->cell_global_id;
+		  if (udotm[3] > 0)
+                    {
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      // Off diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[3]));
+                    }
+		  else
+                    {
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[3]));
+		      // Off diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[3] * udotm[3] + alpha[3]));
+                    }
 
-                    if (udotm[3] > 0)
+		  // ntri * (z + 1) + face->cell_local_id (looking down)
+		  nidx = n_global_tri*(z-1) + face->cell_global_id;
+		  if (udotm[4] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        elements[idx_nidx_off] += alpha[3];
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - d->A[4] * udotm[4] - alpha[4]));
+		      // Off diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[4]));
                     }
-                    else
+		  else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        elements[idx_nidx_off] += -d->A[3] * udotm[3] + alpha[3];
-                    }
-
-                    idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z - 1) + face->cell_local_id);
-                    if (udotm[4] > 0)
-                    {
-                        elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha[4];
-                        elements[idx_nidx_off] += alpha[4];
-                    }
-                    else
-                    {
-                        elements[idx_idx_off] += V * csubl - alpha[4];
-                        elements[idx_nidx_off] += -d->A[4] * udotm[4] + alpha[4];
+		      // Diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[4]));
+		      // Off diagonal entry
+		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[4] * udotm[4] + alpha[4]));
                     }
                 }
-
-		// Set flag if RHS component is non-zero
-		if ( abs(b[idx]) > suspension_present_threshold ) {
-		  suspension_present = true;
-		}
 
             } // end z iter
 
@@ -1443,67 +1625,85 @@ void PBSM3D::run(mesh& domain)
 
     } // end pragma omp parallel thread pool
 
+    // suspension_present = true;
+    suspension_matrix->fillComplete();
 
-    std::vector<vcl_scalar_type> x(ntri*nLayer,0.0);
+    ////////////////////////////////////////////////////////////////////////////
+    // Write mat/rhs
+    ////////////////////////////////////////////////////////////////////////////
+    // static int count=0;
 
-if (suspension_present) {
+    // std::string suspension_matrix_file="C_tri_";
+    // suspension_matrix_file += std::to_string(count);
+    // suspension_matrix_file += ".mm";
+    // std::string suspension_matrix_name="Suspension system matrix";
+    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeSparseFile( suspension_matrix_file, suspension_matrix, suspension_matrix_name, suspension_matrix_name );
 
-    // setup the compressed matrix on the compute device, if available
-#ifdef VIENNACL_WITH_OPENCL
-    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
-    vl_C.switch_memory_context(gpu_ctx);
-    b.switch_memory_context(gpu_ctx);
-#endif
+    // std::string suspension_rhs_file="Crhs_tri_";
+    // suspension_rhs_file += std::to_string(count);
+    // suspension_rhs_file += ".mm";
+    // std::string suspension_rhs_name="Suspension flux system rhs";
+    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( suspension_rhs_file, suspension_rhs, suspension_rhs_name, suspension_rhs_name );
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
 
-    // This solves the steady-state suspension layer concentration
+    // Check if we exceed the threshold for blowing snow
+    double tempStorage;
+    Teuchos::ArrayView<double> suspension_rhs_max(&tempStorage,1);
+    suspension_rhs->normInf(suspension_rhs_max);
+    if ( suspension_rhs_max[0] > suspension_present_threshold ) {
+      suspension_present = true;
+    }
 
-    // configuration of preconditioner:
-    viennacl::linalg::ilut_tag ilut_config(20,1e-4); // defaults: 20 entries/row, 1e-4 drop tol
-    viennacl::linalg::ilut_precond<viennacl::compressed_matrix<vcl_scalar_type>> ilut(
-        vl_C, ilut_config);
+    if (suspension_present) {
 
-    // Set up convergence tolerance to have an average value for each unknown
-    double suspension_gmres_tol = 1e-8;
-    // Set max iterations and maximum Krylov dimension before restart
-    size_t suspension_gmres_max_iterations = 1000;
-    size_t suspension_gmres_krylov_dimension = 30;
+    // re-zero the suspension solution vector
+    suspension_solution->putScalar(0.0);
 
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::linalg::gmres_tag suspension_custom_gmres(suspension_gmres_tol, suspension_gmres_max_iterations,
-                                                        suspension_gmres_krylov_dimension);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, suspension_custom_gmres, ilut);
-    viennacl::copy(vl_x, x);
+    // suspension_preconditioner->initialize();
+    suspension_preconditioner->compute();
 
-    // Log final state of the linear solve
-    LOG_DEBUG << "  Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
-    LOG_DEBUG << "  Suspension_GMRES final residual : " << suspension_custom_gmres.error();
+    // Solve the linear system.
+    suspension_solver->reset(Belos::Problem);
+    {
+        Belos::ReturnType solveResult = suspension_solver->solve();
+        if (solveResult != Belos::Converged)
+        {
+            if (comm->getRank() == 0)
+            {
+	      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D suspension_solver failed to converge"));
+            }
+            // return EXIT_FAILURE;
+        }
+    }
 
-    /*
-      Dump matrix to ASCII file
-    */
-    //    ofstream ofile;
-    //    ofile.open("C.out");
-    //    ofile << std::setprecision(12) << vl_C;
-    //    ofile.close();
-    //
-    //    ofile.open("b.out");
-    //    ofile << std::setprecision(12) << b;
-    //    ofile.close();
-    //
-    //    ofile.open("x.out");
-    //    ofile << std::setprecision(12) << vl_x;
-    //    ofile.close();
+    auto numIters = suspension_solver->getNumIters();
+    auto residual = suspension_solver->achievedTol();
+    LOG_DEBUG << "  suspension iterations: " << numIters << " residual: " << residual;
 
-    // Now we have the concentration, compute the suspension flux
- } else {
-    LOG_DEBUG << "  No suspension present.";
- }
+    ////////////////////////////////////////////////////////////////////////////
+    // Write solution
+    ////////////////////////////////////////////////////////////////////////////
+    // std::string suspension_solution_file="Csol_tri_";
+    // suspension_solution_file += std::to_string(count);
+    // suspension_solution_file += ".mm";
+    // std::string suspension_solution_name="Suspension flux system solution";
+    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( suspension_solution_file, suspension_solution, suspension_solution_name, suspension_solution_name );
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
 
+    } // if suspension_present fails
+    else {
+      LOG_DEBUG << "  No suspended snow.";
+    }
 
+    // Note we still have to do the following if there is no suspended snow.
+    // - In that case suspension_solution should be the 0 vector it was initialized to for this iteration
+
+    auto suspension_sol_array = suspension_solution->get1dView();
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < ntri; i++)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
@@ -1512,7 +1712,7 @@ if (suspension_present) {
         double Qsubl = 0;
         for (int z = 0; z < nLayer; ++z)
         {
-            double c = x[ntri * z + face->cell_local_id];
+            double c = suspension_sol_array[ntri * z + face->cell_local_id];
             c = c < 0 || is_nan(c) ? 0 : c; // harden against some numerical issues that
                                             // occasionally come up for unknown reasons.
 
@@ -1540,28 +1740,23 @@ if (suspension_present) {
 
     }
 
-    // Setup the matrix to be used to the solution of the gradient of the
-    // suspension flux this will give us our deposition flux
-    // get row buffer
-    unsigned int const* A_row_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
-    unsigned int const* A_col_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
-    vcl_scalar_type* A_elements =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
+    /*
+      Communicate necessary (neighbour) vars for deposition linear system setup
+     */
+    // LOG_DEBUG << "Qsusp"_s << "     " << "Qsalt"_s;
+    domain->ghost_neighbours_communicate_variable("Qsusp"_s);
+    domain->ghost_neighbours_communicate_variable("Qsalt"_s);
 
-    // zero CSR vector in vl_A
-    viennacl::vector_base<vcl_scalar_type> init_temporaryA(
-        vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), 0, 1);
-    // write:
-    init_temporaryA = viennacl::zero_vector<vcl_scalar_type>(
-        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), viennacl::traits::context(vl_A));
+    /*
+      Setup and solve the linear system for deposition
+     */
 
-//     zero fill RHS for drift
-    bb.clear();
+    // Zero the rhs and matrix
+    deposition_rhs->putScalar(0.0);
 
-    saltation_present=false;
+    deposition_matrix->resumeFill();
 
+    deposition_matrix->setAllToScalar(0);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -1579,16 +1774,19 @@ if (suspension_present) {
         uvw(1) = v.y(); // U_y
         uvw(2) = 0;
 
-        double udotm[3]= {0, 0, 0}; // Qt is in direction u_hat
-        double E[3] = {0, 0, 0}; // edge lengths b/c 2d now
+        double udotm[3] = {0, 0, 0};    // Qt is in direction u_hat
+        double E[3] = {0, 0, 0};        // edge lengths b/c 2d now
         double dx[3] = {2.0, 2.0, 2.0}; // cell centre distances
 
         double V = face->get_area(); // V for consistency but actually an area
 
-        size_t i_i_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, i);
-        A_elements[i_i_off] = V;
+	int local_row, global_row, local_col, global_col;
+	global_row = static_cast<int>(face->cell_global_id);
 
-        //iterate over edges
+	// Diagonal element
+	deposition_matrix->replaceGlobalValues(global_row, tuple(global_row), tuple(V));
+
+        // iterate over edges
         for (int j = 0; j < 3; j++)
         {
             // just unit vectors as qsusp/qsalt flux has magnitude
@@ -1598,100 +1796,127 @@ if (suspension_present) {
             double Qtj = 0;
             double Qsj = 0;
 
-            //Pointing same way, we advect downwind
-            if(udotm[j] > 0)
+            // Pointing same way, we advect downwind
+            if (udotm[j] > 0)
             {
-                    Qtj = (*face)["Qsusp"_s];
-                    Qsj = (*face)["Qsalt"_s];
+                Qtj = (*face)["Qsusp"_s];
+                Qsj = (*face)["Qsalt"_s];
             }
             else // pointing into the wind, use upwind as donor
             {
                 if (d->face_neigh[j])
                 {
                     auto neigh = face->neighbor(j);
+
+		    // if (neigh->_is_ghost) {
+		    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsusp: " << (*neigh)["Qsusp"_s];
+		    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsalt: " << (*neigh)["Qsalt"_s];
+		    // }
+
                     Qtj = (*neigh)["Qsusp"_s];
                     Qsj = (*neigh)["Qsalt"_s];
                 }
                 else
                 {
-                    //neighbour doesn't exist, treat as duplicate ghost node
+                    // neighbour doesn't exist, i.e., we're on an actual boundary, treat as duplicate node outside of domain
                     Qtj = (*face)["Qsusp"_s];
                     Qsj = (*face)["Qsalt"_s];
                 }
             }
 
-            //we now have an edge Qtj & Qsj estimate
-            //build up our neighbours
+            // we now have an edge Qtj & Qsj estimate
+            // build up our neighbours
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
+		global_col = static_cast<int>(neigh->cell_global_id);
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                A_elements[i_i_off] += eps*E[j]/dx[j];
+		// diagonal entry
+		deposition_matrix->sumIntoGlobalValues(global_row, tuple(global_row), tuple(eps * E[j] / dx[j]));
 
-                size_t i_ni_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, neigh->cell_local_id);
-                A_elements[i_ni_off] += -eps*E[j]/dx[j];
-
+		// off diagonal entry
+		deposition_matrix->sumIntoGlobalValues(global_row, tuple(global_col), tuple(-eps * E[j] / dx[j]));
             }
-            bb[i] +=  -E[j]*(Qtj+Qsj)*udotm[j];
+
+	    // RHS
+	    double val = -E[j] * (Qtj + Qsj) * udotm[j];
+	    deposition_rhs->sumIntoGlobalValue(global_row,0,val);
         }
-	if (abs(bb[i]) > saltation_present_threshold) {
-	  saltation_present=true;
-	}
-    } // end face itr
+    } // end face iteration
 
-    std::vector<vcl_scalar_type> dSdt(ntri,0.0);
+    deposition_matrix->fillComplete();
 
-    if (saltation_present) {
-
-// setup the compressed matrix on the compute device, if available
-#ifdef VIENNACL_WITH_OPENCL
-    //    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);  <--- already
-    //    defined above
-    vl_A.switch_memory_context(gpu_ctx);
-    bb.switch_memory_context(gpu_ctx);
-#endif
-
-//     Solve the deposition flux --> how much drifting there is.
-
-//     configuration of preconditioner:
-    viennacl::linalg::chow_patel_tag deposition_flux_chow_patel_config;
-    deposition_flux_chow_patel_config.sweeps(3);       //  nonlinear sweeps
-    deposition_flux_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
-    viennacl::linalg::chow_patel_icc_precond<viennacl::compressed_matrix<vcl_scalar_type>>
-        deposition_flux_chow_patel_icc(vl_A, deposition_flux_chow_patel_config);
-
-    // Set up convergence tolerance to have an average value for each unknown
-    double deposition_flux_cg_tol = 1e-8;
-    // Set max iterations and maximum Krylov dimension before restart
-    size_t deposition_flux_cg_max_iterations = 500;
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::linalg::cg_tag deposition_flux_custom_cg(deposition_flux_cg_tol, deposition_flux_cg_max_iterations);
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt =
-        viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg, deposition_flux_chow_patel_icc);
-    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A,
-    // bb, deposition_flux_custom_cg);
-    viennacl::copy(vl_dSdt, dSdt);
-
-    // Log final state of the linear solve
-    LOG_DEBUG << "  deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
-    LOG_DEBUG << "  deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
-
-    } // if saltation_present
-    else {
-      LOG_DEBUG << "  No saltation present. ";
+    // Check if we exceed the threshold for blowing snow
+    Teuchos::ArrayView<double> deposition_rhs_max(&tempStorage,1);
+    deposition_rhs->normInf(deposition_rhs_max);
+    if ( deposition_rhs_max[0] > deposition_present_threshold ) {
+      deposition_present = true;
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Printing out the mat/rhs
+    ////////////////////////////////////////////////////////////////////////////
+    // std::string deposition_matrix_file="A_tri_";
+    // deposition_matrix_file += std::to_string(count);
+    // deposition_matrix_file += ".mm";
+    // std::string deposition_matrix_name="Deposition system matrix";
+    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeSparseFile( deposition_matrix_file, deposition_matrix, deposition_matrix_name, deposition_matrix_name );
+
+    // std::string deposition_rhs_file="Arhs_tri_";
+    // deposition_rhs_file += std::to_string(count);
+    // deposition_rhs_file += ".mm";
+    // std::string deposition_rhs_name="Deposition flux system rhs";
+    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( deposition_rhs_file, deposition_rhs, deposition_rhs_name, deposition_rhs_name );
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    if (deposition_present) {
+
+    // re-zero the deposition solution vector
+    deposition_solution->putScalar(0.0);
+
+    // deposition_preconditioner->initialize();
+    deposition_preconditioner->compute();
+
+    // Solve the linear system.
+    deposition_solver->reset(Belos::Problem);
+    {
+        Belos::ReturnType solveResult = deposition_solver->solve();
+        if (solveResult != Belos::Converged)
+        {
+            if (comm->getRank() == 0)
+            {
+	      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D deposition_solver failed to converge"));
+            }
+            // return EXIT_FAILURE;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Printing out the solution
+    ////////////////////////////////////////////////////////////////////////////
+    // std::string deposition_solution_file="Asol_tri_";
+    // deposition_solution_file += std::to_string(count);
+    // deposition_solution_file += ".mm";
+    // std::string deposition_solution_name="Deposition flux system solution";
+    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( deposition_solution_file, deposition_solution, deposition_solution_name, deposition_solution_name );
+
+    // count++;
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    auto numIters = deposition_solver->getNumIters();
+    auto residual = deposition_solver->achievedTol();
+    LOG_DEBUG << "  deposition iterations: " << numIters << " residual: " << residual;
+
+    auto deposition_sol_array = deposition_solution->get1dView();
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
+        double qdep = is_nan(deposition_sol_array[i]) ? 0 : deposition_sol_array[i];
 
         double mass = 0;
 
@@ -1699,16 +1924,24 @@ if (suspension_present) {
         mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
 
         // could we have eroded more mass than what exists? cap it
-        double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
-        swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
+        // double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
+        // swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
         // updated if we override the module order
-//        if( mass < 0 && std::fabs(mass) > swe )
-//        {
-//            mass = -swe;
-//        }
+        //        if( mass < 0 && std::fabs(mass) > swe )
+        //        {
+        //            mass = -swe;
+        //        }
         (*face)["drift_mass"_s] = mass;
         (*face)["sum_drift"_s] += mass;
     }
+
+    } // if deposition_present fails
+    else {
+      LOG_DEBUG << "  No deposited snow.";
+    }
+
+
 }
 
-PBSM3D::~PBSM3D() {}
+PBSM3D::~PBSM3D() {
+}
