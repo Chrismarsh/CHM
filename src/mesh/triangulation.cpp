@@ -101,6 +101,10 @@ size_t triangulation::size_faces()
 {
     return _num_faces;
 }
+size_t triangulation::size_global_faces()
+{
+    return _num_global_faces;
+}
 
 size_t triangulation::size_vertex()
 {
@@ -496,12 +500,13 @@ void triangulation::from_json(pt::ptree &mesh)
     partition_mesh();
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
-    size_t total_num_faces = _faces.size();
     determine_local_boundary_faces();
     determine_process_ghost_faces_nearest_neighbours();
 
+    setup_nearest_neighbour_communication();
+
     // should make this parallel
-    for(size_t ii=0; ii < total_num_faces; ++ii)
+    for(size_t ii=0; ii < _num_global_faces; ++ii)
     {
         auto face = _faces.at(ii);
         Point_2 pt2(face->center().x(),face->center().y());
@@ -608,57 +613,62 @@ void triangulation::partition_mesh()
   // 2. Determine (processor) locally owned indices of faces
   // 3. Set locally owned _is_ghost=false
 
-
-
-  size_t total_num_faces = _faces.size();
+  _num_global_faces = _faces.size();
 
 #ifdef USE_MPI
 
   LOG_DEBUG << "Partitioning mesh";
 
+  int my_rank = _comm_world.rank();
+
   // Set up so that all processors know how 'big' all other processors are
-  std::vector<int> num_faces_in_partition(_comm_world.size(),
-  					  total_num_faces/_comm_world.size());
-  for (unsigned int i=0;i<total_num_faces%_comm_world.size();++i) {
-    num_faces_in_partition[i]++;
+  _num_faces_in_partition.resize(_comm_world.size(),
+				 _num_global_faces/_comm_world.size());
+  for (unsigned int i=0;i<_num_global_faces%_comm_world.size();++i) {
+    _num_faces_in_partition[i]++;
   }
 
   // each processor only knows its own start and end indices
   size_t face_start_idx = 0;
-  size_t face_end_idx = num_faces_in_partition[0]-1;
+  size_t face_end_idx = _num_faces_in_partition[0]-1;
   for (int i=1;i<=_comm_world.rank();++i) {
-    face_start_idx += num_faces_in_partition[i-1];
-    face_end_idx += num_faces_in_partition[i];
+    face_start_idx += _num_faces_in_partition[i-1];
+    face_end_idx += _num_faces_in_partition[i];
   }
 
 
   // Set size of vector containing locally owned faces
-  _local_faces.resize(num_faces_in_partition[_comm_world.rank()]);
+  _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
 
-#pragma omp parallel for
-  for(int local_ind=0;local_ind<_local_faces.size();++local_ind)
+  _global_IDs.resize(_local_faces.size());
+  // Loop can't be parallel due to modifying map
+  for(size_t local_ind=0;local_ind<_local_faces.size();++local_ind)
   {
+             _global_IDs[local_ind] = face_start_idx + local_ind;
+	     _global_to_locally_owned_index_map[_global_IDs[local_ind]] = local_ind;
 
-	     size_t global_ind = face_start_idx + local_ind;
-	     _faces.at(global_ind)->_is_ghost = false;
-	     _faces.at(global_ind)->cell_local_id = local_ind;
-	     _local_faces[local_ind] = _faces.at(global_ind);
+	     _faces.at(_global_IDs[local_ind])->_is_ghost = false;
+	     _faces.at(_global_IDs[local_ind])->owner = my_rank;
+	     _faces.at(_global_IDs[local_ind])->cell_local_id = local_ind;
+	     _local_faces[local_ind] = _faces.at(_global_IDs[local_ind]);
 
   }
 
 
-  LOG_DEBUG << "MPI Process " << _comm_world.rank() << ": start " << face_start_idx << ", end " << face_end_idx << ", number " << _local_faces.size();
+  LOG_DEBUG << "MPI Process " << my_rank << ": start " << face_start_idx << ", end " << face_end_idx << ", number " << _local_faces.size();
 
 
 #else // do not USE_MPI
 
+  _global_IDs.resize(_num_global_faces);
 #pragma omp parallel for
-  for(size_t i=0;i<total_num_faces;++i)
+  for(size_t i=0;i<_num_global_faces;++i)
   {
+    _global_IDs[i] = i;
     _faces.at(i)->_is_ghost = false;
     _faces.at(i)->cell_local_id = i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
   }
-  LOG_DEBUG << "Face numbering : start 0, end " << (total_num_faces-1) << ", number " << _local_faces.size();
+  LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces-1) << ", number " << _local_faces.size();
 
 #endif // USE_MPI
 
@@ -721,6 +731,7 @@ void triangulation::determine_local_boundary_faces()
 		   th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
 		 }
       }
+
     // Join the vectors via a single thread in t operations
     //  NOTE future optimizations:
     //   - reserve space for insertions into _boundary_faces
@@ -736,6 +747,11 @@ void triangulation::determine_local_boundary_faces()
 
   // Some log debug output to see how many boundary faces on each
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
+
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " _faces.size(): " << _faces.size() << " _local_faces.size(): " << _local_faces.size();
+
+  // _comm_world.barrier();
+  // exit(0);
 
 #endif
 }
@@ -772,12 +788,257 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
   std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_nearest_neighbours),
 					std::end(ghosted_boundary_nearest_neighbours));
   // Convert the set to a vector
-  _ghost_neighbours.insert(std::end(_ghost_faces),
+  _ghost_neighbours.insert(std::end(_ghost_neighbours),
 			   std::begin(tmp_set),std::end(tmp_set));
+  // Sort the ghost neighbours
+  // NOTE:
+  // - sorting this vector by cell_global_id effectively partitions the ghost neighbours to be contiguous in communication partners
+  std::sort(_ghost_neighbours.begin(),_ghost_neighbours.end(),
+	    [&](const auto& a, const auto& b)
+	    {
+	      return a->cell_global_id < b->cell_global_id;
+	    });
+
 #ifdef USE_MPI
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbours.size() << " ghosted nearest neighbours.";
 #endif
+
+  // Determine the owners of the ghost faces (for communication setup)
+  _ghost_neighbour_owners.resize(_ghost_neighbours.size());
+  int start_index=0;
+  int prev_owner;
+  int num_partners=0;
+  // Construct ghost region ownership info
+  for(size_t i=0; i<_ghost_neighbours.size(); ++i)
+  {
+    // index type needs to match type of elements of _num_faces_in_partition
+    int global_ind = static_cast<int>(_ghost_neighbours[i]->cell_global_id);
+    _ghost_neighbour_owners[i] = determine_owner_of_global_index(global_ind,
+								 _num_faces_in_partition);
+    // on first it, no value of prev_owner exists
+    if(i==0) prev_owner = _ghost_neighbour_owners[i];
+    // if owner different from last iteration, store prev segment's ownership info
+    if (prev_owner != _ghost_neighbour_owners[i])
+    {
+      num_partners++;
+      _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index);
+      start_index=i;
+    }
+
+    if (i ==_ghost_neighbours.size()-1) {
+      _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index+1);
+    }
+
+    // prep prev_owner for next iteration
+    prev_owner=_ghost_neighbour_owners[i];
+  }
+
+  for(size_t i=0; i<_ghost_neighbours.size(); ++i)
+  {
+    _global_index_to_local_ghost_map[_ghost_neighbours[i]->cell_global_id] = static_cast<int>(i);
+  }
+
+#ifdef USE_MPI
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _comm_partner_ownership.size() << " communication partners:";
+  for (auto it : _comm_partner_ownership)
+  {
+    LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << it.first << " owns local ghost indices " << it.second.first << " to " << it.second.first+it.second.second-1;
+  }
+  // _comm_world.barrier();
+  // exit(0);
+#endif
+
 }
+
+// Generate unique tags for send/recv
+// - tags will be unique for up to 9999 MPI processes
+int generate_unique_send_tag(int my_rank, int partner_rank){
+  return 100000*my_rank + 10000*partner_rank;
+}
+int generate_unique_recv_tag(int my_rank, int partner_rank){
+  return 10000*my_rank + 100000*partner_rank;
+}
+
+void triangulation::setup_nearest_neighbour_communication()
+{
+  /*
+    Each process knows what global IDs it needs, and which other process owns them
+    - need to let those other processes know which indices to send to us
+   */
+
+  std::vector<boost::mpi::request> reqs;
+
+  // Send the list of needed global indices to the required processes
+  for( auto it : _comm_partner_ownership ) {
+
+    auto partner_id = it.first;
+    // LOG_DEBUG << "MPI Process " << _comm_world.rank() << " partner_id: " << partner_id;
+    auto start_idx = it.second.first;
+    auto length = it.second.second;
+
+    // Iterate over global indices
+    std::vector<int> id_indices(_ghost_neighbours.size());
+    std::transform(_ghost_neighbours.begin(),_ghost_neighbours.end(),id_indices.begin(),
+		   [](mesh_elem e){ return e->cell_global_id; });
+    // Copy subvector of indices to communicate
+    local_indices_to_recv[partner_id].resize(length);
+    std::copy(id_indices.begin()+start_idx,
+    	      id_indices.begin()+start_idx+length,
+    	      local_indices_to_recv[partner_id].begin());
+
+    // for (auto it : id_indices)
+    //   {
+    // 	LOG_DEBUG << "  # Process " << _comm_world.rank() << " id_index " << it;
+    //   }
+
+
+
+    // Copy relevant portion of ghost neighbours to the "local_faces_to_recv"
+    local_faces_to_recv[partner_id].resize(length);
+    std::copy(_ghost_neighbours.begin()+start_idx,
+	      _ghost_neighbours.begin()+start_idx+length,
+	      local_faces_to_recv[partner_id].begin());
+    // for (auto it : sub_indices)
+    //   {
+    // 	LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << partner_id << " global_id " << it;
+    //   }
+
+    // Send indices
+    int send_tag = generate_unique_send_tag(_comm_world.rank(), partner_id);
+    reqs.push_back(_comm_world.isend(partner_id, send_tag, local_indices_to_recv[partner_id]));
+
+  }
+
+  // Recv the list of global indices to send to the required processes
+  for( auto it : _comm_partner_ownership ) {
+
+    auto partner_id = it.first;
+    // LOG_DEBUG << "MPI Process " << _comm_world.rank() << " partner_id: " << partner_id;
+
+    // Recv indices
+    // Note: opposite constants from send tags
+    int recv_tag = generate_unique_recv_tag(_comm_world.rank(), partner_id);
+
+    // Receive directly into the global_indices_to_send map
+    reqs.push_back(_comm_world.irecv(partner_id, recv_tag, global_indices_to_send[partner_id] ));
+
+  }
+
+  // Wait for all comms to finish before proceeding
+  boost::mpi::wait_all(reqs.begin(), reqs.end());
+
+  for (auto it : global_indices_to_send) {
+    auto partner_id = it.first;
+    auto indices = it.second;
+    // Get local indices that need to be sent
+    local_indices_to_send[partner_id].resize(indices.size());
+    std::transform(indices.begin(), indices.end(),
+		   local_indices_to_send[partner_id].begin(),
+		   [this](int ind){ return _global_to_locally_owned_index_map[ind]; });
+    // Get local faces that need to be sent
+    local_faces_to_send[partner_id].resize(indices.size());
+    std::transform(local_indices_to_send[partner_id].begin(), local_indices_to_send[partner_id].end(),
+		   local_faces_to_send[partner_id].begin(),
+		   [this](int ind) {return _local_faces.at(ind); });
+  }
+
+  // for (auto it : global_indices_to_send)
+  //   {
+  //     auto partner = it.first;
+  //     for (auto it_glob : it.second) {
+  //   	LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << partner << " global_id to send " << it_glob;
+  //     }
+  //   }
+
+  // _comm_world.barrier();
+  // exit(0);
+
+}
+
+void triangulation::ghost_neighbours_communicate_variable(uint64_t var)
+{
+
+  // For each communication partner:
+  // - pack vectors of the variable to send
+  // - send/recv it
+  // - unpack the recv'd vectors into mesh_elem->face_data (so it can be used exactly as local info)
+
+  std::vector<boost::mpi::request> reqs;
+
+  for(auto it : local_faces_to_send) {
+    auto partner_id = it.first;
+    auto faces = it.second;
+    std::vector<double> send_buffer(faces.size());
+    std::transform(faces.begin(), faces.end(),
+		   send_buffer.begin(),
+		   [var](mesh_elem e){
+		     return (*e)[var]; });
+
+    // Send variables
+    int send_tag = generate_unique_send_tag(_comm_world.rank(), partner_id);
+    _comm_world.isend(partner_id, send_tag, send_buffer);
+
+  }
+
+  // LOG_DEBUG << "MPI Process " << _comm_world.rank() << " sending values:";
+  // for(auto it : local_faces_to_send) {
+  //   auto partner_id = it.first;
+  //   auto faces = it.second;
+  //   for (auto f : faces ) {
+  //       LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << partner_id << " global_id " << f->cell_global_id << " " << (*f)[var];
+  //   }
+  // }
+
+  // map of received data from comm partners
+  std::map< int, std::vector<double>> recv_buffer;
+
+  for(auto it : local_faces_to_recv) {
+    auto partner_id = it.first;
+
+    // Note only recv gets added to the list of requests to watch for
+    int recv_tag = generate_unique_recv_tag(_comm_world.rank(), partner_id);
+    reqs.push_back(_comm_world.irecv(partner_id, recv_tag, recv_buffer[partner_id] ));
+  }
+
+  // Wait for all communication to me before proceeding
+  boost::mpi::wait_all(reqs.begin(), reqs.end());
+
+  // LOG_DEBUG << "MPI Process " << _comm_world.rank() << " var " << var << " received:";
+  // for(auto it : recv_buffer) {
+  //   auto partner_id = it.first;
+  //   auto values = it.second;
+  //   for( auto it : values ) {
+  //       LOG_DEBUG << "  # Process " << _comm_world.rank() << " from " << partner_id << " " << it;
+  //   }
+  // }
+
+  for(auto it : local_faces_to_recv) {
+    auto partner_id = it.first;
+    auto faces = it.second;
+
+    auto recv_it = recv_buffer[partner_id].begin();
+    for (auto f : faces ) {
+      (*f)[var] = *recv_it;
+      ++recv_it;
+    }
+
+  }
+
+  // LOG_DEBUG << "MPI Process " << _comm_world.rank() << " received and packed values:";
+  // for(auto it : local_faces_to_recv) {
+  //   auto partner_id = it.first;
+  //   auto faces = it.second;
+  //   for (auto f : faces ) {
+  //       LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << partner_id << " global_id " << f->cell_global_id << " " << (*f)[var];
+  //   }
+  // }
+
+  // _comm_world.barrier();
+  // exit(0);
+
+
+}
+
 
 void dfs_to_max_distance_aux(mesh_elem starting_face, double max_distance, mesh_elem face, std::unordered_set<mesh_elem> &visited)
 {
@@ -896,6 +1157,11 @@ mesh_elem triangulation::face(size_t i)
 #else
     return _faces.at(i);
 #endif
+}
+
+const std::vector<int>& triangulation::get_global_IDs() const
+{
+  return _global_IDs;
 }
 
 void triangulation::timeseries_to_file(double x, double y, std::string fname)
@@ -1112,7 +1378,18 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
             face->init_module_data(module_data);
             face->init_vectors(vectors);
         }
-}
+	// Init data in ghost neighbours as well
+	// - so they can be treated just like normal neighbours (after vars communicated)
+	// - timeseries not needed here
+	LOG_DEBUG << "######### Current _ghost_neighbours.size(): " << _ghost_neighbours.size();
+    #pragma omp parallel for
+        for (size_t it = 0; it < _ghost_neighbours.size(); it++)
+        {
+            auto face = _ghost_neighbours.at(it);
+            face->init_module_data(module_data);
+            face->init_time_series(timeseries);
+            face->init_vectors(vectors);
+        }}
 
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 {
