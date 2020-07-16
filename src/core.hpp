@@ -356,3 +356,10 @@ protected:
 #endif
 
 };
+
+// Macro to quickyl check return of system calls
+// TODO: Decide what to do if system call error has occurred
+#define CHK_SYSTEM_ERR(ierr)					\
+  if (ierr < 0) {						\
+    LOG_ERROR << strerror(errno);				\
+  };

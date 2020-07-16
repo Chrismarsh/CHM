@@ -1775,11 +1775,11 @@ void core::_determine_module_dep()
         file.close();
 
         //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
-        std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp > /dev/null 2>&1");
-        std::system("dot -Tpdf modules.dot -o modules.pdf > /dev/null 2>&1");
-        std::remove("modules.dot.tmp");
-        std::remove("filter.gvpr");
-        std::remove("modules.dot");
+        int ierr = std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp > /dev/null 2>&1"); CHK_SYSTEM_ERR(ierr);
+        ierr = std::system("dot -Tpdf modules.dot -o modules.pdf > /dev/null 2>&1"); CHK_SYSTEM_ERR(ierr);
+        ierr = std::remove("modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
+        ierr = std::remove("filter.gvpr"); CHK_SYSTEM_ERR(ierr);
+        ierr = std::remove("modules.dot"); CHK_SYSTEM_ERR(ierr);
 
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Module graph must be a DAG. Please review modules.pdf to determine where the cycle occured."));
 
@@ -1815,11 +1815,10 @@ void core::_determine_module_dep()
     file.close();
 
     //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
-    std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp");
-    std::system("dot -Tpdf modules.dot -o modules.pdf");
-    std::remove("modules.dot.tmp");
-    std::remove("filter.gvpr");
-
+    int ierr = std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
+    ierr = std::system("dot -Tpdf modules.dot -o modules.pdf"); CHK_SYSTEM_ERR(ierr);
+    ierr = std::remove("modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
+    ierr = std::remove("filter.gvpr"); CHK_SYSTEM_ERR(ierr);
 
     std::stringstream ss;
     size_t order = 0;
@@ -2195,7 +2194,7 @@ void core::run()
     if(_notification_script != "")
     {
         LOG_DEBUG << "Calling notification script";
-        std::system(_notification_script.c_str());
+        int ierr = std::system(_notification_script.c_str()); CHK_SYSTEM_ERR(ierr);
     }
 }
 
