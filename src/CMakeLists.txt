@@ -189,17 +189,18 @@ add_executable(
 		${CHM_SRCS}
 		${FILTER_SRCS}
 		${MODULE_SRCS}
-		${CHM_THIRD_PARTY}
 		${LIBMAW_SRCS}
 )
 
 
-target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
-target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS} -std=f2003 -fno-underscoring)
+# target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
+target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
+target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 		CHM
 		${EXT_TARGETS}
+		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(CHM
 		PROPERTIES
@@ -304,17 +305,17 @@ if (BUILD_TESTS)
 			${CHM_SRCS}
 			${FILTER_SRCS}
 			${MODULE_SRCS}
-			${CHM_THIRD_PARTY}
 			${LIBMAW_SRCS}
 			${TEST_SRCS}
 	)
 
-	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
-    target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS}  -std=f2003 -fno-underscoring)
+	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
+	target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 
 	target_link_libraries(
 			runUnitTests
 			${EXT_TARGETS}
+			${THIRD_PARTY_TARGETS}
 			${GTEST_LINK}
 			${MPI_CXX_LIBRARIES}
 			${MPI_CXX_LINK_FLAGS}

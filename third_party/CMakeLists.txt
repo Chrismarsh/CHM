@@ -11,23 +11,47 @@ FOREACH(f ${snowpacklib_sources})
     LIST(APPEND SNOWPACK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/snowpack/${f}")
 ENDFOREACH(f)
 
+add_library(SNOWPACK OBJECT
+  ${SNOWPACK_SRCS}
+  )
+target_link_libraries(SNOWPACK PUBLIC
+  meteoio::meteoio
+  Boost::Boost
+)
+target_include_directories(SNOWPACK PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/    # needed for logger.hpp... that's a funny dependence, what is meant by "third party"?
+)
 
 ###################################
-set(SNOBAL_SRC
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/snobal/sno.cpp
-        )
+add_library(SNOBAL OBJECT
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/snobal/sno.cpp
+  )
+target_link_libraries(SNOBAL PUBLIC
+  func::func
+  )
+target_include_directories(SNOBAL PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/    # needed for logger.hpp... that's a funny dependence
+)
+
 ###################################
-set(FSM_SRC
+add_library(FSM OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/FSM/FSM2_CHM.f90
-        )
+	)
+target_compile_options(FSM PRIVATE -std=f2003 -fno-underscoring) # may need to be PUBLIC to work properly
+
+
 
 ###################################
-set(CHM_THIRD_PARTY
-        ${SNOWPACK_SRCS}
-        ${SNOBAL_SRC}
-        ${FSM_SRC}
-        )
 
-set(THIRD_PARTY_INCL_PATHS
-        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/
-        )
+set(THIRD_PARTY_TARGETS
+  SNOWPACK
+  SNOBAL
+  FSM
+  )
+
+# third party includes in CHM src files to be specified relative to this directory
+FOREACH(target ${THIRD_PARTY_TARGETS})
+  target_include_directories(${target} INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/third_party/
+    )
+ENDFOREACH()
