@@ -36,10 +36,6 @@
 #include <cmath>
 
 
-#include <viennacl/linalg/gmres.hpp>
-#include <viennacl/compressed_matrix.hpp>
-#include <viennacl/linalg/ilu.hpp>
-
 /**
  * \ingroup modules wind met
  * @{
@@ -131,4 +127,3 @@ public:
     double distance;
     double Ww_coeff;
 };
-

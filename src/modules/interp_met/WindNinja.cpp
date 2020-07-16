@@ -337,7 +337,7 @@ void WindNinja::run(mesh& domain)
 
                 // get the transfert function and associated wind component for the interpolated wind direction
 		if(L_avg == -1)
-                {		                 
+                {
 			W_transf = face->parameter("Ninja" + std::to_string(d));   // transfert function
 		}else
 		{
@@ -365,7 +365,7 @@ void WindNinja::run(mesh& domain)
 		double W_transf1 = 0.;
                 // get the transfert function and associated wind component for the interpolated wind direction
 		if(L_avg == -1)
-		{	
+		{
                 	W_transf1 = face->parameter("Ninja" + std::to_string(d1));   // transfert function
                 }else
 		{
@@ -377,7 +377,7 @@ void WindNinja::run(mesh& domain)
 
 		double W_transf2 = 0.;
 		if(L_avg == -1)
-		{	
+		{
                 	W_transf2 = face->parameter("Ninja" + std::to_string(d2));   // transfert function
                 }else
 		{
