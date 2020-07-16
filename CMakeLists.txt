@@ -326,6 +326,8 @@ else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
+find_package(trilinos REQUIRED)
+
 #setup src dirs
 include(third_party/CMakeLists.txt)
 add_subdirectory(src)

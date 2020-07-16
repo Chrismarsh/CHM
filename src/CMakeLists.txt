@@ -135,6 +135,8 @@ set(EXT_TARGETS
 		func::func
 		${ARPACK_LIBRARY}
 		Eigen3::Eigen3
+		trilinos::trilinos
+		blas
 		CACHE INTERNAL "" FORCE)
 
 #handle the optionals
@@ -150,9 +152,9 @@ if(gperftools_FOUND)
 	list( APPEND EXT_TARGETS gperftools::gperftools)
 endif()
 
-if(MPI_FOUND AND USE_MPI)
+# if(MPI_FOUND AND USE_MPI)
 	list( APPEND EXT_TARGETS MPI::MPI_CXX)
-endif()
+# endif()
 
 #are we linking against matlab?
 if(MATLAB)
