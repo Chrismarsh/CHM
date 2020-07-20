@@ -406,7 +406,7 @@ class PBSM3D : public module_base
         // prism areas
         double A[5];
 
-        // face neighbours
+        // face neighbors
         bool face_neigh[3];
 
         std::vector<double> u_z_susp; // suspension layer windspeeds

@@ -344,7 +344,7 @@ void PBSM3D::init(mesh& domain)
         d->A[3] = d->A[4] = face->get_area();
 
         d->is_edge = false;
-        // which faces have neighbours? Ie, are we an edge?
+        // which faces have neighbors? Ie, are we an edge?
         for (int a = 0; a < 3; ++a)
         {
             auto neigh = face->neighbor(a);
@@ -411,7 +411,7 @@ void PBSM3D::init(mesh& domain)
       Set up the CrsGraph structure for creating the distributed CrsMatrix and
       Vectors for the deposition system
 
-      Graph for deposition system (equivalent to the neighbour graph of mesh)
+      Graph for deposition system (equivalent to the neighbor graph of mesh)
       4 entries (max) per row: self and up to three neighbors
       (fewer entries for boundary elements)
 
@@ -1105,9 +1105,9 @@ void PBSM3D::run(mesh& domain)
                 double udotm[3] = {0, 0, 0};
                 double E[3] = {0, 0, 0};
 
-                // compute a divergence mass flux of saltation assuming our neighbours are 0 flux
+                // compute a divergence mass flux of saltation assuming our neighbors are 0 flux
                 // however, we can't compute it w/ an upwind scheme like we do for the true solution later
-                // as we don't know the neighbours values (might not have been computed yet). So this is just an
+                // as we don't know the neighbors values (might not have been computed yet). So this is just an
                 for (int j = 0; j < 3; ++j)
                 {
                     udotm[j] = arma::dot(uvw, d->m[j]);
@@ -1464,7 +1464,7 @@ void PBSM3D::run(mesh& domain)
 			    // Off diagonal value
                             suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[f]));
                         }
-                        else // missing neighbour case
+                        else // missing neighbor case
                         {
                             // no mass in
                             //                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
@@ -1741,11 +1741,11 @@ void PBSM3D::run(mesh& domain)
     }
 
     /*
-      Communicate necessary (neighbour) vars for deposition linear system setup
+      Communicate necessary (neighbor) vars for deposition linear system setup
      */
     // LOG_DEBUG << "Qsusp"_s << "     " << "Qsalt"_s;
-    domain->ghost_neighbours_communicate_variable("Qsusp"_s);
-    domain->ghost_neighbours_communicate_variable("Qsalt"_s);
+    domain->ghost_neighbors_communicate_variable("Qsusp"_s);
+    domain->ghost_neighbors_communicate_variable("Qsalt"_s);
 
     /*
       Setup and solve the linear system for deposition
@@ -1818,14 +1818,14 @@ void PBSM3D::run(mesh& domain)
                 }
                 else
                 {
-                    // neighbour doesn't exist, i.e., we're on an actual boundary, treat as duplicate node outside of domain
+                    // neighbor doesn't exist, i.e., we're on an actual boundary, treat as duplicate node outside of domain
                     Qtj = (*face)["Qsusp"_s];
                     Qsj = (*face)["Qsalt"_s];
                 }
             }
 
             // we now have an edge Qtj & Qsj estimate
-            // build up our neighbours
+            // build up our neighbors
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);

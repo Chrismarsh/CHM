@@ -237,7 +237,7 @@ public:
     /**
      * Returns the ith edge's length. Refering to the docs here
      * http://doc.cgal.org/latest/Triangulation_2/classCGAL_1_1Triangulation__2.html
-     * edgth_length(i) returns the length of the edge shared with neighbour(i),
+     * edgth_length(i) returns the length of the edge shared with neighbor(i),
      * opposite vertex(i)
      * @param i
      * @return
@@ -593,18 +593,18 @@ public:
     */
   void determine_local_boundary_faces();
     /**
-    * Figures out which faces are ghosted nearest neighbours of
-    * This is useful for the communication needed in nearest-neighbour discretizations of spatial operators.
+    * Figures out which faces are ghosted nearest neighbors of
+    * This is useful for the communication needed in nearest-neighbor discretizations of spatial operators.
     */
-  void determine_process_ghost_faces_nearest_neighbours();
+  void determine_process_ghost_faces_nearest_neighbors();
     /**
-    * Set up the comm patterns for communicating nearest neighbour mesh data
+    * Set up the comm patterns for communicating nearest neighbor mesh data
     */
-  void setup_nearest_neighbour_communication();
+  void setup_nearest_neighbor_communication();
     /**
-    * Communicate the variable var for all ghost neighbours
+    * Communicate the variable var for all ghost neighbors
     */
-  void ghost_neighbours_communicate_variable(uint64_t var);
+  void ghost_neighbors_communicate_variable(uint64_t var);
 
     /**
     * Figures out which faces are required in the ghost region of an MPI process.
@@ -614,7 +614,7 @@ public:
     /**
     * Shrink the local mesh to only contain owned entries and relevant ghost entries
     */
-  void shrink_local_mesh_to_owned_and_distance_neighbours();
+  void shrink_local_mesh_to_owned_and_distance_neighbors();
 
 
 
@@ -887,13 +887,13 @@ private:
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
 
-    std::vector< mesh_elem > _ghost_neighbours;
-    std::vector< int > _ghost_neighbour_owners;
+    std::vector< mesh_elem > _ghost_neighbors;
+    std::vector< int > _ghost_neighbor_owners;
     std::vector< mesh_elem > _ghost_faces;
 
     std::map< int, std::pair<int,int> > _comm_partner_ownership;  // (start_local_idx, length)
 
-    std::map<int,int> _global_index_to_local_ghost_map; // key=cell_global_id, entry=local index in _ghost_neighbours array
+    std::map<int,int> _global_index_to_local_ghost_map; // key=cell_global_id, entry=local index in _ghost_neighbors array
 
     std::map< int, std::vector<int> > global_indices_to_send; // key=process to send to, entry = vector of global ids to send
 

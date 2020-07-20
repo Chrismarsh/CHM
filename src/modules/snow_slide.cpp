@@ -27,7 +27,7 @@ REGISTER_MODULE_CPP(snow_slide);
 snow_slide::snow_slide(config_file cfg)
         : module_base("snow_slide", parallel::domain, cfg)
 {
-    depends("snowdepthavg",SpatialType::neighbour);
+    depends("snowdepthavg",SpatialType::neighbor);
     depends("swe");
 
     use_vertical_snow = cfg.get("use_vertical_snow",true);

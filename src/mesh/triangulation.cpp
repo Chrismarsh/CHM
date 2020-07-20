@@ -352,7 +352,7 @@ void triangulation::from_json(pt::ptree &mesh)
                 "Expected: " + std::to_string(num_elem) + " elems, got: " + std::to_string(this->size_faces())));
     }
 
-    LOG_DEBUG << "Building face neighbours";
+    LOG_DEBUG << "Building face neighbors";
     i=0;
     int nelem = mesh.get<int>("mesh.nelem"); // what we are expecting to see, 0 indexed
     for (auto &itr : mesh.get_child("mesh.neigh"))
@@ -371,9 +371,9 @@ void triangulation::from_json(pt::ptree &mesh)
             || items[2] > nelem)
         {
             BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                    "Face " + std::to_string(i) + " has out of bound neighbours."));
+                    "Face " + std::to_string(i) + " has out of bound neighbors."));
         }
-        //-1 is now the no neighbour value
+        //-1 is now the no neighbor value
         Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : nullptr; //Face_handle()
         Face_handle face1 =  items[1] != -1 ?_faces.at( items[1] ) : nullptr;
         Face_handle face2 =  items[2] != -1 ?_faces.at( items[2] ) : nullptr;
@@ -501,9 +501,9 @@ void triangulation::from_json(pt::ptree &mesh)
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
     determine_local_boundary_faces();
-    determine_process_ghost_faces_nearest_neighbours();
+    determine_process_ghost_faces_nearest_neighbors();
 
-    setup_nearest_neighbour_communication();
+    setup_nearest_neighbor_communication();
 
     // should make this parallel
     for(size_t ii=0; ii < _num_global_faces; ++ii)
@@ -524,7 +524,7 @@ void triangulation::from_json(pt::ptree &mesh)
     // determine_process_ghost_faces_by_distance(100.);
 
     // shrink the local mesh
-    // shrink_local_mesh_to_owned_and_distance_neighbours();
+    // shrink_local_mesh_to_owned_and_distance_neighbors();
 
   std::vector<double> temp_slope(_num_faces);
 
@@ -705,29 +705,29 @@ void triangulation::determine_local_boundary_faces()
 		 // face_index is a local index... get the face handle
 		 auto face = _local_faces.at(face_index);
 
-		 int num_owned_neighbours = 0;
+		 int num_owned_neighbors = 0;
 		 for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
 		   {
 
 		     auto neigh = face->neighbor(neigh_index);
 
-		     // Test status of neighbour
+		     // Test status of neighbor
 		     if (neigh == nullptr)
 		       {
 			 th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
-			 num_owned_neighbours=3; // set this to avoid triggering the post-loop if statement
+			 num_owned_neighbors=3; // set this to avoid triggering the post-loop if statement
 			 break;
 		       } else
 		       {
 			 if (neigh->is_ghost == false)
 			   {
-			     num_owned_neighbours++;
+			     num_owned_neighbors++;
 			   }
 		       }
 		   }
 
-		 // If we don't own 3 neighbours, we are a local, but not a global boundary face
-		 if( num_owned_neighbours<3 ) {
+		 // If we don't own 3 neighbors, we are a local, but not a global boundary face
+		 if( num_owned_neighbors<3 ) {
 		   th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
 		 }
       }
@@ -756,86 +756,86 @@ void triangulation::determine_local_boundary_faces()
 #endif
 }
 
-void triangulation::determine_process_ghost_faces_nearest_neighbours()
+void triangulation::determine_process_ghost_faces_nearest_neighbors()
 {
   // NOTE that this algorithm is not implemented for multithread
   // - multithread can be implemented similarly to determine_local_boundary_faces
   //   - not a priority since number of boundary faces should be small
 
-  // Ensure that the local boundary faces have been determined, but ghost nearest neighbours have not been set
+  // Ensure that the local boundary faces have been determined, but ghost nearest neighbors have not been set
   assert( _boundary_faces.size() != 0 );
-  assert( _ghost_neighbours.size() == 0 );
+  assert( _ghost_neighbors.size() == 0 );
 
   LOG_DEBUG << "Determining ghost region info";
 
   // Vector for append speed
-  std::vector< mesh_elem > ghosted_boundary_nearest_neighbours;
+  std::vector< mesh_elem > ghosted_boundary_nearest_neighbors;
 
   for(size_t face_index=0; face_index< _boundary_faces.size(); ++face_index)
   {
     // face_index is a local index... get the face handle
     auto face = _boundary_faces.at(face_index).first;
-    // append the ghosted nearest neighbours
+    // append the ghosted nearest neighbors
     for(int i = 0; i < 3; ++i)
     {
         auto neigh = face->neighbor(i);
         if(neigh != nullptr && neigh->is_ghost)
-            ghosted_boundary_nearest_neighbours.push_back(neigh);
+            ghosted_boundary_nearest_neighbors.push_back(neigh);
     }
   }
 
   // Convert to a set to remove duplicates
-  std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_nearest_neighbours),
-					std::end(ghosted_boundary_nearest_neighbours));
+  std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_nearest_neighbors),
+					std::end(ghosted_boundary_nearest_neighbors));
   // Convert the set to a vector
-  _ghost_neighbours.insert(std::end(_ghost_neighbours),
+  _ghost_neighbors.insert(std::end(_ghost_neighbors),
 			   std::begin(tmp_set),std::end(tmp_set));
-  // Sort the ghost neighbours
+  // Sort the ghost neighbors
   // NOTE:
-  // - sorting this vector by cell_global_id effectively partitions the ghost neighbours to be contiguous in communication partners
-  std::sort(_ghost_neighbours.begin(),_ghost_neighbours.end(),
+  // - sorting this vector by cell_global_id effectively partitions the ghost neighbors to be contiguous in communication partners
+  std::sort(_ghost_neighbors.begin(),_ghost_neighbors.end(),
 	    [&](const auto& a, const auto& b)
 	    {
 	      return a->cell_global_id < b->cell_global_id;
 	    });
 
 #ifdef USE_MPI
-  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbours.size() << " ghosted nearest neighbours.";
+  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbors.size() << " ghosted nearest neighbors.";
 #endif
 
   // Determine the owners of the ghost faces (for communication setup)
-  _ghost_neighbour_owners.resize(_ghost_neighbours.size());
+  _ghost_neighbor_owners.resize(_ghost_neighbors.size());
   int start_index=0;
   int prev_owner;
   int num_partners=0;
   // Construct ghost region ownership info
-  for(size_t i=0; i<_ghost_neighbours.size(); ++i)
+  for(size_t i=0; i<_ghost_neighbors.size(); ++i)
   {
     // index type needs to match type of elements of _num_faces_in_partition
-    int global_ind = static_cast<int>(_ghost_neighbours[i]->cell_global_id);
-    _ghost_neighbour_owners[i] = determine_owner_of_global_index(global_ind,
+    int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
+    _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
 								 _num_faces_in_partition);
     // on first it, no value of prev_owner exists
-    if(i==0) prev_owner = _ghost_neighbour_owners[i];
+    if(i==0) prev_owner = _ghost_neighbor_owners[i];
     // if owner different from last iteration, store prev segment's ownership info
-    if (prev_owner != _ghost_neighbour_owners[i])
+    if (prev_owner != _ghost_neighbor_owners[i])
     {
       num_partners++;
       _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index);
       start_index=i;
     }
 
-    if (i ==_ghost_neighbours.size()-1) {
+    if (i ==_ghost_neighbors.size()-1) {
       _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index+1);
     }
 
     // prep prev_owner for next iteration
-    prev_owner=_ghost_neighbour_owners[i];
+    prev_owner=_ghost_neighbor_owners[i];
   }
 
-  for(size_t i=0; i<_ghost_neighbours.size(); ++i)
+  for(size_t i=0; i<_ghost_neighbors.size(); ++i)
   {
-    _global_index_to_local_ghost_map[_ghost_neighbours[i]->cell_global_id] = static_cast<int>(i);
+    _global_index_to_local_ghost_map[_ghost_neighbors[i]->cell_global_id] = static_cast<int>(i);
   }
 
 #ifdef USE_MPI
@@ -859,7 +859,7 @@ int generate_unique_recv_tag(int my_rank, int partner_rank){
   return 10000*my_rank + 100000*partner_rank;
 }
 
-void triangulation::setup_nearest_neighbour_communication()
+void triangulation::setup_nearest_neighbor_communication()
 {
   /*
     Each process knows what global IDs it needs, and which other process owns them
@@ -877,8 +877,8 @@ void triangulation::setup_nearest_neighbour_communication()
     auto length = it.second.second;
 
     // Iterate over global indices
-    std::vector<int> id_indices(_ghost_neighbours.size());
-    std::transform(_ghost_neighbours.begin(),_ghost_neighbours.end(),id_indices.begin(),
+    std::vector<int> id_indices(_ghost_neighbors.size());
+    std::transform(_ghost_neighbors.begin(),_ghost_neighbors.end(),id_indices.begin(),
 		   [](mesh_elem e){ return e->cell_global_id; });
     // Copy subvector of indices to communicate
     local_indices_to_recv[partner_id].resize(length);
@@ -893,10 +893,10 @@ void triangulation::setup_nearest_neighbour_communication()
 
 
 
-    // Copy relevant portion of ghost neighbours to the "local_faces_to_recv"
+    // Copy relevant portion of ghost neighbors to the "local_faces_to_recv"
     local_faces_to_recv[partner_id].resize(length);
-    std::copy(_ghost_neighbours.begin()+start_idx,
-	      _ghost_neighbours.begin()+start_idx+length,
+    std::copy(_ghost_neighbors.begin()+start_idx,
+	      _ghost_neighbors.begin()+start_idx+length,
 	      local_faces_to_recv[partner_id].begin());
     // for (auto it : sub_indices)
     //   {
@@ -955,7 +955,7 @@ void triangulation::setup_nearest_neighbour_communication()
 
 }
 
-void triangulation::ghost_neighbours_communicate_variable(uint64_t var)
+void triangulation::ghost_neighbors_communicate_variable(uint64_t var)
 {
 
   // For each communication partner:
@@ -1022,7 +1022,7 @@ void dfs_to_max_distance_aux(mesh_elem starting_face, double max_distance, mesh_
     return;
   }
 
-  // otherwise, visit face, and move on to neighbours
+  // otherwise, visit face, and move on to neighbors
   visited.insert(face);
   for(int i = 0; i < 3; ++i)
   {
@@ -1053,33 +1053,33 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
   // - multithread can be implemented similarly to determine_local_boundary_faces
   //   - not a priority since number of boundary faces should be small
 
-  // Ensure that the local boundary faces have been determined, but ghost neighbours have not been set
+  // Ensure that the local boundary faces have been determined, but ghost neighbors have not been set
   assert( _boundary_faces.size() != 0 );
   assert( _ghost_faces.size() == 0 );
 
   // Vector for append speed
-  std::vector< mesh_elem > ghosted_boundary_neighbours;
+  std::vector< mesh_elem > ghosted_boundary_neighbors;
 
   for(size_t face_index=0; face_index< _boundary_faces.size(); ++face_index)
   {
     // face_index is a local index... get the face handle
     auto face = _boundary_faces.at(face_index).first;
-    // separate the ghosted and non-ghosted neighbours
-    // std::vector<mesh_elem> current_neighbours = find_faces_in_radius(face->center().x(),face->center().y(), max_distance);
-    std::vector<mesh_elem> current_neighbours = dfs_to_max_distance(face, max_distance);
-    auto pivot = std::partition(std::begin(current_neighbours),std::end(current_neighbours),
+    // separate the ghosted and non-ghosted neighbors
+    // std::vector<mesh_elem> current_neighbors = find_faces_in_radius(face->center().x(),face->center().y(), max_distance);
+    std::vector<mesh_elem> current_neighbors = dfs_to_max_distance(face, max_distance);
+    auto pivot = std::partition(std::begin(current_neighbors),std::end(current_neighbors),
     				[] (mesh_elem neigh) {
     				  return neigh->is_ghost == true;
     				});
-    current_neighbours.erase(pivot,std::end(current_neighbours));
+    current_neighbors.erase(pivot,std::end(current_neighbors));
 
-    ghosted_boundary_neighbours.insert(std::end(ghosted_boundary_neighbours),
-    				       current_neighbours.begin(),current_neighbours.end());
+    ghosted_boundary_neighbors.insert(std::end(ghosted_boundary_neighbors),
+    				       current_neighbors.begin(),current_neighbors.end());
   }
 
   // Convert to a set to remove duplicates
-  std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_neighbours),
-  					std::end(ghosted_boundary_neighbours));
+  std::unordered_set<mesh_elem> tmp_set(std::begin(ghosted_boundary_neighbors),
+  					std::end(ghosted_boundary_neighbors));
   // Convert the set to a vector
   _ghost_faces.insert(std::end(_ghost_faces),
   			   std::begin(tmp_set),std::end(tmp_set));
@@ -1089,7 +1089,7 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
 #endif
 }
 
-void triangulation::shrink_local_mesh_to_owned_and_distance_neighbours()
+void triangulation::shrink_local_mesh_to_owned_and_distance_neighbors()
 {
   // Reset _faces to contain ONLY _local_faces and _ghost_faces.
 
@@ -1248,10 +1248,10 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         triangles->InsertNextCell(tri);
     }
 
-    /* Ghost neighbours */
-    for (size_t i = 0; i < this->_ghost_neighbours.size(); i++)
+    /* Ghost neighbors */
+    for (size_t i = 0; i < this->_ghost_neighbors.size(); i++)
     {
-        mesh_elem fit = _ghost_neighbours[i];
+        mesh_elem fit = _ghost_neighbors[i];
 
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
@@ -1375,14 +1375,14 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
             face->init_module_data(module_data);
             face->init_vectors(vectors);
         }
-	// Init data in ghost neighbours as well
-	// - so they can be treated just like normal neighbours (after vars communicated)
+	// Init data in ghost neighbors as well
+	// - so they can be treated just like normal neighbors (after vars communicated)
 	// - timeseries not needed here
-	LOG_DEBUG << "######### Current _ghost_neighbours.size(): " << _ghost_neighbours.size();
+	LOG_DEBUG << "######### Current _ghost_neighbors.size(): " << _ghost_neighbors.size();
     #pragma omp parallel for
-        for (size_t it = 0; it < _ghost_neighbours.size(); it++)
+        for (size_t it = 0; it < _ghost_neighbors.size(); it++)
         {
-            auto face = _ghost_neighbours.at(it);
+            auto face = _ghost_neighbors.at(it);
             face->init_module_data(module_data);
             face->init_time_series(timeseries);
             face->init_vectors(vectors);
@@ -1454,10 +1454,10 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
     }
 
-    /* Ghost neighbours */
-    for (size_t i = 0; i < _ghost_neighbours.size(); i++)
+    /* Ghost neighbors */
+    for (size_t i = 0; i < _ghost_neighbors.size(); i++)
     {
-        mesh_elem fit = _ghost_neighbours[i];
+        mesh_elem fit = _ghost_neighbors[i];
 
 	size_t insert_offset = i + this->size_faces();
 

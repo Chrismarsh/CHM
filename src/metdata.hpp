@@ -126,7 +126,7 @@ class metdata
      * Returns the nearest station to x,y. Ignores elevation
      * @param x
      * @param y
-     * @param N Number neighbours to find
+     * @param N Number neighbors to find
      * @return
      */
     std::vector< std::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
