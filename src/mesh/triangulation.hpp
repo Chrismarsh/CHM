@@ -480,7 +480,7 @@ public:
 
     bool _is_geographic;
 
-    bool _is_ghost=true;
+    bool is_ghost=true;
     int  owner;  // MPI process that owns the face
 
 private:

@@ -118,7 +118,7 @@ void snow_slide::run(mesh& domain)
         {
              maxDepth= data->maxDepth_norm;
         }
-        double snowdepthavg = data->snowdepthavg_copy; // m - Snow depth perpendicular to the surface 
+        double snowdepthavg = data->snowdepthavg_copy; // m - Snow depth perpendicular to the surface
         double snowdepthavg_vert = data->snowdepthavg_vert_copy; // m - Vertical snow depth
         double swe = data->swe_copy; // m
 
@@ -143,7 +143,7 @@ void snow_slide::run(mesh& domain)
                 auto n = face->neighbor(i); // Pointer to neighbor face
 
                 // Check if not-null (null indicates edge cell)
-                if (n != nullptr && !n->_is_ghost) {
+                if (n != nullptr && !n->is_ghost) {
                     auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
                     // Calc weighting based on height diff
                     // (std::max insures that if one neighbor is higher, its weight will be zero)
@@ -187,7 +187,7 @@ void snow_slide::run(mesh& domain)
             // Route snow to each neighbor based on weights
             for (int j = 0; j < 3; ++j) {
                 auto n = face->neighbor(j);
-                if (n != nullptr && !n->_is_ghost)  {
+                if (n != nullptr && !n->is_ghost)  {
                     double n_area = n->get_area(); // Area of neighbor triangle
                     auto   n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
 

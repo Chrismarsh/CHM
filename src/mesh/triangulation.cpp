@@ -128,7 +128,7 @@ mesh_elem triangulation::locate_face(Point_2 query)
     for(auto itr: search)
     {
       auto f = boost::get<1>(itr.first); //grab the triangle from the iterator
-      if(!f->_is_ghost &&
+      if(!f->is_ghost &&
           f->contains(query.x(),query.y()))
         return boost::get<1>(itr.first);
     }
@@ -537,7 +537,7 @@ void triangulation::from_json(pt::ptree &mesh)
     for (size_t j = 0; j < 3; j++)
     {
       auto neigh = f->neighbor(j);
-      if (neigh != nullptr && !neigh->_is_ghost)
+      if (neigh != nullptr && !neigh->is_ghost)
         u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->slope()));
     }
 
@@ -611,7 +611,7 @@ void triangulation::partition_mesh()
   */
   // 1. Determine number of (processor) locally owned faces
   // 2. Determine (processor) locally owned indices of faces
-  // 3. Set locally owned _is_ghost=false
+  // 3. Set locally owned is_ghost=false
 
   _num_global_faces = _faces.size();
 
@@ -647,7 +647,7 @@ void triangulation::partition_mesh()
              _global_IDs[local_ind] = face_start_idx + local_ind;
 	     _global_to_locally_owned_index_map[_global_IDs[local_ind]] = local_ind;
 
-	     _faces.at(_global_IDs[local_ind])->_is_ghost = false;
+	     _faces.at(_global_IDs[local_ind])->is_ghost = false;
 	     _faces.at(_global_IDs[local_ind])->owner = my_rank;
 	     _faces.at(_global_IDs[local_ind])->cell_local_id = local_ind;
 	     _local_faces[local_ind] = _faces.at(_global_IDs[local_ind]);
@@ -665,7 +665,7 @@ void triangulation::partition_mesh()
   for(size_t i=0;i<_num_global_faces;++i)
   {
     _global_IDs[i] = i;
-    _faces.at(i)->_is_ghost = false;
+    _faces.at(i)->is_ghost = false;
     _faces.at(i)->cell_local_id = i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
   }
   LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces-1) << ", number " << _local_faces.size();
@@ -719,7 +719,7 @@ void triangulation::determine_local_boundary_faces()
 			 break;
 		       } else
 		       {
-			 if (neigh->_is_ghost == false)
+			 if (neigh->is_ghost == false)
 			   {
 			     num_owned_neighbours++;
 			   }
@@ -779,7 +779,7 @@ void triangulation::determine_process_ghost_faces_nearest_neighbours()
     for(int i = 0; i < 3; ++i)
     {
         auto neigh = face->neighbor(i);
-        if(neigh != nullptr && neigh->_is_ghost)
+        if(neigh != nullptr && neigh->is_ghost)
             ghosted_boundary_nearest_neighbours.push_back(neigh);
     }
   }
@@ -980,15 +980,6 @@ void triangulation::ghost_neighbours_communicate_variable(uint64_t var)
 
   }
 
-  // LOG_DEBUG << "MPI Process " << _comm_world.rank() << " sending values:";
-  // for(auto it : local_faces_to_send) {
-  //   auto partner_id = it.first;
-  //   auto faces = it.second;
-  //   for (auto f : faces ) {
-  //       LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << partner_id << " global_id " << f->cell_global_id << " " << (*f)[var];
-  //   }
-  // }
-
   // map of received data from comm partners
   std::map< int, std::vector<double>> recv_buffer;
 
@@ -1003,15 +994,7 @@ void triangulation::ghost_neighbours_communicate_variable(uint64_t var)
   // Wait for all communication to me before proceeding
   boost::mpi::wait_all(reqs.begin(), reqs.end());
 
-  // LOG_DEBUG << "MPI Process " << _comm_world.rank() << " var " << var << " received:";
-  // for(auto it : recv_buffer) {
-  //   auto partner_id = it.first;
-  //   auto values = it.second;
-  //   for( auto it : values ) {
-  //       LOG_DEBUG << "  # Process " << _comm_world.rank() << " from " << partner_id << " " << it;
-  //   }
-  // }
-
+  // Pack the data into the face pointers
   for(auto it : local_faces_to_recv) {
     auto partner_id = it.first;
     auto faces = it.second;
@@ -1023,19 +1006,6 @@ void triangulation::ghost_neighbours_communicate_variable(uint64_t var)
     }
 
   }
-
-  // LOG_DEBUG << "MPI Process " << _comm_world.rank() << " received and packed values:";
-  // for(auto it : local_faces_to_recv) {
-  //   auto partner_id = it.first;
-  //   auto faces = it.second;
-  //   for (auto f : faces ) {
-  //       LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << partner_id << " global_id " << f->cell_global_id << " " << (*f)[var];
-  //   }
-  // }
-
-  // _comm_world.barrier();
-  // exit(0);
-
 
 }
 
@@ -1099,7 +1069,7 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
     std::vector<mesh_elem> current_neighbours = dfs_to_max_distance(face, max_distance);
     auto pivot = std::partition(std::begin(current_neighbours),std::end(current_neighbours),
     				[] (mesh_elem neigh) {
-    				  return neigh->_is_ghost == true;
+    				  return neigh->is_ghost == true;
     				});
     current_neighbours.erase(pivot,std::end(current_neighbours));
 
@@ -1248,10 +1218,10 @@ void triangulation::plot(std::string ID)
 void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    points->SetNumberOfPoints(this->_num_vertex);
+    points->SetNumberOfPoints(this->_num_vertex+_ghost_faces.size());
 
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
-    triangles->Allocate(this->_num_vertex);
+    triangles->Allocate(this->_num_vertex+_ghost_faces.size());
 
     vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
     proj4->SetNumberOfComponents(1);
@@ -1277,6 +1247,26 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 
         triangles->InsertNextCell(tri);
     }
+
+    /* Ghost neighbours */
+    for (size_t i = 0; i < this->_ghost_neighbours.size(); i++)
+    {
+        mesh_elem fit = _ghost_neighbours[i];
+
+        vtkSmartPointer<vtkTriangle> tri =
+                vtkSmartPointer<vtkTriangle>::New();
+
+        tri->GetPointIds()->SetId(0, fit->vertex(0)->get_id());
+        tri->GetPointIds()->SetId(1, fit->vertex(1)->get_id());
+        tri->GetPointIds()->SetId(2, fit->vertex(2)->get_id());
+
+        points->SetPoint(fit->vertex(0)->get_id(), fit->vertex(0)->point().x()*scale, fit->vertex(0)->point().y()*scale, fit->vertex(0)->point().z());
+        points->SetPoint(fit->vertex(1)->get_id(), fit->vertex(1)->point().x()*scale, fit->vertex(1)->point().y()*scale, fit->vertex(1)->point().z());
+        points->SetPoint(fit->vertex(2)->get_id(), fit->vertex(2)->point().x()*scale, fit->vertex(2)->point().y()*scale, fit->vertex(2)->point().z());
+
+        triangles->InsertNextCell(tri);
+    }
+
 
     _vtk_unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
     _vtk_unstructuredGrid->SetPoints(points);
@@ -1325,6 +1315,13 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 
         data["Area"] = vtkSmartPointer<vtkFloatArray>::New();
         data["Area"]->SetName("Area");
+
+        data["is_ghost"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["is_ghost"]->SetName("is_ghost");
+
+        data["owner"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["owner"]->SetName("owner");
+
     }
     auto vec = this->face(0)->vectors();
     for(auto& v: vec)
@@ -1444,12 +1441,70 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["Slope"]->InsertTuple1(i,fit->slope());
             data["Aspect"]->InsertTuple1(i,fit->aspect());
             data["Area"]->InsertTuple1(i,fit->get_area());
+	    data["is_ghost"]->InsertTuple1(i,fit->is_ghost);
+	    data["owner"]->InsertTuple1(i,_comm_world.rank());
         }
         for(auto& v: vecs)
         {
             Vector_3 d = fit->face_vector(v);
 
             vectors[v]->InsertTuple3(i,d.x(),d.y(),d.z());
+        }
+
+
+    }
+
+    /* Ghost neighbours */
+    for (size_t i = 0; i < _ghost_neighbours.size(); i++)
+    {
+        mesh_elem fit = _ghost_neighbours[i];
+
+	size_t insert_offset = i + this->size_faces();
+
+        for (auto &v: variables)
+        {
+            double d = (*fit)[v];
+            if(d == -9999.)
+            {
+                d = nan("");
+            }
+
+            data[v]->InsertTuple1(insert_offset,d);
+        }
+        if(_write_parameters_to_vtu)
+        {
+            for (auto &v: params)
+            {
+                double d = fit->parameter(v);
+                if (d == -9999.)
+                {
+                    d = nan("");
+                }
+                data["[param] " + v]->InsertTuple1(insert_offset, d);
+            }
+
+            for (auto &v: ics)
+            {
+                double d = fit->get_initial_condition(v);
+                if (d == -9999.)
+                {
+                    d = nan("");
+                }
+                data["[ic] " + v]->InsertTuple1(insert_offset, d);
+            }
+
+            data["Elevation"]->InsertTuple1(insert_offset,fit->get_z());
+            data["Slope"]->InsertTuple1(insert_offset,fit->slope());
+            data["Aspect"]->InsertTuple1(insert_offset,fit->aspect());
+            data["Area"]->InsertTuple1(insert_offset,fit->get_area());
+	    data["is_ghost"]->InsertTuple1(insert_offset,fit->is_ghost);
+	    data["owner"]->InsertTuple1(insert_offset,nan(""));
+        }
+        for(auto& v: vecs)
+        {
+            Vector_3 d = fit->face_vector(v);
+
+            vectors[v]->InsertTuple3(insert_offset,d.x(),d.y(),d.z());
         }
 
 

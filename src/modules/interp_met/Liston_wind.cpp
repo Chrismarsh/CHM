@@ -304,7 +304,7 @@ void Liston_wind::run(mesh& domain)
         for (size_t j = 0; j < 3; j++)
         {
            auto neigh = face->neighbor(j);
-           if (neigh != nullptr && !neigh->_is_ghost)
+           if (neigh != nullptr && !neigh->is_ghost)
              u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_R"_s]));
         }
 
