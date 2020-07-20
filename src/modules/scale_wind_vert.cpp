@@ -180,6 +180,8 @@ void scale_wind_vert::run(mesh& domain)
 
     }
 
+    // Need to access U_2m_above_srf from neighbors
+    domain->ghost_neighbors_communicate_variable("U_2m_above_srf"_s);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -191,7 +193,7 @@ void scale_wind_vert::run(mesh& domain)
         {
          auto neigh = face->neighbor(j);
 
-         if (neigh != nullptr && !neigh->is_ghost)
+         if (neigh != nullptr)
            u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_2m_above_srf"_s]));
         }
 
