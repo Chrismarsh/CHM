@@ -25,7 +25,7 @@ option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
-
+option(BUILD_DOCS "Builds documentation" OFF)
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
@@ -329,4 +329,7 @@ endif()
 #setup src dirs
 include(third_party/CMakeLists.txt)
 add_subdirectory(src)
-add_subdirectory(docs)
+
+if(BUILD_DOCS)
+    add_subdirectory(docs)
+endif()
