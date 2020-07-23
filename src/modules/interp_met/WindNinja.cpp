@@ -251,7 +251,7 @@ void WindNinja::init(mesh& domain)
 
         if(has_optional("snowdepthavg"))
         {
-            tmp.put("incl_snw",true)
+            tmp.put("incl_snw",true);
         }
 
         Sx = boost::dynamic_pointer_cast<Winstral_parameters>(module_factory::create("Winstral_parameters",tmp));
