@@ -30,7 +30,7 @@ Winstral_parameters::Winstral_parameters(config_file cfg)
 {
 
     depends("vw_dir");
-    depends("snowdepthavg");
+    optional("snowdepthavg");
 
     provides("Sx");
 
@@ -76,12 +76,12 @@ void Winstral_parameters::run(mesh& domain)
   for (size_t i = 0; i < domain->size_faces(); i++)
   {
 
-	     auto face = domain->face(i);
+        auto face = domain->face(i);
 
-	     // Derive Sx averaged over the angular windows
-	     double sx_mean = Sx(domain,face);
+        // Derive Sx averaged over the angular windows
+        double sx_mean = Sx(domain,face);
 
-	     (*face)["Sx"_s]= sx_mean;
+        (*face)["Sx"_s]= sx_mean;
 
   }
 

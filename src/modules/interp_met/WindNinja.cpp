@@ -69,10 +69,6 @@ WindNinja::WindNinja(config_file cfg)
         provides("Sx");
         conflicts("Winstral_parameters"); // we cannot have Winstral_parameters alongside this if we generate the Sx.
 
-        config_file tmp;
-        tmp.put("angular_window",30.);
-        tmp.put("size_of_step",10.);
-        Sx = boost::dynamic_pointer_cast<Winstral_parameters>(module_factory::create("Winstral_parameters",tmp));
     }
 
     LOG_DEBUG << "Successfully instantiated module " << this->ID;
@@ -245,6 +241,21 @@ void WindNinja::init(mesh& domain)
     Min_spdup = cfg.get("Min_spdup",0.1);
     ninja_recirc = cfg.get("ninja_recirc",false);
     Sx_crit = cfg.get("Sx_crit", 30.);
+
+    if(compute_Sx)
+    {
+
+        config_file tmp;
+        tmp.put("angular_window",30.);
+        tmp.put("size_of_step",10.);
+
+        if(has_optional("snowdepthavg"))
+        {
+            tmp.put("incl_snw",true)
+        }
+
+        Sx = boost::dynamic_pointer_cast<Winstral_parameters>(module_factory::create("Winstral_parameters",tmp));
+    }
 }
 
 
