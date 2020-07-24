@@ -59,7 +59,7 @@ Winstral_parameters::Winstral_parameters(config_file cfg)
     incl_veg = cfg.get("incl_veg",false);
 
     // Logical to include snow depth in the computation of Sx
-    incl_veg = cfg.get("incl_snw",false);
+    incl_snw = cfg.get("incl_snw",false);
 
     // Option to compute the elevation of the point considered to compute Sx
     use_subgridz = cfg.get("use_subgridz",true);
