@@ -24,10 +24,24 @@
 
 #include "TPSpline.hpp"
 
+//#define FUNC_RECORD
+#include <func/UniformCubicPrecomputedInterpolationTable.hpp>
+#include <func/DirectEvaluation.hpp>
+
+// Build FunC lookup table for -(log(x)+c+gsl_sf_expint_E1(x))
+static FunctionContainer<double> FC {SET_F(CHM_Elliptic_Equation,double)};
+
+// TODO play around with table ranges in more elaborate experiments
+// TODO why does granger cause CHM to end with "terminating with uncaught exception of type boost::wrapexcept<module_error>: std::exception"
+// just before finishing the program?
+//static DirectEvaluation<double> const Elliptic_Equation_LUT(&FC, 1e-8, 1);
+// approximate -(log(x) + c + gsl_sf_expint_E1(x)) to a tol = 1e-8
+static UniformCubicPrecomputedInterpolationTable<double> Elliptic_Equation_LUT(&FC, UniformLookupTableParameters<double> {1e-8, 1, 0.002});
+
 double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
     //see if we can reuse our
-    if(sample_points.size() +1 != size)
+    if(sample_points.size() + 1 != size)
     {
         size = sample_points.size();
         size++; // need to make room for the physics
@@ -78,8 +92,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
                     //And Hengl and Evans in geomorphometry p.52 do not, but have some undefined omega_0/omega_1 weights
                     //it is all rather confusing. But this follows Mitášová exactly, and produces essentially the same answer
                     //as the worked example in box 16.2 in Chang
-                    Rd = -(log(dij) + c + gsl_sf_expint_E1(dij));
-
+                    // set Rd = -(log(dij) + c + gsl_sf_expint_E1(dij))
+                    Rd = Elliptic_Equation_LUT(dij);
                 }
 
                 A(i, j + 1) = Rd;
@@ -132,7 +146,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         double ydiff = (sy  - ey);
         double dij = sqrt(xdiff*xdiff + ydiff*ydiff);
         dij = (dij * weight/2.0) * (dij * weight/2.0);
-        double Rd = -(log(dij) + c + gsl_sf_expint_E1(dij));
+        // set Rd equal to -(log(dij) + c + gsl_sf_expint_E1(dij))
+        double Rd = Elliptic_Equation_LUT(dij);
 
         z0 = z0 + x(i)*Rd;
     }
@@ -143,7 +158,6 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
 thin_plate_spline::thin_plate_spline(size_t sz, std::map<std::string,std::string> config )
 : thin_plate_spline()
 {
-
     size = sz;
     size++; // need to make room for the physics
 
@@ -157,8 +171,8 @@ thin_plate_spline::thin_plate_spline(size_t sz, std::map<std::string,std::string
         if(config["reuse_LU"] == "true")
             reuse_LU = true;
     }
-
 }
+
 thin_plate_spline::thin_plate_spline()
 {
     pi          = 3.14159;
@@ -168,10 +182,12 @@ thin_plate_spline::thin_plate_spline()
 
     reuse_LU    = false;
     uninit_lu_decomp = true;
-
-
 }
+
 thin_plate_spline::~thin_plate_spline()
 {
-
+#ifdef FUNC_RECORD
+  // TODO this spams a bunch of output. I assume the solution is to use logger.hpp somehow.
+  Elliptic_Equation_LUT.print_details(std::cerr);
+#endif
 }
