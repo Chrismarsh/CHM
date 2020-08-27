@@ -26,20 +26,17 @@
 //
 
 #include "sno.h"
-#include <func/func.hpp>
+#include <func/UniformCubicPrecomputedInterpolationTable.hpp>
 #include "chm_satw_function.hpp"
 #include "chm_sati_function.hpp"
 using namespace snobalMacros;
 
-MyFunction_satw func_w;
-MyFunction_sati func_i;
+static FunctionContainer<double> func_w {MyFunction_satw<double>};
+static FunctionContainer<double> func_i {MyFunction_sati<double>};
 
-UniformLookupTableGenerator gen_w(&func_w, FREEZE - 50.0, FREEZE + 50.0);
-UniformLookupTableGenerator gen_i(&func_i, 90.0, FREEZE);
-std::string implName = "UniformLinearInterpolationTable";
-double tableTol = 1e-8;
-static std::unique_ptr<EvaluationImplementation> impl_w = gen_w.generate_by_tol(implName, tableTol);
-static std::unique_ptr<EvaluationImplementation> impl_i = gen_i.generate_by_tol(implName, tableTol);
+// hard coded precomputed step size which satisfies a tolerance of 1e-8
+static UniformCubicPrecomputedInterpolationTable<double> impl_w(&func_w, UniformLookupTableParameters<double>{FREEZE - 50.0, FREEZE + 50.0, 0.78});
+static UniformCubicPrecomputedInterpolationTable<double> impl_i(&func_i, UniformLookupTableParameters<double>{90.0, FREEZE, 0.10});
 
 double sno::ssxfr(
         double k1,    /* layer 1's thermal conductivity (J / (m K sec))  */
@@ -83,7 +80,7 @@ double sno::satw(double tk)        /* air temperature (K)		*/
 //    }
 
     // return (x);
-    return ((*impl_w)(tk));
+    return impl_w(tk);
 }
 
 double sno::sati(double tk)        /* air temperature (K)	*/
@@ -115,7 +112,7 @@ double sno::sati(double tk)        /* air temperature (K)	*/
         return 0.0;
     }
 
-    return ((*impl_i)(tk));
+    return impl_i(tk);
 }
 
 double sno::new_tsno(
