@@ -61,6 +61,7 @@ typedef Tpetra::MatrixMarket::Reader<crs_matrix_type> reader_type;
 #include "triangulation.hpp"
 
 #include "math/coordinates.hpp"
+#include "math/LinearAlgebra.hpp"
 
 #include <physics/PhysConst.h>
 #include "physics/Atmosphere.h"
@@ -457,6 +458,9 @@ private:
 
     RCP<const map_type > mesh_map, suspension_map;
     RCP<graph_type> mesh_graph, suspension_graph;
+
+  std::unique_ptr<math::LinearAlgebra::NearestNeighborProblem> deposition_NNP;
+  std::unique_ptr<math::LinearAlgebra::NearestNeighborProblem> suspension_NNP;
 
 };
 

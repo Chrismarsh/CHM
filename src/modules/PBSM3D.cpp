@@ -611,6 +611,9 @@ void PBSM3D::init(mesh& domain)
     suspension_problem->setProblem ();
     suspension_solver->setProblem (suspension_problem);
 
+    suspension_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain,nLayer));
+    deposition_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain));
+
 }
 
 void PBSM3D::run(mesh& domain)
@@ -622,6 +625,9 @@ void PBSM3D::run(mesh& domain)
     size_t ntri = domain->size_faces();
     size_t n_global_tri = domain->size_global_faces();
 
+    suspension_NNP->zeroSystem();
+    // math::LinearAlgebra::SolveResults suspension_results;
+    deposition_NNP->zeroSystem();
 
     suspension_matrix->resumeFill();
     // Zero out suspension system
@@ -1460,9 +1466,12 @@ void PBSM3D::run(mesh& domain)
 
 			    // Diagonal value
 			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-								  tuple(V * csubl - d->A[f] * udotm[f] - alpha[f]));
+								   tuple(V * csubl - d->A[f] * udotm[f] - alpha[f]));
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								      (V * csubl - d->A[f] * udotm[f] - alpha[f]));
 			    // Off diagonal value
                             suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[f]));
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, (alpha[f]));
                         }
                         else // missing neighbor case
                         {
@@ -1472,6 +1481,8 @@ void PBSM3D::run(mesh& domain)
                             // allow mass into the domain from ghost cell
 			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 								  tuple(-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								      (-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
                         }
                     }
                     else
@@ -1482,9 +1493,13 @@ void PBSM3D::run(mesh& domain)
 			    // Diagonal entry
 			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 								   tuple(V * csubl - alpha[f]));
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
+								      (V * csubl - alpha[f]));
 			    // Off diagonal entry
 			    suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx),
 								   tuple(-d->A[f] * udotm[f] + alpha[f]));
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
+								      (-d->A[f] * udotm[f] + alpha[f]));
                         }
                         else
                         {
@@ -1494,6 +1509,8 @@ void PBSM3D::run(mesh& domain)
                             // allow mass in
 			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 								   tuple(-0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V));
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
+								   (-0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V));
                         }
                     }
                 }
@@ -1510,9 +1527,12 @@ void PBSM3D::run(mesh& domain)
                     // includes advection term
 		    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 							   tuple(V * csubl - d->A[4] * udotm[4] - alpha4));
+		    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
+							      (V * csubl - d->A[4] * udotm[4] - alpha4));
 		    // RHS
 		    double val = -alpha4 * c_salt;
 		    suspension_rhs->sumIntoGlobalValue(idx,0,val);
+		    suspension_NNP->rhsSumIntoGlobalValue(idx,val);
 
                     // ntri * (z + 1) + face->cell_local_id
 		    int nidx = n_global_tri*(z+1) + face->cell_global_id;
@@ -1522,8 +1542,11 @@ void PBSM3D::run(mesh& domain)
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 							     tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
+								(V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      // Off diagonal
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[3]));
 
                     }
                     else
@@ -1531,9 +1554,13 @@ void PBSM3D::run(mesh& domain)
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 							     tuple(V * csubl - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
+								(V * csubl - alpha[3]));
 		      // Off diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx),
 							     tuple(-d->A[3] * udotm[3] + alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
+								(-d->A[3] * udotm[3] + alpha[3]));
                     }
                 }
                 else if (z == nLayer - 1) // top z layer
@@ -1549,18 +1576,24 @@ void PBSM3D::run(mesh& domain)
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 							     tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
+								(V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      // RHS
 		      double val = -alpha[3] * cprecip;
 		      suspension_rhs->sumIntoGlobalValue(idx,0,val);
+		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
                     else
                     {
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 							     tuple(V * csubl - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
+								(V * csubl - alpha[3]));
 		      // RHS
 		      double val = d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
 		      suspension_rhs->sumIntoGlobalValue(idx,0,val);
+		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
 
                     // ntri * (z - 1) + face->cell_local_id
@@ -1570,16 +1603,21 @@ void PBSM3D::run(mesh& domain)
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
 							     tuple(V * csubl - d->A[4] * udotm[4] - alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
+							     (V * csubl - d->A[4] * udotm[4] - alpha[4]));
 
 		      // Off diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[4]));
                     }
                     else
                     {
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[4]));
 		      // Off diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[4] * udotm[4] + alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[4] * udotm[4] + alpha[4]));
                     }
                 }
                 else // middle layers
@@ -1590,15 +1628,19 @@ void PBSM3D::run(mesh& domain)
                     {
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      // Off diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[3]));
                     }
 		  else
                     {
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[3]));
 		      // Off diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[3] * udotm[3] + alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[3] * udotm[3] + alpha[3]));
                     }
 
 		  // ntri * (z + 1) + face->cell_local_id (looking down)
@@ -1607,15 +1649,19 @@ void PBSM3D::run(mesh& domain)
                     {
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - d->A[4] * udotm[4] - alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - d->A[4] * udotm[4] - alpha[4]));
 		      // Off diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[4]));
                     }
 		  else
                     {
 		      // Diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[4]));
 		      // Off diagonal entry
 		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[4] * udotm[4] + alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[4] * udotm[4] + alpha[4]));
                     }
                 }
 
@@ -1648,10 +1694,8 @@ void PBSM3D::run(mesh& domain)
     ////////////////////////////////////////////////////////////////////////////
 
     // Check if we exceed the threshold for blowing snow
-    double tempStorage;
-    Teuchos::ArrayView<double> suspension_rhs_max(&tempStorage,1);
-    suspension_rhs->normInf(suspension_rhs_max);
-    if ( suspension_rhs_max[0] > suspension_present_threshold ) {
+    auto suspension_rhs_max = suspension_NNP->getRhsMax();
+    if ( suspension_rhs_max > suspension_present_threshold ) {
       suspension_present = true;
     }
 
@@ -1681,6 +1725,9 @@ void PBSM3D::run(mesh& domain)
     auto residual = suspension_solver->achievedTol();
     LOG_DEBUG << "  suspension iterations: " << numIters << " residual: " << residual;
 
+    auto suspension_results = suspension_NNP->Solve();
+    LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
+
     ////////////////////////////////////////////////////////////////////////////
     // Write solution
     ////////////////////////////////////////////////////////////////////////////
@@ -1700,7 +1747,8 @@ void PBSM3D::run(mesh& domain)
     // Note we still have to do the following if there is no suspended snow.
     // - In that case suspension_solution should be the 0 vector it was initialized to for this iteration
 
-    auto suspension_sol_array = suspension_solution->get1dView();
+    // auto suspension_sol_array = suspension_solution->get1dView();
+    auto suspension_sol_array = suspension_NNP->getSolutionView();
 
 #pragma omp parallel for
     for (size_t i = 0; i < ntri; i++)
@@ -1785,6 +1833,7 @@ void PBSM3D::run(mesh& domain)
 
 	// Diagonal element
 	deposition_matrix->replaceGlobalValues(global_row, tuple(global_row), tuple(V));
+	deposition_NNP->matrixReplaceGlobalValues(global_row, (global_row), (V));
 
         // iterate over edges
         for (int j = 0; j < 3; j++)
@@ -1834,23 +1883,25 @@ void PBSM3D::run(mesh& domain)
 
 		// diagonal entry
 		deposition_matrix->sumIntoGlobalValues(global_row, tuple(global_row), tuple(eps * E[j] / dx[j]));
+		deposition_NNP->matrixSumIntoGlobalValues(global_row, (global_row), (eps * E[j] / dx[j]));
 
 		// off diagonal entry
 		deposition_matrix->sumIntoGlobalValues(global_row, tuple(global_col), tuple(-eps * E[j] / dx[j]));
+		deposition_NNP->matrixSumIntoGlobalValues(global_row, (global_col), (-eps * E[j] / dx[j]));
             }
 
 	    // RHS
 	    double val = -E[j] * (Qtj + Qsj) * udotm[j];
 	    deposition_rhs->sumIntoGlobalValue(global_row,0,val);
+	    deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }
     } // end face iteration
 
     deposition_matrix->fillComplete();
 
     // Check if we exceed the threshold for blowing snow
-    Teuchos::ArrayView<double> deposition_rhs_max(&tempStorage,1);
-    deposition_rhs->normInf(deposition_rhs_max);
-    if ( deposition_rhs_max[0] > deposition_present_threshold ) {
+    auto deposition_rhs_max = deposition_NNP->getRhsMax();
+    if ( deposition_rhs_max > deposition_present_threshold ) {
       deposition_present = true;
     }
 
@@ -1910,7 +1961,11 @@ void PBSM3D::run(mesh& domain)
     auto residual = deposition_solver->achievedTol();
     LOG_DEBUG << "  deposition iterations: " << numIters << " residual: " << residual;
 
-    auto deposition_sol_array = deposition_solution->get1dView();
+    auto deposition_results = deposition_NNP->Solve();
+    LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
+
+    // auto deposition_sol_array = deposition_solution->get1dView();
+    auto deposition_sol_array = deposition_NNP->getSolutionView();
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
