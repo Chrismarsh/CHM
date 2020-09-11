@@ -1651,7 +1651,7 @@ double face<Gt, Fb>::get_subgrid_z(Point_2 query)
 template <typename T>
 T determine_owner_of_global_index(T index, std::vector<T> num_faces_in_partition)
 {
-  assert(_num_faces_in_partition.size() != 0 );
+  assert(num_faces_in_partition.size() != 0 );
 
   // zero init variables
   T owner = T();
