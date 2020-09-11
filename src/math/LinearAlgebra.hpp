@@ -109,6 +109,10 @@ namespace math
 	double getRhsMax();
 
 	ArrayRCP<const double> getSolutionView();
+
+	// Dumping the problem and solution to MatrixMarket format for inspection
+	void writeSystemMatrixMarket(std::string file_prefix);
+	void writeSolutionMatrixMarket(std::string file_prefix);
       };
 
     }

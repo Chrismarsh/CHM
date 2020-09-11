@@ -253,6 +253,24 @@ namespace math
       return m_solution->get1dView();
     }
 
+    void NearestNeighborProblem::writeSystemMatrixMarket(std::string file_prefix)
+    {
+      std::string matrix_file = file_prefix + "_matrix.mm";
+      std::string matrix_name = file_prefix + " system matrix";
+    Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeSparseFile( matrix_file, m_matrix, matrix_name, matrix_name );
+
+    std::string rhs_file = file_prefix + "_rhs.mm";;
+    std::string rhs_name= file_prefix + " system rhs";
+    Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( rhs_file, m_rhs, rhs_name, rhs_name );
+
+    }
+
+    void NearestNeighborProblem::writeSolutionMatrixMarket(std::string file_prefix)
+    {
+      std::string solution_file = file_prefix + "_solution.mm";
+      std::string solution_name = file_prefix + " system solution";
+      Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( solution_file, m_solution, solution_name, solution_name );
+    }
 
     NearestNeighborProblem::~NearestNeighborProblem(){}
 
