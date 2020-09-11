@@ -371,246 +371,6 @@ void PBSM3D::init(mesh& domain)
 
     }
 
-    // ****************************************************************************
-    // ****************************************************************************
-    // Set up Trilinos mat sparsity here
-    // ****************************************************************************
-    // ****************************************************************************
-    // Need to set the Teuchos::Comm for using Trilinos
-    comm = Tpetra::getDefaultComm();
-
-    /*
-      Initialize the local-global index map for the mesh elements.
-    */
-    auto global_IDs = domain->get_global_IDs();
-    // explicitly make this int* to get proper type matching in the Tpetra::Map<>() constructor
-    int* data_IDs = global_IDs.data();
-    // Construct a Map that puts approximately the same number of
-    // equations on each processor.
-    int indexBase = 0;
-    mesh_map = rcp(new map_type(n_global_tri, data_IDs, (int)domain->size_faces(), indexBase, comm));
-
-    // loop over locally owned rows, figure out number of neighbors (owned or
-    // otherwise!), and what their global indices are.
-    std::vector<size_t> num_entries(ntri,1);
-    std::vector<int[4]> neighbor_global_idx(ntri);
-    #pragma omp parallel for
-    for (size_t i = 0; i < ntri; ++i) {
-      auto face = domain->face(i);
-      neighbor_global_idx[i][0] = face->cell_global_id;
-      for (size_t f = 0; f < 3; f++){
-	  auto neighbor = face->neighbor(f);
-	  if (neighbor != nullptr)  {
-	    neighbor_global_idx[i][num_entries[i]] = neighbor->cell_global_id;
-	    ++num_entries[i];
-	  }
-      }
-    }
-
-    /*
-      Set up the CrsGraph structure for creating the distributed CrsMatrix and
-      Vectors for the deposition system
-
-      Graph for deposition system (equivalent to the neighbor graph of mesh)
-      4 entries (max) per row: self and up to three neighbors
-      (fewer entries for boundary elements)
-
-      Preferred construction of CrsGraph uses a Teuchos::ArrayView<T> for num entries/row
-     */
-    Teuchos::ArrayView<size_t> num_entries_view(num_entries.data(),ntri);
-    mesh_graph = rcp (new graph_type (mesh_map, num_entries_view, Tpetra::StaticProfile));
-
-    // Set all of the desired columns in the graph
-    // due to insertGlobalIndices args
-    // DO NOT DO THIS THREAD PARALLEL
-    for (size_t i = 0; i < domain->size_faces(); ++i) {
-      auto face = domain->face(i);
-      mesh_graph->insertGlobalIndices(face->cell_global_id, num_entries_view[i], &(neighbor_global_idx.data()[i][0]));
-    }
-    mesh_graph->fillComplete();
-
-    // Create a Tpetra::Matrix using the Map, with a static allocation
-    // dictated by NumNz.  (We know exactly how many elements there will
-    // be in each row, so we use static profile for efficiency.)
-    deposition_matrix = rcp (new crs_matrix_type (mesh_graph));
-    deposition_matrix->fillComplete();
-    deposition_rhs = rcp(new MV(mesh_map, 1));
-    deposition_solution = rcp(new MV(mesh_map, deposition_rhs->getNumVectors()));
-
-    /*
-      Belos solver and Ifpack2 preconditioner setup - deposition system
-     */
-    // Create Belos iterative linear solver.
-    RCP<ParameterList> deposition_solverParams(new ParameterList()); // solve parameters go in here
-    deposition_solverParams->set( "Block Size", 1 );
-    deposition_solverParams->set( "Num Blocks", 30 );
-    deposition_solverParams->set( "Maximum Iterations", 1000 );
-    deposition_solverParams->set( "Convergence Tolerance", 1e-8 );
-    {
-        Belos::SolverFactory<scalar_type, MV, OP> belosFactory;
-        deposition_solver = belosFactory.create("GMRES", deposition_solverParams);
-    }
-    if (deposition_solver.is_null())
-    {
-      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D failed to create deposition_solver"));
-    }
-
-    deposition_preconditioner = Ifpack2::Factory::create<row_matrix_type>("ILUT", deposition_matrix);
-    if (deposition_preconditioner.is_null())
-    {
-      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D failed to create deposition_preconditioner"));
-    }
-    ParameterList deposition_precondOptions;
-    deposition_precondOptions.set("fact: drop tolerance", 1e-4);
-    deposition_precondOptions.set("fact: ilut level-of-fill", 3.0); // Note this is different from num_entries_per_row: https://docs.trilinos.org/dev/packages/ifpack2/doc/html/classIfpack2_1_1ILUT.html#aee2011b313e3070ee43b2cfc2d183634
-    deposition_preconditioner->setParameters(deposition_precondOptions);
-    deposition_preconditioner->initialize();
-
-    // Specify the deposition problem
-    deposition_problem = rcp (new problem_type (deposition_matrix, deposition_solution, deposition_rhs));
-    if (! deposition_preconditioner.is_null ()) {
-      deposition_problem->setRightPrec (deposition_preconditioner);
-    }
-    deposition_problem->setProblem ();
-    deposition_solver->setProblem (deposition_problem);
-
-    ////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////
-    // Create the suspension linear system
-    ////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////
-
-    std::vector<int> suspension_global_IDs(ntri*nLayer);
-    // Create the global IDs for the suspension system
-    // Ordering:
-    // - mesh elements and then layers successively
-    auto suspension_ID_iterator = suspension_global_IDs.begin();
-    for (int i=0; i<nLayer; ++i) {
-      std::transform(global_IDs.begin(),global_IDs.end(),suspension_ID_iterator,
-		     [=](int id) -> int { return i*n_global_tri + id; } );
-      suspension_ID_iterator += ntri;
-    }
-
-    int* data_suspension_IDs = suspension_global_IDs.data();
-    suspension_map = rcp(new map_type(n_global_tri*nLayer, data_suspension_IDs, (int)(ntri*nLayer), indexBase, comm));
-
-    // loop over locally owned rows, figure out number of neighbors (owned or
-    // otherwise!), and what their global indices are.
-    // NOTE That for the constructor we use, num_entries must be templated on size_t
-    std::vector<size_t> num_suspension_entries(ntri*nLayer,1);
-    std::vector<int[6]> neighbor_suspension_global_idx(ntri*nLayer);
-    #pragma omp parallel for
-    for (size_t i = 0; i < ntri; ++i) {
-      auto face = domain->face(i);
-      int face_bottom_idx = face->cell_global_id;
-      int face_bottom_local_idx = face->cell_local_id;
-      // Lateral neighbors and self
-      for (int layer=0; layer<nLayer; ++layer ) {
-	int element_idx = n_global_tri*layer + face_bottom_idx;
-	int local_array_idx = ntri*layer + face_bottom_local_idx;
-	neighbor_suspension_global_idx[local_array_idx][0] = element_idx;
-	for (int f = 0; f < 3; f++){
-    	  auto neighbor = face->neighbor(f);
-    	  if (neighbor != nullptr)  {
-    	    int neigh_bottom_idx = neighbor->cell_global_id;
-	    int neigh_global_idx = n_global_tri*layer + neigh_bottom_idx;
-	    neighbor_suspension_global_idx[local_array_idx][num_suspension_entries[local_array_idx]] = neigh_global_idx;
-	    ++num_suspension_entries[local_array_idx];
-    	    }
-    	  }
-      }
-      // Neighbor below
-      for (int layer=1; layer<nLayer; ++layer ) {
-    	int element_idx = n_global_tri*layer + face_bottom_idx;
-	int local_array_idx = ntri*layer + face_bottom_local_idx;
-    	int below_idx = n_global_tri*(layer-1) + face_bottom_idx;
-    	neighbor_suspension_global_idx[local_array_idx][num_suspension_entries[local_array_idx]] = below_idx;
-    	++num_suspension_entries[local_array_idx];
-      }
-      // Neighbor above
-      for (int layer=0; layer<nLayer-1; ++layer ) {
-    	int element_idx = n_global_tri*layer + face_bottom_idx;
-	int local_array_idx = ntri*layer + face_bottom_local_idx;
-    	int above_idx = n_global_tri*(layer+1) + face_bottom_idx;
-    	neighbor_suspension_global_idx[local_array_idx][num_suspension_entries[local_array_idx]] = above_idx;
-    	++num_suspension_entries[local_array_idx];
-      }
-    }
-
-    /*
-      Set up the CrsGraph structure for creating the distributed CrsMatrix and
-      Vectors for the suspension system
-
-      Graph for suspension system
-      6 entries (max) per row: self, three neighbors, above and below
-      (fewer entries for boundary elements)
-
-      Preferred construction of CrsGraph uses a Teuchos::ArrayView<T> for num entries/row
-    */
-    Teuchos::ArrayView<size_t> num_suspension_entries_view(num_suspension_entries.data(),ntri*nLayer);
-    suspension_graph = rcp (new graph_type (suspension_map, num_suspension_entries_view, Tpetra::StaticProfile));
-
-    // Set all of the desired nonzero columns in the graph
-    // due to insertGlobalIndices args
-    // DO NOT DO THIS THREAD PARALLEL
-    for (size_t i = 0; i < ntri; ++i) {
-      auto face = domain->face(i);
-      int face_bottom_idx = face->cell_global_id;
-      int face_bottom_local_idx = face->cell_local_id;
-      for (int layer = 0; layer<nLayer; ++layer) {
-    	int element_idx = n_global_tri*layer + face_bottom_idx;
-    	int local_array_idx = ntri*layer + face_bottom_local_idx;
-	// std::cout << "insertGlobal : " << element_idx << " : " << num_suspension_entries[element_idx] << "\n";
-    	suspension_graph->insertGlobalIndices(element_idx, num_suspension_entries[local_array_idx], &(neighbor_suspension_global_idx.data()[local_array_idx][0]));
-      }
-    }
-    suspension_graph->fillComplete();
-
-    // Create a Tpetra::Matrix using the Map, with a static allocation
-    // dictated by NumNz.  (We know exactly how many elements there will
-    // be in each row, so we use static profile for efficiency.)
-    suspension_matrix = rcp (new crs_matrix_type (suspension_graph));
-    suspension_matrix->fillComplete();
-    suspension_rhs = rcp(new MV(suspension_map, 1));
-    suspension_solution = rcp(new MV(suspension_map, suspension_rhs->getNumVectors()));
-
-    /*
-      Belos solver and Ifpack2 preconditioner setup - suspension system
-     */
-    // Create Belos iterative linear solver.
-    RCP<ParameterList> suspension_solverParams(new ParameterList()); // solve parameters go in here
-    suspension_solverParams->set( "Block Size", 1 );
-    suspension_solverParams->set( "Num Blocks", 30 );
-    suspension_solverParams->set( "Maximum Iterations", 1000 );
-    suspension_solverParams->set( "Convergence Tolerance", 1e-8 );
-    {
-        Belos::SolverFactory<scalar_type, MV, OP> belosFactory;
-        suspension_solver = belosFactory.create("GMRES", suspension_solverParams);
-    }
-    if (suspension_solver.is_null())
-    {
-      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D failed to create suspension_solver"));
-    }
-
-    suspension_preconditioner = Ifpack2::Factory::create<row_matrix_type>("ILUT", suspension_matrix);
-    if (suspension_preconditioner.is_null())
-    {
-      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D failed to create suspension_preconditioner"));
-    }
-    ParameterList suspension_precondOptions;
-    suspension_precondOptions.set("fact: drop tolerance", 1e-4);
-    suspension_precondOptions.set("fact: ilut level-of-fill", 3.0); // Note this is different from num_entries_per_row: https://docs.trilinos.org/dev/packages/ifpack2/doc/html/classIfpack2_1_1ILUT.html#aee2011b313e3070ee43b2cfc2d183634
-    suspension_preconditioner->setParameters(suspension_precondOptions);
-    suspension_preconditioner->initialize();
-
-    // Specify the suspension problem
-    suspension_problem = rcp (new problem_type (suspension_matrix, suspension_solution, suspension_rhs));
-    if (! suspension_preconditioner.is_null ()) {
-      suspension_problem->setRightPrec (suspension_preconditioner);
-    }
-    suspension_problem->setProblem ();
-    suspension_solver->setProblem (suspension_problem);
-
     suspension_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain,nLayer));
     deposition_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain));
 
@@ -626,13 +386,8 @@ void PBSM3D::run(mesh& domain)
     size_t n_global_tri = domain->size_global_faces();
 
     suspension_NNP->zeroSystem();
-    // math::LinearAlgebra::SolveResults suspension_results;
     deposition_NNP->zeroSystem();
 
-    suspension_matrix->resumeFill();
-    // Zero out suspension system
-    suspension_matrix->setAllToScalar(0);
-    suspension_rhs->putScalar(0.0);
     // Set this flag if the RHS of the suspension system is ever nonzero
     // Thread-safe because it is only ever switched in one direction
     suspension_present = false;
@@ -1465,12 +1220,9 @@ void PBSM3D::run(mesh& domain)
                             int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
 
 			    // Diagonal value
-			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-								   tuple(V * csubl - d->A[f] * udotm[f] - alpha[f]));
 			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
 								      (V * csubl - d->A[f] * udotm[f] - alpha[f]));
 			    // Off diagonal value
-                            suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[f]));
                             suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, (alpha[f]));
                         }
                         else // missing neighbor case
@@ -1479,8 +1231,6 @@ void PBSM3D::run(mesh& domain)
                             //                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
                             // allow mass into the domain from ghost cell
-			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-								  tuple(-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
 			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
 								      (-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
                         }
@@ -1491,13 +1241,9 @@ void PBSM3D::run(mesh& domain)
                         {
                             int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
 			    // Diagonal entry
-			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-								   tuple(V * csubl - alpha[f]));
 			    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
 								      (V * csubl - alpha[f]));
 			    // Off diagonal entry
-			    suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx),
-								   tuple(-d->A[f] * udotm[f] + alpha[f]));
 			    suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
 								      (-d->A[f] * udotm[f] + alpha[f]));
                         }
@@ -1507,8 +1253,6 @@ void PBSM3D::run(mesh& domain)
                             //                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
 
                             // allow mass in
-			    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-								   tuple(-0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V));
 			    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
 								   (-0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V));
                         }
@@ -1525,13 +1269,10 @@ void PBSM3D::run(mesh& domain)
                     //              elements[idx_idx_off] += V * csubl - alpha4;
 
                     // includes advection term
-		    suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-							   tuple(V * csubl - d->A[4] * udotm[4] - alpha4));
 		    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
 							      (V * csubl - d->A[4] * udotm[4] - alpha4));
 		    // RHS
 		    double val = -alpha4 * c_salt;
-		    suspension_rhs->sumIntoGlobalValue(idx,0,val);
 		    suspension_NNP->rhsSumIntoGlobalValue(idx,val);
 
                     // ntri * (z + 1) + face->cell_local_id
@@ -1540,25 +1281,18 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[3] > 0)
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-							     tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
 								(V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      // Off diagonal
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[3]));
 
                     }
                     else
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-							     tuple(V * csubl - alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
 								(V * csubl - alpha[3]));
 		      // Off diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx),
-							     tuple(-d->A[3] * udotm[3] + alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
 								(-d->A[3] * udotm[3] + alpha[3]));
                     }
@@ -1574,25 +1308,19 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[3] > 0)
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-							     tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
 								(V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      // RHS
 		      double val = -alpha[3] * cprecip;
-		      suspension_rhs->sumIntoGlobalValue(idx,0,val);
 		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
                     else
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-							     tuple(V * csubl - alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
 								(V * csubl - alpha[3]));
 		      // RHS
 		      double val = d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
-		      suspension_rhs->sumIntoGlobalValue(idx,0,val);
 		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
 
@@ -1601,22 +1329,17 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[4] > 0)
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx),
-							     tuple(V * csubl - d->A[4] * udotm[4] - alpha[4]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
 							     (V * csubl - d->A[4] * udotm[4] - alpha[4]));
 
 		      // Off diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[4]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[4]));
                     }
                     else
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[4]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[4]));
 		      // Off diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[4] * udotm[4] + alpha[4]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[4] * udotm[4] + alpha[4]));
                     }
                 }
@@ -1627,19 +1350,15 @@ void PBSM3D::run(mesh& domain)
 		  if (udotm[3] > 0)
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - d->A[3] * udotm[3] - alpha[3]));
 		      // Off diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[3]));
                     }
 		  else
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[3]));
 		      // Off diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[3] * udotm[3] + alpha[3]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[3] * udotm[3] + alpha[3]));
                     }
 
@@ -1648,19 +1367,15 @@ void PBSM3D::run(mesh& domain)
 		  if (udotm[4] > 0)
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - d->A[4] * udotm[4] - alpha[4]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - d->A[4] * udotm[4] - alpha[4]));
 		      // Off diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(alpha[4]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[4]));
                     }
 		  else
                     {
 		      // Diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(idx), tuple(V * csubl - alpha[4]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[4]));
 		      // Off diagonal entry
-		      suspension_matrix->sumIntoGlobalValues(idx, tuple(nidx), tuple(-d->A[4] * udotm[4] + alpha[4]));
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[4] * udotm[4] + alpha[4]));
                     }
                 }
@@ -1670,9 +1385,6 @@ void PBSM3D::run(mesh& domain)
         } // end face iter
 
     } // end pragma omp parallel thread pool
-
-    // suspension_present = true;
-    suspension_matrix->fillComplete();
 
     ////////////////////////////////////////////////////////////////////////////
     // Write mat/rhs
@@ -1700,30 +1412,6 @@ void PBSM3D::run(mesh& domain)
     }
 
     if (suspension_present) {
-
-    // re-zero the suspension solution vector
-    suspension_solution->putScalar(0.0);
-
-    // suspension_preconditioner->initialize();
-    suspension_preconditioner->compute();
-
-    // Solve the linear system.
-    suspension_solver->reset(Belos::Problem);
-    {
-        Belos::ReturnType solveResult = suspension_solver->solve();
-        if (solveResult != Belos::Converged)
-        {
-            if (comm->getRank() == 0)
-            {
-	      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D suspension_solver failed to converge"));
-            }
-            // return EXIT_FAILURE;
-        }
-    }
-
-    auto numIters = suspension_solver->getNumIters();
-    auto residual = suspension_solver->achievedTol();
-    LOG_DEBUG << "  suspension iterations: " << numIters << " residual: " << residual;
 
     auto suspension_results = suspension_NNP->Solve();
     LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
@@ -1799,13 +1487,6 @@ void PBSM3D::run(mesh& domain)
       Setup and solve the linear system for deposition
      */
 
-    // Zero the rhs and matrix
-    deposition_rhs->putScalar(0.0);
-
-    deposition_matrix->resumeFill();
-
-    deposition_matrix->setAllToScalar(0);
-
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
@@ -1832,7 +1513,6 @@ void PBSM3D::run(mesh& domain)
 	global_row = static_cast<int>(face->cell_global_id);
 
 	// Diagonal element
-	deposition_matrix->replaceGlobalValues(global_row, tuple(global_row), tuple(V));
 	deposition_NNP->matrixReplaceGlobalValues(global_row, (global_row), (V));
 
         // iterate over edges
@@ -1882,22 +1562,17 @@ void PBSM3D::run(mesh& domain)
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
 		// diagonal entry
-		deposition_matrix->sumIntoGlobalValues(global_row, tuple(global_row), tuple(eps * E[j] / dx[j]));
 		deposition_NNP->matrixSumIntoGlobalValues(global_row, (global_row), (eps * E[j] / dx[j]));
 
 		// off diagonal entry
-		deposition_matrix->sumIntoGlobalValues(global_row, tuple(global_col), tuple(-eps * E[j] / dx[j]));
 		deposition_NNP->matrixSumIntoGlobalValues(global_row, (global_col), (-eps * E[j] / dx[j]));
             }
 
 	    // RHS
 	    double val = -E[j] * (Qtj + Qsj) * udotm[j];
-	    deposition_rhs->sumIntoGlobalValue(global_row,0,val);
 	    deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }
     } // end face iteration
-
-    deposition_matrix->fillComplete();
 
     // Check if we exceed the threshold for blowing snow
     auto deposition_rhs_max = deposition_NNP->getRhsMax();
@@ -1924,26 +1599,6 @@ void PBSM3D::run(mesh& domain)
 
     if (deposition_present) {
 
-    // re-zero the deposition solution vector
-    deposition_solution->putScalar(0.0);
-
-    // deposition_preconditioner->initialize();
-    deposition_preconditioner->compute();
-
-    // Solve the linear system.
-    deposition_solver->reset(Belos::Problem);
-    {
-        Belos::ReturnType solveResult = deposition_solver->solve();
-        if (solveResult != Belos::Converged)
-        {
-            if (comm->getRank() == 0)
-            {
-	      BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D deposition_solver failed to converge"));
-            }
-            // return EXIT_FAILURE;
-        }
-    }
-
     ////////////////////////////////////////////////////////////////////////////
     // Printing out the solution
     ////////////////////////////////////////////////////////////////////////////
@@ -1956,10 +1611,6 @@ void PBSM3D::run(mesh& domain)
     // count++;
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
-
-    auto numIters = deposition_solver->getNumIters();
-    auto residual = deposition_solver->achievedTol();
-    LOG_DEBUG << "  deposition iterations: " << numIters << " residual: " << residual;
 
     auto deposition_results = deposition_NNP->Solve();
     LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;

@@ -23,37 +23,6 @@
 
 #pragma once
 
-#include <BelosSolverFactory.hpp>
-#include <BelosTpetraAdapter.hpp>
-#include <Ifpack2_Factory.hpp>
-#include <MatrixMarket_Tpetra.hpp>
-#include <Teuchos_CommandLineProcessor.hpp>
-#include <Teuchos_ParameterXMLFileReader.hpp>
-#include <Teuchos_TimeMonitor.hpp>
-#include <Tpetra_Core.hpp>
-#include <Tpetra_CrsMatrix.hpp>
-
-// Typedefs/aliases for ease of Trilinos use
-using Teuchos::arcp;
-using Teuchos::ArrayRCP;
-using Teuchos::Comm;
-using Teuchos::ParameterList;
-using Teuchos::RCP;
-using Teuchos::rcp;
-using Teuchos::Time;
-using Teuchos::tuple;
-typedef Tpetra::CrsGraph<> graph_type;
-typedef Tpetra::CrsMatrix<double, int, int> crs_matrix_type;
-typedef Tpetra::Map<> map_type;
-typedef Tpetra::MultiVector<> MV;
-typedef Tpetra::Operator<> OP;
-typedef Tpetra::RowMatrix<> row_matrix_type;
-typedef MV::scalar_type scalar_type;
-typedef Ifpack2::Preconditioner<> prec_type;
-typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
-typedef Belos::SolverManager<scalar_type, MV, OP> solver_type;
-typedef Tpetra::MatrixMarket::Reader<crs_matrix_type> reader_type;
-
 //#define BOOST_MATH_INSTRUMENT
 #include "interpolation.hpp"
 #include "logger.hpp"
@@ -344,8 +313,6 @@ class PBSM3D : public module_base
     void run(mesh& domain);
     void init(mesh& domain);
 
-    RCP<const Teuchos::Comm<int>> comm;
-
     double nLayer;
     double susp_depth;
     double v_edge_height;
@@ -443,21 +410,6 @@ private:
   bool suspension_present, deposition_present;
   constexpr static double suspension_present_threshold=1e-12;
   constexpr static double deposition_present_threshold=1e-12;
-
-    RCP<crs_matrix_type> suspension_matrix;
-    RCP<MV> suspension_rhs, suspension_solution;
-    RCP<solver_type> suspension_solver;
-    RCP<prec_type> suspension_preconditioner;
-    RCP<problem_type> suspension_problem;
-
-    RCP<crs_matrix_type> deposition_matrix;
-    RCP<MV> deposition_rhs, deposition_solution;
-    RCP<solver_type> deposition_solver;
-    RCP<prec_type> deposition_preconditioner;
-    RCP<problem_type> deposition_problem;
-
-    RCP<const map_type > mesh_map, suspension_map;
-    RCP<graph_type> mesh_graph, suspension_graph;
 
   std::unique_ptr<math::LinearAlgebra::NearestNeighborProblem> deposition_NNP;
   std::unique_ptr<math::LinearAlgebra::NearestNeighborProblem> suspension_NNP;
