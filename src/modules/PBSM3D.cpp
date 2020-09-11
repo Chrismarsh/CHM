@@ -1391,17 +1391,9 @@ void PBSM3D::run(mesh& domain)
     ////////////////////////////////////////////////////////////////////////////
     // static int count=0;
 
-    // std::string suspension_matrix_file="C_tri_";
-    // suspension_matrix_file += std::to_string(count);
-    // suspension_matrix_file += ".mm";
-    // std::string suspension_matrix_name="Suspension system matrix";
-    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeSparseFile( suspension_matrix_file, suspension_matrix, suspension_matrix_name, suspension_matrix_name );
-
-    // std::string suspension_rhs_file="Crhs_tri_";
-    // suspension_rhs_file += std::to_string(count);
-    // suspension_rhs_file += ".mm";
-    // std::string suspension_rhs_name="Suspension flux system rhs";
-    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( suspension_rhs_file, suspension_rhs, suspension_rhs_name, suspension_rhs_name );
+    // std::string suspension_file_prefix="Suspension_";
+    // suspension_file_prefix += std::to_string(count);
+    // suspension_NNP->writeSystemMatrixMarket(suspension_file_prefix);
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
@@ -1419,11 +1411,7 @@ void PBSM3D::run(mesh& domain)
     ////////////////////////////////////////////////////////////////////////////
     // Write solution
     ////////////////////////////////////////////////////////////////////////////
-    // std::string suspension_solution_file="Csol_tri_";
-    // suspension_solution_file += std::to_string(count);
-    // suspension_solution_file += ".mm";
-    // std::string suspension_solution_name="Suspension flux system solution";
-    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( suspension_solution_file, suspension_solution, suspension_solution_name, suspension_solution_name );
+    // suspension_NNP->writeSolutionMatrixMarket(suspension_file_prefix);
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
@@ -1583,17 +1571,9 @@ void PBSM3D::run(mesh& domain)
     ////////////////////////////////////////////////////////////////////////////
     // Printing out the mat/rhs
     ////////////////////////////////////////////////////////////////////////////
-    // std::string deposition_matrix_file="A_tri_";
-    // deposition_matrix_file += std::to_string(count);
-    // deposition_matrix_file += ".mm";
-    // std::string deposition_matrix_name="Deposition system matrix";
-    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeSparseFile( deposition_matrix_file, deposition_matrix, deposition_matrix_name, deposition_matrix_name );
-
-    // std::string deposition_rhs_file="Arhs_tri_";
-    // deposition_rhs_file += std::to_string(count);
-    // deposition_rhs_file += ".mm";
-    // std::string deposition_rhs_name="Deposition flux system rhs";
-    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( deposition_rhs_file, deposition_rhs, deposition_rhs_name, deposition_rhs_name );
+    // std::string deposition_file_prefix="Deposition_";
+    // deposition_file_prefix += std::to_string(count);
+    // deposition_NNP->writeSystemMatrixMarket(deposition_file_prefix);
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
@@ -1602,12 +1582,7 @@ void PBSM3D::run(mesh& domain)
     ////////////////////////////////////////////////////////////////////////////
     // Printing out the solution
     ////////////////////////////////////////////////////////////////////////////
-    // std::string deposition_solution_file="Asol_tri_";
-    // deposition_solution_file += std::to_string(count);
-    // deposition_solution_file += ".mm";
-    // std::string deposition_solution_name="Deposition flux system solution";
-    // Tpetra::MatrixMarket::Writer<crs_matrix_type>::writeDenseFile( deposition_solution_file, deposition_solution, deposition_solution_name, deposition_solution_name );
-
+    // deposition_NNP->writeSolutionMatrixMarket(deposition_file_prefix);
     // count++;
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
