@@ -106,7 +106,8 @@ set (HEADER_FILES
         modules
 		physics
         modules/interp_met
-		modules/snobal
+	modules/snobal
+	math
         libmaw
         interpolation
         timeseries
@@ -182,6 +183,20 @@ else()
 	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
 endif()
 
+add_library(CHMmath OBJECT
+  math/LinearAlgebra.cpp
+  )
+
+target_link_libraries(CHMmath
+  trilinos::trilinos
+  blas
+  MPI::MPI_CXX
+  ${EXT_TARGETS}
+  )
+
+target_include_directories(CHMmath PUBLIC
+  ${HEADER_FILES}
+)
 
 add_executable(
 		CHM
@@ -199,6 +214,7 @@ target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 		CHM
+		CHMmath
 		${EXT_TARGETS}
 		${THIRD_PARTY_TARGETS}
 )
