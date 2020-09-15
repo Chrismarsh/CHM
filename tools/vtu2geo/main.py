@@ -96,7 +96,6 @@ def rasterize(layer, srsout, target_fname, pixel_size, attribute, user_define_ex
 
     target_ds = None
 
-    # re-enable this later
     # Optional clip file
     if user_define_extent: # or constrain_flag:
         subprocess.check_call(
@@ -191,6 +190,10 @@ def main():
     if hasattr(X,'all_touched'):
         all_touched = X.all_touched
 
+    keep_tifs = False
+    if hasattr(X,'keep_tifs'):
+        keep_tifs = X.keep_tifs
+
     #####
     reader = vtk.vtkXMLUnstructuredGridReader()
 
@@ -273,9 +276,16 @@ def main():
         soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
         total_output_files = len(pvd) * (len(variables)+len(parameters))
         if soft < total_output_files or hard < total_output_files:
+          
             print('The users soft or hard file limit is less than the total number of tmp files to be created.')
-            print(('The system ulimit should be raised to at least ' + total_output_files))
-            return -1
+            print('The system ulimit will be raised to at least ' + str(total_output_files))
+
+            try:
+                resource.setrlimit(resource.RLIMIT_NOFILE, (total_output_files,resource.RLIM_INFINITY ) )
+            except ValueError as e:
+                print("Failed to raise the limit")
+                raise e
+
 
     for vtu in pvd:
         path = vtu
