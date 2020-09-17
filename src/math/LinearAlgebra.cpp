@@ -61,7 +61,7 @@ namespace math
       // loop over locally owned rows, figure out number of neighbors (owned or
       // otherwise!), and what their global indices are.
       std::vector<size_t> num_entries(ntri*nLayer,1);
-      std::vector<int[6]> neighbor_global_idx(ntri*nLayer);
+      std::vector<std::array<int,6>> neighbor_global_idx(ntri*nLayer);
 #pragma omp parallel for
       for (size_t i = 0; i < ntri; ++i) {
 	auto face = domain->face(i);
