@@ -861,6 +861,10 @@ int generate_unique_recv_tag(int my_rank, int partner_rank){
 
 void triangulation::setup_nearest_neighbor_communication()
 {
+
+// Function is meaningful only when using MPI
+#ifdef USE_MPI
+
   /*
     Each process knows what global IDs it needs, and which other process owns them
     - need to let those other processes know which indices to send to us
@@ -953,10 +957,15 @@ void triangulation::setup_nearest_neighbor_communication()
   // _comm_world.barrier();
   // exit(0);
 
+#endif // USE_MPI
+
 }
 
 void triangulation::ghost_neighbors_communicate_variable(uint64_t var)
 {
+
+// Function is meaningful only when using MPI
+#ifdef USE_MPI
 
   // For each communication partner:
   // - pack vectors of the variable to send
@@ -1006,6 +1015,8 @@ void triangulation::ghost_neighbors_communicate_variable(uint64_t var)
     }
 
   }
+
+#endif // USE_MPI
 
 }
 
