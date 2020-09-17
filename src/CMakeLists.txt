@@ -106,7 +106,8 @@ set (HEADER_FILES
         modules
 		physics
         modules/interp_met
-		modules/snobal
+	modules/snobal
+	math
         libmaw
         interpolation
         timeseries
@@ -127,7 +128,6 @@ set(EXT_TARGETS
 		armadillo::armadillo
 		vtk::vtk
 		gdal::gdal #proj is brought it via this
-		viennacl::viennacl
 		cgal::cgal
 		hdf5::hdf5
 		sparsehash::sparsehash
@@ -135,6 +135,8 @@ set(EXT_TARGETS
 		func::func
 		${ARPACK_LIBRARY}
 		Eigen3::Eigen3
+		trilinos::trilinos
+		blas
 		CACHE INTERNAL "" FORCE)
 
 #handle the optionals
@@ -150,9 +152,9 @@ if(gperftools_FOUND)
 	list( APPEND EXT_TARGETS gperftools::gperftools)
 endif()
 
-if(MPI_FOUND AND USE_MPI)
+# if(MPI_FOUND AND USE_MPI)
 	list( APPEND EXT_TARGETS MPI::MPI_CXX)
-endif()
+# endif()
 
 #are we linking against matlab?
 if(MATLAB)
@@ -181,6 +183,20 @@ else()
 	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
 endif()
 
+add_library(CHMmath OBJECT
+  math/LinearAlgebra.cpp
+  )
+
+target_link_libraries(CHMmath
+  trilinos::trilinos
+  blas
+  MPI::MPI_CXX
+  ${EXT_TARGETS}
+  )
+
+target_include_directories(CHMmath PUBLIC
+  ${HEADER_FILES}
+)
 
 add_executable(
 		CHM
@@ -188,17 +204,19 @@ add_executable(
 		${CHM_SRCS}
 		${FILTER_SRCS}
 		${MODULE_SRCS}
-		${CHM_THIRD_PARTY}
 		${LIBMAW_SRCS}
 )
 
 
-target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
-target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS} -std=f2003 -fno-underscoring)
+# target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
+target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
+target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 		CHM
+		CHMmath
 		${EXT_TARGETS}
+		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(CHM
 		PROPERTIES
@@ -303,17 +321,17 @@ if (BUILD_TESTS)
 			${CHM_SRCS}
 			${FILTER_SRCS}
 			${MODULE_SRCS}
-			${CHM_THIRD_PARTY}
 			${LIBMAW_SRCS}
 			${TEST_SRCS}
 	)
 
-	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
-    target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS}  -std=f2003 -fno-underscoring)
+	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
+	target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
 
 	target_link_libraries(
 			runUnitTests
 			${EXT_TARGETS}
+			${THIRD_PARTY_TARGETS}
 			${GTEST_LINK}
 			${MPI_CXX_LIBRARIES}
 			${MPI_CXX_LINK_FLAGS}

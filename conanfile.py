@@ -3,7 +3,7 @@ import os
 
 class CHMConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-   
+
 
     name = "CHM"
     version = "1.0"
@@ -48,11 +48,11 @@ class CHMConan(ConanFile):
         self.requires( "gperftools/2.7@CHM/stable" )
         self.requires( "gsl/2.6@CHM/stable" )
         self.requires( "armadillo/9.800.2@CHM/stable" )
-        self.requires( "viennacl/1.7.1@CHM/stable" )
         self.requires( "tbb/2019_u9@CHM/stable" )
         self.requires( "eigen3/3.3.7@CHM/stable" )
         self.requires( "meteoio/2.8.0@CHM/stable")
         self.requires( "func/0.1@CHM/stable")
+        self.requires( "trilinos/12.18.1@CHM/dev")
 
     def _configure_cmake(self):
         cmake = CMake(self)

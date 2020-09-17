@@ -119,7 +119,7 @@ namespace pt = boost::property_tree;
 
 #ifdef USE_MPI
 #include <boost/mpi.hpp>
-#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #endif
 
 #include "vertex.hpp"
@@ -237,7 +237,7 @@ public:
     /**
      * Returns the ith edge's length. Refering to the docs here
      * http://doc.cgal.org/latest/Triangulation_2/classCGAL_1_1Triangulation__2.html
-     * edgth_length(i) returns the length of the edge shared with neighbour(i),
+     * edgth_length(i) returns the length of the edge shared with neighbor(i),
      * opposite vertex(i)
      * @param i
      * @return
@@ -480,7 +480,8 @@ public:
 
     bool _is_geographic;
 
-    bool _is_ghost=true;
+    bool is_ghost=true;
+    int  owner;  // MPI process that owns the face
 
 private:
 
@@ -592,10 +593,19 @@ public:
     */
   void determine_local_boundary_faces();
     /**
-    * Figures out which faces are ghosted nearest neighbours of
-    * This is useful for the communication needed in nearest-neighbour discretizations of spatial operators.
+    * Figures out which faces are ghosted nearest neighbors of
+    * This is useful for the communication needed in nearest-neighbor discretizations of spatial operators.
     */
-  void determine_process_ghost_faces_nearest_neighbours();
+  void determine_process_ghost_faces_nearest_neighbors();
+    /**
+    * Set up the comm patterns for communicating nearest neighbor mesh data
+    */
+  void setup_nearest_neighbor_communication();
+    /**
+    * Communicate the variable var for all ghost neighbors
+    */
+  void ghost_neighbors_communicate_variable(uint64_t var);
+
     /**
     * Figures out which faces are required in the ghost region of an MPI process.
     * \param max_distance the maximum distance needed for communication
@@ -604,7 +614,7 @@ public:
     /**
     * Shrink the local mesh to only contain owned entries and relevant ghost entries
     */
-  void shrink_local_mesh_to_owned_and_distance_neighbours();
+  void shrink_local_mesh_to_owned_and_distance_neighbors();
 
 
 
@@ -623,10 +633,16 @@ public:
 //    void init(vector x, vector y, vector z);
 
     /**
-    * Return the number of faces in the triangluation
+    * Return the number of faces in the local triangluation
     * \return Number of triangle faces
     */
     size_t size_faces();
+
+    /**
+    * Return the number of faces in the global triangluation
+    * \return Number of triangle faces
+    */
+    size_t size_global_faces();
 
     /**
     * Return the number of verticies in the triangulation
@@ -695,6 +711,13 @@ public:
     * \return A face handle to the ith face
     */
     mesh_elem face(size_t i);
+
+    /**
+    * Returns the vector of locally owned global IDs
+    * - "locally owned" = this rank is responsible for their data
+    * \return A vector of global IDs for the locally owned elements
+    */
+    const std::vector<int>& get_global_IDs() const;
 
     /**
     * Returns the finite vertex at index i. A given index will always return the same vertex.
@@ -823,6 +846,7 @@ public:
     std::set<std::string> _parameters;
 private:
     size_t _num_faces; //number of faces
+    size_t _num_global_faces; //number of faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
@@ -856,10 +880,37 @@ private:
     std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;
 
+    // size of this vector is the number of locally owned elements
+    std::map<int,int> _global_to_locally_owned_index_map; // key=global_index, entry=local_index
+
+    // All MPI process are aware of the local sizes for all other MPI processes
+    std::vector<int> _num_faces_in_partition;
+
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
-    std::vector< mesh_elem > _ghost_neighbours;
+
+    // Array of pointers to the ghost neighbors for this rank
+    std::vector< mesh_elem > _ghost_neighbors;
+    // Array of which other rank owns each ghost neighbor
+    std::vector< int > _ghost_neighbor_owners;
+    // Array of pointers to all ghost faces (in buffer region) for this rank
     std::vector< mesh_elem > _ghost_faces;
+
+    std::map< int, std::pair<int,int> > _comm_partner_ownership;  // (start_local_idx, length)
+
+    std::map<int,int> _global_index_to_local_ghost_map; // key=cell_global_id, entry=local index in _ghost_neighbors array
+
+    std::map< int, std::vector<int> > global_indices_to_send; // key=process to send to, entry = vector of global ids to send
+
+  std::map< int, std::vector<int>> local_indices_to_send; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
+  std::map< int, std::vector<mesh_elem> > local_faces_to_send; // key=process to send to, entry=locally owned pointer to face
+
+  std::map< int, std::vector<int>> local_indices_to_recv; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
+  std::map< int, std::vector<mesh_elem> > local_faces_to_recv; // key=process to send to, entry=locally owned pointer to face
+
+    std::vector<int> _global_IDs;
+
+  std::vector< std::shared_ptr<station> > _stations;
 
 #ifdef NOMATLAB
     //ptr to the matlab engine
@@ -1601,3 +1652,24 @@ double face<Gt, Fb>::get_subgrid_z(Point_2 query)
 
 
 };
+
+template <typename T>
+T determine_owner_of_global_index(T index, std::vector<T> num_faces_in_partition)
+{
+  assert(num_faces_in_partition.size() != 0 );
+
+  // zero init variables
+  T owner = T();
+  T highest_owned_index = T();
+
+  for(T i=0; i<static_cast<T>(num_faces_in_partition.size()); ++i)
+  {
+    highest_owned_index += num_faces_in_partition[i];
+    if (index < highest_owned_index)
+    {
+      owner = i;
+      break;
+    }
+  }
+  return owner;
+}

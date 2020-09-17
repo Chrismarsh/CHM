@@ -337,7 +337,7 @@ void WindNinja::run(mesh& domain)
 
                 // get the transfert function and associated wind component for the interpolated wind direction
 		if(L_avg == -1)
-                {		                 
+                {
 			W_transf = face->parameter("Ninja" + std::to_string(d));   // transfert function
 		}else
 		{
@@ -365,7 +365,7 @@ void WindNinja::run(mesh& domain)
 		double W_transf1 = 0.;
                 // get the transfert function and associated wind component for the interpolated wind direction
 		if(L_avg == -1)
-		{	
+		{
                 	W_transf1 = face->parameter("Ninja" + std::to_string(d1));   // transfert function
                 }else
 		{
@@ -377,7 +377,7 @@ void WindNinja::run(mesh& domain)
 
 		double W_transf2 = 0.;
 		if(L_avg == -1)
-		{	
+		{
                 	W_transf2 = face->parameter("Ninja" + std::to_string(d2));   // transfert function
                 }else
 		{
@@ -468,6 +468,8 @@ void WindNinja::run(mesh& domain)
            (*face)["vw_dir_divergence"_s] = fabs(dtheta);
         }
 
+	// Communicate U_R for neighbour access
+	domain->ghost_neighbors_communicate_variable("U_R"_s);
 
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -478,7 +480,7 @@ void WindNinja::run(mesh& domain)
             for (size_t j = 0; j < 3; j++)
             {
                 auto neigh = face->neighbor(j);
-                if (neigh != nullptr && !neigh->_is_ghost)
+                if (neigh != nullptr)
                     u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(),(*neigh)["U_R"_s]));
             }
 

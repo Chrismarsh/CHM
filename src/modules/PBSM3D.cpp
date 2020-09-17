@@ -1,4 +1,4 @@
-; //
+//
 // Canadian Hydrological Model - The Canadian Hydrological Model (CHM) is a
 // novel modular unstructured mesh based approach for hydrological modelling
 // Copyright (C) 2018 Christopher Marsh
@@ -24,18 +24,6 @@
 #include "PBSM3D.hpp"
 
 REGISTER_MODULE_CPP(PBSM3D);
-
-// starting at row_start until row_end find offset for col
-inline unsigned int offset(const unsigned int& row_start, const unsigned int& row_end, const unsigned int* col_buffer,
-                           const unsigned int& col)
-{
-    for (unsigned int i = row_start; i < row_end; ++i)
-    {
-        if (col_buffer[i] == col)
-            return i;
-    }
-    return -1; // wrap it and index garbage
-}
 
 struct my_fill_topo_params
 {
@@ -275,17 +263,20 @@ void PBSM3D::init(mesh& domain)
 
     n_non_edge_tri = 0;
 
-    // use this to build the sparsity pattern for suspension matrix
+    // Size of the domain
     size_t ntri = domain->size_faces();
-    std::vector<std::map<unsigned int, vcl_scalar_type>> C(ntri * nLayer);
-
-    // sparsity pattern for drift
-    std::vector<std::map<unsigned int, vcl_scalar_type>> A(ntri);
+    size_t n_global_tri = domain->size_global_faces();
 
     LOG_DEBUG << "#face=" << ntri;
 
+    // **************************************************************
+    // **************************************************************
+    // TODO can this loop be combined with the trilinos GrsGraph creations?
+    // - it's easier to follow along with separated loops, but likely less efficient
+    // **************************************************************
+    // **************************************************************
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < ntri; i++)
     {
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
@@ -353,13 +344,11 @@ void PBSM3D::init(mesh& domain)
         d->A[3] = d->A[4] = face->get_area();
 
         d->is_edge = false;
-        // which faces have neighbours? Ie, are we an edge?
+        // which faces have neighbors? Ie, are we an edge?
         for (int a = 0; a < 3; ++a)
         {
-            A[i][i] = -9999;
-
             auto neigh = face->neighbor(a);
-            if (neigh == nullptr || neigh->_is_ghost)
+            if (neigh == nullptr)
             {
                 d->face_neigh[a] = false;
                 d->is_edge = true;
@@ -367,8 +356,6 @@ void PBSM3D::init(mesh& domain)
             else
             {
                 d->face_neigh[a] = true;
-
-                A[i][neigh->cell_local_id] = -9999;
             }
         }
         if (!d->is_edge)
@@ -382,50 +369,11 @@ void PBSM3D::init(mesh& domain)
         d->csubl.resize(nLayer);
         (*face)["sum_drift"_s]=0;
 
-        // iterate over the vertical layers
-        for (int z = 0; z < nLayer; ++z)
-        {
-            size_t idx = ntri * z + face->cell_local_id;
-            for (int f = 0; f < 3; f++)
-            {
-                if (d->face_neigh[f])
-                {
-                    size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
-                    C[idx][idx] = -9999;
-                    C[idx][nidx] = -9999;
-                }
-                else
-                {
-                    C[idx][idx] = -9999;
-                }
-            }
-
-            if (z == 0)
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_local_id] = -9999;
-            }
-            else if (z == nLayer - 1)
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
-            }
-            else // middle layers
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_local_id] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
-            }
-        }
     }
 
-    viennacl::copy(C, vl_C); // copy C -> vl_C, sets up the sparsity pattern
-    viennacl::copy(A, vl_A); // copy A -> vl_A, sets up the sparsity pattern
+    suspension_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain,nLayer));
+    deposition_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain));
 
-    b.resize(ntri * nLayer);
-    bb.resize(ntri);
-    nnz = vl_C.nnz();
-    nnz_drift = vl_A.nnz();
 }
 
 void PBSM3D::run(mesh& domain)
@@ -435,42 +383,15 @@ void PBSM3D::run(mesh& domain)
 
     // needed for linear system offsets
     size_t ntri = domain->size_faces();
+    size_t n_global_tri = domain->size_global_faces();
 
-    // vcl_scalar_type is defined in the main CMakeLists.txt file.
-    // Some GPUs do not have double precision so the run will fail if the wrong
-    // precision is used
-
-#ifdef VIENNACL_WITH_OPENCL
-    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
-    vl_C.switch_memory_context(host_ctx);
-    vl_A.switch_memory_context(host_ctx);
-
-    b.switch_memory_context(host_ctx);
-    bb.switch_memory_context(host_ctx);
-#endif
-
-    // zero CSR vector in vl_C
-    viennacl::vector_base<vcl_scalar_type> init_temporary(
-        vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz + 1), 0, 1);
-    // write:
-    init_temporary = viennacl::zero_vector<vcl_scalar_type>(
-        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz + 1), viennacl::traits::context(vl_C));
-
-    // zero-fill RHS
-    b.clear();
-
-    // get row buffer
-    unsigned int const* row_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
-    unsigned int const* col_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
-    vcl_scalar_type* elements =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
-
+    suspension_NNP->zeroSystem();
+    deposition_NNP->zeroSystem();
 
     // Set this flag if the RHS of the suspension system is ever nonzero
     // Thread-safe because it is only ever switched in one direction
-    suspension_present=false;
+    suspension_present = false;
+    deposition_present = false;
 
 #pragma omp parallel
     {
@@ -722,7 +643,6 @@ void PBSM3D::run(mesh& domain)
             // exposed vegetation w/ the z0 estimate
             double lambda = 0;
 
-
             d->saltation = false; // default case
 
             // threshold friction velocity. Compute here as it's used below as well
@@ -946,9 +866,9 @@ void PBSM3D::run(mesh& domain)
                 double udotm[3] = {0, 0, 0};
                 double E[3] = {0, 0, 0};
 
-                //compute a divergence mass flux of saltation assuming our neighbours are 0 flux
-                //however, we can't compute it w/ an upwind scheme like we do for the true solution later
-                //as we don't know the neighbours values (might not have been computed yet). So this is just an
+                // compute a divergence mass flux of saltation assuming our neighbors are 0 flux
+                // however, we can't compute it w/ an upwind scheme like we do for the true solution later
+                // as we don't know the neighbors values (might not have been computed yet). So this is just an
                 for (int j = 0; j < 3; ++j)
                 {
                     udotm[j] = arma::dot(uvw, d->m[j]);
@@ -956,7 +876,7 @@ void PBSM3D::run(mesh& domain)
                     mass += -E[j] * Qsalt * udotm[j];
                 }
 
-                mass = mass/V * global_param->dt();
+                mass = mass / V * global_param->dt();
 
                 if (debug_output)
                 {
@@ -964,15 +884,15 @@ void PBSM3D::run(mesh& domain)
                     (*face)["mass_qsalt"_s] = mass;
                 }
 
-                if( mass < 0 && std::fabs(mass) > swe)
+                if (mass < 0 && std::fabs(mass) > swe)
                 {
-                  c_salt = 0;
-                  //-swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
-                  // kg/(m*s)
-                  Qsalt = c_salt * uhs * hs; // integrate over the depth of the saltation layer, kg/(m*s)
+                    c_salt = 0;
+                    //-swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
+                    // kg/(m*s)
+                    Qsalt = c_salt * uhs * hs; // integrate over the depth of the saltation layer, kg/(m*s)
 
-                  if (debug_output)
-                      (*face)["csalt_reset"_s] = c_salt;
+                    if (debug_output)
+                        (*face)["csalt_reset"_s] = c_salt;
                 }
             }
 
@@ -1201,7 +1121,7 @@ void PBSM3D::run(mesh& domain)
                 {
                     for (int a = 0; a < 3; ++a)
                     {
-                        auto neigh = face->neighbor(a);
+                        // auto neigh = face->neighbor(a);
                         alpha[a] = d->A[a];
 
                         // do just very low horz diffusion for numerics
@@ -1274,17 +1194,14 @@ void PBSM3D::run(mesh& domain)
                     udotm[j] = arma::dot(uvw, m[j]);
                 }
                 // lateral
-                size_t idx = ntri * z + face->cell_local_id;
+                int idx = n_global_tri * z + face->cell_global_id;
 
-                //[idx][idx]
-                size_t idx_idx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, idx);
-                b[idx] = 0;
                 double V = face->get_area() * v_edge_height;
-
                 // the sink term is added on for each edge check, which isn't right
                 // and ends up 5x counting it so / by 5 for V so it's
                 // not 5x counted.
                 V /= 5.0;
+
                 if (!do_sublimation)
                 {
                     csubl = 0.0;
@@ -1300,41 +1217,44 @@ void PBSM3D::run(mesh& domain)
 
                         if (d->face_neigh[f])
                         {
-                            size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
+                            int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
 
-                            elements[idx_idx_off] += V * csubl - d->A[f] * udotm[f] - alpha[f];
-
-                            size_t idx_nidx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, nidx);
-
-                            elements[idx_nidx_off] += alpha[f];
+			    // Diagonal value
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								      (V * csubl - d->A[f] * udotm[f] - alpha[f]));
+			    // Off diagonal value
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, (alpha[f]));
                         }
-                        else // missing neighbour case
+                        else // missing neighbor case
                         {
                             // no mass in
-//                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+                            //                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
                             // allow mass into the domain from ghost cell
-                            elements[idx_idx_off] += -0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V;
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								      (-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
                         }
                     }
                     else
                     {
                         if (d->face_neigh[f])
                         {
-                            size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
-
-                            size_t idx_nidx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, nidx);
-
-                            elements[idx_idx_off] += V * csubl - alpha[f];
-                            elements[idx_nidx_off] += -d->A[f] * udotm[f] + alpha[f];
+                            int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
+			    // Diagonal entry
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								      V * csubl - alpha[f]);
+			    // Off diagonal entry
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, nidx,
+								      -d->A[f] * udotm[f] + alpha[f]);
                         }
                         else
                         {
                             // No mass in
-//                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
+                            //                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
 
                             // allow mass in
-                            elements[idx_idx_off] += -0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V;
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								   -0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V);
                         }
                     }
                 }
@@ -1349,23 +1269,32 @@ void PBSM3D::run(mesh& domain)
                     //              elements[idx_idx_off] += V * csubl - alpha4;
 
                     // includes advection term
-                    elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha4;
-
-                    b[idx] += -alpha4 * c_salt;
+		    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+							      V * csubl - d->A[4] * udotm[4] - alpha4);
+		    // RHS
+		    double val = -alpha4 * c_salt;
+		    suspension_NNP->rhsSumIntoGlobalValue(idx,val);
 
                     // ntri * (z + 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z + 1) + face->cell_local_id);
+		    int nidx = n_global_tri*(z+1) + face->cell_global_id;
 
                     if (udotm[3] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        elements[idx_nidx_off] += alpha[3];
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								V * csubl - d->A[3] * udotm[3] - alpha[3]);
+		      // Off diagonal
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
+
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        elements[idx_nidx_off] += -d->A[3] * udotm[3] + alpha[3];
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								V * csubl - alpha[3]);
+		      // Off diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
+								-d->A[3] * udotm[3] + alpha[3]);
                     }
                 }
                 else if (z == nLayer - 1) // top z layer
@@ -1378,64 +1307,78 @@ void PBSM3D::run(mesh& domain)
 
                     if (udotm[3] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        b[idx] += -alpha[3] * cprecip;
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								V * csubl - d->A[3] * udotm[3] - alpha[3]);
+		      // RHS
+		      double val = -alpha[3] * cprecip;
+		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        b[idx] += d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								V * csubl - alpha[3]);
+		      // RHS
+		      double val = d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
+		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
 
                     // ntri * (z - 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z - 1) + face->cell_local_id);
+		    int nidx = n_global_tri*(z-1)+face->cell_global_id;
                     if (udotm[4] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha[4];
-                        elements[idx_nidx_off] += alpha[4];
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+							     V * csubl - d->A[4] * udotm[4] - alpha[4]);
+
+		      // Off diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[4];
-                        elements[idx_nidx_off] += -d->A[4] * udotm[4] + alpha[4];
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
+		      // Off diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
                     }
                 }
                 else // middle layers
                 {
-                    // ntri * (z + 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z + 1) + face->cell_local_id);
+		  // ntri * (z + 1) + face->cell_local_id (looking up)
+		  int nidx = n_global_tri*(z+1) + face->cell_global_id;
+		  if (udotm[3] > 0)
+                    {
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[3] * udotm[3] - alpha[3]);
+		      // Off diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
+                    }
+		  else
+                    {
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[3]);
+		      // Off diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[3] * udotm[3] + alpha[3]);
+                    }
 
-                    if (udotm[3] > 0)
+		  // ntri * (z + 1) + face->cell_local_id (looking down)
+		  nidx = n_global_tri*(z-1) + face->cell_global_id;
+		  if (udotm[4] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        elements[idx_nidx_off] += alpha[3];
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[4] * udotm[4] - alpha[4]);
+		      // Off diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
-                    else
+		  else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        elements[idx_nidx_off] += -d->A[3] * udotm[3] + alpha[3];
-                    }
-
-                    idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z - 1) + face->cell_local_id);
-                    if (udotm[4] > 0)
-                    {
-                        elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha[4];
-                        elements[idx_nidx_off] += alpha[4];
-                    }
-                    else
-                    {
-                        elements[idx_idx_off] += V * csubl - alpha[4];
-                        elements[idx_nidx_off] += -d->A[4] * udotm[4] + alpha[4];
+		      // Diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
+		      // Off diagonal entry
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
                     }
                 }
-
-		// Set flag if RHS component is non-zero
-		if ( abs(b[idx]) > suspension_present_threshold ) {
-		  suspension_present = true;
-		}
 
             } // end z iter
 
@@ -1443,67 +1386,48 @@ void PBSM3D::run(mesh& domain)
 
     } // end pragma omp parallel thread pool
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Write mat/rhs
+    ////////////////////////////////////////////////////////////////////////////
+    // static int count=0;
 
-    std::vector<vcl_scalar_type> x(ntri*nLayer,0.0);
+    // std::string suspension_file_prefix="Suspension_";
+    // suspension_file_prefix += std::to_string(count);
+    // suspension_NNP->writeSystemMatrixMarket(suspension_file_prefix);
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
 
-if (suspension_present) {
+    // Check if we exceed the threshold for blowing snow
+    auto suspension_rhs_max = suspension_NNP->getRhsMax();
+    if ( suspension_rhs_max > suspension_present_threshold ) {
+      suspension_present = true;
+    }
 
-    // setup the compressed matrix on the compute device, if available
-#ifdef VIENNACL_WITH_OPENCL
-    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
-    vl_C.switch_memory_context(gpu_ctx);
-    b.switch_memory_context(gpu_ctx);
-#endif
+    if (suspension_present) {
 
-    // This solves the steady-state suspension layer concentration
+    auto suspension_results = suspension_NNP->Solve();
+    LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
 
-    // configuration of preconditioner:
-    viennacl::linalg::ilut_tag ilut_config(20,1e-4); // defaults: 20 entries/row, 1e-4 drop tol
-    viennacl::linalg::ilut_precond<viennacl::compressed_matrix<vcl_scalar_type>> ilut(
-        vl_C, ilut_config);
+    ////////////////////////////////////////////////////////////////////////////
+    // Write solution
+    ////////////////////////////////////////////////////////////////////////////
+    // suspension_NNP->writeSolutionMatrixMarket(suspension_file_prefix);
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
 
-    // Set up convergence tolerance to have an average value for each unknown
-    double suspension_gmres_tol = 1e-8;
-    // Set max iterations and maximum Krylov dimension before restart
-    size_t suspension_gmres_max_iterations = 1000;
-    size_t suspension_gmres_krylov_dimension = 30;
+    } // if suspension_present fails
+    else {
+      LOG_DEBUG << "  No suspended snow.";
+    }
 
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::linalg::gmres_tag suspension_custom_gmres(suspension_gmres_tol, suspension_gmres_max_iterations,
-                                                        suspension_gmres_krylov_dimension);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, suspension_custom_gmres, ilut);
-    viennacl::copy(vl_x, x);
+    // Note we still have to do the following if there is no suspended snow.
+    // - In that case suspension_solution should be the 0 vector it was initialized to for this iteration
 
-    // Log final state of the linear solve
-    LOG_DEBUG << "  Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
-    LOG_DEBUG << "  Suspension_GMRES final residual : " << suspension_custom_gmres.error();
-
-    /*
-      Dump matrix to ASCII file
-    */
-    //    ofstream ofile;
-    //    ofile.open("C.out");
-    //    ofile << std::setprecision(12) << vl_C;
-    //    ofile.close();
-    //
-    //    ofile.open("b.out");
-    //    ofile << std::setprecision(12) << b;
-    //    ofile.close();
-    //
-    //    ofile.open("x.out");
-    //    ofile << std::setprecision(12) << vl_x;
-    //    ofile.close();
-
-    // Now we have the concentration, compute the suspension flux
- } else {
-    LOG_DEBUG << "  No suspension present.";
- }
-
-
+    // auto suspension_sol_array = suspension_solution->get1dView();
+    auto suspension_sol_array = suspension_NNP->getSolutionView();
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < ntri; i++)
     {
         auto face = domain->face(i);
         auto d = face->get_module_data<data>(ID);
@@ -1512,7 +1436,7 @@ if (suspension_present) {
         double Qsubl = 0;
         for (int z = 0; z < nLayer; ++z)
         {
-            double c = x[ntri * z + face->cell_local_id];
+            double c = suspension_sol_array[ntri * z + face->cell_local_id];
             c = c < 0 || is_nan(c) ? 0 : c; // harden against some numerical issues that
                                             // occasionally come up for unknown reasons.
 
@@ -1540,28 +1464,16 @@ if (suspension_present) {
 
     }
 
-    // Setup the matrix to be used to the solution of the gradient of the
-    // suspension flux this will give us our deposition flux
-    // get row buffer
-    unsigned int const* A_row_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
-    unsigned int const* A_col_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
-    vcl_scalar_type* A_elements =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
+    /*
+      Communicate necessary (neighbor) vars for deposition linear system setup
+     */
+    // LOG_DEBUG << "Qsusp"_s << "     " << "Qsalt"_s;
+    domain->ghost_neighbors_communicate_variable("Qsusp"_s);
+    domain->ghost_neighbors_communicate_variable("Qsalt"_s);
 
-    // zero CSR vector in vl_A
-    viennacl::vector_base<vcl_scalar_type> init_temporaryA(
-        vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), 0, 1);
-    // write:
-    init_temporaryA = viennacl::zero_vector<vcl_scalar_type>(
-        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), viennacl::traits::context(vl_A));
-
-//     zero fill RHS for drift
-    bb.clear();
-
-    saltation_present=false;
-
+    /*
+      Setup and solve the linear system for deposition
+     */
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -1579,16 +1491,19 @@ if (suspension_present) {
         uvw(1) = v.y(); // U_y
         uvw(2) = 0;
 
-        double udotm[3]= {0, 0, 0}; // Qt is in direction u_hat
-        double E[3] = {0, 0, 0}; // edge lengths b/c 2d now
+        double udotm[3] = {0, 0, 0};    // Qt is in direction u_hat
+        double E[3] = {0, 0, 0};        // edge lengths b/c 2d now
         double dx[3] = {2.0, 2.0, 2.0}; // cell centre distances
 
         double V = face->get_area(); // V for consistency but actually an area
 
-        size_t i_i_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, i);
-        A_elements[i_i_off] = V;
+	int local_row, global_row, local_col, global_col;
+	global_row = static_cast<int>(face->cell_global_id);
 
-        //iterate over edges
+	// Diagonal element
+	deposition_NNP->matrixReplaceGlobalValues(global_row, (global_row), (V));
+
+        // iterate over edges
         for (int j = 0; j < 3; j++)
         {
             // just unit vectors as qsusp/qsalt flux has magnitude
@@ -1598,100 +1513,91 @@ if (suspension_present) {
             double Qtj = 0;
             double Qsj = 0;
 
-            //Pointing same way, we advect downwind
-            if(udotm[j] > 0)
+            // Pointing same way, we advect downwind
+            if (udotm[j] > 0)
             {
-                    Qtj = (*face)["Qsusp"_s];
-                    Qsj = (*face)["Qsalt"_s];
+                Qtj = (*face)["Qsusp"_s];
+                Qsj = (*face)["Qsalt"_s];
             }
             else // pointing into the wind, use upwind as donor
             {
                 if (d->face_neigh[j])
                 {
                     auto neigh = face->neighbor(j);
+
+		    // if (neigh->_is_ghost) {
+		    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsusp: " << (*neigh)["Qsusp"_s];
+		    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsalt: " << (*neigh)["Qsalt"_s];
+		    // }
+
                     Qtj = (*neigh)["Qsusp"_s];
                     Qsj = (*neigh)["Qsalt"_s];
                 }
                 else
                 {
-                    //neighbour doesn't exist, treat as duplicate ghost node
+                    // neighbor doesn't exist, i.e., we're on an actual boundary, treat as duplicate node outside of domain
                     Qtj = (*face)["Qsusp"_s];
                     Qsj = (*face)["Qsalt"_s];
                 }
             }
 
-            //we now have an edge Qtj & Qsj estimate
-            //build up our neighbours
+            // we now have an edge Qtj & Qsj estimate
+            // build up our neighbors
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
+		global_col = static_cast<int>(neigh->cell_global_id);
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                A_elements[i_i_off] += eps*E[j]/dx[j];
+		// diagonal entry
+		deposition_NNP->matrixSumIntoGlobalValues(global_row, global_row, eps * E[j] / dx[j]);
 
-                size_t i_ni_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, neigh->cell_local_id);
-                A_elements[i_ni_off] += -eps*E[j]/dx[j];
-
+		// off diagonal entry
+		deposition_NNP->matrixSumIntoGlobalValues(global_row, global_col, -eps * E[j] / dx[j]);
             }
-            bb[i] +=  -E[j]*(Qtj+Qsj)*udotm[j];
+
+	    // RHS
+	    double val = -E[j] * (Qtj + Qsj) * udotm[j];
+	    deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }
-	if (abs(bb[i]) > saltation_present_threshold) {
-	  saltation_present=true;
-	}
-    } // end face itr
+    } // end face iteration
 
-    std::vector<vcl_scalar_type> dSdt(ntri,0.0);
-
-    if (saltation_present) {
-
-// setup the compressed matrix on the compute device, if available
-#ifdef VIENNACL_WITH_OPENCL
-    //    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);  <--- already
-    //    defined above
-    vl_A.switch_memory_context(gpu_ctx);
-    bb.switch_memory_context(gpu_ctx);
-#endif
-
-//     Solve the deposition flux --> how much drifting there is.
-
-//     configuration of preconditioner:
-    viennacl::linalg::chow_patel_tag deposition_flux_chow_patel_config;
-    deposition_flux_chow_patel_config.sweeps(3);       //  nonlinear sweeps
-    deposition_flux_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
-    viennacl::linalg::chow_patel_icc_precond<viennacl::compressed_matrix<vcl_scalar_type>>
-        deposition_flux_chow_patel_icc(vl_A, deposition_flux_chow_patel_config);
-
-    // Set up convergence tolerance to have an average value for each unknown
-    double deposition_flux_cg_tol = 1e-8;
-    // Set max iterations and maximum Krylov dimension before restart
-    size_t deposition_flux_cg_max_iterations = 500;
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::linalg::cg_tag deposition_flux_custom_cg(deposition_flux_cg_tol, deposition_flux_cg_max_iterations);
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt =
-        viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg, deposition_flux_chow_patel_icc);
-    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A,
-    // bb, deposition_flux_custom_cg);
-    viennacl::copy(vl_dSdt, dSdt);
-
-    // Log final state of the linear solve
-    LOG_DEBUG << "  deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
-    LOG_DEBUG << "  deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
-
-    } // if saltation_present
-    else {
-      LOG_DEBUG << "  No saltation present. ";
+    // Check if we exceed the threshold for blowing snow
+    auto deposition_rhs_max = deposition_NNP->getRhsMax();
+    if ( deposition_rhs_max > deposition_present_threshold ) {
+      deposition_present = true;
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Printing out the mat/rhs
+    ////////////////////////////////////////////////////////////////////////////
+    // std::string deposition_file_prefix="Deposition_";
+    // deposition_file_prefix += std::to_string(count);
+    // deposition_NNP->writeSystemMatrixMarket(deposition_file_prefix);
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    if (deposition_present) {
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Printing out the solution
+    ////////////////////////////////////////////////////////////////////////////
+    // deposition_NNP->writeSolutionMatrixMarket(deposition_file_prefix);
+    // count++;
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    auto deposition_results = deposition_NNP->Solve();
+    LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
+
+    // auto deposition_sol_array = deposition_solution->get1dView();
+    auto deposition_sol_array = deposition_NNP->getSolutionView();
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
+        double qdep = is_nan(deposition_sol_array[i]) ? 0 : deposition_sol_array[i];
 
         double mass = 0;
 
@@ -1699,16 +1605,24 @@ if (suspension_present) {
         mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
 
         // could we have eroded more mass than what exists? cap it
-        double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
-        swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
+        // double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
+        // swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
         // updated if we override the module order
-//        if( mass < 0 && std::fabs(mass) > swe )
-//        {
-//            mass = -swe;
-//        }
+        //        if( mass < 0 && std::fabs(mass) > swe )
+        //        {
+        //            mass = -swe;
+        //        }
         (*face)["drift_mass"_s] = mass;
         (*face)["sum_drift"_s] += mass;
     }
+
+    } // if deposition_present fails
+    else {
+      LOG_DEBUG << "  No deposited snow.";
+    }
+
+
 }
 
-PBSM3D::~PBSM3D() {}
+PBSM3D::~PBSM3D() {
+}

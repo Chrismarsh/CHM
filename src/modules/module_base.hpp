@@ -71,7 +71,7 @@ typedef pt::ptree config_file;
      * \enum SpatialType
      * Module "depends" variables must specify where the spatial extent the look at for their dependent variables.
      *  local     = only this face element
-     *  neighbour = this and nearest-neighbour face elements
+     *  neighbor = this and nearest-neighbor face elements
      *  distance  = this and all face elements within a fixed distance
      */
     enum class SpatialType
@@ -88,7 +88,7 @@ typedef pt::ptree config_file;
          * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the
          * order of traversal of elements.
          */
-        neighbour,
+        neighbor,
         /**
          * Sets that this module is domain parallel.
          * That is, this module requires surrounding elements to compute its answer and that it is dependent upon the
@@ -133,7 +133,7 @@ typedef pt::ptree config_file;
                 default:
                     BOOST_THROW_EXCEPTION(
                         module_error() << errstr_info(
-                            "Distance specified with local or neighbour SpatialType. This is not allowed."));
+                            "Distance specified with local or neighbor SpatialType. This is not allowed."));
             }
         }
     };
@@ -295,7 +295,7 @@ public:
 
     /**
      *
-     * - default behaviour is to make it of type NEIGHBOUR
+     * - default behaviour is to make it of type NEIGHBOR
     */
 
 
@@ -314,14 +314,14 @@ public:
 
     /**
      * Set a variable that this module provides
-     * - default behaviour is to make it of type NEIGHBOUR
+     * - default behaviour is to make it of type NEIGHBOR
      */
     void provides(const std::string& name)
     {
         if(name.find_first_of("\t ") != std::string::npos)
             BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Variable " + name +" has a space. This is not allowed."));
 
-        _provides->push_back(variable_info(name,SpatialType::neighbour));
+        _provides->push_back(variable_info(name,SpatialType::neighbor));
     }
 
     /**

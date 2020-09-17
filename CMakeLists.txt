@@ -218,7 +218,6 @@ if(USE_OMP)
     if(OpenMP_FOUND)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
      #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
-        add_definitions(-DVIENNACL_WITH_OPENMP)
     endif()
 endif()
 
@@ -228,21 +227,6 @@ if(MATLAB)
     find_package(Matlab REQUIRED)
 endif()
 
-
-find_package(OpenCL)
-if(USE_OCL AND OPENCL_FOUND)
-    message(STATUS "Enabling ViennaCL with OpenCL, vcl_scalar_type=float")
-
-    add_definitions(-Dvcl_scalar_type=float) #This sets the precision of the floating point precision used for ViennaCL matrixes.
-    add_definitions(-DVIENNACL_WITH_OPENCL)
-    if(APPLE)
-       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework OpenCL")
-    endif()
-else()
-    add_definitions(-Dvcl_scalar_type=double) #might as well default to double precision if no OpenCL device found.
-    unset(OPENCL_LIBRARIES CACHE) ##zero these out so we can use them later without trouble
-    unset(OPENCL_INCLUDE_DIRS CACHE)
-endif()
 
 find_package(meteoio REQUIRED)
 
@@ -271,9 +255,6 @@ else()
 endif()
 
 find_package(func REQUIRED)
-
-find_package(viennacl  REQUIRED)
-message(STATUS "Found ViennaCL at ${VIENNACL_INCLUDE_DIR}")
 
 find_package(gdal 2.4 REQUIRED )
 
@@ -325,6 +306,8 @@ if(NOT GVPR OR NOT DOT)
 else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
+
+find_package(trilinos REQUIRED)
 
 #setup src dirs
 include(third_party/CMakeLists.txt)

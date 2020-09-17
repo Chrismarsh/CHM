@@ -30,9 +30,6 @@
 #include "logger.hpp"
 #include <string>
 #include <math.h>
-#include <viennacl/linalg/gmres.hpp>
-#include <viennacl/compressed_matrix.hpp>
-#include <viennacl/linalg/ilu.hpp>
 /**
  * \ingroup modules wind
  * @{

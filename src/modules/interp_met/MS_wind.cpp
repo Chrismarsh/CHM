@@ -163,6 +163,8 @@ void MS_wind::run(mesh& domain)
 
         }
 
+	// Need to access U_R from neighbors
+	domain->ghost_neighbors_communicate_variable("U_R"_s);
 
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -173,7 +175,7 @@ void MS_wind::run(mesh& domain)
           for (size_t j = 0; j < 3; j++)
           {
             auto neigh = face->neighbor(j);
-            if (neigh != nullptr && !neigh->_is_ghost)
+            if (neigh != nullptr)
               u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(),
                                             (*neigh)["U_R"_s]));
           }
@@ -333,6 +335,8 @@ void MS_wind::run(mesh& domain)
 
         }
 
+    // Need to access U_R from neighbors
+    domain->ghost_neighbors_communicate_variable("U_R"_s);
 
     #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -344,7 +348,7 @@ void MS_wind::run(mesh& domain)
 		     for (size_t j = 0; j < 3; j++)
 		     {
 		       auto neigh = face->neighbor(j);
-		       if (neigh != nullptr && !neigh->_is_ghost)
+		       if (neigh != nullptr)
 			 u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(),(*neigh)["U_R"_s]));
 		     }
 
