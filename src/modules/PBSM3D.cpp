@@ -1241,11 +1241,11 @@ void PBSM3D::run(mesh& domain)
                         {
                             int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
 			    // Diagonal entry
-			    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
-								      (V * csubl - alpha[f]));
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								      V * csubl - alpha[f]);
 			    // Off diagonal entry
-			    suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
-								      (-d->A[f] * udotm[f] + alpha[f]));
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, nidx,
+								      -d->A[f] * udotm[f] + alpha[f]);
                         }
                         else
                         {
@@ -1253,8 +1253,8 @@ void PBSM3D::run(mesh& domain)
                             //                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
 
                             // allow mass in
-			    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
-								   (-0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V));
+			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								   -0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V);
                         }
                     }
                 }
@@ -1269,8 +1269,8 @@ void PBSM3D::run(mesh& domain)
                     //              elements[idx_idx_off] += V * csubl - alpha4;
 
                     // includes advection term
-		    suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
-							      (V * csubl - d->A[4] * udotm[4] - alpha4));
+		    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+							      V * csubl - d->A[4] * udotm[4] - alpha4);
 		    // RHS
 		    double val = -alpha4 * c_salt;
 		    suspension_NNP->rhsSumIntoGlobalValue(idx,val);
@@ -1281,20 +1281,20 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[3] > 0)
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
-								(V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								V * csubl - d->A[3] * udotm[3] - alpha[3]);
 		      // Off diagonal
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
 
                     }
                     else
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
-								(V * csubl - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								V * csubl - alpha[3]);
 		      // Off diagonal entry
 		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
-								(-d->A[3] * udotm[3] + alpha[3]));
+								-d->A[3] * udotm[3] + alpha[3]);
                     }
                 }
                 else if (z == nLayer - 1) // top z layer
@@ -1308,8 +1308,8 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[3] > 0)
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
-								(V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								V * csubl - d->A[3] * udotm[3] - alpha[3]);
 		      // RHS
 		      double val = -alpha[3] * cprecip;
 		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
@@ -1317,8 +1317,8 @@ void PBSM3D::run(mesh& domain)
                     else
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
-								(V * csubl - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+								V * csubl - alpha[3]);
 		      // RHS
 		      double val = d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
 		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
@@ -1329,18 +1329,18 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[4] > 0)
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx),
-							     (V * csubl - d->A[4] * udotm[4] - alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+							     V * csubl - d->A[4] * udotm[4] - alpha[4]);
 
 		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
                     else
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
 		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[4] * udotm[4] + alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
                     }
                 }
                 else // middle layers
@@ -1350,16 +1350,16 @@ void PBSM3D::run(mesh& domain)
 		  if (udotm[3] > 0)
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - d->A[3] * udotm[3] - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[3] * udotm[3] - alpha[3]);
 		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
                     }
 		  else
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[3]);
 		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[3] * udotm[3] + alpha[3]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[3] * udotm[3] + alpha[3]);
                     }
 
 		  // ntri * (z + 1) + face->cell_local_id (looking down)
@@ -1367,16 +1367,16 @@ void PBSM3D::run(mesh& domain)
 		  if (udotm[4] > 0)
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - d->A[4] * udotm[4] - alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[4] * udotm[4] - alpha[4]);
 		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
 		  else
                     {
 		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (idx), (V * csubl - alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
 		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx), (-d->A[4] * udotm[4] + alpha[4]));
+		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
                     }
                 }
 
@@ -1550,10 +1550,10 @@ void PBSM3D::run(mesh& domain)
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
 		// diagonal entry
-		deposition_NNP->matrixSumIntoGlobalValues(global_row, (global_row), (eps * E[j] / dx[j]));
+		deposition_NNP->matrixSumIntoGlobalValues(global_row, global_row, eps * E[j] / dx[j]);
 
 		// off diagonal entry
-		deposition_NNP->matrixSumIntoGlobalValues(global_row, (global_col), (-eps * E[j] / dx[j]));
+		deposition_NNP->matrixSumIntoGlobalValues(global_row, global_col, -eps * E[j] / dx[j]);
             }
 
 	    // RHS
