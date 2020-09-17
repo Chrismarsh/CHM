@@ -714,6 +714,7 @@ public:
 
     /**
     * Returns the vector of locally owned global IDs
+    * - "locally owned" = this rank is responsible for their data
     * \return A vector of global IDs for the locally owned elements
     */
     const std::vector<int>& get_global_IDs() const;
@@ -879,6 +880,7 @@ private:
     std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;
 
+    // size of this vector is the number of locally owned elements
     std::map<int,int> _global_to_locally_owned_index_map; // key=global_index, entry=local_index
 
     // All MPI process are aware of the local sizes for all other MPI processes
@@ -887,8 +889,11 @@ private:
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
 
+    // Array of pointers to the ghost neighbors for this rank
     std::vector< mesh_elem > _ghost_neighbors;
+    // Array of which other rank owns each ghost neighbor
     std::vector< int > _ghost_neighbor_owners;
+    // Array of pointers to all ghost faces (in buffer region) for this rank
     std::vector< mesh_elem > _ghost_faces;
 
     std::map< int, std::pair<int,int> > _comm_partner_ownership;  // (start_local_idx, length)
