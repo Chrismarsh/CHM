@@ -27,6 +27,10 @@ Ubuntu   18.04  Moajave   10.x
 
 gcc (libc 2.27+): 7.x, 8.x
 
+.. warning::
+   It is best to use gcc/8.x + as earlier gcc versions do not evaluate the constexpr hashes at compile time, leading to lower performance.
+   Example is here https://www.godbolt.org/z/PHZ4P4
+
 If bintray binaries can be used, the only requirements are: 
 
    - conan >=1.21 
