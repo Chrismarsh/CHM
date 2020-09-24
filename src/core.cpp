@@ -815,6 +815,9 @@ void core::config_output(pt::ptree &value)
 
             _mesh->write_param_to_vtu( itr.second.get("write_parameters",true) ) ;
 
+	    // Set option for writing ghost neighbor data, defaults to not
+            _mesh->write_ghost_neighbors_to_vtu( itr.second.get("write_ghost_neighbors",false) ) ;
+
             try
             {
                 for (auto &jtr: itr.second.get_child("variables"))
