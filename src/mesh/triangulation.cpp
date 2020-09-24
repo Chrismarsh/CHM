@@ -88,6 +88,11 @@ void triangulation::write_param_to_vtu(bool write_param)
     _write_parameters_to_vtu = write_param;
 }
 
+void triangulation::write_ghost_neighbors_to_vtu(bool write_ghost_neighbors)
+{
+    _write_ghost_neighbors_to_vtu = write_ghost_neighbors;
+}
+
 std::set<std::string> triangulation::parameters()
 {
     return _parameters;
@@ -1259,6 +1264,9 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         triangles->InsertNextCell(tri);
     }
 
+    if(_write_ghost_neighbors_to_vtu)
+    {
+
     /* Ghost neighbors */
     for (size_t i = 0; i < this->_ghost_neighbors.size(); i++)
     {
@@ -1277,6 +1285,8 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 
         triangles->InsertNextCell(tri);
     }
+
+    }  // if write ghosts
 
 
     _vtk_unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
@@ -1465,6 +1475,9 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
     }
 
+    if(_write_ghost_neighbors_to_vtu)
+    {
+
     /* Ghost neighbors */
     for (size_t i = 0; i < _ghost_neighbors.size(); i++)
     {
@@ -1520,6 +1533,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
 
     }
+
+    } // if write ghosts
 
     for(auto& m : vectors)
     {

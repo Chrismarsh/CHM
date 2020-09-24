@@ -815,7 +815,14 @@ public:
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
 	boost::shared_ptr<Tree> dD_tree;
 
+    /**
+     * Set the the private variable for writing parameters in vtu output
+     */
     void write_param_to_vtu(bool write_param);
+    /**
+     * Set the the private variable for writing the ghost neighbor data in vtu output
+     */
+    void write_ghost_neighbors_to_vtu(bool write_ghost_neighbors);
 
     /**
      * Returns the set of parameters available on the triangulation
@@ -869,6 +876,8 @@ private:
 
     //should we write parameters to the vtu file?
     bool _write_parameters_to_vtu;
+    //should we write ghost neighbor faces to the vtu file?
+    bool _write_ghost_neighbors_to_vtu;
 
     // min and max elevations
     double _min_z;
