@@ -43,6 +43,19 @@ core::core()
 
 core::~core()
 {
+    // clean up all the modules to ensure that Tpetra:~Map() is called prior to MPI_Finalize as per GitHib Issue #2372
+    for(auto& itr : _chunked_modules)
+    {
+        for(auto& jtr : itr )
+        {
+            jtr.reset();
+        }
+    }
+    for(auto& itr : _modules)
+    {
+        itr.first.reset();
+    }
+
     LOG_DEBUG << "Finished";
 }
 
