@@ -438,7 +438,6 @@ Both mesh and timeseries can be used together.
    The output directory name.
 
 
-
 timeseries output
 ~~~~~~~~~~~~~~~~~~
 
@@ -533,6 +532,13 @@ For more details, please see the :ref:`output` section.
 
    Disables/enables writing parameters to the output.
 
+.. confval write_ghost_neighbors::
+
+   :type: boolean
+   :default: false
+
+   Write each MPI rank's ghost face data to vtu output
+
 Example:
 
 .. code:: json
@@ -548,7 +554,8 @@ Example:
                 "iswr"
             ],
             "frequency": "24",
-            "write_parameters": false
+            "write_parameters": false,
+            "write_ghost_neighbors": false
         }
    }
 
