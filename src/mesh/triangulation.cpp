@@ -966,7 +966,14 @@ void triangulation::setup_nearest_neighbor_communication()
 
 }
 
-void triangulation::ghost_neighbors_communicate_variable(uint64_t var)
+void triangulation::ghost_neighbors_communicate_variable(const std::string& var)
+{
+    // This supports the use case if _s no-oped to const char * via
+    uint64_t hash = xxh64::hash (var.c_str(), var.length());
+    ghost_neighbors_communicate_variable(hash);
+}
+
+void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 {
 
 // Function is meaningful only when using MPI

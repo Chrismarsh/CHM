@@ -25,16 +25,20 @@
 
 #include <cstdint>
 
-struct xxh64 {
-    static constexpr uint64_t hash (const char *p, uint64_t len, uint64_t seed) {
+struct xxh64
+{
+    static constexpr uint64_t hash (const char *p, uint64_t len, uint64_t seed = 2654435761U /* default seed */)
+    {
         return finalize ((len >= 32 ? h32bytes (p, len, seed) : seed + PRIME5) + len, p + (len & ~0x1F), len & 0x1F);
     }
+
 private:
     static constexpr uint64_t PRIME1 = 11400714785074694791ULL;
     static constexpr uint64_t PRIME2 = 14029467366897019727ULL;
     static constexpr uint64_t PRIME3 =  1609587929392839161ULL;
     static constexpr uint64_t PRIME4 =  9650029242287828579ULL;
     static constexpr uint64_t PRIME5 =  2870177450012600261ULL;
+
 
     static constexpr uint64_t rotl (uint64_t x, int r) {
         return ((x << r) | (x >> (64 - r)));
@@ -101,7 +105,7 @@ private:
 #ifndef SAFE_CHECKS
     constexpr uint64_t operator"" _s(const char* s, std::size_t len)
     {
-        return xxh64::hash (s, len, 2654435761U);
+        return xxh64::hash (s, len);
     }
 
 #else

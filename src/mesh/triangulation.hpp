@@ -601,10 +601,22 @@ public:
     * Set up the comm patterns for communicating nearest neighbor mesh data
     */
   void setup_nearest_neighbor_communication();
+
+
+  /**
+   * Communicate the variable var for all ghost neighbors
+   * This signature supports the use case if _s no-oped to const char * via
+   * #define SAFE_CHECKS
+   * which is used to debug and print var names. In general the hash variant used via "var_name"_s should
+   * be used.
+   * @param var Variable name
+   */
+  void ghost_neighbors_communicate_variable(const std::string& var);
     /**
-    * Communicate the variable var for all ghost neighbors
+     * Communicate the variable var for all ghost neighbors
+     * @param var Variable name
     */
-  void ghost_neighbors_communicate_variable(uint64_t var);
+  void ghost_neighbors_communicate_variable(const uint64_t& var);
 
     /**
     * Figures out which faces are required in the ghost region of an MPI process.
