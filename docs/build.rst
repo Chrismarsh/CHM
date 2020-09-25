@@ -139,16 +139,16 @@ If you need to build dependencies from source (this is likely), use the
 
    conan install ~/CHM -if=. --build missing
 
-MPI
-~~~
+Enabling MPI
+~~~~~~~~~~~~~
 
-If MPI is to be used, the prebuilt Boost dependency from Conan will not
-have it enabled. Thus, it should be rebuilt locally to ensure the local
+If MPI is to be used, the prebuilt Boost and Trilinos dependencies from Conan will not
+have it enabled. Thus, they should be rebuilt locally to ensure the local
 MPI configuration is correctly used:
 
 ::
 
-   conan install ~/CHM -if=. --build boost
+   conan install ~/CHM -if=. --build boost -o boost:without_mpi=False -o trilinos:with_mpi=True
 
 
 
@@ -160,6 +160,11 @@ On MacOS, the openmp library should be installed via homebrew:
 ::
 
    brew install libomp
+
+
+.. warning::
+   The Trilinos openmp implementation is not compatible with homebrew omp. It should be disabled via
+   ``-o trilinos:with_openmp=False``
 
 Run cmake
 ---------
