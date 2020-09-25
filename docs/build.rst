@@ -28,7 +28,7 @@ Ubuntu   18.04  Moajave   10.x
 gcc (libc 2.27+): 7.x, 8.x
 
 .. warning::
-   It is best to use gcc/8.x + as earlier gcc versions do not evaluate the constexpr hashes at compile time, leading to lower performance.
+   It is best to use gcc/7.x + as earlier gcc versions do not evaluate the constexpr hashes at compile time, leading to lower performance.
    Example is here https://www.godbolt.org/z/PHZ4P4
 
 If bintray binaries can be used, the only requirements are: 
@@ -163,7 +163,7 @@ On MacOS, the openmp library should be installed via homebrew:
 
 
 .. warning::
-   The Trilinos openmp implementation is not compatible with homebrew omp. It should be disabled via
+   The Trilinos openmp implementation is not compatible with homebrew omp. It is automatically disabled. It can be explicitly disabled via
    ``-o trilinos:with_openmp=False``
 
 Run cmake
