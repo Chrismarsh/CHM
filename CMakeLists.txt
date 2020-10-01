@@ -1,9 +1,10 @@
 cmake_minimum_required (VERSION 3.16)
 project (CHM-project CXX Fortran)
 
-# In CMake 3.12 and above the find_package(<PackageName>) command now searches prefixes specified by the <PackageName>_ROOT CMake variable and the <PackageName>_ROOT environment variable.
+# In CMake 3.12 and above the find_package(<PackageName>) command now searches prefixes specified by the <PackageName>_ROOT
+# CMake variable and the <PackageName>_ROOT environment variable.
 #https://cmake.org/cmake/help/latest/policy/CMP0074.html
-cmake_policy(SET CMP0074 OLD)
+cmake_policy(SET CMP0074 NEW)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -235,6 +236,52 @@ find_package(armadillo REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 find_package(sparsehash)
+
+# The trilinos library may have been built against a custom location blas/openblas
+# If so, conaninfo.txt has information on the custom blas location if given with the -o trilinos:blas_root=<root> option
+# If conaninfo.txt has a custom blas location, extract it and pass it as a hint to find_package(blas) which will detect any blas.
+# Then use the find_package link target in CHM to fully avoid any problems of linking against the wrong blas or not being able to find it.
+file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt conaninfotxt)
+
+string(REGEX MATCH "trilinos:blas_root=([^ ]+)" blasloc "${conaninfotxt}") # because cmake regex is only greedy
+
+if(NOT "${blasloc}" STREQUAL "")
+    string(REPLACE "\n" "" blasloc ${CMAKE_MATCH_1}) # strip out a new line we've picked up
+    set(blasloc "${blasloc}/../") # go up out of the lib dir
+    message(WARNING "Using the conaninfo.txt trilinos:blas_root=${blasloc}")
+    set(BLAS_ROOT /usr/local/opt/openblas/)
+endif()
+
+if(MACOSX AND "${blasloc}" STREQUAL "")
+
+    execute_process(
+            COMMAND brew --prefix openblas
+            RESULT_VARIABLE BREW_BLAS
+            OUTPUT_VARIABLE BREW_BLAS_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    if(BREW_BLAS EQUAL 0)
+        message(WARNING "Found homebrew OpenBLAS ${BREW_BLAS_PREFIX}" )
+        set(BLAS_ROOT ${BREW_BLAS_PREFIX})
+        set(BLA_VENDOR Generic)
+    endif()
+
+endif()
+
+
+find_package(BLAS
+            REQUIRED
+            )
+
+# cmake < 3.18 doesn't produce a BLAS target
+if(NOT TARGET BLAS::BLAS)
+    add_library(BLAS::BLAS INTERFACE IMPORTED)
+
+    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_LINK_LIBRARIES ${BLAS_LIBRARIES})
+    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_COMPILE_OPTIONS ${BLAS_LINKER_FLAGS})
+
+endif()
 
 #sparsehash doesn't compile with gcc 4.6.x - 4.8.x because of this
 # https://bugs.launchpad.net/ubuntu/+source/gcc-4.6/+bug/1269803

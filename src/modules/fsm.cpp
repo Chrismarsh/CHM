@@ -69,9 +69,9 @@ void FSM::init(mesh& domain)
 
     allocate();
 
-    __layers_MOD_Dzsnow[0] = 0.1;
-    __layers_MOD_Dzsnow[1] = 0.2;
-    __layers_MOD_Dzsnow[2] = 0.4;
+//    __layers_MOD_Dzsnow[0] = 0.1;
+//    __layers_MOD_Dzsnow[1] = 0.2;
+//    __layers_MOD_Dzsnow[2] = 0.4;
 
 
     #pragma omp parallel for

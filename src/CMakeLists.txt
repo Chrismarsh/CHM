@@ -136,7 +136,7 @@ set(EXT_TARGETS
 		${ARPACK_LIBRARY}
 		Eigen3::Eigen3
 		trilinos::trilinos
-		blas
+		BLAS::BLAS
 		CACHE INTERNAL "" FORCE)
 
 #handle the optionals
@@ -188,8 +188,6 @@ add_library(CHMmath OBJECT
   )
 
 target_link_libraries(CHMmath
-  trilinos::trilinos
-  blas
   MPI::MPI_CXX
   ${EXT_TARGETS}
   )
