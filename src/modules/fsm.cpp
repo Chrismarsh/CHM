@@ -52,11 +52,27 @@ FSM::FSM(config_file cfg)
 
 void FSM::init(mesh& domain)
 {
-    __layers_MOD_ncnpy = 2;
-    __layers_MOD_nsmax = 3;
-    __layers_MOD_nsoil = 4;
+    //Canopy, snow and soil layers
+    __layers_MOD_fvg1 = 0.5; // Fraction of vegetation in upper canopy layer
+    __layers_MOD_zsub = 1.5; // Subcanopy wind speed diagnostic height (m)
+
+    __layers_MOD_ncnpy = 2; // Number of canopy layers
+    __layers_MOD_nsmax = 3; // Maximum number of snow layers
+    __layers_MOD_nsoil = 4; // Number of soil layers
+
+    __soilprops_MOD_b = 7.63; // Clapp-Hornberger exponent
+    __soilprops_MOD_hcap_soil = 2.3e6; // Volumetric heat capacity of dry soil (J/K/m^3)
+    __soilprops_MOD_hcon_soil = 0.11; // Thermal conductivity of dry soil (W/m/K)
+    __soilprops_MOD_sathh = 0.41; // Saturated soil water pressure (m)
+    __soilprops_MOD_vcrit = 0.26; // Volumetric soil moisture at critical point
+    __soilprops_MOD_vsat = 0.27; // Volumetric soil moisture at saturation
 
     allocate();
+
+    __layers_MOD_Dzsnow[0] = 0.1;
+    __layers_MOD_Dzsnow[1] = 0.2;
+    __layers_MOD_Dzsnow[2] = 0.4;
+
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -64,6 +80,10 @@ void FSM::init(mesh& domain)
         auto face = domain->face(i);
         auto d = face->make_module_data<data>(ID);
 
+        d->veg.alb0 = 0.2;
+        d->veg.vegh = 0;
+        d->veg.VAI = 0;
+        d->veg.Ntyp = 1;
     }
 }
 void FSM::run(mesh_elem& face)
@@ -119,21 +139,23 @@ void FSM::run(mesh_elem& face)
     }
     t += 271.15;
 
-    float tc = t - 273.15;
+    float tc = (float)(t - 273.15);
     float Qs = __constants_MOD_eps * (__constants_MOD_e0 / Ps) *
                exp((float)17.5043 * tc / ((float)241.3 + tc));
     float Qa = (rh/ (float)100.0) * Qs; // specific humidity
 
     float U = (float)(*face)["U_2m_above_srf"_s];
 
+    //TODO: drift rate
+    float trans = 0;
 
     fsm2_timestep(
         // Driving variables
-        &dt, &elev, &zT, &zU, &ilwr,
-        &Ps, &Qa, &Rf, &Sdiff, &Sdir, &Sf, &t, &U,
+        &dt, &elev, &zT, &zU,
+        &ilwr, &Ps, &Qa, &Rf, &Sdiff, &Sdir, &Sf, &t, &trans, &U,
 
         // Vegetation characteristics
-        &d->veg.alb0, &d->veg.hveg, &d->veg.VAI,
+        &d->veg.Ntyp, &d->veg.alb0, &d->veg.vegh, &d->veg.VAI,
 
         // State variables
         &d->state.albs, &d->state.Tsrf, d->state.Dsnw, &d->state.Nsnow, d->state.Qcan,
@@ -142,10 +164,11 @@ void FSM::run(mesh_elem& face)
 
         // Diagnostics
         &d->diag.H, &d->diag.LE, &d->diag.LWout, &d->diag.LWsub, &d->diag.Melt,
-        &d->diag.Roff, &d->diag.snd, &d->diag.Svg, &d->diag.SWE, &d->diag.SWout, &d->diag.SWsub,
-        &d->diag.Usub);
+        &d->diag.Roff, &d->diag.snd, &d->diag.snw, &d->diag.subl, &d->diag.svg,
+        &d->diag.SWout, &d->diag.SWsub, &d->diag.Usub,  d->diag.Wflx
+        );
 
-    (*face)["swe"_s] = d->diag.SWE;
+    (*face)["swe"_s] = d->diag.snw;
     (*face)["snowdepthavg"_s] = d->diag.snd;
     (*face)["snowdepthavg_vert"_s] = d->diag.snd/std::max(0.001,cos(face->slope()));
 
