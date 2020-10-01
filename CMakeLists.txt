@@ -243,13 +243,12 @@ find_package(sparsehash)
 # Then use the find_package link target in CHM to fully avoid any problems of linking against the wrong blas or not being able to find it.
 file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt conaninfotxt)
 
-string(REGEX MATCH "trilinos:blas_root=([^ ]+)" blasloc "${conaninfotxt}") # because cmake regex is only greedy
+string(REGEX MATCH "trilinos:blas_root=([^ ]+)lib" blasloc "${conaninfotxt}") # because cmake regex is only greedy
 
 if(NOT "${blasloc}" STREQUAL "")
     string(REPLACE "\n" "" blasloc ${CMAKE_MATCH_1}) # strip out a new line we've picked up
-    set(blasloc "${blasloc}/../") # go up out of the lib dir
     message(WARNING "Using the conaninfo.txt trilinos:blas_root=${blasloc}")
-    set(BLAS_ROOT /usr/local/opt/openblas/)
+    set(BLAS_ROOT {$blasloc})
 endif()
 
 if(MACOSX AND "${blasloc}" STREQUAL "")
