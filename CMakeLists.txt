@@ -248,7 +248,7 @@ string(REGEX MATCH "trilinos:blas_root=([^ ]+)lib" blasloc "${conaninfotxt}") # 
 if(NOT "${blasloc}" STREQUAL "")
     string(REPLACE "\n" "" blasloc ${CMAKE_MATCH_1}) # strip out a new line we've picked up
     message(WARNING "Using the conaninfo.txt trilinos:blas_root=${blasloc}")
-    set(BLAS_ROOT {$blasloc})
+    set(BLAS_ROOT ${blasloc})
 endif()
 
 if(MACOSX AND "${blasloc}" STREQUAL "")
