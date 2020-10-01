@@ -106,6 +106,12 @@ extern "C"
  * This version of FSM has been customized to have the sophisticated process parametrizations selected in every case,
  * except atmospheric stability corrections.
  *
+ *  * \rst
+ * .. warning::
+ *    Snow transport and vegetation characteristics remain a TODO
+ *
+ * \endrst
+ *
  * **Depends:**
  * - Solar elevation "solar_el" [degrees]
  * - Incoming longwave radiation "ilwr" \f$[W \cdot m^{-2}\f$]
