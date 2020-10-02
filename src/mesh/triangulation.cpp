@@ -1470,7 +1470,9 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["Aspect"]->InsertTuple1(i,fit->aspect());
             data["Area"]->InsertTuple1(i,fit->get_area());
 	    data["is_ghost"]->InsertTuple1(i,fit->is_ghost);
+#ifdef USE_MPI
 	    data["owner"]->InsertTuple1(i,_comm_world.rank());
+#endif
         }
         for(auto& v: vecs)
         {

@@ -5,7 +5,7 @@ from sys import platform
 if __name__ == "__main__":
 
     if platform == "linux":
-        command = "sudo apt-get -qq update && sudo apt-get -qq install -y patchelf && sudo apt-get -qq install -y gfortran"
+        command = "sudo apt-get -qq update && sudo apt-get -qq install -y patchelf && sudo apt-get -qq install -y gfortran && sudo apt-get -qq install -y libopenblas-dev"
 
     builder = ConanMultiPackager(cppstds=[14],
                                 archs=["x86_64"],
