@@ -342,9 +342,10 @@ Setup Conan
 
 ::
 
-   module load gcc/7.3.0
+   module load gcc/8.3.0
    module load python/3.7.4
    module load cmake/3.16
+
    virtualenv ~/conan_env
    source ~/conan_env/bin/activate
    pip install conan
@@ -372,16 +373,20 @@ Ensure the environment is correctly setup
 
 ::
 
-   module load cmake/3.16
-   module load gcc/7.3.0
+   module load gcc/8.3.0
    module load python/3.7.4
+   module load cmake/3.16
+   module load openblas/0.3.6
+   module load openmpi/4.0.1
    source ~/conan_env/bin/activate
 
-then build dependencies and CHM as described above with the following
-change
+then build dependencies and CHM
 
 ::
 
-   conan install ~/CHM -if=. --build 
+   mkdir ~/chm-build && cd ~/chm-build
+   conan install ~/CHM -if=.  -o boost:without_mpi=False  -o trilinos:with_mpi=True -o trilinos:with_openblas=True -o trilinos:blas_root=$EBROOTOPENBLAS/lib --build
+   cmake ~/CHM -DCMAKE_INSTALL_PREFIX=~/bin/CHM -DUSE_MPI=TRUE
+   make -j10 install
 
-To ensure *all* dependencies are built from source.
+
