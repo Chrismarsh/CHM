@@ -180,7 +180,7 @@ void WindNinja::init(mesh& domain)
             L_avg = *(param_found_L_avg.begin());
             LOG_DEBUG << "Using L_avg from parameters. L_avg = " << L_avg;
         }
-        else
+        else if(param_found_L_avg.size() > 1 )
         {
             std::string found = "[   ";
             for(auto& f : param_found_L_avg)
@@ -193,6 +193,11 @@ void WindNinja::init(mesh& domain)
             CHM_THROW_EXCEPTION(module_error,"WindNinja: Multiple parameters with possible L_avg values found, but L_avg was not specified. "
                                              "Please set L_avg in the config file. Found the following L_avg values: " + found );
 
+        }
+        else
+        {
+            L_avg = -1;
+            LOG_DEBUG << "No L_avg parameter found, assuming tile averaging";
         }
     }
 
@@ -251,7 +256,7 @@ void WindNinja::init(mesh& domain)
 
         if(has_optional("snowdepthavg"))
         {
-            tmp.put("incl_snw",true);
+            tmp.put("incl_snw",false);
         }
 
         Sx = boost::dynamic_pointer_cast<Winstral_parameters>(module_factory::create("Winstral_parameters",tmp));
