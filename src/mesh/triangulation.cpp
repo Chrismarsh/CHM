@@ -1373,6 +1373,9 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data["owner"] = vtkSmartPointer<vtkFloatArray>::New();
         data["owner"]->SetName("owner");
 
+        data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["global_id"]->SetName("global_id");
+
     }
     auto vec = this->face(0)->vectors();
     for(auto& v: vec)
@@ -1500,6 +1503,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["Aspect"]->InsertTuple1(i,fit->aspect());
             data["Area"]->InsertTuple1(i,fit->get_area());
 	    data["is_ghost"]->InsertTuple1(i,fit->is_ghost);
+	    data["global_id"]->InsertTuple1(i,fit->cell_global_id);
 #ifdef USE_MPI
 	    data["owner"]->InsertTuple1(i,_comm_world.rank());
 #endif
@@ -1561,6 +1565,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["Aspect"]->InsertTuple1(insert_offset,fit->aspect());
             data["Area"]->InsertTuple1(insert_offset,fit->get_area());
 	    data["is_ghost"]->InsertTuple1(insert_offset,fit->is_ghost);
+	    data["global_id"]->InsertTuple1(insert_offset,fit->cell_global_id);
 	    data["owner"]->InsertTuple1(insert_offset,nan(""));
         }
         for(auto& v: vecs)
