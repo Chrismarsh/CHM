@@ -881,9 +881,11 @@ private:
 #ifdef USE_SPARSEHASH
     google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > data;
     google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > vectors;
+    google::dense_hash_map<std::string, vtkSmartPointer<vtkFloatArray> > vertex_data;
 #else
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > vectors;
+        std::map<std::string, vtkSmartPointer<vtkFloatArray> > vertex_data;
 #endif
 
     //should we write parameters to the vtu file?
