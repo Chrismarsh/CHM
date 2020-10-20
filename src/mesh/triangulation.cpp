@@ -1241,10 +1241,15 @@ void triangulation::plot(std::string ID)
 void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    points->SetNumberOfPoints(this->_num_vertex+_ghost_faces.size());
+    points->SetNumberOfPoints(this->_num_vertex);
 
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
-    triangles->Allocate(this->_num_vertex+_ghost_faces.size());
+    if(_write_ghost_neighbors_to_vtu)
+    {
+      triangles->Allocate(this->size_faces()+_ghost_faces.size());
+    } else {
+      triangles->Allocate(this->size_faces());
+    }
 
     vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
     proj4->SetNumberOfComponents(1);
