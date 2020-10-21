@@ -35,6 +35,7 @@ triangulation::triangulation()
 #ifdef USE_SPARSEHASH
     data.set_empty_key("");
     vectors.set_empty_key("");
+    vertex_data.set_empty_key("");
 
 #endif
 }
@@ -1241,10 +1242,15 @@ void triangulation::plot(std::string ID)
 void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    points->SetNumberOfPoints(this->_num_vertex+_ghost_faces.size());
+    // points->SetNumberOfPoints(this->_num_vertex);
 
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
-    triangles->Allocate(this->_num_vertex+_ghost_faces.size());
+    if(_write_ghost_neighbors_to_vtu)
+    {
+      triangles->Allocate(this->size_faces()+_ghost_faces.size());
+    } else {
+      triangles->Allocate(this->size_faces());
+    }
 
     vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
     proj4->SetNumberOfComponents(1);
@@ -1253,6 +1259,11 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 
     double scale = is_geographic() == true ? 100000. : 1.;
 
+    std::map<int, int> global_to_local_vertex_id;
+    std::vector<int> global_vertex_id;
+
+    // npoints holds the total number of points
+    int npoints=0;
     for (size_t i = 0; i < this->size_faces(); i++)
     {
         mesh_elem fit = this->face(i);
@@ -1260,13 +1271,19 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
 
-        tri->GetPointIds()->SetId(0, fit->vertex(0)->get_id());
-        tri->GetPointIds()->SetId(1, fit->vertex(1)->get_id());
-        tri->GetPointIds()->SetId(2, fit->vertex(2)->get_id());
-
-        points->SetPoint(fit->vertex(0)->get_id(), face(i)->vertex(0)->point().x()*scale, face(i)->vertex(0)->point().y()*scale, face(i)->vertex(0)->point().z());
-        points->SetPoint(fit->vertex(1)->get_id(), face(i)->vertex(1)->point().x()*scale, face(i)->vertex(1)->point().y()*scale, face(i)->vertex(1)->point().z());
-        points->SetPoint(fit->vertex(2)->get_id(), face(i)->vertex(2)->point().x()*scale, face(i)->vertex(2)->point().y()*scale, face(i)->vertex(2)->point().z());
+	// loop over vertices of a face
+	for (int j=0;j<3;++j){
+	  auto vit = fit->vertex(j);
+	  int global_id = vit->get_id();
+	  // If point hasn't been seen yet, account for it
+	  if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
+	    global_to_local_vertex_id[global_id] = npoints;
+	    npoints++;
+	    points->InsertNextPoint(vit->point().x()*scale, vit->point().y()*scale, vit->point().z());
+	    global_vertex_id.push_back(global_id);
+	  }
+	  tri->GetPointIds()->SetId(j, global_to_local_vertex_id[global_id]);
+	}
 
         triangles->InsertNextCell(tri);
     }
@@ -1282,13 +1299,19 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         vtkSmartPointer<vtkTriangle> tri =
                 vtkSmartPointer<vtkTriangle>::New();
 
-        tri->GetPointIds()->SetId(0, fit->vertex(0)->get_id());
-        tri->GetPointIds()->SetId(1, fit->vertex(1)->get_id());
-        tri->GetPointIds()->SetId(2, fit->vertex(2)->get_id());
-
-        points->SetPoint(fit->vertex(0)->get_id(), fit->vertex(0)->point().x()*scale, fit->vertex(0)->point().y()*scale, fit->vertex(0)->point().z());
-        points->SetPoint(fit->vertex(1)->get_id(), fit->vertex(1)->point().x()*scale, fit->vertex(1)->point().y()*scale, fit->vertex(1)->point().z());
-        points->SetPoint(fit->vertex(2)->get_id(), fit->vertex(2)->point().x()*scale, fit->vertex(2)->point().y()*scale, fit->vertex(2)->point().z());
+	// loop over vertices of a face
+	for (int j=0;j<3;++j){
+	  auto vit = fit->vertex(j);
+	  int global_id = vit->get_id();
+	  // If point hasn't been seen yet, account for it
+	  if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
+	    global_to_local_vertex_id[global_id] = npoints;
+	    npoints++;
+	    points->InsertNextPoint(vit->point().x()*scale, vit->point().y()*scale, vit->point().z());
+	    global_vertex_id.push_back(global_id);
+	  }
+	  tri->GetPointIds()->SetId(j, global_to_local_vertex_id[global_id]);
+	}
 
         triangles->InsertNextCell(tri);
     }
@@ -1350,6 +1373,9 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data["owner"] = vtkSmartPointer<vtkFloatArray>::New();
         data["owner"]->SetName("owner");
 
+        data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["global_id"]->SetName("global_id");
+
     }
     auto vec = this->face(0)->vectors();
     for(auto& v: vec)
@@ -1357,6 +1383,13 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         vectors[v] = vtkSmartPointer<vtkFloatArray>::New();
         vectors[v]->SetName(v.c_str());
         vectors[v]->SetNumberOfComponents(3);
+    }
+
+    // Global vertex ids -> only need to be set here, get written in the writer
+    vertex_data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
+    vertex_data["global_id"]->SetName("global_id");
+    for(int i=0;i<npoints;++i){
+      vertex_data["global_id"]->InsertTuple1(i,global_vertex_id[i]);
     }
 }
 
@@ -1470,6 +1503,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["Aspect"]->InsertTuple1(i,fit->aspect());
             data["Area"]->InsertTuple1(i,fit->get_area());
 	    data["is_ghost"]->InsertTuple1(i,fit->is_ghost);
+	    data["global_id"]->InsertTuple1(i,fit->cell_global_id);
 #ifdef USE_MPI
 	    data["owner"]->InsertTuple1(i,_comm_world.rank());
 #endif
@@ -1531,6 +1565,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["Aspect"]->InsertTuple1(insert_offset,fit->aspect());
             data["Area"]->InsertTuple1(insert_offset,fit->get_area());
 	    data["is_ghost"]->InsertTuple1(insert_offset,fit->is_ghost);
+	    data["global_id"]->InsertTuple1(insert_offset,fit->cell_global_id);
 	    data["owner"]->InsertTuple1(insert_offset,nan(""));
         }
         for(auto& v: vecs)
@@ -1555,6 +1590,11 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
     for(auto& m : data)
     {
         _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
+    }
+
+    for(auto& m : vertex_data)
+    {
+        _vtk_unstructuredGrid->GetPointData()->AddArray(m.second);
     }
 
 }
