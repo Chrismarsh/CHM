@@ -577,6 +577,180 @@ void triangulation::from_json(pt::ptree &mesh)
 
 }
 
+void triangulation::to_hdf5(std::string filename_base)
+{
+
+  std::string filename = filename_base + "_mesh.h5";
+
+  try {
+    // Turn off the auto-printing when failure occurs so that we can
+    // handle the errors appropriately
+    Exception::dontPrint();
+
+    H5::H5File file(filename,H5F_ACC_TRUNC);
+    H5::Group group(file.createGroup("/mesh"));
+
+    hsize_t ntri= size_global_faces();
+    hsize_t nvert= size_vertex();
+
+    // Array datatype for vertices
+    hsize_t vertex_dims=3;
+    H5::ArrayType vertex_t(PredType::NATIVE_DOUBLE,1,&vertex_dims);
+
+    {  // Faces
+      H5::DataSpace dataspace(1, &ntri);
+      auto globalIDs = get_global_IDs();
+      H5::DataSet dataset = file.createDataSet("/mesh/cell_global_id", PredType::STD_I32BE, dataspace);
+      dataset.write(globalIDs.data(), PredType::NATIVE_INT);
+    }
+
+    { // Vertices
+      H5::DataSpace dataspace(1, &nvert);
+      std::vector<std::array<double,3>> vertices(nvert);
+
+#pragma omp parallel for
+      for (size_t i = 0; i < nvert; ++i)
+	{
+	  auto v = vertex(i);
+	  vertices[i][0] = v->point().x();
+	  vertices[i][1] = v->point().y();
+	  vertices[i][2] = v->point().z();
+	}
+
+      H5::DataSet dataset = file.createDataSet("/mesh/vertex", vertex_t, dataspace);
+      dataset.write(vertices.data(), vertex_t);
+    }
+
+    // Array datatype for vertices defining faces
+    hsize_t elem_dims=3;
+    H5::ArrayType elem_t(PredType::NATIVE_INT,1,&elem_dims);
+
+    {  // Which vertices define each face
+      H5::DataSpace dataspace(1, &ntri);
+      std::vector<std::array<int,3>> elem(ntri);
+
+#pragma omp parallel for
+      for (size_t i = 0; i < ntri; ++i)
+	{
+	  auto f = this->face(i);
+	  for (size_t j = 0; j < 3; ++j) {
+	    elem[i][j] = f->vertex(j)->get_id();
+	  }
+	}
+
+      H5::DataSet dataset = file.createDataSet("/mesh/elem", elem_t, dataspace);
+      dataset.write(elem.data(), elem_t);
+    }
+
+    // Array datatype for neighbors
+    hsize_t neighbor_dims=3;
+    H5::ArrayType neighbor_t(PredType::NATIVE_INT,1,&neighbor_dims);
+
+    {  // Which vertices define each face
+      H5::DataSpace dataspace(1, &ntri);
+      std::vector<std::array<int,3>> neighbor(ntri);
+
+#pragma omp parallel for
+      for (size_t i = 0; i < ntri; ++i)
+	{
+	  auto f = this->face(i);
+	  for (size_t j = 0; j < 3; ++j) {
+	    auto neigh = f->neighbor(j);
+	    if(neigh != nullptr) {
+	      neighbor[i][j] = neigh->cell_global_id;
+	    } else {
+	      neighbor[i][j] = -1;
+	    }
+	  }
+	}
+      H5::DataSet dataset = file.createDataSet("/mesh/neighbor", neighbor_t, dataspace);
+      dataset.write(neighbor.data(), neighbor_t);
+    }
+
+    // Array datatype for proj4 string
+    hsize_t proj4_dims=1;
+    H5::StrType proj4_t(PredType::C_S1,256);
+    assert( _srs_wkt.length() < 256 );
+    {  // Write the proj4
+      H5::DataSpace dataspace(1, &proj4_dims);
+      H5::Attribute attribute = file.createAttribute("/mesh/proj4", proj4_t, dataspace);
+      attribute.write(proj4_t, _srs_wkt);
+    }
+
+    // Array datatype for is_geographic
+    hsize_t geographic_dims=1;
+    {  // Write the is_geographic
+      H5::DataSpace dataspace(1, &geographic_dims);
+      H5::Attribute attribute = file.createAttribute("/mesh/is_geographic", PredType::NATIVE_HBOOL, dataspace);
+      attribute.write(PredType::NATIVE_HBOOL, &_is_geographic);
+    }
+
+
+
+  } // end of try block
+
+
+
+    // catch failure caused by the H5File operations
+  catch (FileIException error) {
+    error.printErrorStack();
+  }
+
+  // catch failure caused by the DataSet operations
+  catch (DataSetIException error) {
+    error.printErrorStack();
+  }
+
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// Parameters
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+
+  std::string par_filename = filename_base + "_param.h5";
+
+  try {
+    // Turn off the auto-printing when failure occurs so that we can
+    // handle the errors appropriately
+    Exception::dontPrint();
+
+    H5::H5File file(par_filename,H5F_ACC_TRUNC);
+    H5::Group group(file.createGroup("/parameters"));
+
+    hsize_t ntri= size_global_faces();
+
+    for (auto &par_iter : _parameters) {
+
+      H5::DataSpace dataspace(1, &ntri);
+      auto globalIDs = get_global_IDs();
+      std::string par_location = "/parameters/" + par_iter;
+      H5::DataSet dataset = file.createDataSet(par_location, PredType::NATIVE_DOUBLE, dataspace);
+
+      std::vector<double> values(ntri);
+#pragma omp parallel for
+      for(size_t i=0; i<ntri; ++i) {
+	auto face = _faces.at(i);
+	values[i] = face->parameter(par_iter);
+      }
+      dataset.write(values.data(), PredType::NATIVE_DOUBLE);
+    }
+
+  } // end try block
+
+    // catch failure caused by the H5File operations
+  catch (FileIException error) {
+    error.printErrorStack();
+  }
+
+  // catch failure caused by the DataSet operations
+  catch (DataSetIException error) {
+    error.printErrorStack();
+  }
+
+  std::cout << "Written file example.h5\n";
+
+}
+
 void triangulation::reorder_faces(std::vector<size_t> permutation)
 {
   // NOTE: be careful with evaluating this, the 'cell_global_id's and a

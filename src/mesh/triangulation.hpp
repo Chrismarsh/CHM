@@ -130,7 +130,9 @@ namespace pt = boost::property_tree;
 
 #include "timeseries/variablestorage.hpp"
 
-
+// #include "hdf5.h"
+#include "H5Cpp.h"
+using namespace H5;
 /**
 * \struct face_info
 * A way of embedding arbirtrary data into the face. This is how modules should store their data.
@@ -577,6 +579,12 @@ public:
     * \param file Fully qualified path to a file.
     */
 	void from_json(pt::ptree& mesh);
+
+    /**
+    * Writes a mesh to an hdf5 file.
+    * \param filename_base Base name of file to write .
+    */
+	void to_hdf5(std::string filename_base);
 
     /**
     * Sets a new order to the face numbering.
