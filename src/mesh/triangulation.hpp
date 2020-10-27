@@ -587,6 +587,15 @@ public:
 	void to_hdf5(std::string filename_base);
 
     /**
+    * Reads a mesh and parameters from an hdf5 file.
+    * \param mesh_filename Name of mesh file to read .
+    * \param param_filename Name of parameter file to read.
+    * \param [OPTIONAL] ic_filename Name of initial condition file to read.
+    */
+	void from_hdf5(const std::string& mesh_filename, const std::string& param_filename,
+		       const std::string& ic_filename = std::string());
+
+    /**
     * Sets a new order to the face numbering.
     * \param permutation desired ordering
     */
