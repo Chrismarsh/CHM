@@ -909,6 +909,7 @@ private:
 
     // All MPI process are aware of the local sizes for all other MPI processes
     std::vector<int> _num_faces_in_partition;
+    int              global_cell_start_idx, global_cell_end_idx;
 
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;

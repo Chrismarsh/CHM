@@ -641,7 +641,9 @@ void triangulation::partition_mesh()
     face_start_idx += _num_faces_in_partition[i-1];
     face_end_idx += _num_faces_in_partition[i];
   }
-
+  // Store in the public members
+  global_cell_start_idx = face_start_idx;
+  global_cell_end_idx = face_end_idx;
 
   // Set size of vector containing locally owned faces
   _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
