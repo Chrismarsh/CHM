@@ -42,8 +42,11 @@ In this work, a new distributed model framework is presented that can examine a 
 * Contribute to decision support systems
 
 # Publications
-The manuscript describing CHM is still in preperation, and is anticipated to be submited summer 2018.
-
+The following publications provide an overview of CHM and its capabilities
+- V. Vionnet, Marsh, C.B., B. Menounos, S. Gascoin, N.E. Wayand, J. Shea, K. Mukherjee, and J.W. Pomeroy. Multi-scale snowdrift-permitting modelling of mountain snowpack. The Cryosphere Discussions, 2020:1--43, 2020. 
+- Marsh, C.B., J.W. Pomeroy, and H.S. Wheater. The Canadian Hydrological Model (CHM) v1.0: a multi-scale, multi-extent, variable-complexity hydrological model – design and overview. Geoscientific Model Development, 13(1):225--247, 2020. 
+- Marsh, C.B, J. W. Pomeroy, R.J. Spiteri, and H.S Wheater. A Finite Volume Blowing Snow Model for Use With Variable Resolution Meshes. Water Resources Research, 56(2), 2020.
+- Marsh, C.B, R. J. Spiteri, J.W. Pomeroy, and H.S. Wheater. Multi-objective unstructured triangular mesh generation for use in hydrological and land surface models. Computers & Geosciences, 119:49--67, 2018.
 # Features
 ## Spatial Scales
 CHM is applicable to multiple scales from the basin scale, to the provincial/state scale and beyond. It may also be applied at a single point-scale.
