@@ -38,6 +38,29 @@ triangulation::triangulation()
     vertex_data.set_empty_key("");
 
 #endif
+
+/*
+  Datatypes for reading/writing HDF5 files
+*/
+    // Array datatype for vertices
+    vertex_dims=3;
+    vertex_t = H5::ArrayType(PredType::NATIVE_DOUBLE,1,&vertex_dims);
+
+    // Array datatype for vertices defining faces
+    elem_dims=3;
+    elem_t = H5::ArrayType(PredType::NATIVE_INT,1,&elem_dims);
+
+    // Array datatype for neighbors
+    neighbor_dims=3;
+    neighbor_t = H5::ArrayType(PredType::NATIVE_INT,1,&neighbor_dims);
+
+    // Array datatype for proj4 string
+    proj4_dims=1;
+    proj4_t = H5::StrType(PredType::C_S1,256);
+
+    // Array datatype for is_geographic
+    geographic_dims=1;
+
 }
 
 #ifdef MATLAB
@@ -593,10 +616,6 @@ void triangulation::to_hdf5(std::string filename_base)
     hsize_t ntri= size_global_faces();
     hsize_t nvert= size_vertex();
 
-    // Array datatype for vertices
-    hsize_t vertex_dims=3;
-    H5::ArrayType vertex_t(PredType::NATIVE_DOUBLE,1,&vertex_dims);
-
     {  // Faces
       H5::DataSpace dataspace(1, &ntri);
       auto globalIDs = get_global_IDs();
@@ -621,10 +640,6 @@ void triangulation::to_hdf5(std::string filename_base)
       dataset.write(vertices.data(), vertex_t);
     }
 
-    // Array datatype for vertices defining faces
-    hsize_t elem_dims=3;
-    H5::ArrayType elem_t(PredType::NATIVE_INT,1,&elem_dims);
-
     {  // Which vertices define each face
       H5::DataSpace dataspace(1, &ntri);
       std::vector<std::array<int,3>> elem(ntri);
@@ -641,10 +656,6 @@ void triangulation::to_hdf5(std::string filename_base)
       H5::DataSet dataset = file.createDataSet("/mesh/elem", elem_t, dataspace);
       dataset.write(elem.data(), elem_t);
     }
-
-    // Array datatype for neighbors
-    hsize_t neighbor_dims=3;
-    H5::ArrayType neighbor_t(PredType::NATIVE_INT,1,&neighbor_dims);
 
     {  // Which vertices define each face
       H5::DataSpace dataspace(1, &ntri);
@@ -667,25 +678,23 @@ void triangulation::to_hdf5(std::string filename_base)
       dataset.write(neighbor.data(), neighbor_t);
     }
 
-    // Array datatype for proj4 string
-    hsize_t proj4_dims=1;
-    H5::StrType proj4_t(PredType::C_S1,256);
-    assert( _srs_wkt.length() < 256 );
+    // Ensure the proj4 string can fit in the HDF5 data type
+    if( _srs_wkt.length() >= 256)
+    {
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                "Proj4 string needs to be < 256. Length: " + std::to_string(_srs_wkt.length())));
+    }
     {  // Write the proj4
       H5::DataSpace dataspace(1, &proj4_dims);
       H5::Attribute attribute = file.createAttribute("/mesh/proj4", proj4_t, dataspace);
       attribute.write(proj4_t, _srs_wkt);
     }
 
-    // Array datatype for is_geographic
-    hsize_t geographic_dims=1;
     {  // Write the is_geographic
       H5::DataSpace dataspace(1, &geographic_dims);
       H5::Attribute attribute = file.createAttribute("/mesh/is_geographic", PredType::NATIVE_HBOOL, dataspace);
       attribute.write(PredType::NATIVE_HBOOL, &_is_geographic);
     }
-
-
 
   } // end of try block
 
@@ -776,8 +785,6 @@ group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata
     return 0;
 }
 
-
-
 void triangulation::from_hdf5(const std::string& mesh_filename,
 			      const std::string& param_filename,
 			      const std::string& ic_filename
@@ -800,10 +807,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	std::vector<std::array<int,3>> neigh;
 
 	{
-	  // Array datatype for proj4 string
-	  hsize_t proj4_dims=1;
-	  H5::StrType proj4_t(PredType::C_S1,256);
-	  assert( _srs_wkt.length() < 256 );
 	  // Read the proj4
 	  H5::DataSpace dataspace(1, &proj4_dims);
 	  H5::Attribute attribute = file.openAttribute("/mesh/proj4");
@@ -811,8 +814,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
 	}
 
-	// Array datatype for is_geographic
-	hsize_t geographic_dims=1;
 	{  // Write the is_geographic
 	  H5::DataSpace dataspace(1, &geographic_dims);
 	  H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
@@ -830,11 +831,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	}
 
 	{
-
-	  // Array datatype for vertices
-	  hsize_t vertex_dims=3;
-	  H5::ArrayType vertex_t(PredType::NATIVE_DOUBLE,1,&vertex_dims);
-
 	  // Open the vertices dataset
 	  DataSet dataset = file.openDataSet("/mesh/vertex");
 	  DataSpace dataspace = dataset.getSpace();
@@ -871,11 +867,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	}
 
 	{
-
-	  // Array datatype for vertices defining faces
-	  hsize_t elem_dims=3;
-	  H5::ArrayType elem_t(PredType::NATIVE_INT,1,&elem_dims);
-
 	  DataSet dataset = file.openDataSet("/mesh/elem");
 	  DataSpace dataspace = dataset.getSpace();
 
@@ -937,9 +928,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	}
 
 	{
-	  // Array datatype for neighbors of faces
-	  hsize_t neigh_dims=3;
-	  H5::ArrayType neigh_t(PredType::NATIVE_INT,1,&neigh_dims);
 
 	  DataSet dataset = file.openDataSet("/mesh/neighbor");
 	  DataSpace dataspace = dataset.getSpace();
@@ -956,7 +944,7 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	  // Ensure enough space in the vector
 	  neigh.resize(nelem);
 	  // Default args read all of the dataspace
-	  dataset.read(neigh.data(), neigh_t);
+	  dataset.read(neigh.data(), neighbor_t);
 
 	  LOG_DEBUG << "Building face neighbors";
 	 for (size_t i=0;i<nelem;i++){

@@ -965,6 +965,29 @@ private:
     boost::mpi::communicator _comm_world;
 #endif
 
+/*
+  Datatypes for reading/writing HDF5 files
+*/
+
+  // Array datatype for vertices
+  hsize_t vertex_dims;
+  H5::ArrayType vertex_t;
+
+  // Array datatype for vertices defining faces
+  hsize_t elem_dims;
+  H5::ArrayType elem_t;
+
+  // Array datatype for neighbors
+  hsize_t neighbor_dims;
+  H5::ArrayType neighbor_t;
+
+  // Array datatype for proj4 string
+  hsize_t proj4_dims;
+  H5::StrType proj4_t;
+
+  // Array datatype for is_geographic
+  hsize_t geographic_dims;
+
 };
 
 /**
