@@ -149,13 +149,14 @@ only system BLAS and LAPACK are used in compilation.
    In most configurations Trilinos will need to be built from source.
 
 Intel MKL
-=-=-=-=-=-
+++++++++++
+
 .. warning::
    Using MLK with Trilinos is not supported as the final CHM link will conflict with the internal BLAS in GSL.
 
 
 OpenBLAS
-=-=-=-=-=-
++++++++++
 
 Linking Trilinos against OpenBLAS is the best option as it has the LAPACK API.
 
@@ -163,7 +164,8 @@ Set the conan option ```-o trilinos:with_openblas=True`` to change the link libr
 This may only be useful on some systems. E.g., homebrew openblas has a ``lblas`` symlink.
 
 Custom BLAS location
-=-=-=-=-=-=-=-=-=-=-=-=-
+++++++++++++++++++++++
+
 The Trilinos dependencies look for the BLAS libraries in a standard location.
 On HPC machines this will almost certainly fail, so the location of the library direction may be set via the env var
 ``$BLASROOT``. LAPACK search will be set to the same path.
@@ -171,7 +173,7 @@ On HPC machines this will almost certainly fail, so the location of the library 
 If a custom BLAS location is specified to build Trilinos, this will be automatically detected for the final CHM link.
 
 MacOS
-=-=-=-=-
++++++++
 
 Homebrew should be used to install -- ``brew install openblas``. A homebrew installed ``openblas`` will be automatically detected and used.
 This is prefered over the system default Accelerate framework.
