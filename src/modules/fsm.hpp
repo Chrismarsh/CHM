@@ -207,6 +207,8 @@ class FSM : public module_base
             float SWsub = -9999; // Subcanopy downward SW radiation (W/m^2)
             float Usub = -9999; // Subcanopy wind speed (m/s)
             float Wflx[3] = {-9999, -9999, -9999}; // Water flux into snow layer (kg/m^2/s)
+
+            float sum_snowpack_subl = -9999; // cumulative sublimation (kg/m^2)
         } diag;
     };
 

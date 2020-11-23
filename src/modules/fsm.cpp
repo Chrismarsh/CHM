@@ -46,6 +46,10 @@ FSM::FSM(config_file cfg)
     provides("swe");
     provides("snowdepthavg");
     provides("snowdepthavg_vert");
+    provides("E");
+    provides("H");
+    provides("sum_snowpack_subl");
+    provides("subl");
 
     conflicts("snow_slide"); // for now don't run w/ snowslide
 }
@@ -84,6 +88,8 @@ void FSM::init(mesh& domain)
         d->veg.vegh = 0;
         d->veg.VAI = 0;
         d->veg.Ntyp = 1;
+
+        d->diag.sum_snowpack_subl = 0;
     }
 }
 void FSM::run(mesh_elem& face)
@@ -171,6 +177,16 @@ void FSM::run(mesh_elem& face)
     (*face)["swe"_s] = d->diag.snw;
     (*face)["snowdepthavg"_s] = d->diag.snd;
     (*face)["snowdepthavg_vert"_s] = d->diag.snd/std::max(0.001,cos(face->slope()));
+
+    (*face)["H"_s] = d->diag.H;
+    (*face)["E"_s] = d->diag.LE;
+    (*face)["subl"_s] = d->diag.subl;
+
+    d->diag.sum_snowpack_subl += d->diag.subl * global_param->dt();
+
+    (*face)["sum_snowpack_subl"_s] = d->diag.sum_snowpack_subl;
+
+
 
 }
 
