@@ -328,6 +328,7 @@ if (BUILD_TESTS)
 
 	target_link_libraries(
 			runUnitTests
+			CHMmath
 			${EXT_TARGETS}
 			${THIRD_PARTY_TARGETS}
 			${GTEST_LINK}
