@@ -499,23 +499,24 @@ bool metdata::next_nc()
     for(size_t i = 0; i < nstations();i++)
     {
         auto s = _stations.at(i);
+        s->set_posix(_current_ts);
 
         // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
         for (auto &v: _nc->get_variable_names() )
         {
             double d = _nc->get_var(v, _current_ts, s->_nc_x, s->_nc_y);
             (*s)[v] = d;
-            s->set_posix(_current_ts);
 
-            for (auto& f : _netcdf_filters)
-            {
-                f.second->process(s);
-            }
+        }
+
+        // run all the filters for this station
+        for (auto& f : _netcdf_filters)
+        {
+            f.second->process(s);
         }
     }
 
     return true;
-
 
 }
 
