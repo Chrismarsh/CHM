@@ -991,10 +991,11 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if (vm.count("convert-hdf5"))
     {
         cli_options.do_hdf5_convert = vm["convert-hdf5"].as<bool>();
-        LOG_WARNING << "HDF5 conversion enabled, model will exit after converting mesh.";
+	if( cli_options.do_hdf5_convert)
+	{
+	  LOG_WARNING << "HDF5 conversion enabled, model will exit after converting mesh.";
+        }
     }
-
-
 
 
     return boost::make_tuple(config_file, //0
