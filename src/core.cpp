@@ -922,6 +922,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
                     "will result in nproc being removed.")
             ("remove-module,d", po::value<std::vector<std::string>>(), "Removes a module."
                     " Removals are processed after any --config paramters are parsed, so -d will override -c. ")
+            ("convert-hdf5", po::bool_switch()->default_value(false), "Converts a .mesh to a .hdf5 and exits. True/false")
             ("add-module,m", po::value<std::vector<std::string>>(), "Adds a module.");
 
 
@@ -985,6 +986,15 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
         cout << desc << std::endl;
         exit(1);
     }
+
+
+    if (vm.count("convert-hdf5"))
+    {
+        cli_options.do_hdf5_convert = vm["convert-hdf5"].as<bool>();
+        LOG_WARNING << "HDF5 conversion enabled, model will exit after converting mesh.";
+    }
+
+
 
 
     return boost::make_tuple(config_file, //0
@@ -1244,6 +1254,13 @@ void core::init(int argc, char **argv)
      */
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
+
+    if( cli_options.do_hdf5_convert)
+    {
+        LOG_DEBUG << "Converting mesh to hdf5";
+        _mesh->to_hdf5("test");
+        CHM_THROW_EXCEPTION(chm_done, "HDF5 written, terminating.");
+    }
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with. 
     // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further

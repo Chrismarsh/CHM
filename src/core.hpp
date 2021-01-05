@@ -350,6 +350,15 @@ protected:
     size_t _checkpoint_feq; // frequency of checkpoints
 
 
+    //command line argument options we need to keep track of
+
+    struct
+    {
+        bool do_hdf5_convert; // Convert the input mesh and optionally parameter files to hdf5 and exit.
+
+    } cli_options;
+
+
 #ifdef USE_MPI
     boost::mpi::environment _mpi_env;
     boost::mpi::communicator _comm_world;
