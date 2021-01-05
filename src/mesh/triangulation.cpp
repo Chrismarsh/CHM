@@ -786,8 +786,8 @@ group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata
 }
 
 void triangulation::from_hdf5(const std::string& mesh_filename,
-			      const std::string& param_filename,
-			      const std::string& ic_filename
+			      const std::vector<std::string>& param_filenames,
+			      const std::vector<std::string>& ic_filenames
 			      )
 {
 
@@ -1030,6 +1030,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 
+    for(auto param_filename : param_filenames) {
+
     try {
         // Turn off the auto-printing when failure occurs so that we can
         // handle the errors appropriately
@@ -1141,6 +1143,9 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
         error.printErrorStack();
     }
 
+} // end of param_filenames loop
+
+// TODO: include initial condition files
 
 }
 

@@ -592,8 +592,9 @@ public:
     * \param param_filename Name of parameter file to read.
     * \param [OPTIONAL] ic_filename Name of initial condition file to read.
     */
-	void from_hdf5(const std::string& mesh_filename, const std::string& param_filename,
-		       const std::string& ic_filename = std::string());
+	void from_hdf5(const std::string& mesh_filename,
+		       const std::vector<std::string>& param_filename,
+		       const std::vector<std::string>& ic_filename);
 
     /**
     * Sets a new order to the face numbering.
