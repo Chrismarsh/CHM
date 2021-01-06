@@ -878,7 +878,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	  // Default args read all of the dataspace
 	  dataset.read(elem.data(), elem_t);
 
-	 for (size_t i=0;i<nelem;i++){
+	 for (size_t i=0;i<nelem;i++)
+         {
 
 	   auto vert1 = _vertexes.at(elem[i][0]); //0 indexing
 	   auto vert2 = _vertexes.at(elem[i][1]);
@@ -935,11 +936,11 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	  hsize_t nelem;
 	  int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
 
-    if( elem.size() != nelem)
-    {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Expected: " + std::to_string(elem.size()) + " neighborlists, got: " + std::to_string(nelem)));
-    }
+        if( elem.size() != nelem)
+        {
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                    "Expected: " + std::to_string(elem.size()) + " neighborlists, got: " + std::to_string(nelem)));
+        }
 
 	  // Ensure enough space in the vector
 	  neigh.resize(nelem);
@@ -1054,7 +1055,7 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 #pragma omp parallel for
         for (size_t i = 0; i < _num_faces; i++)
         {
-             _local_faces.at(i)->init_parameters(_parameters);
+             face(i)->init_parameters(_parameters);
         }
 	// init the parameter storage for the ghost regions
         for (size_t i = 0; i < _ghost_faces.size(); i++) {
@@ -1102,8 +1103,7 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
 #pragma omp parallel for
 	  for (size_t i=0;i<_num_faces;i++){
-	    auto face = _local_faces.at(i);
-	    face->parameter(name) = data[i];
+	    face(i)->parameter(name) = data[i];
 	    // cout << "WriteParam " <<_comm_world.rank() << ": entry " << i << " " << data[i]<< endl;
 	  }
 
@@ -1944,8 +1944,12 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data["is_ghost"] = vtkSmartPointer<vtkFloatArray>::New();
         data["is_ghost"]->SetName("is_ghost");
 
+#ifdef USE_MPI
         data["owner"] = vtkSmartPointer<vtkFloatArray>::New();
         data["owner"]->SetName("owner");
+#endif
+
+
 
         data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
         data["global_id"]->SetName("global_id");

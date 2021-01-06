@@ -883,8 +883,8 @@ public:
     // it will have to insert them into this list so that the static hashmaps can be properly init
     std::set<std::string> _parameters;
 private:
-    size_t _num_faces; //number of faces
-    size_t _num_global_faces; //number of faces
+    size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
+    size_t _num_global_faces; //number of global faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
