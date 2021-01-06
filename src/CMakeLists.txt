@@ -152,9 +152,9 @@ if(gperftools_FOUND)
 	list( APPEND EXT_TARGETS gperftools::gperftools)
 endif()
 
-# if(MPI_FOUND AND USE_MPI)
+if(MPI_FOUND AND USE_MPI)
 	list( APPEND EXT_TARGETS MPI::MPI_CXX)
-# endif()
+endif()
 
 #are we linking against matlab?
 if(MATLAB)
@@ -188,7 +188,6 @@ add_library(CHMmath OBJECT
   )
 
 target_link_libraries(CHMmath
-  MPI::MPI_CXX
   ${EXT_TARGETS}
   )
 
@@ -207,8 +206,14 @@ add_executable(
 
 
 # target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
-target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
-target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+target_include_directories(CHM PRIVATE ${HEADER_FILES} )
+if(MPI_FOUND AND USE_MPI)
+  target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} )
+  target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+endif()
+
+
+
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 		CHM
@@ -323,8 +328,12 @@ if (BUILD_TESTS)
 			${TEST_SRCS}
 	)
 
-	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} )
-	target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+	target_include_directories(runUnitTests PRIVATE ${HEADER_FILES} )
+
+	if(MPI_FOUND AND USE_MPI)
+	  target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} )
+	  target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+	endif()
 
 	target_link_libraries(
 			runUnitTests
@@ -335,6 +344,15 @@ if (BUILD_TESTS)
 			${MPI_CXX_LIBRARIES}
 			${MPI_CXX_LINK_FLAGS}
 	)
+
+      if(MPI_FOUND AND USE_MPI)
+	target_link_libraries(
+	  runUnitTests
+	  ${MPI_CXX_LIBRARIES}
+	  ${MPI_CXX_LINK_FLAGS}
+	)
+      endif()
+
 
 	set_target_properties(runUnitTests
 			PROPERTIES
