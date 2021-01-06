@@ -889,6 +889,11 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	   face->cell_global_id = i;
 	   face->cell_local_id = i;
 
+             if( _is_geographic)
+             {
+                 face->_is_geographic = true;
+             }
+
 	   face->_debug_ID= -(i+1); //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
 	   face->_debug_name= std::to_string(i);
 	   face->_domain = this;
