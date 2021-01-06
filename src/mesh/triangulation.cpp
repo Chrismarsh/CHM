@@ -992,18 +992,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
     partition_mesh();
 
-    // Set appropriate distance functions based on is_geographic
-    if(_is_geographic)
-    {
-        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
-        math::gis::distance = &math::gis::distance_latlong;
-    } else
-    {
-        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
-        math::gis::distance = &math::gis::distance_UTM;
-    }
-
-
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
     determine_local_boundary_faces();

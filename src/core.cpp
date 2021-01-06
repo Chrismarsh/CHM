@@ -644,19 +644,6 @@ void core::config_meshes( pt::ptree &value)
       pt::ptree mesh = read_json(mesh_path);
       bool triarea_found = false;
 
-      bool is_geographic = (bool)mesh.get<int>("mesh.is_geographic");
-      _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
-      if(is_geographic)
-      {
-        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
-        math::gis::distance = &math::gis::distance_latlong;
-      }
-      else
-      {
-        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
-        math::gis::distance = &math::gis::distance_UTM;
-      }
-
       // Parameter files
       for (auto param_file : param_file_paths)
       {
@@ -674,10 +661,7 @@ void core::config_meshes( pt::ptree &value)
                 LOG_DEBUG << "Inserted parameter " << ktr.first.data() << " into the config tree.";
 	    }
       }
-      if(is_geographic && !triarea_found)
-      {
-        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
-      }
+
 
       // Initial condition files
       for(auto ic_file : initial_condition_file_paths)
@@ -694,7 +678,25 @@ void core::config_meshes( pt::ptree &value)
       }
 
       _mesh->from_json(mesh);
+
+        if(_mesh->is_geographic() && !triarea_found)
+        {
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
+        }
     }
+
+    if( _mesh->is_geographic())
+    {
+        _global->_is_geographic = _mesh->is_geographic(); // save it here so modules can determine if this is true
+        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
+        math::gis::distance = &math::gis::distance_latlong;
+    }
+    else
+    {
+        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
+        math::gis::distance = &math::gis::distance_UTM;
+    }
+
 
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
