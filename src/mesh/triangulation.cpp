@@ -1082,9 +1082,10 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	  hsize_t nelem;
 	  int ndims = dataspace.getSimpleExtentDims(&nelem);
 
-	  hsize_t local_size = static_cast<hsize_t>(_num_faces);
-	  hsize_t offset = static_cast<hsize_t>(global_cell_start_idx);
+	  hsize_t local_size = static_cast<hsize_t>(_num_faces); // _num_faces will have been set to the local face size in MPI mode
 
+
+	  hsize_t offset = static_cast<hsize_t>(global_cell_start_idx);
 
 	  // cout << _comm_world.rank() << ": local_size " << local_size << " offset "<< global_cell_start_idx << endl;
 
@@ -1244,6 +1245,11 @@ void triangulation::partition_mesh()
 
 
 #else // do not USE_MPI
+
+    // If we are not using MPI, some code paths might still want to make use of these
+   //  initialized to [0, num_faces - 1]
+    global_cell_start_idx = 0;
+    global_cell_end_idx = _num_faces - 1;
 
   _global_IDs.resize(_num_global_faces);
 #pragma omp parallel for

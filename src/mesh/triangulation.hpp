@@ -927,7 +927,12 @@ private:
 
     // All MPI process are aware of the local sizes for all other MPI processes
     std::vector<int> _num_faces_in_partition;
-    int              global_cell_start_idx, global_cell_end_idx;
+
+    // If we are not using MPI, some code paths might still want to make use of these
+    //  initialized to [0, num_faces - 1]
+    // In MPI mode this contains the global face index start and end
+    int  global_cell_start_idx, // in non-MPI this is 0,
+        global_cell_end_idx; // in non-MPI this is equal to _num_faces - 1
 
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
