@@ -632,6 +632,43 @@ void core::config_meshes( pt::ptree &value)
 
     _provided_parameters = _mesh->parameters();
 
+    bool is_geographic = false;
+
+    pt::ptree mesh; // holds the json mesh if we end up using it
+
+    // Before we read the mesh, we need to know if we are geographic or projected so we can hook up all the distance functions
+    // correctly. So for either json or hdf5 we check, hook up the functions, then proceed to the main load which can assume the functions are available
+    if(mesh_file_extension == ".h5")
+    {
+        hsize_t geographic_dims = 1;
+        H5::DataSpace dataspace(1, &geographic_dims);
+
+        H5File  file(mesh_path, H5F_ACC_RDONLY);
+        H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
+        attribute.read(PredType::NATIVE_HBOOL, &is_geographic);
+        file.close();
+    }
+    else
+    {
+        mesh = read_json(mesh_path);
+        if( mesh.get<int>("mesh.is_geographic") == 1)
+        {
+            is_geographic = true;
+        }
+    }
+
+    _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
+    if( is_geographic)
+    {
+        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
+        math::gis::distance = &math::gis::distance_latlong;
+    }
+    else
+    {
+        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
+        math::gis::distance = &math::gis::distance_UTM;
+    }
+
     ////////////////////////////////////////////////////////////
     // Actually read the mesh, parameter and ic data here
     ////////////////////////////////////////////////////////////
@@ -641,7 +678,7 @@ void core::config_meshes( pt::ptree &value)
     }
     else  // Assume anything that is NOT h5 is json
     {
-      pt::ptree mesh = read_json(mesh_path);
+        //mesh will have been loaded by the geographic check so don't re load it here
       bool triarea_found = false;
 
       // Parameter files
@@ -662,6 +699,10 @@ void core::config_meshes( pt::ptree &value)
 	    }
       }
 
+        if(is_geographic && !triarea_found)
+        {
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
+        }
 
       // Initial condition files
       for(auto ic_file : initial_condition_file_paths)
@@ -679,23 +720,10 @@ void core::config_meshes( pt::ptree &value)
 
       _mesh->from_json(mesh);
 
-        if(_mesh->is_geographic() && !triarea_found)
-        {
-            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
-        }
+
     }
 
-    if( _mesh->is_geographic())
-    {
-        _global->_is_geographic = _mesh->is_geographic(); // save it here so modules can determine if this is true
-        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
-        math::gis::distance = &math::gis::distance_latlong;
-    }
-    else
-    {
-        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
-        math::gis::distance = &math::gis::distance_UTM;
-    }
+
 
 
     if (_mesh->size_faces() == 0)
