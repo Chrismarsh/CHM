@@ -1005,12 +1005,12 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if (vm.count("help"))
     {
         cout << desc << std::endl;
-        exit(0);
+        CHM_THROW_EXCEPTION(chm_done,"done");
     }
     else if (vm.count("version"))
     {
         cout << version << std::endl;
-        exit(0);
+        CHM_THROW_EXCEPTION(chm_done,"done");
     }
 
     std::vector<std::pair<std::string, std::string>> config_extra;
@@ -1325,9 +1325,10 @@ void core::init(int argc, char **argv)
 
     if( cli_options.do_hdf5_convert)
     {
-        LOG_DEBUG << "Converting mesh to hdf5";
+        LOG_DEBUG << "Converting mesh to hdf5...";
         _mesh->to_hdf5("test");
-        CHM_THROW_EXCEPTION(chm_done, "HDF5 written, terminating.");
+        LOG_DEBUG << "HDF5 written, terminating";
+        CHM_THROW_EXCEPTION(chm_done, "done");
     }
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with.

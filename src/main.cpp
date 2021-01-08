@@ -41,6 +41,12 @@ int main (int argc, char *argv[])
 
         kernel.end();
     }
+    catch(chm_done& e)
+    {
+        kernel.end();
+        //clean exit
+        return 0;
+    }
     catch( boost::exception& e)
     {
         kernel.end(); //make sure endwin() is called so ncurses cleans up
