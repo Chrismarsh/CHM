@@ -568,36 +568,123 @@ void core::config_meshes( pt::ptree &value)
 
     mesh_path = (cwd_dir / mesh_path).string();
 
-    pt::ptree mesh = read_json(mesh_path);
+    auto mesh_file_extension = boost::filesystem::path(mesh_path).extension();
 
-    //we need to check if we've read in a geographic (lat/long) mesh or a UTM mesh. We then need to swap in the right distance and point_bearing functions
-    //so the modules and future code can blindly use them without worrying about these things
-
-    bool is_geographic = (bool)mesh.get<int>("mesh.is_geographic");
-    _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
-    if(is_geographic)
-    {
-
-        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
-        math::gis::distance = &math::gis::distance_latlong;
-    } else
-    {
-
-        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
-        math::gis::distance = &math::gis::distance_UTM;
-    }
-
-    bool triarea_found = false;
-    //see if we have additional parameter files to load
+    // Paths for parameter files
+    std::vector<std::string> param_file_paths;
     try
     {
         for(auto &itr : value.get_child("parameters"))
         {
-            LOG_DEBUG << "Parameter file: " << itr.second.data();
+	  auto param_file = itr.second.data();
+	  LOG_DEBUG << "Found parameter file: " << param_file;
+	  param_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
+	}
+    }
+    catch(pt::ptree_bad_path &e)
+    {
+        LOG_DEBUG << "No addtional parameters found in mesh section.";
+    }
 
-            auto param_mesh_path = (cwd_dir / itr.second.data()).string();
+    // Paths for initial condition files
+    std::vector<std::string> initial_condition_file_paths;
+    try
+    {
+        for(auto &itr : value.get_child("initial_conditions"))
+        {
+	  auto ic_file = itr.second.data();
+	  LOG_DEBUG << "Found initial condition file: " << ic_file;
+	  initial_condition_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
+        }
+    }
+    catch(pt::ptree_bad_path &e)
+    {
+        LOG_DEBUG << "No addtional initial conditions found in mesh section.";
+    }
 
-            pt::ptree param_json = read_json(param_mesh_path);
+    // Ensure all files are HDF5 in multiprocess MPI runs
+#ifdef USE_MPI
+    if ( (_comm_world.size() > 1) ) {
+      if (mesh_file_extension != ".h5") {
+        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+      }
+      for(const auto& it : param_file_paths) {
+	auto extension = boost::filesystem::path(it).extension();
+	if (extension != ".h5") {
+	  BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 parameter files: " + it + "\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+	}
+      }
+      for(const auto& it : initial_condition_file_paths) {
+	auto extension = boost::filesystem::path(it).extension();
+	if (extension != ".h5") {
+	  BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 initial condition files: " + it + "\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+	}
+      }
+
+    }
+#endif
+
+    //we need to let the mesh know about any parameters the modules will provide so they can be correctly build into the static hashmaps
+    for(auto& p : _provided_parameters) {
+      std::cout << p << endl;
+        _mesh->_parameters.insert(p);
+    }
+
+    _provided_parameters = _mesh->parameters();
+
+    bool is_geographic = false;
+
+    pt::ptree mesh; // holds the json mesh if we end up using it
+
+    // Before we read the mesh, we need to know if we are geographic or projected so we can hook up all the distance functions
+    // correctly. So for either json or hdf5 we check, hook up the functions, then proceed to the main load which can assume the functions are available
+    if(mesh_file_extension == ".h5")
+    {
+        hsize_t geographic_dims = 1;
+        H5::DataSpace dataspace(1, &geographic_dims);
+
+        H5File  file(mesh_path, H5F_ACC_RDONLY);
+        H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
+        attribute.read(PredType::NATIVE_HBOOL, &is_geographic);
+        file.close();
+    }
+    else
+    {
+        mesh = read_json(mesh_path);
+        if( mesh.get<int>("mesh.is_geographic") == 1)
+        {
+            is_geographic = true;
+        }
+    }
+
+    _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
+    if( is_geographic)
+    {
+        math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
+        math::gis::distance = &math::gis::distance_latlong;
+    }
+    else
+    {
+        math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
+        math::gis::distance = &math::gis::distance_UTM;
+    }
+
+    ////////////////////////////////////////////////////////////
+    // Actually read the mesh, parameter and ic data here
+    ////////////////////////////////////////////////////////////
+    if(mesh_file_extension == ".h5")
+    {
+      _mesh->from_hdf5(mesh_path, param_file_paths, initial_condition_file_paths);
+    }
+    else  // Assume anything that is NOT h5 is json
+    {
+        //mesh will have been loaded by the geographic check so don't re load it here
+      bool triarea_found = false;
+
+      // Parameter files
+      for (auto param_file : param_file_paths)
+      {
+	    pt::ptree param_json = read_json(param_file);
 
             for(auto& ktr : param_json)
             {
@@ -609,29 +696,18 @@ void core::config_meshes( pt::ptree &value)
                     triarea_found = true;
 
                 LOG_DEBUG << "Inserted parameter " << ktr.first.data() << " into the config tree.";
-            }
+	    }
+      }
 
+        if(is_geographic && !triarea_found)
+        {
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
         }
 
-    }
-    catch(pt::ptree_bad_path &e)
-    {
-        LOG_DEBUG << "No addtional parameters found in mesh section.";
-    }
-    if(is_geographic && !triarea_found)
-    {
-        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
-    }
-
-    try
-    {
-        for(auto &itr : value.get_child("initial_conditions"))
-        {
-            LOG_DEBUG << "Initial condition file: " << itr.second.data();
-
-            auto param_mesh_path = (cwd_dir / itr.second.data()).string();
-
-            pt::ptree ic_json = read_json(param_mesh_path);
+      // Initial condition files
+      for(auto ic_file : initial_condition_file_paths)
+      {
+            pt::ptree ic_json = read_json(ic_file);
 
             for(auto& ktr : ic_json)
             {
@@ -640,27 +716,18 @@ void core::config_meshes( pt::ptree &value)
                 mesh.put_child( "initial_conditions." + key ,ktr.second);
                 LOG_DEBUG << "Inserted initial condition " << ktr.first.data() << " into the config tree.";
             }
+      }
 
-        }
+      _mesh->from_json(mesh);
+
+
     }
-    catch(pt::ptree_bad_path &e)
-    {
-        LOG_DEBUG << "No addtional initial conditions found in mesh section.";
-    }
 
-    //we need to let the mesh know about any parameters the modules will provide so they can be correctly build into the static hashmaps
-    for(auto& p : _provided_parameters)
-        _mesh->_parameters.insert(p);
-    
-    _mesh->from_json(mesh);
 
-    _provided_parameters = _mesh->parameters();
-    
-    
+
+
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
-
-
 
 
 }
@@ -902,7 +969,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     std::string end;
 
     bool legacy_log=false;
-    
+
     po::options_description desc("Allowed options.");
     desc.add_options()
             ("help", "This message")
@@ -922,6 +989,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
                     "will result in nproc being removed.")
             ("remove-module,d", po::value<std::vector<std::string>>(), "Removes a module."
                     " Removals are processed after any --config paramters are parsed, so -d will override -c. ")
+            ("convert-hdf5", po::bool_switch()->default_value(false), "Converts a .mesh to a .hdf5 and exits. True/false")
             ("add-module,m", po::value<std::vector<std::string>>(), "Adds a module.");
 
 
@@ -937,12 +1005,12 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if (vm.count("help"))
     {
         cout << desc << std::endl;
-        exit(0);
+        CHM_THROW_EXCEPTION(chm_done,"done");
     }
     else if (vm.count("version"))
     {
         cout << version << std::endl;
-        exit(0);
+        CHM_THROW_EXCEPTION(chm_done,"done");
     }
 
     std::vector<std::pair<std::string, std::string>> config_extra;
@@ -984,6 +1052,16 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
         LOG_ERROR << "Configuration file required.";
         cout << desc << std::endl;
         exit(1);
+    }
+
+
+    if (vm.count("convert-hdf5"))
+    {
+        cli_options.do_hdf5_convert = vm["convert-hdf5"].as<bool>();
+	if( cli_options.do_hdf5_convert)
+	{
+	  LOG_WARNING << "HDF5 conversion enabled, model will exit after converting mesh.";
+        }
     }
 
 
@@ -1060,12 +1138,12 @@ void core::init(int argc, char **argv)
 
         log_name =  "CHM.log";
         log_file_path = cwd_dir / log_name;
-    } 
+    }
     else {
         log_file_path = log_path / log_name;
         log_name =  log_file_path.string();
     }
-   
+
 
     _log_sink = boost::make_shared<text_sink>();
     text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
@@ -1245,10 +1323,18 @@ void core::init(int argc, char **argv)
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
 
-    // This needs to be initialized with the mesh prior to the forcing and output being dealt with. 
+    if( cli_options.do_hdf5_convert)
+    {
+        LOG_DEBUG << "Converting mesh to hdf5...";
+        _mesh->to_hdf5("test");
+        LOG_DEBUG << "HDF5 written, terminating";
+        CHM_THROW_EXCEPTION(chm_done, "done");
+    }
+
+    // This needs to be initialized with the mesh prior to the forcing and output being dealt with.
     // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further
     _metdata = std::make_shared<metdata>(_mesh->proj4());
-    
+
     //output should come before forcing, controls if we should output the vtp file of station locations
     try
     {

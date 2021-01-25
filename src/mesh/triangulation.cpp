@@ -38,6 +38,29 @@ triangulation::triangulation()
     vertex_data.set_empty_key("");
 
 #endif
+
+/*
+  Datatypes for reading/writing HDF5 files
+*/
+    // Array datatype for vertices
+    vertex_dims=3;
+    vertex_t = H5::ArrayType(PredType::NATIVE_DOUBLE,1,&vertex_dims);
+
+    // Array datatype for vertices defining faces
+    elem_dims=3;
+    elem_t = H5::ArrayType(PredType::NATIVE_INT,1,&elem_dims);
+
+    // Array datatype for neighbors
+    neighbor_dims=3;
+    neighbor_t = H5::ArrayType(PredType::NATIVE_INT,1,&neighbor_dims);
+
+    // Array datatype for proj4 string
+    proj4_dims=1;
+    proj4_t = H5::StrType(PredType::C_S1,256);
+
+    // Array datatype for is_geographic
+    geographic_dims=1;
+
 }
 
 #ifdef MATLAB
@@ -577,6 +600,549 @@ void triangulation::from_json(pt::ptree &mesh)
 
 }
 
+void triangulation::to_hdf5(std::string filename_base)
+{
+
+  std::string filename = filename_base + "_mesh.h5";
+
+  try {
+    // Turn off the auto-printing when failure occurs so that we can
+    // handle the errors appropriately
+    Exception::dontPrint();
+
+    H5::H5File file(filename,H5F_ACC_TRUNC);
+    H5::Group group(file.createGroup("/mesh"));
+
+    hsize_t ntri= size_global_faces();
+    hsize_t nvert= size_vertex();
+
+    {  // Faces
+      H5::DataSpace dataspace(1, &ntri);
+      auto globalIDs = get_global_IDs();
+      H5::DataSet dataset = file.createDataSet("/mesh/cell_global_id", PredType::STD_I32BE, dataspace);
+      dataset.write(globalIDs.data(), PredType::NATIVE_INT);
+    }
+
+    { // Vertices
+      H5::DataSpace dataspace(1, &nvert);
+      std::vector<std::array<double,3>> vertices(nvert);
+
+#pragma omp parallel for
+      for (size_t i = 0; i < nvert; ++i)
+	{
+	  auto v = vertex(i);
+	  vertices[i][0] = v->point().x();
+	  vertices[i][1] = v->point().y();
+	  vertices[i][2] = v->point().z();
+	}
+
+      H5::DataSet dataset = file.createDataSet("/mesh/vertex", vertex_t, dataspace);
+      dataset.write(vertices.data(), vertex_t);
+    }
+
+    {  // Which vertices define each face
+      H5::DataSpace dataspace(1, &ntri);
+      std::vector<std::array<int,3>> elem(ntri);
+
+#pragma omp parallel for
+      for (size_t i = 0; i < ntri; ++i)
+	{
+	  auto f = this->face(i);
+	  for (size_t j = 0; j < 3; ++j) {
+	    elem[i][j] = f->vertex(j)->get_id();
+	  }
+	}
+
+      H5::DataSet dataset = file.createDataSet("/mesh/elem", elem_t, dataspace);
+      dataset.write(elem.data(), elem_t);
+    }
+
+    {  // Which vertices define each face
+      H5::DataSpace dataspace(1, &ntri);
+      std::vector<std::array<int,3>> neighbor(ntri);
+
+#pragma omp parallel for
+      for (size_t i = 0; i < ntri; ++i)
+	{
+	  auto f = this->face(i);
+	  for (size_t j = 0; j < 3; ++j) {
+	    auto neigh = f->neighbor(j);
+	    if(neigh != nullptr) {
+	      neighbor[i][j] = neigh->cell_global_id;
+	    } else {
+	      neighbor[i][j] = -1;
+	    }
+	  }
+	}
+      H5::DataSet dataset = file.createDataSet("/mesh/neighbor", neighbor_t, dataspace);
+      dataset.write(neighbor.data(), neighbor_t);
+    }
+
+    // Ensure the proj4 string can fit in the HDF5 data type
+    if( _srs_wkt.length() >= 256)
+    {
+        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                "Proj4 string needs to be < 256. Length: " + std::to_string(_srs_wkt.length())));
+    }
+    {  // Write the proj4
+      H5::DataSpace dataspace(1, &proj4_dims);
+      H5::Attribute attribute = file.createAttribute("/mesh/proj4", proj4_t, dataspace);
+      attribute.write(proj4_t, _srs_wkt);
+    }
+
+    {  // Write the is_geographic
+      H5::DataSpace dataspace(1, &geographic_dims);
+      H5::Attribute attribute = file.createAttribute("/mesh/is_geographic", PredType::NATIVE_HBOOL, dataspace);
+      attribute.write(PredType::NATIVE_HBOOL, &_is_geographic);
+    }
+
+  } // end of try block
+
+
+
+    // catch failure caused by the H5File operations
+  catch (FileIException error) {
+    error.printErrorStack();
+  }
+
+  // catch failure caused by the DataSet operations
+  catch (DataSetIException error) {
+    error.printErrorStack();
+  }
+
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// Parameters
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+
+  std::string par_filename = filename_base + "_param.h5";
+
+  try {
+    // Turn off the auto-printing when failure occurs so that we can
+    // handle the errors appropriately
+    Exception::dontPrint();
+
+    H5::H5File file(par_filename,H5F_ACC_TRUNC);
+    H5::Group group(file.createGroup("/parameters"));
+
+    hsize_t ntri= size_global_faces();
+
+    for (auto &par_iter : _parameters) {
+
+      H5::DataSpace dataspace(1, &ntri);
+      auto globalIDs = get_global_IDs();
+      std::string par_location = "/parameters/" + par_iter;
+      H5::DataSet dataset = file.createDataSet(par_location, PredType::NATIVE_DOUBLE, dataspace);
+
+      std::vector<double> values(ntri);
+#pragma omp parallel for
+      for(size_t i=0; i<ntri; ++i) {
+	auto face = _faces.at(i);
+	values[i] = face->parameter(par_iter);
+      }
+      dataset.write(values.data(), PredType::NATIVE_DOUBLE);
+    }
+
+  } // end try block
+
+    // catch failure caused by the H5File operations
+  catch (FileIException error) {
+    error.printErrorStack();
+  }
+
+  // catch failure caused by the DataSet operations
+  catch (DataSetIException error) {
+    error.printErrorStack();
+  }
+
+  std::cout << "Written file example.h5\n";
+
+}
+
+void attr_op(H5::H5Location &loc, const std::string attr_name,
+             void *operator_data) {
+  std::cout << attr_name << std::endl;
+}
+
+/*
+ * Operator function.
+ */
+typedef struct _MeshParameters {
+std::vector<std::string> names;
+} MeshParameters;
+
+herr_t
+group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
+{
+    hid_t group;
+    MeshParameters *pars = (MeshParameters*)opdata;
+    std::string str(name);
+    group = H5Gopen2(loc_id, name, H5P_DEFAULT);
+    // cout << "Name : " << str << endl; // Display the group name.
+    (pars->names).push_back(str);
+    H5Gclose(group);
+    return 0;
+}
+
+void triangulation::from_hdf5(const std::string& mesh_filename,
+			      const std::vector<std::string>& param_filenames,
+			      const std::vector<std::string>& ic_filenames
+			      )
+{
+
+  std::vector<int> permutation;
+  std::vector<Point_2> center_points;
+
+    try {
+        // Turn off the auto-printing when failure occurs so that we can
+        // handle the errors appropriately
+        Exception::dontPrint();
+
+	// Open an existing file and dataset.
+	H5File  file(mesh_filename, H5F_ACC_RDONLY);
+
+	std::vector<std::array<double,3>> vertex;
+	std::vector<std::array<int,3>> elem;
+	std::vector<std::array<int,3>> neigh;
+
+	{
+	  // Read the proj4
+	  H5::DataSpace dataspace(1, &proj4_dims);
+	  H5::Attribute attribute = file.openAttribute("/mesh/proj4");
+	  attribute.read(proj4_t, _srs_wkt);
+
+	}
+
+	{  // Write the is_geographic
+	  H5::DataSpace dataspace(1, &geographic_dims);
+	  H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
+	  attribute.read(PredType::NATIVE_HBOOL, &_is_geographic);
+	}
+
+
+	{
+	  H5::DataSet dataset = file.openDataSet("/mesh/cell_global_id");
+	  H5::DataSpace dataspace = dataset.getSpace();
+	  hsize_t nelem;
+	  int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+	  permutation.resize(nelem);
+	  dataset.read(permutation.data(), PredType::NATIVE_INT);
+	}
+
+	{
+	  // Open the vertices dataset
+	  DataSet dataset = file.openDataSet("/mesh/vertex");
+	  DataSpace dataspace = dataset.getSpace();
+
+	 hsize_t nvert;
+	 int ndims = dataspace.getSimpleExtentDims(&nvert, NULL);
+
+	 // Ensure enough space in the vector
+	 vertex.resize(nvert);
+	 // Default args read all of the dataspace
+	 dataset.read(vertex.data(), vertex_t);
+
+	 for (size_t i=0;i<nvert;i++){
+
+	   Point_3 pt( vertex[i][0], vertex[i][1], vertex[i][2] );
+	   _max_z = std::max(_max_z,vertex[i][2]);
+	   _min_z = std::min(_min_z,vertex[i][2]);
+
+	   Vertex_handle Vh = this->create_vertex();
+	   Vh->set_point(pt);
+	   Vh->set_id(i);
+	   _vertexes.push_back(Vh);
+
+	   // std::cout << i << ":";
+	   // for(int j=0; j< 3; ++j){
+	   //   std::cout << " " << vertex[i][j];
+	   // }
+	   // std::cout << "\n";
+	 }
+
+	 _num_vertex = _vertexes.size();
+	 LOG_DEBUG << "# nodes created = " << _num_vertex;
+
+	}
+
+	{
+	  DataSet dataset = file.openDataSet("/mesh/elem");
+	  DataSpace dataspace = dataset.getSpace();
+
+	  hsize_t nelem;
+	  int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+
+	  // Ensure enough space in the vector
+	  elem.resize(nelem);
+	  // Default args read all of the dataspace
+	  dataset.read(elem.data(), elem_t);
+
+	 for (size_t i=0;i<nelem;i++)
+         {
+
+	   auto vert1 = _vertexes.at(elem[i][0]); //0 indexing
+	   auto vert2 = _vertexes.at(elem[i][1]);
+	   auto vert3 = _vertexes.at(elem[i][2]);
+
+	   auto face = this->create_face(vert1,vert2,vert3);
+	   face->cell_global_id = i;
+	   face->cell_local_id = i;
+
+             if( _is_geographic)
+             {
+                 face->_is_geographic = true;
+             }
+
+	   face->_debug_ID= -(i+1); //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
+	   face->_debug_name= std::to_string(i);
+	   face->_domain = this;
+
+	   vert1->set_face(face);
+	   vert2->set_face(face);
+	   vert3->set_face(face);
+
+	   _faces.push_back(face);
+
+	   // std::cout << i << ":";
+	   // for(int j=0; j< 3; ++j){
+	   //   std::cout << " " << vertex[i][j];
+	   // }
+	   // std::cout << "\n";
+
+// If we aren't using MPI, we can build the centre points here for efficiency.
+// these centre points will be used to build the spatial search tree. If we are using MPI,
+// we need to wait until we've figured out the per-node triangle partition so we can build
+// a per-node spatial search tree that only takes into account this node's elements.
+// If MPI, we do that at the end of this function
+#ifndef USE_MPI
+        Point_2 pt2(face->center().x(),face->center().y());
+        center_points.push_back(pt2);
+#endif
+	 }
+
+#ifndef USE_MPI
+    //make the search tree
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(), _faces.end() ) )
+    );
+#endif
+
+    	  _num_faces = _faces.size();
+	  LOG_DEBUG << "Created a mesh with " << this->size_faces() << " triangles";
+
+	}
+
+	{
+
+	  DataSet dataset = file.openDataSet("/mesh/neighbor");
+	  DataSpace dataspace = dataset.getSpace();
+
+	  hsize_t nelem;
+	  int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+
+        if( elem.size() != nelem)
+        {
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                    "Expected: " + std::to_string(elem.size()) + " neighborlists, got: " + std::to_string(nelem)));
+        }
+
+	  // Ensure enough space in the vector
+	  neigh.resize(nelem);
+	  // Default args read all of the dataspace
+	  dataset.read(neigh.data(), neighbor_t);
+
+	  LOG_DEBUG << "Building face neighbors";
+	 for (size_t i=0;i<nelem;i++){
+
+	   auto face = _faces.at(i);
+
+	   // LOG_DEBUG << neigh[i][0] << " " << neigh[i][1] << " " << neigh[i][2];
+
+        if(    neigh[i][0] > static_cast<int>(nelem)
+            || neigh[i][1] > static_cast<int>(nelem)
+            || neigh[i][2] > static_cast<int>(nelem))
+        {
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                    "Face " + std::to_string(i) + " has out of bound neighbors."));
+        }
+
+        //-1 is now the no neighbor value
+        Face_handle face0 =  neigh[i][0] != -1 ?_faces.at( neigh[i][0] ) : nullptr; // Face_handle()
+        Face_handle face1 =  neigh[i][1] != -1 ?_faces.at( neigh[i][1] ) : nullptr;
+        Face_handle face2 =  neigh[i][2] != -1 ?_faces.at( neigh[i][2] ) : nullptr;
+
+        face->set_neighbors(face0,face1,face2);
+
+	 }
+	}
+
+
+    } // end of try block
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error) {
+        error.printErrorStack();
+    }
+
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error) {
+        error.printErrorStack();
+    }
+
+    partition_mesh();
+
+#ifdef USE_MPI
+    _num_faces = _local_faces.size();
+    determine_local_boundary_faces();
+    determine_process_ghost_faces_nearest_neighbors();
+
+    setup_nearest_neighbor_communication();
+
+    // Region
+    // TODO: Need to auto-determine how far to look based on module setups
+    determine_process_ghost_faces_by_distance(100.0);
+
+    // should make this parallel
+    for(size_t ii=0; ii < _num_global_faces; ++ii)
+    {
+        auto face = _faces.at(ii);
+        Point_2 pt2(face->center().x(),face->center().y());
+        center_points.push_back(pt2);
+
+    }
+    //make the search tree
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
+				       );
+
+#endif // USE_MPI
+
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// Parameters
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+
+    for(auto param_filename : param_filenames) {
+
+    try {
+        // Turn off the auto-printing when failure occurs so that we can
+        // handle the errors appropriately
+        Exception::dontPrint();
+
+	// Open an existing file and dataset.
+	H5File  file(param_filename, H5F_ACC_RDONLY);
+
+	// Space for extracting the parameter info
+	std::unique_ptr<MeshParameters> pars(new MeshParameters);
+
+	// Extract all of the parameter info (names) from the file
+	Group group = file.openGroup("parameters");
+	herr_t idx = H5Literate(group.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, (void*)pars.get());
+	for(auto const& name : pars->names) {
+	  _parameters.insert(name);
+	  // std::cout << "Here: " << name << "\n";
+	}
+        // init the parameter storage on each face
+#pragma omp parallel for
+        for (size_t i = 0; i < _num_faces; i++)
+        {
+             face(i)->init_parameters(_parameters);
+        }
+	// init the parameter storage for the ghost regions
+        for (size_t i = 0; i < _ghost_faces.size(); i++) {
+             _ghost_faces.at(i)->init_parameters(_parameters);
+	}
+
+
+	// Data buffer for reading from file (before packing into faces)
+	std::vector<double> data(_num_faces);
+
+	// Read all of the parameters from file and store them in the faces
+	for (auto const &name : pars->names) {
+
+	  LOG_DEBUG << "Applying parameter: " << name;
+
+	  DataSet dataset = group.openDataSet(name);
+	  DataSpace dataspace = dataset.getSpace();
+
+	  hsize_t nelem;
+	  int ndims = dataspace.getSimpleExtentDims(&nelem);
+
+	  hsize_t local_size = static_cast<hsize_t>(_num_faces); // _num_faces will have been set to the local face size in MPI mode
+
+
+	  hsize_t offset = static_cast<hsize_t>(global_cell_start_idx);
+
+	  // cout << _comm_world.rank() << ": local_size " << local_size << " offset "<< global_cell_start_idx << endl;
+
+	  dataspace.selectHyperslab( H5S_SELECT_SET, &local_size, &offset);
+
+	  DataSpace memspace(1, &nelem);
+	  hsize_t zero = 0;
+	  memspace.selectHyperslab( H5S_SELECT_SET, &local_size, &zero);
+
+	  // if (nelem != _faces.size()) {
+	  //   BOOST_THROW_EXCEPTION(config_error() <<
+	  // 			  errstr_info(
+	  // 				      "Param " + name + " expected: " + std::to_string(_faces.size()) + " values, got: " + std::to_string(nelem)));
+	  // }
+
+	  dataset.read(data.data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
+
+	  // for(int i=0;i<5;++i){
+	  //   cout << _comm_world.rank() << ": entry " << i << " " << data[i]<< endl;
+	  // }
+
+#pragma omp parallel for
+	  for (size_t i=0;i<_num_faces;i++){
+	    face(i)->parameter(name) = data[i];
+	    // cout << "WriteParam " <<_comm_world.rank() << ": entry " << i << " " << data[i]<< endl;
+	  }
+
+	  LOG_DEBUG << " Applying " << name << " for ghost regions (" << _ghost_faces.size() << " elements): " << name;
+
+	  // Read parameters for each ghost face individually
+	  hsize_t one = 1;
+	  // Do NOT do this loop in parallel (internal state of HDF5)
+	  for (size_t i = 0; i < _ghost_faces.size(); i++) {
+	    auto face = _ghost_faces.at(i);
+	    hsize_t global_id = face->cell_global_id;
+
+	    // Position and size in file
+	    dataspace.selectHyperslab( H5S_SELECT_SET, &one, &global_id);
+	    // Position and size in variable
+	    memspace.selectHyperslab(H5S_SELECT_SET, &one, &zero);
+
+	    double value;
+	    dataset.read(&value, PredType::NATIVE_DOUBLE, memspace, dataspace);
+	    face->parameter(name) = value;
+
+	  }
+
+
+	}
+
+
+    } // end of try block
+
+    // catch failure caused by the H5File operations
+    catch (FileIException error) {
+        error.printErrorStack();
+    }
+
+    // catch failure caused by the DataSet operations
+    catch (DataSetIException error) {
+        error.printErrorStack();
+    }
+
+} // end of param_filenames loop
+
+// TODO: include initial condition files
+
+}
+
 void triangulation::reorder_faces(std::vector<size_t> permutation)
 {
   // NOTE: be careful with evaluating this, the 'cell_global_id's and a
@@ -641,7 +1207,9 @@ void triangulation::partition_mesh()
     face_start_idx += _num_faces_in_partition[i-1];
     face_end_idx += _num_faces_in_partition[i];
   }
-
+  // Store in the public members
+  global_cell_start_idx = face_start_idx;
+  global_cell_end_idx = face_end_idx;
 
   // Set size of vector containing locally owned faces
   _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
@@ -665,6 +1233,11 @@ void triangulation::partition_mesh()
 
 
 #else // do not USE_MPI
+
+    // If we are not using MPI, some code paths might still want to make use of these
+   //  initialized to [0, num_faces - 1]
+    global_cell_start_idx = 0;
+    global_cell_end_idx = _num_faces - 1;
 
   _global_IDs.resize(_num_global_faces);
 #pragma omp parallel for
@@ -1370,8 +1943,12 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data["is_ghost"] = vtkSmartPointer<vtkFloatArray>::New();
         data["is_ghost"]->SetName("is_ghost");
 
+#ifdef USE_MPI
         data["owner"] = vtkSmartPointer<vtkFloatArray>::New();
         data["owner"]->SetName("owner");
+#endif
+
+
 
         data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
         data["global_id"]->SetName("global_id");

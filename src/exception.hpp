@@ -42,6 +42,7 @@ struct file_write_error: virtual io_error { };
 
 // Generic CHM errors
 struct chm_error: virtual exception_base { };
+struct chm_done: virtual exception_base { };
 struct model_init_error: virtual chm_error { };
 struct not_impl: virtual chm_error { };
 

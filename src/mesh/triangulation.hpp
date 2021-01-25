@@ -130,7 +130,9 @@ namespace pt = boost::property_tree;
 
 #include "timeseries/variablestorage.hpp"
 
-
+// #include "hdf5.h"
+#include "H5Cpp.h"
+using namespace H5;
 /**
 * \struct face_info
 * A way of embedding arbirtrary data into the face. This is how modules should store their data.
@@ -579,6 +581,22 @@ public:
 	void from_json(pt::ptree& mesh);
 
     /**
+    * Writes a mesh to an hdf5 file.
+    * \param filename_base Base name of file to write .
+    */
+	void to_hdf5(std::string filename_base);
+
+    /**
+    * Reads a mesh and parameters from an hdf5 file.
+    * \param mesh_filename Name of mesh file to read .
+    * \param param_filename Name of parameter file to read.
+    * \param [OPTIONAL] ic_filename Name of initial condition file to read.
+    */
+	void from_hdf5(const std::string& mesh_filename,
+		       const std::vector<std::string>& param_filename,
+		       const std::vector<std::string>& ic_filename);
+
+    /**
     * Sets a new order to the face numbering.
     * \param permutation desired ordering
     */
@@ -865,8 +883,8 @@ public:
     // it will have to insert them into this list so that the static hashmaps can be properly init
     std::set<std::string> _parameters;
 private:
-    size_t _num_faces; //number of faces
-    size_t _num_global_faces; //number of faces
+    size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
+    size_t _num_global_faces; //number of global faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
@@ -910,6 +928,12 @@ private:
     // All MPI process are aware of the local sizes for all other MPI processes
     std::vector<int> _num_faces_in_partition;
 
+    // If we are not using MPI, some code paths might still want to make use of these
+    //  initialized to [0, num_faces - 1]
+    // In MPI mode this contains the global face index start and end
+    int  global_cell_start_idx, // in non-MPI this is 0,
+        global_cell_end_idx; // in non-MPI this is equal to _num_faces - 1
+
     std::vector< mesh_elem > _local_faces;
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
 
@@ -946,6 +970,29 @@ private:
     boost::mpi::environment _mpi_env;
     boost::mpi::communicator _comm_world;
 #endif
+
+/*
+  Datatypes for reading/writing HDF5 files
+*/
+
+  // Array datatype for vertices
+  hsize_t vertex_dims;
+  H5::ArrayType vertex_t;
+
+  // Array datatype for vertices defining faces
+  hsize_t elem_dims;
+  H5::ArrayType elem_t;
+
+  // Array datatype for neighbors
+  hsize_t neighbor_dims;
+  H5::ArrayType neighbor_t;
+
+  // Array datatype for proj4 string
+  hsize_t proj4_dims;
+  H5::StrType proj4_t;
+
+  // Array datatype for is_geographic
+  hsize_t geographic_dims;
 
 };
 
