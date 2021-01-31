@@ -1,0 +1,85 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push or pull request events but only for the stable/proj7 branch
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0' # run every week
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  CONAN_USERNAME: CHM
+  CONAN_CHANNEL: stable
+  CONAN_UPLOAD: "https://api.bintray.com/conan/chrismarsh/CHM"
+  CONAN_LOGIN_USERNAME: "chrismarsh"
+  CONAN_PASSWORD: ${{ secrets.CONAN_PASSWORD }}
+  CONAN_STABLE_BRANCH_PATTERN: "stable/*"
+  CONAN_UPLOAD_ONLY_WHEN_STABLE: "1"
+  MAKEFLAGS: "-j2"
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.cfg.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        cfg:
+          - {os: "ubuntu-latest", compiler: "gcc", version: 7}
+          - {os: "ubuntu-latest", compiler: "gcc", version: 8}
+          - {os: "ubuntu-latest", compiler: "gcc", version: 9}
+          - {os: "macos-latest", compiler: "apple-clang", version: "12.0"}
+        lib-version: ["0.2"]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install dependencies
+        run: |
+          pip install conan --upgrade
+          pip install conan_package_tools
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install libopenblas-dev
+          fi
+   
+         
+      - name: env linux
+        if: ${{ matrix.cfg.os  == 'ubuntu-latest' }}
+        uses: allenevans/set-env@v2.0.0
+        with:
+          CONAN_GCC_VERSIONS: ${{ matrix.cfg.version }}
+          CC: gcc-${{ matrix.cfg.version }}
+          CXX: g++-${{ matrix.cfg.version }}
+
+      - name: env macos
+        if: ${{ matrix.cfg.os  == 'macos-latest' }}
+        uses: allenevans/set-env@v2.0.0
+        with:
+          CONAN_APPLE_CLANG_VERSIONS: ${{ matrix.cfg.version }}
+
+      - name: Build
+        run: |
+          python build.py
+        env:
+          CONAN_CURRENT_PAGE: ${{matrix.cfg.compiler}}_shared
+          CONAN_REFERENCE: CHM/${{ matrix.lib-version}}
+
+
+

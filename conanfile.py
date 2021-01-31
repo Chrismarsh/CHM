@@ -30,26 +30,25 @@ class CHMConan(ConanFile):
 
     def source(self):
 
-        # branch = os.environ.get("TRAVIS_BRANCH","master")
-        branch = os.environ["CONAN_TEST_BRANCH"]
+        branch = os.environ["GITHUB_REF"]
         git = tools.Git()
         git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
         git.run("submodule update --init --recursive")
 
 
     def requirements(self):
-        self.requires( "cgal/5.0.0@CHM/stable" )
-        self.requires( "boost/1.71.0@CHM/stable" )
+        self.requires( "cgal/[>=5.0]@CHM/stable" )
+        self.requires( "boost/[>=1.71]@CHM/stable" )
         self.requires( "vtk/8.2.0@CHM/stable" )
-        self.requires( "netcdf-cxx/4.3.1@CHM/stable" )
-        self.requires( "proj/4.9.3@CHM/stable" )
-        self.requires( "gdal/2.4.1@CHM/stable" )
-        self.requires( "sparsehash/2.0.3@CHM/stable" )
-        self.requires( "gperftools/2.7@CHM/stable" )
+        self.requires( "netcdf-cxx/[>=4]@CHM/stable" )
+        self.requires( "proj/[>=7]]@CHM/dev" )
+        self.requires( "gdal/[>=3]@CHM/dev" )
+        self.requires( "sparsehash/[>=2.0.3]@CHM/stable" )
+        self.requires( "gperftools/[>=2.7]@CHM/stable" )
         self.requires( "gsl/2.6@CHM/stable" )
-        self.requires( "armadillo/9.800.2@CHM/stable" )
-        self.requires( "tbb/2019_u9@CHM/stable" )
-        self.requires( "eigen3/3.3.7@CHM/stable" )
+        self.requires( "armadillo/[>=10]@CHM/stable" )
+        self.requires( "tbb/[>=2020]@CHM/stable" )
+        self.requires( "eigen3/[>=3]@CHM/stable" )
         self.requires( "meteoio/2.8.0@CHM/stable")
         self.requires( "func/0.1@CHM/stable")
         self.requires( "trilinos/12.18.1@CHM/stable")
