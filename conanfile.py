@@ -47,7 +47,7 @@ class CHMConan(ConanFile):
         self.requires( "gperftools/[>=2.7]@CHM/stable" )
         self.requires( "gsl/[>=2.6]@CHM/stable" )
         self.requires( "armadillo/[>=10.2.0]@CHM/stable" )
-        self.requires( "tbb/[>=2020.3]]@CHM/stable" )
+        self.requires( "tbb/[>=2020.3]@CHM/stable" )
         self.requires( "eigen3/[>=3.3.9]@CHM/stable" )
         self.requires( "meteoio/2.8.0@CHM/stable")
         self.requires( "func/0.1@CHM/stable")
