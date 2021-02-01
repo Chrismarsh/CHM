@@ -12,21 +12,26 @@ class CHMConan(ConanFile):
     url = "https://github.com/Chrismarsh/CHM"
     description = "Canadian hydrological model"
     generators = "cmake_find_package"
-    # default_options = {"boost:without_python": True,
-    #                    "boost:without_mpi": True}
-    options = {"verbose_cmake":[True,False], "build_tests":[True,False] }
 
-    default_options = {"gperftools:heapprof":True,
-                       "verbose_cmake":False,
-                       "build_tests":True}
-    # [options]
-    # boost:without_python=True
-    # boost:without_mpi=False
+    options = {
+        "verbose_cmake":[True,False],
+        "build_tests":[True,False],
+        "with_mpi":[True, False],
+        "with_omp": [True,False],
 
-    # cgal:with_tbb=True
-    # cgal:with_gmp=True
+    #dependency options
+        "gdal:libcurl": True,
+        "gdal:netcdf": True
+        # "gperftools:heapprof":True
+    }
 
-    # netcdf-c:parallel4=False
+    default_options = {
+       "verbose_cmake":False,
+       "build_tests":True,
+        #default without openmp or mpi
+        "with_omp": False,
+        "with_mpi": False
+    }
 
     def source(self):
 
@@ -34,6 +39,14 @@ class CHMConan(ConanFile):
         git = tools.Git()
         git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
         git.run("submodule update --init --recursive")
+
+        if self.options['with_mpi']:
+            #default to no MPI
+            self.options["boost:without_mpi"] = False
+            self.options["trilinos:with_mpi"] = True
+        if self.options["with_omp"]:
+            self.options["trilinos:with_openmp"]= False
+
 
 
     def requirements(self):
@@ -62,6 +75,12 @@ class CHMConan(ConanFile):
         if self.options.verbose_cmake:
             cmake.verbose = True
             cmake.definitions["CMAKE_FIND_DEBUG_MODE"]=1
+
+        if self.options["with_omp"]:
+            cmake.definitions["USE_OMP"] = True
+
+        if self.options["with_mpi"]:
+            cmake.definitions["USE_MPI"] = True
 
         cmake.configure(source_folder=self.source_folder)
 
