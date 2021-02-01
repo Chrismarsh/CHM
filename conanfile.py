@@ -34,13 +34,16 @@ class CHMConan(ConanFile):
     }
 
     def source(self):
-        # try:
-        branch = os.environ["GITHUB_REF"]
-        # except KeyError as e:
-        #     branch = "github-actions"
+        try:
+            branch = None #master default
+            branch = os.environ["CI_SHA"]
+        except KeyError as e:
+            if os.environ["CI"]:
+                self.output.error('When running under CI, $CI_SHA should be available.')
+
 
         git = tools.Git()
-        git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
+        git.clone("https://github.com/Chrismarsh/CHM.git", branch=branch)
         git.run("submodule update --init --recursive")
 
         if self.options['with_mpi']:
