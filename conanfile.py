@@ -34,10 +34,10 @@ class CHMConan(ConanFile):
     }
 
     def source(self):
-        try:
-            branch = os.environ["GITHUB_REF"]
-        except KeyError as e:
-            branch = "github-actions"
+        # try:
+        branch = os.environ["GITHUB_REF"]
+        # except KeyError as e:
+        #     branch = "github-actions"
 
         git = tools.Git()
         git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
