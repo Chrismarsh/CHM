@@ -4,7 +4,6 @@ import os
 class CHMConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
 
-
     name = "CHM"
     version = "1.0"
     license = "https://github.com/Chrismarsh/CHM/blob/master/LICENSE"
@@ -17,12 +16,7 @@ class CHMConan(ConanFile):
         "verbose_cmake":[True,False],
         "build_tests":[True,False],
         "with_mpi":[True, False],
-        "with_omp": [True,False],
-
-    #dependency options
-        "gdal:libcurl": True,
-        "gdal:netcdf": True
-        # "gperftools:heapprof":True
+        "with_omp": [True,False]
     }
 
     default_options = {
@@ -30,12 +24,21 @@ class CHMConan(ConanFile):
        "build_tests":True,
         #default without openmp or mpi
         "with_omp": False,
-        "with_mpi": False
+        "with_mpi": False,
+
+
+        #dependency options
+        "gdal:libcurl": True,
+        "gdal:netcdf": True
+        # "gperftools:heapprof":True
     }
 
     def source(self):
+        try:
+            branch = os.environ["GITHUB_REF"]
+        except KeyError as e:
+            branch = "github-actions"
 
-        branch = os.environ["GITHUB_REF"]
         git = tools.Git()
         git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
         git.run("submodule update --init --recursive")
@@ -44,12 +47,12 @@ class CHMConan(ConanFile):
             #default to no MPI
             self.options["boost:without_mpi"] = False
             self.options["trilinos:with_mpi"] = True
+
         if self.options["with_omp"]:
-            self.options["trilinos:with_openmp"]= False
-
-
+            self.options["trilinos:with_openmp"] = False
 
     def requirements(self):
+
         self.requires( "cgal/[>=5.2]@CHM/stable" )
         self.requires( "boost/[>=1.71]@CHM/stable" )
         self.requires( "vtk/8.2.0@CHM/stable" )
