@@ -43,6 +43,7 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - uses: FranzDiebold/github-env-vars-action@v2
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -72,7 +73,6 @@ jobs:
           CONAN_APPLE_CLANG_VERSIONS: ${{ matrix.cfg.version }}
 
       - name: Build
-        uses: FranzDiebold/github-env-vars-action@v2
         run: |
           python build.py
         env:
