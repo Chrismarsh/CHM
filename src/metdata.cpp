@@ -65,7 +65,10 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
     // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
     OGRSpatialReference insrs, outsrs;
     insrs.SetWellKnownGeogCS("WGS84");
+    insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
     bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
+    outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
     if(err)
     {
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
@@ -180,13 +183,11 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         {
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
         }
-        OGRCoordinateTransformation* coordTrans =  nullptr;
-        if(!_is_geographic)
-            coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
         if (!_is_geographic)
         {
-            if (!coordTrans->Transform(1, &itr.longitude, &itr.latitude))
+            OGRCoordinateTransformation* coordTrans =  OGRCreateCoordinateTransformation(&insrs, &outsrs);
+            if (!coordTrans->Transform(1, &itr.latitude, &itr.longitude))
             {
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
                     "Station=" + itr.id + ": unable to convert coordinates to mesh format."));

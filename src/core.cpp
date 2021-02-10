@@ -837,9 +837,11 @@ void core::config_output(pt::ptree &value)
 
                 OGRSpatialReference insrs;
                 insrs.SetWellKnownGeogCS("WGS84");
+                insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
                 OGRSpatialReference outsrs;
                 outsrs.importFromProj4(_mesh->proj4().c_str());
+                outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
                 OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
