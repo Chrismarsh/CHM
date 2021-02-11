@@ -156,7 +156,7 @@ void core::config_options( pt::ptree &value)
 
     if(radius)
     {
-        _metdata->get_stations = boost::bind( &metdata::get_stations_in_radius,_metdata,_1,_2, *radius);
+        _metdata->get_stations = boost::bind( &metdata::get_stations_in_radius,_metdata,boost::placeholders::_1,boost::placeholders::_2, *radius);
     }
     else
     {
@@ -183,7 +183,7 @@ void core::config_options( pt::ptree &value)
             BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
         }
 
-        _metdata->get_stations = boost::bind( &metdata::nearest_station,_metdata,_1,_2, n);
+        _metdata->get_stations = boost::bind( &metdata::nearest_station,_metdata,boost::placeholders::_1,boost::placeholders::_2, n);
     }
 
 
