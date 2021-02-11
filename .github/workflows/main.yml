@@ -77,7 +77,7 @@ jobs:
         run: |
           shopt -s expand_aliases
           if [ "$RUNNER_OS" == "macOS" ]; then
-            alias gfortran=gfortran-10
+            alias gfortran='gfortran-10'
             gfortran --version
           fi
 
