@@ -72,15 +72,10 @@ jobs:
         uses: allenevans/set-env@v2.0.0
         with:
           CONAN_APPLE_CLANG_VERSIONS: ${{ matrix.cfg.version }}
+          FC: gfortran-10
 
       - name: Build
         run: |
-          shopt -s expand_aliases
-          if [ "$RUNNER_OS" == "macOS" ]; then
-            alias gfortran='gfortran-10'
-            gfortran --version
-          fi
-
           python build.py
         env:
           CONAN_CURRENT_PAGE: ${{matrix.cfg.compiler}}_shared
