@@ -38,8 +38,11 @@ class CHMConan(ConanFile):
         try:
             branch = os.environ["CI_SHA"]
         except KeyError as e:
-            if os.environ["CI"]:
-                self.output.error('When running under CI, $CI_SHA should be available.')
+            try:
+                if os.environ["CI"]:
+                    self.output.error('When running under CI, $CI_SHA should be available.')
+            except KeyError as e:
+                pass
 
 
         git = tools.Git()
