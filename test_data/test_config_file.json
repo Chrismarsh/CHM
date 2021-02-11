@@ -1,0 +1,204 @@
+{
+
+   // Section for generic model options
+  "option":
+  {
+    // For point model to work, there must be an input and output station of the appropriate names. All other points will be ignored.
+//    "point_mode":
+//    {
+//      "output":"UpperClearing",
+//      "forcing":"UpperClearing"
+//    },
+
+    // "notification_script":"./finished.sh",
+    "per_triangle_timeseries":"false",
+    "ui":false,
+    "debug_level":"debug",
+
+    "prj_name":"Granger creek"
+
+
+  },
+  "modules": //important these are [ ]
+  [
+    //met interp
+    "solar",
+ 
+    "scale_wind_vert",
+    "iswr_from_obs",
+    "Liston_wind",
+    "iswr",
+    "Liston_monthly_llra_ta",
+    "kunkel_rh",
+    "Thornton_p",
+
+    //met process
+    "Walcek_cloud",
+    "Sicart_ilwr",
+    "Harder_precip_phase",
+    //processes
+     "snobal",
+    "Richard_albedo"
+
+  ],
+
+  // In case of a cycle depencency, remove dependencies between two modules. 
+  // If module A depends on B (A->B), then to remove the depency specify it as
+  // "A":"B" 
+  // will remove the dependency on B from A.
+  "remove_depency":
+  {
+    "Richard_albedo":"snobal",
+     "scale_wind_vert": "snobal"
+  },
+  "config":
+  {
+
+    "slope_iswr":
+    {
+      "no_slope":true
+    },
+    // "snowpack":"snowpack.json",
+    "Richard_albedo":
+    {
+      "min_swe_refresh":10,
+      "init_albedo_snow":0.8
+    }
+    // "Liston_wind":
+    // {
+    //   "serialize":false,
+    //   "serialize_output":"meshes/granger30_liston_curvature.mesh"
+    // }
+  },
+  "meshes":
+  {
+    "mesh":"meshes/granger1m.mesh"
+//
+    //map internal variables/parameters to the .mesh file's parameter section.
+    // "parameters":
+    // {
+    //   "file":"meshes/granger30_liston_curvature.mesh"
+    // }
+
+  },
+
+  "parameters":
+  {
+    "soil":"parameters/wolf_soil_param.json",
+
+    "landcover":
+    {
+      "12":
+      {
+        "desc":"shadow"
+      },
+      "20":
+      {
+        "desc":"lake",
+        "is_waterbody":true
+      },
+      "31":
+      {
+        "desc":"snow ice"
+      },
+      "32":
+      {
+        "desc":"rock"
+      },
+
+      "33":
+      {
+        "desc":"exposed"
+      },
+      "51":
+      {
+        "desc":"shrub tall"
+      },
+      "52":
+      {
+        "desc":"shrub low"
+      },
+      "81":
+      {
+        "desc":"wetland-treed"
+      },
+      "82":
+      {
+        "desc":"wetland-shrub"
+      },
+      "83":
+      {
+        "desc":"wetland-herb"
+      },
+      "100":
+      {
+        "desc":"herb"
+      },
+      "211":
+      {
+        "desc":"coniferous dense"
+      },
+      "212":
+      {
+        "desc":"coniferous open"
+      },
+      "213":
+      {
+        "desc":"Coniferous Sparse"
+      },
+      "221":
+      {
+        "desc":"Broadleaf Dense"
+      },
+      "222":
+      {
+        "desc":"Broadleaf Open"
+      },
+      "232":
+      {
+        "desc":"Mixedwood Open"
+      }
+
+    }
+  },
+  "output":
+  {
+    "valley":
+    {
+      "latitude": 60.5480,
+      "longitude": -135.1888,
+      "file": "buckbrush.txt",
+      "type": "timeseries"
+    }
+    // "bb":
+    // {
+    //   "latitude": 60.551,
+    //   "longitude": -135.193,
+    //   "file": "buckbrush.txt",
+    //   "type": "timeseries"
+    // }
+//      "mesh":
+//      {
+//        "base_name":"output/granger"
+// //       "variables":["swe","t","rh"],
+// //       "frequency":1 //every N timesteps
+//      }
+  },
+  "forcing":
+  {
+       "UTC_offset": 8,
+      "buckbrush": {
+      "file": "bb_m_2000-2008",
+      "latitude": 60.52163,
+      "longitude": -135.197151,
+      "elevation": 1305,
+      "filter": {
+        "scale_wind_speed": {
+          "Z_F": 4.6,
+          "variable": "u"
+        }
+      }
+    }    
+  }  
+
+}
