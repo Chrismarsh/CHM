@@ -58,8 +58,7 @@ jobs:
             sudo apt-get install libopenblas-dev
             sudo apt-get install libcurl4-openssl-dev
           fi
-   
-         
+            
       - name: env linux
         if: ${{ matrix.cfg.os  == 'ubuntu-latest' }}
         uses: allenevans/set-env@v2.0.0
@@ -76,6 +75,11 @@ jobs:
 
       - name: Build
         run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            shopt -s expand_aliases
+            alias gfortran=gfortran-10
+          fi
+
           python build.py
         env:
           CONAN_CURRENT_PAGE: ${{matrix.cfg.compiler}}_shared
