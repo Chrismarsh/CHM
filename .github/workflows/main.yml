@@ -75,9 +75,10 @@ jobs:
 
       - name: Build
         run: |
+          shopt -s expand_aliases
           if [ "$RUNNER_OS" == "macOS" ]; then
-            shopt -s expand_aliases
             alias gfortran=gfortran-10
+            gfortran --version
           fi
 
           python build.py
