@@ -50,15 +50,6 @@ class CHMConan(ConanFile):
             git.run(f'checkout {branch}')
         git.run("submodule update --init --recursive")
 
-        if self.options['with_mpi']:
-            #default to no MPI
-            self.options["boost:without_mpi"] = False
-            self.options["trilinos:with_mpi"] = True
-
-        if self.options["with_omp"]:
-            # trilinos does not support omp on macos
-            if not tools.os_info.is_macos:
-                self.options["trilinos:with_openmp"] = True
 
 
 
@@ -82,6 +73,17 @@ class CHMConan(ConanFile):
 
     def _configure_cmake(self):
         cmake = CMake(self)
+
+        if self.options['with_mpi']:
+        #default to no MPI
+            self.options["boost:without_mpi"] = False
+            self.options["trilinos:with_mpi"] = True
+
+        if self.options["with_omp"]:
+            # trilinos does not support omp on macos
+            if not tools.os_info.is_macos:
+                self.options["trilinos:with_openmp"] = True
+
 
         if self.options.build_tests:
             cmake.definitions["BUILD_TESTS"] = True
