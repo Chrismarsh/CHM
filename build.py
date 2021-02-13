@@ -19,7 +19,7 @@ if __name__ == "__main__":
         shared="shared"
 
         if os.environ['USE_MPI'] == 'with-mpi':
-            options['CHM:with_mpi'] = True
+            options['with_mpi'] = True
 
         named_builds[settings['compiler'] +"_"+shared].append([settings, options, env_vars, build_requires, reference])
 
