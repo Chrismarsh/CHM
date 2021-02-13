@@ -5,7 +5,7 @@ class CHMConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
 
     name = "CHM"
-    version = "1.0"
+    version = "1.1"
     license = "https://github.com/Chrismarsh/CHM/blob/master/LICENSE"
     author = "Chris Marsh"
     url = "https://github.com/Chrismarsh/CHM"
