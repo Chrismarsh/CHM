@@ -16,12 +16,10 @@ if __name__ == "__main__":
     named_builds = defaultdict(list)
     for settings, options, env_vars, build_requires, reference in builder.items:
 
-        shared="shared"
-
         if os.environ['USE_MPI'] == 'with-mpi':
-            options['with_mpi'] = True
+            options['CHM:with_mpi'] = True
 
-        named_builds[settings['compiler'] +"_"+shared].append([settings, options, env_vars, build_requires, reference])
+        named_builds[settings['compiler']].append([settings, options, env_vars, build_requires, reference])
 
     builder.named_builds = named_builds
 

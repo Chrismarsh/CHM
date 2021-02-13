@@ -15,7 +15,7 @@ class CHMConan(ConanFile):
     options = {
         "verbose_cmake":[True,False],
         "build_tests":[True,False],
-        "with_mpi":[True, False],
+        "with_mpi": [True, False],
         "with_omp": [True,False]
     }
 
