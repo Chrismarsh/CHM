@@ -26,7 +26,6 @@ class CHMConan(ConanFile):
         "with_omp": False,
         "with_mpi": False,
 
-
         #dependency options
         "gdal:libcurl": True,
         "gdal:netcdf": True
@@ -57,7 +56,11 @@ class CHMConan(ConanFile):
             self.options["trilinos:with_mpi"] = True
 
         if self.options["with_omp"]:
-            self.options["trilinos:with_openmp"] = False
+            # trilinos does not support omp on macos
+            if not tools.os_info.is_macos:
+                self.options["trilinos:with_openmp"] = True
+
+
 
     def requirements(self):
 

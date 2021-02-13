@@ -1,17 +1,13 @@
 from cpt.packager import ConanMultiPackager
 from collections import defaultdict
-from sys import platform
+import os
 
 if __name__ == "__main__":
-
-    # if platform == "linux":
-        # command = "sudo apt-get -qq update && sudo apt-get -qq install -y patchelf && sudo apt-get -qq install -y gfortran && sudo apt-get -qq install -y libopenblas-dev"
 
     builder = ConanMultiPackager(cppstds=[14],
                                 archs=["x86_64"],
                                 build_types=["Release"])
-    # ,
-                                # docker_entry_script = command)
+
                               
     builder.add_common_builds(pure_c=False)
 
@@ -21,6 +17,9 @@ if __name__ == "__main__":
     for settings, options, env_vars, build_requires, reference in builder.items:
 
         shared="shared"
+
+        if os.environ['USE_MPI'] == 'with-mpi':
+            options['CHM:with_mpi'] = True
 
         named_builds[settings['compiler'] +"_"+shared].append([settings, options, env_vars, build_requires, reference])
 

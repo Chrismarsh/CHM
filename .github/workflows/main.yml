@@ -34,17 +34,19 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
+        use-mpi: ["with-mpi","without-mpi"]
         cfg:
           - {os: "ubuntu-latest", compiler: "gcc", version: 7}
           - {os: "ubuntu-latest", compiler: "gcc", version: 8}
           - {os: "ubuntu-latest", compiler: "gcc", version: 9}
           - {os: "macos-latest", compiler: "apple-clang", version: "12.0"}
-        lib-version: ["1.0"]
+        lib-version: ["1.1"]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v2
       - uses: FranzDiebold/github-env-vars-action@v2
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
@@ -55,10 +57,18 @@ jobs:
           pip install conan --upgrade
           pip install conan_package_tools
           if [ "$RUNNER_OS" == "Linux" ]; then
-            sudo apt-get install libopenblas-dev
             sudo apt-get install libcurl4-openssl-dev
           fi
             
+      - name: Install MPI
+        if: ${{ matrix.use-mpi  == 'with-mpi' }}
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install libopenmpi-dev
+          else
+            brew install openmpi
+          fi
+
       - name: env linux
         if: ${{ matrix.cfg.os  == 'ubuntu-latest' }}
         uses: allenevans/set-env@v2.0.0
@@ -80,6 +90,7 @@ jobs:
         env:
           CONAN_CURRENT_PAGE: ${{matrix.cfg.compiler}}_shared
           CONAN_REFERENCE: CHM/${{ matrix.lib-version}}
+          USE_MPI: ${{ matrix.use-mpi }}
 
 
 
