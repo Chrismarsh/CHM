@@ -116,6 +116,13 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 longitude = lon[y][x];
                 z = e[y][x];
 
+                if( std::isnan(z))
+                {
+                    CHM_THROW_EXCEPTION(forcing_error,
+                                        "Elevation for x,y=" + std::to_string(x) + ","+ std::to_string(y)+
+                                            " is NaN. Regardless of the timestep the model is started from, it looks for timestep = 0 to define the elevations. Ensure it is defined then.");
+                }
+
                 size_t index = x + y * _nc->get_xsize();
                 std::string station_name = std::to_string(index); // these don't really have names
 

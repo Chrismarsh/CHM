@@ -346,11 +346,11 @@ if (BUILD_TESTS)
 	)
 
       if(MPI_FOUND AND USE_MPI)
-	target_link_libraries(
-	  runUnitTests
-	  ${MPI_CXX_LIBRARIES}
-	  ${MPI_CXX_LINK_FLAGS}
-	)
+		target_link_libraries(
+		  runUnitTests
+		  ${MPI_CXX_LIBRARIES}
+		  ${MPI_CXX_LINK_FLAGS}
+		)
       endif()
 
 

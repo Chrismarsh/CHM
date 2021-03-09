@@ -56,6 +56,8 @@ inline int omp_get_max_threads() { return 1;}
 //#define ARMA_64BIT_WORD
 #include <armadillo>
 
+#include <ogr_spatialref.h>
+
 #ifdef USE_SPARSEHASH
 #include <sparsehash/dense_hash_map>
 #else
@@ -488,6 +490,9 @@ public:
 
 private:
 
+    OGRSpatialReference _insrs; // will hold the crs of the mesh
+    OGRSpatialReference _face_utm_srs; // will hold the crs of the face,
+
 
     double _slope;
     double _azimuth;
@@ -495,6 +500,7 @@ private:
     double _x;
     double _y;
     double _z;
+
 
     //hold a pointer *back* to the triangulation. This let's use query triangles at distance X, etc
     //that allows for using data::parallel modules w/o having to use domain parallel.
@@ -1400,16 +1406,6 @@ Vector_3 face<Gt, Fb>::normal()
             _normal = boost::make_shared<Vector_3>(CGAL::unit_normal(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
     }
 
-//    CGAL::Point_3<K> v0(this->vertex(0)->point()[0]*100000., this->vertex(0)->point()[1]*100000.,this->vertex(0)->point()[2]);
-//    CGAL::Point_3<K> v1(this->vertex(1)->point()[0]*100000., this->vertex(1)->point()[1]*100000.,this->vertex(1)->point()[2]);
-//    CGAL::Point_3<K> v2(this->vertex(2)->point()[0]*100000., this->vertex(2)->point()[1]*100000.,this->vertex(2)->point()[2]);
-
-//    CGAL::Point_3<CGAL::Exact_prediDocuments/PhD/code/CHM/cates_exact_constructions_kernel > v0_noscale(this->vertex(0)->point()[0], this->vertex(0)->point()[1],this->vertex(0)->point()[2]);
-//    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v1_noscale(this->vertex(1)->point()[0], this->vertex(1)->point()[1],this->vertex(1)->point()[2]);
-//    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v2_noscale(this->vertex(2)->point()[0], this->vertex(2)->point()[1],this->vertex(2)->point()[2]);
-//
-//    CGAL::Exact_predicates_exact_constructions_kernel::Vector_3 un1 = CGAL::unit_normal(v0_noscale, v1_noscale, v2_noscale);
-//    Vector_3 un2 = CGAL::unit_normal(v0, v1, v2);
     return *_normal;
 }
 

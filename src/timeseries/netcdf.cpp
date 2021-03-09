@@ -185,7 +185,19 @@ void netcdf::open_GEM(const std::string &file)
         //If it's 3, means there is a T b/w date and time, remove it.
 
         std::string s = strs[2];
-        s.replace(s.find("T"),1," ");
+        auto tpos = s.find("T");
+        if (tpos != std::string::npos)
+        {
+            s.replace(s.find("T"),1," ");
+        }
+
+        // midnight times are reported without the 00:00 suffix. If we get this far and don't have : in the epoch
+        // then we need to add it
+        tpos = s.find(":");
+        if (tpos == std::string::npos)
+        {
+            s = s + " 00:00:00";
+        }
 
         _epoch = boost::posix_time::time_from_string(s);
 

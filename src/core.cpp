@@ -1327,8 +1327,19 @@ void core::init(int argc, char **argv)
 
     if( cli_options.do_hdf5_convert)
     {
+
+        std::string name = "converted";
+        try
+        {
+            name = cfg.get_child("meshes").get<std::string>("mesh");
+        }
+        catch (pt::ptree_bad_path& e)
+        {
+            LOG_WARNING << "Could not automatically determine output file name, defaulting to 'coverted'";
+        }
+
         LOG_DEBUG << "Converting mesh to hdf5...";
-        _mesh->to_hdf5("test");
+        _mesh->to_hdf5(name);
         LOG_DEBUG << "HDF5 written, terminating";
         CHM_THROW_EXCEPTION(chm_done, "done");
     }
