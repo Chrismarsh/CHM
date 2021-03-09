@@ -235,7 +235,7 @@ void netcdf::open_GEM(const std::string &file)
 
             CHM_THROW_EXCEPTION(forcing_error, "The timesteps in the netcdf file are not constant. At timestep " +
                                                    std::to_string(i) + " offset " + std::to_string(pred_timestep) + " was expected but found " +
-                                std::to_string(dt[i]) + ".\n Expected=" + expected.str() + "\n Got=" +got .str()
+                                std::to_string(dt[i]) + ".\n Expected=" + expected.str() + "\n Got=" + got .str()
                                 );
 
         }

@@ -341,18 +341,7 @@ if (BUILD_TESTS)
 			${EXT_TARGETS}
 			${THIRD_PARTY_TARGETS}
 			${GTEST_LINK}
-			${MPI_CXX_LIBRARIES}
-			${MPI_CXX_LINK_FLAGS}
 	)
-
-      if(MPI_FOUND AND USE_MPI)
-		target_link_libraries(
-		  runUnitTests
-		  ${MPI_CXX_LIBRARIES}
-		  ${MPI_CXX_LINK_FLAGS}
-		)
-      endif()
-
 
 	set_target_properties(runUnitTests
 			PROPERTIES
