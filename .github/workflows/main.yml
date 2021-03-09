@@ -36,9 +36,12 @@ jobs:
         python-version: [3.8]
         use-mpi: ["with-mpi","without-mpi"]
         cfg:
-          - {os: "ubuntu-latest", compiler: "gcc", version: 7}
-          - {os: "ubuntu-latest", compiler: "gcc", version: 8}
-          - {os: "ubuntu-latest", compiler: "gcc", version: 9}
+        - {os: "ubuntu-18.04", compiler: "gcc", version: 7}
+          - {os: "ubuntu-18.04", compiler: "gcc", version: 8}
+          - {os: "ubuntu-18.04", compiler: "gcc", version: 9}
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 7}
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 8}
+          - {os: "ubuntu-20.04", compiler: "gcc", version: 9}
           - {os: "macos-latest", compiler: "apple-clang", version: "12.0"}
         lib-version: ["1.1"]
 
@@ -70,7 +73,7 @@ jobs:
           fi
 
       - name: env linux
-        if: ${{ matrix.cfg.os  == 'ubuntu-latest' }}
+        if: startsWith( matrix.cfg.os, 'ubuntu' )
         uses: allenevans/set-env@v2.0.0
         with:
           CONAN_GCC_VERSIONS: ${{ matrix.cfg.version }}
