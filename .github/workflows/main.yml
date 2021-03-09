@@ -36,7 +36,7 @@ jobs:
         python-version: [3.8]
         use-mpi: ["with-mpi","without-mpi"]
         cfg:
-        - {os: "ubuntu-18.04", compiler: "gcc", version: 7}
+          - {os: "ubuntu-18.04", compiler: "gcc", version: 7}
           - {os: "ubuntu-18.04", compiler: "gcc", version: 8}
           - {os: "ubuntu-18.04", compiler: "gcc", version: 9}
           - {os: "ubuntu-20.04", compiler: "gcc", version: 7}
