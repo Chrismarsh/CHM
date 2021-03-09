@@ -60,6 +60,7 @@ jobs:
           pip install conan --upgrade
           pip install conan_package_tools
           if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get update
             sudo apt-get install libcurl4-openssl-dev
           fi
             
