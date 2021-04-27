@@ -119,25 +119,55 @@ set (HEADER_FILES
 		)
 
 
+
 set(EXT_TARGETS
-		netcdf-cxx::netcdf-cxx
 		Boost::Boost
-		tbb::tbb
-		gsl::gsl
-		Threads::Threads
-		armadillo::armadillo
-		vtk::vtk
-		gdal::gdal #proj is brought it via this
-		cgal::cgal
-		hdf5::hdf5
-		sparsehash::sparsehash
-		meteoio::meteoio
-		func::func
 		${ARPACK_LIBRARY}
 		Eigen3::Eigen3
-		trilinos::trilinos
+
 		BLAS::BLAS
+
+		Threads::Threads
+
 		CACHE INTERNAL "" FORCE)
+		)
+
+if(BUILD_WITH_CONAN)
+	list( APPEND EXT_TARGETS
+			netcdf-cxx::netcdf-cxx
+
+			tbb::tbb
+			gsl::gsl
+
+			armadillo::armadillo
+			vtk::vtk
+			gdal::gdal #proj is brought it via this
+			cgal::cgal
+			hdf5::hdf5
+			sparsehash::sparsehash
+			meteoio::meteoio
+			func::func
+			trilinos::trilinos
+
+			)
+else()
+	list( APPEND EXT_TARGETS
+			netCDF::netcdf
+
+			TBB:TBB
+			GSL::GSL
+
+			Armadillo::Armadillo
+			VTK::VTK
+			GDAL::GDAL #proj is brought it via this
+			CGAL::CGAL
+			HDF5::HDF5
+			Sparsehash::Sparsehash
+			Meteoio::Meteoio
+			Func::Func
+			Trilinos::Trilinos
+			)
+endif()
 
 #handle the optionals
 if(OpenMP_FOUND)
@@ -148,8 +178,8 @@ if(USE_OCL AND OPENCL_FOUND)
 	list( APPEND EXT_TARGETS OpenCL::OpenCL)
 endif()
 
-if(gperftools_FOUND)
-	list( APPEND EXT_TARGETS gperftools::gperftools)
+if(${GPERFTOOLS}_FOUND)
+	list( APPEND EXT_TARGETS ${GPERFTOOLS}::${GPERFTOOLS})
 endif()
 
 if(MPI_FOUND AND USE_MPI)

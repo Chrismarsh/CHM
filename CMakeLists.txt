@@ -27,6 +27,7 @@ option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 option(BUILD_DOCS "Builds documentation" OFF)
+option(BUILD_WITH_CONAN "Uses Conan for dependencies" ON)
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
@@ -90,22 +91,79 @@ if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+macro(create_target package)
+    if(NOT TARGET ${package}::${package})
+        add_library(${package}::${package} INTERFACE IMPORTED)
+        if(${package}_INCLUDE_DIRS)
+            set_target_properties(${package}::${package} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                    "${${package}_INCLUDE_DIRS}")
+        endif()
+
+        set_property(TARGET ${package}::${package} PROPERTY INTERFACE_LINK_LIBRARIES
+                "${${package}_LIBRARIES_TARGETS};${${package}_LINKER_FLAGS_LIST}")
+        set_property(TARGET ${package}::${package} PROPERTY INTERFACE_COMPILE_DEFINITIONS
+                ${${package}_COMPILE_DEFINITIONS})
+        set_property(TARGET ${package}::${package} PROPERTY INTERFACE_COMPILE_OPTIONS
+                "${${package}_COMPILE_OPTIONS_LIST}")
+    endif()
+endmacro()
+
 # ---------------------------------------------------------------
 # ------ Start of find_package section --------------------------
 # ---------------------------------------------------------------
+if(BUILD_WITH_CONAN)
+    set(CGAL "cgal")
+    set(BOOST "Boost")
+    set(ARMADILLO "armadillo")
+    set(EIGEN3 "Eigen3")
+    set(SPARSEHASH "sparsehash")
+    set(BLAS "BLAS")
+    set(METEOIO "meteoio")
+    set(GPERFTOOLS "gperftools")
+    set(FUNC "Func")
+    set(GDAL "gdal")
+    set(TBB "tbb")
+    set(GSL "gsl")
+    set(NETCDFCXX "netcdf-cxx")
+    set(VTK "vtk")
+    set(TRILINOS "trilinos")
+    set(HDF5 "hdf5")
+else()
+    set(BOOST "Boost")
+    set(CGAL "CGAL")
+    set(ARMADILLO "Armadillo")
+    set(EIGEN3 "Eigen3")
+    set(SPARSEHASH "sparsehash")
+    set(BLAS "BLAS")
+    set(METEOIO "meteoio")
+    set(GPERFTOOLS "gperftools")
+    set(FUNC "func")
+    set(GDAL "GDAL")
+    set(TBB "TBB")
+    set(GSL "GSL")
+    set(NETCDFCXX "netCDFCxx")
+    set(VTK "VTK")
+    set(TRILINOS "Trilinos")
+    set(HDF5 "HDF5")
 
+endif()
 
 # Need to check for MPI before building external libraries
 find_package(MPI)
 if(MPI_FOUND AND USE_MPI)
-  message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
-  add_definitions(-DUSE_MPI)
+    message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
+    add_definitions(-DUSE_MPI)
 
-  file(READ ${CMAKE_BINARY_DIR}/FindBoost.cmake txt)
-  string(FIND "${txt}" "boost_mpi" RETCODE)
+    if(BUILD_WITH_CONAN)
+        # ensure boost MPI support was built
+        if(MPI_FOUND AND USE_MPI)
+            file(READ ${CMAKE_BINARY_DIR}/FindBoost.cmake txt)
+            string(FIND "${txt}" "boost_mpi" RETCODE)
 
-  if(${RETCODE} EQUAL -1) # -1 is not found retcode from find
-        message(FATAL_ERROR "MPI was asked for, however boost was not built with mpi. Please build boost (--build boost) locally with a working MPI. See wiki for more information.")
+            if(${RETCODE} EQUAL -1) # -1 is not found retcode from find
+                message(FATAL_ERROR "MPI was asked for, however boost was not built with mpi. Please build boost (--build boost) locally with a working MPI. See wiki for more information.")
+            endif()
+        endif()
     endif()
 else()
   message(WARNING "MPI not enabled. Building for single process.")
@@ -115,8 +173,9 @@ if(USE_MPI AND NOT MPI_FOUND)
     message(FATAL_ERROR "MPI was asked for, but not found")
 endif()
 
+
 if(USE_MPI AND MPI_FOUND)
-    find_package(Boost
+    find_package(${BOOST}
             1.71.0
             COMPONENTS
             system
@@ -131,7 +190,7 @@ if(USE_MPI AND MPI_FOUND)
             serialization
             REQUIRED)
 else()
-    find_package(Boost
+    find_package(${BOOST}
             1.71.0
             COMPONENTS
             system
@@ -145,7 +204,9 @@ else()
             REQUIRED
             )
 endif()
- #need this for calling the logger from multiple modules
+#create_target(${BOOST})
+
+#need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 #Set this as CGAL, etc can try to look for Boost as well
@@ -153,36 +214,31 @@ set(BOOST_ROOT ${Boost_INCLUDE_DIR}/../)
 
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
-set( CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
+set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 
-find_package(cgal REQUIRED)
+find_package(${CGAL} REQUIRED)
+#create_target(${CGAL})
 
-if(CGAL_FOUND)
-    message(STATUS "Found CGAL ")
+# There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
+# https://bugs.llvm.org/show_bug.cgi?id=43266
+# https://github.com/Oslandia/SFCGAL/issues/188
+# https://stackoverflow.com/questions/57857572/why-does-boost-log-break-boost-gmp-multiprecision
 
-    # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
-    # https://bugs.llvm.org/show_bug.cgi?id=43266
-    # https://github.com/Oslandia/SFCGAL/issues/188
-    # https://stackoverflow.com/questions/57857572/why-does-boost-log-break-boost-gmp-multiprecision
+# But CGAL uses boost/mp which appears to cause this problem. So if we see clang, disable boost MP usage.
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
+    ADD_DEFINITIONS(-DCGAL_DO_NOT_USE_BOOST_MP)
 
-    # But CGAL uses boost/mp which appears to cause this problem. So if we see clang, disable boost MP usage.
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
-        ADD_DEFINITIONS(-DCGAL_DO_NOT_USE_BOOST_MP)
-
-        message(WARNING "Disabling CGAL's use of boost mp to avoid clang compiler parse error.")
-    endif()
+    message(WARNING "Disabling CGAL's use of boost mp to avoid clang compiler parse error.")
 endif()
+
 
 
 #remove this flag as it destroys the build on -O1 and spams warnings, #thankscgal
 remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
-
 remove_cxx_flag("-O2")
 remove_cxx_flag("-O3")
 
-
 #reset these back
-
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     message(WARNING "Debug mode")
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.7")
@@ -200,7 +256,6 @@ else()
 endif()
 
 #Setup CXX flags
-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-variable -Wno-unknown-pragmas")
 
 
@@ -215,7 +270,8 @@ endif()
 ########
 
 if(USE_OMP)
-    find_package(OpenMP )
+    find_package(OpenMP ) # This will produce the target for us
+
     if(OpenMP_FOUND)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
      #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
@@ -229,28 +285,30 @@ if(MATLAB)
 endif()
 
 
-find_package(meteoio REQUIRED)
+find_package(${METEOIO} REQUIRED)
 
-find_package(armadillo REQUIRED)
+find_package(${ARMADILLO} REQUIRED)
 
-find_package(Eigen3 REQUIRED)
+find_package(${EIGEN3} REQUIRED)
 
-find_package(sparsehash)
+
 
 # The trilinos library may have been built against a custom location blas/openblas
 # If so, conaninfo.txt has information on the custom blas location if given with the -o trilinos:blas_root=<root> option
 # If conaninfo.txt has a custom blas location, extract it and pass it as a hint to find_package(blas) which will detect any blas.
 # Then use the find_package link target in CHM to fully avoid any problems of linking against the wrong blas or not being able to find it.
-if(EXISTS "${CMAKE_BINARY_DIR}/conaninfo.txt")
-    file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt conaninfotxt)
-    string(REGEX MATCH "trilinos:blas_root=([^ ]+)lib" blasloc "${conaninfotxt}") # because cmake regex is only greedy
-    if(NOT "${blasloc}" STREQUAL "")
-        string(REPLACE "\n" "" blasloc ${CMAKE_MATCH_1}) # strip out a new line we've picked up
-        message(WARNING "Using the conaninfo.txt trilinos:blas_root=${blasloc}")
-        set(BLAS_ROOT ${blasloc})
+if(BUILD_WITH_CONAN)
+    if(EXISTS "${CMAKE_BINARY_DIR}/conaninfo.txt")
+        file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt conaninfotxt)
+        string(REGEX MATCH "trilinos:blas_root=([^ ]+)lib" blasloc "${conaninfotxt}") # because cmake regex is only greedy
+        if(NOT "${blasloc}" STREQUAL "")
+            string(REPLACE "\n" "" blasloc ${CMAKE_MATCH_1}) # strip out a new line we've picked up
+            message(WARNING "Using the conaninfo.txt trilinos:blas_root=${blasloc}")
+            set(BLAS_ROOT ${blasloc})
+        endif()
+    elseif()
+        set(blasloc "")
     endif()
-elseif()
-    set(blasloc "")
 endif()
 
 if(MACOSX AND "${blasloc}" STREQUAL "")
@@ -270,30 +328,33 @@ if(MACOSX AND "${blasloc}" STREQUAL "")
 
 endif()
 
-find_package(BLAS
+find_package(${BLAS}
             REQUIRED
             )
 
 # cmake < 3.18 doesn't produce a BLAS target
-if(NOT TARGET BLAS::BLAS)
-    add_library(BLAS::BLAS INTERFACE IMPORTED)
+create_target(${BLAS})
 
-    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_LINK_LIBRARIES ${BLAS_LIBRARIES})
-    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_COMPILE_OPTIONS ${BLAS_LINKER_FLAGS})
+#if(NOT TARGET BLAS::BLAS)
+#    add_library(BLAS::BLAS INTERFACE IMPORTED)
+#
+#    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_LINK_LIBRARIES ${BLAS_LIBRARIES})
+#    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_COMPILE_OPTIONS ${BLAS_LINKER_FLAGS})
+#
+#endif()
 
-endif()
-
+find_package(${SPARSEHASH})
 #sparsehash doesn't compile with gcc 4.6.x - 4.8.x because of this
 # https://bugs.launchpad.net/ubuntu/+source/gcc-4.6/+bug/1269803
 # so we need to optionally disable it
-if( SPARSEHASH_FOUND )
+if( ${SPARSEHASH}_FOUND )
     add_definitions(-DUSE_SPARSEHASH)
 else()
-    set(SPARSEHASH_INCLUDE_DIRS "")
+    set(${SPARSEHASH}_INCLUDE_DIRS "")
 endif()
 
-find_package(gperftools)
-if(gperftools_FOUND)  #gperftools may not compile on machines w/o nanosleep so we need to optionall disable if it fails to compile
+find_package(${GPERFTOOLS})
+if(${GPERFTOOLS}_FOUND)  #gperftools may not compile on machines w/o nanosleep so we need to optionall disable if it fails to compile
     message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
 else()
@@ -301,20 +362,21 @@ else()
     set(Tcmalloc_LIBRARY "")
 endif()
 
-find_package(func REQUIRED)
+find_package(${FUNC} REQUIRED)
 
-find_package(gdal 2.4 REQUIRED )
+find_package(${GDAL} 3.2 REQUIRED )
 
 find_package (Threads REQUIRED)
 
-find_package(tbb REQUIRED tbb)
+find_package(${TBB} REQUIRED tbb)
 
-find_package(gsl REQUIRED)
+find_package(${GSL} REQUIRED)
+
+find_package(${HDF5} REQUIRED)
 
 set(NETCDF_CXX "YES")
-find_package(netcdf-cxx  REQUIRED)
-message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
-
+find_package(${NETCDFCXX}  REQUIRED)
+#message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 
 #To avoid issues #104, newer VTK version needs to be used.
 #8.1+ needs to be used so that proj4 name-collisions are resolved
@@ -322,7 +384,7 @@ message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
 #N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
-find_package(vtk
+find_package(${VTK}
             COMPONENTS
             CommonCore
             CommonDataModel
@@ -335,15 +397,9 @@ find_package(vtk
 
             REQUIRED)
 
-if(VTK_MAJOR_VERSION LESS 7)
-    #https://github.com/Chrismarsh/CHM/issues/104
-    message( FATAL_ERROR "VTK > 6 is required, please see issue #104. You can build a compatible VTK using -DBUILD_VTK=ON." )
-endif()
-
 if(VTK_MAJOR_VERSION EQUAL 8 AND VTK_MINOR_VERSION LESS 1)
     message( FATAL_ERROR "VTK >= 8.1 is required to avoid libproj4 name collision. You can build a compatible VTK using -DBUILD_VTK=ON." )
 endif()
-
 
 find_program(GVPR gvpr)
 find_program(DOT dot)
@@ -354,7 +410,7 @@ else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
-find_package(trilinos REQUIRED)
+find_package(${TRILINOS} REQUIRED)
 
 #setup src dirs
 include(third_party/CMakeLists.txt)
