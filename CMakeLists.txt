@@ -46,6 +46,11 @@ LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
 LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 
+if(NOT BUILD_WITH_CONAN)
+    LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake-without-conan/")
+    LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake-without-conan/")
+endif()
+
 #########
 # Helper macro that removes cxx flag flags
 macro(remove_cxx_flag flag)
@@ -135,7 +140,7 @@ else()
     set(EIGEN3 "Eigen3")
     set(SPARSEHASH "sparsehash")
     set(BLAS "BLAS")
-    set(METEOIO "meteoio")
+    set(METEOIO "MeteoIO")
     set(GPERFTOOLS "gperftools")
     set(FUNC "func")
     set(GDAL "GDAL")
