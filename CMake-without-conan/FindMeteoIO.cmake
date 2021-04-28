@@ -12,35 +12,40 @@
 #
 ###############################################################################
 
-find_package_handle_standard_args(MeteoIO MeteoIO_INCLUDE_DIR MeteoIO_LIBRARY)
+IF( DEFINED ENV{MeteoIO_DIR} )
+    SET( MeteoIO_DIR "$ENV{MeteoIO_DIR}" )
+ENDIF()
 
-SET(MeteoIO_INCLUDE_SEARCH_PATHS
-        ${MeteoIO_DIR}/include
-        )
-
-
-find_path(MeteoIO_INCLUDE_DIR NAMES MeteoIO.h PATHS "${MeteoIO_INCLUDE_SEARCH_PATHS}/meteoio" DOC "Include for meteoio")
-
-list(REMOVE_DUPLICATES MeteoIO_INCLUDE_DIR )
-
-set( HAVE_METEOIO TRUE )
-message(STATUS "METEOIO detected: " ${MeteoIO_INCLUDE_DIR})
+find_path(MeteoIO_INCLUDE_DIR
+        include/meteoio/MeteoIO.h
+        HINTS ${MeteoIO_DIR}
+        DOC "Include for meteoio")
 
 find_library(MeteoIO_LIBRARY
         NAMES meteoio
-        PATHS ${MeteoIO_DIR}/lib/
+        HINTS ${MeteoIO_DIR}
         )
 
+find_package_handle_standard_args(MeteoIO DEFAULT_MSG
+        MeteoIO_INCLUDE_DIR MeteoIO_LIBRARY)
 
-add_library(MeteoIO::MeteoIO INTERFACE IMPORTED)
+message(STATUS "METEOIO detected: " ${MeteoIO_INCLUDE_DIR})
 
-set_target_properties(MeteoIO::MeteoIO PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${MeteoIO_INCLUDE_DIR}")
+if(MeteoIO_FOUND)
+    set( MeteoIO_INCLUDE_DIRS ${MeteoIO_INCLUDE_DIR})
+    set( MeteoIO_LIBRARIES ${MeteoIO_LIBRARY})
 
-set_property(TARGET MeteoIO::MeteoIO PROPERTY INTERFACE_LINK_LIBRARIES "${MeteoIO_LIBRARY}")
+    mark_as_advanced(
+            MeteoIO_INCLUDE_DIR
+            MeteoIO_LIBRARY
 
+    )
 
-mark_as_advanced(
-        MeteoIO_INCLUDE_DIR
-        MeteoIO_LIBRARY
+    add_library(MeteoIO::MeteoIO INTERFACE IMPORTED)
 
-)
+    set_target_properties(MeteoIO::MeteoIO PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${MeteoIO_INCLUDE_DIRS}")
+
+    set_property(TARGET MeteoIO::MeteoIO PROPERTY INTERFACE_LINK_LIBRARIES "${MeteoIO_LIBRARIES}")
+
+endif()
+

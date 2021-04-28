@@ -23,7 +23,7 @@ ENDIF()
 
 find_path(CGAL_INCLUDE_DIR
 		 include/CGAL/version.h
-			HINTS ${CGAL_DIR}
+		 HINTS ${CGAL_DIR}
 
 		DOC "Include for CGAL")
 
@@ -35,10 +35,9 @@ if(CGAL_FOUND)
 			CGAL_INCLUDE_DIR
 			CGAL_DIR
 	)
-else()
 
-message(STATUS "CGAL found: " ${CGAL_INCLUDE_DIR})
+	message(STATUS "CGAL found: " ${CGAL_INCLUDE_DIR})
 
-
-add_library(CGAL::CGAL INTERFACE IMPORTED)
-set_target_properties(CGAL::CGAL PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CGAL_INCLUDE_DIRS})
+	add_library(CGAL::CGAL INTERFACE IMPORTED)
+	set_target_properties(CGAL::CGAL PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CGAL_INCLUDE_DIRS})
+endif()
