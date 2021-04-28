@@ -626,7 +626,6 @@ void core::config_meshes( pt::ptree &value)
 
     //we need to let the mesh know about any parameters the modules will provide so they can be correctly build into the static hashmaps
     for(auto& p : _provided_parameters) {
-      std::cout << p << endl;
         _mesh->_parameters.insert(p);
     }
 
