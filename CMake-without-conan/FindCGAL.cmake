@@ -17,21 +17,29 @@
 #
 ###############################################################################
 
-find_package_handle_standard_args(CGAL CGAL_INCLUDE_DIR)
+IF( DEFINED ENV{CGAL_DIR} )
+	SET( CGAL_DIR "$ENV{CGAL_DIR}" )
+ENDIF()
 
-set(CGAL_INCLUDE_SEARCH_PATHS
-	${CGAL_DIR}/include
-    )
+find_path(CGAL_INCLUDE_DIR
+		NAMES version.h
+		PATHS ${CGAL_INCLUDE_SEARCH_PATHS}/CGAL
+		HINTS ${CGAL_DIR}
+
+		DOC "Include for CGAL")
+
+find_package_handle_standard_args(CGAL DEFAULT_MSG CGAL_INCLUDE_DIR)
+
+if(CGAL_FOUND)
+	set(CGAL_INCLUDE_DIRS ${CGAL_INCLUDE_DIR})
+	MARK_AS_ADVANCED(
+			CGAL_INCLUDE_DIR
+			CGAL_DIR
+	)
+else()
+
+message(STATUS "CGAL found: " ${CGAL_INCLUDE_DIR})
 
 
-find_path(CGAL_INCLUDE_DIR NAMES version.h PATHS "${CGAL_INCLUDE_SEARCH_PATHS}/CGAL" DOC "Include for CGAL")
-
-list( REMOVE_DUPLICATES CGAL_INCLUDE_DIR )
-
-message(STATUS "CGAL detected: " ${CGAL_INCLUDE_DIR})
-
-
-MARK_AS_ADVANCED(
-        CGAL_INCLUDE_DIR
-)
-
+add_library(CGAL::CGAL INTERFACE IMPORTED)
+set_target_properties(CGAL::CGAL PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CGAL_INCLUDE_DIRS})
