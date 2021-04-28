@@ -22,8 +22,8 @@ IF( DEFINED ENV{CGAL_DIR} )
 ENDIF()
 
 find_path(CGAL_INCLUDE_DIR
-		NAMES version.h
-		HINTS ${CGAL_DIR}
+		 include/CGAL/version.h
+			HINTS ${CGAL_DIR}
 
 		DOC "Include for CGAL")
 
