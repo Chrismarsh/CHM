@@ -369,7 +369,7 @@ endif()
 
 find_package(${FUNC} REQUIRED)
 
-find_package(${GDAL} 3.2 REQUIRED )
+find_package(${GDAL} 3.0 REQUIRED )
 
 find_package (Threads REQUIRED)
 
