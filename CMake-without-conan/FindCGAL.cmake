@@ -23,7 +23,6 @@ ENDIF()
 
 find_path(CGAL_INCLUDE_DIR
 		NAMES version.h
-		PATHS ${CGAL_INCLUDE_SEARCH_PATHS}/CGAL
 		HINTS ${CGAL_DIR}
 
 		DOC "Include for CGAL")
