@@ -220,7 +220,7 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 
 find_package(${CGAL} REQUIRED)
-#create_target(${CGAL})
+create_target(${CGAL})
 
 # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
 # https://bugs.llvm.org/show_bug.cgi?id=43266
@@ -288,12 +288,14 @@ if(MATLAB)
 endif()
 
 
+#already makes a target
 find_package(${METEOIO} REQUIRED)
 
 find_package(${ARMADILLO} REQUIRED)
+create_target(${ARMADILLO})
 
 find_package(${EIGEN3} REQUIRED)
-
+create_target(${EIGEN3})
 
 
 # The trilinos library may have been built against a custom location blas/openblas
@@ -338,44 +340,35 @@ find_package(${BLAS}
 # cmake < 3.18 doesn't produce a BLAS target
 create_target(${BLAS})
 
-#if(NOT TARGET BLAS::BLAS)
-#    add_library(BLAS::BLAS INTERFACE IMPORTED)
-#
-#    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_LINK_LIBRARIES ${BLAS_LIBRARIES})
-#    set_property(TARGET BLAS::BLAS PROPERTY INTERFACE_COMPILE_OPTIONS ${BLAS_LINKER_FLAGS})
-#
-#endif()
 
 find_package(${SPARSEHASH})
-#sparsehash doesn't compile with gcc 4.6.x - 4.8.x because of this
-# https://bugs.launchpad.net/ubuntu/+source/gcc-4.6/+bug/1269803
-# so we need to optionally disable it
 if( ${SPARSEHASH}_FOUND )
     add_definitions(-DUSE_SPARSEHASH)
-else()
-    set(${SPARSEHASH}_INCLUDE_DIRS "")
 endif()
 
 find_package(${GPERFTOOLS})
-if(${GPERFTOOLS}_FOUND)  #gperftools may not compile on machines w/o nanosleep so we need to optionall disable if it fails to compile
+
+#gperftools may not compile on machines w/o nano sleep so we need to optionally disable if it fails to compile
+if(${GPERFTOOLS}_FOUND)
     message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
-else()
-    set(Tcmalloc_INCLUDE_DIR "")
-    set(Tcmalloc_LIBRARY "")
 endif()
 
 find_package(${FUNC} REQUIRED)
 
 find_package(${GDAL} 3.0 REQUIRED )
+create_target(${GDAL})
 
 find_package (Threads REQUIRED)
 
 find_package(${TBB} REQUIRED tbb)
+create_target(${TBB})
 
 find_package(${GSL} REQUIRED)
+create_target(${GSL})
 
 find_package(${HDF5} COMPONENTS CXX REQUIRED)
+create_target(${HDF5})
 
 find_package(${NETCDFCXX} COMPONENTS CXX REQUIRED)
 
@@ -398,6 +391,7 @@ find_package(${VTK}
             IOXML
 
             REQUIRED)
+create_target(${VTK})
 
 if(VTK_MAJOR_VERSION EQUAL 8 AND VTK_MINOR_VERSION LESS 1)
     message( FATAL_ERROR "VTK >= 8.1 is required to avoid libproj4 name collision. You can build a compatible VTK using -DBUILD_VTK=ON." )
@@ -413,6 +407,7 @@ else()
 endif()
 
 find_package(${TRILINOS} REQUIRED)
+create_target(${TRILINOS})
 
 #setup src dirs
 include(third_party/CMakeLists.txt)

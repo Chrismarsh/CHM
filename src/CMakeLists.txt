@@ -152,18 +152,18 @@ if(BUILD_WITH_CONAN)
 			)
 else()
 	list( APPEND EXT_TARGETS
-			netCDF::netcdf
+			NetCDF::NetCDF
 
 			TBB:TBB
 			GSL::GSL
 
 			Armadillo::Armadillo
 			VTK::VTK
-			GDAL::GDAL #proj is brought it via this
+			GDAL::GDAL
 			CGAL::CGAL
 			HDF5::HDF5
 			Sparsehash::Sparsehash
-			Meteoio::Meteoio
+			MeteoIO::MeteoIO
 			Func::Func
 			Trilinos::Trilinos
 			)
