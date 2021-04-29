@@ -16,45 +16,44 @@
 # For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
 ###############################################################################
-SET(FUNC_INCLUDE_SEARCH_PATHS
-	${FUNC_DIR}/include
-    )
 
-SET(FUNC_FOUND ON)
+if( DEFINED ENV{Func_DIR} )
+    set( Func_DIR "$ENV{Func_DIR}" )
+endif()
 
-FIND_PATH(FUNC_INCLUDE_DIR NAMES func.hpp PATHS "${FUNC_INCLUDE_SEARCH_PATHS}/func" DOC "Include for func")
+set(FUNC_FOUND ON)
 
-IF(NOT FUNC_INCLUDE_DIR)
-    SET(FUNC_FOUND OFF)
-ENDIF()
-
-IF (FUNC_FOUND)
-#    IF (NOT VIENNACL_FIND_QUIETLY)
-        MESSAGE(STATUS "Found func include: ${FUNC_INCLUDE_DIR}")
-#    ENDIF (NOT VIENNACL_FIND_QUIETLY)
-ELSE (FUNC_FOUND)
-    IF (FUNC_FIND_REQUIRED)
-        MESSAGE(FATAL_ERROR "Could not find func")
-    ENDIF (FUNC_FIND_REQUIRED)
-ENDIF (FUNC_FOUND)
-
-LIST( REMOVE_DUPLICATES FUNC_INCLUDE_DIR )
-
-SET( HAVE_FUNC TRUE )
-message(STATUS "Func detected: " ${FUNC_INCLUDE_DIR})
-
+find_path(FUNC_INCLUDE_DIR
+        include/func.hpp
+        HINTS ${Func_DIR}
+        DOC "Include for func"
+        )
 find_library(FUNC_LIBRARY
         NAMES func
-        PATHS ${FUNC_DIR}/lib/
+        HINTS ${Func_DIR}
         )
 find_library(FUNC_IMPLS_LIBRARY
         NAMES func_impls
-        PATHS ${FUNC_DIR}/lib/
+        HINTS ${Func_DIR}
         )
 
-MARK_AS_ADVANCED(
-        FUNC_INCLUDE_DIR
-        FUNC_LIBRARY
-        FUNC_IMPLS_LIBRARY
-)
+find_package_handle_standard_args(Func DEFAULT_MSG
+        FUNC_INCLUDE_DIR FUNC_LIBRARY FUNC_IMPLS_LIBRARY)
+
+if(Func_FOUND)
+    set( Func_INCLUDE_DIRS ${FUNC_INCLUDE_DIR})
+    set( Func_LIBRARIES ${FUNC_LIBRARY} ${FUNC_IMPLS_LIBRARY})
+
+    mark_as_advanced(
+            FUNC_INCLUDE_DIR
+            FUNC_LIBRARY
+            FUNC_IMPLS_LIBRARY
+    )
+
+    add_library(Func::Func INTERFACE IMPORTED)
+    set_target_properties(Func::Func PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${Func_INCLUDE_DIRS}")
+    set_property(TARGET Func::Func PROPERTY INTERFACE_LINK_LIBRARIES "${Func_LIBRARIES}")
+endif()
+
+
 
