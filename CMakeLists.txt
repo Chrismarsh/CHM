@@ -118,7 +118,6 @@ endmacro()
 # ---------------------------------------------------------------
 if(BUILD_WITH_CONAN)
     set(CGAL "cgal")
-    set(BOOST "Boost")
     set(ARMADILLO "armadillo")
     set(EIGEN3 "Eigen3")
     set(SPARSEHASH "sparsehash")
@@ -134,7 +133,6 @@ if(BUILD_WITH_CONAN)
     set(TRILINOS "trilinos")
     set(HDF5 "hdf5")
 else()
-    set(BOOST "Boost")
     set(CGAL "CGAL")
     set(ARMADILLO "Armadillo")
     set(EIGEN3 "Eigen3")
@@ -178,9 +176,9 @@ if(USE_MPI AND NOT MPI_FOUND)
     message(FATAL_ERROR "MPI was asked for, but not found")
 endif()
 
-set(Boost_USE_MULTITHREADED TRUE) #https://stackoverflow.com/a/58085634/410074
+set(Boost_USE_MULTITHREADED ON) #https://stackoverflow.com/a/58085634/410074
 if(USE_MPI AND MPI_FOUND)
-    find_package(${BOOST}
+    find_package(Boost
             1.71.0
             COMPONENTS
             system
@@ -195,7 +193,7 @@ if(USE_MPI AND MPI_FOUND)
             serialization
             REQUIRED)
 else()
-    find_package(${BOOST}
+    find_package(Boost
             1.71.0
             COMPONENTS
             system
@@ -209,13 +207,13 @@ else()
             REQUIRED
             )
 endif()
-create_target(${BOOST})
+create_target(Boost)
 
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
 #Set this as CGAL, etc can try to look for Boost as well
-set(BOOST_ROOT ${Boost_INCLUDE_DIR}/../)
+#set(BOOST_ROOT ${Boost_INCLUDE_DIR}/../)
 
 #as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
 #don't override internal settings
