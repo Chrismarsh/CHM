@@ -24,7 +24,7 @@ endif()
 set(FUNC_FOUND ON)
 
 find_path(FUNC_INCLUDE_DIR
-        include/func.hpp
+        include/func/func.hpp
         HINTS ${Func_DIR}
         DOC "Include for func"
         )
