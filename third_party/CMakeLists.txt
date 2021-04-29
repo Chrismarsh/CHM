@@ -5,6 +5,8 @@ SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
 
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/third_party/snowpack/CMakeLists.txt)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake_find_names.cmake)
+
 SET(SNOWPACK_SRCS "")
 FOREACH(f ${snowpacklib_sources})
     #	LIST(APPEND SNOWPACK_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/modules/snowpack/${f}")
@@ -15,7 +17,7 @@ add_library(SNOWPACK OBJECT
   ${SNOWPACK_SRCS}
   )
 target_link_libraries(SNOWPACK PUBLIC
-  meteoio::meteoio
+  ${METEOIO}::${METEOIO}
   Boost::Boost
 )
 target_include_directories(SNOWPACK PUBLIC
@@ -27,7 +29,7 @@ add_library(SNOBAL OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/snobal/sno.cpp
   )
 target_link_libraries(SNOBAL PUBLIC
-  func::func
+  ${FUNC}::${FUNC}
   )
 target_include_directories(SNOBAL PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/    # needed for logger.hpp... that's a funny dependence
