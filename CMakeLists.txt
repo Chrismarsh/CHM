@@ -379,9 +379,8 @@ find_package(${GSL} REQUIRED)
 
 find_package(${HDF5} COMPONENTS CXX REQUIRED)
 
-set(NETCDF_CXX "YES")
-find_package(${NETCDFCXX}  REQUIRED)
-#message(STATUS "netcdf lib ${NETCDF_LIBRARIES}")
+find_package(${NETCDFCXX} COMPONENTS CXX REQUIRED)
+
 
 #To avoid issues #104, newer VTK version needs to be used.
 #8.1+ needs to be used so that proj4 name-collisions are resolved
