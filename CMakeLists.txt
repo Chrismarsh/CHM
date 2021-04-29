@@ -178,7 +178,7 @@ if(USE_MPI AND NOT MPI_FOUND)
     message(FATAL_ERROR "MPI was asked for, but not found")
 endif()
 
-
+set(Boost_USE_MULTITHREADED TRUE) #https://stackoverflow.com/a/58085634/410074
 if(USE_MPI AND MPI_FOUND)
     find_package(${BOOST}
             1.71.0
@@ -209,7 +209,7 @@ else()
             REQUIRED
             )
 endif()
-#create_target(${BOOST})
+create_target(${BOOST})
 
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
