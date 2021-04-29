@@ -358,6 +358,9 @@ find_package(${VTK}
             IOXML
 
             REQUIRED)
+if(NOT ${BUILD_WITH_CONAN})
+    include(${VTK_USE_FILE})
+endif()
 create_target(${VTK})
 
 if(VTK_MAJOR_VERSION EQUAL 8 AND VTK_MINOR_VERSION LESS 1)
