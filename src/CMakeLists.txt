@@ -158,7 +158,16 @@ else()
 			GSL::GSL
 
 			Armadillo::Armadillo
-			VTK::VTK
+
+			VTK::CommonCore
+			VTK::CommonDataModel
+			VTK::CommonTransforms
+			VTK::FiltersCore
+			VTK::FiltersGeneral
+			VTK::FiltersGeometry
+			VTK::FiltersSources
+
+
 			GDAL::GDAL
 			CGAL::CGAL
 			HDF5::HDF5

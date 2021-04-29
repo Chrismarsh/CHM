@@ -359,7 +359,6 @@ find_package(${VTK}
 
             REQUIRED)
 if(NOT ${BUILD_WITH_CONAN})
-    include(${VTK_USE_FILE})
     message(STATUS "Found VTK: ${VTK_INCLUDE_DIRS}")
 endif()
 
