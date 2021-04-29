@@ -360,7 +360,9 @@ find_package(${VTK}
             REQUIRED)
 if(NOT ${BUILD_WITH_CONAN})
     include(${VTK_USE_FILE})
+    message(STATUS "Found VTK: ${VTK_INCLUDE_DIRS}")
 endif()
+
 create_target(${VTK})
 
 if(VTK_MAJOR_VERSION EQUAL 8 AND VTK_MINOR_VERSION LESS 1)
