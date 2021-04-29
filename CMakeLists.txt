@@ -377,7 +377,7 @@ find_package(${TBB} REQUIRED tbb)
 
 find_package(${GSL} REQUIRED)
 
-find_package(${HDF5} REQUIRED)
+find_package(${HDF5} COMPONENTS CXX REQUIRED)
 
 set(NETCDF_CXX "YES")
 find_package(${NETCDFCXX}  REQUIRED)
