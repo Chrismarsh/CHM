@@ -29,8 +29,6 @@ find_library(MeteoIO_LIBRARY
 find_package_handle_standard_args(MeteoIO DEFAULT_MSG
         MeteoIO_INCLUDE_DIR MeteoIO_LIBRARY)
 
-message(STATUS "METEOIO detected: " ${MeteoIO_INCLUDE_DIR})
-
 if(MeteoIO_FOUND)
     set( MeteoIO_INCLUDE_DIRS ${MeteoIO_INCLUDE_DIR})
     set( MeteoIO_LIBRARIES ${MeteoIO_LIBRARY})
