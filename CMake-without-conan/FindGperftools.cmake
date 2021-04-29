@@ -5,30 +5,39 @@
 #  Gperftools_LIBRARIES   - List of libraries when using Gperftools.
 #  Gperftools_FOUND       - True if Gperftools found.
 
-find_package_handle_standard_args(Gperftools Gperftools_INCLUDE_DIR Gperftools_LIBRARY)
 
-SET(Gperftools_INCLUDE_SEARCH_PATHS
-        ${Gperftools_DIR}/include
+IF( DEFINED ENV{GperftoolsF_DIR} )
+    SET( GperftoolsF_DIR "$ENV{GperftoolsF_DIR}" )
+ENDIF()
+
+
+find_path(Gperftools_INCLUDE_DIR
+        include/google/tcmalloc.h
+        HINTS ${GperftoolsF_DIR}
         )
 
-find_path(Gperftools_INCLUDE_DIR NAMES tcmalloc.h PATHS "${Gperftools_INCLUDE_SEARCH_PATHS}/google/tcmalloc.h")
-
-
-
-#if (USE_Gperftools)
-#    set(Gperftools_NAMES Gperftools)
-#else ()
-set(Gperftools_NAMES tcmalloc_minimal)
-#endif ()
-
-message(STATUS "${Gperftools_INCLUDE_DIR}/../")
 find_library(Gperftools_LIBRARY
-        NAMES ${Gperftools_NAMES}
-        PATHS ${Gperftools_INCLUDE_DIR}/../lib/
+        NAMES tcmalloc_minimal
+        HINTS ${GperftoolsF_DIR}
         )
 
+find_package_handle_standard_args(Gperftools DEFAULT_MSG
+        Gperftools_INCLUDE_DIR Gperftools_LIBRARY)
 
-mark_as_advanced(
-        Gperftools_LIBRARY
-        Gperftools_INCLUDE_DIR
-)
+
+if(Gperftools_FOUND)
+
+    set(Gperftools_INCLUDE_DIRS ${Gperftools_INCLUDE_DIR} )
+    set(Gperftools_LIBRARIES ${Gperftools_LIBRARY} )
+
+    mark_as_advanced(
+            Gperftools_LIBRARY
+            Gperftools_INCLUDE_DIR
+    )
+
+    add_library(Gperftools::Gperftools INTERFACE IMPORTED)
+
+    set_target_properties(Gperftools::Gperftools PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${Gperftools_INCLUDE_DIRS}")
+    set_property(TARGET Gperftools::Gperftools PROPERTY INTERFACE_LINK_LIBRARIES "${Gperftools_LIBRARIES}")
+
+endif()
