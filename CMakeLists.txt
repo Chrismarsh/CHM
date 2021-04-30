@@ -329,7 +329,6 @@ create_target(${GDAL})
 find_package (Threads REQUIRED)
 
 find_package(${TBB} REQUIRED tbb)
-create_target(${TBB})
 
 find_package(${GSL} REQUIRED)
 create_target(${GSL})
