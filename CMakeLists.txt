@@ -336,7 +336,7 @@ create_target(${GSL})
 find_package(${HDF5} COMPONENTS CXX REQUIRED)
 create_target(${HDF5})
 
-find_package(${NETCDFCXX} COMPONENTS CXX REQUIRED)
+find_package(${NETCDFCXX} COMPONENTS C CXX REQUIRED)
 
 
 #To avoid issues #104, newer VTK version needs to be used.
