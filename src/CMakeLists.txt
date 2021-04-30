@@ -154,7 +154,7 @@ else()
 	list( APPEND EXT_TARGETS
 			NetCDF::NetCDF
 
-			TBB:tbb
+			TBB::tbb
 			GSL::GSL
 
 			Armadillo::Armadillo
