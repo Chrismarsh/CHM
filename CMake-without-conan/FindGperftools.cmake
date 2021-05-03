@@ -12,13 +12,13 @@ ENDIF()
 
 
 find_path(Gperftools_INCLUDE_DIR
-        include/google/tcmalloc.h
-        HINTS ${GperftoolsF_DIR}
+        google/tcmalloc.h
+        PATHS ${GperftoolsF_DIR}/include
         )
 
 find_library(Gperftools_LIBRARY
         NAMES tcmalloc_minimal
-        HINTS ${GperftoolsF_DIR}
+        PATHS ${GperftoolsF_DIR}/lib
         )
 
 find_package_handle_standard_args(Gperftools DEFAULT_MSG

@@ -121,9 +121,9 @@ set (HEADER_FILES
 
 
 set(EXT_TARGETS
-		Boost::Boost
+
 		${ARPACK_LIBRARY}
-		Eigen3::Eigen3
+
 
 		BLAS::BLAS
 
@@ -138,7 +138,8 @@ if(BUILD_WITH_CONAN)
 
 			tbb::tbb
 			gsl::gsl
-
+			Boost::Boost
+			Eigen3::Eigen3
 			armadillo::armadillo
 			vtk::vtk
 			gdal::gdal #proj is brought it via this
@@ -157,7 +158,8 @@ else()
 			TBB::tbb
 			GSL::GSL
 
-			Armadillo::Armadillo
+			ARMADILLO::ARMADILLO
+			Eigen3::Eigen
 
 			VTK::CommonCore
 			VTK::CommonDataModel
@@ -166,6 +168,17 @@ else()
 			VTK::FiltersGeneral
 			VTK::FiltersGeometry
 			VTK::FiltersSources
+			VTK::IOXML
+
+			Boost::headers
+			Boost::system
+			Boost::filesystem
+			Boost::date_time
+			Boost::log
+			Boost::thread
+			Boost::regex
+			Boost::iostreams
+			Boost::program_options
 
 
 			GDAL::GDAL

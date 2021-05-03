@@ -87,6 +87,9 @@ configure_file(
         src/version.h
 )
 
+if(NOT BUILD_WITH_CONAN)
+    set(CMAKE_BUILD_TYPE NoConan)
+endif()
 
 #ignore these two under Clion as CGAL will complain
 if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
@@ -99,17 +102,17 @@ endif()
 macro(create_target package)
     if(NOT TARGET ${package}::${package})
         add_library(${package}::${package} INTERFACE IMPORTED)
-        if(${package}_INCLUDE_DIRS)
-            set_target_properties(${package}::${package} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-                    "${${package}_INCLUDE_DIRS}")
-        endif()
+
+        set_target_properties(${package}::${package} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                    "${${package}_INCLUDE_DIRS};${${package}_INCLUDE_DIR}")
+
 
         set_property(TARGET ${package}::${package} PROPERTY INTERFACE_LINK_LIBRARIES
-                "${${package}_LIBRARIES_TARGETS};${${package}_LINKER_FLAGS_LIST}")
-        set_property(TARGET ${package}::${package} PROPERTY INTERFACE_COMPILE_DEFINITIONS
-                ${${package}_COMPILE_DEFINITIONS})
-        set_property(TARGET ${package}::${package} PROPERTY INTERFACE_COMPILE_OPTIONS
-                "${${package}_COMPILE_OPTIONS_LIST}")
+                "${${package}_LIBRARIES};${${package}_LINKER_FLAGS_LIST}")
+#        set_property(TARGET ${package}::${package} PROPERTY INTERFACE_COMPILE_DEFINITIONS
+#                ${${package}_COMPILE_DEFINITIONS})
+#        set_property(TARGET ${package}::${package} PROPERTY INTERFACE_COMPILE_OPTIONS
+#                "${${package}_COMPILE_OPTIONS_LIST}")
     endif()
 endmacro()
 
@@ -174,7 +177,6 @@ else()
             REQUIRED
             )
 endif()
-create_target(Boost)
 
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
@@ -259,10 +261,9 @@ endif()
 find_package(${METEOIO} REQUIRED)
 
 find_package(${ARMADILLO} REQUIRED)
-create_target(${ARMADILLO})
+create_target(ARMADILLO) #needs to be upper-case
 
 find_package(${EIGEN3} REQUIRED)
-create_target(${EIGEN3})
 
 
 # The trilinos library may have been built against a custom location blas/openblas
@@ -346,6 +347,7 @@ find_package(${NETCDFCXX} COMPONENTS C CXX REQUIRED)
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
 find_package(${VTK}
+        9.0
             COMPONENTS
             CommonCore
             CommonDataModel

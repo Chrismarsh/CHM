@@ -2,31 +2,31 @@
 
 # - Try to find Sparsehash
 # Once done this will define
-#  SPARSEHASH_FOUND - System has Sparsehash
-#  SPARSEHASH_INCLUDE_DIRS - The Sparsehash include directories
+#  Sparsehash_FOUND - System has Sparsehash
+#  Sparsehash_INCLUDE_DIRS - The Sparsehash include directories
 
-IF( DEFINED ENV{SPARSEHASH_DIR} )
-    SET( SPARSEHASH_DIR "$ENV{SPARSEHASH_DIR}" )
+IF( DEFINED ENV{Sparsehash_DIR} )
+    SET( Sparsehash_DIR "$ENV{Sparsehash_DIR}" )
 ENDIF()
 
-find_path(SPARSEHASH_INCLUDE_DIR
-        include/google/sparse_hash_map
-        HINTS ${SPARSEHASH_DIR}
+find_path(Sparsehash_INCLUDE_DIR
+        google/sparse_hash_map
+        PATHS ${Sparsehash_DIR}/include
 
-        DOC "Include for SPARSEHASH")
+        DOC "Include for Sparsehash")
 
-find_package_handle_standard_args(SPARSEHASH DEFAULT_MSG SPARSEHASH_INCLUDE_DIR)
+find_package_handle_standard_args(Sparsehash DEFAULT_MSG Sparsehash_INCLUDE_DIR)
 
-if(SPARSEHASH_FOUND)
-    set(SPARSEHASH_INCLUDE_DIRS ${SPARSEHASH_INCLUDE_DIR})
+if(Sparsehash_FOUND)
+    set(Sparsehash_INCLUDE_DIRS ${Sparsehash_INCLUDE_DIR})
     MARK_AS_ADVANCED(
-            SPARSEHASH_INCLUDE_DIR
-            SPARSEHASH_DIR
+            Sparsehash_INCLUDE_DIR
+            Sparsehash_DIR
     )
 
-    message(STATUS "SPARSEHASH found: " ${SPARSEHASH_INCLUDE_DIR})
+    message(STATUS "Sparsehash found: " ${Sparsehash_INCLUDE_DIR})
 
     add_library(Sparsehash::Sparsehash INTERFACE IMPORTED)
-    set_target_properties(Sparsehash::Sparsehash PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${SPARSEHASH_INCLUDE_DIRS})
+    set_target_properties(Sparsehash::Sparsehash PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${Sparsehash_INCLUDE_DIRS})
 endif()
 

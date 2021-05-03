@@ -17,13 +17,13 @@ IF( DEFINED ENV{MeteoIO_DIR} )
 ENDIF()
 
 find_path(MeteoIO_INCLUDE_DIR
-        include/meteoio/MeteoIO.h
-        HINTS ${MeteoIO_DIR}
+        meteoio/MeteoIO.h
+        PATHS ${MeteoIO_DIR}/include
         DOC "Include for meteoio")
 
 find_library(MeteoIO_LIBRARY
         NAMES meteoio
-        HINTS ${MeteoIO_DIR}
+        PATHS ${MeteoIO_DIR}/lib
         )
 
 find_package_handle_standard_args(MeteoIO DEFAULT_MSG

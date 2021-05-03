@@ -16,7 +16,7 @@ if(BUILD_WITH_CONAN)
     set(HDF5 "hdf5")
 else()
     set(CGAL "CGAL")
-    set(ARMADILLO "Armadillo")
+    set(ARMADILLO "Armadillo") #But the FindArmadillo sets ARMADILLO_INCLUDE[...]
     set(EIGEN3 "Eigen3")
     set(SPARSEHASH "Sparsehash")
     set(BLAS "BLAS")

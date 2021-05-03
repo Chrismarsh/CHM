@@ -24,17 +24,17 @@ endif()
 set(FUNC_FOUND ON)
 
 find_path(FUNC_INCLUDE_DIR
-        include/func/func.hpp
-        HINTS ${Func_DIR}
+        func/func.hpp
+        PATHS ${Func_DIR}/include
         DOC "Include for func"
         )
 find_library(FUNC_LIBRARY
         NAMES func
-        HINTS ${Func_DIR}
+        PATHS ${Func_DIR}/lib
         )
 find_library(FUNC_IMPLS_LIBRARY
         NAMES func_impls
-        HINTS ${Func_DIR}
+        PATHS ${Func_DIR}/lib
         )
 
 find_package_handle_standard_args(Func DEFAULT_MSG

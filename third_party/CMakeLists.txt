@@ -16,10 +16,29 @@ ENDFOREACH(f)
 add_library(SNOWPACK OBJECT
   ${SNOWPACK_SRCS}
   )
+
 target_link_libraries(SNOWPACK PUBLIC
-  ${METEOIO}::${METEOIO}
-  Boost::Boost
-)
+        ${METEOIO}::${METEOIO}
+        )
+
+if(BUILD_WITH_CONAN)
+    target_link_libraries(SNOWPACK PUBLIC
+      Boost::Boost
+    )
+else()
+    target_link_libraries(SNOWPACK PUBLIC
+        Boost::headers
+        Boost::system
+        Boost::filesystem
+        Boost::date_time
+        Boost::log
+        Boost::thread
+        Boost::regex
+        Boost::iostreams
+        Boost::program_options
+            )
+endif()
+
 target_include_directories(SNOWPACK PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/    # needed for logger.hpp... that's a funny dependence, what is meant by "third party"?
 )
@@ -31,6 +50,18 @@ add_library(SNOBAL OBJECT
 target_link_libraries(SNOBAL PUBLIC
   ${FUNC}::${FUNC}
   )
+
+if(BUILD_WITH_CONAN)
+    target_link_libraries(SNOBAL PUBLIC
+            Boost::Boost
+            )
+else()
+    target_link_libraries(SNOBAL PUBLIC
+            Boost::headers
+            Boost::log
+            )
+endif()
+
 target_include_directories(SNOBAL PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/    # needed for logger.hpp... that's a funny dependence
 )
