@@ -1,3 +1,78 @@
 [submodule "src/tests/googletest"]
 	path = src/tests/googletest
 	url = https://github.com/google/googletest.git
+[submodule "conan/conan-gmp"]
+	path = conan/conan-gmp
+	url = https://github.com/Chrismarsh/conan-gmp.git
+	branch = stable/6.x
+[submodule "conan/conan-mpfr"]
+	path = conan/conan-mpfr
+	url = https://github.com/Chrismarsh/conan-mpfr.git
+	branch = stable/4.x
+[submodule "conan/conan-cgal"]
+	path = conan/conan-cgal
+	url = https://github.com/Chrismarsh/conan-cgal.git
+	branch = stable/5.x
+[submodule "conan/conan-vtk"]
+	path = conan/conan-vtk
+	url = https://github.com/Chrismarsh/conan-vtk.git
+	branch = stable/9.x
+[submodule "conan/conan-netcdf-c"]
+	path = conan/conan-netcdf-c
+	url = https://github.com/Chrismarsh/conan-netcdf-c.git
+	branch = stable/4.x
+[submodule "conan/conan-netcdf-cxx4"]
+	path = conan/conan-netcdf-cxx4
+	url = https://github.com/Chrismarsh/conan-netcdf-cxx4.git
+	branch = stable/4.x
+[submodule "conan/conan-proj"]
+	path = conan/conan-proj
+	url = https://github.com/Chrismarsh/conan-proj.git
+	branch = stable/proj7
+[submodule "conan/conan-eigen3"]
+	path = conan/conan-eigen3
+	url = https://github.com/Chrismarsh/conan-eigen3.git
+	branch = stable/3.3.x
+[submodule "conan/conan-gperftools"]
+	path = conan/conan-gperftools
+	url = https://github.com/Chrismarsh/conan-gperftools.git
+	branch = stable/2.x
+[submodule "conan/conan-armadillo"]
+	path = conan/conan-armadillo
+	url = https://github.com/Chrismarsh/conan-armadillo.git
+	branch = stable/10.x
+[submodule "conan/conan-gsl"]
+	path = conan/conan-gsl
+	url = https://github.com/Chrismarsh/conan-gsl.git
+	branch = stable/2.x
+[submodule "conan/conan-gdal"]
+	path = conan/conan-gdal
+	url = https://github.com/Chrismarsh/conan-gdal.git
+	branch = stable/gdal3
+[submodule "conan/conan-sparsehash"]
+	path = conan/conan-sparsehash
+	url = https://github.com/Chrismarsh/conan-sparsehash.git
+	branch = stable/2.x
+[submodule "conan/conan-tbb"]
+	path = conan/conan-tbb
+	url = https://github.com/Chrismarsh/conan-tbb.git
+	branch = stable/2020.x
+[submodule "conan/conan-boost"]
+	path = conan/conan-boost
+	url = https://github.com/Chrismarsh/conan-boost.git
+	branch = stable/1.x
+[submodule "conan/conan-meteoio"]
+	path = conan/conan-meteoio
+	url = https://github.com/Chrismarsh/conan-meteoio.git
+	branch = stable/2.x
+[submodule "conan/conan-trilinos"]
+	path = conan/conan-trilinos
+	url = https://github.com/Chrismarsh/conan-trilinos.git
+	branch = stable/12.x
+[submodule "conan/conan-func"]
+	path = conan/conan-func
+	url = https://github.com/Chrismarsh/conan-func.git
+	branch = stable/0.x
+[submodule "conan/conan-hdf5"]
+	path = conan/conan-hdf5
+	url = https://github.com/Chrismarsh/conan-hdf5.git
