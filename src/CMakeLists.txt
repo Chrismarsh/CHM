@@ -121,12 +121,9 @@ set (HEADER_FILES
 
 
 set(EXT_TARGETS
-
 		${ARPACK_LIBRARY}
 
-
 		BLAS::BLAS
-
 		Threads::Threads
 
 		CACHE INTERNAL "" FORCE)
@@ -206,6 +203,9 @@ endif()
 
 if(MPI_FOUND AND USE_MPI)
 	list( APPEND EXT_TARGETS MPI::MPI_CXX)
+	if(NOT BUILD_WITH_CONAN)
+		list( APPEND EXT_TARGETS Boost::mpi)
+	endif()
 endif()
 
 #are we linking against matlab?
