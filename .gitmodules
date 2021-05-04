@@ -76,3 +76,4 @@
 [submodule "conan/conan-hdf5"]
 	path = conan/conan-hdf5
 	url = https://github.com/Chrismarsh/conan-hdf5.git
+	branch = stable/1.x
