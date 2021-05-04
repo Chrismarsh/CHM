@@ -139,6 +139,34 @@ If you need to build dependencies from source (this is likely), use the
 
    conan install ~/CHM -if=. --build missing
 
+Full build including dependencies (summary)
+------------------------------------
+
+Having conan setup as described above:
+
+::
+
+   cd ~/
+   git clone https://github.com/Chrismarsh/CHM  # get CHM source code
+   cd CHM && git submodule update --init --recursive  # get recipes for dependency builds
+   ./conan_export_deps.sh  # tell conan which versions are needed
+
+   mkdir ~/build-CHM && cd ~/build-CHM  # create a build directory
+   conan install ~/CHM -if=. --build missing  # build dependencies that haven't been built, produce custom FindXXX.cmake for all dependencies
+   cmake ~/CHM  # run cmake configuration
+   make -j  # build the CHM executable using all build threads
+
+Additionally, configuration can be setup and built with MPI using:
+
+::
+
+   mkdir ~/build-CHM-mpi && cd ~/build-CHM-mpi
+   conan install ~/CHM -if=. -o boost:without_mpi=True -o trilinos:with_mpi=True --build missing
+   cmake -DUSE_MPI=ON ~/CHM
+   make -j
+
+Note that custom options can be specified for any of the dependencies using `-o package:option=value` at the `conan install` stage.
+
 Trilinos
 ~~~~~~~~~
 
