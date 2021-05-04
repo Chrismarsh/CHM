@@ -65,9 +65,7 @@ Setup conan
 ::
 
    conan profile new default --detect
-   conan remote add bincrafters https://api.bintray.com/conan/bincrafters/public-conan
-   conan remote add CHM https://api.bintray.com/conan/chrismarsh/CHM
-   conan profile update settings.compiler.cppstd=14 default  
+   conan profile update settings.compiler.cppstd=14 default
 
 conan needs to be told to use new C++11 ABI. If using clang (e.g.,
 MacOs), do
