@@ -152,7 +152,7 @@ Intel MKL
 ++++++++++
 
 .. warning::
-   Using MLK with Trilinos is not supported as the final CHM link will conflict with the internal BLAS in GSL.
+   Using MKL with Trilinos is not supported as the final CHM link will conflict with the internal BLAS in GSL.
 
 
 OpenBLAS
