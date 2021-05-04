@@ -189,7 +189,7 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
 
 find_package(${CGAL} REQUIRED)
-create_target(${CGAL})
+
 
 # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
 # https://bugs.llvm.org/show_bug.cgi?id=43266
