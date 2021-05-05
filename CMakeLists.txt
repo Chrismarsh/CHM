@@ -181,34 +181,18 @@ endif()
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-#Set this as CGAL, etc can try to look for Boost as well
-#set(BOOST_ROOT ${Boost_INCLUDE_DIR}/../)
-
-#as per http://cgal-discuss.949826.n4.nabble.com/CMake-and-flags-td949906.html
-#don't override internal settings
-set(CGAL_DONT_OVERRIDE_CMAKE_FLAGS TRUE )
-
 find_package(${CGAL} REQUIRED)
-
 
 # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
 # https://bugs.llvm.org/show_bug.cgi?id=43266
 # https://github.com/Oslandia/SFCGAL/issues/188
 # https://stackoverflow.com/questions/57857572/why-does-boost-log-break-boost-gmp-multiprecision
-
 # But CGAL uses boost/mp which appears to cause this problem. So if we see clang, disable boost MP usage.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
     ADD_DEFINITIONS(-DCGAL_DO_NOT_USE_BOOST_MP)
 
     message(WARNING "Disabling CGAL's use of boost mp to avoid clang compiler parse error.")
 endif()
-
-
-
-#remove this flag as it destroys the build on -O1 and spams warnings, #thankscgal
-remove_cxx_flag("-Werror=format-security -Wp,-D_FORTIFY_SOURCE=2")
-remove_cxx_flag("-O2")
-remove_cxx_flag("-O3")
 
 #reset these back
 if (CMAKE_BUILD_TYPE MATCHES Debug)
