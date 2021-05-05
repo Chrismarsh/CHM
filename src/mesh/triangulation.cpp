@@ -701,12 +701,12 @@ void triangulation::to_hdf5(std::string filename_base)
 
 
     // catch failure caused by the H5File operations
-  catch (FileIException error) {
+  catch (FileIException& error) {
     error.printErrorStack();
   }
 
   // catch failure caused by the DataSet operations
-  catch (DataSetIException error) {
+  catch (DataSetIException& error) {
     error.printErrorStack();
   }
 
@@ -747,12 +747,12 @@ void triangulation::to_hdf5(std::string filename_base)
   } // end try block
 
     // catch failure caused by the H5File operations
-  catch (FileIException error) {
+  catch (FileIException& error) {
     error.printErrorStack();
   }
 
   // catch failure caused by the DataSet operations
-  catch (DataSetIException error) {
+  catch (DataSetIException& error) {
     error.printErrorStack();
   }
 
@@ -981,12 +981,12 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
     } // end of try block
 
     // catch failure caused by the H5File operations
-    catch (FileIException error) {
+    catch (FileIException& error) {
         error.printErrorStack();
     }
 
     // catch failure caused by the DataSet operations
-    catch (DataSetIException error) {
+    catch (DataSetIException& error) {
         error.printErrorStack();
     }
 
@@ -1128,12 +1128,12 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
     } // end of try block
 
     // catch failure caused by the H5File operations
-    catch (FileIException error) {
+    catch (FileIException& error) {
         error.printErrorStack();
     }
 
     // catch failure caused by the DataSet operations
-    catch (DataSetIException error) {
+    catch (DataSetIException& error) {
         error.printErrorStack();
     }
 
