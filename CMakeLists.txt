@@ -181,7 +181,7 @@ endif()
 #need this for calling the logger from multiple modules
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 
-find_package(${CGAL} REQUIRED)
+find_package(${CGAL} 5.0 REQUIRED)
 
 # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
 # https://bugs.llvm.org/show_bug.cgi?id=43266
