@@ -247,7 +247,7 @@ find_package(${METEOIO} REQUIRED)
 find_package(${ARMADILLO} REQUIRED)
 create_target(ARMADILLO) #needs to be upper-case
 
-find_package(${EIGEN3} REQUIRED)
+find_package(${EIGEN3} REQUIRED NO_MODULE)
 
 
 # The trilinos library may have been built against a custom location blas/openblas
