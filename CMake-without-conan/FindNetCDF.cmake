@@ -37,23 +37,23 @@ IF( DEFINED ENV{NetCDF_DIR} )
 ENDIF()
 
 # first look for the base c library
-find_path(NetCDF_C_INCLUDE_DIRS
+find_path(NetCDF_C_INCLUDE_DIR
 		netcdf.h
     	PATHS "${NetCDF_DIR}/include")
 
-find_library (NetCDF_C_LIBRARIES
+find_library (NetCDF_C_LIBRARY
 		NAMES netcdf
 	    PATHS "${NetCDF_DIR}/lib")
 
 
 find_package_handle_standard_args(NetCDF DEFAULT_MSG
-		NetCDF_C_LIBRARIES NetCDF_C_INCLUDE_DIRS)
+		NetCDF_C_LIBRARY NetCDF_C_INCLUDE_DIR)
 
 #start finding requested language components
-set (NetCDF_libs "")
-set (NetCDF_includes "")
+set (NetCDF_libs "${NetCDF_C_LIBRARY}")
+set (NetCDF_includes "${NetCDF_C_INCLUDE_DIR}")
 
-get_filename_component (NetCDF_lib_dirs "${NetCDF_C_LIBRARIES}" PATH)
+get_filename_component (NetCDF_lib_dirs "${NetCDF_C_LIBRARY}" PATH)
 
 if(NOT NetCDF_FIND_COMPONENTS)
 	set(NetCDF_LANGUAGE_BINDINGS "C")
@@ -70,7 +70,7 @@ macro (NetCDF_check_interface lang header libs)
 		find_path (NetCDF_${lang}_INCLUDE_DIR
 			NAMES ${header}
 
-			HINTS "${NetCDF_C_INCLUDE_DIRS}"
+			HINTS "${NetCDF_C_INCLUDE_DIR}"
 			HINTS "${NetCDF_${lang}_ROOT}/include"
 			)
 
@@ -127,10 +127,6 @@ NetCDF_check_interface (F90 netcdf.mod  netcdff)
 
 #export accumulated results to internal varS that rest of project can depend on
 
-
-list (APPEND NetCDF_libs "${NetCDF_C_LIBRARIES}")
-list (APPEND NetCDF_includes "${NetCDF_C_INCLUDE_DIRS}")
-
 set (NetCDF_LIBRARIES ${NetCDF_libs})
 set (NetCDF_INCLUDE_DIRS ${NetCDF_includes})
 
@@ -138,15 +134,15 @@ find_package_handle_standard_args(NetCDF DEFAULT_MSG
 		NetCDF_LIBRARIES NetCDF_INCLUDE_DIRS)
 
 if(NetCDF_FOUND)
-	mark_as_advanced (NetCDF_C_LIBRARY)
-	mark_as_advanced (NetCDF_C_INCLUDE_DIR)
-	mark_as_advanced(NetCDF_DIR)
+	mark_as_advanced (NetCDF_C_LIBRARY NetCDF_C_INCLUDE_DIR NetCDF_DIR)
 
 	add_library(NetCDF::NetCDF INTERFACE IMPORTED)
 
 	set_target_properties(NetCDF::NetCDF PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
 	set_property(TARGET NetCDF::NetCDF PROPERTY INTERFACE_LINK_LIBRARIES "${NetCDF_LIBRARIES}")
 
+	message(STATUS "NetCDF incl for all components -- ${NetCDF_INCLUDE_DIRS}")
+	message(STATUS "NetCDF lib for all components -- ${NetCDF_LIBRARIES}")
 endif()
 
 
