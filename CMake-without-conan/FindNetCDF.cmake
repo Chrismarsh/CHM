@@ -31,6 +31,7 @@
 #  find_package (NetCDF REQUIRED)
 #  target_link_libraries (uses_everthing ${NetCDF_LIBRARIES})
 #  target_link_libraries (only_uses_f90 ${NetCDF_F90_LIBRARIES})
+include (FindPackageHandleStandardArgs)
 
 IF( DEFINED ENV{NetCDF_DIR} )
 	SET( NetCDF_DIR "$ENV{NetCDF_DIR}" )
@@ -138,8 +139,9 @@ if(NetCDF_FOUND)
 
 	add_library(NetCDF::NetCDF INTERFACE IMPORTED)
 
-	set_target_properties(NetCDF::NetCDF PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}")
-	set_property(TARGET NetCDF::NetCDF PROPERTY INTERFACE_LINK_LIBRARIES "${NetCDF_LIBRARIES}")
+	set_target_properties(NetCDF::NetCDF  PROPERTIES
+			INTERFACE_INCLUDE_DIRECTORIES "${NetCDF_INCLUDE_DIRS}"
+			INTERFACE_LINK_LIBRARIES "${NetCDF_LIBRARIES}")
 
 	message(STATUS "NetCDF incl for all components -- ${NetCDF_INCLUDE_DIRS}")
 	message(STATUS "NetCDF lib for all components -- ${NetCDF_LIBRARIES}")

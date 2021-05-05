@@ -5,6 +5,8 @@
 #  Sparsehash_FOUND - System has Sparsehash
 #  Sparsehash_INCLUDE_DIRS - The Sparsehash include directories
 
+include (FindPackageHandleStandardArgs)
+
 IF( DEFINED ENV{Sparsehash_DIR} )
     SET( Sparsehash_DIR "$ENV{Sparsehash_DIR}" )
 ENDIF()

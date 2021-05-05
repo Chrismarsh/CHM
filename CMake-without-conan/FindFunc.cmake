@@ -16,6 +16,7 @@
 # For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
 ###############################################################################
+include (FindPackageHandleStandardArgs)
 
 if( DEFINED ENV{Func_DIR} )
     set( Func_DIR "$ENV{Func_DIR}" )
