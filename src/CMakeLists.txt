@@ -333,9 +333,12 @@ endif()
 
 #make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
 install(TARGETS CHM RUNTIME)
-install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
+
+if(BUILD_WITH_CONAN)
+	install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
+			DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+endif()
 
 
 if(STATIC_ANLAYSIS)
