@@ -22,4 +22,4 @@ conan export conan/conan-proj 7.2.1@$CHM_TYPE
 conan export conan/conan-sparsehash 2.0.3@$CHM_TYPE
 conan export conan/conan-tbb 2020.3@$CHM_TYPE
 conan export conan/conan-trilinos 12.18.1@$CHM_TYPE
-conan export conan/conan-vtk 8.2.0@$CHM_TYPE
+conan export conan/conan-vtk 9.0.1@$CHM_TYPE
