@@ -14,13 +14,6 @@ on:
   workflow_dispatch:
 
 env:
-  CONAN_USERNAME: CHM
-  CONAN_CHANNEL: stable
-  CONAN_UPLOAD: "https://api.bintray.com/conan/chrismarsh/CHM"
-  CONAN_LOGIN_USERNAME: "chrismarsh"
-  CONAN_PASSWORD: ${{ secrets.CONAN_PASSWORD }}
-  CONAN_STABLE_BRANCH_PATTERN: "stable/*"
-  CONAN_UPLOAD_ONLY_WHEN_STABLE: "1"
   MAKEFLAGS: "-j2"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
