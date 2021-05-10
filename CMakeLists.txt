@@ -347,7 +347,7 @@ if(NOT ${BUILD_WITH_CONAN})
     message(STATUS "Found VTK: ${VTK_INCLUDE_DIRS}")
 endif()
 
-create_target(${VTK})
+#create_target(${VTK})
 
 if(VTK_MAJOR_VERSION EQUAL 8 AND VTK_MINOR_VERSION LESS 1)
     message( FATAL_ERROR "VTK >= 8.1 is required to avoid libproj4 name collision. You can build a compatible VTK using -DBUILD_VTK=ON." )

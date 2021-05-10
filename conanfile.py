@@ -57,7 +57,7 @@ class CHMConan(ConanFile):
 
         self.requires( "cgal/[>=5.2]@CHM/stable" )
         self.requires( "boost/[>=1.75]@CHM/stable" )
-        self.requires( "vtk/8.2.0@CHM/stable" )
+        self.requires( "vtk/[>=9.0]@CHM/stable" )
         self.requires( "netcdf-cxx/[>=4.3]@CHM/stable" )
         self.requires( "proj/[>=7.2.1]@CHM/stable" )
         self.requires( "gdal/[>=3.2.1]@CHM/stable" )
