@@ -101,6 +101,11 @@ If the Intel compiler is being used (this is optional), ensure the Intel compile
 
 prior to running the conan. Use the above gcc settings for conan.
 
+.. warning::
+
+   Intel compiler is not actively tested. There is a known issue using the MKL at the moment.
+
+
 Setup CHM source folders
 ------------------------
 
@@ -159,7 +164,7 @@ Additionally, configuration can be setup and built with MPI using:
 ::
 
    mkdir ~/build-CHM-mpi && cd ~/build-CHM-mpi
-   conan install ~/CHM -if=. -o boost:without_mpi=True -o trilinos:with_mpi=True --build missing
+   conan install ~/CHM -if=. -o boost:without_mpi=False -o trilinos:with_mpi=True --build missing
    cmake -DUSE_MPI=ON ~/CHM
    make -j
 
