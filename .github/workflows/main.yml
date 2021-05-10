@@ -40,6 +40,9 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
       - uses: FranzDiebold/github-env-vars-action@v2
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -54,8 +57,6 @@ jobs:
           if [ "$RUNNER_OS" == "Linux" ]; then
             sudo apt-get install libcurl4-openssl-dev
           fi
-
-          (cd CHM && git submodule update --init --recursive)
 
       - name: Setup conan
         run: |
