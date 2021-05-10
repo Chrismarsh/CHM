@@ -301,14 +301,15 @@ if( ${SPARSEHASH}_FOUND )
     add_definitions(-DUSE_SPARSEHASH)
 endif()
 
-find_package(${GPERFTOOLS})
+if( ${USE_TCMALLOC})
+    find_package(${GPERFTOOLS})
 
-#gperftools may not compile on machines w/o nano sleep so we need to optionally disable if it fails to compile
-if(${GPERFTOOLS}_FOUND)
-    message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+    #gperftools may not compile on machines w/o nano sleep so we need to optionally disable if it fails to compile
+    if(${GPERFTOOLS}_FOUND)
+        message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+    endif()
 endif()
-
 find_package(${FUNC} REQUIRED)
 
 find_package(${GDAL} 3.0 REQUIRED )
