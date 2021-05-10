@@ -247,8 +247,11 @@ find_package(${METEOIO} REQUIRED)
 find_package(${ARMADILLO} REQUIRED)
 create_target(ARMADILLO) #needs to be upper-case
 
-find_package(${EIGEN3} REQUIRED NO_MODULE)
-
+if(BUILD_WITH_CONAN)
+    find_package(${EIGEN3} REQUIRED)
+else()
+    find_package(${EIGEN3} REQUIRED NO_MODULE)
+endif()
 
 # The trilinos library may have been built against a custom location blas/openblas
 # If so, conaninfo.txt has information on the custom blas location if given with the -o trilinos:blas_root=<root> option
