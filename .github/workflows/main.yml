@@ -62,6 +62,8 @@ jobs:
             sudo apt-get install libcurl4-openssl-dev
           fi
 
+          (cd CHM && git submodule update --init --recursive)
+
       - name: Setup conan
         run: |
           conan profile new default --detect
@@ -73,6 +75,9 @@ jobs:
             conan profile update settings.os.version=`echo "$CFG_OS" | cut -d'-' -f2` default
           fi
           cat ~/.conan/profiles/default
+
+          ./conan_export_deps.sh
+
         env:
           CFG_OS: ${{matrix.cfg.os}}    
 
