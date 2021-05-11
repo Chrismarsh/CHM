@@ -125,7 +125,7 @@ set(EXT_TARGETS
 
 		BLAS::BLAS
 		Threads::Threads
-		${gdal}::${gdal}
+		${GDAL}::${GDAL}
 		${GSL}::${GSL}
 		${PROJ}::${PROJ}
 		${CGAL}::${CGAL}
