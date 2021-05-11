@@ -31,25 +31,22 @@ gcc (libc 2.27+): 7.x, 8.x
    It is best to use gcc/7.x + as earlier gcc versions do not evaluate the constexpr hashes at compile time, leading to lower performance.
    Example is here https://www.godbolt.org/z/PHZ4P4
 
-If bintray binaries can be used, the only requirements are: 
+If using conan to build the dependencies, the only requirements are:
 
-   - conan >=1.21 
-   - cmake >=3.16 
-   - C++14 compiler (gcc 7.2+)
-   - Fortran 90+ compiler (gfortran)
-
-If some dependencies need to be built from source, ensure the following
-are also installed 
-
-   - autotools 
-   - m4
+   - conan >=1.21 (via Python pip)
+   - cmake >=3.16  (via apt-get/brew)
+   - C++14 compiler (gcc 7.2+) (via apt-get/brew)
+   - Fortran 90+ compiler (gfortran) (via apt-get/brew)
+   - m4 (via apt-get/brew)
+   - autotools (although this is generally installed in most environments) (via apt-get/brew)
+   - BLAS library (via apt-get/brew) e.g., `libopenblas-dev`
 
 .. note::
    For distributed MPI support, optionally ensure MPI is installed
 
 
 On MacOS, `homebrew <https://brew.sh/>`__ should be used to install
-cmake and conan. Macport based installs likely work, but have not been
+cmake and optionally conan. Macport based installs likely work, but have not been
 tested.
 
 
@@ -118,7 +115,7 @@ and start from scratch. An example is given below:
    git clone https://github.com/Chrismarsh/CHM
    (cd CHM && git submodule update --init --recursive)
 
-   mkdir ~/build-CHM && cd ~/build-CHM
+   mkdir ~/build-CHM
 
 .. note::
    The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
@@ -126,26 +123,37 @@ and start from scratch. An example is given below:
 Setup dependencies
 ------------------
 
+Initialize the submodules that contain the conan recepies
+
+::
+
+   cd CHM && git submodule update --init --recursive  # get recipes for dependency builds
+   ./conan_export_deps.sh  # tell conan which versions are needed
+
 Install the dependencies into your local conan cache (``~/.conan/data``)
 
 ::
-   
-   conan install ~/CHM -if=.
+
+   cd ~/build-CHM
+   conan install ~/CHM -if=. --build missing
 
 Further, this command will produce the ``FindXXX.cmake`` files required for the
 CHM build.
 
-If you need to build dependencies from source (this is likely), use the
-``--build missing`` option like:
+Enabling MPI
+-------------
+
+If MPI is to be used:
 
 ::
 
-   conan install ~/CHM -if=. --build missing
+   conan install ~/CHM -if=. -o boost:without_mpi=False -o trilinos:with_mpi=True --build missing
+
 
 Full build including dependencies (summary)
 ------------------------------------
 
-Having conan setup as described above:
+In summary:
 
 ::
 
@@ -176,8 +184,6 @@ Trilinos
 Trilinos is the only dependency that is not obvious to setup. Because of the tuned nature of BLAS and LAPACK libraries,
 only system BLAS and LAPACK are used in compilation.
 
-.. note::
-   In most configurations Trilinos will need to be built from source.
 
 Intel MKL
 ++++++++++
@@ -208,17 +214,6 @@ MacOS
 
 Homebrew should be used to install -- ``brew install openblas``. A homebrew installed ``openblas`` will be automatically detected and used.
 This is prefered over the system default Accelerate framework.
-
-Enabling MPI
-~~~~~~~~~~~~~
-
-If MPI is to be used, the prebuilt Boost and Trilinos dependencies from Conan will not
-have it enabled. Thus, they should be rebuilt locally to ensure the local
-MPI configuration is correctly used:
-
-::
-
-   conan install ~/CHM -if=. --build boost -o boost:without_mpi=False -o trilinos:with_mpi=True
 
 
 
@@ -257,6 +252,13 @@ Ninja speeds up compilation of CHM by ~6%.
 
 The default build option creates an optimizted “release” build. To build
 a debug build, use ``-DCMAKE_BUILD_TYPE=Debug``.
+
+
+To use MPI, pass the following to cmake
+
+::
+
+   cmake ~/CHM <other args here> -DUSE_MPI=TRUE
 
 
 Intel compiler
