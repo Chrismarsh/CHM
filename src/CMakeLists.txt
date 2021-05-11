@@ -125,36 +125,34 @@ set(EXT_TARGETS
 
 		BLAS::BLAS
 		Threads::Threads
+		${gdal}::${gdal}
+		${GSL}::${GSL}
+		${PROJ}::${PROJ}
+		${CGAL}::${CGAL}
+		${HDF5}::${HDF5}
 
+		${METEOIO}::${METEOIO}
+		${TRILINOS}::${TRILINOS}
+		${SPARSEHASH}::${SPARSEHASH}
+
+		${FUNC}::${FUNC}
 		CACHE INTERNAL "" FORCE)
 
 
 if(BUILD_WITH_CONAN)
 	list( APPEND EXT_TARGETS
 			netcdf-cxx::netcdf-cxx
-
 			tbb::tbb
-			gsl::gsl
 			Boost::Boost
 			Eigen3::Eigen3
 			armadillo::armadillo
 			vtk::vtk
-			gdal::gdal #proj is brought it via this
-			cgal::cgal
-			hdf5::hdf5
-			sparsehash::sparsehash
-			meteoio::meteoio
-			func::func
-			trilinos::trilinos
 
 			)
 else()
 	list( APPEND EXT_TARGETS
 			NetCDF::NetCDF
-
 			TBB::tbb
-			GSL::GSL
-
 			ARMADILLO::ARMADILLO
 			Eigen3::Eigen
 
@@ -176,15 +174,6 @@ else()
 			Boost::regex
 			Boost::iostreams
 			Boost::program_options
-
-
-			GDAL::GDAL
-			CGAL::CGAL
-			HDF5::HDF5
-			Sparsehash::Sparsehash
-			MeteoIO::MeteoIO
-			Func::Func
-			Trilinos::Trilinos
 			)
 endif()
 

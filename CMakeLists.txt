@@ -315,6 +315,9 @@ find_package(${FUNC} REQUIRED)
 find_package(${GDAL} 3.0 REQUIRED )
 create_target(${GDAL})
 
+find_package(${PROJ} REQUIRED)
+create_target(${PROJ})
+
 find_package (Threads REQUIRED)
 
 find_package(${TBB} REQUIRED)
