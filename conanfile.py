@@ -33,21 +33,32 @@ class CHMConan(ConanFile):
     }
 
     def source(self):
-        branch = None #master default
+
+        #master default
+        branch = None
+
         try:
-            branch = os.environ["CI_SHA"]
+            is_ci = os.environ["CI"]
+        except KeyError as e:
+            raise Exception('This conanfile is intended to be called from within a CI environment. Please use CMake '
+                            'to compile.')
+
+        try:
+            branch = os.environ["GITHUB_SHA"]
         except KeyError as e:
             try:
                 if os.environ["CI"]:
-                    self.output.error('When running under CI, $CI_SHA should be available.')
+                    self.output.error('When running under CI, $GITHUB_SHA should be available.')
             except KeyError as e:
                 pass
 
 
         git = tools.Git()
         git.clone("https://github.com/Chrismarsh/CHM.git")
-        if branch is not None:
-            git.run(f'checkout {branch}')
+        if branch is None:
+            raise Exception('No branch specified')
+
+        git.run(f'checkout {branch}')
         git.run("submodule update --init --recursive")
 
 
