@@ -41,6 +41,19 @@ If using conan to build the dependencies, the only requirements are:
    - autotools (although this is generally installed in most environments) (via apt-get/brew)
    - BLAS library (via apt-get/brew) e.g., `libopenblas-dev`
 
+Using system sqlite3, curl, and libtiff enables the compilation of gdal to proceed smoothly.
+
+On Ubuntu 20.04 these can be installed as:
+
+::
+
+   libtiff-dev
+   libcurl4-gnutls-dev
+   libsqlite3-dev
+   sqlite3
+
+
+
 .. note::
    For distributed MPI support, optionally ensure MPI is installed
 
