@@ -382,7 +382,8 @@ This section has two keys:
     }
    }
 
-
+If CHM is in MPI mode, then HDF5-based meshes need to be used to ensure fast partial loading of the mesh on a per-MPI rank basis.
+Please see :ref:`meshgen` for how to convert the mesh.
 
 
 
