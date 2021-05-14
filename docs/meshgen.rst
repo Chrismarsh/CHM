@@ -11,6 +11,20 @@ An example of a mesh is shown below
 
 The output ``.mesh``, ``.param``, and ``.ic`` from mesher, as `documented here <https://mesher-hydro.readthedocs.io/en/latest/output.html>`__ are used as input, without modification, to CHM.
 
+Mesh permutation
+-----------------
+Although critical for MPI use, this feature does give ~10-15% speedup for non MPI runs and thus should almost always be done.
+
+Because the unstructured mesh does not guarantee that triangles close in space are close in memory, mesher can permute the mesh to optimize this layout.
+Details on doing so are detailed `here <https://mesher-hydro.readthedocs.io/en/latest/tools.html#mesherpermuation-py>`_.
+
+In brief:
+
+.. code::
+
+   mesherpermuation.py -i meshfile.mesh
+
+Note, this will overwrite the input file.
 
 MPI compatibility
 -------------------
@@ -19,7 +33,7 @@ Mesher does not produce this format. However, CHM can convert from the Mesher js
 
 Conversion
 ++++++++++
-1. Create mesh as normal with mesher
+1. Create mesh as normal with Mesher
 
 2. Create the CHM configuration mesh section using the .mesh and .param files as normal
 
