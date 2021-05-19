@@ -382,6 +382,7 @@ if (BUILD_TESTS)
 	target_link_libraries(
 			runUnitTests
 			CHMmath
+			netcdf-c::netcdf-c
 			${EXT_TARGETS}
 			${THIRD_PARTY_TARGETS}
 			${GTEST_LINK}
