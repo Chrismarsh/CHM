@@ -2117,6 +2117,14 @@ void core::run()
                 LOG_ERROR << boost::diagnostic_information(e);
 
             }
+            catch(std::exception& e)
+            {
+                LOG_ERROR << "Exception at timestep: " << _global->posix_time();
+                LOG_ERROR << "Unknown exception:";
+                LOG_ERROR << e.what();
+                *_end_ts = _global->posix_time();
+                done = true;
+            }
 
             //check that we actually need a mesh output.
             for (auto &itr : _outputs)
