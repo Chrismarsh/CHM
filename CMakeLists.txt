@@ -32,6 +32,11 @@ option(BUILD_WITH_CONAN "Uses Conan for dependencies" ON)
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
+if(BUILD_WITH_CONAN AND USE_JEMALLOC)
+    message(WARNING "With a Conan build USE_JEMALLOC will use a system jemalloc" )
+endif()
+
+
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
 if (${FORCE_COLORED_OUTPUT})
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
