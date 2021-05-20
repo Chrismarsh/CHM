@@ -26,10 +26,16 @@ option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
+option(USE_JEMALLOC "Use jemalloc" OFF)
 option(BUILD_DOCS "Builds documentation" OFF)
 option(BUILD_WITH_CONAN "Uses Conan for dependencies" ON)
 
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
+
+if(BUILD_WITH_CONAN AND USE_JEMALLOC)
+    message(WARNING "With a Conan build USE_JEMALLOC will use a system jemalloc" )
+endif()
+
 
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
 if (${FORCE_COLORED_OUTPUT})
@@ -39,6 +45,10 @@ if (${FORCE_COLORED_OUTPUT})
         add_compile_options (-fcolor-diagnostics)
     endif ()
 endif ()
+
+if(USE_JEMALLOC AND USE_TCMALLOC)
+    message(FATAL_ERROR "Cannot have both USE_TCMALLOC=TRUE and USE_JEMALLOC=TRUE")
+endif()
 
 LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
@@ -310,6 +320,14 @@ if( ${USE_TCMALLOC})
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
     endif()
 endif()
+
+if( USE_JEMALLOC )
+    find_package(Jemalloc REQUIRED)
+    message(STATUS "Found JeMalloc, disabling builtin malloc, free")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+endif()
+
+
 find_package(${FUNC} REQUIRED)
 
 find_package(${GDAL} 3.0 REQUIRED )
