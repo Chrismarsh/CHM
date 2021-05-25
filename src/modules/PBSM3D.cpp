@@ -1591,28 +1591,25 @@ void PBSM3D::run(mesh& domain)
 	    double val = -E[j] * (Qtj + Qsj) * udotm[j];
 	    if( is_nan(val) )
 	    {
-		LOG_DEBUG << "val is nan";
-		LOG_DEBUG << E[j];
-		LOG_DEBUG << Qtj;
-		LOG_DEBUG << Qsj;
-		LOG_DEBUG << udotm[j];
+		LOG_DEBUG << "Detected val is nan:";
+		LOG_DEBUG << "\tSusp: " << Qtj << " salt: "<< Qsj;
 		
-//		LOG_DEBUG << "my csalt is " << (*face)["c_salt"_s];
-		LOG_DEBUG << "trii global id  = " << face->cell_global_id;
-                (*face)["global_cell_id"_s] = face->cell_global_id;
+		LOG_DEBUG << "\ttri global id  = " << face->cell_global_id;
+        (*face)["global_cell_id"_s] = face->cell_global_id;
 
-		LOG_DEBUG << "is_ghost=" << face->is_ghost;	
-		LOG_DEBUG << "owner=" << face->owner;
+		LOG_DEBUG << "\tis_ghost=" << face->is_ghost;	
+		LOG_DEBUG << "\towner=" << face->owner;
 		for(int i =0; i < 3; i++)
 		{
-		    LOG_DEBUG << "neigh " << i;
-		    LOG_DEBUG << face->neighbor(i)->cell_global_id;
+            
+		    LOG_DEBUG << "\t Neigh " << i << " information:";
+		    LOG_DEBUG << "\t\tcell_global_id: " << face->neighbor(i)->cell_global_id;
 		    
-		    LOG_DEBUG << face->neighbor(i)->operator[]("Qsalt"_s);
-		    LOG_DEBUG << "is_ghost="<<face->neighbor(i)->is_ghost;
-		    LOG_DEBUG << "owner="<<face->neighbor(i)->owner;
+		    LOG_DEBUG << "\t\tqsalt: " << face->neighbor(i)->operator[]("Qsalt"_s);
+		    LOG_DEBUG << "\t\tis_ghost: "<<face->neighbor(i)->is_ghost;
+		    LOG_DEBUG << "\t\towner: "<<face->neighbor(i)->owner;
 		}
-
+        LOG_DEBUG << "-------------------------------------------------";
 	    }
 	    deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }
