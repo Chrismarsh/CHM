@@ -1594,11 +1594,11 @@ void PBSM3D::run(mesh& domain)
 		LOG_DEBUG << "Detected val is nan:";
 		LOG_DEBUG << "\tSusp: " << Qtj << " salt: "<< Qsj;
 		
-		LOG_DEBUG << "\ttri global id  = " << face->cell_global_id;
+		LOG_DEBUG << "\ttri global id: " << face->cell_global_id;
         (*face)["global_cell_id"_s] = face->cell_global_id;
-
-		LOG_DEBUG << "\tis_ghost=" << face->is_ghost;	
-		LOG_DEBUG << "\towner=" << face->owner;
+        LOG_DEBUG << "\tlocal_cell_id: " << face->cell_local_id;
+		LOG_DEBUG << "\tis_ghost: " << face->is_ghost;	
+		LOG_DEBUG << "\towner: " << face->owner;
 		for(int i =0; i < 3; i++)
 		{
             
