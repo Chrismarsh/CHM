@@ -110,8 +110,8 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     depends("U_R");
 
     provides("global_cell_id");
-//    depends("p_snow");
-//    depends("p");
+    //    depends("p_snow");
+    //    depends("p");
 
     // Determine if we want fetch, and if so, which one. Default is to use Pomeroy
     // Tanh
@@ -232,10 +232,10 @@ void PBSM3D::init(mesh& domain)
     // settling_velocity is used if the user chooses a fixed settling velocity
     // (do_fixed_settling=true)
     settling_velocity = cfg.get("settling_velocity",
-                                0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall
-                                      // (2008), Inhomogeneous precipitation distribution and snow
-                                      // transport in steep terrain, Water Resour. Res., 44(7),
-                                      // 1–19, doi:10.1029/2007WR006545.
+            0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall
+    // (2008), Inhomogeneous precipitation distribution and snow
+    // transport in steep terrain, Water Resour. Res., 44(7),
+    // 1–19, doi:10.1029/2007WR006545.
 
     if (settling_velocity < 0)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D settling velocity must be positive"));
@@ -246,10 +246,10 @@ void PBSM3D::init(mesh& domain)
     min_sd_trans = cfg.get("min_sd_trans", 0.1); // m Snow holding capacity for flat terrain
 
     cutoff = cfg.get("cutoff",
-                     0.3); // cutoff veg-snow diff (m) that we inhibit saltation entirely
+            0.3); // cutoff veg-snow diff (m) that we inhibit saltation entirely
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",
-                                   0.3); // Beta * K, this is beta and scales the eddy diffusivity
+            0.3); // Beta * K, this is beta and scales the eddy diffusivity
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef", false);
 
     enable_veg = cfg.get("enable_veg", true);
@@ -259,7 +259,7 @@ void PBSM3D::init(mesh& domain)
     if (rouault_diffusion_coeff)
     {
         LOG_WARNING << "rouault_diffusion_coef overrides const "
-                       "snow_diffusion_const values.";
+            "snow_diffusion_const values.";
     }
 
     n_non_edge_tri = 0;
@@ -436,8 +436,8 @@ void PBSM3D::run(mesh& domain)
             if (z10 < Atmosphere::Z_U_R)
             {
                 u10 = Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, z10,
-                                                 snow_depth); // used by the pom probability forumuation, so don't
-                                                              // hide behide debug output
+                        snow_depth); // used by the pom probability forumuation, so don't
+                // hide behide debug output
             }
             else
             {
@@ -449,7 +449,7 @@ void PBSM3D::run(mesh& domain)
 
             double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
             swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
-                                           // updated if we override the module order
+            // updated if we override the module order
 
             // height difference between snowcover and veg
             double height_diff = std::max(0.0, d->CanopyHeight - snow_depth);
@@ -560,7 +560,7 @@ void PBSM3D::run(mesh& domain)
                         gsl_integration_workspace* w3 = gsl_integration_workspace_alloc(1000);
                         double h2;
                         int code3 = gsl_integration_qags(&d->F_fill3, tpi_lim, -min_sd_trans / fac_fill, 0, 1e-7, 1000,
-                                                         w3, &h2, &error);
+                                w3, &h2, &error);
                         gsl_integration_workspace_free(w3);
 
                         // Determine area-averaged snow depth hold in the area of positive TPI
@@ -599,7 +599,7 @@ void PBSM3D::run(mesh& domain)
                         double scale_gam = -pow(std_tpi_neg, 2.0) / moy_tpi_neg;
                         //
                         frac_contrib = (1. - frac_neg) + // f_TPI>0.
-                                       frac_neg * gsl_cdf_gamma_P(snow_depth, shape_gam, scale_gam);
+                            frac_neg * gsl_cdf_gamma_P(snow_depth, shape_gam, scale_gam);
 
                         frac_contrib_nosnw = (1. - frac_neg);
 
@@ -610,14 +610,14 @@ void PBSM3D::run(mesh& domain)
                             double hint =
                                 shape_gam * scale_gam -
                                 scale_gam * (snow_depth * gsl_ran_gamma_pdf(snow_depth, shape_gam, scale_gam) -
-                                             min_sd_trans * gsl_ran_gamma_pdf(min_sd_trans, shape_gam, scale_gam) +
-                                             shape_gam * gsl_cdf_gamma_P(min_sd_trans, shape_gam, scale_gam) +
-                                             shape_gam * gsl_cdf_gamma_Q(snow_depth, shape_gam, scale_gam));
+                                        min_sd_trans * gsl_ran_gamma_pdf(min_sd_trans, shape_gam, scale_gam) +
+                                        shape_gam * gsl_cdf_gamma_P(min_sd_trans, shape_gam, scale_gam) +
+                                        shape_gam * gsl_cdf_gamma_Q(snow_depth, shape_gam, scale_gam));
 
                             min_sd_trans_avg =
                                 (1. - frac_neg) * min_sd_trans +
                                 frac_neg * (min_sd_trans * gsl_cdf_gamma_P(min_sd_trans, shape_gam, scale_gam) + hint +
-                                            snow_depth * gsl_cdf_gamma_Q(snow_depth, shape_gam, scale_gam));
+                                        snow_depth * gsl_cdf_gamma_Q(snow_depth, shape_gam, scale_gam));
                         }
                     }
                 }
@@ -683,7 +683,7 @@ void PBSM3D::run(mesh& domain)
                         // g   = 9.81;
 
                         return u2 * PhysConst::kappa / log(2.0 / (0.6131702345e-2 * ustar * ustar + .5 * lambda)) -
-                               ustar;
+                            ustar;
                     };
                     try
                     {
@@ -765,7 +765,7 @@ void PBSM3D::run(mesh& domain)
 
                 double rho_f =
                     mio::Atmosphere::stdDryAirDensity(face->get_z(),
-                                                      t); // air density kg/m^3, comment in mio is wrong.1.225;
+                            t); // air density kg/m^3, comment in mio is wrong.1.225;
 
                 if (debug_output)
                     (*face)["blowingsnow_probability"_s] = 0; // default to 0%
@@ -828,7 +828,7 @@ void PBSM3D::run(mesh& domain)
 
                 // consider the temporal non-steady effects
                 if (use_PomLi_probability) // Pomeroy and Li 2000 upscaled
-                                           // probability
+                    // probability
                 {
                     // Essery, Li, and Pomeroy 1999
                     // Probability of blowing snow
@@ -989,7 +989,7 @@ void PBSM3D::run(mesh& domain)
                 // 52, 53 P&G 1995
                 double mm_alpha = 4.08 + 12.6 * cz; // 24
                 double mm = 4. / 3. * M_PI * rho_p * rm * rm * rm *
-                            (1.0 + 3.0 / mm_alpha + 2. / (mm_alpha * mm_alpha)); // mean mass, eqn 23
+                    (1.0 + 3.0 / mm_alpha + 2. / (mm_alpha * mm_alpha)); // mean mass, eqn 23
 
                 // mean radius of mean mass particle
                 double r_z = pow((3.0 * mm) / (4 * M_PI * rho_p), 0.3333333); // 50 in p&g 1995
@@ -1010,7 +1010,7 @@ void PBSM3D::run(mesh& domain)
                 double Vr = omega + 3.0 * xrz * cos(M_PI / 4.0); // eqn 14
 
                 double v = 1.88e-5;             // kinematic viscosity of air, below eqn 13 in
-                                                // Pomeroy 1993
+                // Pomeroy 1993
                 double Re = 2.0 * r_z * Vr / v; // eqn  55 in p&g 1995
 
                 double Nu, Sh;
@@ -1020,14 +1020,14 @@ void PBSM3D::run(mesh& domain)
 
                 // (A.6)
                 double D = 2.06e-5 * pow(t / 273.15,
-                                         1.75); // diffusivity of water vapour in air, t in K,
-                                                // eqn A-7 in Liston 1998 or Harder 2013 A.6
+                        1.75); // diffusivity of water vapour in air, t in K,
+                // eqn A-7 in Liston 1998 or Harder 2013 A.6
 
                 // (A.9)
                 double lambda_t =
                     0.000063 * t + 0.00673; //  thermal conductivity, user Harder 2013 A.9, Pomeroy's
-                                            //  is off by an order of magnitude, this matches this
-                                            //  https://www.engineeringtoolbox.com/air-properties-d_156.html
+                //  is off by an order of magnitude, this matches this
+                //  https://www.engineeringtoolbox.com/air-properties-d_156.html
 
                 // Standard constant value, e.g.,
                 // https://link.springer.com/referenceworkentry/10.1007%2F978-90-481-2642-2_329
@@ -1051,17 +1051,17 @@ void PBSM3D::run(mesh& domain)
                     // use Harder 2013 (A.5) Formulation, but Pa formulation for e
                     auto fx = [=](double Ti) {
                         return boost::math::make_tuple(
-                            T +
+                                T +
                                 D * L *
-                                    (rho / (1000.0) -
-                                     .611 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15) * (1000.0))) /
-                                    lambda_t -
+                                (rho / (1000.0) -
+                                 .611 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15) * (1000.0))) /
+                                lambda_t -
                                 Ti,
-                            D * L *
-                                    (-0.6110000000e-3 * mw * (17.3 / (237.3 + Ti) - 17.3 * Ti / pow(237.3 + Ti, 2)) *
-                                         exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15)) +
-                                     0.6110000000e-3 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * pow(Ti + 273.15, 2))) /
-                                    lambda_t -
+                                D * L *
+                                (-0.6110000000e-3 * mw * (17.3 / (237.3 + Ti) - 17.3 * Ti / pow(237.3 + Ti, 2)) *
+                                 exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15)) +
+                                 0.6110000000e-3 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * pow(Ti + 273.15, 2))) /
+                                lambda_t -
                                 1);
                     };
 
@@ -1077,8 +1077,8 @@ void PBSM3D::run(mesh& domain)
                     dmdtz = 2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - (t + 273.15)); // eqn 13 in Pomeroy and Li 2000
                 }
                 else // Use PBSM. Eqn 11 Pomeroy, Gray, Ladine, 1993  "﻿The
-                     // prairie blowing snow model: characteristics, validation,
-                     // operation"
+                    // prairie blowing snow model: characteristics, validation,
+                    // operation"
                 {
                     double M = 18.01; // molecular weight of water kg kmol-1
                     double R = 8313;  // universal fas constant J mol-1 K-1
@@ -1090,15 +1090,15 @@ void PBSM3D::run(mesh& domain)
                     // radiative energy absorebed by the particle -- take from CRHM's
                     // PBSM implimentation
                     double Qr = 0.9 * M_PI * rm * rm * 120.0; // 120.0 = PBSM_constants::Qstar (Solar Radiation
-                                                              // Input), 0.9 comes from Schmidt (1972) assuming a
-                                                              // snow particle albedo of 0.5 and a snow surface
-                                                              // albedo of 0.8
-                                                              // rm ise used here as in Liston and Sturm (1998)
+                    // Input), 0.9 comes from Schmidt (1972) assuming a
+                    // snow particle albedo of 0.5 and a snow surface
+                    // albedo of 0.8
+                    // rm ise used here as in Liston and Sturm (1998)
 
                     // eqn 11 in PGL 1993, r_z is used here as in PG95 and Liston ans Sturm (1998)
                     dmdtz = Sh * rho * D *
-                            (6.283185308 * Nu * R * r_z * sigma * t * t * lambda_t - L * M * Qr + Qr * R * t) /
-                            (D * L * Sh * (L * M - R * t) * rho + lambda_t * t * t * Nu * R);
+                        (6.283185308 * Nu * R * r_z * sigma * t * t * lambda_t - L * M * Qr + Qr * R * t) /
+                        (D * L * Sh * (L * M - R * t) * rho + lambda_t * t * t * Nu * R);
                 }
                 if (debug_output)
                     (*face)["dm/dt"_s] = dmdtz;
@@ -1140,8 +1140,8 @@ void PBSM3D::run(mesh& domain)
                     (*face)["w"_s] = w;
 
                 double diffusion_coeff = snow_diffusion_const; // snow_diffusion_const is a shared param so
-                                                               // need a seperate copy here we can
-                                                               // overwrite
+                // need a seperate copy here we can
+                // overwrite
                 if (rouault_diffusion_coeff)
                 {
                     double c2 = 1.0;
@@ -1220,10 +1220,10 @@ void PBSM3D::run(mesh& domain)
                         {
                             int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
 
-			    // Diagonal value
-			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-								      (V * csubl - d->A[f] * udotm[f] - alpha[f]));
-			    // Off diagonal value
+                            // Diagonal value
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                    (V * csubl - d->A[f] * udotm[f] - alpha[f]));
+                            // Off diagonal value
                             suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, (alpha[f]));
                         }
                         else // missing neighbor case
@@ -1232,8 +1232,8 @@ void PBSM3D::run(mesh& domain)
                             //                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
 
                             // allow mass into the domain from ghost cell
-			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-								      (-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                    (-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
                         }
                     }
                     else
@@ -1241,12 +1241,12 @@ void PBSM3D::run(mesh& domain)
                         if (d->face_neigh[f])
                         {
                             int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
-			    // Diagonal entry
-			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-								      V * csubl - alpha[f]);
-			    // Off diagonal entry
-			    suspension_NNP->matrixSumIntoGlobalValues(idx, nidx,
-								      -d->A[f] * udotm[f] + alpha[f]);
+                            // Diagonal entry
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                    V * csubl - alpha[f]);
+                            // Off diagonal entry
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, nidx,
+                                    -d->A[f] * udotm[f] + alpha[f]);
                         }
                         else
                         {
@@ -1254,8 +1254,8 @@ void PBSM3D::run(mesh& domain)
                             //                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
 
                             // allow mass in
-			    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-								   -0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V);
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                    -0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V);
                         }
                     }
                 }
@@ -1270,32 +1270,32 @@ void PBSM3D::run(mesh& domain)
                     //              elements[idx_idx_off] += V * csubl - alpha4;
 
                     // includes advection term
-		    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-							      V * csubl - d->A[4] * udotm[4] - alpha4);
-		    // RHS
-		    double val = -alpha4 * c_salt;
-		    suspension_NNP->rhsSumIntoGlobalValue(idx,val);
+                    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                            V * csubl - d->A[4] * udotm[4] - alpha4);
+                    // RHS
+                    double val = -alpha4 * c_salt;
+                    suspension_NNP->rhsSumIntoGlobalValue(idx,val);
 
                     // ntri * (z + 1) + face->cell_local_id
-		    int nidx = n_global_tri*(z+1) + face->cell_global_id;
+                    int nidx = n_global_tri*(z+1) + face->cell_global_id;
 
                     if (udotm[3] > 0)
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-								V * csubl - d->A[3] * udotm[3] - alpha[3]);
-		      // Off diagonal
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - d->A[3] * udotm[3] - alpha[3]);
+                        // Off diagonal
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
 
                     }
                     else
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-								V * csubl - alpha[3]);
-		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
-								-d->A[3] * udotm[3] + alpha[3]);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - alpha[3]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
+                                -d->A[3] * udotm[3] + alpha[3]);
                     }
                 }
                 else if (z == nLayer - 1) // top z layer
@@ -1308,76 +1308,76 @@ void PBSM3D::run(mesh& domain)
 
                     if (udotm[3] > 0)
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-								V * csubl - d->A[3] * udotm[3] - alpha[3]);
-		      // RHS
-		      double val = -alpha[3] * cprecip;
-		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - d->A[3] * udotm[3] - alpha[3]);
+                        // RHS
+                        double val = -alpha[3] * cprecip;
+                        suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
                     else
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-								V * csubl - alpha[3]);
-		      // RHS
-		      double val = d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
-		      suspension_NNP->rhsSumIntoGlobalValue(idx,val);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - alpha[3]);
+                        // RHS
+                        double val = d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
+                        suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
 
                     // ntri * (z - 1) + face->cell_local_id
-		    int nidx = n_global_tri*(z-1)+face->cell_global_id;
+                    int nidx = n_global_tri*(z-1)+face->cell_global_id;
                     if (udotm[4] > 0)
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-							     V * csubl - d->A[4] * udotm[4] - alpha[4]);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - d->A[4] * udotm[4] - alpha[4]);
 
-		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
                     else
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
-		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
                     }
                 }
                 else // middle layers
                 {
-		  // ntri * (z + 1) + face->cell_local_id (looking up)
-		  int nidx = n_global_tri*(z+1) + face->cell_global_id;
-		  if (udotm[3] > 0)
+                    // ntri * (z + 1) + face->cell_local_id (looking up)
+                    int nidx = n_global_tri*(z+1) + face->cell_global_id;
+                    if (udotm[3] > 0)
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[3] * udotm[3] - alpha[3]);
-		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[3] * udotm[3] - alpha[3]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
                     }
-		  else
+                    else
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[3]);
-		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[3] * udotm[3] + alpha[3]);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[3]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[3] * udotm[3] + alpha[3]);
                     }
 
-		  // ntri * (z + 1) + face->cell_local_id (looking down)
-		  nidx = n_global_tri*(z-1) + face->cell_global_id;
-		  if (udotm[4] > 0)
+                    // ntri * (z + 1) + face->cell_local_id (looking down)
+                    nidx = n_global_tri*(z-1) + face->cell_global_id;
+                    if (udotm[4] > 0)
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[4] * udotm[4] - alpha[4]);
-		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[4] * udotm[4] - alpha[4]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
-		  else
+                    else
                     {
-		      // Diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
-		      // Off diagonal entry
-		      suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
                     }
                 }
 
@@ -1401,24 +1401,24 @@ void PBSM3D::run(mesh& domain)
     // Check if we exceed the threshold for blowing snow
     auto suspension_rhs_max = suspension_NNP->getRhsMax();
     if ( suspension_rhs_max > suspension_present_threshold ) {
-      suspension_present = true;
+        suspension_present = true;
     }
 
     if (suspension_present) {
 
-    auto suspension_results = suspension_NNP->Solve();
-    LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
+        auto suspension_results = suspension_NNP->Solve();
+        LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Write solution
-    ////////////////////////////////////////////////////////////////////////////
-    // suspension_NNP->writeSolutionMatrixMarket(suspension_file_prefix);
-    ////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
+        // Write solution
+        ////////////////////////////////////////////////////////////////////////////
+        // suspension_NNP->writeSolutionMatrixMarket(suspension_file_prefix);
+        ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
 
     } // if suspension_present fails
     else {
-      LOG_DEBUG << "  No suspended snow.";
+        LOG_DEBUG << "  No suspended snow.";
     }
 
     // Note we still have to do the following if there is no suspended snow.
@@ -1439,7 +1439,7 @@ void PBSM3D::run(mesh& domain)
         {
             double c = suspension_sol_array[ntri * z + face->cell_local_id];
             c = c < 0 || is_nan(c) ? 0 : c; // harden against some numerical issues that
-                                            // occasionally come up for unknown reasons.
+            // occasionally come up for unknown reasons.
 
             double u_z = d->u_z_susp.at(z);
 
@@ -1466,15 +1466,15 @@ void PBSM3D::run(mesh& domain)
     }
 
     /*
-      Communicate necessary (neighbor) vars for deposition linear system setup
-     */
+       Communicate necessary (neighbor) vars for deposition linear system setup
+       */
     // LOG_DEBUG << "Qsusp"_s << "     " << "Qsalt"_s;
     domain->ghost_neighbors_communicate_variable("Qsusp"_s);
     domain->ghost_neighbors_communicate_variable("Qsalt"_s);
 
     /*
-      Setup and solve the linear system for deposition
-     */
+       Setup and solve the linear system for deposition
+       */
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -1498,15 +1498,15 @@ void PBSM3D::run(mesh& domain)
 
         double V = face->get_area(); // V for consistency but actually an area
 
-	int local_row, global_row, local_col, global_col;
-	global_row = static_cast<int>(face->cell_global_id);
+        int local_row, global_row, local_col, global_col;
+        global_row = static_cast<int>(face->cell_global_id);
 
-	if(is_nan(V))
-	{
-	    LOG_DEBUG << "Triangle " << face->cell_global_id << " area is nan";
-	}
-	// Diagonal element
-	deposition_NNP->matrixReplaceGlobalValues(global_row, (global_row), (V));
+        if(is_nan(V))
+        {
+            LOG_DEBUG << "Triangle " << face->cell_global_id << " area is nan";
+        }
+        // Diagonal element
+        deposition_NNP->matrixReplaceGlobalValues(global_row, (global_row), (V));
 
         // iterate over edges
         for (int j = 0; j < 3; j++)
@@ -1524,14 +1524,14 @@ void PBSM3D::run(mesh& domain)
                 Qtj = (*face)["Qsusp"_s];
                 Qsj = (*face)["Qsalt"_s];
 
-		if(is_nan(Qtj))
-		{
-		    LOG_DEBUG << "udotm >0 Qtj is nan";
-		}
-		if(is_nan(Qsj))
-		{
-		    LOG_DEBUG << "udotm >0 Qsj is nan";
-		}
+                if(is_nan(Qtj))
+                {
+                    LOG_DEBUG << "udotm >0 Qtj is nan";
+                }
+                if(is_nan(Qsj))
+                {
+                    LOG_DEBUG << "udotm >0 Qsj is nan";
+                }
             }
             else // pointing into the wind, use upwind as donor
             {
@@ -1539,17 +1539,19 @@ void PBSM3D::run(mesh& domain)
                 {
                     auto neigh = face->neighbor(j);
 
-		    // if (neigh->_is_ghost) {
-		    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsusp: " << (*neigh)["Qsusp"_s];
-		    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsalt: " << (*neigh)["Qsalt"_s];
-		    // }
+                    // if (neigh->_is_ghost) {
+                    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsusp: " << (*neigh)["Qsusp"_s];
+                    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsalt: " << (*neigh)["Qsalt"_s];
+                    // }
 
                     Qtj = (*neigh)["Qsusp"_s];
                     Qsj = (*neigh)["Qsalt"_s];
-		    if(is_nan(Qsj))
-		    {
-			LOG_DEBUG <<"udotm <0 neigh Qsj is nan";
-		    }
+                    if(is_nan(Qsj))
+                    
+                    {
+                        Qsj = 0;
+                        LOG_DEBUG <<"udotm <0 neigh Qsj is nan";
+                    }
                 }
                 else
                 {
@@ -1557,10 +1559,10 @@ void PBSM3D::run(mesh& domain)
                     Qtj = (*face)["Qsusp"_s];
                     Qsj = (*face)["Qsalt"_s];
 
-		    if(is_nan(Qsj))
-		    {
-			LOG_DEBUG << "udotm <0 non neigh Qsj is nan" ;
-		    }
+                    if(is_nan(Qsj))
+                    {
+                        LOG_DEBUG << "udotm <0 non neigh Qsj is nan" ;
+                    }
                 }
             }
 
@@ -1569,56 +1571,56 @@ void PBSM3D::run(mesh& domain)
             if (d->face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
-		global_col = static_cast<int>(neigh->cell_global_id);
+                global_col = static_cast<int>(neigh->cell_global_id);
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-		if(is_nan(eps))
-		{
-		    LOG_DEBUG << "eps is nan!";
-		}
-		if(is_nan(dx[j]))
-		{
-		    LOG_DEBUG << "dx is nan!";
-		}
-		// diagonal entry
-		deposition_NNP->matrixSumIntoGlobalValues(global_row, global_row, eps * E[j] / dx[j]);
+                if(is_nan(eps))
+                {
+                    LOG_DEBUG << "eps is nan!";
+                }
+                if(is_nan(dx[j]))
+                {
+                    LOG_DEBUG << "dx is nan!";
+                }
+                // diagonal entry
+                deposition_NNP->matrixSumIntoGlobalValues(global_row, global_row, eps * E[j] / dx[j]);
 
-		// off diagonal entry
-		deposition_NNP->matrixSumIntoGlobalValues(global_row, global_col, -eps * E[j] / dx[j]);
+                // off diagonal entry
+                deposition_NNP->matrixSumIntoGlobalValues(global_row, global_col, -eps * E[j] / dx[j]);
             }
 
-	    // RHS
-	    double val = -E[j] * (Qtj + Qsj) * udotm[j];
-	    if( is_nan(val) )
-	    {
-		LOG_DEBUG << "Detected val is nan:";
-		LOG_DEBUG << "\tSusp: " << Qtj << " salt: "<< Qsj;
-		
-		LOG_DEBUG << "\ttri global id: " << face->cell_global_id;
-        (*face)["global_cell_id"_s] = face->cell_global_id;
-        LOG_DEBUG << "\tlocal_cell_id: " << face->cell_local_id;
-		LOG_DEBUG << "\tis_ghost: " << face->is_ghost;	
-		LOG_DEBUG << "\towner: " << face->owner;
-		for(int i =0; i < 3; i++)
-		{
-            
-		    LOG_DEBUG << "\t Neigh " << i << " information:";
-		    LOG_DEBUG << "\t\tcell_global_id: " << face->neighbor(i)->cell_global_id;
-		    
-		    LOG_DEBUG << "\t\tqsalt: " << face->neighbor(i)->operator[]("Qsalt"_s);
-		    LOG_DEBUG << "\t\tis_ghost: "<<face->neighbor(i)->is_ghost;
-		    LOG_DEBUG << "\t\towner: "<<face->neighbor(i)->owner;
-		}
-        LOG_DEBUG << "-------------------------------------------------";
-	    }
-	    deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
+            // RHS
+            double val = -E[j] * (Qtj + Qsj) * udotm[j];
+            if( is_nan(val) )
+            {
+                LOG_DEBUG << "Detected val is nan:";
+                LOG_DEBUG << "\tSusp: " << Qtj << " salt: "<< Qsj;
+
+                LOG_DEBUG << "\ttri global id: " << face->cell_global_id;
+                (*face)["global_cell_id"_s] = face->cell_global_id;
+                LOG_DEBUG << "\tlocal_cell_id: " << face->cell_local_id;
+                LOG_DEBUG << "\tis_ghost: " << face->is_ghost;	
+                LOG_DEBUG << "\towner: " << face->owner;
+                for(int i =0; i < 3; i++)
+                {
+
+                    LOG_DEBUG << "\t Neigh " << i << " information:";
+                    LOG_DEBUG << "\t\tcell_global_id: " << face->neighbor(i)->cell_global_id;
+
+                    LOG_DEBUG << "\t\tqsalt: " << face->neighbor(i)->operator[]("Qsalt"_s);
+                    LOG_DEBUG << "\t\tis_ghost: "<<face->neighbor(i)->is_ghost;
+                    LOG_DEBUG << "\t\towner: "<<face->neighbor(i)->owner;
+                }
+                LOG_DEBUG << "-------------------------------------------------";
+            }
+            deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }
     } // end face iteration
 
     // Check if we exceed the threshold for blowing snow
     auto deposition_rhs_max = deposition_NNP->getRhsMax();
     if ( deposition_rhs_max > deposition_present_threshold ) {
-      deposition_present = true;
+        deposition_present = true;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1632,46 +1634,46 @@ void PBSM3D::run(mesh& domain)
 
     if (deposition_present) {
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Printing out the solution
-    ////////////////////////////////////////////////////////////////////////////
-    // deposition_NNP->writeSolutionMatrixMarket(deposition_file_prefix);
-    // count++;
-    ////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
+        // Printing out the solution
+        ////////////////////////////////////////////////////////////////////////////
+        // deposition_NNP->writeSolutionMatrixMarket(deposition_file_prefix);
+        // count++;
+        ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
 
-    auto deposition_results = deposition_NNP->Solve();
-    LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
+        auto deposition_results = deposition_NNP->Solve();
+        LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
 
-    // auto deposition_sol_array = deposition_solution->get1dView();
-    auto deposition_sol_array = deposition_NNP->getSolutionView();
+        // auto deposition_sol_array = deposition_solution->get1dView();
+        auto deposition_sol_array = deposition_NNP->getSolutionView();
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
-    {
-        auto face = domain->face(i);
-        double qdep = is_nan(deposition_sol_array[i]) ? 0 : deposition_sol_array[i];
+        for (size_t i = 0; i < domain->size_faces(); i++)
+        {
+            auto face = domain->face(i);
+            double qdep = is_nan(deposition_sol_array[i]) ? 0 : deposition_sol_array[i];
 
-        double mass = 0;
+            double mass = 0;
 
-        //     take one FE integration step to get the total mass (SWE) that is eroded or deposited
-        mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
+            //     take one FE integration step to get the total mass (SWE) that is eroded or deposited
+            mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
 
-        // could we have eroded more mass than what exists? cap it
-        // double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
-        // swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
-        // updated if we override the module order
-        //        if( mass < 0 && std::fabs(mass) > swe )
-        //        {
-        //            mass = -swe;
-        //        }
-        (*face)["drift_mass"_s] = mass;
-        (*face)["sum_drift"_s] += mass;
-    }
+            // could we have eroded more mass than what exists? cap it
+            // double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
+            // swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
+            // updated if we override the module order
+            //        if( mass < 0 && std::fabs(mass) > swe )
+            //        {
+            //            mass = -swe;
+            //        }
+            (*face)["drift_mass"_s] = mass;
+            (*face)["sum_drift"_s] += mass;
+        }
 
     } // if deposition_present fails
     else {
-      LOG_DEBUG << "  No deposited snow.";
+        LOG_DEBUG << "  No deposited snow.";
     }
 
 
