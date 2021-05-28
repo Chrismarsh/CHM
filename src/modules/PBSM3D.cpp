@@ -1593,6 +1593,8 @@ void PBSM3D::run(mesh& domain)
             if( is_nan(val) )
             {
                 LOG_DEBUG << "Detected val is nan:";
+		domain->print_ghost_neighbor_info();
+
                 LOG_DEBUG << "\tSusp: " << Qtj << " salt: "<< Qsj;
 
                 LOG_DEBUG << "\ttri global id: " << face->cell_global_id;
@@ -1611,6 +1613,7 @@ void PBSM3D::run(mesh& domain)
                     LOG_DEBUG << "\t\towner: "<<face->neighbor(i)->owner;
                 }
                 LOG_DEBUG << "-------------------------------------------------";
+		domain->_mpi_env.abort(-1);
             }
             deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }

@@ -999,8 +999,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
     setup_nearest_neighbor_communication();
 
-    print_ghost_neighbor_info();
-
     // Region
     // TODO: Need to auto-determine how far to look based on module setups
     determine_process_ghost_faces_by_distance(100.0);
@@ -1563,10 +1561,6 @@ void triangulation::print_ghost_neighbor_info()
 	    << _ghost_neighbor_owners[ii] << "\n";
   }
   outfile.close();
-
-  _comm_world.barrier();
-  exit(1);
-
 }
 
 void triangulation::ghost_neighbors_communicate_variable(const std::string& var)
