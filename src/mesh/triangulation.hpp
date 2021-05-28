@@ -627,6 +627,10 @@ public:
     */
   void setup_nearest_neighbor_communication();
 
+  /*
+    Debug output for detailed ghost cell_global_id and their owners
+  */
+  void print_ghost_neighbor_info();
 
   /**
    * Communicate the variable var for all ghost neighbors

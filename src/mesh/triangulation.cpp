@@ -999,6 +999,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
     setup_nearest_neighbor_communication();
 
+    print_ghost_neighbor_info();
+
     // Region
     // TODO: Need to auto-determine how far to look based on module setups
     determine_process_ghost_faces_by_distance(100.0);
@@ -1540,6 +1542,30 @@ void triangulation::setup_nearest_neighbor_communication()
   // exit(0);
 
 #endif // USE_MPI
+
+}
+
+void triangulation::print_ghost_neighbor_info()
+{
+  // Simple text file output, separate files for each MPI rank
+
+  auto myrank = _comm_world.rank();
+  std::string filename = "ghost_neighbor_info_rank_" + std::to_string(myrank);
+
+  std::ofstream outfile(filename);
+
+  LOG_DEBUG << "Rank " << myrank << " writing ghost neighbor info to file.";
+
+  outfile << "#(position in ghost array) (cell_global_id) (owner)\n";
+  for (int ii=0; ii < _ghost_neighbors.size(); ++ii) {
+    outfile << ii << " "
+	    << _ghost_neighbors[ii]->cell_global_id << " "
+	    << _ghost_neighbor_owners[ii] << "\n";
+  }
+  outfile.close();
+
+  _comm_world.barrier();
+  exit(1);
 
 }
 
