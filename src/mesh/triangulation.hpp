@@ -892,6 +892,12 @@ public:
     //however, core might have found some parameters from modules
     // it will have to insert them into this list so that the static hashmaps can be properly init
     std::set<std::string> _parameters;
+
+#ifdef USE_MPI
+    boost::mpi::environment _mpi_env;
+    boost::mpi::communicator _comm_world;
+#endif
+
 private:
     size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
     size_t _num_global_faces; //number of global faces
@@ -974,11 +980,6 @@ private:
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
     boost::shared_ptr<maw::graphics> _gfx;
-#endif
-
-#ifdef USE_MPI
-    boost::mpi::environment _mpi_env;
-    boost::mpi::communicator _comm_world;
 #endif
 
 /*
