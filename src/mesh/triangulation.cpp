@@ -1429,13 +1429,16 @@ void triangulation::determine_process_ghost_faces_nearest_neighbors()
 
 }
 
-// Generate unique tags for send/recv
+// Generate unique tags for isend/irecv
+// - unique id for proc m communicating with proc p
 // - tags will be unique for up to 9999 MPI processes
+// - message between m and p must be completed before a new one started
+// - this is ensured with mpi::wait_all, as in ghost_neighbors_communicate_variable
 int generate_unique_send_tag(int my_rank, int partner_rank){
-  return 100000*my_rank + 10000*partner_rank;
+  return 10000*my_rank + partner_rank;
 }
 int generate_unique_recv_tag(int my_rank, int partner_rank){
-  return 10000*my_rank + 100000*partner_rank;
+  return my_rank + 10000*partner_rank;
 }
 
 void triangulation::setup_nearest_neighbor_communication()
