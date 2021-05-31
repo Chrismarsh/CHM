@@ -1618,6 +1618,11 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
   // map of received data from comm partners
   std::map< int, std::vector<double>> recv_buffer;
+  for( auto it : local_faces_to_recv) {
+    auto partner_id = it.first;
+    auto faces = it.second;
+    recv_buffer[partner_id] = std::vector<double>(faces.size(),0.0);
+  }
 
   for(auto it : local_faces_to_recv) {
     auto partner_id = it.first;
