@@ -999,6 +999,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
     setup_nearest_neighbor_communication();
 
+    print_ghost_neighbor_info();
+
     // Region
     // TODO: Need to auto-determine how far to look based on module setups
     determine_process_ghost_faces_by_distance(100.0);
@@ -1592,6 +1594,22 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 		   [var](mesh_elem e){
 		     return (*e)[var]; });
 
+    for(int i=0; i < send_buffer.size(); ++i) {
+      double val = send_buffer[i];
+      if( isnan(val) )	{
+	  auto f = local_faces_to_send[partner_id][i];
+	  LOG_DEBUG << "-------------------------------------------------";
+	  LOG_DEBUG << "Detected SEND variable is NaN:";
+	  LOG_DEBUG << "\tmy rank:            " << f->owner;
+	  LOG_DEBUG << "\tdestination rank:  " << partner_id;
+	  LOG_DEBUG << "\tsend_buffer entry: " << i;
+	  LOG_DEBUG << "\tcell_global_id:    " << f->cell_global_id;
+	  LOG_DEBUG << "\cell_local_id:      " << f->cell_local_id;
+	  _mpi_env.abort(-1);
+	}
+    }
+
+
     // Send variables
     int send_tag = generate_unique_send_tag(_comm_world.rank(), partner_id);
     _comm_world.isend(partner_id, send_tag, send_buffer);
@@ -1611,6 +1629,27 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
   // Wait for all communication to me before proceeding
   boost::mpi::wait_all(reqs.begin(), reqs.end());
+
+  // Check for NaN entries in recv_buffer
+  for(auto it : recv_buffer) {
+    auto partner_id = it.first;
+    auto values = it.second;
+    for(int i=0; i < values.size(); ++i) {
+      double val = values[i];
+      if( isnan(val) )	{
+	auto f = local_faces_to_recv[partner_id][i];
+	  LOG_DEBUG << "-------------------------------------------------";
+	  LOG_DEBUG << "Detected RECV variable is NaN:";
+	  LOG_DEBUG << "\tmy rank:            " << f->owner;
+	  LOG_DEBUG << "\tsent from rank:     " << partner_id;
+	  LOG_DEBUG << "\trecv_buffer entry:  " << i;
+	  LOG_DEBUG << "\tcell_global_id:     " << f->cell_global_id;
+	  LOG_DEBUG << "\cell_local_id:       " << f->cell_local_id;
+	  _mpi_env.abort(-1);
+	}
+    }
+
+  }
 
   // Pack the data into the face pointers
   for(auto it : local_faces_to_recv) {
