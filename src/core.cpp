@@ -901,6 +901,14 @@ void core::config_output(pt::ptree &value)
             out.frequency = itr.second.get("frequency",1); //defaults to every timestep
             LOG_DEBUG << "Output every " << out.frequency <<" timesteps.";
 
+            out.only_last_n = itr.second.get("only_last_n",-1); //defaults to keep everything
+            LOG_DEBUG << "Output only on last n =  " << out.only_last_n <<" timesteps.";
+
+            if(out.frequency > 1 && out.only_last_n != -1)
+            {
+                LOG_WARNING << "Only only_last_n output option will be used";
+            }
+
             out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
 
         } else
@@ -2169,7 +2177,24 @@ void core::run()
             {
                 if (itr.type == output_info::output_type::mesh)
                 {
-                    if(current_ts % itr.frequency == 0)
+                    // check if we should output or not
+                    bool should_output = false;
+
+                    if(itr.only_last_n != -1)
+                    {
+                        auto ts_left = max_ts - current_ts;
+                        if( ts_left <= itr.only_last_n) // if we are within the last n timesteps, output
+                            should_output = true;
+                    }
+                    else
+                    {
+                        if(current_ts % itr.frequency == 0)
+                            should_output = true;
+                    }
+
+
+
+                    if(should_output)
                     {
 
                         #pragma omp parallel

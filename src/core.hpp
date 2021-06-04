@@ -314,6 +314,7 @@ protected:
             longitude = 0;
             face = nullptr;
             name = "";
+            only_last_n = -1;
         }
         enum output_type
         {
@@ -337,6 +338,9 @@ protected:
         mesh_elem face;
         timeseries ts;
         size_t frequency;
+
+        //Only output the last n timesteps. -1 = all
+        size_t only_last_n;
 
     };
 
