@@ -334,6 +334,25 @@ if(BUILD_WITH_CONAN)
 endif()
 
 
+### Targets for the preprocessing tools
+add_executable(
+		partition
+		preprocessing/partition/main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
+		${CHM_SRCS}
+)
+target_compile_features(partition PRIVATE cxx_std_14)
+target_link_libraries(
+		partition
+		CHMmath
+		${EXT_TARGETS}
+		${THIRD_PARTY_TARGETS}
+)
+set_target_properties(partition
+		PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		)
+
+
 if(STATIC_ANLAYSIS)
 	include( ${CMAKE_SOURCE_DIR}/CMake/PVS-Studio.cmake)
 	pvs_studio_add_target(TARGET analyze ALL

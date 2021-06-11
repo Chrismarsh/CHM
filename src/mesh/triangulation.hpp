@@ -898,7 +898,7 @@ public:
     boost::mpi::communicator _comm_world;
 #endif
 
-private:
+protected:
     size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
     size_t _num_global_faces; //number of global faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
