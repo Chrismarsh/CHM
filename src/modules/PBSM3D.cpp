@@ -1613,7 +1613,7 @@ void PBSM3D::run(mesh& domain)
                     LOG_DEBUG << "\t\towner: "<<face->neighbor(i)->owner;
                 }
                 LOG_DEBUG << "-------------------------------------------------";
-		domain->_mpi_env.abort(-1);
+//		domain->_mpi_env.abort(-1);
             }
             deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }

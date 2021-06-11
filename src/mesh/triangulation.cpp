@@ -1604,8 +1604,8 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 	  LOG_DEBUG << "\tdestination rank:  " << partner_id;
 	  LOG_DEBUG << "\tsend_buffer entry: " << i;
 	  LOG_DEBUG << "\tcell_global_id:    " << f->cell_global_id;
-	  LOG_DEBUG << "\cell_local_id:      " << f->cell_local_id;
-	  _mpi_env.abort(-1);
+	  LOG_DEBUG << "\tcell_local_id:      " << f->cell_local_id;
+//	  _mpi_env.abort(-1);
 	}
     }
 
@@ -1650,7 +1650,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 	  LOG_DEBUG << "\trecv_buffer entry:  " << i;
 	  LOG_DEBUG << "\tcell_global_id:     " << f->cell_global_id;
 	  LOG_DEBUG << "\tcell_local_id:       " << f->cell_local_id;
-	  _mpi_env.abort(-1);
+//	  _mpi_env.abort(-1);
 	}
     }
 
