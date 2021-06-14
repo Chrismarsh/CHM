@@ -167,17 +167,21 @@ class preprocessingTriangulation : public triangulation
 
         //        partition_mesh();
         LOG_DEBUG << "Partitioning mesh";
-//        LOG_DEBUG << MPI_ranks;
+        _num_global_faces = _faces.size();
+
+
+        std::cout << MPI_ranks << std::endl;
         for (int mpirank = 0; mpirank < MPI_ranks; mpirank++)
         {
-//            LOG_DEBUG << MPI_ranks;
             int my_rank = mpirank;
-//            LOG_DEBUG << MPI_ranks;
+
             // Set up so that all processors know how 'big' all other processors are
+
             _num_faces_in_partition.resize(MPI_ranks, _num_global_faces / MPI_ranks);
             for (unsigned int i = 0; i < _num_global_faces % MPI_ranks; ++i)
             {
                 _num_faces_in_partition[i]++;
+                LOG_DEBUG <<_num_faces_in_partition[i] ;
             }
 
             // each processor only knows its own start and end indices
@@ -212,13 +216,13 @@ class preprocessingTriangulation : public triangulation
                       << ", number " << _local_faces.size();
         }
 
-        _num_faces = _local_faces.size();
-        determine_local_boundary_faces();
-        determine_process_ghost_faces_nearest_neighbors();
-
-        // Region
-        // TODO: Need to auto-determine how far to look based on module setups
-        determine_process_ghost_faces_by_distance(100.0);
+//        _num_faces = _local_faces.size();
+//        determine_local_boundary_faces();
+//        determine_process_ghost_faces_nearest_neighbors();
+//
+//        // Region
+//        // TODO: Need to auto-determine how far to look based on module setups
+//        determine_process_ghost_faces_by_distance(100.0);
 
 
     }
