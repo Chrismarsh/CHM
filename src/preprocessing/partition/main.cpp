@@ -1,6 +1,7 @@
 #include "H5Cpp.h"
 #include "logger.hpp"
 #include "triangulation.hpp"
+#include <string>
 using namespace H5;
 
 class preprocessingTriangulation : public triangulation
@@ -62,6 +63,20 @@ class preprocessingTriangulation : public triangulation
             std::__1::vector<std::array<double, 3>> vertex;
             std::__1::vector<std::array<int, 3>> elem;
             std::__1::vector<std::array<int, 3>> neigh;
+
+            {
+                // Read the proj4
+                H5::DataSpace dataspace(1, &proj4_dims);
+                H5::Attribute attribute = file.openAttribute("/mesh/proj4");
+                attribute.read(proj4_t, _srs_wkt);
+
+            }
+            
+            {  // Write the is_geographic
+                H5::DataSpace dataspace(1, &geographic_dims);
+                H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
+                attribute.read(PredType::NATIVE_HBOOL, &_is_geographic);
+            }
 
             {
                 DataSet dataset = file.openDataSet("/mesh/cell_global_id");
@@ -374,6 +389,7 @@ class preprocessingTriangulation : public triangulation
 
     }
 
+
     void from_hdf5_and_partition(const std::string& mesh_filename, int MPI_ranks)
     {
         read_h5(mesh_filename);
@@ -384,6 +400,7 @@ class preprocessingTriangulation : public triangulation
         _comm_world._size = 2;
 
         std::cout << MPI_ranks << std::endl;
+
         for (int mpirank = 0; mpirank < MPI_ranks; mpirank++)
         {
             _comm_world._rank = mpirank;
@@ -413,15 +430,219 @@ class preprocessingTriangulation : public triangulation
 
             determine_local_boundary_faces();
             determine_process_ghost_faces_nearest_neighbors();
+
+            // TODO: Need to auto-determine how far to look based on module setups
+//            determine_process_ghost_faces_by_distance(100.0);
+
+            auto idx = mesh_filename.find_last_not_of(".h5");
+            std::string filename_base = mesh_filename.substr(0,idx-1);
+            filename_base = filename_base + ".partition." + std::to_string(mpirank);
+            to_hdf5(filename_base);
         }
 
 
 
 //        // Region
-//        // TODO: Need to auto-determine how far to look based on module setups
-//        determine_process_ghost_faces_by_distance(100.0);
 
 
+
+    }
+
+    void to_hdf5(std::string filename_base)
+    {
+
+        std::string filename = filename_base + "_mesh.h5";
+
+        try
+        {
+            // Turn off the auto-printing when failure occurs so that we can
+            // handle the errors appropriately
+            Exception::dontPrint();
+
+            H5::H5File file(filename, H5F_ACC_TRUNC);
+            H5::Group group(file.createGroup("/mesh"));
+
+            hsize_t ntri = _local_faces.size();
+
+            { // global elem id
+                LOG_DEBUG << "Writting Global IDs";
+                H5::DataSpace dataspace(1, &ntri);
+                auto globalIDs = get_global_IDs();
+                auto v2 = std::vector<int>(globalIDs.begin() + global_cell_start_idx, globalIDs.begin() + global_cell_end_idx + 1);
+                H5::DataSet dataset = file.createDataSet("/mesh/cell_global_id", PredType::STD_I32BE, dataspace);
+                dataset.write(v2.data(), PredType::NATIVE_INT);
+            }
+
+            std::set<size_t> vertex_global_id;
+            // figure out all of the unique vertexes this subset needs and save their global id
+            for (size_t i = 0; i < ntri; ++i)
+            {
+                auto f = _local_faces.at(i);
+                for (size_t j = 0; j < 3; ++j)
+                {
+                    vertex_global_id.insert(f->vertex(j)->get_id()); // set of the vertexes we will need
+                }
+            }
+
+            LOG_DEBUG << "This mesh partition has " << vertex_global_id.size() << " unique vertexes";
+            // build a list of all the above identified vertexes and set their local id
+            std::vector< Delaunay::Vertex_handle > local_vertexes; // vertexes that this part of the mesh needs
+            local_vertexes.resize(vertex_global_id.size());
+            size_t i = 0;
+            for( const auto& itr: vertex_global_id)
+            {
+                auto vh = vertex( itr );
+                vh->set_local_id(i);
+                local_vertexes.at(i) = vh;
+                ++i;
+            }
+
+            { // Which vertices define each face
+                H5::DataSpace dataspace(1, &ntri);
+                std::vector<std::array<int, 3>> elem(ntri);
+
+//                #pragma omp parallel for
+                for (size_t i = 0; i < ntri; ++i)
+                {
+                    auto f = _local_faces.at(i);
+                    for (size_t j = 0; j < 3; ++j)
+                    {
+                        elem[i][j] = f->vertex(j)->get_local_id();
+                    }
+                }
+
+                H5::DataSet dataset = file.createDataSet("/mesh/elem", elem_t, dataspace);
+                dataset.write(elem.data(), elem_t);
+            }
+
+            hsize_t nvert = local_vertexes.size();
+            { // Vertices
+                H5::DataSpace dataspace(1, &nvert);
+                std::vector<std::array<double, 3>> vertices(nvert);
+
+//#pragma omp parallel for
+                for (size_t i = 0; i < nvert; ++i)
+                {
+                    auto v = local_vertexes.at(i);
+                    vertices[i][0] = v->point().x();
+                    vertices[i][1] = v->point().y();
+                    vertices[i][2] = v->point().z();
+                }
+
+                H5::DataSet dataset = file.createDataSet("/mesh/vertex", vertex_t, dataspace);
+                dataset.write(vertices.data(), vertex_t);
+            }
+
+            { // neighbours
+                H5::DataSpace dataspace(1, &ntri);
+                std::vector<std::array<int, 3>> neighbor(ntri);
+
+//#pragma omp parallel for
+                for (size_t i = 0; i < ntri; ++i)
+                {
+                    auto f = this->face(i);
+                    for (size_t j = 0; j < 3; ++j)
+                    {
+                        auto neigh = f->neighbor(j);
+                        if (neigh != nullptr && !neigh->is_ghost)
+                        {
+                            neighbor[i][j] = neigh->cell_local_id;
+                        }
+                        else
+                        {
+                            neighbor[i][j] = -1;
+                        }
+                    }
+                }
+                H5::DataSet dataset = file.createDataSet("/mesh/neighbor", neighbor_t, dataspace);
+                dataset.write(neighbor.data(), neighbor_t);
+            }
+
+            // Ensure the proj4 string can fit in the HDF5 data type
+            if (_srs_wkt.length() >= 256)
+            {
+                BOOST_THROW_EXCEPTION(config_error() << errstr_info("Proj4 string needs to be < 256. Length: " +
+                                                                    std::to_string(_srs_wkt.length())));
+            }
+            { // Write the proj4
+                H5::DataSpace dataspace(1, &proj4_dims);
+                H5::Attribute attribute = file.createAttribute("/mesh/proj4", proj4_t, dataspace);
+                attribute.write(proj4_t, _srs_wkt);
+            }
+
+            { // Write the is_geographic
+                H5::DataSpace dataspace(1, &geographic_dims);
+                H5::Attribute attribute =
+                    file.createAttribute("/mesh/is_geographic", PredType::NATIVE_HBOOL, dataspace);
+                attribute.write(PredType::NATIVE_HBOOL, &_is_geographic);
+            }
+
+        } // end of try block
+
+        // catch failure caused by the H5File operations
+        catch (FileIException& error)
+        {
+            error.printErrorStack();
+        }
+
+        // catch failure caused by the DataSet operations
+        catch (DataSetIException& error)
+        {
+            error.printErrorStack();
+        }
+
+        ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
+        // Parameters
+        ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
+//
+//        std::string par_filename = filename_base + "_param.h5";
+//
+//        try
+//        {
+//            // Turn off the auto-printing when failure occurs so that we can
+//            // handle the errors appropriately
+//            Exception::dontPrint();
+//
+//            H5::H5File file(par_filename, H5F_ACC_TRUNC);
+//            H5::Group group(file.createGroup("/parameters"));
+//
+//            hsize_t ntri = size_global_faces();
+//
+//            for (auto& par_iter : _parameters)
+//            {
+//
+//                H5::DataSpace dataspace(1, &ntri);
+//                auto globalIDs = get_global_IDs();
+//                std::string par_location = "/parameters/" + par_iter;
+//                H5::DataSet dataset = file.createDataSet(par_location, PredType::NATIVE_DOUBLE, dataspace);
+//
+//                std::vector<double> values(ntri);
+//#pragma omp parallel for
+//                for (size_t i = 0; i < ntri; ++i)
+//                {
+//                    auto face = _faces.at(i);
+//                    values[i] = face->parameter(par_iter);
+//                }
+//                dataset.write(values.data(), PredType::NATIVE_DOUBLE);
+//            }
+//
+//        } // end try block
+//
+//        // catch failure caused by the H5File operations
+//        catch (FileIException& error)
+//        {
+//            error.printErrorStack();
+//        }
+//
+//        // catch failure caused by the DataSet operations
+//        catch (DataSetIException& error)
+//        {
+//            error.printErrorStack();
+//        }
+
+        LOG_DEBUG << "Finished";
     }
 
     class comm_world
