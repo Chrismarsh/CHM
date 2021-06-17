@@ -1548,7 +1548,7 @@ void triangulation::setup_nearest_neighbor_communication()
 void triangulation::print_ghost_neighbor_info()
 {
   // Simple text file output, separate files for each MPI rank
-
+#ifdef USE_MPI
   auto myrank = _comm_world.rank();
   std::string filename = "ghost_neighbor_info_rank_" + std::to_string(myrank);
 
@@ -1563,6 +1563,7 @@ void triangulation::print_ghost_neighbor_info()
 	    << _ghost_neighbor_owners[ii] << "\n";
   }
   outfile.close();
+#endif // USE_MPI
 }
 
 void triangulation::ghost_neighbors_communicate_variable(const std::string& var)
