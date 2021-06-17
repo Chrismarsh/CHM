@@ -2,6 +2,9 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include <string>
+#include <boost/property_tree/ptree.hpp>
+namespace pt = boost::property_tree;
+
 using namespace H5;
 
 class preprocessingTriangulation : public triangulation
@@ -402,7 +405,11 @@ class preprocessingTriangulation : public triangulation
 
 
 
+        pt::ptree tree;
+        tree.put("ranks",MPI_ranks);
 
+        pt::ptree meshes;
+        pt::ptree params;
 
         for (int mpirank = 0; mpirank < MPI_ranks; mpirank++)
         {
@@ -437,12 +444,24 @@ class preprocessingTriangulation : public triangulation
             // TODO: Need to auto-determine how far to look based on module setups
 //            determine_process_ghost_faces_by_distance(100.0);
 
-            auto idx = mesh_filename.find_last_not_of(".h5");
-            std::string filename_base = mesh_filename.substr(0,idx-1);
+
+            std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
+
             filename_base = filename_base + ".partition." + std::to_string(mpirank);
             to_hdf5(filename_base);
-        }
 
+            pt::ptree m;
+            m.put("",filename_base+ "_mesh.h5");
+            meshes.push_back(std::make_pair("",m));
+
+            pt::ptree p;
+            p.put("",filename_base+ "_param.h5");
+            params.push_back(std::make_pair("",p));
+        }
+        tree.add_child("meshes",meshes);
+        tree.add_child("params",params);
+
+        pt::write_json("test_mesh.n32.partition",tree);
 
 
 //        // Region
@@ -657,7 +676,7 @@ class preprocessingTriangulation : public triangulation
         {
             error.printErrorStack();
         }
-        
+
     }
 
     class comm_world
