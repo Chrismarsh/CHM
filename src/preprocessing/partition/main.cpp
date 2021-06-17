@@ -79,6 +79,17 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &geographic_dims);
                 H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
                 attribute.read(PredType::NATIVE_HBOOL, &_is_geographic);
+
+                if( _is_geographic)
+                {
+                    math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
+                    math::gis::distance = &math::gis::distance_latlong;
+                }
+                else
+                {
+                    math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
+                    math::gis::distance = &math::gis::distance_UTM;
+                }
             }
 
             {
@@ -407,6 +418,7 @@ class preprocessingTriangulation : public triangulation
 
         pt::ptree tree;
         tree.put("ranks",MPI_ranks);
+        tree.put("max_ghost_distance",100.0);
 
         pt::ptree meshes;
         pt::ptree params;
@@ -442,7 +454,7 @@ class preprocessingTriangulation : public triangulation
             determine_process_ghost_faces_nearest_neighbors();
 
             // TODO: Need to auto-determine how far to look based on module setups
-//            determine_process_ghost_faces_by_distance(100.0);
+            determine_process_ghost_faces_by_distance(100.0);
 
 
             std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
