@@ -719,15 +719,10 @@ void core::config_meshes( pt::ptree &value)
 
       _mesh->from_json(mesh);
 
-
     }
-
-
-
 
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
-
 
 }
 

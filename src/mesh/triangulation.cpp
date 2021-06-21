@@ -826,8 +826,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 	  H5::DataSpace dataspace = dataset.getSpace();
 	  hsize_t nelem;
 	  int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
-	  permutation.resize(nelem);
-	  dataset.read(permutation.data(), PredType::NATIVE_INT);
+          _global_IDs.resize(nelem);
+	  dataset.read(_global_IDs.data(), PredType::NATIVE_INT);
 	}
 
 	{
@@ -1216,18 +1216,16 @@ void triangulation::partition_mesh()
   // Set size of vector containing locally owned faces
   _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
 
-  _global_IDs.resize(_local_faces.size());
   // Loop can't be parallel due to modifying map
-  for(size_t local_ind=0;local_ind<_local_faces.size();++local_ind)
+  for(size_t local_ind=0; local_ind < _local_faces.size();++local_ind)
   {
-             _global_IDs[local_ind] = face_start_idx + local_ind;
-	     _global_to_locally_owned_index_map[_global_IDs[local_ind]] = local_ind;
+      size_t offset_idx = face_start_idx + local_ind;
+     _global_to_locally_owned_index_map[_global_IDs[offset_idx]] = local_ind;
 
-	     _faces.at(_global_IDs[local_ind])->is_ghost = false;
-	     _faces.at(_global_IDs[local_ind])->owner = my_rank;
-	     _faces.at(_global_IDs[local_ind])->cell_local_id = local_ind;
-	     _local_faces[local_ind] = _faces.at(_global_IDs[local_ind]);
-
+     _faces.at(_global_IDs[offset_idx])->is_ghost = false;
+     _faces.at(_global_IDs[offset_idx])->owner = my_rank;
+     _faces.at(_global_IDs[offset_idx])->cell_local_id = local_ind;
+     _local_faces[local_ind] = _faces.at(_global_IDs[offset_idx]);
   }
 
 

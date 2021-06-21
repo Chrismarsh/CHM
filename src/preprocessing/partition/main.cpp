@@ -15,44 +15,42 @@ class preprocessingTriangulation : public triangulation
         _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
         for (unsigned int i = 0; i < _num_global_faces % _comm_world.size(); ++i)
         {
-            _num_faces_in_partition[i]++;
+            _num_faces_in_partition.at(i)++;
         }
 
-            // each processor only knows its own start and end indices
-            size_t face_start_idx = 0;
-            size_t face_end_idx = _num_faces_in_partition[0] - 1;
-            for (int i = 1; i <= _comm_world.rank(); ++i)
-            {
-                face_start_idx += _num_faces_in_partition[i - 1];
-                face_end_idx += _num_faces_in_partition[i];
-            }
-            // Store in the public members
-            global_cell_start_idx = face_start_idx;
-            global_cell_end_idx = face_end_idx;
+        // each processor only knows its own start and end indices
+        size_t face_start_idx = 0;
+        size_t face_end_idx = _num_faces_in_partition.at(0) - 1;
+        for (int i = 1; i <= _comm_world.rank(); ++i)
+        {
+            face_start_idx += _num_faces_in_partition.at(i - 1);
+            face_end_idx += _num_faces_in_partition.at(i);
+        }
+        // Store in the public members
+        global_cell_start_idx = face_start_idx;
+        global_cell_end_idx = face_end_idx;
 
-            // Set size of vector containing locally owned faces
-            _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
+        // Set size of vector containing locally owned faces
+        _local_faces.resize(_num_faces_in_partition.at(_comm_world.rank()));
 
-            _global_IDs.resize(_local_faces.size());
-            // Loop can't be parallel due to modifying map
-            for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
-            {
-                _global_IDs[local_ind] = face_start_idx + local_ind;
-                _global_to_locally_owned_index_map[_global_IDs[local_ind]] = local_ind;
+        // Loop can't be parallel due to modifying map
+        for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
+        {
+            size_t offset_idx = face_start_idx + local_ind;
+            _global_to_locally_owned_index_map[_global_IDs.at(offset_idx)] = local_ind;
 
-                _faces.at(_global_IDs[local_ind])->is_ghost = false;
-                _faces.at(_global_IDs[local_ind])->owner = mpi_rank;
-                _faces.at(_global_IDs[local_ind])->cell_local_id = local_ind;
-                _local_faces[local_ind] = _faces.at(_global_IDs[local_ind]);
-            }
+            _faces.at(_global_IDs.at(offset_idx))->is_ghost = false;
+            _faces.at(_global_IDs.at(offset_idx))->owner = mpi_rank;
+            _faces.at(_global_IDs.at(offset_idx))->cell_local_id = local_ind;
+            _local_faces.at(local_ind) = _faces.at(_global_IDs.at(offset_idx));
+        }
 
-            LOG_DEBUG << "MPI Process " << mpi_rank << ": start " << face_start_idx << ", end " << face_end_idx
-                      << ", number " << _local_faces.size();
+        LOG_DEBUG << "MPI Process " << mpi_rank << ": start " << face_start_idx << ", end " << face_end_idx
+                  << ", number " << _local_faces.size();
     }
     void read_h5(const std::string& mesh_filename)
     {
-        std::vector<int> permutation;
-        std::__1::vector<Point_2> center_points;
+        std::vector<Point_2> center_points;
 
         try
         {
@@ -63,9 +61,9 @@ class preprocessingTriangulation : public triangulation
             // Open an existing file and dataset.
             H5File file(mesh_filename, H5F_ACC_RDONLY);
 
-            std::__1::vector<std::array<double, 3>> vertex;
-            std::__1::vector<std::array<int, 3>> elem;
-            std::__1::vector<std::array<int, 3>> neigh;
+            std::vector<std::array<double, 3>> vertex;
+            std::vector<std::array<int, 3>> elem;
+            std::vector<std::array<int, 3>> neigh;
 
             {
                 // Read the proj4
@@ -97,8 +95,8 @@ class preprocessingTriangulation : public triangulation
                 DataSpace dataspace = dataset.getSpace();
                 hsize_t nelem;
                 int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
-                permutation.resize(nelem);
-                dataset.read(permutation.data(), PredType::NATIVE_INT);
+                _global_IDs.resize(nelem);
+                dataset.read(_global_IDs.data(), PredType::NATIVE_INT);
             }
 
             {
@@ -438,7 +436,7 @@ class preprocessingTriangulation : public triangulation
             _comm_partner_ownership.clear();
             _global_index_to_local_ghost_map.clear();
             global_indices_to_send.clear();
-            _global_IDs = {};
+//            _global_IDs = {};
 
 #pragma omp parallel for
             for(size_t i = 0; i < _faces.size(); ++i)
@@ -456,10 +454,19 @@ class preprocessingTriangulation : public triangulation
             // TODO: Need to auto-determine how far to look based on module setups
             determine_process_ghost_faces_by_distance(100.0);
 
+            // now, augment the local faces with our ghosts, so that the ghosts are
+            // a) flagged and b) available in this subset
+            _local_faces.insert(_local_faces.end(),_ghost_neighbors.begin(), _ghost_neighbors.end()) ;
+            tbb::parallel_sort(_local_faces.begin(), _local_faces.end(),
+                               [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
+                               {
+                                 return fa->cell_global_id < fb->cell_global_id;
+                               });
 
             std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
 
             filename_base = filename_base + ".partition." + std::to_string(mpirank);
+
             to_hdf5(filename_base);
 
             pt::ptree m;
@@ -496,16 +503,20 @@ class preprocessingTriangulation : public triangulation
             H5::H5File file(filename, H5F_ACC_TRUNC);
             H5::Group group(file.createGroup("/mesh"));
 
-            _local_faces.insert(_local_faces.end(),_ghost_neighbors.begin(), _ghost_neighbors.end()) ;
             hsize_t ntri = _local_faces.size();
 
             { // global elem id
                 LOG_DEBUG << "Writting Global IDs";
                 H5::DataSpace dataspace(1, &ntri);
-                auto globalIDs = get_global_IDs();
-                auto v2 = std::vector<int>(globalIDs.begin() + global_cell_start_idx, globalIDs.begin() + global_cell_end_idx + 1);
+                auto globalIDs = std::vector<int>(ntri);
+
+#pragma omp parallel for
+                for (size_t i = 0; i < ntri; ++i)
+                {
+                    globalIDs[i] = _local_faces[i]->cell_global_id;
+                }
                 H5::DataSet dataset = file.createDataSet("/mesh/cell_global_id", PredType::STD_I32BE, dataspace);
-                dataset.write(v2.data(), PredType::NATIVE_INT);
+                dataset.write(globalIDs.data(), PredType::NATIVE_INT);
             }
 
             std::set<size_t> vertex_global_id;
