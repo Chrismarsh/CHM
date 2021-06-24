@@ -602,6 +602,8 @@ public:
 		       const std::vector<std::string>& param_filename,
 		       const std::vector<std::string>& ic_filename);
 
+
+
     /**
     * Sets a new order to the face numbering.
     * \param permutation desired ordering
@@ -611,7 +613,12 @@ public:
     /**
     * Sets the MPI process ownership of mesh faces and nodes
     */
-  void partition_mesh();
+    void partition_mesh();
+
+    /**
+     * Load the partition from the h5 file instead of computing it
+     */
+    void load_partition_mesh();
 
     /**
     * Figures out which faces lie on the boundary of an MPI process' domain
@@ -899,11 +906,26 @@ public:
 #endif
 
 protected:
+
+    /**
+     * loads the given mesh as h5 into the triangulation. Differs from the main h5 loader by not doing any params nor
+     * any partitioning, etc
+     * @param mesh_filename
+     */
+    void _load_mesh_h5(const std::string& mesh_filename);
+
+    /**
+     * Build the spatial search dD tree. Assumes _num_global_faces has been set and needs to occur once
+     * the partition has happened
+     */
+    void _build_dDtree();
+
     size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
     size_t _num_global_faces; //number of global faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
+        bool _mesh_is_partition;
 	int _UTM_zone;
 
 
@@ -1004,6 +1026,9 @@ protected:
 
   // Array datatype for is_geographic
   hsize_t geographic_dims;
+
+  // Array datatype for is_partition
+  hsize_t partition_dims;
 
 };
 

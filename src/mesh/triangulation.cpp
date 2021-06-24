@@ -350,26 +350,9 @@ void triangulation::from_json(pt::ptree &mesh)
 
 
         _faces.push_back(face);
-
-// If we aren't using MPI, we can build the centre points here for efficiency.
-// these centre points will be used to build the spatial search tree. If we are using MPI,
-// we need to wait until we've figured out the per-node triangle partition so we can build
-// a per-node spatial search tree that only takes into account this node's elements.
-// If MPI, we do that at the end of this function
-
-#ifndef USE_MPI
-        Point_2 pt2(face->center().x(),face->center().y());
-        center_points.push_back(pt2);
-#endif
-
     }
 
-#ifndef USE_MPI
-    //make the search tree
-    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
-                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(), _faces.end() ) )
-    );
-#endif
+
 
     _num_faces = this->number_of_faces();
 
@@ -527,6 +510,8 @@ void triangulation::from_json(pt::ptree &mesh)
     }
 
     partition_mesh();
+
+
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
     determine_local_boundary_faces();
@@ -534,21 +519,11 @@ void triangulation::from_json(pt::ptree &mesh)
 
     setup_nearest_neighbor_communication();
 
-    // should make this parallel
-    for(size_t ii=0; ii < _num_global_faces; ++ii)
-    {
-        auto face = _faces.at(ii);
-        Point_2 pt2(face->center().x(),face->center().y());
-        center_points.push_back(pt2);
-
-    }
-    //make the search tree
-    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
-                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
-				       );
-
 #endif // USE_MPI
 
+    _build_dDtree();
+
+    // TODO: setup ghost distance
     // determining ghost faces requires the dD_tree to be set up
     // determine_process_ghost_faces_by_distance(100.);
 
@@ -785,203 +760,208 @@ group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata
     return 0;
 }
 
+void triangulation::_load_mesh_h5(const std::string& mesh_filename)
+{
+    // Turn off the auto-printing when failure occurs so that we can
+    // handle the errors appropriately
+    Exception::dontPrint();
+
+    // Open an existing file and dataset.
+    H5File file(mesh_filename, H5F_ACC_RDONLY);
+
+    std::vector<std::array<double, 3>> vertex;
+    std::vector<std::array<int, 3>> elem;
+    std::vector<std::array<int, 3>> neigh;
+
+    {
+        // Read the proj4
+        H5::DataSpace dataspace(1, &proj4_dims);
+        H5::Attribute attribute = file.openAttribute("/mesh/proj4");
+        attribute.read(proj4_t, _srs_wkt);
+    }
+
+    { // read the is_geographic
+        H5::DataSpace dataspace(1, &geographic_dims);
+        H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
+        attribute.read(PredType::NATIVE_HBOOL, &_is_geographic);
+    }
+
+    { // are we loading from a h5 file that is participating in a a partitioned mesh?
+        H5::DataSpace dataspace(1, &partition_dims);
+        H5::Attribute attribute = file.openAttribute("/mesh/is_partition");
+        attribute.read(PredType::NATIVE_HBOOL, _mesh_is_partition);
+    }
+
+    {
+        H5::DataSet dataset = file.openDataSet("/mesh/cell_global_id");
+        H5::DataSpace dataspace = dataset.getSpace();
+        hsize_t nelem;
+        int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+        _global_IDs.resize(nelem);
+        dataset.read(_global_IDs.data(), PredType::NATIVE_INT);
+    }
+
+    {
+        // Open the vertices dataset
+        DataSet dataset = file.openDataSet("/mesh/vertex");
+        DataSpace dataspace = dataset.getSpace();
+
+        hsize_t nvert;
+        int ndims = dataspace.getSimpleExtentDims(&nvert, NULL);
+
+        // Ensure enough space in the vector
+        vertex.resize(nvert);
+        // Default args read all of the dataspace
+        dataset.read(vertex.data(), vertex_t);
+
+        for (size_t i = 0; i < nvert; i++)
+        {
+
+            Point_3 pt(vertex[i][0], vertex[i][1], vertex[i][2]);
+            _max_z = std::max(_max_z, vertex[i][2]);
+            _min_z = std::min(_min_z, vertex[i][2]);
+
+            Vertex_handle Vh = this->create_vertex();
+            Vh->set_point(pt);
+            Vh->set_id(i);
+            _vertexes.push_back(Vh);
+
+            // std::cout << i << ":";
+            // for(int j=0; j< 3; ++j){
+            //   std::cout << " " << vertex[i][j];
+            // }
+            // std::cout << "\n";
+        }
+
+        _num_vertex = _vertexes.size();
+        LOG_DEBUG << "# nodes created = " << _num_vertex;
+    }
+
+    {
+        DataSet dataset = file.openDataSet("/mesh/elem");
+        DataSpace dataspace = dataset.getSpace();
+
+        hsize_t nelem;
+        int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+
+        // Ensure enough space in the vector
+        elem.resize(nelem);
+        // Default args read all of the dataspace
+        dataset.read(elem.data(), elem_t);
+
+        for (size_t i = 0; i < nelem; i++)
+        {
+
+            auto vert1 = _vertexes.at(elem[i][0]); // 0 indexing
+            auto vert2 = _vertexes.at(elem[i][1]);
+            auto vert3 = _vertexes.at(elem[i][2]);
+
+            auto face = this->create_face(vert1, vert2, vert3);
+            face->cell_global_id = i;
+            face->cell_local_id = i;
+
+            if (_is_geographic)
+            {
+                face->_is_geographic = true;
+            }
+
+            face->_debug_ID =
+                -(i +
+                  1); // all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
+            face->_debug_name = std::to_string(i);
+            face->_domain = this;
+
+            vert1->set_face(face);
+            vert2->set_face(face);
+            vert3->set_face(face);
+
+            _faces.push_back(face);
+
+        }
+        _num_faces = _faces.size();
+        LOG_DEBUG << "Created a mesh with " << this->size_faces() << " triangles";
+    }
+
+    {
+
+        DataSet dataset = file.openDataSet("/mesh/neighbor");
+        DataSpace dataspace = dataset.getSpace();
+
+        hsize_t nelem;
+        int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+
+        if( elem.size() != nelem)
+        {
+            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                "Expected: " + std::to_string(elem.size()) + " neighborlists, got: " + std::to_string(nelem)));
+        }
+
+        // Ensure enough space in the vector
+        neigh.resize(nelem);
+        // Default args read all of the dataspace
+        dataset.read(neigh.data(), neighbor_t);
+
+        LOG_DEBUG << "Building face neighbors";
+        for (size_t i=0;i<nelem;i++)
+        {
+
+            auto face = _faces.at(i);
+
+            // LOG_DEBUG << neigh[i][0] << " " << neigh[i][1] << " " << neigh[i][2];
+
+            if(    neigh[i][0] > static_cast<int>(nelem)
+                   || neigh[i][1] > static_cast<int>(nelem)
+                   || neigh[i][2] > static_cast<int>(nelem))
+            {
+                BOOST_THROW_EXCEPTION(config_error() << errstr_info(
+                    "Face " + std::to_string(i) + " has out of bound neighbors."));
+            }
+
+            //-1 is now the no neighbor value
+            Face_handle face0 =  neigh[i][0] != -1 ?_faces.at( neigh[i][0] ) : nullptr; // Face_handle()
+            Face_handle face1 =  neigh[i][1] != -1 ?_faces.at( neigh[i][1] ) : nullptr;
+            Face_handle face2 =  neigh[i][2] != -1 ?_faces.at( neigh[i][2] ) : nullptr;
+
+            face->set_neighbors(face0,face1,face2);
+
+        }
+    }
+}
+void triangulation::_build_dDtree()
+{
+
+    std::vector<Point_2> center_points(_num_global_faces);
+
+#pragma omp parallel for
+    for(size_t ii=0; ii < _num_global_faces; ++ii)  // _num_global_faces = local_faces.size() in non mpi mode
+    {
+        auto face = _faces.at(ii);
+        Point_2 pt2(face->center().x(),face->center().y());
+        center_points[ii] = pt2;
+
+    }
+
+    //make the search tree
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
+    );
+}
+
 void triangulation::from_hdf5(const std::string& mesh_filename,
 			      const std::vector<std::string>& param_filenames,
 			      const std::vector<std::string>& ic_filenames
 			      )
 {
 
-  std::vector<int> permutation;
-  std::vector<Point_2> center_points;
+    std::vector<int> permutation;
 
-    try {
-        // Turn off the auto-printing when failure occurs so that we can
-        // handle the errors appropriately
-        Exception::dontPrint();
-
-	// Open an existing file and dataset.
-	H5File  file(mesh_filename, H5F_ACC_RDONLY);
-
-	std::vector<std::array<double,3>> vertex;
-	std::vector<std::array<int,3>> elem;
-	std::vector<std::array<int,3>> neigh;
-
-	{
-	  // Read the proj4
-	  H5::DataSpace dataspace(1, &proj4_dims);
-	  H5::Attribute attribute = file.openAttribute("/mesh/proj4");
-	  attribute.read(proj4_t, _srs_wkt);
-
-	}
-
-	{  // Write the is_geographic
-	  H5::DataSpace dataspace(1, &geographic_dims);
-	  H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
-	  attribute.read(PredType::NATIVE_HBOOL, &_is_geographic);
-	}
-
-
-	{
-	  H5::DataSet dataset = file.openDataSet("/mesh/cell_global_id");
-	  H5::DataSpace dataspace = dataset.getSpace();
-	  hsize_t nelem;
-	  int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
-          _global_IDs.resize(nelem);
-	  dataset.read(_global_IDs.data(), PredType::NATIVE_INT);
-	}
-
-	{
-	  // Open the vertices dataset
-	  DataSet dataset = file.openDataSet("/mesh/vertex");
-	  DataSpace dataspace = dataset.getSpace();
-
-	 hsize_t nvert;
-	 int ndims = dataspace.getSimpleExtentDims(&nvert, NULL);
-
-	 // Ensure enough space in the vector
-	 vertex.resize(nvert);
-	 // Default args read all of the dataspace
-	 dataset.read(vertex.data(), vertex_t);
-
-	 for (size_t i=0;i<nvert;i++){
-
-	   Point_3 pt( vertex[i][0], vertex[i][1], vertex[i][2] );
-	   _max_z = std::max(_max_z,vertex[i][2]);
-	   _min_z = std::min(_min_z,vertex[i][2]);
-
-	   Vertex_handle Vh = this->create_vertex();
-	   Vh->set_point(pt);
-	   Vh->set_id(i);
-	   _vertexes.push_back(Vh);
-
-	   // std::cout << i << ":";
-	   // for(int j=0; j< 3; ++j){
-	   //   std::cout << " " << vertex[i][j];
-	   // }
-	   // std::cout << "\n";
-	 }
-
-	 _num_vertex = _vertexes.size();
-	 LOG_DEBUG << "# nodes created = " << _num_vertex;
-
-	}
-
-	{
-	  DataSet dataset = file.openDataSet("/mesh/elem");
-	  DataSpace dataspace = dataset.getSpace();
-
-	  hsize_t nelem;
-	  int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
-
-	  // Ensure enough space in the vector
-	  elem.resize(nelem);
-	  // Default args read all of the dataspace
-	  dataset.read(elem.data(), elem_t);
-
-	 for (size_t i=0;i<nelem;i++)
-         {
-
-	   auto vert1 = _vertexes.at(elem[i][0]); //0 indexing
-	   auto vert2 = _vertexes.at(elem[i][1]);
-	   auto vert3 = _vertexes.at(elem[i][2]);
-
-	   auto face = this->create_face(vert1,vert2,vert3);
-	   face->cell_global_id = i;
-	   face->cell_local_id = i;
-
-             if( _is_geographic)
-             {
-                 face->_is_geographic = true;
-             }
-
-	   face->_debug_ID= -(i+1); //all ids will be negative starting at -1. Named ids (for output) will be positive starting at 0
-	   face->_debug_name= std::to_string(i);
-	   face->_domain = this;
-
-	   vert1->set_face(face);
-	   vert2->set_face(face);
-	   vert3->set_face(face);
-
-	   _faces.push_back(face);
-
-	   // std::cout << i << ":";
-	   // for(int j=0; j< 3; ++j){
-	   //   std::cout << " " << vertex[i][j];
-	   // }
-	   // std::cout << "\n";
-
-// If we aren't using MPI, we can build the centre points here for efficiency.
-// these centre points will be used to build the spatial search tree. If we are using MPI,
-// we need to wait until we've figured out the per-node triangle partition so we can build
-// a per-node spatial search tree that only takes into account this node's elements.
-// If MPI, we do that at the end of this function
-#ifndef USE_MPI
-        Point_2 pt2(face->center().x(),face->center().y());
-        center_points.push_back(pt2);
-#endif
-	 }
-
-#ifndef USE_MPI
-    //make the search tree
-    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
-                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(), _faces.end() ) )
-    );
-#endif
-
-    	  _num_faces = _faces.size();
-	  LOG_DEBUG << "Created a mesh with " << this->size_faces() << " triangles";
-
-	}
-
-	{
-
-	  DataSet dataset = file.openDataSet("/mesh/neighbor");
-	  DataSpace dataspace = dataset.getSpace();
-
-	  hsize_t nelem;
-	  int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
-
-        if( elem.size() != nelem)
-        {
-            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                    "Expected: " + std::to_string(elem.size()) + " neighborlists, got: " + std::to_string(nelem)));
-        }
-
-	  // Ensure enough space in the vector
-	  neigh.resize(nelem);
-	  // Default args read all of the dataspace
-	  dataset.read(neigh.data(), neighbor_t);
-
-	  LOG_DEBUG << "Building face neighbors";
-	 for (size_t i=0;i<nelem;i++){
-
-	   auto face = _faces.at(i);
-
-	   // LOG_DEBUG << neigh[i][0] << " " << neigh[i][1] << " " << neigh[i][2];
-
-        if(    neigh[i][0] > static_cast<int>(nelem)
-            || neigh[i][1] > static_cast<int>(nelem)
-            || neigh[i][2] > static_cast<int>(nelem))
-        {
-            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                    "Face " + std::to_string(i) + " has out of bound neighbors."));
-        }
-
-        //-1 is now the no neighbor value
-        Face_handle face0 =  neigh[i][0] != -1 ?_faces.at( neigh[i][0] ) : nullptr; // Face_handle()
-        Face_handle face1 =  neigh[i][1] != -1 ?_faces.at( neigh[i][1] ) : nullptr;
-        Face_handle face2 =  neigh[i][2] != -1 ?_faces.at( neigh[i][2] ) : nullptr;
-
-        face->set_neighbors(face0,face1,face2);
-
-	 }
-	}
-
-
-    } // end of try block
-
+    try
+    {
+        _load_mesh_h5(mesh_filename);
+    }
     // catch failure caused by the H5File operations
-    catch (FileIException& error) {
+    catch (FileIException& error)
+    {
         error.printErrorStack();
     }
 
@@ -990,7 +970,12 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
         error.printErrorStack();
     }
 
-    partition_mesh();
+    // if we are partitioned, just load it from file
+    if(_mesh_is_partition)
+        load_partition_mesh();
+    else
+        //otherwise, compute it
+        partition_mesh();
 
 #ifdef USE_MPI
     _num_faces = _local_faces.size();
@@ -1004,144 +989,132 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
     // Region
     // TODO: Need to auto-determine how far to look based on module setups
     determine_process_ghost_faces_by_distance(100.0);
-
-    // should make this parallel
-    for(size_t ii=0; ii < _num_global_faces; ++ii)
-    {
-        auto face = _faces.at(ii);
-        Point_2 pt2(face->center().x(),face->center().y());
-        center_points.push_back(pt2);
-
-    }
-    //make the search tree
-    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
-                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
-				       );
-
 #endif // USE_MPI
 
-////////////////////////////////////////////////////////////////////////////
+    _build_dDtree();
+
+
+
 ////////////////////////////////////////////////////////////////////////////
 // Parameters
 ////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////
 
-    for(auto param_filename : param_filenames) {
-
-    try {
-        // Turn off the auto-printing when failure occurs so that we can
-        // handle the errors appropriately
-        Exception::dontPrint();
-
-	// Open an existing file and dataset.
-	H5File  file(param_filename, H5F_ACC_RDONLY);
-
-	// Space for extracting the parameter info
-	std::unique_ptr<MeshParameters> pars(new MeshParameters);
-
-	// Extract all of the parameter info (names) from the file
-	Group group = file.openGroup("parameters");
-	herr_t idx = H5Literate(group.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, (void*)pars.get());
-	for(auto const& name : pars->names) {
-	  _parameters.insert(name);
-	  // std::cout << "Here: " << name << "\n";
-	}
-        // init the parameter storage on each face
-#pragma omp parallel for
-        for (size_t i = 0; i < _num_faces; i++)
+    for (auto param_filename : param_filenames)
+    {
+        try
         {
-             face(i)->init_parameters(_parameters);
+            // Turn off the auto-printing when failure occurs so that we can
+            // handle the errors appropriately
+            Exception::dontPrint();
+
+            // Open an existing file and dataset.
+            H5File file(param_filename, H5F_ACC_RDONLY);
+
+            // Space for extracting the parameter info
+            std::unique_ptr<MeshParameters> pars(new MeshParameters);
+
+            // Extract all of the parameter info (names) from the file
+            Group group = file.openGroup("parameters");
+            herr_t idx = H5Literate(group.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, (void*)pars.get());
+            for (auto const& name : pars->names)
+            {
+                _parameters.insert(name);
+                // std::cout << "Here: " << name << "\n";
+            }
+            // init the parameter storage on each face
+            #pragma omp parallel for
+            for (size_t i = 0; i < _num_faces; i++)
+            {
+                face(i)->init_parameters(_parameters);
+            }
+            // init the parameter storage for the ghost regions
+            for (size_t i = 0; i < _ghost_faces.size(); i++)
+            {
+                _ghost_faces.at(i)->init_parameters(_parameters);
+            }
+
+            // Data buffer for reading from file (before packing into faces)
+            std::vector<double> data(_num_faces);
+
+            // Read all of the parameters from file and store them in the faces
+            for (auto const& name : pars->names)
+            {
+
+                LOG_DEBUG << "Applying parameter: " << name;
+
+                hsize_t local_size = static_cast<hsize_t>(
+                    _num_faces); // _num_faces will have been set to the local face size in MPI mode
+
+                hsize_t offset = static_cast<hsize_t>(global_cell_start_idx);
+
+
+                DataSet dataset = group.openDataSet(name);
+                DataSpace dataspace = dataset.getSpace();
+
+                hsize_t nelem;
+                int ndims = dataspace.getSimpleExtentDims(&nelem);
+
+                dataspace.selectHyperslab(H5S_SELECT_SET, &local_size, &offset);
+
+                DataSpace memspace(1, &nelem);
+                hsize_t zero = 0;
+                memspace.selectHyperslab(H5S_SELECT_SET, &local_size, &zero);
+
+                // if (nelem != _faces.size()) {
+                //   BOOST_THROW_EXCEPTION(config_error() <<
+                // 			  errstr_info(
+                // 				      "Param " + name + " expected: " + std::to_string(_faces.size()) + " values,
+                // got: " + std::to_string(nelem)));
+                // }
+
+                dataset.read(data.data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
+
+
+                #pragma omp parallel for
+                for (size_t i = 0; i < _num_faces; i++)
+                {
+                    face(i)->parameter(name) = data[i];
+                }
+
+                LOG_DEBUG << " Applying " << name << " for ghost regions (" << _ghost_faces.size()
+                          << " elements): " << name;
+
+                // Read parameters for each ghost face individually
+                hsize_t one = 1;
+                // Do NOT do this loop in parallel (internal state of HDF5)
+                for (size_t i = 0; i < _ghost_faces.size(); i++)
+                {
+                    auto face = _ghost_faces.at(i);
+                    hsize_t global_id = face->cell_global_id;
+
+                    // Position and size in file
+                    dataspace.selectHyperslab(H5S_SELECT_SET, &one, &global_id);
+                    // Position and size in variable
+                    memspace.selectHyperslab(H5S_SELECT_SET, &one, &zero);
+
+                    double value;
+                    dataset.read(&value, PredType::NATIVE_DOUBLE, memspace, dataspace);
+                    face->parameter(name) = value;
+                }
+            }
+
+        } // end of try block
+
+        // catch failure caused by the H5File operations
+        catch (FileIException& error)
+        {
+            error.printErrorStack();
         }
-	// init the parameter storage for the ghost regions
-        for (size_t i = 0; i < _ghost_faces.size(); i++) {
-             _ghost_faces.at(i)->init_parameters(_parameters);
-	}
 
+        // catch failure caused by the DataSet operations
+        catch (DataSetIException& error)
+        {
+            error.printErrorStack();
+        }
 
-	// Data buffer for reading from file (before packing into faces)
-	std::vector<double> data(_num_faces);
+    } // end of param_filenames loop
 
-	// Read all of the parameters from file and store them in the faces
-	for (auto const &name : pars->names) {
-
-	  LOG_DEBUG << "Applying parameter: " << name;
-
-	  DataSet dataset = group.openDataSet(name);
-	  DataSpace dataspace = dataset.getSpace();
-
-	  hsize_t nelem;
-	  int ndims = dataspace.getSimpleExtentDims(&nelem);
-
-	  hsize_t local_size = static_cast<hsize_t>(_num_faces); // _num_faces will have been set to the local face size in MPI mode
-
-
-	  hsize_t offset = static_cast<hsize_t>(global_cell_start_idx);
-
-	  // cout << _comm_world.rank() << ": local_size " << local_size << " offset "<< global_cell_start_idx << endl;
-
-	  dataspace.selectHyperslab( H5S_SELECT_SET, &local_size, &offset);
-
-	  DataSpace memspace(1, &nelem);
-	  hsize_t zero = 0;
-	  memspace.selectHyperslab( H5S_SELECT_SET, &local_size, &zero);
-
-	  // if (nelem != _faces.size()) {
-	  //   BOOST_THROW_EXCEPTION(config_error() <<
-	  // 			  errstr_info(
-	  // 				      "Param " + name + " expected: " + std::to_string(_faces.size()) + " values, got: " + std::to_string(nelem)));
-	  // }
-
-	  dataset.read(data.data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
-
-	  // for(int i=0;i<5;++i){
-	  //   cout << _comm_world.rank() << ": entry " << i << " " << data[i]<< endl;
-	  // }
-
-#pragma omp parallel for
-	  for (size_t i=0;i<_num_faces;i++){
-	    face(i)->parameter(name) = data[i];
-	    // cout << "WriteParam " <<_comm_world.rank() << ": entry " << i << " " << data[i]<< endl;
-	  }
-
-	  LOG_DEBUG << " Applying " << name << " for ghost regions (" << _ghost_faces.size() << " elements): " << name;
-
-	  // Read parameters for each ghost face individually
-	  hsize_t one = 1;
-	  // Do NOT do this loop in parallel (internal state of HDF5)
-	  for (size_t i = 0; i < _ghost_faces.size(); i++) {
-	    auto face = _ghost_faces.at(i);
-	    hsize_t global_id = face->cell_global_id;
-
-	    // Position and size in file
-	    dataspace.selectHyperslab( H5S_SELECT_SET, &one, &global_id);
-	    // Position and size in variable
-	    memspace.selectHyperslab(H5S_SELECT_SET, &one, &zero);
-
-	    double value;
-	    dataset.read(&value, PredType::NATIVE_DOUBLE, memspace, dataspace);
-	    face->parameter(name) = value;
-
-	  }
-
-
-	}
-
-
-    } // end of try block
-
-    // catch failure caused by the H5File operations
-    catch (FileIException& error) {
-        error.printErrorStack();
-    }
-
-    // catch failure caused by the DataSet operations
-    catch (DataSetIException& error) {
-        error.printErrorStack();
-    }
-
-} // end of param_filenames loop
-
-// TODO: include initial condition files
+    // TODO: include initial condition files
 
 }
 
@@ -1178,79 +1151,131 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   		     });
 }
 
-void triangulation::partition_mesh()
+void triangulation::load_partition_mesh()
 {
-  /*
-    Basically, this first attempt splits the number of mesh points as equally as possible
-  */
-  // 1. Determine number of (processor) locally owned faces
-  // 2. Determine (processor) locally owned indices of faces
-  // 3. Set locally owned is_ghost=false
+    // This differs from partition_mesh() in that the partitioned mesh has ghosts mixed in with the faces so that
+    // the full geometry could be written to file. Like the rest of the partitioned this does not support a non MPI code path
 
-  _num_global_faces = _faces.size();
+    // we don't have total number global faces...
+    _num_global_faces = _faces.size();
 
 #ifdef USE_MPI
 
-  LOG_DEBUG << "Partitioning mesh";
+    LOG_DEBUG << "Loading partition";
 
-  int my_rank = _comm_world.rank();
+    int my_rank = _comm_world.rank();
 
-  // Set up so that all processors know how 'big' all other processors are
-  _num_faces_in_partition.resize(_comm_world.size(),
-				 _num_global_faces/_comm_world.size());
-  for (unsigned int i=0;i<_num_global_faces%_comm_world.size();++i) {
-    _num_faces_in_partition[i]++;
-  }
+    // Set up so that all processors know how 'big' all other processors are
+    _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
+    for (unsigned int i = 0; i < _num_global_faces % _comm_world.size(); ++i)
+    {
+        _num_faces_in_partition[i]++;
+    }
 
-  // each processor only knows its own start and end indices
-  size_t face_start_idx = 0;
-  size_t face_end_idx = _num_faces_in_partition[0]-1;
-  for (int i=1;i<=_comm_world.rank();++i) {
-    face_start_idx += _num_faces_in_partition[i-1];
-    face_end_idx += _num_faces_in_partition[i];
-  }
-  // Store in the public members
-  global_cell_start_idx = face_start_idx;
-  global_cell_end_idx = face_end_idx;
+    // each processor only knows its own start and end indices
+    size_t face_start_idx = 0;
+    size_t face_end_idx = _num_faces_in_partition[0] - 1;
+    for (int i = 1; i <= _comm_world.rank(); ++i)
+    {
+        face_start_idx += _num_faces_in_partition[i - 1];
+        face_end_idx += _num_faces_in_partition[i];
+    }
+    // Store in the public members
+    global_cell_start_idx = face_start_idx;
+    global_cell_end_idx = face_end_idx;
 
-  // Set size of vector containing locally owned faces
-  _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
+    // Set size of vector containing locally owned faces
+    _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
 
-  // Loop can't be parallel due to modifying map
-  for(size_t local_ind=0; local_ind < _local_faces.size();++local_ind)
-  {
-      size_t offset_idx = face_start_idx + local_ind;
-     _global_to_locally_owned_index_map[_global_IDs[offset_idx]] = local_ind;
+    // Loop can't be parallel due to modifying map
+    for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
+    {
+        size_t offset_idx = face_start_idx + local_ind;
+        _global_to_locally_owned_index_map[_global_IDs[offset_idx]] = local_ind;
 
-     _faces.at(_global_IDs[offset_idx])->is_ghost = false;
-     _faces.at(_global_IDs[offset_idx])->owner = my_rank;
-     _faces.at(_global_IDs[offset_idx])->cell_local_id = local_ind;
-     _local_faces[local_ind] = _faces.at(_global_IDs[offset_idx]);
-  }
+        _faces.at(_global_IDs[offset_idx])->is_ghost = false;
+        _faces.at(_global_IDs[offset_idx])->owner = my_rank;
+        _faces.at(_global_IDs[offset_idx])->cell_local_id = local_ind;
+        _local_faces[local_ind] = _faces.at(_global_IDs[offset_idx]);
+    }
 
+#endif
+    LOG_DEBUG << "MPI Process " << my_rank << ": start " << face_start_idx << ", end " << face_end_idx << ", number "
+              << _local_faces.size();
+}
+void triangulation::partition_mesh()
+{
+    /*
+      Basically, this first attempt splits the number of mesh points as equally as possible
+    */
+    // 1. Determine number of (processor) locally owned faces
+    // 2. Determine (processor) locally owned indices of faces
+    // 3. Set locally owned is_ghost=false
 
-  LOG_DEBUG << "MPI Process " << my_rank << ": start " << face_start_idx << ", end " << face_end_idx << ", number " << _local_faces.size();
+    _num_global_faces = _faces.size();
 
+#ifdef USE_MPI
+
+    LOG_DEBUG << "Partitioning mesh";
+
+    int my_rank = _comm_world.rank();
+
+    // Set up so that all processors know how 'big' all other processors are
+    _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
+    for (unsigned int i = 0; i < _num_global_faces % _comm_world.size(); ++i)
+    {
+        _num_faces_in_partition[i]++;
+    }
+
+    // each processor only knows its own start and end indices
+    size_t face_start_idx = 0;
+    size_t face_end_idx = _num_faces_in_partition[0] - 1;
+    for (int i = 1; i <= _comm_world.rank(); ++i)
+    {
+        face_start_idx += _num_faces_in_partition[i - 1];
+        face_end_idx += _num_faces_in_partition[i];
+    }
+    // Store in the public members
+    global_cell_start_idx = face_start_idx;
+    global_cell_end_idx = face_end_idx;
+
+    // Set size of vector containing locally owned faces
+    _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
+
+    // Loop can't be parallel due to modifying map
+    for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
+    {
+        size_t offset_idx = face_start_idx + local_ind;
+        _global_to_locally_owned_index_map[_global_IDs[offset_idx]] = local_ind;
+
+        _faces.at(_global_IDs[offset_idx])->is_ghost = false;
+        _faces.at(_global_IDs[offset_idx])->owner = my_rank;
+        _faces.at(_global_IDs[offset_idx])->cell_local_id = local_ind;
+        _local_faces[local_ind] = _faces.at(_global_IDs[offset_idx]);
+    }
+
+    LOG_DEBUG << "MPI Process " << my_rank << ": start " << face_start_idx << ", end " << face_end_idx << ", number "
+              << _local_faces.size();
 
 #else // do not USE_MPI
 
     // If we are not using MPI, some code paths might still want to make use of these
-   //  initialized to [0, num_faces - 1]
+    //  initialized to [0, num_faces - 1]
     global_cell_start_idx = 0;
     global_cell_end_idx = _num_faces - 1;
 
-  _global_IDs.resize(_num_global_faces);
+    _global_IDs.resize(_num_global_faces);
 #pragma omp parallel for
-  for(size_t i=0;i<_num_global_faces;++i)
-  {
-    _global_IDs[i] = i;
-    _faces.at(i)->is_ghost = false;
-    _faces.at(i)->cell_local_id = i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
-  }
-  LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces-1) << ", number " << _local_faces.size();
+    for (size_t i = 0; i < _num_global_faces; ++i)
+    {
+        _global_IDs[i] = i;
+        _faces.at(i)->is_ghost = false;
+        _faces.at(i)->cell_local_id =
+            i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
+    }
+    LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces - 1) << ", number " << _local_faces.size();
 
 #endif // USE_MPI
-
 }
 
 void triangulation::determine_local_boundary_faces()
