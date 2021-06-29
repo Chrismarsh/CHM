@@ -44,6 +44,7 @@ inline int omp_get_max_threads() { return 1;}
 #endif
 
 #include <iostream>
+#include <algorithm>
 #include <fstream>
 #include <cmath>
 #include <vector>
@@ -52,8 +53,8 @@ inline int omp_get_max_threads() { return 1;}
 #include <stack>
 #include <fstream>
 #include <utility>
-//#define ARMA_DONT_USE_CXX11 //intel on linux breaks otherwise
-//#define ARMA_64BIT_WORD
+
+
 #include <armadillo>
 
 #include <ogr_spatialref.h>
@@ -68,12 +69,15 @@ inline int omp_get_max_threads() { return 1;}
 #include "utility/BBhash.h"
 #include "utility/wyhash.h"
 
+// json reader
+#include "utility/readjson.hpp"
 
+// boost includes
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
-
+#include <boost/filesystem/path.hpp>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Projection_traits_xy_3.h>
@@ -486,6 +490,7 @@ public:
     bool _is_geographic;
 
     bool is_ghost=true;
+
     int  owner;  // MPI process that owns the face
 
 private:
@@ -598,11 +603,18 @@ public:
     * \param param_filename Name of parameter file to read.
     * \param [OPTIONAL] ic_filename Name of initial condition file to read.
     */
-	void from_hdf5(const std::string& mesh_filename,
-		       const std::vector<std::string>& param_filename,
-		       const std::vector<std::string>& ic_filename);
+    void from_hdf5(const std::string& mesh_filename,
+                   const std::vector<std::string>& param_filename,
+                   const std::vector<std::string>& ic_filename);
 
-
+    /**
+     * Reads a partitioned mesh file (.partition) that holds multiple hdf5 files
+     * @param partition_filename Name of parition file to read
+     * @param cwd Current working directory of the calling code. Because the partition file can either include fully
+     *   qualified paths or relative paths, we need to know where we currently are so-as to ensure we open the correct
+     *   file.
+     */
+    void from_partitioned_hdf5(const std::string& partition_filename, boost::filesystem::path cwd = boost::filesystem::path("."));
 
     /**
     * Sets a new order to the face numbering.
@@ -618,7 +630,7 @@ public:
     /**
      * Load the partition from the h5 file instead of computing it
      */
-    void load_partition_mesh();
+    void load_partition_from_mesh(const std::string& mesh_filename);
 
     /**
     * Figures out which faces lie on the boundary of an MPI process' domain
@@ -912,7 +924,9 @@ protected:
      * any partitioning, etc
      * @param mesh_filename
      */
-    void _load_mesh_h5(const std::string& mesh_filename);
+    void load_mesh_h5(const std::string& mesh_filename);
+
+    void determine_ghost_owners();
 
     /**
      * Build the spatial search dD tree. Assumes _num_global_faces has been set and needs to occur once

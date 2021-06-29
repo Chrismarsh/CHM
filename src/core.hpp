@@ -203,6 +203,12 @@ public:
      */
     void populate_distributed_station_lists();
 
+    /**
+     * Checks if the mesh is geographic
+     * @param path
+     */
+    bool check_is_geographic(const std::string& path);
+
     // .first = config file to use
     // .second = extra options, if any.
     typedef boost::tuple<

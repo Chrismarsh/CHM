@@ -760,7 +760,7 @@ group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata
     return 0;
 }
 
-void triangulation::_load_mesh_h5(const std::string& mesh_filename)
+void triangulation::load_mesh_h5(const std::string& mesh_filename)
 {
     // Turn off the auto-printing when failure occurs so that we can
     // handle the errors appropriately
@@ -789,7 +789,7 @@ void triangulation::_load_mesh_h5(const std::string& mesh_filename)
     { // are we loading from a h5 file that is participating in a a partitioned mesh?
         H5::DataSpace dataspace(1, &partition_dims);
         H5::Attribute attribute = file.openAttribute("/mesh/is_partition");
-        attribute.read(PredType::NATIVE_HBOOL, _mesh_is_partition);
+        attribute.read(PredType::NATIVE_HBOOL, &_mesh_is_partition);
     }
 
     {
@@ -857,7 +857,8 @@ void triangulation::_load_mesh_h5(const std::string& mesh_filename)
             auto vert3 = _vertexes.at(elem[i][2]);
 
             auto face = this->create_face(vert1, vert2, vert3);
-            face->cell_global_id = i;
+            // get the global ID from file, so-as to support either pre partitioned or non partitioned meshes
+            face->cell_global_id = _global_IDs[i];
             face->cell_local_id = i;
 
             if (_is_geographic)
@@ -929,42 +930,127 @@ void triangulation::_load_mesh_h5(const std::string& mesh_filename)
 }
 void triangulation::_build_dDtree()
 {
+    LOG_DEBUG << "Building dD tree";
 
-    std::vector<Point_2> center_points(_num_global_faces);
+    // need to handle either partition or full mesh
+    // _num_global_faces = local_faces.size() in non mpi mode but just make this explicitly obvious
+    size_t nfaces = _mesh_is_partition ? _local_faces.size() : _faces.size();
+    const auto* faces = _mesh_is_partition ? &_local_faces : &_faces;
+
+    std::vector<Point_2> center_points(nfaces);
 
 #pragma omp parallel for
-    for(size_t ii=0; ii < _num_global_faces; ++ii)  // _num_global_faces = local_faces.size() in non mpi mode
+    for(size_t ii=0; ii < nfaces; ++ii)
     {
-        auto face = _faces.at(ii);
+        auto face = faces->at(ii);
         Point_2 pt2(face->center().x(),face->center().y());
         center_points[ii] = pt2;
 
     }
 
     //make the search tree
-    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
-                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
+    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),faces->begin() )),
+                                       boost::make_zip_iterator(boost::make_tuple( center_points.end(),  faces->end() ) )
     );
 }
 
+void triangulation::from_partitioned_hdf5(const std::string& partition_filename, boost::filesystem::path cwd)
+{
+    // we are loading a partition mesh
+    auto partition = read_json(partition_filename);
+
+    auto nranks = partition.get<size_t>("ranks");
+
+    //this will also be set when we load the h5 and is_parition attribute is read
+    // however set it here just in case
+    _mesh_is_partition = true;
+
+#ifdef USE_MPI
+    if (nranks != _comm_world.size())
+    {
+         CHM_THROW_EXCEPTION(config_error, "The partitioned mesh was configured for nranks="+std::to_string(nranks)+ " but CHM was run with " + std::to_string(_comm_world.size()) + " ranks." );
+    }
+#endif
+
+    auto max_ghost_distance = partition.get<double>("max_ghost_distance");
+    _num_global_faces = partition.get<size_t>("num_global_faces");
+
+    // Paths for parameter files
+    std::vector<std::string> mesh_file_paths;
+    try
+    {
+        for(auto &itr : partition.get_child("meshes"))
+        {
+            auto path = boost::filesystem::path(itr.second.data());
+            if (path.is_relative())
+                mesh_file_paths.push_back( (cwd / path).string() );
+            else
+                mesh_file_paths.push_back(path.string() );
+        }
+    }
+    catch(pt::ptree_bad_path &e)
+    {
+        CHM_THROW_EXCEPTION(config_error, "A mesh is required and was not found");
+    }
+
+    // Paths for parameter files
+    std::vector<std::string> param_file_paths;
+    try
+    {
+        for(auto &itr : partition.get_child("parameters"))
+        {
+            auto param_file = boost::filesystem::path(itr.second.data());
+            if(param_file.is_relative())
+                param_file_paths.push_back( (cwd /param_file).string() );
+            else
+                param_file_paths.push_back( param_file.string() );
+        }
+    }
+    catch(pt::ptree_bad_path &e)
+    {
+        LOG_DEBUG << "No addtional parameters found in mesh section.";
+    }
+
+    // Paths for initial condition files
+    std::vector<std::string> initial_condition_file_paths;
+    try
+    {
+        for(auto &itr : partition.get_child("initial_conditions"))
+        {
+            auto ic_file = itr.second.data();
+            LOG_DEBUG << "Found initial condition file: " << ic_file;
+            CHM_THROW_EXCEPTION(config_error,"Initial conditions not currently supported with partition tool.");
+        }
+    }
+    catch(pt::ptree_bad_path &e)
+    {
+        LOG_DEBUG << "No addtional initial conditions found in mesh section.";
+    }
+
+    // keep just our rank's. The hdf5 loader expects a vector of potential files so make a vector of 1
+    auto mesh_file = mesh_file_paths[_comm_world.rank()];
+
+    std::vector<std::string> param_file;
+
+    if(param_file_paths.size() > 0)
+        param_file.push_back( param_file_paths[_comm_world.rank()] );
+
+    from_hdf5(mesh_file, param_file, {} );
+}
 void triangulation::from_hdf5(const std::string& mesh_filename,
 			      const std::vector<std::string>& param_filenames,
 			      const std::vector<std::string>& ic_filenames
 			      )
 {
-
-    std::vector<int> permutation;
-
     try
     {
-        _load_mesh_h5(mesh_filename);
+        load_mesh_h5(mesh_filename);
     }
     // catch failure caused by the H5File operations
     catch (FileIException& error)
     {
         error.printErrorStack();
     }
-
     // catch failure caused by the DataSet operations
     catch (DataSetIException& error) {
         error.printErrorStack();
@@ -972,23 +1058,29 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
     // if we are partitioned, just load it from file
     if(_mesh_is_partition)
-        load_partition_mesh();
+    {
+        load_partition_from_mesh(mesh_filename);
+    }
     else
-        //otherwise, compute it
+    {
+        // otherwise, compute it
         partition_mesh();
 
 #ifdef USE_MPI
-    _num_faces = _local_faces.size();
-    determine_local_boundary_faces();
-    determine_process_ghost_faces_nearest_neighbors();
+        determine_local_boundary_faces();
+        determine_process_ghost_faces_nearest_neighbors();
 
+        // TODO: Need to auto-determine how far to look based on module setups
+        determine_process_ghost_faces_by_distance(100.0);
+#endif
+    }
+
+#ifdef USE_MPI
+    determine_ghost_owners();
     setup_nearest_neighbor_communication();
 
     print_ghost_neighbor_info();
 
-    // Region
-    // TODO: Need to auto-determine how far to look based on module setups
-    determine_process_ghost_faces_by_distance(100.0);
 #endif // USE_MPI
 
     _build_dDtree();
@@ -998,6 +1090,7 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 ////////////////////////////////////////////////////////////////////////////
 // Parameters
 ////////////////////////////////////////////////////////////////////////////
+
 
     for (auto param_filename : param_filenames)
     {
@@ -1151,19 +1244,70 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   		     });
 }
 
-void triangulation::load_partition_mesh()
+void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 {
     // This differs from partition_mesh() in that the partitioned mesh has ghosts mixed in with the faces so that
     // the full geometry could be written to file. Like the rest of the partitioned this does not support a non MPI code path
 
-    // we don't have total number global faces...
-    _num_global_faces = _faces.size();
+    // Ensure that the local boundary faces have been determined, but ghost neighbors have not been set
+    assert( _ghost_faces.size() == 0 );
 
 #ifdef USE_MPI
+    int my_rank = _comm_world.rank();
 
     LOG_DEBUG << "Loading partition";
 
-    int my_rank = _comm_world.rank();
+    // Turn off the auto-printing when failure occurs so that we can
+    // handle the errors appropriately
+    Exception::dontPrint();
+    // Open an existing file and dataset.
+    H5File file(mesh_filename, H5F_ACC_RDONLY);
+    H5::DataSet dataset = file.openDataSet("/mesh/ghost_type");
+    H5::DataSpace dataspace = dataset.getSpace();
+    hsize_t nelem;
+    int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+
+    std::vector<int> ghost_info(nelem);
+    dataset.read(ghost_info.data(), PredType::NATIVE_INT);
+    file.close();
+
+    LOG_DEBUG << mesh_filename;
+
+    // when we get to here, we have a mix of ghosts and not ghosts in _local_faces and don't have the sizes
+    // we need to pick this apart
+    // since the faces are sorted coming from the partition tool, they will be sorted here. Since we grow arrays we
+    // can't do this in parallel which will preserve the sort. If this is every changed, then need to sort
+
+    enum GHOST_TYPE
+    {
+        NONE,
+        NEIGH,
+        DIST
+    };
+
+//    if(_comm_world.rank() == 1)
+//    {
+//        LOG_DEBUG << "I am PID " << getpid();
+//        sleep(200);
+//    }
+    // here we loop through all (incl ghosts!) to figure out where everything shoould go.
+    // DO NOT do this in parallel (at the moment) as it's not thread safe
+    for (size_t i = 0; i < _faces.size(); ++i)
+    {
+        if (ghost_info[i] != GHOST_TYPE::NONE)
+        {
+            _ghost_faces.push_back(_faces[i]);
+            if(ghost_info[i] == GHOST_TYPE::NEIGH)
+                _ghost_neighbors.push_back(_faces[i]);
+        } else
+        {
+            _faces[i]->is_ghost = false;
+            _faces[i]->owner = my_rank;
+            _faces[i]->cell_local_id = i;
+
+            _local_faces.push_back(_faces[i]);
+        }
+    }
 
     // Set up so that all processors know how 'big' all other processors are
     _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
@@ -1180,28 +1324,29 @@ void triangulation::load_partition_mesh()
         face_start_idx += _num_faces_in_partition[i - 1];
         face_end_idx += _num_faces_in_partition[i];
     }
-    // Store in the public members
-    global_cell_start_idx = face_start_idx;
-    global_cell_end_idx = face_end_idx;
 
-    // Set size of vector containing locally owned faces
-    _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
-
-    // Loop can't be parallel due to modifying map
-    for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
+    if (face_start_idx != _local_faces.front()->cell_global_id ||
+        face_end_idx != _local_faces.back()->cell_global_id)
     {
-        size_t offset_idx = face_start_idx + local_ind;
-        _global_to_locally_owned_index_map[_global_IDs[offset_idx]] = local_ind;
-
-        _faces.at(_global_IDs[offset_idx])->is_ghost = false;
-        _faces.at(_global_IDs[offset_idx])->owner = my_rank;
-        _faces.at(_global_IDs[offset_idx])->cell_local_id = local_ind;
-        _local_faces[local_ind] = _faces.at(_global_IDs[offset_idx]);
+        LOG_ERROR << "The computed and read start/end indxe don't match. Computed:\n"
+                  << "\tface_start_idx = " << face_start_idx << "\n"
+                  << "\tface_end_idx = " << face_end_idx << "\n"
+                  << "Read:\n"
+                  << "\t_local_faces[0] = " << _local_faces.front()->cell_global_id << "\n"
+                  << "\t_local_faces[-1] = " << _local_faces.back()->cell_global_id;
+        CHM_THROW_EXCEPTION(mesh_error, "Computed and read global indexs don't match");
     }
 
-#endif
-    LOG_DEBUG << "MPI Process " << my_rank << ": start " << face_start_idx << ", end " << face_end_idx << ", number "
+    // Store in the public members
+    global_cell_start_idx = _local_faces.front()->cell_global_id;
+    global_cell_end_idx   = _local_faces.back()->cell_global_id;
+
+    _num_faces = _local_faces.size();
+
+    LOG_DEBUG << "MPI Process " << my_rank << ": start " << global_cell_start_idx << ", end " << global_cell_end_idx << ", number "
               << _local_faces.size();
+
+#endif
 }
 void triangulation::partition_mesh()
 {
@@ -1254,6 +1399,7 @@ void triangulation::partition_mesh()
         _local_faces[local_ind] = _faces.at(_global_IDs[offset_idx]);
     }
 
+    _num_faces = _local_faces.size();
     LOG_DEBUG << "MPI Process " << my_rank << ": start " << face_start_idx << ", end " << face_end_idx << ", number "
               << _local_faces.size();
 
@@ -1306,34 +1452,34 @@ void triangulation::determine_local_boundary_faces()
 #pragma omp for
     for(size_t face_index=0; face_index< _local_faces.size(); ++face_index)
       {
-		 // face_index is a local index... get the face handle
-		 auto face = _local_faces.at(face_index);
+             // face_index is a local index... get the face handle
+             auto face = _local_faces.at(face_index);
 
-		 int num_owned_neighbors = 0;
-		 for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
-		   {
+             int num_owned_neighbors = 0;
+             for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
+               {
 
-		     auto neigh = face->neighbor(neigh_index);
+                 auto neigh = face->neighbor(neigh_index);
 
-		     // Test status of neighbor
-		     if (neigh == nullptr)
-		       {
-			 th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
-			 num_owned_neighbors=3; // set this to avoid triggering the post-loop if statement
-			 break;
-		       } else
-		       {
-			 if (neigh->is_ghost == false)
-			   {
-			     num_owned_neighbors++;
-			   }
-		       }
-		   }
+                 // Test status of neighbor
+                 if (neigh == nullptr)
+                   {
+                     th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+                     num_owned_neighbors=3; // set this to avoid triggering the post-loop if statement
+                     break;
+                   } else
+                   {
+                     if (neigh->is_ghost == false)
+                       {
+                         num_owned_neighbors++;
+                       }
+                   }
+               }
 
-		 // If we don't own 3 neighbors, we are a local, but not a global boundary face
-		 if( num_owned_neighbors<3 ) {
-		   th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
-		 }
+             // If we don't own 3 neighbors, we are a local, but not a global boundary face
+             if( num_owned_neighbors<3 ) {
+               th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
+             }
       }
 
     // Join the vectors via a single thread in t operations
@@ -1407,50 +1553,7 @@ void triangulation::determine_process_ghost_faces_nearest_neighbors()
   LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbors.size() << " ghosted nearest neighbors.";
 #endif
 
-  // Determine the owners of the ghost faces (for communication setup)
-  _ghost_neighbor_owners.resize(_ghost_neighbors.size());
-  int start_index=0;
-  int prev_owner;
-  int num_partners=0;
-  // Construct ghost region ownership info
-  for(size_t i=0; i<_ghost_neighbors.size(); ++i)
-  {
-    // index type needs to match type of elements of _num_faces_in_partition
-    int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
-    _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
-								 _num_faces_in_partition);
-    // on first it, no value of prev_owner exists
-    if(i==0) prev_owner = _ghost_neighbor_owners[i];
-    // if owner different from last iteration, store prev segment's ownership info
-    if (prev_owner != _ghost_neighbor_owners[i])
-    {
-      num_partners++;
-      _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index);
-      start_index=i;
-    }
 
-    if (i ==_ghost_neighbors.size()-1) {
-      _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index+1);
-    }
-
-    // prep prev_owner for next iteration
-    prev_owner=_ghost_neighbor_owners[i];
-  }
-
-  for(size_t i=0; i<_ghost_neighbors.size(); ++i)
-  {
-    _global_index_to_local_ghost_map[_ghost_neighbors[i]->cell_global_id] = static_cast<int>(i);
-  }
-
-#ifdef USE_MPI
-  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _comm_partner_ownership.size() << " communication partners:";
-  for (auto it : _comm_partner_ownership)
-  {
-    LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << it.first << " owns local ghost indices " << it.second.first << " to " << it.second.first+it.second.second-1;
-  }
-  // _comm_world.barrier();
-  // exit(0);
-#endif
 
 }
 
@@ -1466,6 +1569,52 @@ int generate_unique_recv_tag(int my_rank, int partner_rank){
   return my_rank + 10000*partner_rank;
 }
 
+void triangulation::determine_ghost_owners()
+{
+    // Determine the owners of the ghost faces (for communication setup)
+    _ghost_neighbor_owners.resize(_ghost_neighbors.size());
+    int start_index=0;
+    int prev_owner;
+    int num_partners=0;
+    // Construct ghost region ownership info
+    for(size_t i=0; i<_ghost_neighbors.size(); ++i)
+    {
+        // index type needs to match type of elements of _num_faces_in_partition
+        int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
+        _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
+                                                                    _num_faces_in_partition);
+        // on first it, no value of prev_owner exists
+        if(i==0) prev_owner = _ghost_neighbor_owners[i];
+        // if owner different from last iteration, store prev segment's ownership info
+        if (prev_owner != _ghost_neighbor_owners[i])
+        {
+            num_partners++;
+            _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index);
+            start_index=i;
+        }
+
+        if (i ==_ghost_neighbors.size()-1) {
+            _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index+1);
+        }
+
+        // prep prev_owner for next iteration
+        prev_owner=_ghost_neighbor_owners[i];
+    }
+
+    for(size_t i=0; i<_ghost_neighbors.size(); ++i)
+    {
+        _global_index_to_local_ghost_map[_ghost_neighbors[i]->cell_global_id] = static_cast<int>(i);
+    }
+
+#ifdef USE_MPI
+    LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _comm_partner_ownership.size() << " communication partners:";
+    for (auto it : _comm_partner_ownership)
+    {
+        LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << it.first << " owns local ghost indices " << it.second.first << " to " << it.second.first+it.second.second-1;
+    }
+
+#endif
+}
 void triangulation::setup_nearest_neighbor_communication()
 {
 

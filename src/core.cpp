@@ -565,61 +565,77 @@ void core::config_meshes( pt::ptree &value)
 
     std::string mesh_path = value.get<std::string>("mesh");
     LOG_DEBUG << "Found mesh:" << mesh_path;
-
     mesh_path = (cwd_dir / mesh_path).string();
 
-    auto mesh_file_extension = boost::filesystem::path(mesh_path).extension();
+    auto mesh_file_extension = boost::filesystem::path(mesh_path).extension().string();
 
-    // Paths for parameter files
+    // only need to look for param + ic if we aren't loading a partition
     std::vector<std::string> param_file_paths;
-    try
-    {
-        for(auto &itr : value.get_child("parameters"))
-        {
-	  auto param_file = itr.second.data();
-	  LOG_DEBUG << "Found parameter file: " << param_file;
-	  param_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
-	}
-    }
-    catch(pt::ptree_bad_path &e)
-    {
-        LOG_DEBUG << "No addtional parameters found in mesh section.";
-    }
-
-    // Paths for initial condition files
     std::vector<std::string> initial_condition_file_paths;
-    try
+    if(mesh_file_extension != ".partition")
     {
-        for(auto &itr : value.get_child("initial_conditions"))
+        // Paths for parameter files
+        try
         {
-	  auto ic_file = itr.second.data();
-	  LOG_DEBUG << "Found initial condition file: " << ic_file;
-	  initial_condition_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
+            for(auto &itr : value.get_child("parameters"))
+            {
+                auto param_file = itr.second.data();
+                LOG_DEBUG << "Found parameter file: " << param_file;
+                param_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
+            }
+        }
+        catch(pt::ptree_bad_path &e)
+        {
+            LOG_DEBUG << "No addtional parameters found in mesh section.";
+        }
+
+        // Paths for initial condition files
+        try
+        {
+            for(auto &itr : value.get_child("initial_conditions"))
+            {
+                auto ic_file = itr.second.data();
+                LOG_DEBUG << "Found initial condition file: " << ic_file;
+                initial_condition_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
+            }
+        }
+        catch(pt::ptree_bad_path &e)
+        {
+            LOG_DEBUG << "No addtional initial conditions found in mesh section.";
         }
     }
-    catch(pt::ptree_bad_path &e)
-    {
-        LOG_DEBUG << "No addtional initial conditions found in mesh section.";
-    }
+
 
     // Ensure all files are HDF5 in multiprocess MPI runs
 #ifdef USE_MPI
-    if ( (_comm_world.size() > 1) ) {
-      if (mesh_file_extension != ".h5") {
-        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
-      }
-      for(const auto& it : param_file_paths) {
-	auto extension = boost::filesystem::path(it).extension();
-	if (extension != ".h5") {
-	  BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 parameter files: " + it + "\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
-	}
-      }
-      for(const auto& it : initial_condition_file_paths) {
-	auto extension = boost::filesystem::path(it).extension();
-	if (extension != ".h5") {
-	  BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 initial condition files: " + it + "\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
-	}
-      }
+    if ( _comm_world.size() > 1 )
+    {
+        bool h5_or_part = mesh_file_extension != ".h5" || mesh_file_extension != ".partition";
+        if(!h5_or_part)
+        {
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+        }
+
+        // only check the params and ics if we aren't using a parition file
+        if(mesh_file_extension != ".partition")
+        {
+            for(const auto& it : param_file_paths)
+            {
+                auto extension = boost::filesystem::path(it).extension();
+                if(extension != ".h5")
+                {
+                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 parameter files: " + it + "\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+                }
+            }
+            for(const auto& it : initial_condition_file_paths)
+            {
+                auto extension = boost::filesystem::path(it).extension();
+                if(extension != ".h5")
+                {
+                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 initial condition files: " + it + "\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+                }
+            }
+        }
 
     }
 #endif
@@ -631,30 +647,12 @@ void core::config_meshes( pt::ptree &value)
 
     _provided_parameters = _mesh->parameters();
 
-    bool is_geographic = false;
 
     pt::ptree mesh; // holds the json mesh if we end up using it
 
     // Before we read the mesh, we need to know if we are geographic or projected so we can hook up all the distance functions
     // correctly. So for either json or hdf5 we check, hook up the functions, then proceed to the main load which can assume the functions are available
-    if(mesh_file_extension == ".h5")
-    {
-        hsize_t geographic_dims = 1;
-        H5::DataSpace dataspace(1, &geographic_dims);
-
-        H5File  file(mesh_path, H5F_ACC_RDONLY);
-        H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
-        attribute.read(PredType::NATIVE_HBOOL, &is_geographic);
-        file.close();
-    }
-    else
-    {
-        mesh = read_json(mesh_path);
-        if( mesh.get<int>("mesh.is_geographic") == 1)
-        {
-            is_geographic = true;
-        }
-    }
+    bool is_geographic = check_is_geographic(mesh_path);
 
     _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
     if( is_geographic)
@@ -673,7 +671,18 @@ void core::config_meshes( pt::ptree &value)
     ////////////////////////////////////////////////////////////
     if(mesh_file_extension == ".h5")
     {
-      _mesh->from_hdf5(mesh_path, param_file_paths, initial_condition_file_paths);
+        _mesh->from_hdf5(mesh_path, param_file_paths, initial_condition_file_paths);
+    }
+    else if(mesh_file_extension == ".partition")
+    {
+#ifndef USE_MPI
+        CHM_THROW_EXCEPTION(config_error, "Using a partitioned mesh requires enabling MPI during CHM configure and build.");
+#endif
+
+        _mesh->from_partitioned_hdf5(mesh_path);
+
+
+
     }
     else  // Assume anything that is NOT h5 is json
     {
@@ -1120,7 +1129,10 @@ void core::init(int argc, char **argv)
 
     //do this here though as we need cwd_dir for the log output path
     boost::filesystem::path path(cmdl_options.get<0>());
-    cwd_dir = path.parent_path();
+    cwd_dir = boost::filesystem::current_path();
+
+    LOG_DEBUG << "Current working directory: " << cwd_dir.string();
+
 
     std::string log_dir = "log";
     auto log_path = cwd_dir / log_dir;
@@ -2343,6 +2355,62 @@ void core::run()
 void core::end()
 {
     LOG_DEBUG << "Cleaning up";
+}
+
+bool core::check_is_geographic(const std::string& path)
+{
+    auto mesh_file_extension = boost::filesystem::path(path).extension();
+
+    std::string mesh_path = path;
+    bool is_geographic = false;
+
+    // we have a partition so load just the first part of the partition
+    if(mesh_file_extension == ".partition")
+    {
+        try
+        {
+            auto json = read_json(path);
+            for(auto &itr : json.get_child("meshes"))
+            {
+                auto mesh_file_paths = boost::filesystem::path(itr.second.data());
+                if(mesh_file_paths.is_relative())
+                    mesh_path = (cwd_dir / mesh_file_paths).string();
+                else
+                    mesh_path = mesh_file_paths.string();
+                mesh_file_extension = boost::filesystem::path(mesh_path).extension();
+                break;
+            }
+        }
+        catch(pt::ptree_bad_path &e)
+        {
+            CHM_THROW_EXCEPTION(config_error, "A mesh is required and was not found");
+        }
+    }
+
+    if(mesh_file_extension == ".h5")
+    {
+        hsize_t geographic_dims = 1;
+        H5::DataSpace dataspace(1, &geographic_dims);
+
+        H5File  file(mesh_path, H5F_ACC_RDONLY);
+        H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
+        attribute.read(PredType::NATIVE_HBOOL, &is_geographic);
+        file.close();
+    }
+    else
+    {
+        auto mesh = read_json(path);
+        if( mesh.get<int>("mesh.is_geographic") == 1)
+        {
+            is_geographic = true;
+        }
+        else
+        {
+            is_geographic = false;
+        }
+    }
+
+    return is_geographic;
 }
 
 void core::populate_face_station_lists()

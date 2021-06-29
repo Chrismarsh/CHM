@@ -333,7 +333,10 @@ class preprocessingTriangulation : public triangulation
             {
                 auto neigh = face->neighbor(i);
                 if(neigh != nullptr && neigh->is_ghost)
+                {
                     ghosted_boundary_nearest_neighbors.push_back(neigh);
+                    neigh->get_module_data<ghost_info>("partition_tool")->ghost_type = ghost_info::GHOST_TYPE::NEIGH;
+                }
             }
         }
 
@@ -417,6 +420,7 @@ class preprocessingTriangulation : public triangulation
         pt::ptree tree;
         tree.put("ranks",MPI_ranks);
         tree.put("max_ghost_distance",100.0);
+        tree.put("num_global_faces",_num_global_faces);
 
         pt::ptree meshes;
         pt::ptree params;
@@ -438,10 +442,17 @@ class preprocessingTriangulation : public triangulation
             global_indices_to_send.clear();
 //            _global_IDs = {};
 
-#pragma omp parallel for
+
+            std::set<std::string> pt = {"partition_tool"};
+            #pragma omp parallel for
             for(size_t i = 0; i < _faces.size(); ++i)
             {
                 _faces.at(i)->is_ghost = true; // default state, switches to false later
+                _faces.at(i)->init_module_data(pt);
+                auto *gi = _faces.at(i)->make_module_data<ghost_info>("partition_tool");
+
+                // doesn't match the is_ghost default state. Here we assume false, and then switch it to the correct type when determined
+                gi->ghost_type = ghost_info::GHOST_TYPE::NONE;
             }
 
             partition(_comm_world._rank);
@@ -454,9 +465,22 @@ class preprocessingTriangulation : public triangulation
             // TODO: Need to auto-determine how far to look based on module setups
             determine_process_ghost_faces_by_distance(100.0);
 
+            // we need to flag all the ghosts that aren't neigh as radius ghosts
+            for(size_t i = 0; i < _ghost_faces.size(); i++)
+            {
+                auto face = _ghost_faces[i];
+                auto gi = face->get_module_data<ghost_info>("partition_tool");
+
+                // if we aren't a neigh, we were added by determine_process_ghost_faces_by_distance
+                if(gi->ghost_type != ghost_info::GHOST_TYPE::NEIGH)
+                    gi->ghost_type = ghost_info::GHOST_TYPE::DIST;
+            }
+
             // now, augment the local faces with our ghosts, so that the ghosts are
             // a) flagged and b) available in this subset
-            _local_faces.insert(_local_faces.end(),_ghost_neighbors.begin(), _ghost_neighbors.end()) ;
+            // _ghost_faces inclues /all/ the ghost faces: neighbour + distance
+            _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end()) ;
+
             tbb::parallel_sort(_local_faces.begin(), _local_faces.end(),
                                [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
                                {
@@ -478,7 +502,7 @@ class preprocessingTriangulation : public triangulation
             params.push_back(std::make_pair("",p));
         }
         tree.add_child("meshes",meshes);
-        tree.add_child("params",params);
+        tree.add_child("parameters",params);
 
         pt::write_json("test_mesh.n32.partition",tree);
 
@@ -607,12 +631,17 @@ class preprocessingTriangulation : public triangulation
             { // ghosts
                 H5::DataSpace dataspace(1, &ntri);
                 std::vector<int> is_ghost(ntri);
-                //#pragma omp parallel for
+                #pragma omp parallel for
                 for (size_t i = 0; i < ntri; ++i)
                 {
-                    is_ghost[i] = _local_faces[i]->is_ghost;
+                    // we need to save the following status for ghost faces:
+                    // 0 = Not a ghost
+                    // 1 = Neighbour ghost
+                    // 2 = Radius search ghost
+                    auto gi = _local_faces[i]->get_module_data<ghost_info>("partition_tool");
+                    is_ghost[i] = gi->ghost_type;
                 }
-                H5::DataSet dataset = file.createDataSet("/mesh/is_ghost", PredType::STD_I32BE, dataspace);
+                H5::DataSet dataset = file.createDataSet("/mesh/ghost_type", PredType::STD_I32BE, dataspace);
                 dataset.write(is_ghost.data(), PredType::NATIVE_INT);
 
             }
@@ -635,6 +664,15 @@ class preprocessingTriangulation : public triangulation
                     file.createAttribute("/mesh/is_geographic", PredType::NATIVE_HBOOL, dataspace);
                 attribute.write(PredType::NATIVE_HBOOL, &_is_geographic);
             }
+
+            { // Write that this is part of a partitioned mesh
+                bool is_partition = true;
+                H5::DataSpace dataspace(1, &partition_dims);
+                H5::Attribute attribute =
+                    file.createAttribute("/mesh/is_partition", PredType::NATIVE_HBOOL, dataspace);
+                attribute.write(PredType::NATIVE_HBOOL, &is_partition);
+            }
+
 
         } // end of try block
 
@@ -721,6 +759,16 @@ class preprocessingTriangulation : public triangulation
     };
 
     comm_world _comm_world;
+
+    struct ghost_info : public face_info
+    {
+        // Note the type of ghost we are:
+        // None = not a ghost
+        // Neigh = Neighbour ghost
+        // Dist = Distance search ghost
+        enum GHOST_TYPE {NONE, NEIGH, DIST};
+        GHOST_TYPE ghost_type = GHOST_TYPE::NONE;
+    };
 };
 
 int main()
