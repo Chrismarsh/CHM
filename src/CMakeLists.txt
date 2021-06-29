@@ -240,6 +240,11 @@ target_include_directories(CHMmath PUBLIC
   ${HEADER_FILES}
 )
 
+set_target_properties(CHMmath
+		PROPERTIES
+		COMPILE_FLAGS ${CHM_BUILD_FLAGS})
+
+
 add_executable(
 		CHM
 		main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
@@ -258,7 +263,6 @@ if(MPI_FOUND AND USE_MPI)
 endif()
 
 
-
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 		CHM
@@ -269,6 +273,7 @@ target_link_libraries(
 set_target_properties(CHM
 		PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		COMPILE_FLAGS ${CHM_BUILD_FLAGS}
 		UNITY_BUILD OFF
 		UNITY_BUILD_BATCH_SIZE 2
 		)
@@ -341,6 +346,8 @@ add_executable(
 		${CHM_SRCS}
 )
 target_compile_features(partition PRIVATE cxx_std_14)
+
+
 target_link_libraries(
 		partition
 		CHMmath
@@ -350,6 +357,7 @@ target_link_libraries(
 set_target_properties(partition
 		PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		COMPILE_FLAGS "-g3 -O1 -fno-inline -ggdb -DSAFE_CHECKS"
 		)
 
 

@@ -53,20 +53,12 @@ endif()
 LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
 
-#LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake/")
-#LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
-
 if(NOT BUILD_WITH_CONAN)
     LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake-without-conan/")
     LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake-without-conan/")
 endif()
 
 #########
-# Helper macro that removes cxx flag flags
-macro(remove_cxx_flag flag)
-    string(REPLACE "${flag}" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-endmacro()
-
 # lovely CMake script to integrate git hashes
 # http://xit0.org/2013/04/cmake-use-git-branch-and-commit-details-in-project/
 # Get the current working branch
@@ -189,7 +181,7 @@ else()
 endif()
 
 #need this for calling the logger from multiple modules
-ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
+add_definitions(-DBOOST_LOG_DYN_LINK)
 
 find_package(${CGAL} 5.0 REQUIRED)
 
@@ -199,39 +191,49 @@ find_package(${CGAL} 5.0 REQUIRED)
 # https://stackoverflow.com/questions/57857572/why-does-boost-log-break-boost-gmp-multiprecision
 # But CGAL uses boost/mp which appears to cause this problem. So if we see clang, disable boost MP usage.
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
-    ADD_DEFINITIONS(-DCGAL_DO_NOT_USE_BOOST_MP)
+    add_definitions(-DCGAL_DO_NOT_USE_BOOST_MP)
 
     message(WARNING "Disabling CGAL's use of boost mp to avoid clang compiler parse error.")
 endif()
 
+
+#these are the flags we will use to build CHM. Used with target properties instead of modifying CXX_FLAGS
+set(CHM_BUILD_FLAGS "-Wall -Wno-unused-variable -Wno-unknown-pragmas")
 #reset these back
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     message(WARNING "Debug mode")
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "4.7")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O1 -fno-inline") #new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
-    else()
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -O1 -fno-inline -ggdb")
+    add_definitions(-DSAFE_CHECKS)
+
+    set(DEBUG_FLAGS "")
+
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        # A new general optimization level, -Og, has been introduced. It addresses the need for fast compilation and
+        # a superior debugging experience while providing a reasonable level of run-time performance.
+        # Overall experience for development should be better than the default optimization level -O0.
+        # new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
+        set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -Og -fno-inline -ggdb")
+    else("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
+        set(DEBUG_FLAGS "${DEBUG_FLAGS} -g -O1 -ggdb")
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAFE_CHECKS")
+
+    set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${DEBUG_FLAGS}")
 else()
+    message(STATUS "Release mode")
+    set(RELEASE_FLAGS "-g -O3")
 
     if(ENABLE_SAFE_CHECKS)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAFE_CHECKS")
+        add_definitions(-DSAFE_CHECKS)
     endif()
-    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -O3 ")
+
+    set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${RELEASE_FLAGS}")
 endif()
 
-#Setup CXX flags
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-unused-variable -Wno-unknown-pragmas")
-
-
-#GAL requires strict rounding
+#CGAL requires strict rounding
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qoverride-limits -fp-model strict -msse4 -finline ") #-frounding-math needed for cgal
-endif()
-
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") # OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -frounding-math")
+    set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} -qoverride-limits -fp-model strict -msse4 -finline ")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR
+        "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS}  -frounding-math")
 endif()
 ########
 
@@ -239,7 +241,7 @@ if(USE_OMP)
     find_package(OpenMP ) # This will produce the target for us
 
     if(OpenMP_FOUND)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+        set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${OpenMP_CXX_FLAGS}")
      #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
     endif()
 endif()
@@ -317,14 +319,14 @@ if( ${USE_TCMALLOC})
     #gperftools may not compile on machines w/o nano sleep so we need to optionally disable if it fails to compile
     if(${GPERFTOOLS}_FOUND)
         message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+        set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
     endif()
 endif()
 
 if( USE_JEMALLOC )
     find_package(Jemalloc REQUIRED)
     message(STATUS "Found JeMalloc, disabling builtin malloc, free")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+    set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
 endif()
 
 
