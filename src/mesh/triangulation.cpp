@@ -1138,7 +1138,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
                 hsize_t local_size = static_cast<hsize_t>(
                     _num_faces); // _num_faces will have been set to the local face size in MPI mode
 
-                hsize_t offset = static_cast<hsize_t>(global_cell_start_idx);
+
+                hsize_t offset = static_cast<hsize_t>(_mesh_is_partition ? 0 : global_cell_start_idx);
 
 
                 DataSet dataset = group.openDataSet(name);
@@ -1178,7 +1179,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
                 for (size_t i = 0; i < _ghost_faces.size(); i++)
                 {
                     auto face = _ghost_faces.at(i);
-                    hsize_t global_id = face->cell_global_id;
+                    //when we are reading from a paritioned file, the ghosts will be below the non ghosts
+                    hsize_t global_id = _mesh_is_partition ? _local_faces.size() + i : face->cell_global_id;
 
                     // Position and size in file
                     dataspace.selectHyperslab(H5S_SELECT_SET, &one, &global_id);

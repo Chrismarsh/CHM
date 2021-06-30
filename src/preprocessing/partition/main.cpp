@@ -7,9 +7,19 @@ namespace pt = boost::property_tree;
 
 using namespace H5;
 
+typedef struct _MeshParameters
+{
+    std::vector<std::string> names;
+} MeshParameters;
+
+// this is decalred in the main triangulation.cpp
+herr_t group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata);
+
 class preprocessingTriangulation : public triangulation
 {
   public:
+
+
     void partition(int mpi_rank)
     { // Set up so that all processors know how 'big' all other processors are
         _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
@@ -405,17 +415,16 @@ class preprocessingTriangulation : public triangulation
     }
 
 
-    void from_hdf5_and_partition(const std::string& mesh_filename, int MPI_ranks)
+    void from_hdf5_and_partition(const std::string& mesh_filename,
+                                 const std::vector<std::string>& param_filenames,
+                                 int MPI_ranks)
     {
         _comm_world._size = MPI_ranks;
         LOG_DEBUG << "Partitioning mesh " << mesh_filename << " with #ranks=" << MPI_ranks;
 
         read_h5(mesh_filename);
 
-
         _num_global_faces = _faces.size();
-
-
 
         pt::ptree tree;
         tree.put("ranks",MPI_ranks);
@@ -440,7 +449,7 @@ class preprocessingTriangulation : public triangulation
             _comm_partner_ownership.clear();
             _global_index_to_local_ghost_map.clear();
             global_indices_to_send.clear();
-//            _global_IDs = {};
+            _param_data.clear();
 
 
             std::set<std::string> pt = {"partition_tool"};
@@ -476,16 +485,98 @@ class preprocessingTriangulation : public triangulation
                     gi->ghost_type = ghost_info::GHOST_TYPE::DIST;
             }
 
+            // load params
+
+
+            for (auto param_filename : param_filenames)
+            {
+                try
+                {
+                    // Turn off the auto-printing when failure occurs so that we can
+                    // handle the errors appropriately
+                    Exception::dontPrint();
+
+                    // Open an existing file and dataset.
+                    H5File file(param_filename, H5F_ACC_RDONLY);
+
+                    // Space for extracting the parameter info
+
+                    std::unique_ptr<MeshParameters> pars(new MeshParameters);
+
+                    // Extract all of the parameter info (names) from the file
+                    Group group = file.openGroup("parameters");
+                    herr_t idx =
+                        H5Literate(group.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, (void*)pars.get());
+
+                    for (auto const& name : pars->names)
+                    {
+                        // hyperslab size that is as large as just the local meshes to read the block
+                        hsize_t local_size = static_cast<hsize_t>(_local_faces.size());
+
+                        //but we need to ensure we have enough room for local + ghosts
+                        _param_data[name].resize(_local_faces.size() + _ghost_faces.size());
+                        hsize_t offset = static_cast<hsize_t>(_local_faces[0]->cell_global_id);
+
+                        DataSet dataset = group.openDataSet(name);
+                        DataSpace dataspace = dataset.getSpace();
+
+                        hsize_t nelem;
+                        int ndims = dataspace.getSimpleExtentDims(&nelem);
+
+                        dataspace.selectHyperslab(H5S_SELECT_SET, &local_size, &offset);
+
+                        DataSpace memspace(1, &nelem);
+                        hsize_t zero = 0;
+                        memspace.selectHyperslab(H5S_SELECT_SET, &local_size, &zero);
+
+                        dataset.read(_param_data[name].data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
+
+                        // Read parameters for each ghost face individually
+                        hsize_t one = 1;
+                        // Do NOT do this loop in parallel (internal state of HDF5)
+                        for (size_t i = 0; i < _ghost_faces.size(); i++)
+                        {
+                            auto face = _ghost_faces.at(i);
+                            hsize_t global_id = face->cell_global_id;
+
+                            // Position and size in file
+                            dataspace.selectHyperslab(H5S_SELECT_SET, &one, &global_id);
+                            // Position and size in variable
+                            memspace.selectHyperslab(H5S_SELECT_SET, &one, &zero);
+
+                            double value;
+                            dataset.read(&value, PredType::NATIVE_DOUBLE, memspace, dataspace);
+
+                            _param_data[name][_local_faces.size() + i] = value;
+
+//                            face->parameter(name) = value;
+                        }
+                    }
+                }
+                // catch failure caused by the H5File operations
+                catch (FileIException& error)
+                {
+                    error.printErrorStack();
+                }
+
+                    // catch failure caused by the DataSet operations
+                catch (DataSetIException& error)
+                {
+                    error.printErrorStack();
+                }
+            }
+
             // now, augment the local faces with our ghosts, so that the ghosts are
             // a) flagged and b) available in this subset
             // _ghost_faces inclues /all/ the ghost faces: neighbour + distance
             _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end()) ;
 
-            tbb::parallel_sort(_local_faces.begin(), _local_faces.end(),
-                               [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
-                               {
-                                 return fa->cell_global_id < fb->cell_global_id;
-                               });
+//            tbb::parallel_sort(_local_faces.begin(), _local_faces.end(),
+//                               [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
+//                               {
+//                                 return fa->cell_global_id < fb->cell_global_id;
+//                               });
+
 
             std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
 
@@ -707,21 +798,16 @@ class preprocessingTriangulation : public triangulation
 
             hsize_t ntri = _local_faces.size();
 
-            for (auto& par_iter : _parameters)
+            for (auto& par_iter : _param_data)
             {
 
+                auto p = par_iter.first;
+
                 H5::DataSpace dataspace(1, &ntri);
-                std::string par_location = "/parameters/" + par_iter;
+                std::string par_location = "/parameters/" + p;
                 H5::DataSet dataset = file.createDataSet(par_location, PredType::NATIVE_DOUBLE, dataspace);
 
-                std::vector<double> values(ntri);
-#pragma omp parallel for
-                for (size_t i = 0; i < ntri; ++i)
-                {
-                    auto face = _local_faces.at(i);
-                    values[i] = face->parameter(par_iter);
-                }
-                dataset.write(values.data(), PredType::NATIVE_DOUBLE);
+                dataset.write(_param_data[p].data(), PredType::NATIVE_DOUBLE);
             }
 
         } // end try block
@@ -760,6 +846,8 @@ class preprocessingTriangulation : public triangulation
 
     comm_world _comm_world;
 
+    std::map<std::string, std::vector<double> > _param_data;
+
     struct ghost_info : public face_info
     {
         // Note the type of ghost we are:
@@ -781,6 +869,8 @@ int main()
 
     mesh_filename = "/Users/chris/Documents/science/model_runs/benchmark_problems/granger_pbsm_synthetic/test_mesh.h5";
 
+    std::vector<std::string> param_filenames = {"/Users/chris/Documents/science/model_runs/benchmark_problems/granger_pbsm_synthetic/test_param.h5"};
+
     preprocessingTriangulation* tri = new preprocessingTriangulation();
-    tri->from_hdf5_and_partition(mesh_filename,MPI_ranks);
+    tri->from_hdf5_and_partition(mesh_filename,param_filenames, MPI_ranks);
 }
