@@ -920,8 +920,7 @@ public:
 protected:
 
     /**
-     * loads the given mesh as h5 into the triangulation. Differs from the main h5 loader by not doing any params nor
-     * any partitioning, etc
+     * Loads a given mesh as h5 into the triangulation. Only loads the main topology.
      * @param mesh_filename
      */
     void load_mesh_h5(const std::string& mesh_filename);
@@ -929,7 +928,7 @@ protected:
     void determine_ghost_owners();
 
     /**
-     * Build the spatial search dD tree. Assumes _num_global_faces has been set and needs to occur once
+     * Build the spatial search dD tree. Assumes _num_global_faces has been set and this needs to be called after
      * the partition has happened
      */
     void _build_dDtree();

@@ -175,9 +175,23 @@ void MS_wind::run(mesh& domain)
           for (size_t j = 0; j < 3; j++)
           {
             auto neigh = face->neighbor(j);
+
             if (neigh != nullptr)
-              u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(),
-                                            (*neigh)["U_R"_s]));
+            {
+                try
+                {
+                    u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_R"_s]));
+                }
+                catch (...)
+                {
+                    LOG_DEBUG << "neigh is ghost? " << neigh->is_ghost;
+                    LOG_DEBUG << "face is ghost? " << face->is_ghost;
+                    LOG_DEBUG << "face global " << face->cell_global_id;
+                    LOG_DEBUG << "neigh global " << neigh->cell_global_id;
+                    CHM_THROW_EXCEPTION(module_error, "RIP");
+                }
+            }
+
           }
 
           double new_u = (*face)["U_R"_s];

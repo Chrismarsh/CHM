@@ -1232,8 +1232,6 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   assert( permutation.size() == size_faces() );
   LOG_DEBUG << "Reordering faces";
 
-
-
   // Update the IDs on all faces
   #pragma omp parallel for
   for (size_t ind = 0; ind < permutation.size(); ++ind)
@@ -1296,20 +1294,24 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
         DIST
     };
 
-//    if(_comm_world.rank() == 1)
-//    {
-//        LOG_DEBUG << "I am PID " << getpid();
-//        sleep(200);
-//    }
-    // here we loop through all (incl ghosts!) to figure out where everything shoould go.
+
+    // here we loop through all (incl ghosts!) to figure out where everything should go.
     // DO NOT do this in parallel (at the moment) as it's not thread safe
+    if(_comm_world.rank() == 1)
+    {
+        LOG_DEBUG << "I am PID " << getpid();
+//        sleep(200);
+    }
     for (size_t i = 0; i < _faces.size(); ++i)
     {
         if (ghost_info[i] != GHOST_TYPE::NONE)
         {
+            _faces[i]->is_ghost = true;
+
             _ghost_faces.push_back(_faces[i]);
             if(ghost_info[i] == GHOST_TYPE::NEIGH)
                 _ghost_neighbors.push_back(_faces[i]);
+
         } else
         {
             _faces[i]->is_ghost = false;
