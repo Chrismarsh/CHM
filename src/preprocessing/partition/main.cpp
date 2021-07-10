@@ -175,7 +175,7 @@ class preprocessingTriangulation : public triangulation
                     face->_debug_ID = -(i + 1); // all ids will be negative starting at -1. Named ids (for output) will
                                                 // be positive starting at 0
                     face->_debug_name = std::to_string(i);
-                    //                    face->_domain = this;
+
 
                     vert1->set_face(face);
                     vert2->set_face(face);
@@ -211,10 +211,7 @@ class preprocessingTriangulation : public triangulation
                 LOG_DEBUG << "Building face neighbors";
                 for (size_t i = 0; i < nelem; i++)
                 {
-
                     auto face = _faces.at(i);
-
-                    // LOG_DEBUG << neigh[i][0] << " " << neigh[i][1] << " " << neigh[i][2];
 
                     if (neigh[i][0] > static_cast<int>(nelem) || neigh[i][1] > static_cast<int>(nelem) ||
                         neigh[i][2] > static_cast<int>(nelem))
@@ -458,6 +455,7 @@ class preprocessingTriangulation : public triangulation
 
 
             std::set<std::string> pt = {"partition_tool"};
+
             #pragma omp parallel for
             for(size_t i = 0; i < _faces.size(); ++i)
             {
@@ -515,21 +513,7 @@ class preprocessingTriangulation : public triangulation
                     for (auto const& name : pars->names)
                     {
                         _parameters.insert(name);
-                        // std::cout << "Here: " << name << "\n";
                     }
-
-                    // init the parameter storage on each face
-                    #pragma omp parallel for
-                    for (size_t i = 0; i < _num_faces; i++)
-                    {
-                        face(i)->init_parameters(_parameters);
-                    }
-                    // init the parameter storage for the ghost regions
-                    for (size_t i = 0; i < _ghost_faces.size(); i++)
-                    {
-                        _ghost_faces.at(i)->init_parameters(_parameters);
-                    }
-
 
                     for (auto const& name : pars->names)
                     {
@@ -554,12 +538,6 @@ class preprocessingTriangulation : public triangulation
 
                         dataset.read(_param_data[name].data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
 
-                        #pragma omp parallel for
-                        for (size_t i = 0; i < _num_faces; i++)
-                        {
-                            face(i)->parameter(name) = _param_data[name][i];
-                        }
-
                         // Read parameters for each ghost face individually
                         hsize_t one = 1;
                         // Do NOT do this loop in parallel (internal state of HDF5)
@@ -578,7 +556,6 @@ class preprocessingTriangulation : public triangulation
 
                             _param_data[name][_local_faces.size() + i] = value;
 
-                            face->parameter(name) = value;
                         }
                     }
                 }
@@ -600,23 +577,15 @@ class preprocessingTriangulation : public triangulation
             // _ghost_faces includes /all/ the ghost faces: neighbour + distance
             _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end()) ;
 
-//            auto perm = sort_permutation(_local_faces,
-//                                      [](mesh_elem const& fa, mesh_elem const& fb){ return fa->cell_local_id < fb->cell_local_id; });
-//
-//            apply_permutation_in_place(_local_faces, perm);
-//
-//
-//            for (auto const& name : pars->names)
-//            {
-//                apply_permutation_in_place(_param_data[name], perm);
-//            }
-////
-//
-            tbb::parallel_sort(_local_faces.begin(), _local_faces.end(),
-                               [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
-                               {
-                                 return fa->cell_global_id < fb->cell_global_id;
-                               });
+            auto perm = sort_permutation(_local_faces,
+                                      [](mesh_elem const& fa, mesh_elem const& fb){ return fa->cell_global_id < fb->cell_global_id; });
+
+            apply_permutation_in_place(_local_faces, perm);
+            for (auto const& name : pars->names)
+            {
+                apply_permutation_in_place(_param_data[name], perm);
+            }
+
 
             std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
 
@@ -665,7 +634,7 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &ntri);
                 auto globalIDs = std::vector<int>(ntri);
 
-#pragma omp parallel for
+                #pragma omp parallel for
                 for (size_t i = 0; i < ntri; ++i)
                 {
                     globalIDs[i] = _local_faces[i]->cell_global_id;
@@ -721,7 +690,7 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &nvert);
                 std::vector<std::array<double, 3>> vertices(nvert);
 
-//#pragma omp parallel for
+                #pragma omp parallel for
                 for (size_t i = 0; i < nvert; ++i)
                 {
                     auto v = local_vertexes.at(i);
@@ -738,7 +707,7 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &ntri);
                 std::vector<std::array<int, 3>> neighbor(ntri);
 
-//#pragma omp parallel for
+                #pragma omp parallel for
                 for (size_t i = 0; i < ntri; ++i)
                 {
                     auto f = this->face(i);
@@ -843,23 +812,13 @@ class preprocessingTriangulation : public triangulation
 
             for (auto& par_iter : _param_data)
             {
-
                 const auto& p = par_iter.first;
 
                 H5::DataSpace dataspace(1, &ntri);
                 std::string par_location = "/parameters/" + p;
                 H5::DataSet dataset = file.createDataSet(par_location, PredType::NATIVE_DOUBLE, dataspace);
 
-                std::vector<double> values(ntri);
-
-                #pragma omp parallel for
-                for(size_t i=0; i<ntri; ++i)
-                {
-                    auto face = _local_faces.at(i);
-                    values[i] = face->parameter(p);
-                }
-                dataset.write(values.data(), PredType::NATIVE_DOUBLE);
-//                dataset.write(_param_data[p].data(), PredType::NATIVE_DOUBLE);
+                dataset.write(_param_data[p].data(), PredType::NATIVE_DOUBLE);
             }
 
         } // end try block
