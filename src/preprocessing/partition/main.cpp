@@ -461,6 +461,7 @@ class preprocessingTriangulation : public triangulation
             {
                 _faces.at(i)->is_ghost = true; // default state, switches to false later
                 _faces.at(i)->init_module_data(pt);
+
                 auto *gi = _faces.at(i)->make_module_data<ghost_info>("partition_tool");
 
                 // doesn't match the is_ghost default state. Here we assume false, and then switch it to the correct type when determined
@@ -479,9 +480,10 @@ class preprocessingTriangulation : public triangulation
 
 
             // we need to flag all the ghosts that aren't neigh as radius ghosts
+            #pragma omp parallel for
             for(size_t i = 0; i < _ghost_faces.size(); i++)
             {
-                auto face = _ghost_faces[i];
+                auto face = _ghost_faces.at(i);
                 auto* gi = face->get_module_data<ghost_info>("partition_tool");
 
                 // if we aren't a neigh, we were added by determine_process_ghost_faces_by_distance
@@ -564,8 +566,7 @@ class preprocessingTriangulation : public triangulation
                 {
                     error.printErrorStack();
                 }
-
-                    // catch failure caused by the DataSet operations
+                // catch failure caused by the DataSet operations
                 catch (DataSetIException& error)
                 {
                     error.printErrorStack();
@@ -577,6 +578,7 @@ class preprocessingTriangulation : public triangulation
             // _ghost_faces includes /all/ the ghost faces: neighbour + distance
             _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end()) ;
 
+            //ensure the id order is monotonic increasing
             auto perm = sort_permutation(_local_faces,
                                       [](mesh_elem const& fa, mesh_elem const& fb){ return fa->cell_global_id < fb->cell_global_id; });
 
@@ -605,11 +607,6 @@ class preprocessingTriangulation : public triangulation
         tree.add_child("parameters",params);
 
         pt::write_json("test_mesh.n32.partition",tree);
-
-
-//        // Region
-
-
 
     }
 
@@ -671,7 +668,7 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &ntri);
                 std::vector<std::array<int, 3>> elem(ntri);
 
-//                #pragma omp parallel for
+                #pragma omp parallel for
                 for (size_t i = 0; i < ntri; ++i)
                 {
                     auto f = _local_faces.at(i);
@@ -822,13 +819,11 @@ class preprocessingTriangulation : public triangulation
             }
 
         } // end try block
-
         // catch failure caused by the H5File operations
         catch (FileIException& error)
         {
             error.printErrorStack();
         }
-
         // catch failure caused by the DataSet operations
         catch (DataSetIException& error)
         {
