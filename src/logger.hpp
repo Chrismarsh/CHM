@@ -103,4 +103,12 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", log_level)
 #define	LOG_DEBUG       BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), debug) 
 #define	LOG_WARNING 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), warning) 
 #define	LOG_ERROR 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), error) 
-#define	LOG_INFO 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), info) 
+#define	LOG_INFO 	BOOST_LOG_NAMED_SCOPE(__PRETTY_FUNCTION__) BOOST_LOG_SEV(logger::get(), info)
+
+#ifdef USE_MPI
+#define MPI_RANK_DBG(RANK) if(_comm_world.rank() == RANK) \
+    {\
+    LOG_DEBUG << "I am PID, attach within 200s " << getpid();\
+            sleep(200);\
+    }
+#endif
