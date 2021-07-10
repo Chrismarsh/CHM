@@ -1,5 +1,8 @@
 #pragma once
 #include <tbb/parallel_sort.h>
+
+// adapted from
+// https://stackoverflow.com/a/17074810/410074
 template <typename T, typename Compare>
 std::vector<std::size_t> sort_permutation(
     const std::vector<T>& vec,
