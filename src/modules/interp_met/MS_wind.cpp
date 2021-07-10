@@ -44,7 +44,7 @@ MS_wind::MS_wind(config_file cfg)
 
     provides("vw_dir_orig");
 
-    provides_vector("wind_direction");
+//    provides_vector("wind_direction");
 
     speedup_height = cfg.get("speedup_height",2.0);
     use_ryan_dir = cfg.get("use_ryan_dir",false);
@@ -152,7 +152,7 @@ void MS_wind::run(mesh& domain)
 
 		     Vector_2 v_corr = math::gis::bearing_to_cartesian(theta * 180.0 / M_PI);
 		     Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
-		     face->set_face_vector("wind_direction", v3);
+//		     face->set_face_vector("wind_direction", v3);
 
 
 		     //        Vector_2 v_orig = math::gis::bearing_to_cartesian(theta_orig* 180.0 / M_PI);
@@ -184,10 +184,25 @@ void MS_wind::run(mesh& domain)
                 }
                 catch (...)
                 {
-                    LOG_DEBUG << "neigh is ghost? " << neigh->is_ghost;
+                    LOG_DEBUG << "face global id " << face->cell_global_id;
                     LOG_DEBUG << "face is ghost? " << face->is_ghost;
-                    LOG_DEBUG << "face global " << face->cell_global_id;
-                    LOG_DEBUG << "neigh global " << neigh->cell_global_id;
+                    LOG_DEBUG << "neigh that caused problem has global id " << neigh->cell_global_id;
+                    LOG_DEBUG << "face neighbors are " << face->is_ghost;
+                    for(int i = 0; i < 3; i++)
+                    {
+                        auto neigh = face->neighbor(i);
+                        if (neigh != nullptr)
+                        {
+                            LOG_DEBUG << "\tneigh " << i << " global id " << neigh->cell_global_id;
+                            LOG_DEBUG << "\tneigh " << i << " local id " << neigh->cell_local_id;
+                            LOG_DEBUG << "\tneigh " << i << " is ghost? " << neigh->is_ghost;
+                        }
+                        else
+                        {
+                            LOG_DEBUG << "\tneigh " << i << " is nullptr";
+                        }
+                    }
+
                     CHM_THROW_EXCEPTION(module_error, "RIP");
                 }
             }
@@ -345,7 +360,7 @@ void MS_wind::run(mesh& domain)
 		     Vector_2 v = math::gis::bearing_to_cartesian(theta* 180.0 / M_PI);
 		     Vector_3 v3(-v.x(),-v.y(), 0); //negate as direction it's blowing instead of where it is from!!
 
-		     face->set_face_vector("wind_direction",v3);
+//		     face->set_face_vector("wind_direction",v3);
 
         }
 

@@ -1,6 +1,7 @@
 #include "H5Cpp.h"
 #include "logger.hpp"
 #include "triangulation.hpp"
+#include "sort_perm.hpp"
 #include <string>
 #include <boost/property_tree/ptree.hpp>
 namespace pt = boost::property_tree;
@@ -11,6 +12,9 @@ typedef struct _MeshParameters
 {
     std::vector<std::string> names;
 } MeshParameters;
+
+
+
 
 // this is decalred in the main triangulation.cpp
 herr_t group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata);
@@ -53,6 +57,7 @@ class preprocessingTriangulation : public triangulation
             _faces.at(_global_IDs.at(offset_idx))->owner = mpi_rank;
             _faces.at(_global_IDs.at(offset_idx))->cell_local_id = local_ind;
             _local_faces.at(local_ind) = _faces.at(_global_IDs.at(offset_idx));
+
         }
 
         LOG_DEBUG << "MPI Process " << mpi_rank << ": start " << face_start_idx << ", end " << face_end_idx
@@ -474,11 +479,12 @@ class preprocessingTriangulation : public triangulation
             // TODO: Need to auto-determine how far to look based on module setups
             determine_process_ghost_faces_by_distance(100.0);
 
+
             // we need to flag all the ghosts that aren't neigh as radius ghosts
             for(size_t i = 0; i < _ghost_faces.size(); i++)
             {
                 auto face = _ghost_faces[i];
-                auto gi = face->get_module_data<ghost_info>("partition_tool");
+                auto* gi = face->get_module_data<ghost_info>("partition_tool");
 
                 // if we aren't a neigh, we were added by determine_process_ghost_faces_by_distance
                 if(gi->ghost_type != ghost_info::GHOST_TYPE::NEIGH)
@@ -488,6 +494,8 @@ class preprocessingTriangulation : public triangulation
             // load params
 
 
+            // Space for extracting the parameter info
+            std::unique_ptr<MeshParameters> pars(new MeshParameters);
             for (auto param_filename : param_filenames)
             {
                 try
@@ -499,14 +507,29 @@ class preprocessingTriangulation : public triangulation
                     // Open an existing file and dataset.
                     H5File file(param_filename, H5F_ACC_RDONLY);
 
-                    // Space for extracting the parameter info
-
-                    std::unique_ptr<MeshParameters> pars(new MeshParameters);
-
                     // Extract all of the parameter info (names) from the file
                     Group group = file.openGroup("parameters");
                     herr_t idx =
                         H5Literate(group.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, (void*)pars.get());
+
+                    for (auto const& name : pars->names)
+                    {
+                        _parameters.insert(name);
+                        // std::cout << "Here: " << name << "\n";
+                    }
+
+                    // init the parameter storage on each face
+                    #pragma omp parallel for
+                    for (size_t i = 0; i < _num_faces; i++)
+                    {
+                        face(i)->init_parameters(_parameters);
+                    }
+                    // init the parameter storage for the ghost regions
+                    for (size_t i = 0; i < _ghost_faces.size(); i++)
+                    {
+                        _ghost_faces.at(i)->init_parameters(_parameters);
+                    }
+
 
                     for (auto const& name : pars->names)
                     {
@@ -531,6 +554,12 @@ class preprocessingTriangulation : public triangulation
 
                         dataset.read(_param_data[name].data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
 
+                        #pragma omp parallel for
+                        for (size_t i = 0; i < _num_faces; i++)
+                        {
+                            face(i)->parameter(name) = _param_data[name][i];
+                        }
+
                         // Read parameters for each ghost face individually
                         hsize_t one = 1;
                         // Do NOT do this loop in parallel (internal state of HDF5)
@@ -549,7 +578,7 @@ class preprocessingTriangulation : public triangulation
 
                             _param_data[name][_local_faces.size() + i] = value;
 
-//                            face->parameter(name) = value;
+                            face->parameter(name) = value;
                         }
                     }
                 }
@@ -568,15 +597,26 @@ class preprocessingTriangulation : public triangulation
 
             // now, augment the local faces with our ghosts, so that the ghosts are
             // a) flagged and b) available in this subset
-            // _ghost_faces inclues /all/ the ghost faces: neighbour + distance
+            // _ghost_faces includes /all/ the ghost faces: neighbour + distance
             _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end()) ;
 
-//            tbb::parallel_sort(_local_faces.begin(), _local_faces.end(),
-//                               [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
-//                               {
-//                                 return fa->cell_global_id < fb->cell_global_id;
-//                               });
-
+//            auto perm = sort_permutation(_local_faces,
+//                                      [](mesh_elem const& fa, mesh_elem const& fb){ return fa->cell_local_id < fb->cell_local_id; });
+//
+//            apply_permutation_in_place(_local_faces, perm);
+//
+//
+//            for (auto const& name : pars->names)
+//            {
+//                apply_permutation_in_place(_param_data[name], perm);
+//            }
+////
+//
+            tbb::parallel_sort(_local_faces.begin(), _local_faces.end(),
+                               [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
+                               {
+                                 return fa->cell_global_id < fb->cell_global_id;
+                               });
 
             std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
 
@@ -668,7 +708,7 @@ class preprocessingTriangulation : public triangulation
                     auto f = _local_faces.at(i);
                     for (size_t j = 0; j < 3; ++j)
                     {
-                        elem[i][j] = f->vertex(j)->get_local_id();
+                        elem[i][j] = f->vertex(j)->get_local_id(); //uses a per partition local id
                     }
                 }
 
@@ -705,9 +745,12 @@ class preprocessingTriangulation : public triangulation
                     for (size_t j = 0; j < 3; ++j)
                     {
                         auto neigh = f->neighbor(j);
-                        if (neigh != nullptr && neigh->cell_local_id < ntri)
+                        if (neigh != nullptr && //we have a neighbour
+                            // ensure we are within the range of what we hold
+                            neigh->cell_global_id <= _local_faces.back()->cell_global_id &&
+                            neigh->cell_global_id >= _local_faces.front()->cell_global_id )
                         {
-                            neighbor[i][j] = neigh->cell_local_id;
+                            neighbor[i][j] = neigh->cell_global_id;
                         }
                         else
                         {
@@ -801,13 +844,22 @@ class preprocessingTriangulation : public triangulation
             for (auto& par_iter : _param_data)
             {
 
-                auto p = par_iter.first;
+                const auto& p = par_iter.first;
 
                 H5::DataSpace dataspace(1, &ntri);
                 std::string par_location = "/parameters/" + p;
                 H5::DataSet dataset = file.createDataSet(par_location, PredType::NATIVE_DOUBLE, dataspace);
 
-                dataset.write(_param_data[p].data(), PredType::NATIVE_DOUBLE);
+                std::vector<double> values(ntri);
+
+                #pragma omp parallel for
+                for(size_t i=0; i<ntri; ++i)
+                {
+                    auto face = _local_faces.at(i);
+                    values[i] = face->parameter(p);
+                }
+                dataset.write(values.data(), PredType::NATIVE_DOUBLE);
+//                dataset.write(_param_data[p].data(), PredType::NATIVE_DOUBLE);
             }
 
         } // end try block

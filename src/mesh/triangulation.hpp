@@ -490,6 +490,7 @@ public:
     bool _is_geographic;
 
     bool is_ghost=true;
+    int ghost_type;
 
     int  owner;  // MPI process that owns the face
 
@@ -919,11 +920,18 @@ public:
 
 protected:
 
+    enum GHOST_TYPE
+    {
+        NONE,
+        NEIGH,
+        DIST
+    };
+
     /**
      * Loads a given mesh as h5 into the triangulation. Only loads the main topology.
      * @param mesh_filename
      */
-    void load_mesh_h5(const std::string& mesh_filename);
+    void load_mesh_from_h5(const std::string& mesh_filename);
 
     void determine_ghost_owners();
 
@@ -938,7 +946,7 @@ protected:
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
 	bool _is_geographic;
-        bool _mesh_is_partition;
+        bool _mesh_is_from_partition;
 	int _UTM_zone;
 
 
