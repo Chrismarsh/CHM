@@ -28,7 +28,11 @@
 #include "sort_perm.hpp"
 #include <string>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+
 namespace pt = boost::property_tree;
+namespace po = boost::program_options;
 
 using namespace H5;
 
@@ -40,7 +44,7 @@ typedef struct _MeshParameters
 
 
 
-// this is decalred in the main triangulation.cpp
+// this is declared in the main triangulation.cpp
 herr_t group_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata);
 
 class preprocessingTriangulation : public triangulation
@@ -443,7 +447,7 @@ class preprocessingTriangulation : public triangulation
 
     void from_hdf5_and_partition(const std::string& mesh_filename,
                                  const std::vector<std::string>& param_filenames,
-                                 int MPI_ranks)
+                                 size_t MPI_ranks)
     {
         _comm_world._size = MPI_ranks;
         LOG_DEBUG << "Partitioning mesh " << mesh_filename << " with #ranks=" << MPI_ranks;
@@ -459,6 +463,11 @@ class preprocessingTriangulation : public triangulation
 
         pt::ptree meshes;
         pt::ptree params;
+
+        std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
+
+        auto partition_dir = boost::filesystem::path(filename_base + ".partition.n" +  std::to_string(_comm_world.size()) + ".meshes");
+        boost::filesystem::create_directory(partition_dir);
 
         for (int mpirank = 0; mpirank < MPI_ranks; mpirank++)
         {
@@ -613,31 +622,33 @@ class preprocessingTriangulation : public triangulation
             }
 
 
-            std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
+
 
             filename_base = filename_base + ".partition." + std::to_string(mpirank);
 
-            to_hdf5(filename_base);
+            to_hdf5(partition_dir, filename_base);
 
             pt::ptree m;
-            m.put("",filename_base+ "_mesh.h5");
+            m.put("",(partition_dir / (filename_base+ "_mesh.h5")).string());
             meshes.push_back(std::make_pair("",m));
 
             pt::ptree p;
-            p.put("",filename_base+ "_param.h5");
+            p.put("",(partition_dir / (filename_base+ "_param.h5")).string());
             params.push_back(std::make_pair("",p));
         }
         tree.add_child("meshes",meshes);
         tree.add_child("parameters",params);
 
-        pt::write_json("test_mesh.n32.partition",tree);
+
+        pt::write_json(filename_base + ".n" + std::to_string(_comm_world.size()) + ".partition", tree);
 
     }
 
-    void to_hdf5(std::string filename_base)
+    void to_hdf5(boost::filesystem::path partition_dir, std::string filename_base)
     {
 
         std::string filename = filename_base + "_mesh.h5";
+
 
         try
         {
@@ -645,7 +656,7 @@ class preprocessingTriangulation : public triangulation
             // handle the errors appropriately
             Exception::dontPrint();
 
-            H5::H5File file(filename, H5F_ACC_TRUNC);
+            H5::H5File file( (partition_dir / filename).string(), H5F_ACC_TRUNC);
             H5::Group group(file.createGroup("/mesh"));
 
             hsize_t ntri = _local_faces.size();
@@ -826,7 +837,7 @@ class preprocessingTriangulation : public triangulation
             // handle the errors appropriately
             Exception::dontPrint();
 
-            H5::H5File file(par_filename, H5F_ACC_TRUNC);
+            H5::H5File file( (partition_dir / par_filename).string(), H5F_ACC_TRUNC);
             H5::Group group(file.createGroup("/parameters"));
 
             hsize_t ntri = _local_faces.size();
@@ -894,13 +905,42 @@ int main(int argc, char *argv[])
     BOOST_LOG_FUNCTION();
 
     std::string mesh_filename;
+    size_t MPI_ranks = 2;
 
-    int MPI_ranks = 2;
+    po::options_description desc("Allowed options.");
+    desc.add_options()
+        ("help", "This message")
+        ("mesh-file,m", po::value<std::string>(&mesh_filename), "Mesh file")
+        ("param-file,p", po::value<std::vector<std::string>>(), "Parameter file")
+        ("mpi-ranks",po::value<size_t>(&MPI_ranks), "Number of MPI ranks to partition for");
 
-    mesh_filename = "/Users/chris/Documents/science/model_runs/benchmark_problems/granger_pbsm_synthetic/test_mesh.h5";
+    po::variables_map vm;
+    po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
+    po::notify(vm);
 
-    std::vector<std::string> param_filenames = {"/Users/chris/Documents/science/model_runs/benchmark_problems/granger_pbsm_synthetic/test_param.h5"};
+    if (!vm.count("mesh-file"))
+    {
+        LOG_ERROR << "Mesh file required";
+        exit(-1);
+    }
+    if (!vm.count("param-file"))
+    {
+        LOG_ERROR << "Param file required";
+        exit(-1);
+    }
+    if (!vm.count("mpi-ranks"))
+    {
+        LOG_ERROR << "MPI ranks required";
+        exit(-1);
+    }
+
+    std::vector<std::string> param_filenames;
+    for(auto& itr : vm["param-file"].as<std::vector<std::string>>())
+    {
+        param_filenames.push_back(itr);
+    }
+
 
     preprocessingTriangulation* tri = new preprocessingTriangulation();
-    tri->from_hdf5_and_partition(mesh_filename,param_filenames, MPI_ranks);
+    tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks);
 }
