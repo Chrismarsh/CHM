@@ -624,9 +624,9 @@ class preprocessingTriangulation : public triangulation
 
 
 
-            filename_base = filename_base + ".partition." + std::to_string(mpirank);
+            auto fname = filename_base + ".partition." + std::to_string(mpirank);
 
-            to_hdf5(partition_dir, filename_base);
+            to_hdf5(partition_dir, fname);
 
             pt::ptree m;
             m.put("",(partition_dir / (filename_base+ "_mesh.h5")).string());
