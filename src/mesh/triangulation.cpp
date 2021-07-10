@@ -1210,6 +1210,7 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
                 if(_mesh_is_from_partition)
                 {
+                    // since the params are for all our faces + ghosts, we can load it all at once
                     #pragma omp parallel for
                     for (size_t i = 0; i < _faces.size(); i++)
                     {
@@ -1218,11 +1219,11 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
                 }
                 else
                 {
-
-                    //                #pragma omp parallel for
+                    // we have to load the ghosts and local faces separate.
+                    #pragma omp parallel for
                     for (size_t i = 0; i < _num_faces; i++)
                     {
-                        face(i)->parameter(name) = data[_global_to_locally_owned_index_map[_global_IDs[i]]];
+                        face(i)->parameter(name) = data[i];
                     }
 
                     LOG_DEBUG << " Applying " << name << " for ghost regions (" << _ghost_faces.size()
