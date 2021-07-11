@@ -927,21 +927,16 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
 
 
-            size_t neigh_i_0_idx = neigh[i][0];
-            size_t neigh_i_1_idx = neigh[i][1];
-            size_t neigh_i_2_idx = neigh[i][2];
+            int neigh_i_0_idx = neigh[i][0];
+            int neigh_i_1_idx = neigh[i][1];
+            int neigh_i_2_idx = neigh[i][2];
 
 //            // if we are loading from a partition, convert these to local ids
             if(_mesh_is_from_partition)
             {
-//                MPI_RANK_DBG(1);
                 neigh_i_0_idx = _global_to_locally_owned_index_map[neigh_i_0_idx];
                 neigh_i_1_idx = _global_to_locally_owned_index_map[neigh_i_1_idx];
                 neigh_i_2_idx = _global_to_locally_owned_index_map[neigh_i_2_idx];
-//
-//                LOG_DEBUG << neigh_i_0_idx;
-//                LOG_DEBUG << neigh_i_1_idx;
-//                LOG_DEBUG << neigh_i_2_idx;
             }
 
             if(    neigh_i_0_idx > static_cast<int>(nelem)
