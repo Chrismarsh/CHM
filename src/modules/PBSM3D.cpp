@@ -1549,6 +1549,8 @@ void PBSM3D::run(mesh& domain)
                     if(is_nan(Qsj))
                     
                     {
+                        //todo: remove this
+                        Qsj = 0;
                         LOG_DEBUG <<"udotm <0 neigh Qsj is nan";
                     }
                 }
