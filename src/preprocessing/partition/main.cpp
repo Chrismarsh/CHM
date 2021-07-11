@@ -447,7 +447,8 @@ class preprocessingTriangulation : public triangulation
 
     void from_hdf5_and_partition(const std::string& mesh_filename,
                                  const std::vector<std::string>& param_filenames,
-                                 size_t MPI_ranks)
+                                 size_t MPI_ranks,
+                                 size_t max_ghost_distance)
     {
         _comm_world._size = MPI_ranks;
         LOG_DEBUG << "Partitioning mesh " << mesh_filename << " with #ranks=" << MPI_ranks;
@@ -458,7 +459,7 @@ class preprocessingTriangulation : public triangulation
 
         pt::ptree tree;
         tree.put("ranks",MPI_ranks);
-        tree.put("max_ghost_distance",100.0);
+        tree.put("max_ghost_distance",max_ghost_distance);
         tree.put("num_global_faces",_num_global_faces);
 
         pt::ptree meshes;
@@ -466,7 +467,7 @@ class preprocessingTriangulation : public triangulation
 
         std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
 
-        auto partition_dir = boost::filesystem::path(filename_base + ".partition.n" +  std::to_string(_comm_world.size()) + ".meshes");
+        auto partition_dir = boost::filesystem::path(filename_base + ".np" +  std::to_string(_comm_world.size()) + ".partition.meshes");
         boost::filesystem::create_directory(partition_dir);
 
         for (int mpirank = 0; mpirank < MPI_ranks; mpirank++)
@@ -629,18 +630,18 @@ class preprocessingTriangulation : public triangulation
             to_hdf5(partition_dir, fname);
 
             pt::ptree m;
-            m.put("",(partition_dir / (filename_base+ "_mesh.h5")).string());
+            m.put("",(partition_dir / (fname+ "_mesh.h5")).string());
             meshes.push_back(std::make_pair("",m));
 
             pt::ptree p;
-            p.put("",(partition_dir / (filename_base+ "_param.h5")).string());
+            p.put("",(partition_dir / (fname+ "_param.h5")).string());
             params.push_back(std::make_pair("",p));
         }
         tree.add_child("meshes",meshes);
         tree.add_child("parameters",params);
 
 
-        pt::write_json(filename_base + ".n" + std::to_string(_comm_world.size()) + ".partition", tree);
+        pt::write_json(filename_base + ".np" + std::to_string(_comm_world.size()) + ".partition", tree);
 
     }
 
@@ -906,12 +907,14 @@ int main(int argc, char *argv[])
 
     std::string mesh_filename;
     size_t MPI_ranks = 2;
+    size_t max_ghost_distance = 100;
 
     po::options_description desc("Allowed options.");
     desc.add_options()
         ("help", "This message")
         ("mesh-file,m", po::value<std::string>(&mesh_filename), "Mesh file")
         ("param-file,p", po::value<std::vector<std::string>>(), "Parameter file")
+        ("max-ghost-distance,g", po::value<size_t>(&max_ghost_distance), "Parameter file")
         ("mpi-ranks",po::value<size_t>(&MPI_ranks), "Number of MPI ranks to partition for");
 
     po::variables_map vm;
@@ -934,6 +937,11 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
+    if (!vm.count("max-ghost-distance"))
+    {
+        LOG_WARNING << "Using default max ghost distance of 100 m";
+    }
+
     std::vector<std::string> param_filenames;
     for(auto& itr : vm["param-file"].as<std::vector<std::string>>())
     {
@@ -942,5 +950,5 @@ int main(int argc, char *argv[])
 
 
     preprocessingTriangulation* tri = new preprocessingTriangulation();
-    tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks);
+    tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance);
 }
