@@ -54,9 +54,14 @@ namespace math
 	extruded_ID_iterator += ntri;
       }
 
-      int* data_extruded_IDs = extruded_global_IDs.data();
+
+
+      const int numGlobalElements = n_global_tri*nLayer;
+      const int* data_extruded_IDs = extruded_global_IDs.data();
+      const int indexListSize = ntri*nLayer;
       int indexBase = 0;
-      m_map = rcp(new map_type(n_global_tri*nLayer, data_extruded_IDs, (int)(ntri*nLayer), indexBase, m_comm));
+
+      m_map = rcp(new map_type(numGlobalElements, data_extruded_IDs, indexListSize, indexBase, m_comm));
 
       // loop over locally owned rows, figure out number of neighbors (owned or
       // otherwise!), and what their global indices are.
