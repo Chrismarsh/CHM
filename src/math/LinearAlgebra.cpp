@@ -57,7 +57,7 @@ namespace math
 
 
       const int numGlobalElements = n_global_tri*nLayer;
-      const int* data_extruded_IDs = extruded_global_IDs.data();
+      const auto* data_extruded_IDs = extruded_global_IDs.data();
       const int indexListSize = ntri*nLayer;
       int indexBase = 0;
 
