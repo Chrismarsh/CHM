@@ -89,10 +89,6 @@ configure_file(
         src/version.h
 )
 
-if(NOT BUILD_WITH_CONAN)
-    set(CMAKE_BUILD_TYPE NoConan)
-endif()
-
 #ignore these two under Clion as CGAL will complain
 if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo OR
         CMAKE_BUILD_TYPE MATCHES MinSizeRel OR
@@ -215,6 +211,8 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     else("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
         set(DEBUG_FLAGS "${DEBUG_FLAGS} -g -O1 -ggdb")
     endif()
+
+    set(CGAL_DO_NOT_WARN_ABOUT_CMAKE_BUILD_TYPE TRUE)
 
     set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${DEBUG_FLAGS}")
 else()
