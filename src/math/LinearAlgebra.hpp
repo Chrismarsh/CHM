@@ -49,17 +49,20 @@ namespace math
       using Teuchos::rcp;
       using Teuchos::Time;
       using Teuchos::tuple;
-      typedef Tpetra::CrsGraph<int,int> graph_type;
-      typedef Tpetra::CrsMatrix<double, int, int> crs_matrix_type;
-      typedef Tpetra::Map<int,int> map_type;
-      typedef Tpetra::MultiVector<double,int,int> MV;
-      typedef Tpetra::Operator<double,int,int> OP;
-      typedef Tpetra::RowMatrix<double,int,int> row_matrix_type;
+      typedef Tpetra::CrsGraph<> graph_type;
+      typedef Tpetra::CrsMatrix<> crs_matrix_type;
+      typedef Tpetra::Map<> map_type;
+      typedef Tpetra::MultiVector<> MV;
+      typedef Tpetra::Operator<> OP;
+      typedef Tpetra::RowMatrix<> row_matrix_type;
       typedef MV::scalar_type scalar_type;
-      typedef Ifpack2::Preconditioner<double,int,int> prec_type;
+      typedef Ifpack2::Preconditioner<> prec_type;
       typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
       typedef Belos::SolverManager<scalar_type, MV, OP> solver_type;
       typedef Tpetra::MatrixMarket::Reader<crs_matrix_type> reader_type;
+
+      typedef Tpetra::Details::DefaultTypes::global_ordinal_type global_ordinal_type;
+      typedef Tpetra::Details::DefaultTypes::local_ordinal_type local_ordinal_type;
 
       struct SolveConverge
       {
@@ -95,13 +98,13 @@ namespace math
 
 	void zeroSystem();
 
-	void matrixReplaceGlobalValues(int global_row_idx, int global_col_idx, double val);
-	void matrixSumIntoGlobalValues(int global_row_idx, int global_col_idx, double val);
+	void matrixReplaceGlobalValues(global_ordinal_type global_row_idx, global_ordinal_type global_col_idx, double val);
+	void matrixSumIntoGlobalValues(global_ordinal_type global_row_idx, global_ordinal_type global_col_idx, double val);
 
 	void matrixResumeFill();
 	void matrixFillComplete();
 
-	void rhsSumIntoGlobalValue(int global_idx, double val);
+	void rhsSumIntoGlobalValue(global_ordinal_type global_idx, double val);
 
 	SolveConverge Solve();
 

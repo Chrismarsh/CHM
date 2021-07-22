@@ -43,22 +43,22 @@ namespace math
 	Initialize the local-global index map for the extruded mesh system.
       */
       auto global_IDs = domain->get_global_IDs();
-      std::vector<int> extruded_global_IDs(ntri*nLayer);
+      std::vector<global_ordinal_type> extruded_global_IDs(ntri*nLayer);
       // Create the global IDs for the extruded system
       // Ordering:
       // - mesh elements and then layers successively
       auto extruded_ID_iterator = extruded_global_IDs.begin();
       for (int i=0; i<nLayer; ++i) {
 	std::transform(global_IDs.begin(),global_IDs.end(),extruded_ID_iterator,
-		       [=](int id) -> int { return i*n_global_tri + id; } );
+		       [=](int id) -> global_ordinal_type { return i*n_global_tri + id; } );
 	extruded_ID_iterator += ntri;
       }
 
 
 
-      const int numGlobalElements = n_global_tri*nLayer;
+      const size_t numGlobalElements = n_global_tri*nLayer;
       const auto* data_extruded_IDs = extruded_global_IDs.data();
-      const int indexListSize = ntri*nLayer;
+      const size_t indexListSize = ntri*nLayer;
       int indexBase = 0;
 
       m_map = rcp(new map_type(numGlobalElements, data_extruded_IDs, indexListSize, indexBase, m_comm));
@@ -66,7 +66,7 @@ namespace math
       // loop over locally owned rows, figure out number of neighbors (owned or
       // otherwise!), and what their global indices are.
       std::vector<size_t> num_entries(ntri*nLayer,1);
-      std::vector<std::array<int,6>> neighbor_global_idx(ntri*nLayer);
+      std::vector<std::array<global_ordinal_type,6>> neighbor_global_idx(ntri*nLayer);
 #pragma omp parallel for
       for (size_t i = 0; i < ntri; ++i) {
 	auto face = domain->face(i);
@@ -194,17 +194,17 @@ namespace math
       m_solution->putScalar(0.0);
     }
 
-    void NearestNeighborProblem::matrixReplaceGlobalValues(int global_row_idx, int global_col_idx, double val)
+    void NearestNeighborProblem::matrixReplaceGlobalValues(global_ordinal_type global_row_idx, global_ordinal_type global_col_idx, double val)
     {
       m_matrix->replaceGlobalValues(global_row_idx, tuple(global_col_idx), tuple(val));
     }
 
-    void NearestNeighborProblem::matrixSumIntoGlobalValues(int global_row_idx, int global_col_idx, double val)
+    void NearestNeighborProblem::matrixSumIntoGlobalValues(global_ordinal_type global_row_idx, global_ordinal_type global_col_idx, double val)
     {
       m_matrix->sumIntoGlobalValues(global_row_idx, tuple(global_col_idx), tuple(val));
     }
 
-    void NearestNeighborProblem::rhsSumIntoGlobalValue(int global_idx, double val)
+    void NearestNeighborProblem::rhsSumIntoGlobalValue(global_ordinal_type global_idx, double val)
     {
       m_rhs->sumIntoGlobalValue(global_idx, 0, val);
     }
