@@ -80,7 +80,7 @@ class CHMConan(ConanFile):
         self.requires( "eigen3/[>=3.3.9]@CHM/stable" )
         self.requires( "meteoio/2.8.0@CHM/stable")
         self.requires( "func/0.1@CHM/stable")
-        self.requires( "trilinos/13.0.1@CHM/stable")
+        self.requires( "trilinos/master@CHM/stable")
 
     def _configure_cmake(self):
         cmake = CMake(self)
