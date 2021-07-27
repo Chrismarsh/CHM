@@ -23,6 +23,9 @@
 
 #pragma once
 
+#define HAVE_TEUCHOS_DEBUG
+#define TEUCHOS_DEBUG
+
 #include <BelosSolverFactory.hpp>
 #include <BelosTpetraAdapter.hpp>
 #include <Ifpack2_Factory.hpp>

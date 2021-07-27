@@ -1547,7 +1547,7 @@ void core::init(int argc, char **argv)
     LOG_DEBUG << "Running init() for each module";
     c.tic();
 
-
+    MPI_RANK_DBG(0);
     for (auto& itr : _modules)
     {
         LOG_VERBOSE << itr.first->ID;

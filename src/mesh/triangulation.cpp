@@ -1436,12 +1436,12 @@ void triangulation::partition_mesh()
     for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
     {
         size_t offset_idx = face_start_idx + local_ind;
-        _global_to_locally_owned_index_map[_global_IDs[offset_idx]] = local_ind;
+        _global_to_locally_owned_index_map[_global_IDs.at(offset_idx)] = local_ind;
 
-        _faces.at(_global_IDs[offset_idx])->is_ghost = false;
-        _faces.at(_global_IDs[offset_idx])->owner = my_rank;
-        _faces.at(_global_IDs[offset_idx])->cell_local_id = local_ind;
-        _local_faces[local_ind] = _faces.at(_global_IDs[offset_idx]);
+        _faces.at(_global_IDs.at(offset_idx))->is_ghost = false;
+        _faces.at(_global_IDs.at(offset_idx))->owner = my_rank;
+        _faces.at(_global_IDs.at(offset_idx))->cell_local_id = local_ind;
+        _local_faces.at(local_ind) = _faces.at(_global_IDs.at(offset_idx));
     }
 
     _num_faces = _local_faces.size();
