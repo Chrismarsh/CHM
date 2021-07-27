@@ -59,7 +59,7 @@ void fetchr::run(mesh_elem& face)
 
 
     (*face)["fetch"_s]= max_distance;
-    return;
+
     //direction it is from, need upwind fetch
     double wind_dir = (*face)["vw_dir"_s] ;
 
