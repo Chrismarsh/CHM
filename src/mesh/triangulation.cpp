@@ -1444,6 +1444,15 @@ void triangulation::partition_mesh()
         _local_faces.at(local_ind) = _faces.at(_global_IDs.at(offset_idx));
     }
 
+    // if loaded from a single h5 and partitioned on the fly, _global_IDs.size() needs to be the same length as
+    // _local_faces.size()
+    if(!_mesh_is_from_partition)
+    {
+        std::vector<int> tmp = {_global_IDs.begin() + global_cell_start_idx,
+                                _global_IDs.begin() + global_cell_end_idx + 1}; // +1 is need as .end() is one past
+        std::swap(tmp, _global_IDs);
+    }
+
     _num_faces = _local_faces.size();
     LOG_DEBUG << "MPI Process " << my_rank << ": start " << face_start_idx << ", end " << face_end_idx << ", number "
               << _local_faces.size();
