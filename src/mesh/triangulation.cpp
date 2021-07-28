@@ -867,13 +867,13 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
             auto face = this->create_face(vert1, vert2, vert3);
             // get the global ID from file, so-as to support either pre partitioned or non partitioned meshes
-            face->cell_global_id = _global_IDs[i];
+            face->cell_global_id = _global_IDs.at(i);
             face->cell_local_id = i;
 
             // if we load from a partition, we need a way of linking the non contiguous global ids with the local ids
             if(_mesh_is_from_partition)
             {
-                _global_to_locally_owned_index_map[_global_IDs[i]] = i;
+                _global_to_locally_owned_index_map[_global_IDs.at(i)] = i;
             }
 
             if (_is_geographic)
