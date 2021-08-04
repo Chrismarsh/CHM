@@ -108,7 +108,7 @@ BOOST_LOG_ATTRIBUTE_KEYWORD(severity, "Severity", log_level)
 #ifdef USE_MPI
 #define MPI_RANK_DBG(RANK) if(_comm_world.rank() == RANK) \
     {\
-    LOG_DEBUG << "I am PID, attach within 200s " << getpid();\
+    LOG_DEBUG << "\n\n-----------------------------\n\nI am PID " << getpid() <<", attach within 200s\n\n-----------------------------\n\n"; \
             sleep(200);\
     }
 #endif
