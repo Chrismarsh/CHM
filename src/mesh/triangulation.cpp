@@ -936,7 +936,9 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             {
                 neigh_i_0_idx = _global_to_locally_owned_index_map[neigh_i_0_idx];
                 neigh_i_1_idx = _global_to_locally_owned_index_map[neigh_i_1_idx];
-                neigh_i_2_idx = _global_to_locally_owned_index_map[neigh_i_2_idx];
+
+                // neighbours that are missing come in as -1 so they won't cleanly remap
+                neigh_i_2_idx = neigh_i_2_idx != -1 ? _global_to_locally_owned_index_map[neigh_i_2_idx] : -1;
             }
 
             if(    neigh_i_0_idx > static_cast<int>(nelem)
