@@ -33,6 +33,7 @@ int main (int argc, char *argv[])
 {
     core kernel;
 
+    int ret = 0;
     try
     {
         kernel.init(argc, argv) ;
@@ -44,19 +45,25 @@ int main (int argc, char *argv[])
     catch(chm_done& e)
     {
         kernel.end();
-        //clean exit
-        return 0;
     }
     catch( boost::exception& e)
     {
-        kernel.end(); //make sure endwin() is called so ncurses cleans up
-
+        ret = -1;
         LOG_ERROR << boost::diagnostic_information(e);
-
-        return -1;
+    }
+    catch(std::exception& e)
+    {
+        ret = -1;
+        LOG_ERROR << boost::diagnostic_information(e);
+    }
+    catch( ...)
+    {
+       LOG_ERROR << "Unknown exception";
+       ret = -1;
     }
 
+    kernel.end();
     boost::filesystem::copy_file(kernel.log_file_path,kernel.o_path / "CHM.log", boost::filesystem::copy_option::overwrite_if_exists);
 
-    return 0;
+    return ret;
 }
