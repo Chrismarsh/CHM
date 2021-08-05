@@ -62,6 +62,7 @@ jobs:
         run: |
           conan profile new default --detect
           conan config install https://github.com/Chrismarsh/conan-config.git
+          conan remote add chm http://conan.snowcast.ca:8081/artifactory/api/conan/chm
 
           if [ "$RUNNER_OS" == "Linux" ]; then
             conan profile update settings.os.distro="$CFG_OS" default
@@ -69,8 +70,6 @@ jobs:
             conan profile update settings.os.version=`echo "$CFG_OS" | cut -d'-' -f2` default
           fi
           cat ~/.conan/profiles/default
-
-          ./conan_export_deps.sh
 
         env:
           CFG_OS: ${{matrix.cfg.os}}    
