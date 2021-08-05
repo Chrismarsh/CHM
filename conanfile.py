@@ -116,7 +116,7 @@ class CHMConan(ConanFile):
     def build(self):
         cmake = self._configure_cmake()
         cmake.build()
-        cmake.test(target="check")
+        # cmake.test(target="check")
 
     def package(self):
         cmake = self._configure_cmake()
