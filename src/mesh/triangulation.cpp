@@ -918,14 +918,13 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         dataset.read(neigh.data(), neighbor_t);
 
         LOG_DEBUG << "Building face neighbors";
+
         for (size_t i=0;i<nelem;i++)
         {
 
             auto face = _faces.at(i);
 
             // LOG_DEBUG << neigh[i][0] << " " << neigh[i][1] << " " << neigh[i][2];
-
-
 
             int neigh_i_0_idx = neigh[i][0];
             int neigh_i_1_idx = neigh[i][1];
@@ -934,10 +933,10 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 //            // if we are loading from a partition, convert these to local ids
             if(_mesh_is_from_partition)
             {
-                neigh_i_0_idx = _global_to_locally_owned_index_map[neigh_i_0_idx];
-                neigh_i_1_idx = _global_to_locally_owned_index_map[neigh_i_1_idx];
-
                 // neighbours that are missing come in as -1 so they won't cleanly remap
+
+                neigh_i_0_idx = neigh_i_0_idx != -1 ? _global_to_locally_owned_index_map[neigh_i_0_idx] : -1;
+                neigh_i_1_idx = neigh_i_1_idx != -1 ? _global_to_locally_owned_index_map[neigh_i_1_idx] : -1;
                 neigh_i_2_idx = neigh_i_2_idx != -1 ? _global_to_locally_owned_index_map[neigh_i_2_idx] : -1;
             }
 
