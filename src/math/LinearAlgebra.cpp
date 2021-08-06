@@ -206,7 +206,11 @@ namespace math
 
     void NearestNeighborProblem::rhsSumIntoGlobalValue(global_ordinal_type global_idx, double val)
     {
-      m_rhs->sumIntoGlobalValue(global_idx, 0, val);
+      // Critical section needed because sumIntoGlobalValues is not respecting
+      // the 4th arg (force atomic update)
+      // - likely a Trilinos/Kokkos bug
+#pragma omp critical
+      m_rhs->sumIntoGlobalValue(global_idx, 0, val, true);
     }
 
     SolveConverge NearestNeighborProblem::Solve()
