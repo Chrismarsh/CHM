@@ -1422,8 +1422,15 @@ void PBSM3D::run(mesh& domain)
         ////////////////////////////////////////////////////////////////////////////
         // Write solution
         ////////////////////////////////////////////////////////////////////////////
-        // suspension_NNP->writeSolutionMatrixMarket(suspension_file_prefix);
+        if(global_param->timestep_counter == 15)
+        {
+            std::string prefix = "suspension.step_15.rank" + std::to_string(domain->_comm_world.rank());
+            suspension_NNP->writeSystemMatrixMarket(prefix);
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info("ok bye"));
+        }
+
         ////////////////////////////////////////////////////////////////////////////
+//        suspension_NNP->writeSolutionMatrixMarket(prefix);
         ////////////////////////////////////////////////////////////////////////////
 
     } // if suspension_present fails
@@ -1667,7 +1674,7 @@ void PBSM3D::run(mesh& domain)
             BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
         }
 
-        
+
 
         // auto deposition_sol_array = deposition_solution->get1dView();
         auto deposition_sol_array = deposition_NNP->getSolutionView();
