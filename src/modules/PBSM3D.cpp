@@ -1404,10 +1404,20 @@ void PBSM3D::run(mesh& domain)
         suspension_present = true;
     }
 
-    if (suspension_present) {
+    if (suspension_present)
+    {
 
-        auto suspension_results = suspension_NNP->Solve();
-        LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
+        try
+        {
+            auto suspension_results = suspension_NNP->Solve();
+            LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
+        } catch(Belos::StatusTestError& e)
+        {
+            std::string prefix = "suspension.rank" + std::to_string(domain->_comm_world.rank());
+            suspension_NNP->writeSystemMatrixMarket(prefix);
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
+        }
+
 
         ////////////////////////////////////////////////////////////////////////////
         // Write solution
@@ -1646,8 +1656,18 @@ void PBSM3D::run(mesh& domain)
         ////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////
 
-        auto deposition_results = deposition_NNP->Solve();
-        LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
+        try
+        {
+            auto deposition_results = deposition_NNP->Solve();
+            LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
+        } catch(Belos::StatusTestError& e)
+        {
+            std::string prefix = "deposition.rank" + std::to_string(domain->_comm_world.rank());
+            deposition_NNP->writeSystemMatrixMarket(prefix);
+            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
+        }
+
+        
 
         // auto deposition_sol_array = deposition_solution->get1dView();
         auto deposition_sol_array = deposition_NNP->getSolutionView();
