@@ -981,30 +981,45 @@ protected:
     std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;
 
-    // size of this vector is the number of locally owned elements
-    std::map<int,int> _global_to_locally_owned_index_map; // key=global_index, entry=local_index
+    // Map sa global index to a local index
+    // Size of this vector is the number of locally owned elements
+    // key=global_index, entry=local_index
+    std::map<int,int> _global_to_locally_owned_index_map;
 
     // All MPI process are aware of the local sizes for all other MPI processes
+    // Index = MPI rank
     std::vector<int> _num_faces_in_partition;
 
     // If we are not using MPI, some code paths might still want to make use of these
-    //  initialized to [0, num_faces - 1]
+    // This is initialized to [0, num_faces - 1]
     // In MPI mode this contains the global face index start and end
     int  global_cell_start_idx, // in non-MPI this is 0,
         global_cell_end_idx; // in non-MPI this is equal to _num_faces - 1
 
+    // The faces owned by this rank. In non MPI mode, this is identical to _faces
+    // does not include any ghosts
     std::vector< mesh_elem > _local_faces;
+
+
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
 
     // Array of pointers to the ghost neighbors for this rank
+    // These are only the nearest neighbour ghosts. i.e., GHOST_TYPE::NEIGH
     std::vector< mesh_elem > _ghost_neighbors;
+
     // Array of which other rank owns each ghost neighbor
     std::vector< int > _ghost_neighbor_owners;
+
     // Array of pointers to all ghost faces (in buffer region) for this rank
+    // This is all the ghost faces and is the super-set of ghosts that contains
+    // _ghost_neighbors + the distance (type 2) ghosts
     std::vector< mesh_elem > _ghost_faces;
 
-    std::map< int, std::pair<int,int> > _comm_partner_ownership;  // (start_local_idx, length)
+    // The communication partnership for each rank
+    // Partner ID, (start_local_idx, length)
+    std::map< int, std::pair<int,int> > _comm_partner_ownership;
 
+    // maps a global index to a local ghost
     std::map<int,int> _global_index_to_local_ghost_map; // key=cell_global_id, entry=local index in _ghost_neighbors array
 
     std::map< int, std::vector<int> > global_indices_to_send; // key=process to send to, entry = vector of global ids to send
@@ -1012,8 +1027,9 @@ protected:
   std::map< int, std::vector<int>> local_indices_to_send; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
   std::map< int, std::vector<mesh_elem> > local_faces_to_send; // key=process to send to, entry=locally owned pointer to face
 
-  std::map< int, std::vector<int>> local_indices_to_recv; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
-  std::map< int, std::vector<mesh_elem> > local_faces_to_recv; // key=process to send to, entry=locally owned pointer to face
+  std::map< int, std::vector<int>> ghost_indices_to_recv; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
+  std::map< int, std::vector<mesh_elem> >
+      ghost_faces_to_recv; // key=process to send to, entry=locally owned pointer to face
 
     std::vector<int> _global_IDs;
 

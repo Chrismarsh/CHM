@@ -1696,10 +1696,10 @@ void triangulation::setup_nearest_neighbor_communication()
     std::transform(_ghost_neighbors.begin(),_ghost_neighbors.end(),id_indices.begin(),
 		   [](mesh_elem e){ return e->cell_global_id; });
     // Copy subvector of indices to communicate
-    local_indices_to_recv[partner_id].resize(length);
+    ghost_indices_to_recv[partner_id].resize(length);
     std::copy(id_indices.begin()+start_idx,
     	      id_indices.begin()+start_idx+length,
-    	      local_indices_to_recv[partner_id].begin());
+              ghost_indices_to_recv[partner_id].begin());
 
     // for (auto it : id_indices)
     //   {
@@ -1709,10 +1709,10 @@ void triangulation::setup_nearest_neighbor_communication()
 
 
     // Copy relevant portion of ghost neighbors to the "local_faces_to_recv"
-    local_faces_to_recv[partner_id].resize(length);
+    ghost_faces_to_recv[partner_id].resize(length);
     std::copy(_ghost_neighbors.begin()+start_idx,
 	      _ghost_neighbors.begin()+start_idx+length,
-	      local_faces_to_recv[partner_id].begin());
+              ghost_faces_to_recv[partner_id].begin());
     // for (auto it : sub_indices)
     //   {
     // 	LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << partner_id << " global_id " << it;
@@ -1720,7 +1720,7 @@ void triangulation::setup_nearest_neighbor_communication()
 
     // Send indices
     int send_tag = generate_unique_send_tag(_comm_world.rank(), partner_id);
-    reqs.push_back(_comm_world.isend(partner_id, send_tag, local_indices_to_recv[partner_id]));
+    reqs.push_back(_comm_world.isend(partner_id, send_tag, ghost_indices_to_recv[partner_id]));
 
   }
 
@@ -1846,13 +1846,13 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
   // map of received data from comm partners
   std::map< int, std::vector<double>> recv_buffer;
-  for( auto it : local_faces_to_recv) {
+  for( auto it : ghost_faces_to_recv) {
     auto partner_id = it.first;
     auto faces = it.second;
     recv_buffer[partner_id] = std::vector<double>(faces.size(),0.0);
   }
 
-  for(auto it : local_faces_to_recv) {
+  for(auto it : ghost_faces_to_recv) {
     auto partner_id = it.first;
 
     // Note only recv gets added to the list of requests to watch for
@@ -1870,7 +1870,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
     for(int i=0; i < values.size(); ++i) {
       double val = values[i];
       if( isnan(val) )	{
-	auto f = local_faces_to_recv[partner_id][i];
+	auto f = ghost_faces_to_recv[partner_id][i];
 	  LOG_DEBUG << "-------------------------------------------------";
 	  LOG_DEBUG << "Detected RECV variable is NaN:";
 	  LOG_DEBUG << "\tmy rank:            " << f->owner;
@@ -1885,7 +1885,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
   }
 
   // Pack the data into the face pointers
-  for(auto it : local_faces_to_recv) {
+  for(auto it : ghost_faces_to_recv) {
     auto partner_id = it.first;
     auto faces = it.second;
 
