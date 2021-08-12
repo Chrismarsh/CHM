@@ -868,6 +868,9 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             auto face = this->create_face(vert1, vert2, vert3);
             // get the global ID from file, so-as to support either pre partitioned or non partitioned meshes
             face->cell_global_id = _global_IDs.at(i);
+
+            // this local id will include local ids for ghosts. However, that will need to be reset once partition
+            // splits out the ghosts
             face->cell_local_id = i;
 
             // if we load from a partition, we need a way of linking the non contiguous global ids with the local ids
@@ -1352,6 +1355,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 
     // here we loop through all (incl ghosts!) to figure out where everything should go.
     // DO NOT do this in parallel (at the moment) as it's not thread safe
+    size_t local_face_i = 0;
     for (size_t i = 0; i < _faces.size(); ++i)
     {
         _faces[i]->ghost_type = ghost_info[i];
@@ -1367,9 +1371,15 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
         } else
         {
             _faces[i]->is_ghost = false;
-            _faces[i]->cell_local_id = i; // todo: remove, probably redundant as this was already set correctly in the from_h5 call?
+
+            // Although we set thsin from_h5 we need to reset it here such that it doesn't include ghosts
+            _faces[i]->cell_local_id = local_face_i;
 
             _local_faces.push_back(_faces[i]);
+
+            _global_to_local_faces_index_map[_faces[i]->cell_global_id] = local_face_i;
+            local_face_i++;
+
         }
     }
 
@@ -1459,6 +1469,8 @@ void triangulation::partition_mesh()
 
         _faces.at(_global_IDs.at(offset_idx))->is_ghost = false;
         _faces.at(_global_IDs.at(offset_idx))->owner = my_rank;
+
+        //this was set in from_h5 but needs to be reset to not include any of the ghosts
         _faces.at(_global_IDs.at(offset_idx))->cell_local_id = local_ind;
         _local_faces.at(local_ind) = _faces.at(_global_IDs.at(offset_idx));
     }
@@ -1767,7 +1779,7 @@ void triangulation::setup_nearest_neighbor_communication()
     local_indices_to_send[partner_id].resize(indices.size());
     std::transform(indices.begin(), indices.end(),
 		   local_indices_to_send[partner_id].begin(),
-		   [this](int ind){ return _global_to_locally_owned_index_map[ind]; });
+		   [this](int ind){ return _global_to_local_faces_index_map[ind]; });
     // Get local faces that need to be sent
     local_faces_to_send[partner_id].resize(indices.size());
     std::transform(local_indices_to_send[partner_id].begin(), local_indices_to_send[partner_id].end(),

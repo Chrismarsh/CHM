@@ -981,10 +981,15 @@ protected:
     std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;
 
-    // Map sa global index to a local index
-    // Size of this vector is the number of locally owned elements
+    // Maps a global index to a local index
+    // Size of this vector is the number of locally owned elements in _faces and so incl _local_faces + ghosts
     // key=global_index, entry=local_index
     std::map<int,int> _global_to_locally_owned_index_map;
+
+    // Maps a global index to a local index FOR USE WITH _local_faces
+    // Size of this vector is the number of locally owned elements in _local_faces and DOES NOT INCL ghosts
+    // key=global_index, entry=local_index
+    std::map<int,int> _global_to_local_faces_index_map;
 
     // All MPI process are aware of the local sizes for all other MPI processes
     // Index = MPI rank
