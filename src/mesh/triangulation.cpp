@@ -949,9 +949,27 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             }
 
             //-1 is now the no neighbor value
-            Face_handle face0 =  neigh[i][0] != -1 ?_faces.at( neigh_i_0_idx ) : nullptr; // Face_handle()
-            Face_handle face1 =  neigh[i][1] != -1 ?_faces.at( neigh_i_1_idx) : nullptr;
-            Face_handle face2 =  neigh[i][2] != -1 ?_faces.at( neigh_i_2_idx) : nullptr;
+            Face_handle face0 =  neigh.at(i)[0] != -1 ?_faces.at( neigh_i_0_idx) : nullptr;
+            Face_handle face1 =  neigh.at(i)[1] != -1 ?_faces.at( neigh_i_1_idx) : nullptr;
+            Face_handle face2 =  neigh.at(i)[2] != -1 ?_faces.at( neigh_i_2_idx) : nullptr;
+
+            if( face0 != nullptr && face0->cell_global_id == face->cell_global_id)
+            {
+                LOG_ERROR << "Face0 is face!";
+                CHM_THROW_EXCEPTION(config_error, "Face0 is face!");
+            }
+
+            if( face1 != nullptr && face1->cell_global_id == face->cell_global_id)
+            {
+                LOG_ERROR << "Face1 is face!";
+                CHM_THROW_EXCEPTION(config_error, "Face1 is face!");
+            }
+
+            if( face2 != nullptr && face2->cell_global_id == face->cell_global_id)
+            {
+                LOG_ERROR << "Face2 is face!";
+                CHM_THROW_EXCEPTION(config_error, "Face2 is face!");
+            }
 
             face->set_neighbors(face0,face1,face2);
 
