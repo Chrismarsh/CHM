@@ -650,6 +650,8 @@ class preprocessingTriangulation : public triangulation
 
         std::string filename = filename_base + "_mesh.h5";
 
+        //  a global to local that works with the local_faces that has all the ghosts mixed in
+        std::map<int,int> global_to_local_faces_index_map;
 
         try
         {
@@ -660,6 +662,8 @@ class preprocessingTriangulation : public triangulation
             H5::H5File file( (partition_dir / filename).string(), H5F_ACC_TRUNC);
             H5::Group group(file.createGroup("/mesh"));
 
+            // local_faces here is slightly different than anywhere else by, at this  point, it will have ghosts
+            // mixed in with it. This is thus all the faces this partition knows about
             hsize_t ntri = _local_faces.size();
 
             { // global elem id
@@ -667,10 +671,11 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &ntri);
                 auto globalIDs = std::vector<int>(ntri);
 
-                #pragma omp parallel for
+//                #pragma omp parallel for
                 for (size_t i = 0; i < ntri; ++i)
                 {
                     globalIDs[i] = _local_faces[i]->cell_global_id;
+                    global_to_local_faces_index_map[_local_faces[i]->cell_global_id] = i;
                 }
                 H5::DataSet dataset = file.createDataSet("/mesh/cell_global_id", PredType::STD_I32BE, dataspace);
                 dataset.write(globalIDs.data(), PredType::NATIVE_INT);
@@ -740,7 +745,7 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &ntri);
                 std::vector<std::array<int, 3>> neighbor(ntri);
 
-                #pragma omp parallel for
+//                #pragma omp parallel for
                 for (size_t i = 0; i < ntri; ++i)
                 {
                     auto f = this->face(i);
@@ -749,13 +754,30 @@ class preprocessingTriangulation : public triangulation
                         auto neigh = f->neighbor(j);
                         if (neigh != nullptr && //we have a neighbour
                             // ensure we are within the range of what we hold
-                            neigh->cell_global_id <= _local_faces.back()->cell_global_id &&
-                            neigh->cell_global_id >= _local_faces.front()->cell_global_id )
+//                            neigh->cell_global_id <= _local_faces.back()->cell_global_id &&
+//                            neigh->cell_global_id >= _local_faces.front()->cell_global_id &&
+                            global_to_local_faces_index_map.find(neigh->cell_global_id) != global_to_local_faces_index_map.end()
+                                                        )
                         {
+//                            if(global_to_local_faces_index_map.find(neigh->cell_global_id) ==
+//                                global_to_local_faces_index_map.end() )
+//                            {
+//                                LOG_ERROR << "Face=" << i << " tried to assign a neighbour that we don't have in local_faces!";
+//                                LOG_ERROR << "Neigh j=" << j << " with global id " << neigh->cell_global_id;
+//
+//                                auto gi = f->get_module_data<ghost_info>("partition_tool");
+//
+//                                LOG_ERROR << "Face is ghost type =" << gi->ghost_type;
+//
+//                                auto ngi = neigh->get_module_data<ghost_info>("partition_tool");
+//                                LOG_ERROR << "Neigh is ghost type =" << ngi->ghost_type;
+//                                CHM_THROW_EXCEPTION(mesh_lookup_error, "Unknown neighbourh" );
+//                            }
                             neighbor[i][j] = neigh->cell_global_id;
                         }
                         else
                         {
+                            // they may have a triangle neighbour, but it could be outside our ghost region
                             neighbor[i][j] = -1;
                         }
                     }
@@ -889,6 +911,7 @@ class preprocessingTriangulation : public triangulation
     comm_world _comm_world;
 
     std::map<std::string, std::vector<double> > _param_data;
+
 
     struct ghost_info : public face_info
     {
