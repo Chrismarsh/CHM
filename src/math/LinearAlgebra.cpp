@@ -68,18 +68,25 @@ namespace math
       std::vector<size_t> num_entries(ntri*nLayer,1);
       std::vector<std::array<global_ordinal_type,6>> neighbor_global_idx(ntri*nLayer);
 //#pragma omp parallel for
-      for (size_t i = 0; i < ntri; ++i) {
+      for (size_t i = 0; i < ntri; ++i)
+      {
 	auto face = domain->face(i);
 	int face_bottom_idx = face->cell_global_id;
 	int face_bottom_local_idx = face->cell_local_id;
-	// Lateral neighbors and self
-	for (int layer=0; layer<nLayer; ++layer ) {
+
+        // Lateral neighbors and self
+	for (int layer=0; layer<nLayer; ++layer )
+        {
 	  int element_idx = n_global_tri*layer + face_bottom_idx;
 	  int local_array_idx = ntri*layer + face_bottom_local_idx;
-	  neighbor_global_idx.at(local_array_idx).at(0) = element_idx;
-	  for (int f = 0; f < 3; f++){
+	  neighbor_global_idx.at(local_array_idx).at(0) = element_idx; // OoB here
+
+	  for (int f = 0; f < 3; f++)
+          {
 	    auto neighbor = face->neighbor(f);
-	    if (neighbor != nullptr)  {
+
+	    if (neighbor != nullptr)
+            {
 	      int neigh_bottom_idx = neighbor->cell_global_id;
 	      int neigh_global_idx = n_global_tri*layer + neigh_bottom_idx;
 	      neighbor_global_idx.at(local_array_idx).at(num_entries.at(local_array_idx)) = neigh_global_idx;
