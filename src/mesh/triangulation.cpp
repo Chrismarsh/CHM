@@ -1417,6 +1417,17 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 
     _num_faces = _local_faces.size();
 
+    // _global_IDs must contain (in the same order) cell_global_id for the faces
+    // in _local_faces
+    {
+      std::vector<int> tmp(_local_faces.size());
+      std::transform(_local_faces.begin(), _local_faces.end(),
+		     tmp.begin(),
+		     [](mesh_elem e) { return e->cell_global_id; });
+      std::swap(tmp, _global_IDs);
+    }
+
+
     LOG_DEBUG << "MPI Process " << my_rank << ": start " << global_cell_start_idx << ", end " << global_cell_end_idx << ", number "
               << _local_faces.size();
 
@@ -1475,13 +1486,14 @@ void triangulation::partition_mesh()
         _local_faces.at(local_ind) = _faces.at(_global_IDs.at(offset_idx));
     }
 
-    // if loaded from a single h5 and partitioned on the fly, _global_IDs.size() needs to be the same length as
-    // _local_faces.size()
-    if(!_mesh_is_from_partition)
+    // _global_IDs must contain (in the same order) cell_global_id for the faces
+    // in _local_faces
     {
-        std::vector<int> tmp = {_global_IDs.begin() + global_cell_start_idx,
-                                _global_IDs.begin() + global_cell_end_idx + 1}; // +1 is need as .end() is one past
-        std::swap(tmp, _global_IDs);
+      std::vector<int> tmp(_local_faces.size());
+      std::transform(_local_faces.begin(), _local_faces.end(),
+		     tmp.begin(),
+		     [](mesh_elem e) { return e->cell_global_id; });
+      std::swap(tmp, _global_IDs);
     }
 
     _num_faces = _local_faces.size();
