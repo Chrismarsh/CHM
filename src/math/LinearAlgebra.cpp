@@ -55,7 +55,6 @@ namespace math
       }
 
 
-
       const size_t numGlobalElements = n_global_tri*nLayer;
       const auto* data_extruded_IDs = extruded_global_IDs.data();
       const size_t indexListSize = ntri*nLayer;
@@ -67,7 +66,8 @@ namespace math
       // otherwise!), and what their global indices are.
       std::vector<size_t> num_entries(ntri*nLayer,1);
       std::vector<std::array<global_ordinal_type,6>> neighbor_global_idx(ntri*nLayer);
-//#pragma omp parallel for
+
+#pragma omp parallel for
       for (size_t i = 0; i < ntri; ++i)
       {
 	auto face = domain->face(i);
@@ -79,7 +79,7 @@ namespace math
         {
 	  int element_idx = n_global_tri*layer + face_bottom_idx;
 	  int local_array_idx = ntri*layer + face_bottom_local_idx;
-	  neighbor_global_idx.at(local_array_idx).at(0) = element_idx; // OoB here
+	  neighbor_global_idx.at(local_array_idx).at(0) = element_idx;
 
 	  for (int f = 0; f < 3; f++)
           {
@@ -131,11 +131,14 @@ namespace math
       // Set all of the desired nonzero columns in the graph
       // due to insertGlobalIndices args
       // DO NOT DO THIS THREAD PARALLEL
-      for (size_t i = 0; i < ntri; ++i) {
+      for (size_t i = 0; i < ntri; ++i)
+      {
 	auto face = domain->face(i);
 	int face_bottom_idx = face->cell_global_id;
 	int face_bottom_local_idx = face->cell_local_id;
-	for (int layer = 0; layer<nLayer; ++layer) {
+
+        for (int layer = 0; layer<nLayer; ++layer)
+        {
 	  int element_idx = n_global_tri*layer + face_bottom_idx;
 	  int local_array_idx = ntri*layer + face_bottom_local_idx;
 	  // std::cout << "insertGlobal : " << element_idx << " : " << num_suspension_entries[element_idx] << "\n";

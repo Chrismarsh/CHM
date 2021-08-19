@@ -614,16 +614,16 @@ class preprocessingTriangulation : public triangulation
 
             //ensure the id order is monotonic increasing
             auto perm = sort_permutation(_local_faces,
-                                      [](mesh_elem const& fa, mesh_elem const& fb){ return fa->cell_global_id < fb->cell_global_id; });
+                                         [](mesh_elem const& fa, mesh_elem const& fb)
+                                         {
+                                           return fa->cell_global_id < fb->cell_global_id;
+                                         });
 
             apply_permutation_in_place(_local_faces, perm);
             for (auto const& name : pars->names)
             {
                 apply_permutation_in_place(_param_data[name], perm);
             }
-
-
-
 
             auto fname = filename_base + ".partition." + std::to_string(mpirank);
 
