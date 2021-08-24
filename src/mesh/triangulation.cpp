@@ -958,19 +958,19 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
             if( face0 != nullptr && face0->cell_global_id == face->cell_global_id)
             {
-                LOG_ERROR << "Face0 is face!";
+                LOG_ERROR << "At idx="<<i<<" Face0 is trying to set itself as neighbour!";
                 CHM_THROW_EXCEPTION(config_error, "Face0 is face!");
             }
 
             if( face1 != nullptr && face1->cell_global_id == face->cell_global_id)
             {
-                LOG_ERROR << "Face1 is face!";
+                LOG_ERROR << "At idx="<<i<<" Face1 is trying to set itself as neighbour!";
                 CHM_THROW_EXCEPTION(config_error, "Face1 is face!");
             }
 
             if( face2 != nullptr && face2->cell_global_id == face->cell_global_id)
             {
-                LOG_ERROR << "Face2 is face!";
+                LOG_ERROR << "At idx="<<i<<" Face2 is trying to set itself as neighbour!";
                 CHM_THROW_EXCEPTION(config_error, "Face2 is face!");
             }
 

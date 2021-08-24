@@ -51,6 +51,11 @@ class preprocessingTriangulation : public triangulation
 {
   public:
 
+    preprocessingTriangulation()
+    {
+        _is_standalone = true;
+        _is_partition = true;
+    }
 
     void partition(int mpi_rank)
     { // Set up so that all processors know how 'big' all other processors are
@@ -448,8 +453,11 @@ class preprocessingTriangulation : public triangulation
     void from_hdf5_and_partition(const std::string& mesh_filename,
                                  const std::vector<std::string>& param_filenames,
                                  size_t MPI_ranks,
-                                 size_t max_ghost_distance)
+                                 size_t max_ghost_distance,
+                                 int standalone_rank)
     {
+
+
         _comm_world._size = MPI_ranks;
         LOG_DEBUG << "Partitioning mesh " << mesh_filename << " with #ranks=" << MPI_ranks;
 
@@ -470,7 +478,15 @@ class preprocessingTriangulation : public triangulation
         auto partition_dir = boost::filesystem::path(filename_base + ".np" +  std::to_string(_comm_world.size()) + ".partition.meshes");
         boost::filesystem::create_directory(partition_dir);
 
-        for (int mpirank = 0; mpirank < MPI_ranks; mpirank++)
+        int start_rank = 0;
+        int end_rank = MPI_ranks;
+        if(standalone_rank > -1 )
+        {
+            start_rank = standalone_rank;
+            end_rank = standalone_rank+1;
+            _is_standalone = true;
+        }
+        for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
         {
             _comm_world._rank = mpirank;
 
@@ -556,8 +572,15 @@ class preprocessingTriangulation : public triangulation
                         // hyperslab size that is as large as just the local meshes to read the block
                         hsize_t local_size = static_cast<hsize_t>(_local_faces.size());
 
-                        //but we need to ensure we have enough room for local + ghosts
-                        _param_data[name].resize(_local_faces.size() + _ghost_faces.size());
+                        if(!_is_standalone)
+                        {
+                            // but we need to ensure we have enough room for local + ghosts
+                            _param_data[name].resize(_local_faces.size() + _ghost_faces.size());
+                        }
+                        else
+                        {
+                            _param_data[name].resize(_local_faces.size());
+                        }
                         hsize_t offset = static_cast<hsize_t>(_local_faces[0]->cell_global_id);
 
                         DataSet dataset = group.openDataSet(name);
@@ -574,24 +597,26 @@ class preprocessingTriangulation : public triangulation
 
                         dataset.read(_param_data[name].data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
 
-                        // Read parameters for each ghost face individually
-                        hsize_t one = 1;
-                        // Do NOT do this loop in parallel (internal state of HDF5)
-                        for (size_t i = 0; i < _ghost_faces.size(); i++)
+                        if(!_is_standalone)
                         {
-                            auto face = _ghost_faces.at(i);
-                            hsize_t global_id = face->cell_global_id;
+                            // Read parameters for each ghost face individually
+                            hsize_t one = 1;
+                            // Do NOT do this loop in parallel (internal state of HDF5)
+                            for (size_t i = 0; i < _ghost_faces.size(); i++)
+                            {
+                                auto face = _ghost_faces.at(i);
+                                hsize_t global_id = face->cell_global_id;
 
-                            // Position and size in file
-                            dataspace.selectHyperslab(H5S_SELECT_SET, &one, &global_id);
-                            // Position and size in variable
-                            memspace.selectHyperslab(H5S_SELECT_SET, &one, &zero);
+                                // Position and size in file
+                                dataspace.selectHyperslab(H5S_SELECT_SET, &one, &global_id);
+                                // Position and size in variable
+                                memspace.selectHyperslab(H5S_SELECT_SET, &one, &zero);
 
-                            double value;
-                            dataset.read(&value, PredType::NATIVE_DOUBLE, memspace, dataspace);
+                                double value;
+                                dataset.read(&value, PredType::NATIVE_DOUBLE, memspace, dataspace);
 
-                            _param_data[name][_local_faces.size() + i] = value;
-
+                                _param_data[name][_local_faces.size() + i] = value;
+                            }
                         }
                     }
                 }
@@ -607,10 +632,13 @@ class preprocessingTriangulation : public triangulation
                 }
             }
 
-            // now, augment the local faces with our ghosts, so that the ghosts are
-            // a) flagged and b) available in this subset
-            // _ghost_faces includes /all/ the ghost faces: neighbour + distance
-            _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end()) ;
+            if(!_is_standalone)
+            {
+                // now, augment the local faces with our ghosts, so that the ghosts are
+                // a) flagged and b) available in this subset
+                // _ghost_faces includes /all/ the ghost faces: neighbour + distance
+                _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end());
+            }
 
             //ensure the id order is monotonic increasing
             auto perm = sort_permutation(_local_faces,
@@ -625,7 +653,7 @@ class preprocessingTriangulation : public triangulation
                 apply_permutation_in_place(_param_data[name], perm);
             }
 
-            auto fname = filename_base + ".partition." + std::to_string(mpirank);
+            auto fname = filename_base + ".partition." + (_is_standalone ? "standalone." : "") + std::to_string(mpirank);
 
             to_hdf5(partition_dir, fname);
 
@@ -674,8 +702,8 @@ class preprocessingTriangulation : public triangulation
 //                #pragma omp parallel for
                 for (size_t i = 0; i < ntri; ++i)
                 {
-                    globalIDs[i] = _local_faces[i]->cell_global_id;
-                    global_to_local_faces_index_map[_local_faces[i]->cell_global_id] = i;
+                    globalIDs.at(i) = _local_faces.at(i)->cell_global_id;
+                    global_to_local_faces_index_map[globalIDs.at(i)] = i;
                 }
                 H5::DataSet dataset = file.createDataSet("/mesh/cell_global_id", PredType::STD_I32BE, dataspace);
                 dataset.write(globalIDs.data(), PredType::NATIVE_INT);
@@ -773,12 +801,12 @@ class preprocessingTriangulation : public triangulation
 //                                LOG_ERROR << "Neigh is ghost type =" << ngi->ghost_type;
 //                                CHM_THROW_EXCEPTION(mesh_lookup_error, "Unknown neighbourh" );
 //                            }
-                            neighbor[i][j] = neigh->cell_global_id;
+                            neighbor.at(i)[j] = neigh->cell_global_id;
                         }
                         else
                         {
                             // they may have a triangle neighbour, but it could be outside our ghost region
-                            neighbor[i][j] = -1;
+                            neighbor.at(i)[j] = -1;
                         }
                     }
                 }
@@ -824,11 +852,14 @@ class preprocessingTriangulation : public triangulation
             }
 
             { // Write that this is part of a partitioned mesh
-                bool is_partition = true;
+                _is_partition = true;
+                if(_is_standalone)
+                    _is_partition = false;
+
                 H5::DataSpace dataspace(1, &partition_dims);
                 H5::Attribute attribute =
                     file.createAttribute("/mesh/is_partition", PredType::NATIVE_HBOOL, dataspace);
-                attribute.write(PredType::NATIVE_HBOOL, &is_partition);
+                attribute.write(PredType::NATIVE_HBOOL, &_is_partition);
             }
 
 
@@ -912,6 +943,10 @@ class preprocessingTriangulation : public triangulation
 
     std::map<std::string, std::vector<double> > _param_data;
 
+    bool _is_partition;
+
+    bool _is_standalone;
+
 
     struct ghost_info : public face_info
     {
@@ -932,12 +967,15 @@ int main(int argc, char *argv[])
     size_t MPI_ranks = 2;
     size_t max_ghost_distance = 100;
 
+    int standalone_rank = -1;
+
     po::options_description desc("Allowed options.");
     desc.add_options()
         ("help", "This message")
         ("mesh-file,m", po::value<std::string>(&mesh_filename), "Mesh file")
         ("param-file,p", po::value<std::vector<std::string>>(), "Parameter file")
         ("max-ghost-distance,g", po::value<size_t>(&max_ghost_distance), "Parameter file")
+        ("standalone,s", po::value<int>(&standalone_rank), "Write the paritioned mesh so-as to be loadable standalone. Advanced debugging feature. Arg is rank to do")
         ("mpi-ranks",po::value<size_t>(&MPI_ranks), "Number of MPI ranks to partition for");
 
     po::variables_map vm;
@@ -971,7 +1009,14 @@ int main(int argc, char *argv[])
         param_filenames.push_back(itr);
     }
 
+    if (vm.count("standalone"))
+    {
+        LOG_WARNING << "Standalone option enabled. This will not write ghost faces and is intended to write a specific rank as a standalone mesh for debugging.";
+
+    }
 
     preprocessingTriangulation* tri = new preprocessingTriangulation();
-    tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance);
+    tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance, standalone_rank);
+
+    LOG_DEBUG << "Done";
 }
