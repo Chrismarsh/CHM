@@ -60,6 +60,7 @@ triangulation::triangulation()
 
     // Array datatype for is_geographic
     geographic_dims=1;
+    partition_dims=1;
 
 }
 
