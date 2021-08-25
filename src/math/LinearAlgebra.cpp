@@ -219,6 +219,7 @@ namespace math
       // Critical section needed because sumIntoGlobalValues is not respecting
       // the 4th arg (force atomic update)
       // - likely a Trilinos/Kokkos bug
+      // trilinos/Trilinos/issues/9519
 #pragma omp critical
       m_rhs->sumIntoGlobalValue(global_idx, 0, val, true);
     }
