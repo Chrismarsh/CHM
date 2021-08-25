@@ -14,7 +14,8 @@ CRHMr.log
 
 /src/version.h
 
-/cppcheck/*
+/tools/scripts/cppcheck/*
+
 
 /CHM.wiki/*
 
