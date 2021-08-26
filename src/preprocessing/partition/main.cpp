@@ -773,7 +773,7 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &ntri);
                 std::vector<std::array<int, 3>> neighbor(ntri);
 
-//                #pragma omp parallel for
+                #pragma omp parallel for
                 for (size_t i = 0; i < ntri; ++i)
                 {
                     auto f = this->face(i);
@@ -781,31 +781,13 @@ class preprocessingTriangulation : public triangulation
                     {
                         auto neigh = f->neighbor(j);
                         if (neigh != nullptr && //we have a neighbour
-                            // ensure we are within the range of what we hold
-//                            neigh->cell_global_id <= _local_faces.back()->cell_global_id &&
-//                            neigh->cell_global_id >= _local_faces.front()->cell_global_id &&
-                            global_to_local_faces_index_map.find(neigh->cell_global_id) != global_to_local_faces_index_map.end()
-                                                        )
+                            global_to_local_faces_index_map.find(neigh->cell_global_id) != global_to_local_faces_index_map.end() ) // and we've seen this neighbour's global ID
                         {
-//                            if(global_to_local_faces_index_map.find(neigh->cell_global_id) ==
-//                                global_to_local_faces_index_map.end() )
-//                            {
-//                                LOG_ERROR << "Face=" << i << " tried to assign a neighbour that we don't have in local_faces!";
-//                                LOG_ERROR << "Neigh j=" << j << " with global id " << neigh->cell_global_id;
-//
-//                                auto gi = f->get_module_data<ghost_info>("partition_tool");
-//
-//                                LOG_ERROR << "Face is ghost type =" << gi->ghost_type;
-//
-//                                auto ngi = neigh->get_module_data<ghost_info>("partition_tool");
-//                                LOG_ERROR << "Neigh is ghost type =" << ngi->ghost_type;
-//                                CHM_THROW_EXCEPTION(mesh_lookup_error, "Unknown neighbourh" );
-//                            }
                             neighbor.at(i)[j] = neigh->cell_global_id;
                         }
                         else
                         {
-                            // they may have a triangle neighbour, but it could be outside our ghost region
+                            // they may have a triangle neighbour, but we haven't seen it, so  it is outside our ghost region
                             neighbor.at(i)[j] = -1;
                         }
                     }
@@ -943,9 +925,9 @@ class preprocessingTriangulation : public triangulation
 
     std::map<std::string, std::vector<double> > _param_data;
 
-    bool _is_partition;
+    bool _is_partition; // the flag to write to the hdf5 file
 
-    bool _is_standalone;
+    bool _is_standalone; // are we in standalone mode
 
 
     struct ghost_info : public face_info
