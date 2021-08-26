@@ -794,6 +794,8 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             H5::DataSpace dataspace(1, &partition_dims);
             H5::Attribute attribute = file.openAttribute("/mesh/is_partition");
             attribute.read(PredType::NATIVE_HBOOL, &_mesh_is_from_partition);
+            LOG_DEBUG << "Loaded mesh is partitioned";
+
         }
         catch (AttributeIException& e)
         {
