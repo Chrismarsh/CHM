@@ -53,7 +53,7 @@ class preprocessingTriangulation : public triangulation
 
     preprocessingTriangulation()
     {
-        _is_standalone = true;
+        _is_standalone = false;
         _is_partition = true;
     }
 
