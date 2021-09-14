@@ -229,7 +229,13 @@ public:
     ~core();
 
     void run();
-    void end();
+
+    /**
+     * Shutdown. In MPI mode allows us to trigger an MPI_Abort on exception
+     * @param abort
+     */
+    void end(const bool abort = false );
+
     pt::ptree _cfg;
     boost::filesystem::path o_path; //path to output folder
     boost::filesystem::path log_file_path; // fully qualified path to the log file

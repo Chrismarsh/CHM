@@ -2352,8 +2352,16 @@ void core::run()
     }
 }
 
-void core::end()
+void core::end(const bool abort)
 {
+#ifdef USE_MPI
+    if(abort)
+    {
+        LOG_ERROR << "An exception has occurred, requesting MPI Abort!";
+        _mpi_env.abort(-1);
+    }
+#endif
+
     LOG_DEBUG << "Cleaning up";
 }
 

@@ -62,7 +62,12 @@ int main (int argc, char *argv[])
        ret = -1;
     }
 
-    kernel.end();
+    // if we have an exception, ensure we tear down all of the MPI. In Non MPI mode this won't do anything
+    if(ret == -1)
+        kernel.end(true);
+    else
+        kernel.end();
+
     boost::filesystem::copy_file(kernel.log_file_path,kernel.o_path / "CHM.log", boost::filesystem::copy_option::overwrite_if_exists);
 
     return ret;
