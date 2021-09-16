@@ -1098,13 +1098,14 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
         load_mesh_from_h5(mesh_filename);
     }
     // catch failure caused by the H5File operations
-    catch (FileIException& error)
+    catch (FileIException& e)
     {
-        error.printErrorStack();
+        LOG_ERROR << "Error loading HDF5 file: " << mesh_filename;
+        e.printErrorStack();
     }
     // catch failure caused by the DataSet operations
-    catch (DataSetIException& error) {
-        error.printErrorStack();
+    catch (DataSetIException& e) {
+        e.printErrorStack();
     }
 
     // if we are partitioned, just load it from file
