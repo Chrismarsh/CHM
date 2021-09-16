@@ -217,7 +217,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${DEBUG_FLAGS}")
 else()
     message(STATUS "Release mode")
-    set(RELEASE_FLAGS "-g -O1 -ggdb")
+    set(RELEASE_FLAGS "-g -O3 -ggdb")
 
     if(ENABLE_SAFE_CHECKS)
         add_definitions(-DSAFE_CHECKS)

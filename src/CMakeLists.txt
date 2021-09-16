@@ -106,8 +106,8 @@ set (HEADER_FILES
         modules
 		physics
         modules/interp_met
-	modules/snobal
-	math
+		modules/snobal
+		math
         libmaw
         interpolation
         timeseries
