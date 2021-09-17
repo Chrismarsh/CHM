@@ -56,7 +56,6 @@ core::~core()
         itr.first.reset();
     }
 
-    LOG_DEBUG << "Finished";
 }
 
 void core::config_options( pt::ptree &value)
@@ -613,7 +612,7 @@ void core::config_meshes( pt::ptree &value)
         bool h5_or_part = mesh_file_extension != ".h5" || mesh_file_extension != ".partition";
         if(!h5_or_part)
         {
-            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool\n\n"));
         }
 
         // only check the params and ics if we aren't using a parition file
@@ -624,7 +623,7 @@ void core::config_meshes( pt::ptree &value)
                 auto extension = boost::filesystem::path(it).extension();
                 if(extension != ".h5")
                 {
-                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 parameter files: " + it + "\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 parameter files: " + it + "\n\n    Run the serial hdf5 conversion tool\n\n"));
                 }
             }
             for(const auto& it : initial_condition_file_paths)
@@ -632,7 +631,7 @@ void core::config_meshes( pt::ptree &value)
                 auto extension = boost::filesystem::path(it).extension();
                 if(extension != ".h5")
                 {
-                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 initial condition files: " + it + "\n\n    Run the serial hdf5 conversion tool using the option:  --convert-hdf5\n\n"));
+                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 initial condition files: " + it + "\n\n    Run the serial hdf5 conversion tool\n\n"));
                 }
             }
         }
@@ -648,7 +647,7 @@ void core::config_meshes( pt::ptree &value)
     _provided_parameters = _mesh->parameters();
 
 
-    pt::ptree mesh; // holds the json mesh if we end up using it
+
 
     // Before we read the mesh, we need to know if we are geographic or projected so we can hook up all the distance functions
     // correctly. So for either json or hdf5 we check, hook up the functions, then proceed to the main load which can assume the functions are available
@@ -686,6 +685,8 @@ void core::config_meshes( pt::ptree &value)
     }
     else  // Assume anything that is NOT h5 is json
     {
+        auto mesh = read_json(mesh_path);
+
         //mesh will have been loaded by the geographic check so don't re load it here
       bool triarea_found = false;
 
@@ -1002,7 +1003,6 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
                     "will result in nproc being removed.")
             ("remove-module,d", po::value<std::vector<std::string>>(), "Removes a module."
                     " Removals are processed after any --config paramters are parsed, so -d will override -c. ")
-            ("convert-hdf5", po::bool_switch()->default_value(false), "Converts a .mesh to a .hdf5 and exits. True/false")
             ("add-module,m", po::value<std::vector<std::string>>(), "Adds a module.");
 
 
@@ -1065,16 +1065,6 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
         LOG_ERROR << "Configuration file required.";
         cout << desc << std::endl;
         exit(1);
-    }
-
-
-    if (vm.count("convert-hdf5"))
-    {
-        cli_options.do_hdf5_convert = vm["convert-hdf5"].as<bool>();
-	if( cli_options.do_hdf5_convert)
-	{
-	  LOG_WARNING << "HDF5 conversion enabled, model will exit after converting mesh.";
-        }
     }
 
 
@@ -1338,25 +1328,6 @@ void core::init(int argc, char **argv)
      */
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
-
-    if( cli_options.do_hdf5_convert)
-    {
-
-        std::string name = "converted";
-        try
-        {
-            name = cfg.get_child("meshes").get<std::string>("mesh");
-        }
-        catch (pt::ptree_bad_path& e)
-        {
-            LOG_WARNING << "Could not automatically determine output file name, defaulting to 'coverted'";
-        }
-
-        LOG_DEBUG << "Converting mesh to hdf5...";
-        _mesh->to_hdf5(name);
-        LOG_DEBUG << "HDF5 written, terminating";
-        CHM_THROW_EXCEPTION(chm_done, "done");
-    }
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with.
     // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further

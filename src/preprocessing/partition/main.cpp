@@ -26,6 +26,8 @@
 #include "logger.hpp"
 #include "triangulation.hpp"
 #include "sort_perm.hpp"
+#include "core.hpp"
+
 #include <string>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
@@ -126,16 +128,6 @@ class preprocessingTriangulation : public triangulation
                 H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
                 attribute.read(PredType::NATIVE_HBOOL, &_is_geographic);
 
-                if( _is_geographic)
-                {
-                    math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
-                    math::gis::distance = &math::gis::distance_latlong;
-                }
-                else
-                {
-                    math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
-                    math::gis::distance = &math::gis::distance_UTM;
-                }
             }
 
             {
@@ -459,9 +451,91 @@ class preprocessingTriangulation : public triangulation
 
 
         _comm_world._size = MPI_ranks;
-        LOG_DEBUG << "Partitioning mesh " << mesh_filename << " with #ranks=" << MPI_ranks;
 
-        read_h5(mesh_filename);
+        {
+            core c; // instantiate this long enough to use this one function
+            _is_geographic = c.check_is_geographic(mesh_filename);
+        }
+
+        if( _is_geographic)
+        {
+            math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
+            math::gis::distance = &math::gis::distance_latlong;
+        }
+        else
+        {
+            math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
+            math::gis::distance = &math::gis::distance_UTM;
+        }
+
+
+        auto mesh_file_extension = boost::filesystem::path(mesh_filename).extension().string();
+
+        if(mesh_file_extension == ".partition")
+        {
+            CHM_THROW_EXCEPTION(mesh_error, "Cannot run this tool with a .partition mesh input!");
+        }
+
+        if(mesh_file_extension == ".h5")
+        {
+            LOG_DEBUG << "Partitioning mesh " << mesh_filename << " with #ranks=" << MPI_ranks;
+            read_h5(mesh_filename);
+
+        }
+        else
+        {
+            auto mesh = read_json(mesh_filename);
+
+            //mesh will have been loaded by the geographic check so don't re load it here
+            bool triarea_found = false;
+
+            // Parameter files
+            for (auto param_file : param_filenames)
+            {
+                pt::ptree param_json = read_json(param_file);
+
+                for(auto& ktr : param_json)
+                {
+                    //use put to ensure there are no duplciate parameters...
+                    std::string key = ktr.first.data();
+                    mesh.put_child( "parameters." + key ,ktr.second);
+
+                    if( key == "area")
+                        triarea_found = true;
+
+                    LOG_DEBUG << "Inserted parameter " << ktr.first.data() << " into the config tree.";
+                }
+            }
+
+            if(_is_geographic && !triarea_found)
+            {
+                BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
+            }
+
+            // Initial condition files
+//            for(auto ic_file : initial_condition_file_paths)
+//            {
+//                pt::ptree ic_json = read_json(ic_file);
+//
+//                for(auto& ktr : ic_json)
+//                {
+//                    //use put to ensure there are no duplciate parameters...
+//                    std::string key = ktr.first.data();
+//                    mesh.put_child( "initial_conditions." + key ,ktr.second);
+//                    LOG_DEBUG << "Inserted initial condition " << ktr.first.data() << " into the config tree.";
+//                }
+//            }
+
+            from_json(mesh);
+
+            LOG_DEBUG << "Converting mesh to hdf5...";
+            auto base_name = boost::filesystem::path(mesh_filename).stem().string();
+            triangulation::to_hdf5(base_name);
+            LOG_DEBUG << "HDF5 written, terminating";
+            return;
+
+        }
+
 
         _num_global_faces = _faces.size();
 
@@ -543,7 +617,6 @@ class preprocessingTriangulation : public triangulation
 
             // load params
 
-
             // Space for extracting the parameter info
             std::unique_ptr<MeshParameters> pars(new MeshParameters);
             for (auto param_filename : param_filenames)
@@ -572,7 +645,7 @@ class preprocessingTriangulation : public triangulation
                         // hyperslab size that is as large as just the local meshes to read the block
                         hsize_t local_size = static_cast<hsize_t>(_local_faces.size());
 
-                        if(!_is_standalone)
+                        if (!_is_standalone)
                         {
                             // but we need to ensure we have enough room for local + ghosts
                             _param_data[name].resize(_local_faces.size() + _ghost_faces.size());
@@ -597,7 +670,7 @@ class preprocessingTriangulation : public triangulation
 
                         dataset.read(_param_data[name].data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
 
-                        if(!_is_standalone)
+                        if (!_is_standalone)
                         {
                             // Read parameters for each ghost face individually
                             hsize_t one = 1;
@@ -632,6 +705,7 @@ class preprocessingTriangulation : public triangulation
                 }
             }
 
+
             if(!_is_standalone)
             {
                 // now, augment the local faces with our ghosts, so that the ghosts are
@@ -648,6 +722,7 @@ class preprocessingTriangulation : public triangulation
                                          });
 
             apply_permutation_in_place(_local_faces, perm);
+
             for (auto const& name : pars->names)
             {
                 apply_permutation_in_place(_param_data[name], perm);
@@ -964,6 +1039,17 @@ int main(int argc, char *argv[])
     po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
     po::notify(vm);
 
+
+    auto is_json_mesh = boost::filesystem::path(mesh_filename).extension().string() == ".mesh";
+
+    if(is_json_mesh)
+    {
+        LOG_WARNING << "The input mesh is in json format. It MUST be converted to hdf5 before it can be partitioned.\n"
+                       " Once the hdf5 conversion is done, please rerun this tool with the h5 mesh as input to fully partition the mesh.";
+    }
+
+
+
     if (!vm.count("mesh-file"))
     {
         LOG_ERROR << "Mesh file required";
@@ -974,10 +1060,17 @@ int main(int argc, char *argv[])
         LOG_ERROR << "Param file required";
         exit(-1);
     }
-    if (!vm.count("mpi-ranks"))
+    if (!vm.count("mpi-ranks") && !is_json_mesh)
     {
         LOG_ERROR << "MPI ranks required";
         exit(-1);
+    }
+
+    if (vm.count("mpi-ranks") && is_json_mesh)
+    {
+        LOG_WARNING << "MPI ranks will be ignored for the json -> h5 conversion. "
+                       "Please rerun the tool with h5 as input to enable partitioning";
+
     }
 
     if (!vm.count("max-ghost-distance"))
@@ -997,8 +1090,16 @@ int main(int argc, char *argv[])
 
     }
 
+    if (!vm.count("max-ghost-distance"))
+    {
+        LOG_WARNING << "Using default max ghost distance of 100 m";
+    }
+
+
     preprocessingTriangulation* tri = new preprocessingTriangulation();
     tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance, standalone_rank);
+
+
 
     LOG_DEBUG << "Done";
 }

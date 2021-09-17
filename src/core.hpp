@@ -370,7 +370,7 @@ protected:
 
     struct
     {
-        bool do_hdf5_convert; // Convert the input mesh and optionally parameter files to hdf5 and exit.
+        bool tmp;  // empty until we use this more
 
     } cli_options;
 
