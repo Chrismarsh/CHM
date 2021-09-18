@@ -1045,7 +1045,7 @@ int main(int argc, char *argv[])
     if(is_json_mesh)
     {
         LOG_WARNING << "The input mesh is in json format. It MUST be converted to hdf5 before it can be partitioned.\n"
-                       " Once the hdf5 conversion is done, please rerun this tool with the h5 mesh as input to fully partition the mesh.";
+                       " Once the hdf5 conversion is done, this tool will re-run with the h5 mesh as input to fully partition the mesh.";
     }
 
 
@@ -1068,8 +1068,7 @@ int main(int argc, char *argv[])
 
     if (vm.count("mpi-ranks") && is_json_mesh)
     {
-        LOG_WARNING << "MPI ranks will be ignored for the json -> h5 conversion. "
-                       "Please rerun the tool with h5 as input to enable partitioning";
+        LOG_WARNING << "MPI ranks will be ignored for the json -> h5 conversion. ";
 
     }
 
@@ -1090,21 +1089,38 @@ int main(int argc, char *argv[])
 
     }
 
-    if (!vm.count("max-ghost-distance"))
-    {
-        LOG_WARNING << "Using default max ghost distance of 100 m";
-    }
-
-    if(MPI_ranks == 1)
+    if(MPI_ranks <= 1)
     {
         LOG_ERROR << "Requires ranks >1";
         exit(-1);
     }
 
-    preprocessingTriangulation* tri = new preprocessingTriangulation();
-    tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance, standalone_rank);
+    try
+    {
 
+        {
+            preprocessingTriangulation* tri = new preprocessingTriangulation();
+            tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
+                                         standalone_rank);
+        }
 
+        // We have input as json and asked for mpi-ranks, so rerun the tool
+        if (is_json_mesh && vm.count("mpi-ranks"))
+        {
+            LOG_DEBUG << "Partitioning mh5 mesh";
+
+            auto h5_mesh_name = boost::filesystem::path(mesh_filename).stem().string() + "_mesh.h5";
+            std::vector<std::string> h5_param_name = {boost::filesystem::path(mesh_filename).stem().string() +
+                                                      "_param.h5"};
+
+            preprocessingTriangulation* tri = new preprocessingTriangulation();
+            tri->from_hdf5_and_partition(h5_mesh_name, h5_param_name, MPI_ranks, max_ghost_distance, standalone_rank);
+        }
+    }
+    catch(exception_base& e)
+    {
+        LOG_ERROR << boost::diagnostic_information(e);
+    }
 
     LOG_DEBUG << "Done";
 }
