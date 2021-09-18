@@ -35,7 +35,7 @@ Conversion
 ++++++++++
 
 1. Create mesh as normal with Mesher and apply the permutation
-2. Convert the mesh to h5 or partitioned h5 via the `partition` tool.
+2. Convert the mesh to h5 or partitioned h5 via the :ref:`partition` tool.
 
 To load the h5 files:
 
