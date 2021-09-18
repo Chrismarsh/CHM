@@ -3,13 +3,15 @@ Partition tool
 
 The partition tool performs two functions:
 
-1. Convert json (`.mesh)` format meshes to binary HDF5 (`.h5`)
+1. Convert json (`.mesh`) format meshes to binary HDF5 (`.h5`)
 2. Partition an HDF5 mesh format for *n* MPI ranks.
 
-To use CHM in MPI mode *requires* that an HDF5. However, in this configuration CHM will load the entire base mesh
-(despite only operating on a small portion of it) into memory and load the corresponding subset from the parameter file. As a result, the memory usage for each MPI rank is high.
+To use CHM in MPI mode *requires* using an HDF5 mesh file. When using CHM with MPI, the mesh is partitioned at run-time
+for the appropriate number of MPI ranks. In this configuration CHM will  load the entire base mesh
+(despite only operating on a small portion of it) into memory and load the
+corresponding subset from the parameter file. As a result, the memory usage for each MPI rank is high.
 
-The partition tool will split the mesh and parameter file into *n* chunks, one for each MPI rank.
+The partition tool allows for pre-partitioning the mesh and parameter file into *n* chunks, one for each MPI rank.
 Therefore only the mesh elements for this rank are loaded, dramatically reducing memory overhead.
 
 Usage
@@ -39,8 +41,8 @@ The mesh file to operate on. Either json or h5 format. However, formats cannot b
    --mesh-file my_mesh.mesh
    --mesh-file my_mesh.h5
 
-param-file
-***********
+--param-file
+*************
 A list of the parameter files. Either json or h5 format. However, formats cannot be mixed between `mesh-file` and `param-file`.
 
 .. code::
@@ -50,8 +52,8 @@ A list of the parameter files. Either json or h5 format. However, formats cannot
    --param-file my_mesh_param.h5
 
 
-max-ghost-distance
-******************
+--max-ghost-distance
+**********************
 
 The maximum distance at which to include ghost triangles. Certain modules need triangles at a distance, for example
 to compute shadowing or fetch. ``--max-ghost-distance`` defaults to 100 m however this should be changed to match the
@@ -62,8 +64,8 @@ configuration option for various modules.
    --max-ghost-distance <distance in meters>
    --max-ghost-distance 100
 
-standalone
-***********
+--standalone
+**************
 Produces a specific ranks' mesh in a way that allows it to be loaded by itself. This allows debugging on a
 an individual rank. In order to be able to be loaded, the mesh is written **without** ghost regions. Zero-indexed.
 
@@ -72,8 +74,8 @@ an individual rank. In order to be able to be loaded, the mesh is written **with
    --standalone <rank to output>
    --standalone 5
 
-mpi-ranks
-*********
+--mpi-ranks
+*************
 Number of MPI ranks to split the mesh for. Ranks must be >1.
 
 .. code::
@@ -83,6 +85,11 @@ Number of MPI ranks to split the mesh for. Ranks must be >1.
 
 Output
 ++++++++
+
+.. note::
+
+   If ``--mpi-ranks`` is specified and the input mesh is in json format (*.mesh*),
+   the tool will, in two steps, convert the mesh to h5 and then partition the h5 mesh.
 
 json to hdf5
 *************
