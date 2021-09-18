@@ -31,8 +31,8 @@ help
 *****
 Outputs the help message
 
---mesh-file
-************
+`--mesh-file`
+***************
 The mesh file to operate on. Either json or h5 format. However, formats cannot be mixed between `mesh-file` and `param-file`.
 
 .. code::
@@ -41,8 +41,8 @@ The mesh file to operate on. Either json or h5 format. However, formats cannot b
    --mesh-file my_mesh.mesh
    --mesh-file my_mesh.h5
 
---param-file
-*************
+`--param-file`
+****************
 A list of the parameter files. Either json or h5 format. However, formats cannot be mixed between `mesh-file` and `param-file`.
 
 .. code::
@@ -52,7 +52,7 @@ A list of the parameter files. Either json or h5 format. However, formats cannot
    --param-file my_mesh_param.h5
 
 
---max-ghost-distance
+`--max-ghost-distance`
 **********************
 
 The maximum distance at which to include ghost triangles. Certain modules need triangles at a distance, for example
@@ -64,7 +64,7 @@ configuration option for various modules.
    --max-ghost-distance <distance in meters>
    --max-ghost-distance 100
 
---standalone
+`--standalone`
 **************
 Produces a specific ranks' mesh in a way that allows it to be loaded by itself. This allows debugging on a
 an individual rank. In order to be able to be loaded, the mesh is written **without** ghost regions. Zero-indexed.
@@ -74,7 +74,7 @@ an individual rank. In order to be able to be loaded, the mesh is written **with
    --standalone <rank to output>
    --standalone 5
 
---mpi-ranks
+`--mpi-ranks`
 *************
 Number of MPI ranks to split the mesh for. Ranks must be >1.
 
