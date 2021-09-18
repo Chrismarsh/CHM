@@ -1095,6 +1095,11 @@ int main(int argc, char *argv[])
         LOG_WARNING << "Using default max ghost distance of 100 m";
     }
 
+    if(MPI_ranks == 1)
+    {
+        LOG_ERROR << "Requires ranks >1";
+        exit(-1);
+    }
 
     preprocessingTriangulation* tri = new preprocessingTriangulation();
     tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance, standalone_rank);

@@ -33,41 +33,35 @@ Mesher does not produce this format. However, CHM can convert from the Mesher js
 
 Conversion
 ++++++++++
-1. Create mesh as normal with Mesher
 
-2. Create the CHM configuration mesh section using the .mesh and .param files as normal
+1. Create mesh as normal with Mesher and apply the permutation
+2. Convert the mesh to h5 or partitioned h5 via the `partition` tool.
 
-.. code:: json
-
-   "meshes":
-   {
-    "mesh":"meshes/granger.mesh",
-    "parameters":
-    {
-      "file":"meshes/granger.param",
-    }
-   }
-
-3. Run CHM with the flag `--convert-hdf5`. E.g.,
-
-.. code::
-
-   ./CHM -f config.json --convert-hdf5
-
-CHM will run and then terminate after the conversion. This flag will produce .h5 files named `<original_name>.mesh_mesh.h5` and `<original_name>.mesh_param.h5`.
-
-4. Edit configuration to use these files
+To load the h5 files:
 
 .. code:: json
 
    "meshes":
    {
-    "mesh":"meshes/granger.mesh_mesh.h5",
-    "parameters":
-    {
-      "file":"meshes/granger.mesh_param.h5,
-    }
+      "mesh":"meshes/granger.mesh_mesh.h5",
+      "parameters":
+      {
+         "file":"meshes/granger.mesh_param.h5,
+      }
    }
+
+To load the partitioned files:
+
+.. code:: json
+
+      "meshes":
+      {
+         "mesh": "granger1m_mesh.np2.partition"
+      }
+
+Note that no extra parameter section is needed when loading partition files.
+
+As the partition files are computed for *n* ranks, they cannot be used with any more or fewer ranks.
 
 .. warning::
 
