@@ -14,12 +14,21 @@ corresponding subset from the parameter file. As a result, the memory usage for 
 The partition tool allows for pre-partitioning the mesh and parameter file into *n* chunks, one for each MPI rank.
 Therefore only the mesh elements for this rank are loaded, dramatically reducing memory overhead.
 
+.. warning::
+
+   The mesh should be have been permuted prior to hdf5 conversion for maximum MPI performance.
+   Failure to do so will result in significantly degraded runtime performance!
+
+   Please see  :ref:`mesh-permutation`  for more details.
+
+
+
 Usage
 ++++++
 
 Options:
 
-   - ``--help``, "This message"
+   - ``--help``
    - ``--mesh-file``, ``-m``,
    - ``--param-file``, ``-p``,
    - ``--max-ghost-distance``, ``-g``
@@ -27,8 +36,8 @@ Options:
    - ``--mpi-ranks``
 
 
-help
-*****
+--help
+*******
 Outputs the help message
 
 `--mesh-file`

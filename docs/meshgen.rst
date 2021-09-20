@@ -37,6 +37,10 @@ Conversion
 1. Create mesh as normal with Mesher and apply the permutation
 2. Convert the mesh to h5 or partitioned h5 via the :ref:`partition` tool.
 
+.. warning::
+
+   Please see the above section on mesh permutation prior to performing the hdf5 conversion.
+
 To load the h5 files:
 
 .. code:: json

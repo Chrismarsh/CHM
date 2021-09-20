@@ -442,7 +442,7 @@ class preprocessingTriangulation : public triangulation
     }
 
 
-    void from_hdf5_and_partition(const std::string& mesh_filename,
+    void from_file_and_partition(const std::string& mesh_filename,
                                  const std::vector<std::string>& param_filenames,
                                  size_t MPI_ranks,
                                  size_t max_ghost_distance,
@@ -526,6 +526,17 @@ class preprocessingTriangulation : public triangulation
 //                }
 //            }
 
+            try
+            {
+                std::vector<size_t> permutation;
+                mesh.get_child("mesh.cell_global_id");
+            }catch(pt::ptree_bad_path& e)
+            {
+
+                LOG_WARNING << "No face permutation was found in the mesh file. This will result in poor MPI performance"
+                               " due to increased communications. \nPlease see the mesh permutation documentation for more details\n"
+                               "https://mesher-hydro.readthedocs.io/en/latest/tools.html#mesherpermuation-py";
+            }
             from_json(mesh);
 
             LOG_DEBUG << "Converting mesh to hdf5...";
@@ -1100,7 +1111,7 @@ int main(int argc, char *argv[])
 
         {
             preprocessingTriangulation* tri = new preprocessingTriangulation();
-            tri->from_hdf5_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
+            tri->from_file_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
                                          standalone_rank);
         }
 
@@ -1114,7 +1125,7 @@ int main(int argc, char *argv[])
                                                       "_param.h5"};
 
             preprocessingTriangulation* tri = new preprocessingTriangulation();
-            tri->from_hdf5_and_partition(h5_mesh_name, h5_param_name, MPI_ranks, max_ghost_distance, standalone_rank);
+            tri->from_file_and_partition(h5_mesh_name, h5_param_name, MPI_ranks, max_ghost_distance, standalone_rank);
         }
     }
     catch(exception_base& e)

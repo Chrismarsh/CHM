@@ -482,7 +482,6 @@ void triangulation::from_json(pt::ptree &mesh)
             {
                 auto face = _faces.at(i);
                 double value = jtr.second.get_value<double>();
-    //            alue == -9999. ? value = nan("") : value;
                 face->set_initial_condition(name,value);
                 i++;
             }
@@ -515,66 +514,46 @@ void triangulation::from_json(pt::ptree &mesh)
     partition_mesh();
 
 
-#ifdef USE_MPI
-    _num_faces = _local_faces.size();
-    determine_local_boundary_faces();
-    determine_process_ghost_faces_nearest_neighbors();
-
-    setup_nearest_neighbor_communication();
-
-#endif // USE_MPI
-
     _build_dDtree();
-
-    // TODO: setup ghost distance
-    // determining ghost faces requires the dD_tree to be set up
-    // determine_process_ghost_faces_by_distance(100.);
-
-    // shrink the local mesh
-    // shrink_local_mesh_to_owned_and_distance_neighbors();
 
   std::vector<double> temp_slope(_num_faces);
 
 #pragma omp parallel for
-  for (size_t i = 0; i < _num_faces; i++)
-  {
-
-    auto f = face(i);
-    std::vector<boost::tuple<double, double, double> > u;
-    for (size_t j = 0; j < 3; j++)
+    for (size_t i = 0; i < _num_faces; i++)
     {
-      auto neigh = f->neighbor(j);
-      if (neigh != nullptr && !neigh->is_ghost)
-        u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->slope()));
+        auto f = face(i);
+        std::vector<boost::tuple<double, double, double> > u;
+        for (size_t j = 0; j < 3; j++)
+        {
+          auto neigh = f->neighbor(j);
+          if (neigh != nullptr && !neigh->is_ghost)
+            u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->slope()));
+        }
+
+        auto query = boost::make_tuple(f->get_x(), f->get_y(), f->get_z());
+
+        interpolation interp(interp_alg::tpspline);
+        double new_slope = f->slope();
+
+        if(u.size() > 0)
+        {
+            new_slope = interp(u, query);
+        }
+
+        temp_slope.at(i) = new_slope;
     }
-
-    auto query = boost::make_tuple(f->get_x(), f->get_y(), f->get_z());
-
-    interpolation interp(interp_alg::tpspline);
-    double new_slope = f->slope();
-
-    if(u.size() > 0)
-    {
-      new_slope = interp(u, query);
-    }
-
-    temp_slope.at(i) = new_slope;
-  }
 
 #pragma omp parallel for
-  for (size_t i = 0; i < size_faces(); i++)
-  {
-    auto f = face(i);
-    f->_slope = temp_slope.at(i);
-    //init these
-    f->aspect();
-    f->center();
-    f->normal();
-  }
+    for (size_t i = 0; i < size_faces(); i++)
+    {
+        auto f = face(i);
+        f->_slope = temp_slope.at(i);
+        //init these
+        f->aspect();
+        f->center();
+        f->normal();
+    }
 
-    // TODO need to re-setup dD_tree to only consider the _faces after shrinking
-    // -  Note this likely allows us to remove the the ifndef USE_MPI from earlier in this routine,
-    //    as we have to do a global pass and a local pass anyway
 
 }
 
