@@ -19,7 +19,7 @@ Therefore only the mesh elements for this rank are loaded, dramatically reducing
    The mesh should be have been permuted prior to hdf5 conversion for maximum MPI performance.
    Failure to do so will result in significantly degraded runtime performance!
 
-   Please see  :ref:`mesh-permutation`  for more details.
+   Please see  :ref:`Mesh permutation <target mesh-permutation>`  for more details.
 
 
 

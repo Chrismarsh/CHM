@@ -11,6 +11,8 @@ An example of a mesh is shown below
 
 The output ``.mesh``, ``.param``, and ``.ic`` from mesher, as `documented here <https://mesher-hydro.readthedocs.io/en/latest/output.html>`__ are used as input, without modification, to CHM.
 
+.. _target mesh-permutation:
+
 Mesh permutation
 -----------------
 Although critical for MPI use, this feature does give ~10-15% speedup for non MPI runs and thus should almost always be done.
@@ -35,7 +37,7 @@ Conversion
 ++++++++++
 
 1. Create mesh as normal with Mesher and apply the permutation
-2. Convert the mesh to h5 or partitioned h5 via the :ref:`partition` tool.
+2. Convert the mesh to h5 or partitioned h5 via the :doc:`partition`.
 
 .. warning::
 
