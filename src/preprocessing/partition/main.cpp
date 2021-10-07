@@ -1118,7 +1118,7 @@ int main(int argc, char *argv[])
         // We have input as json and asked for mpi-ranks, so rerun the tool
         if (is_json_mesh && vm.count("mpi-ranks"))
         {
-            LOG_DEBUG << "Partitioning mh5 mesh";
+            LOG_DEBUG << "Partitioning h5 mesh";
 
             auto h5_mesh_name = boost::filesystem::path(mesh_filename).stem().string() + "_mesh.h5";
             std::vector<std::string> h5_param_name = {boost::filesystem::path(mesh_filename).stem().string() +
