@@ -1660,7 +1660,11 @@ void PBSM3D::run(mesh& domain)
             LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
         } catch(Belos::StatusTestError& e)
         {
-            std::string prefix = "deposition.rank" + std::to_string(domain->_comm_world.rank());
+            int rank = 0;
+#ifdef USE_MPI
+            rank = domain->_comm_world.rank();
+#endif
+            std::string prefix = "deposition.rank" + std::to_string(rank);
             deposition_NNP->writeSystemMatrixMarket(prefix);
             BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
         }
