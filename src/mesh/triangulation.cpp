@@ -1058,12 +1058,18 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
     }
 
     // keep just our rank's. The hdf5 loader expects a vector of potential files so make a vector of 1
-    auto mesh_file = mesh_file_paths[_comm_world.rank()];
+
+    int tmp_rank = 0; // play nicely in non mpi builds
+#ifdef USE_MPI
+    tmp_rank = _comm_world.rank();
+#endif
+
+    auto mesh_file = mesh_file_paths[];
 
     std::vector<std::string> param_file;
 
     if(param_file_paths.size() > 0)
-        param_file.push_back( param_file_paths[_comm_world.rank()] );
+        param_file.push_back( param_file_paths[tmp_rank] );
 
     from_hdf5(mesh_file, param_file, {} );
 }
