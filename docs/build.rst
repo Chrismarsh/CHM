@@ -38,7 +38,7 @@ gcc (libc 2.27+): 7.x, 8.x, 9.x, 10.x
 If using conan to build the dependencies, the only requirements are:
 
    - conan (via Python pip)
-   - cmake >=3.16  (via apt-get/brew)
+   - cmake >=3.17  (via apt-get/brew)
    - C++14 compiler (gcc 7.2+) (via apt-get/brew)
    - Fortran 90+ compiler (gfortran) (via apt-get/brew)
    - m4 (via apt-get/brew)
