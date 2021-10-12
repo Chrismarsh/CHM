@@ -1064,7 +1064,7 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
     tmp_rank = _comm_world.rank();
 #endif
 
-    auto mesh_file = mesh_file_paths[];
+    auto mesh_file = mesh_file_paths[tmp_rank];
 
     std::vector<std::string> param_file;
 
