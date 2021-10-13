@@ -13,6 +13,6 @@ if __name__ == "__main__":
     builder.remove_build_if(lambda build: build.settings["compiler.libcxx"] == "libstdc++") # old ABI
 
     builder.update_build_if(lambda build: os.environ['USE_MPI'] == 'with-mpi',
-                        new_options={'CHM:with_mpi': False, 'boost:without_mpi':False, 'trilinos:with_mpi':True})
+                        new_options={'CHM:with_mpi': True, 'boost:without_mpi':False, 'trilinos:with_mpi':True})
 
     builder.run()
