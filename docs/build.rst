@@ -430,7 +430,6 @@ Ensure the environment is correctly setup
    module load sparsehash
    module load tbb
    module load trilinos/chm
-   module load netdf/4.7.4
    module load netcdf-c++4
    module load vtk
    module load proj

@@ -30,6 +30,8 @@ option(USE_JEMALLOC "Use jemalloc" OFF)
 option(BUILD_DOCS "Builds documentation" OFF)
 option(BUILD_WITH_CONAN "Uses Conan for dependencies" ON)
 
+message(STATUS "This is an MPI build? ${USE_MPI}")
+
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
 if(BUILD_WITH_CONAN AND USE_JEMALLOC)
