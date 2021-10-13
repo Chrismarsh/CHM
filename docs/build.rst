@@ -122,7 +122,7 @@ Add the CHM artifactory repository as a conan remote -- this is where the conan 
 
 ::
 
-   conan remote add http://conan.snowcast.ca/artifactory/api/conan/chm chm
+   conan remote add chm http://conan.snowcast.ca/artifactory/api/conan/chm
 
 
 .. note::
@@ -137,29 +137,37 @@ Add the CHM artifactory repository as a conan remote -- this is where the conan 
       ./conan_export_deps.sh  # tell conan which versions are needed
 
 
-
 Build
--------
+--------
+This step will install the dependencies into your local conan cache (``~/.conan/data``).
+Further, this command will produce the ``FindXXX.cmake`` files required for the
+CHM build.
 
-Install the dependencies into your local conan cache (``~/.conan/data``)
+.. note::
+
+   If something goes wrong, you can remove this directory (``~/.conan/data``) or a specific package (``~/.conan/data/package``) to "start fresh".
+
+Without MPI
+~~~~~~~~~~~~~~
+
+To build without MPI support:
 
 ::
 
    cd ~/build-CHM
    conan install ~/CHM -if=. --build missing
 
-Further, this command will produce the ``FindXXX.cmake`` files required for the
-CHM build.
 
+With MPI support
+~~~~~~~~~~~~~~~~~~
 
-(Optionally) Enable MPI support
---------------------------------
-
-If MPI is to be used, then include the ``-o`` switches:
+If MPI is to be used, then include the following ``-o`` switches:
 
 ::
 
    conan install ~/CHM -if=. -o boost:without_mpi=False -o trilinos:with_mpi=True --build missing
+
+During the CHM cmake configure step, ensure you enable MPI!
 
 Various gotchas
 -----------------
@@ -279,7 +287,7 @@ If the Intel compiler is used, add the following cmake flags:
 
    -DCMAKE_CXX_COMPILER=icpc -DCMAKE_C_COMPILER=icc -DCMAKE_FORTRAN_COMPILER=ifort
 
-High performance allocations
+High performance allocators
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default tcmalloc is used. Optionally, if system `jemalloc` is available it can be enabled with
