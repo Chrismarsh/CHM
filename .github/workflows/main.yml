@@ -85,7 +85,7 @@ jobs:
         if: ${{ matrix.use-mpi  == 'with-mpi' }}
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
-            sudo apt-get install libopenmpi-dev
+            sudo apt-get install libopenmpi-dev openmpi-bin
           else
             brew install openmpi
           fi

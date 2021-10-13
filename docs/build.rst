@@ -51,13 +51,17 @@ On Ubuntu 20.04 these can be installed as:
 
 ::
 
+   libopenblas-dev
    libtiff-dev
    libcurl4-gnutls-dev
    libsqlite3-dev
    sqlite3
 
 .. note::
-   For distributed MPI support, optionally ensure MPI is installed
+
+   For distributed MPI support, optionally ensure MPI is installed:
+   ``libopenmpi-dev`` and ``openmpi-bin``
+
 
 
 On MacOS, `homebrew <https://brew.sh/>`__ should be used to install
