@@ -21,7 +21,7 @@ class CHMConan(ConanFile):
 
     default_options = {
        "verbose_cmake":False,
-       "build_tests":True,
+       "build_tests":False,
         #default without openmp or mpi
         "with_omp": False,
         "with_mpi": False,
