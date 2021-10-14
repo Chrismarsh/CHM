@@ -35,7 +35,7 @@ message(STATUS "This is an MPI build? ${USE_MPI}")
 set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
 
 if(BUILD_WITH_CONAN AND USE_JEMALLOC)
-    message(WARNING "With a Conan build USE_JEMALLOC will use a system jemalloc" )
+    message(WARNING "With a Conan build, USE_JEMALLOC will use a system jemalloc" )
 endif()
 
 

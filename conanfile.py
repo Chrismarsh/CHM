@@ -97,17 +97,17 @@ class CHMConan(ConanFile):
 
 
         if self.options.build_tests:
-            cmake.definitions["BUILD_TESTS"] = True
+            cmake.definitions["BUILD_TESTS"] = "ON"
 
         if self.options.verbose_cmake:
             cmake.verbose = True
             cmake.definitions["CMAKE_FIND_DEBUG_MODE"]=1
 
         if self.options["with_omp"]:
-            cmake.definitions["USE_OMP"] = True
+            cmake.definitions["USE_OMP"] = "ON"
 
         if self.options["with_mpi"]:
-            cmake.definitions["USE_MPI"] = True
+            cmake.definitions["USE_MPI"] = "ON"
 
         cmake.configure(source_folder=self.source_folder)
 
