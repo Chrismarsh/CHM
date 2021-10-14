@@ -3,7 +3,7 @@ Partition tool
 
 The partition tool performs two functions:
 
-1. Convert json (`.mesh`) format meshes to binary HDF5 (`.h5`)
+1. Convert json (``.mesh``) format meshes to binary HDF5 (``.h5``)
 2. Partition an HDF5 mesh format for *n* MPI ranks.
 
 To use CHM in MPI mode *requires* using an HDF5 mesh file. When using CHM with MPI, the mesh is partitioned at run-time
@@ -36,13 +36,13 @@ Options:
    - ``--mpi-ranks``
 
 
---help
-*******
+``--help``
+***********
 Outputs the help message
 
-`--mesh-file`
-***************
-The mesh file to operate on. Either json or h5 format. However, formats cannot be mixed between `mesh-file` and `param-file`.
+``--mesh-file``
+*****************
+The mesh file to operate on. Either json or h5 format. However, formats cannot be mixed between ``mesh-file`` and ``param-file``.
 
 .. code::
 
@@ -50,9 +50,9 @@ The mesh file to operate on. Either json or h5 format. However, formats cannot b
    --mesh-file my_mesh.mesh
    --mesh-file my_mesh.h5
 
-`--param-file`
-****************
-A list of the parameter files. Either json or h5 format. However, formats cannot be mixed between `mesh-file` and `param-file`.
+``--param-file``
+******************
+A list of the parameter files. Either json or h5 format. However, formats cannot be mixed between ``mesh-file`` and ``param-file``.
 
 .. code::
 
@@ -61,8 +61,8 @@ A list of the parameter files. Either json or h5 format. However, formats cannot
    --param-file my_mesh_param.h5
 
 
-`--max-ghost-distance`
-**********************
+``--max-ghost-distance``
+**************************
 
 The maximum distance at which to include ghost triangles. Certain modules need triangles at a distance, for example
 to compute shadowing or fetch. ``--max-ghost-distance`` defaults to 100 m however this should be changed to match the
@@ -73,8 +73,8 @@ configuration option for various modules.
    --max-ghost-distance <distance in meters>
    --max-ghost-distance 100
 
-`--standalone`
-**************
+``--standalone``
+******************
 Produces a specific ranks' mesh in a way that allows it to be loaded by itself. This allows debugging on a
 an individual rank. In order to be able to be loaded, the mesh is written **without** ghost regions. Zero-indexed.
 
@@ -83,8 +83,8 @@ an individual rank. In order to be able to be loaded, the mesh is written **with
    --standalone <rank to output>
    --standalone 5
 
-`--mpi-ranks`
-*************
+``--mpi-ranks``
+*****************
 Number of MPI ranks to split the mesh for. Ranks must be >1.
 
 .. code::
@@ -102,16 +102,16 @@ Output
 
 json to hdf5
 *************
-Output will be two `.h5` files called `basename_mesh.h5` and `basename_param.h5`.
-For example if the input mesh is `granger1m.mesh` then basename is `granger1m` resulting in the files
+Output will be two ``.h5`` files called ``basename_mesh.h5`` and ``basename_param.h5``.
+For example if the input mesh is ``granger1m.mesh`` then basename is ``granger1m`` resulting in the files
 
    - granger1m_mesh.h5
    - granger1m_param.h5
 
 partition
 **********
-A json file is written `basename_mesh.np<MPI_RANKS>.partition`. For example, the above file with 2 mpi ranks is
-`granger1m_mesh.np2.partition`. The contents of this file describe the parition with various metadata and allow CHM
+A json file is written ``basename_mesh.np<MPI_RANKS>.partition``. For example, the above file with 2 mpi ranks is
+``granger1m_mesh.np2.partition``. The contents of this file describe the partition with various metadata and allow CHM
 the ensure the file, when loaded, matches the runtime MPI configuration.
 
 .. code:: json
@@ -130,12 +130,8 @@ the ensure the file, when loaded, matches the runtime MPI configuration.
     ]
    }
 
-Secondly a new folder is created `basename_mesh.np<MPI_RANKS>.partition.meshes` that holds the underlying h5 mesh and param files.
+Secondly a new folder is created ``basename_mesh.np<MPI_RANKS>.partition.meshes`` that holds the underlying h5 mesh and param files.
 
-
-
-standalone
-***********
 
 Example Usage
 ++++++++++++++
