@@ -1116,7 +1116,7 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
     determine_ghost_owners();
     setup_nearest_neighbor_communication();
 
-    print_ghost_neighbor_info();
+//    print_ghost_neighbor_info();
 
 #endif // USE_MPI
 
