@@ -443,7 +443,8 @@ Then build CHM
 
 ::
 
-   mkdir ~/chm-build && cd ~/chm-build
+   git clone https://github.com/Chrismarsh/CHM  # get CHM source code
+   mkdir ~/chm-build && cd ~/chm-build # make build directory
    cmake ../CHM -DBUILD_WITH_CONAN=FALSE -DUSE_MPI=TRUE -DENABLE_SAFE_CHECKS=ON -DBoost_NO_BOOST_CMAKE=ON -DUSE_TCMALLOC=FALSE -DUSE_JEMALLOC=TRUE -DCMAKE_BUILD_TYPE=Release
    make -j10
 
