@@ -217,7 +217,7 @@ that the account is active on:
    :default: None
 
 
-Allows for a different start start time that that specified by the input timeseries.
+Allows for a different start time than that specified by the input timeseries.
 In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 
 .. code:: json 
@@ -229,7 +229,7 @@ In the same ISO format as the forcing data: ``YYYYMDTHMS``.
    :type: string
    :default: None
 
-Allows for a different start start time that that specified by the input timeseries.
+Allows for a different end time than that specified by the input timeseries.
 In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 
 .. code:: json 
