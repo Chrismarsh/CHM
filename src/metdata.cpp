@@ -199,6 +199,8 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
                     "Station=" + itr.id + ": unable to convert coordinates to mesh format."));
             }
+            // ensure we clean this up correctly
+            OGRCoordinateTransformation::DestroyCT(coordTrans);
         }
 
         std::shared_ptr<station> s = std::make_shared<station>();
