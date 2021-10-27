@@ -92,15 +92,15 @@ void snobal::init(mesh& domain)
     {
            auto face = domain->face(i);
 
-           snodata* g = face->make_module_data<snodata>(ID);
-           g->sum_runoff = 0;
-           g->sum_melt = 0;
-           g->sum_subl = 0;
-           g->sum_pcp_sno = 0;
-           auto* sbal = &(g->data);
-           g->dead=0;
-           g->delta_avalanche_snowdepth=0;
-           g->delta_avalanche_swe=0;
+           auto& g = face->make_module_data<snodata>(ID);
+           g.sum_runoff = 0;
+           g.sum_melt = 0;
+           g.sum_subl = 0;
+           g.sum_pcp_sno = 0;
+           auto* sbal = &(g.data);
+           g.dead=0;
+           g.delta_avalanche_snowdepth=0;
+           g.delta_avalanche_swe=0;
            /**
                     * Snowpack config
                     */
@@ -223,10 +223,10 @@ void snobal::init(mesh& domain)
                (*face)["isothermal"_s]= sbal->isothermal;
                (*face)["ilwr_out"_s]= sbal->R_n - sbal->S_n - sbal->I_lw;
                (*face)["snowmelt_int"_s]= 0;
-               (*face)["sum_melt"_s]= g->sum_melt;
-               (*face)["sum_snowpack_runoff"_s]= g->sum_runoff;
-               (*face)["sum_snowpack_subl"_s]= g->sum_subl;
-               (*face)["sum_snowpack_pcp"_s]= g->sum_pcp_sno;
+               (*face)["sum_melt"_s]= g.sum_melt;
+               (*face)["sum_snowpack_runoff"_s]= g.sum_runoff;
+               (*face)["sum_snowpack_subl"_s]= g.sum_subl;
+               (*face)["sum_snowpack_pcp"_s]= g.sum_pcp_sno;
 
                (*face)["snowdepthavg"_s]= sbal->z_s;
            }
@@ -258,8 +258,8 @@ void snobal::run(mesh_elem &face)
 
 
     //get the previous timesteps data out of the global_param store.
-    snodata* g = face->get_module_data<snodata>(ID);
-    auto* sbal = &(g->data);
+    auto& g = face->get_module_data<snodata>(ID);
+    auto* sbal = &(g.data);
 
     sbal->_debug_id = id;
 
@@ -385,10 +385,10 @@ void snobal::run(mesh_elem &face)
     // If snow avalanche variables are available
     bool snow_slide = false;
     if(has_optional("delta_avalanche_snowdepth")) {
-        g->delta_avalanche_snowdepth = (*face)["delta_avalanche_snowdepth"_s];
+        g.delta_avalanche_snowdepth = (*face)["delta_avalanche_snowdepth"_s];
     }
     if(has_optional("delta_avalanche_mass")) {
-        g->delta_avalanche_swe = (*face)["delta_avalanche_mass"_s];
+        g.delta_avalanche_swe = (*face)["delta_avalanche_mass"_s];
         snow_slide = true;
     }
 
@@ -398,16 +398,16 @@ void snobal::run(mesh_elem &face)
         // Convert change in volume and mass back to depth and mass per area, respectivly.
         // Assumes snow depth is uniform across triangle
         double area = face->get_area(); // area of current triangle (m^2)
-        double d_depth = g->delta_avalanche_snowdepth / area; // m^3 / m^2 = m
-        double d_mass  = g->delta_avalanche_swe / area * 1000; // m^3 / m^2 * 1000 kg/m^3 = kg/m^2
+        double d_depth = g.delta_avalanche_snowdepth / area; // m^3 / m^2 = m
+        double d_mass  = g.delta_avalanche_swe / area * 1000; // m^3 / m^2 * 1000 kg/m^3 = kg/m^2
         sbal->_adj_snow(d_depth,d_mass);
     }
 
 
-    if(g->dead == 1)
+    if(g.dead == 1)
     {
         sbal->init_snow();
-        g->dead = 0;
+        g.dead = 0;
     }
 
     double prev_ts_swe = sbal->m_s;
@@ -416,7 +416,7 @@ void snobal::run(mesh_elem &face)
         sbal->do_data_tstep();
     }catch(module_error& e)
     {
-        g->dead=1;
+        g.dead=1;
         LOG_DEBUG << boost::diagnostic_information(e);
         auto details = "("+std::to_string(face->center().x()) + "," + std::to_string(face->center().y())+","+std::to_string(face->center().z())+") ID = " + std::to_string(face->cell_local_id);
 //        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Snobal died. Triangle center = "+details));
@@ -436,30 +436,30 @@ void snobal::run(mesh_elem &face)
         sbal->T_s_l = -75. + FREEZE;
         sbal->z_s = 0.;
 
-        g->dead = 1;
+        g.dead = 1;
         sbal->init_snow(); // try to get back a sane internel state
 
     // if something went wrong and was trapped by the above if, m_s (current mass) is 0 mm.
     // thus swe_diff will have the previous timestep's mass, which will go directly to runoff and melt
        double swe_diff = prev_ts_swe - sbal->m_s;
        swe_diff = swe_diff > 0. ? swe_diff : 0;
-       g->sum_runoff += swe_diff;
-       g->sum_melt += swe_diff;
+       g.sum_runoff += swe_diff;
+       g.sum_melt += swe_diff;
 
     }
     else
     {
    // Normal time step. Simply increment cumulated snow melt, runoff, sublimation and precipitation. 
-       g->sum_runoff += sbal->ro_predict;
-       g->sum_melt += sbal->melt;
-       g->sum_subl = sbal->E_s_sum;
-       g->sum_pcp_sno +=  sbal->m_pp;
+       g.sum_runoff += sbal->ro_predict;
+       g.sum_melt += sbal->melt;
+       g.sum_subl = sbal->E_s_sum;
+       g.sum_pcp_sno +=  sbal->m_pp;
     }
     
 
     double sd_ver = sbal->z_s/std::max(0.001,cos(face->slope()));
 
-    (*face)["dead"_s]=g->dead;
+    (*face)["dead"_s]=g.dead;
 
     (*face)["swe"_s]=sbal->m_s;
 
@@ -479,10 +479,10 @@ void snobal::run(mesh_elem &face)
     (*face)["snowmelt_int"_s]=sbal->ro_predict;
 
 //    (*face)["snowmelt_int"_s]=swe_diff;
-    (*face)["sum_melt"_s]=g->sum_melt;
-    (*face)["sum_snowpack_runoff"_s]=g->sum_runoff;
-    (*face)["sum_snowpack_subl"_s]=g->sum_subl;
-    (*face)["sum_snowpack_pcp"_s]=g->sum_pcp_sno;
+    (*face)["sum_melt"_s]=g.sum_melt;
+    (*face)["sum_snowpack_runoff"_s]=g.sum_runoff;
+    (*face)["sum_snowpack_subl"_s]=g.sum_subl;
+    (*face)["sum_snowpack_pcp"_s]=g.sum_pcp_sno;
 
     (*face)["snowdepthavg"_s]=sbal->z_s;
     (*face)["snowdepthavg_vert"_s]=sd_ver;
@@ -496,7 +496,7 @@ void snobal::run(mesh_elem &face)
     sbal->input_rec1.ro =sbal->input_rec2.ro;
 
     // reset flag
-//    g->dead = 0;
+//    g.dead = 0;
 }
 
 void snobal::checkpoint(mesh& domain,  netcdf& chkpt)
@@ -523,8 +523,8 @@ void snobal::checkpoint(mesh& domain,  netcdf& chkpt)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        snodata *g = face->get_module_data<snodata>(ID);
-        auto *sbal = &(g->data);
+        auto& g = face->get_module_data<snodata>(ID);
+        auto *sbal = &(g.data);
 
         chkpt.put_var1D("snobal:m_s",i,sbal->m_s);
         chkpt.put_var1D("snobal:rho",i,sbal->rho);
@@ -535,10 +535,10 @@ void snobal::checkpoint(mesh& domain,  netcdf& chkpt)
         chkpt.put_var1D("snobal:h2o_sat",i,sbal->h2o_sat);
         chkpt.put_var1D("snobal:max_h2o_vol",i,sbal->max_h2o_vol);
 
-        chkpt.put_var1D("snobal:sum_runoff",i,g->sum_runoff);
-        chkpt.put_var1D("snobal:sum_melt",i,g->sum_melt);
-        chkpt.put_var1D("snobal:sum_subl",i,g->sum_subl);
-        chkpt.put_var1D("snobal:sum_pcp_sno",i,g->sum_pcp_sno);
+        chkpt.put_var1D("snobal:sum_runoff",i,g.sum_runoff);
+        chkpt.put_var1D("snobal:sum_melt",i,g.sum_melt);
+        chkpt.put_var1D("snobal:sum_subl",i,g.sum_subl);
+        chkpt.put_var1D("snobal:sum_pcp_sno",i,g.sum_pcp_sno);
         chkpt.put_var1D("snobal:E_s_sum",i,sbal->E_s_sum);
         chkpt.put_var1D("snobal:melt_sum",i,sbal->melt_sum);
         chkpt.put_var1D("snobal:ro_pred_sum",i,sbal->ro_pred_sum);
@@ -552,8 +552,8 @@ void snobal::load_checkpoint(mesh& domain, netcdf& chkpt)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        snodata *g = face->get_module_data<snodata>(ID);
-        auto *sbal = &(g->data);
+        auto& g = face->get_module_data<snodata>(ID);
+        auto *sbal = &(g.data);
 
         sbal->m_s = chkpt.get_var1D("snobal:m_s",i);
         sbal->rho = chkpt.get_var1D("snobal:rho",i);
@@ -564,10 +564,10 @@ void snobal::load_checkpoint(mesh& domain, netcdf& chkpt)
         sbal->h2o_sat =  chkpt.get_var1D("snobal:h2o_sat",i);
         sbal->max_h2o_vol = chkpt.get_var1D("snobal:max_h2o_vol",i);
 
-        g->sum_runoff = chkpt.get_var1D("snobal:sum_runoff",i);
-        g->sum_melt = chkpt.get_var1D("snobal:sum_melt",i);
-        g->sum_subl = chkpt.get_var1D("snobal:sum_subl",i);
-        g->sum_pcp_sno = chkpt.get_var1D("snobal:sum_pcp_sno",i);
+        g.sum_runoff = chkpt.get_var1D("snobal:sum_runoff",i);
+        g.sum_melt = chkpt.get_var1D("snobal:sum_melt",i);
+        g.sum_subl = chkpt.get_var1D("snobal:sum_subl",i);
+        g.sum_pcp_sno = chkpt.get_var1D("snobal:sum_pcp_sno",i);
         sbal->E_s_sum = chkpt.get_var1D("snobal:E_s_sum",i);
         sbal->melt_sum = chkpt.get_var1D("snobal:melt_sum",i);
         sbal->ro_pred_sum = chkpt.get_var1D("snobal:ro_pred_sum",i);

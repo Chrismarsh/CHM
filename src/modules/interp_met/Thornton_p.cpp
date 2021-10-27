@@ -46,8 +46,8 @@ void Thornton_p::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,face->stations().size() );
+        auto& d = face->make_module_data<data>(ID);
+        d.interp.init(global_param->interp_algorithm,face->stations().size() );
     }
 
 }
@@ -72,8 +72,8 @@ void Thornton_p::run(mesh_elem& face)
 
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-    double p0 = face->get_module_data<data>(ID)->interp(ppt, query);
-    double z0 = face->get_module_data<data>(ID)->interp(staion_z,query);
+    double p0 = face->get_module_data<data>(ID).interp(ppt, query);
+    double z0 = face->get_module_data<data>(ID).interp(staion_z,query);
     double z = face->get_z();
     double slp = face->slope();
 

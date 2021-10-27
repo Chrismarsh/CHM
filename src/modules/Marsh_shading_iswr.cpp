@@ -117,10 +117,10 @@ void Marsh_shading_iswr::run(mesh& domain)
 		   }
 	       }
 	       //init memory
-	       auto tv = face->make_module_data<module_shadow_face_info>(ID);
+	       auto& tv = face->make_module_data<module_shadow_face_info>(ID);
 	       // module_shadow_face_info* tv = new module_shadow_face_info;
 	       //face->set_module_data(ID, tv);
-	       tv->z_prime = CGAL::centroid(face->vertex(0)->point(), face->vertex(1)->point(), face->vertex(2)->point()).z();
+	       tv.z_prime = CGAL::centroid(face->vertex(0)->point(), face->vertex(1)->point(), face->vertex(2)->point()).z();
 
     }
 
@@ -146,12 +146,12 @@ void Marsh_shading_iswr::run(mesh& domain)
 		   tbb::parallel_sort(BBR->get_rect(i, ii)->triangles.begin(), BBR->get_rect(i, ii)->triangles.end(),
 				      [](triangulation::Face_handle fa, triangulation::Face_handle fb)->bool
 				      {
-					auto fa_info = fa->get_module_data<module_shadow_face_info>(
+					auto& fa_info = fa->get_module_data<module_shadow_face_info>(
 												    "Marsh_shading_iswr");
-					auto fb_info = fb->get_module_data<module_shadow_face_info>(
+					auto& fb_info = fb->get_module_data<module_shadow_face_info>(
 												    "Marsh_shading_iswr");
 
-					return fa_info->z_prime > fb_info->z_prime;
+					return fa_info.z_prime > fb_info.z_prime;
 				      });
 
 		   size_t num_tri = BBR->get_rect(i, ii)->triangles.size();
@@ -171,9 +171,9 @@ void Marsh_shading_iswr::run(mesh& domain)
 		       for (size_t k = j + 1; k < num_tri; k++)
 		       {
 			   triangulation::Face_handle face_k = BBR->get_rect(i, ii)->triangles.at(k);
-			   auto face_k_info = face_k->get_module_data<module_shadow_face_info>(ID);
+			   auto& face_k_info = face_k->get_module_data<module_shadow_face_info>(ID);
 
-			   if (face_k_info->shadow == 0)
+			   if (face_k_info.shadow == 0)
 			   {
 			       //not needed as our sort will ensure face_j > face_k
 			       if(face_j->get_z() > face_k->get_z())  //tj is above tk, and tk is shadded by tj?)
@@ -187,16 +187,16 @@ void Marsh_shading_iswr::run(mesh& domain)
 				   if (CGAL::do_overlap(bk, bj)) {
 				     bool collision = face_k->intersects(face_j);
 				     if (collision) {
-				       face_k_info->shadow = 1;
+				       face_k_info.shadow = 1;
 				     }
 				   }
 			       }
 			   }
 		       }
 
-		       auto face_info = face_j->get_module_data<module_shadow_face_info>(ID);
-		       (*face_j)["shadow"_s] = face_info->shadow;
-		       (*face_j)["z_prime"_s]= face_info->z_prime;
+		       auto& face_info = face_j->get_module_data<module_shadow_face_info>(ID);
+		       (*face_j)["shadow"_s] = face_info.shadow;
+		       (*face_j)["z_prime"_s]= face_info.z_prime;
 		   }
 	       }
 

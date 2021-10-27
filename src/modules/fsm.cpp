@@ -82,14 +82,14 @@ void FSM::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
+        auto& d = face->make_module_data<data>(ID);
 
-        d->veg.alb0 = 0.2;
-        d->veg.vegh = 0;
-        d->veg.VAI = 0;
-        d->veg.Ntyp = 1;
+        d.veg.alb0 = 0.2;
+        d.veg.vegh = 0;
+        d.veg.VAI = 0;
+        d.veg.Ntyp = 1;
 
-        d->diag.sum_snowpack_subl = 0;
+        d.diag.sum_snowpack_subl = 0;
     }
 }
 void FSM::run(mesh_elem& face)
@@ -120,7 +120,7 @@ void FSM::run(mesh_elem& face)
     float Rf = (*face)["p_rain"_s] / dt; // rainfall rate
     float Sf = (*face)["p_snow"_s] / dt; // snowfall rate
 
-    auto d = face->get_module_data<data>(ID);
+    auto& d = face->get_module_data<data>(ID);
 
     float elev = (float)(*face)["solar_el"_s];
     float ilwr = -9999;
@@ -161,30 +161,30 @@ void FSM::run(mesh_elem& face)
         &ilwr, &Ps, &Qa, &Rf, &Sdiff, &Sdir, &Sf, &t, &trans, &U,
 
         // Vegetation characteristics
-        &d->veg.Ntyp, &d->veg.alb0, &d->veg.vegh, &d->veg.VAI,
+        &d.veg.Ntyp, &d.veg.alb0, &d.veg.vegh, &d.veg.VAI,
 
         // State variables
-        &d->state.albs, &d->state.Tsrf, d->state.Dsnw, &d->state.Nsnow, d->state.Qcan,
-        d->state.Rgrn, d->state.Sice, d->state.Sliq, d->state.Sveg, d->state.Tcan, d->state.Tsnow,
-        d->state.Tsoil, d->state.Tveg, d->state.Vsmc,
+        &d.state.albs, &d.state.Tsrf, d.state.Dsnw, &d.state.Nsnow, d.state.Qcan,
+        d.state.Rgrn, d.state.Sice, d.state.Sliq, d.state.Sveg, d.state.Tcan, d.state.Tsnow,
+        d.state.Tsoil, d.state.Tveg, d.state.Vsmc,
 
         // Diagnostics
-        &d->diag.H, &d->diag.LE, &d->diag.LWout, &d->diag.LWsub, &d->diag.Melt,
-        &d->diag.Roff, &d->diag.snd, &d->diag.snw, &d->diag.subl, &d->diag.svg,
-        &d->diag.SWout, &d->diag.SWsub, &d->diag.Usub,  d->diag.Wflx
+        &d.diag.H, &d.diag.LE, &d.diag.LWout, &d.diag.LWsub, &d.diag.Melt,
+        &d.diag.Roff, &d.diag.snd, &d.diag.snw, &d.diag.subl, &d.diag.svg,
+        &d.diag.SWout, &d.diag.SWsub, &d.diag.Usub,  d.diag.Wflx
         );
 
-    (*face)["swe"_s] = d->diag.snw;
-    (*face)["snowdepthavg"_s] = d->diag.snd;
-    (*face)["snowdepthavg_vert"_s] = d->diag.snd/std::max(0.001,cos(face->slope()));
+    (*face)["swe"_s] = d.diag.snw;
+    (*face)["snowdepthavg"_s] = d.diag.snd;
+    (*face)["snowdepthavg_vert"_s] = d.diag.snd/std::max(0.001,cos(face->slope()));
 
-    (*face)["H"_s] = d->diag.H;
-    (*face)["E"_s] = d->diag.LE;
-    (*face)["subl"_s] = d->diag.subl;
+    (*face)["H"_s] = d.diag.H;
+    (*face)["E"_s] = d.diag.LE;
+    (*face)["subl"_s] = d.diag.subl;
 
-    d->diag.sum_snowpack_subl += d->diag.subl * global_param->dt();
+    d.diag.sum_snowpack_subl += d.diag.subl * global_param->dt();
 
-    (*face)["sum_snowpack_subl"_s] = d->diag.sum_snowpack_subl;
+    (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
 
 
 

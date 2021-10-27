@@ -46,9 +46,9 @@ void solar::run(mesh_elem &face)
         Lat = face->center().y();
     }
     else{
-        auto data = face->get_module_data<solar::data>(ID);
-        Lon = data->lng;
-        Lat = data->lat;
+        auto& data = face->get_module_data<solar::data>(ID);
+        Lon = data.lng;
+        Lat = data.lat;
     }
 
 
@@ -191,9 +191,9 @@ void solar::init(mesh& domain)
 		   double y = face->center().y();
 		   int reprojected = coordTrans->Transform(1, &x, &y);
 
-		   auto d = face->make_module_data<solar::data>(ID);
-		   d->lat = y;
-		   d->lng = x;
+		   auto& d = face->make_module_data<solar::data>(ID);
+		   d.lat = y;
+		   d.lng = x;
 	       }
 
 	       double svf = 0.0;

@@ -63,9 +63,9 @@ void Liston_wind::init(mesh& domain)
     {
 
         auto face = domain->face(i);
-        auto d = face->make_module_data<lwinddata>(ID);
-        d->interp.init(global_param->interp_algorithm,face->stations().size() );
-        d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
+        auto& d = face->make_module_data<lwinddata>(ID);
+        d.interp.init(global_param->interp_algorithm,face->stations().size() );
+        d.interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
 
         face->coloured = false;
 
@@ -123,8 +123,8 @@ void Liston_wind::init(mesh& domain)
                              (z - .5 * (zsw + zne)) / (2.0 * sqrt(2.0) * distance) +
                              (z - .5 * (znw + zse)) / (2.0 * sqrt(2.0) * distance));
 
-        auto* c = face->get_module_data<lwinddata>(ID);
-        c->curvature = curve;
+        auto& c = face->get_module_data<lwinddata>(ID);
+        c.curvature = curve;
 
         if (fabs(curve) > curmax)
         {
@@ -139,15 +139,15 @@ void Liston_wind::init(mesh& domain)
     {
 
         auto face = domain->face(i);
-        auto *c = face->get_module_data<lwinddata>(ID);
+        auto& c = face->get_module_data<lwinddata>(ID);
 
-        double value = c->curvature / (curmax * 2.0);//rescale to [-0.5,+0.5];
+        double value = c.curvature / (curmax * 2.0);//rescale to [-0.5,+0.5];
 
         //with very coarse meshes, with very few total triangles,
         // there are edge cases where curmax=0 and makes curvature NAN. Just set it to 0, no curvature, and don't do silly speedup/down
-        c->curvature = std::isnan(value) ? 0 : value;
+        c.curvature = std::isnan(value) ? 0 : value;
 
-        face->parameter("Liston_curvature"_s) =  c->curvature;
+        face->parameter("Liston_curvature"_s) =  c.curvature;
 
     }
 
@@ -198,8 +198,8 @@ void Liston_wind::run(mesh& domain)
         //http://mst.nerc.ac.uk/wind_vect_convs.html
 
         auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-        double zonal_u = face->get_module_data<lwinddata>(ID)->interp(u, query);
-        double zonal_v = face->get_module_data<lwinddata>(ID)->interp(v, query);
+        double zonal_u = face->get_module_data<lwinddata>(ID).interp(u, query);
+        double zonal_v = face->get_module_data<lwinddata>(ID).interp(v, query);
 
         double theta = 3.0 * M_PI * 0.5 - atan2(zonal_v, zonal_u);
         //        double theta = atan2(-zonal_v, -zonal_u);
@@ -214,8 +214,8 @@ void Liston_wind::run(mesh& domain)
 
         double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
 
-        face->get_module_data<lwinddata>(ID)->corrected_theta = theta;
-        face->get_module_data<lwinddata>(ID)->W = W;
+        face->get_module_data<lwinddata>(ID).corrected_theta = theta;
+        face->get_module_data<lwinddata>(ID).W = W;
 
         (*face)["U_R_orig"_s] = W;
 
@@ -240,8 +240,8 @@ void Liston_wind::run(mesh& domain)
 
         auto face = domain->face(i);
 
-        double theta = face->get_module_data<lwinddata>(ID)->corrected_theta;
-        double W = face->get_module_data<lwinddata>(ID)->W;
+        double theta = face->get_module_data<lwinddata>(ID).corrected_theta;
+        double W = face->get_module_data<lwinddata>(ID).W;
 
         //what liston calls 'wind slope'
         double omega_s = face->slope() * cos(theta - face->aspect());
@@ -315,10 +315,10 @@ void Liston_wind::run(mesh& domain)
         if(u.size() > 0)
         {
            auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-           new_u = face->get_module_data<lwinddata>(ID)->interp_smoothing(u, query);
+           new_u = face->get_module_data<lwinddata>(ID).interp_smoothing(u, query);
         }
 
-        face->get_module_data<lwinddata>(ID)->temp_u = new_u;
+        face->get_module_data<lwinddata>(ID).temp_u = new_u;
 
     }
 
@@ -328,7 +328,7 @@ void Liston_wind::run(mesh& domain)
     {
 
         auto face = domain->face(i);
-        (*face)["U_R"_s]=face->get_module_data<lwinddata>(ID)->temp_u;
+        (*face)["U_R"_s]=face->get_module_data<lwinddata>(ID).temp_u;
 
     }
 

@@ -67,7 +67,7 @@ void Simple_Canopy::run(mesh_elem &face)
         set_all_nan_on_skip(face);
         return;
     }
-    auto data = face->get_module_data<Simple_Canopy::data>(ID);
+    auto& data = face->get_module_data<Simple_Canopy::data>(ID);
 
     // Get meteorological data for current face
     double ta           = (*face)["t"_s];
@@ -154,10 +154,10 @@ void Simple_Canopy::run(mesh_elem &face)
     double SolAng           = (*face)["solar_el"_s] * mio::Cst::to_rad; // degrees to radians (assumed horizontal)
     double cosxs            = (*face)["solar_angle"_s]; // "cosine of the angle of incidence on the slope", "()"
     double cosxsflat        = cos(SolAng); // "cosine of the angle of incidence on the horizontal"
-    double Surrounding_Ht   = data->CanopyHeight; //""[0.1, 0.25, 1.0]", "0.001", "100.0", "surrounding canopy height", "()", &Surrounding_Ht);
+    double Surrounding_Ht   = data.CanopyHeight; //""[0.1, 0.25, 1.0]", "0.001", "100.0", "surrounding canopy height", "()", &Surrounding_Ht);
     double Gap_diameter     = 100; // "[100]", "10", "1000", "representative gap diameter", "(m)", &Gap_diameter); TODO: hardcod gap diamter, need to get from lidar if available
-    double Ht               = data->CanopyHeight; //", NHRU, "[0.1, 0.25, 1.0]", "0.001", "100.0", "forest/vegetation height", "(m)", &Ht);
-    double LAI              = data->LAI; //", NHRU, "[2.2]", "0.1", "20.0", "leaf-area-index", "()", &LAI);
+    double Ht               = data.CanopyHeight; //", NHRU, "[0.1, 0.25, 1.0]", "0.001", "100.0", "forest/vegetation height", "(m)", &Ht);
+    double LAI              = data.LAI; //", NHRU, "[2.2]", "0.1", "20.0", "leaf-area-index", "()", &LAI);
 
     // Initialize
     net_rain = 0.0;
@@ -194,7 +194,7 @@ void Simple_Canopy::run(mesh_elem &face)
         Ts = 0.0;
 
     // Canopy type
-    switch(data->canopyType){
+    switch(data.canopyType){
         case 0: // 0 = canopy
         {
             // Get Exposure (how much is canopy above snowdepth)
@@ -303,7 +303,7 @@ void Simple_Canopy::run(mesh_elem &face)
 
 
     // Canopy type
-    switch(data->canopyType) {
+    switch(data.canopyType) {
         case 0: // 0 = canopy
         {
             //==============================================================================
@@ -311,13 +311,13 @@ void Simple_Canopy::run(mesh_elem &face)
             // after Hedstom & Pomeroy 1998?/ Parviainen & Pomeroy 2000:
             // calculate maximum canopy snow load (L*):
 
-            if (data->Snow_load > 0.0 || p_snow > 0.0) { // handle snow
+            if (data.Snow_load > 0.0 || p_snow > 0.0) { // handle snow
                 double RhoS = 67.92 + 51.25 * exp(ta / 2.59);
                 double LStar = Sbar * (0.27 + 46.0 / RhoS) * LAI;
 
-                if (data->Snow_load > LStar) { // after increase in temperature
-                    direct_snow = data->Snow_load - LStar;
-                    data->Snow_load = LStar;
+                if (data.Snow_load > LStar) { // after increase in temperature
+                    direct_snow = data.Snow_load - LStar;
+                    data.Snow_load = LStar;
                 }
 
                 // calculate intercepted snowload
@@ -343,14 +343,14 @@ void Simple_Canopy::run(mesh_elem &face)
                 if (p_snow > 0.0 && fabs(p_snow / LStar) < 50.0) { // Where do hard coded param comes from?
                     if (u_FHt <=
                         1.0)  // if wind speed at canopy top > 1 m/s // Where do hard coded param comes from?
-                        I1 = (LStar - data->Snow_load) * (1.0 - exp(-Cc * p_snow / LStar));
+                        I1 = (LStar - data.Snow_load) * (1.0 - exp(-Cc * p_snow / LStar));
                     else
-                        I1 = (LStar - data->Snow_load) * (1.0 - exp(-p_snow / LStar));
+                        I1 = (LStar - data.Snow_load) * (1.0 - exp(-p_snow / LStar));
 
                     if (I1 <= 0)
                         I1 = 0;
 
-                    data->Snow_load += I1;
+                    data.Snow_load += I1;
 
                     // calculate canopy snow throughfall before unloading:
 
@@ -397,10 +397,10 @@ void Simple_Canopy::run(mesh_elem &face)
                 // snow exposure coefficient (Ce):
 
                 double Ce;
-                if ((data->Snow_load / LStar) <= 0.0)
+                if ((data.Snow_load / LStar) <= 0.0)
                     Ce = 0.07;
                 else
-                    Ce = Vegetation::ks * pow((data->Snow_load / LStar), -Vegetation::Fract);
+                    Ce = Vegetation::ks * pow((data.Snow_load / LStar), -Vegetation::Fract);
 
                 // calculate 'potential' canopy sublimation:
 
@@ -414,34 +414,34 @@ void Simple_Canopy::run(mesh_elem &face)
 
                 if (IceBulbT >= unload_t) {
                     if (IceBulbT >= unload_t_water) {
-                        drip_Cpy = data->Snow_load;
-                        SUnload_H2O = data->Snow_load;
+                        drip_Cpy = data.Snow_load;
+                        SUnload_H2O = data.Snow_load;
                     }
                     else {
-                        SUnload = data->Snow_load * (IceBulbT - unload_t) / (unload_t_water - unload_t);
-                        drip_Cpy = data->Snow_load - SUnload;
+                        SUnload = data.Snow_load * (IceBulbT - unload_t) / (unload_t_water - unload_t);
+                        drip_Cpy = data.Snow_load - SUnload;
                         SUnload_H2O = drip_Cpy;
                     }
 
-                    data->Snow_load = 0.0;
-                    data->cum_SUnload_H2O += SUnload_H2O;
+                    data.Snow_load = 0.0;
+                    data.cum_SUnload_H2O += SUnload_H2O;
                 }
 
                 // limit sublimation to canopy snow available and take sublimated snow away from canopy snow at timestep start
 
-                //Subl_Cpy = -data->Snow_load*Vi*Hs*Global::Interval*24*3600/Hs; // make W/m2 (original in CRHM)
-                Subl_Cpy = -data->Snow_load * Vi * PhysConst::Ls * global_param->dt() /
+                //Subl_Cpy = -data.Snow_load*Vi*Hs*Global::Interval*24*3600/Hs; // make W/m2 (original in CRHM)
+                Subl_Cpy = -data.Snow_load * Vi * PhysConst::Ls * global_param->dt() /
                            PhysConst::Ls; // make W/m2 TODO: check Interval is same as dt() (in seconds
                 // TODO: Hs/HS = 1 !!! (in CRHM, kept here for conistency...)
 
-                if (Subl_Cpy > data->Snow_load) {
-                    Subl_Cpy = data->Snow_load;
-                    data->Snow_load = 0.0;
+                if (Subl_Cpy > data.Snow_load) {
+                    Subl_Cpy = data.Snow_load;
+                    data.Snow_load = 0.0;
                 }
                 else {
-                    data->Snow_load -= Subl_Cpy;
-                    if (data->Snow_load < 0.0)
-                        data->Snow_load = 0.0;
+                    data.Snow_load -= Subl_Cpy;
+                    if (data.Snow_load < 0.0)
+                        data.Snow_load = 0.0;
                 }
 
                 // calculate total sub-canopy snow:
@@ -468,7 +468,7 @@ void Simple_Canopy::run(mesh_elem &face)
 
     double smax, Q;
 
-    switch(data->canopyType){
+    switch(data.canopyType){
         case 0: // 0 = canopy
         {
             smax = Cc * LAI * 0.2;
@@ -484,12 +484,12 @@ void Simple_Canopy::run(mesh_elem &face)
 
                 // calculate rain accumulation on canopy before evap loss:
 
-                if (data->rain_load + p_rain * Cc > smax) {
-                    drip_Cpy += (data->rain_load + p_rain * Cc - smax);
-                    data->rain_load = smax;
+                if (data.rain_load + p_rain * Cc > smax) {
+                    drip_Cpy += (data.rain_load + p_rain * Cc - smax);
+                    data.rain_load = smax;
                 }
                 else
-                    data->rain_load += p_rain * Cc;
+                    data.rain_load += p_rain * Cc;
 
             }
 
@@ -499,15 +499,15 @@ void Simple_Canopy::run(mesh_elem &face)
 
 
             // If Liquid water exists in canopy
-            if (data->rain_load > 0.0) {
-                /*if(data->Snow_load == 0){ // use Granger when no snowcover IN CANOPY // Changed to use Snow_load to check if canopy has snow
-                    if(data->rain_load >= hru_evap*Cc){ // (evaporation in mm)
+            if (data.rain_load > 0.0) {
+                /*if(data.Snow_load == 0){ // use Granger when no snowcover IN CANOPY // Changed to use Snow_load to check if canopy has snow
+                    if(data.rain_load >= hru_evap*Cc){ // (evaporation in mm)
                         intcp_evap = hru_evap*Cc;  //
-                        data->rain_load -= hru_evap*Cc;
+                        data.rain_load -= hru_evap*Cc;
                     }
                     else{
-                        intcp_evap = data->rain_load;
-                        data->rain_load = 0.0;
+                        intcp_evap = data.rain_load;
+                        data.rain_load = 0.0;
                     }
                 }
                 else{ */// use Priestley-Taylor when snowcover IN CANOPY
@@ -520,21 +520,21 @@ void Simple_Canopy::run(mesh_elem &face)
                 else
                     Pevap = 0.0;
 
-                if (data->rain_load >= Pevap * Cc) {  // (evaporation in mm)
+                if (data.rain_load >= Pevap * Cc) {  // (evaporation in mm)
                     intcp_evap = Pevap * Cc;  // check
-                    data->rain_load -= Pevap * Cc;
+                    data.rain_load -= Pevap * Cc;
                 }
                 else {
-                    intcp_evap = data->rain_load; // check
-                    data->rain_load = 0.0;
+                    intcp_evap = data.rain_load; // check
+                    data.rain_load = 0.0;
                 }
 
             }
 
             // cumulative amounts (canopy)
             net_rain = direct_rain + drip_Cpy;
-            data->cum_intcp_evap += intcp_evap;
-            data->cum_Subl_Cpy += Subl_Cpy;
+            data.cum_intcp_evap += intcp_evap;
+            data.cum_Subl_Cpy += Subl_Cpy;
 
             break; // end Canopy
         }
@@ -554,13 +554,13 @@ void Simple_Canopy::run(mesh_elem &face)
 
     // cumulative amounts (canopy or not)
     net_p = net_rain + net_snow;
-    data->cum_net_rain += net_rain;
-    data->cum_net_snow += net_snow;
+    data.cum_net_rain += net_rain;
+    data.cum_net_snow += net_snow;
 
 
     // Output computed canopy states and fluxes downward to snowpack and upward to atmosphere
-    (*face)["snow_load"_s]=data->Snow_load;
-    (*face)["rain_load"_s]=data->rain_load;
+    (*face)["snow_load"_s]=data.Snow_load;
+    (*face)["rain_load"_s]=data.rain_load;
     (*face)["ts_canopy"_s]=Ts;
     (*face)["ta_subcanopy"_s]=ta;
     (*face)["rh_subcanopy"_s]=rh;
@@ -585,22 +585,22 @@ void Simple_Canopy::init(mesh& domain)
         // Get current face
 	       auto face = domain->face(i);
 
-	       auto d = face->make_module_data<Simple_Canopy::data>(ID);
+	       auto& d = face->make_module_data<Simple_Canopy::data>(ID);
 
 	       // Check if Canopy exists at this face/triangle
 	       if(face->has_vegetation() )
 	       {
 		   // Get Canopy type (CRHM canop classifcation: Canopy, Clearing, or Gap)
-		   d->canopyType       = face->veg_attribute("canopyType");
-		   d->CanopyHeight     = face->veg_attribute("CanopyHeight");
-		   d->LAI              = face->veg_attribute("LAI");
-		   d->rain_load        = 0.0;
-		   d->Snow_load        = 0.0;
-		   d->cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
-		   d->cum_net_rain     = 0.0; // " direct_rain + drip", "(mm)"
-		   d->cum_Subl_Cpy     = 0.0; //  "canopy snow sublimation", "(mm)"
-		   d->cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
-		   d->cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
+		   d.canopyType       = face->veg_attribute("canopyType");
+		   d.CanopyHeight     = face->veg_attribute("CanopyHeight");
+		   d.LAI              = face->veg_attribute("LAI");
+		   d.rain_load        = 0.0;
+		   d.Snow_load        = 0.0;
+		   d.cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
+		   d.cum_net_rain     = 0.0; // " direct_rain + drip", "(mm)"
+		   d.cum_Subl_Cpy     = 0.0; //  "canopy snow sublimation", "(mm)"
+		   d.cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
+		   d.cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
 
 	       } else {
 		 BOOST_THROW_EXCEPTION(missing_value_error() << errstr_info("landcover not defined, but is required for simple_canopy module, please check the configuration file"));

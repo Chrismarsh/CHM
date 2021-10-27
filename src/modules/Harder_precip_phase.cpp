@@ -66,10 +66,10 @@ void Harder_precip_phase::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
-        d->hours_since_snowfall = 0;
-        d->acc_rain = 0;
-        d->acc_snow = 0;
+        auto& d = face->make_module_data<data>(ID);
+        d.hours_since_snowfall = 0;
+        d.acc_rain = 0;
+        d.acc_snow = 0;
     }
 
 }
@@ -132,23 +132,23 @@ void Harder_precip_phase::run(mesh_elem& face)
     (*face)["p_rain"_s]= p * frTi;
     (*face)["p_snow"_s]= p * (1.0-frTi);
 
-    auto d = face->get_module_data<data>(ID);
+    auto& d = face->get_module_data<data>(ID);
     if( p * (1.0-frTi) > 0) // it's snowing
     {
-        d->hours_since_snowfall = 0; // reset
+        d.hours_since_snowfall = 0; // reset
     }
     else
     {
-        d->hours_since_snowfall  +=  (global_param->dt() / 3600.0) ; // dt(s) -> hr
+        d.hours_since_snowfall  +=  (global_param->dt() / 3600.0) ; // dt(s) -> hr
     }
 
-    (*face)["p_snow_hours"_s]=d->hours_since_snowfall;
+    (*face)["p_snow_hours"_s]=d.hours_since_snowfall;
 
-    d->acc_rain += p * frTi;
-    d->acc_snow += p * (1.0-frTi);
+    d.acc_rain += p * frTi;
+    d.acc_snow += p * (1.0-frTi);
 
-    (*face)["acc_rain"_s]=d->acc_rain;
-    (*face)["acc_snow"_s]=d->acc_snow;
+    (*face)["acc_rain"_s]=d.acc_rain;
+    (*face)["acc_snow"_s]=d.acc_snow;
 
 
 

@@ -52,8 +52,8 @@ void snow_slide::checkpoint(mesh& domain,  netcdf& chkpt)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        chkpt.put_var1D("snow_slide:delta_avalanche_snowdepth",i,face->get_module_data<data>(ID)->delta_avalanche_snowdepth);
-        chkpt.put_var1D("snow_slide:delta_avalanche_mass",i,face->get_module_data<data>(ID)->delta_avalanche_mass);
+        chkpt.put_var1D("snow_slide:delta_avalanche_snowdepth",i,face->get_module_data<data>(ID).delta_avalanche_snowdepth);
+        chkpt.put_var1D("snow_slide:delta_avalanche_mass",i,face->get_module_data<data>(ID).delta_avalanche_mass);
     }
 }
 
@@ -62,8 +62,8 @@ void snow_slide::load_checkpoint(mesh& domain,  netcdf& chkpt)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        face->get_module_data<data>(ID)->delta_avalanche_snowdepth = chkpt.get_var1D("snow_slide:delta_avalanche_snowdepth",i);
-        face->get_module_data<data>(ID)->delta_avalanche_mass = chkpt.get_var1D("snow_slide:delta_avalanche_mass",i);
+        face->get_module_data<data>(ID).delta_avalanche_snowdepth = chkpt.get_var1D("snow_slide:delta_avalanche_snowdepth",i);
+        face->get_module_data<data>(ID).delta_avalanche_mass = chkpt.get_var1D("snow_slide:delta_avalanche_mass",i);
     }
 }
 
@@ -82,14 +82,14 @@ void snow_slide::run(mesh& domain)
         auto face = domain->face(i); // Get face
         // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
         // snowdepthavg_vert is taken vertically
-        auto data = face->get_module_data<snow_slide::data>(ID); // Get data
-        data->snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
-        data->snowdepthavg_vert_copy = (*face)["snowdepthavg"_s]/std::max(0.001,cos(face->slope())); // Vertical snow depth
-        data->swe_copy = (*face)["swe"_s]/1000; // mm to m
-        data->slope = face->slope(); // slope in rad
+        auto& data = face->get_module_data<snow_slide::data>(ID); // Get data
+        data.snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
+        data.snowdepthavg_vert_copy = (*face)["snowdepthavg"_s]/std::max(0.001,cos(face->slope())); // Vertical snow depth
+        data.swe_copy = (*face)["swe"_s]/1000; // mm to m
+        data.slope = face->slope(); // slope in rad
         // Initalize snow transport to zero
-        data->delta_avalanche_snowdepth = 0.0;
-        data->delta_avalanche_mass = 0.0; // m
+        data.delta_avalanche_snowdepth = 0.0;
+        data.delta_avalanche_mass = 0.0; // m
         sorted_z.at(i) = std::make_pair( face->center().z() + (*face)["snowdepthavg"_s]/std::max(0.001,cos(face->slope())), face) ;
 
     }
@@ -106,21 +106,21 @@ void snow_slide::run(mesh& domain)
     for (size_t i = 0; i < sorted_z.size(); i++) {
         auto face = sorted_z[i].second; // Get pointer to face
         double cen_area = face->get_area(); // Area of center triangle
-        auto data = face->get_module_data<snow_slide::data>(ID); // Get stored data for face
+        auto& data = face->get_module_data<snow_slide::data>(ID); // Get stored data for face
 
         // Get current triangle snow info at beginning of time step
         double maxDepth;
         if(use_vertical_snow)
         {
-             maxDepth= data->maxDepth_vert;
+             maxDepth= data.maxDepth_vert;
         }
         else
         {
-             maxDepth= data->maxDepth_norm;
+             maxDepth= data.maxDepth_norm;
         }
-        double snowdepthavg = data->snowdepthavg_copy; // m - Snow depth perpendicular to the surface
-        double snowdepthavg_vert = data->snowdepthavg_vert_copy; // m - Vertical snow depth
-        double swe = data->swe_copy; // m
+        double snowdepthavg = data.snowdepthavg_copy; // m - Snow depth perpendicular to the surface
+        double snowdepthavg_vert = data.snowdepthavg_vert_copy; // m - Vertical snow depth
+        double swe = data.swe_copy; // m
 
         // Check if face normal snowdepth have exceeded normal maxDepth
         if (snowdepthavg > maxDepth) {
@@ -144,10 +144,10 @@ void snow_slide::run(mesh& domain)
 
                 // Check if not-null (null indicates edge cell)
                 if (n != nullptr && !n->is_ghost) {
-                    auto n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
+                    auto& n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
                     // Calc weighting based on height diff
                     // (std::max insures that if one neighbor is higher, its weight will be zero)
-                    w[i] = std::max(0.0, z_s - (n->center().z() + n_data->snowdepthavg_vert_copy));
+                    w[i] = std::max(0.0, z_s - (n->center().z() + n_data.snowdepthavg_vert_copy));
                     w_dem += w[i]; // Store weight denominator
                 } else { // It is an edge cell, set flag
                     edge_flag = true;
@@ -160,15 +160,15 @@ void snow_slide::run(mesh& domain)
                 // Don't route and exit loop.
 
                 // Remove snow from initial face
-                data->snowdepthavg_copy = maxDepth;
-                data->swe_copy = swe * maxDepth / snowdepthavg;
+                data.snowdepthavg_copy = maxDepth;
+                data.swe_copy = swe * maxDepth / snowdepthavg;
                 // Update mass transport (m^3)
-                data->delta_avalanche_snowdepth -= del_depth * cen_area;
-                data->delta_avalanche_mass -= del_swe * cen_area;
+                data.delta_avalanche_snowdepth -= del_depth * cen_area;
+                data.delta_avalanche_mass -= del_swe * cen_area;
 
                 // Save state variables
-                (*face)["delta_avalanche_snowdepth"_s]= data->delta_avalanche_snowdepth;
-                (*face)["delta_avalanche_mass"_s]= data->delta_avalanche_mass;
+                (*face)["delta_avalanche_snowdepth"_s]= data.delta_avalanche_snowdepth;
+                (*face)["delta_avalanche_mass"_s]= data.delta_avalanche_mass;
             }
 
             // Case 2) Non-Edge cell, but w_dem=0, "sink" cell. Don't route snow.
@@ -189,7 +189,7 @@ void snow_slide::run(mesh& domain)
                 auto n = face->neighbor(j);
                 if (n != nullptr && !n->is_ghost)  {
                     double n_area = n->get_area(); // Area of neighbor triangle
-                    auto   n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
+                    auto&   n_data = n->get_module_data<snow_slide::data>(ID); // pointer to face's data
 
                     // // Update neighbor snowdepth and swe (copies only for internal snowSlide use)
                     // Here we must make an assumption of the pack density (because we do not have access to
@@ -197,27 +197,27 @@ void snow_slide::run(mesh& domain)
                     // Therefore, we assume uniform density.
                     // The (cen_area/n_area) term converts depth change from orig cell to volume, then back to a depth term
                     // using the neighbor's area.
-                    n_data->snowdepthavg_copy += del_depth * (cen_area/n_area) * w[j]; // (m)
-                    n_data->swe_copy += del_swe * (cen_area/n_area) * w[j]; // (m)
+                    n_data.snowdepthavg_copy += del_depth * (cen_area/n_area) * w[j]; // (m)
+                    n_data.swe_copy += del_swe * (cen_area/n_area) * w[j]; // (m)
                     // Update vertical snow depth
-                    n_data->snowdepthavg_vert_copy = n_data->snowdepthavg_copy/std::max(0.001,cos(face->slope()));
+                    n_data.snowdepthavg_vert_copy = n_data.snowdepthavg_copy/std::max(0.001,cos(face->slope()));
 
                     // Update mass transport to neighbor
-                    n_data->delta_avalanche_snowdepth += del_depth * cen_area * w[j]; // Fraction of snowdepth (m) *
+                    n_data.delta_avalanche_snowdepth += del_depth * cen_area * w[j]; // Fraction of snowdepth (m) *
                     // center triangle area (m^2) = volune of snow depth (m^3)
-                    n_data->delta_avalanche_mass +=  del_swe * cen_area * w[j]; // (m) * (m^2) = (m^3) of swe
+                    n_data.delta_avalanche_mass +=  del_swe * cen_area * w[j]; // (m) * (m^2) = (m^3) of swe
                     out_mass += del_swe * cen_area * w[j];
                 }
             }
             // Remove snow from initial face
-            data->snowdepthavg_copy = maxDepth; // data refers to current/center cell
-            data->snowdepthavg_vert_copy =  data->snowdepthavg_copy/std::max(0.001,cos(face->slope()));
-            data->swe_copy = swe * maxDepth / snowdepthavg; // Uses ratio of depth change to calc new swe
+            data.snowdepthavg_copy = maxDepth; // data refers to current/center cell
+            data.snowdepthavg_vert_copy =  data.snowdepthavg_copy/std::max(0.001,cos(face->slope()));
+            data.swe_copy = swe * maxDepth / snowdepthavg; // Uses ratio of depth change to calc new swe
             // This relys on the assumption of uniform density.
 
             // Update mass transport (m^3)
-            data->delta_avalanche_snowdepth -= del_depth * cen_area;
-            data->delta_avalanche_mass -= del_swe * cen_area;
+            data.delta_avalanche_snowdepth -= del_depth * cen_area;
+            data.delta_avalanche_mass -= del_swe * cen_area;
 
             // Check mass transport balances for current avalanche cell
             if (std::abs(orig_mass-out_mass)>0.0001) {
@@ -229,8 +229,8 @@ void snow_slide::run(mesh& domain)
         }
 
         // Save state variables at end of time step
-        (*face)["delta_avalanche_snowdepth"_s]= data->delta_avalanche_snowdepth;
-        (*face)["delta_avalanche_mass"_s]= data->delta_avalanche_mass;
+        (*face)["delta_avalanche_snowdepth"_s]= data.delta_avalanche_snowdepth;
+        (*face)["delta_avalanche_mass"_s]= data.delta_avalanche_mass;
 
     } // End of each face
 
@@ -248,7 +248,7 @@ void snow_slide::init(mesh& domain)
     {
         auto face = domain->face(i);
 
-        auto d = face->make_module_data<snow_slide::data>(ID);
+        auto& d = face->make_module_data<snow_slide::data>(ID);
 
         double Z_CanTop;
         if(face->has_vegetation())
@@ -261,9 +261,9 @@ void snow_slide::init(mesh& domain)
 
 	    // Parametrize the Minimum snow holding depth (taken vertically)
         double slopeDeg = std::max(10.0,face->slope()*180/M_PI);  // radians to degres, limit to >10 degrees to avoid inf
-        d->maxDepth_norm = std::max(avalache_mult * pow(slopeDeg,avalache_pow),Z_CanTop); // (m) Estimate min depth that avalanche occurs
-        d->maxDepth_vert = d->maxDepth_norm * std::max(0.001,cos(face->slope()));
+        d.maxDepth_norm = std::max(avalache_mult * pow(slopeDeg,avalache_pow),Z_CanTop); // (m) Estimate min depth that avalanche occurs
+        d.maxDepth_vert = d.maxDepth_norm * std::max(0.001,cos(face->slope()));
         // Max of either veg height or derived max holding snow depth.
-        (*face)["maxDepth"_s]= d->maxDepth_norm;
+        (*face)["maxDepth"_s]= d.maxDepth_norm;
     }
 }

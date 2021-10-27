@@ -81,9 +81,9 @@ void WindNinja::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,face->stations().size() );
-        d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
+        auto& d = face->make_module_data<data>(ID);
+        d.interp.init(global_param->interp_algorithm,face->stations().size() );
+        d.interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
     }
 
     N_windfield = 0;
@@ -310,8 +310,8 @@ void WindNinja::run(mesh& domain)
 
             // get an interpolated zonal U,V at our face
             auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-            double zonal_u = face->get_module_data<data>(ID)->interp(u, query);
-            double zonal_v = face->get_module_data<data>(ID)->interp(v, query);
+            double zonal_u = face->get_module_data<data>(ID).interp(u, query);
+            double zonal_v = face->get_module_data<data>(ID).interp(v, query);
 
             (*face)["interp_zonal_u"_s]= zonal_u;
             (*face)["interp_zonal_v"_s]= zonal_v;
@@ -405,9 +405,9 @@ void WindNinja::run(mesh& domain)
 
             double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
 
-            face->get_module_data<data>(ID)->corrected_theta = theta;
-            face->get_module_data<data>(ID)->W = W;
-            face->get_module_data<data>(ID)->W_transf = W_transf;
+            face->get_module_data<data>(ID).corrected_theta = theta;
+            face->get_module_data<data>(ID).W = W;
+            face->get_module_data<data>(ID).W_transf = W_transf;
 
            }
 
@@ -417,9 +417,9 @@ void WindNinja::run(mesh& domain)
 
             auto face = domain->face(i);
 
-            double theta= face->get_module_data<data>(ID)->corrected_theta;
-            double W= face->get_module_data<data>(ID)->W;
-            double W_transf= face->get_module_data<data>(ID)->W_transf;
+            double theta= face->get_module_data<data>(ID).corrected_theta;
+            double W= face->get_module_data<data>(ID).W;
+            double W_transf= face->get_module_data<data>(ID).W_transf;
 
             (*face)["U_R_orig"_s]= W;   // Wind speed without downscaling
 
@@ -492,12 +492,12 @@ void WindNinja::run(mesh& domain)
             auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
             if(u.size() > 0)
             {
-                double new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
-                face->get_module_data<data>(ID)->temp_u = new_u;
+                double new_u = face->get_module_data<data>(ID).interp_smoothing(u, query);
+                face->get_module_data<data>(ID).temp_u = new_u;
             }
             else
             {
-                face->get_module_data<data>(ID)->temp_u = (*face)["U_R"_s];
+                face->get_module_data<data>(ID).temp_u = (*face)["U_R"_s];
             }
 
         }
@@ -505,7 +505,7 @@ void WindNinja::run(mesh& domain)
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
             auto face = domain->face(i);
-            (*face)["U_R"_s]= std::max(0.1, face->get_module_data<data>(ID)->temp_u);
+            (*face)["U_R"_s]= std::max(0.1, face->get_module_data<data>(ID).temp_u);
         }
    }
 

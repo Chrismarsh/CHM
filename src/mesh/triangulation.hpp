@@ -438,12 +438,12 @@ public:
     void to_file(std::string fname);
 
     template<typename T>
-    T*get_module_data(const std::string &module);
+    T& get_module_data(const std::string &module);
 
-    void set_module_data(const std::string &module, face_info *fi);
+//    void set_module_data(const std::string &module, face_info *fi);
 
     template<typename T>
-    T*make_module_data(const std::string &module);
+    T& make_module_data(const std::string &module);
 
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
@@ -520,7 +520,7 @@ private:
     variablestorage<double> _variables;
     variablestorage<double> _parameters;
 
-    variablestorage<face_info*> _module_face_data;
+    variablestorage< std::unique_ptr<face_info>> _module_face_data;
     variablestorage<double> _initial_conditions;
     variablestorage< Vector_3> _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
 
@@ -1693,25 +1693,25 @@ timeseries::iterator face<Gt, Fb>::now()
 
 template < class Gt, class Vb>
 template<typename T>
-T* face<Gt, Vb>::make_module_data(const std::string &module)
+T& face<Gt, Vb>::make_module_data(const std::string &module)
 {
 
     //we don't already have this, make a new one.
     if(!_module_face_data[module])
     {
-        T* data = new T;
-        _module_face_data[module] = data;
+//        T* data = new T;
+        _module_face_data[module] = std::make_unique<T>();
     }
 
-    return get_module_data<T>(module);
+    return get_module_data<T&>(module);
 }
 
 
 template < class Gt, class Fb>
 template < typename T>
-T* face<Gt, Fb>::get_module_data(const std::string &module)
+T& face<Gt, Fb>::get_module_data(const std::string &module)
 {
-    return dynamic_cast<T*>(_module_face_data[module]);
+    return dynamic_cast<T&>(*_module_face_data[module]);
 }
 
 template < class Gt, class Fb>
@@ -1720,11 +1720,12 @@ void face<Gt, Fb>::set_face_vector(const std::string& variable, Vector_3 v)
     _module_face_vectors[variable] = v;
 };
 
-template < class Gt, class Fb>
-void face<Gt, Fb>::set_module_data(const std::string &module, face_info *fi)
-{
-    _module_face_data[module] = fi;
-}
+// I don't think this is used anywhere and is maybe not worth keeping given the make_module_data exists
+//template < class Gt, class Fb>
+//void face<Gt, Fb>::set_module_data(const std::string &module, face_info *fi)
+//{
+//    _module_face_data[module] = fi;
+//}
 template < class Gt, class Fb>
 double face<Gt, Fb>::get_area()
 {

@@ -167,19 +167,19 @@ TEST_F(TriangulationTest, ModuleData)
 
     auto f = mesh.face(0);
 
-    auto d = f->make_module_data<test_module_data>("module_42");
-    ASSERT_NE(d,nullptr);
+    auto& d = f->make_module_data<test_module_data>("module_42");
+//    ASSERT_NE(d,nullptr);
 
-    d->x = -100;
-    ASSERT_DOUBLE_EQ(d->x,-100.0);
+    d.x = -100;
+    ASSERT_DOUBLE_EQ(d.x,-100.0);
 
     // should be able to call make data again and just get back what we have
-    auto d2 = f->make_module_data<test_module_data>("module_42");
-    ASSERT_DOUBLE_EQ(d2->x,-100.0);
+    auto& d2 = f->make_module_data<test_module_data>("module_42");
+    ASSERT_DOUBLE_EQ(d2.x,-100.0);
 
     //retrieve the data
-    auto d3 = f->get_module_data<test_module_data>("module_42");
-    ASSERT_DOUBLE_EQ(d3->x,-100.0);
+    auto& d3 = f->get_module_data<test_module_data>("module_42");
+    ASSERT_DOUBLE_EQ(d3.x,-100.0);
 
 
 

@@ -372,7 +372,7 @@ class preprocessingTriangulation : public triangulation
                 if(neigh != nullptr && neigh->is_ghost)
                 {
                     ghosted_boundary_nearest_neighbors.push_back(neigh);
-                    neigh->get_module_data<ghost_info>("partition_tool")->ghost_type = ghost_info::GHOST_TYPE::NEIGH;
+                    neigh->get_module_data<ghost_info>("partition_tool").ghost_type = ghost_info::GHOST_TYPE::NEIGH;
                 }
             }
         }
@@ -597,10 +597,10 @@ class preprocessingTriangulation : public triangulation
                 _faces.at(i)->is_ghost = true; // default state, switches to false later
                 _faces.at(i)->init_module_data(pt);
 
-                auto *gi = _faces.at(i)->make_module_data<ghost_info>("partition_tool");
+                auto& gi = _faces.at(i)->make_module_data<ghost_info>("partition_tool");
 
                 // doesn't match the is_ghost default state. Here we assume false, and then switch it to the correct type when determined
-                gi->ghost_type = ghost_info::GHOST_TYPE::NONE;
+                gi.ghost_type = ghost_info::GHOST_TYPE::NONE;
             }
 
             partition(_comm_world._rank);
@@ -619,11 +619,11 @@ class preprocessingTriangulation : public triangulation
             for(size_t i = 0; i < _ghost_faces.size(); i++)
             {
                 auto face = _ghost_faces.at(i);
-                auto* gi = face->get_module_data<ghost_info>("partition_tool");
+                auto& gi = face->get_module_data<ghost_info>("partition_tool");
 
                 // if we aren't a neigh, we were added by determine_process_ghost_faces_by_distance
-                if(gi->ghost_type != ghost_info::GHOST_TYPE::NEIGH)
-                    gi->ghost_type = ghost_info::GHOST_TYPE::DIST;
+                if(gi.ghost_type != ghost_info::GHOST_TYPE::NEIGH)
+                    gi.ghost_type = ghost_info::GHOST_TYPE::DIST;
             }
 
             // load params
@@ -892,8 +892,8 @@ class preprocessingTriangulation : public triangulation
                     // 0 = Not a ghost
                     // 1 = Neighbour ghost
                     // 2 = Radius search ghost
-                    auto gi = _local_faces[i]->get_module_data<ghost_info>("partition_tool");
-                    is_ghost[i] = gi->ghost_type;
+                    auto& gi = _local_faces[i]->get_module_data<ghost_info>("partition_tool");
+                    is_ghost[i] = gi.ghost_type;
                 }
                 H5::DataSet dataset = file.createDataSet("/mesh/ghost_type", PredType::STD_I32BE, dataspace);
                 dataset.write(is_ghost.data(), PredType::NATIVE_INT);

@@ -45,8 +45,8 @@ void rh_no_lapse::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<rh_no_lapse::data>(ID);
-        d->interp.init(global_param->interp_algorithm,face->stations().size() );
+        auto& d = face->make_module_data<rh_no_lapse::data>(ID);
+        d.interp.init(global_param->interp_algorithm,face->stations().size() );
     }
 }
 
@@ -64,7 +64,7 @@ void rh_no_lapse::run(mesh_elem &face)
     }
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-    double rh = face->get_module_data<data>(ID)->interp(lowered_values, query);
+    double rh = face->get_module_data<data>(ID).interp(lowered_values, query);
 
     rh = std::min(rh, 100.0);
     rh = std::max(10.0, rh);

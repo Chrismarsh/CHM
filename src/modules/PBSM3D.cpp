@@ -280,7 +280,7 @@ void PBSM3D::init(mesh& domain)
     for (size_t i = 0; i < ntri; i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
+        auto& d = face->make_module_data<data>(ID);
 
         if (!face->has_vegetation() && enable_veg)
         {
@@ -288,29 +288,29 @@ void PBSM3D::init(mesh& domain)
         }
         if (face->has_vegetation() && enable_veg)
         {
-            d->CanopyHeight = face->veg_attribute("CanopyHeight");
+            d.CanopyHeight = face->veg_attribute("CanopyHeight");
 
             // only grab LAI if we are using the R90 lambda formulation
             if (use_R94_lambda)
-                d->LAI = face->veg_attribute("LAI");
+                d.LAI = face->veg_attribute("LAI");
             else
-                d->LAI = 0;
+                d.LAI = 0;
         }
         else
         {
-            d->CanopyHeight = 0;
-            d->LAI = 0;
+            d.CanopyHeight = 0;
+            d.LAI = 0;
             enable_veg = false;
         }
 
-        d->F_fill.function = &my_fill_topo;
-        d->F_fill2.function = &my_fill_topo2;
-        d->F_fill3.function = &my_fill_topo3;
+        d.F_fill.function = &my_fill_topo;
+        d.F_fill2.function = &my_fill_topo2;
+        d.F_fill3.function = &my_fill_topo3;
 
         // pre alloc for the windpseeds
-        d->u_z_susp.resize(nLayer);
+        d.u_z_susp.resize(nLayer);
 
-        auto& m = d->m;
+        auto& m = d.m;
         // edge unit normals
         m[0].set_size(3);
         m[0](0) = face->edge_unit_normal(0).x();
@@ -339,35 +339,35 @@ void PBSM3D::init(mesh& domain)
 
         // face areas
         for (int j = 0; j < 3; ++j)
-            d->A[j] = face->edge_length(j) * v_edge_height;
+            d.A[j] = face->edge_length(j) * v_edge_height;
 
         // top, bottom
-        d->A[3] = d->A[4] = face->get_area();
+        d.A[3] = d.A[4] = face->get_area();
 
-        d->is_edge = false;
+        d.is_edge = false;
         // which faces have neighbors? Ie, are we an edge?
         for (int a = 0; a < 3; ++a)
         {
             auto neigh = face->neighbor(a);
             if (neigh == nullptr)
             {
-                d->face_neigh[a] = false;
-                d->is_edge = true;
+                d.face_neigh[a] = false;
+                d.is_edge = true;
             }
             else
             {
-                d->face_neigh[a] = true;
+                d.face_neigh[a] = true;
             }
         }
-        if (!d->is_edge)
+        if (!d.is_edge)
         {
-            d->cell_local_id = n_non_edge_tri;
+            d.cell_local_id = n_non_edge_tri;
             ++n_non_edge_tri;
         }
 
-        d->sum_drift = 0;
-        d->sum_subl = 0;
-        d->csubl.resize(nLayer);
+        d.sum_drift = 0;
+        d.sum_subl = 0;
+        d.csubl.resize(nLayer);
         (*face)["sum_drift"_s]=0;
 
     }
@@ -412,8 +412,8 @@ void PBSM3D::run(mesh& domain)
 
             auto id = face->cell_local_id;
 
-            auto d = face->get_module_data<data>(ID);
-            auto& m = d->m;
+            auto& d = face->get_module_data<data>(ID);
+            auto& m = d.m;
 
             double fetch = 1000;
             if (use_exp_fetch || use_tanh_fetch)
@@ -452,7 +452,7 @@ void PBSM3D::run(mesh& domain)
             // updated if we override the module order
 
             // height difference between snowcover and veg
-            double height_diff = std::max(0.0, d->CanopyHeight - snow_depth);
+            double height_diff = std::max(0.0, d.CanopyHeight - snow_depth);
             if (!enable_veg)
                 height_diff = 0;
             if (debug_output)
@@ -520,11 +520,11 @@ void PBSM3D::run(mesh& domain)
 
                         // Compute normalization factor
                         struct my_fill_topo_params params = {a1, b1, a2, b2, moy_tpi, std_tpi};
-                        d->F_fill.params = &params;
+                        d.F_fill.params = &params;
 
                         gsl_integration_workspace* w = gsl_integration_workspace_alloc(1000);
                         double result, error;
-                        int code = gsl_integration_qags(&d->F_fill, -50, 50, 0, 1e-7, 1000, w, &result, &error);
+                        int code = gsl_integration_qags(&d.F_fill, -50, 50, 0, 1e-7, 1000, w, &result, &error);
                         gsl_integration_workspace_free(w);
 
                         (*face)["test_int"_s] = result;
@@ -546,20 +546,20 @@ void PBSM3D::run(mesh& domain)
 
                         // Determine area-averaged snow depth which is stored in the non-filled gullies
                         struct my_fill_topo2_params params2 = {a1, b1, a2, b2, moy_tpi, std_tpi, snow_depth, result};
-                        d->F_fill2.params = &params2;
+                        d.F_fill2.params = &params2;
 
                         gsl_integration_workspace* w2 = gsl_integration_workspace_alloc(1000);
                         double h1;
-                        int code2 = gsl_integration_qags(&d->F_fill2, -50, tpi_lim, 0, 1e-7, 1000, w2, &h1, &error);
+                        int code2 = gsl_integration_qags(&d.F_fill2, -50, tpi_lim, 0, 1e-7, 1000, w2, &h1, &error);
                         gsl_integration_workspace_free(w2);
 
                         // Determine area-averaged snow depth which is stored in the filled gullies
                         struct my_fill_topo3_params params3 = {moy_tpi, std_tpi, fac_fill};
-                        d->F_fill3.params = &params3;
+                        d.F_fill3.params = &params3;
 
                         gsl_integration_workspace* w3 = gsl_integration_workspace_alloc(1000);
                         double h2;
-                        int code3 = gsl_integration_qags(&d->F_fill3, tpi_lim, -min_sd_trans / fac_fill, 0, 1e-7, 1000,
+                        int code3 = gsl_integration_qags(&d.F_fill3, tpi_lim, -min_sd_trans / fac_fill, 0, 1e-7, 1000,
                                 w3, &h2, &error);
                         gsl_integration_workspace_free(w3);
 
@@ -644,7 +644,7 @@ void PBSM3D::run(mesh& domain)
             // exposed vegetation w/ the z0 estimate
             double lambda = 0;
 
-            d->saltation = false; // default case
+            d.saltation = false; // default case
 
             // threshold friction velocity. Compute here as it's used below as well
             // Pomeroy and Li, 2000
@@ -663,7 +663,7 @@ void PBSM3D::run(mesh& domain)
                 if (use_R94_lambda)
                     // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229)
                     // Section 3(a)
-                    lambda = 0.5 * d->LAI * height_diff;
+                    lambda = 0.5 * d.LAI * height_diff;
                 else
                     lambda = N * dv * height_diff; // Pomeroy formulation
 
@@ -693,7 +693,7 @@ void PBSM3D::run(mesh& domain)
                     catch (...)
                     {
                         // Didn't converge
-                        d->saltation = false;
+                        d.saltation = false;
                     }
                 }
                 else
@@ -704,7 +704,7 @@ void PBSM3D::run(mesh& domain)
 
                 if (ustar >= u_star_saltation_threshold)
                 {
-                    d->saltation = true;
+                    d.saltation = true;
 
                     if (z0_ustar_coupling)
                     {
@@ -715,36 +715,36 @@ void PBSM3D::run(mesh& domain)
                         // c_3 = 0.07519;
                         // c_4 = 0.5;
                         // g   = 9.81;
-                        d->z0 = 0.6131702345e-2 * ustar * ustar + .5 * lambda; // pom and li 2000, eqn 4
+                        d.z0 = 0.6131702345e-2 * ustar * ustar + .5 * lambda; // pom and li 2000, eqn 4
                     }
                     else
                     {
-                        d->z0 = Snow::Z0_SNOW;
+                        d.z0 = Snow::Z0_SNOW;
                     }
                 }
             }
 
-            if (!d->saltation)
+            if (!d.saltation)
             {
                 // we still need a u* for spatial K estimation later
-                d->z0 = Snow::Z0_SNOW;
-                ustar = std::max(0.01, PhysConst::kappa * uref / log(Atmosphere::Z_U_R / d->z0));
+                d.z0 = Snow::Z0_SNOW;
+                ustar = std::max(0.01, PhysConst::kappa * uref / log(Atmosphere::Z_U_R / d.z0));
             }
 
             // sanity checks
-            d->z0 = std::max(Snow::Z0_SNOW, d->z0);
+            d.z0 = std::max(Snow::Z0_SNOW, d.z0);
             ustar = std::max(0.01, ustar);
             if (debug_output)
                 (*face)["ustar"_s] = ustar;
             if (debug_output)
-                (*face)["z0"_s] = d->z0;
+                (*face)["z0"_s] = d.z0;
 
             // depth of saltation layer
             double hs = 0;
-            if (d->saltation)
+            if (d.saltation)
                 hs = 0.08436 * pow(ustar, 1.27); // pomeroy
 
-            d->hs = hs;
+            d.hs = hs;
             if (debug_output)
                 (*face)["hs"_s] = hs;
             if (debug_output)
@@ -760,7 +760,7 @@ void PBSM3D::run(mesh& domain)
             // Are we above saltation threshold?
             // Do we have enough mass in this triangle?
             // Has saltation been disabled because there is too much veg?
-            if (d->saltation)
+            if (d.saltation)
             {
 
                 double rho_f =
@@ -802,7 +802,7 @@ void PBSM3D::run(mesh& domain)
                 if (c_salt < 0 || std::isnan(c_salt))
                 {
                     c_salt = 0;
-                    d->saltation = false;
+                    d.saltation = false;
                 }
 
                 if (debug_output)
@@ -872,7 +872,7 @@ void PBSM3D::run(mesh& domain)
                 // as we don't know the neighbors values (might not have been computed yet). So this is just an
                 for (int j = 0; j < 3; ++j)
                 {
-                    udotm[j] = arma::dot(uvw, d->m[j]);
+                    udotm[j] = arma::dot(uvw, d.m[j]);
                     E[j] = face->edge_length(j);
                     mass += -E[j] * Qsalt * udotm[j];
                 }
@@ -921,9 +921,9 @@ void PBSM3D::run(mesh& domain)
                 double hz = cz + snow_depth;
 
                 // the suspension layer discretization 'floats' on top of the snow
-                // surface so height_diff = d->CanopyHeight - snowdepth which is
+                // surface so height_diff = d.CanopyHeight - snowdepth which is
                 // looking to see if cz is within this part of the canopy
-                if (d->saltation && cz < height_diff)
+                if (d.saltation && cz < height_diff)
                 {
                     // saltating so used the z0 with veg, but we are in the canopy so
                     // use the saltation vel
@@ -943,17 +943,17 @@ void PBSM3D::run(mesh& domain)
                     //                //bring wind down to canopy top
                     //                double u_cantop = std::max(0.01,
                     //                Atmosphere::log_scale_wind(uref,
-                    //                Atmosphere::Z_U_R, d->CanopyHeight, 0 , d->z0));
+                    //                Atmosphere::Z_U_R, d.CanopyHeight, 0 , d.z0));
                     //
                     //                u_z = Atmosphere::exp_scale_wind(u_cantop,
-                    //                d->CanopyHeight, cz, LAI);
+                    //                d.CanopyHeight, cz, LAI);
                 }
                 else
                 {
                     if (hz < Atmosphere::Z_U_R)
                     {
                         u_z =
-                            std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, hz, snow_depth, d->z0));
+                            std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, hz, snow_depth, d.z0));
                     }
                     else
                     {
@@ -961,7 +961,7 @@ void PBSM3D::run(mesh& domain)
                     }
                 }
 
-                d->u_z_susp.at(z) = u_z;
+                d.u_z_susp.at(z) = u_z;
 
                 // calculate dm/dt from
                 // equation 13 from Pomeroy and Li 2000
@@ -1123,7 +1123,7 @@ void PBSM3D::run(mesh& domain)
                     for (int a = 0; a < 3; ++a)
                     {
                         // auto neigh = face->neighbor(a);
-                        alpha[a] = d->A[a];
+                        alpha[a] = d.A[a];
 
                         // do just very low horz diffusion for numerics
                         K[a] = 0.00001;
@@ -1131,7 +1131,7 @@ void PBSM3D::run(mesh& domain)
                     }
                 }
                 // Li and Pomeroy 2000
-                double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * (cz + d->z0) + l__max);
+                double l = PhysConst::kappa * (cz + d.z0) * l__max / (PhysConst::kappa * (cz + d.z0) + l__max);
                 if (debug_output)
                     (*face)["l"_s] = l;
 
@@ -1160,9 +1160,9 @@ void PBSM3D::run(mesh& domain)
                 if (debug_output)
                     (*face)["K" + std::to_string(z)] = K[3];
                 // top
-                alpha[3] = d->A[3] * K[3] / v_edge_height;
+                alpha[3] = d.A[3] * K[3] / v_edge_height;
                 // bottom
-                alpha[4] = d->A[4] * K[4] / v_edge_height;
+                alpha[4] = d.A[4] * K[4] / v_edge_height;
 
                 double phi = (*face)["vw_dir"_s]; // wind direction
                 Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
@@ -1208,7 +1208,7 @@ void PBSM3D::run(mesh& domain)
                     csubl = 0.0;
                 }
 
-                d->csubl[z] = csubl;
+                d.csubl[z] = csubl;
 
 
                 for (int f = 0; f < 3; f++)
@@ -1216,29 +1216,29 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[f] > 0)
                     {
 
-                        if (d->face_neigh[f])
+                        if (d.face_neigh[f])
                         {
                             int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
 
                             // Diagonal value
                             suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-                                    (V * csubl - d->A[f] * udotm[f] - alpha[f]));
+                                    (V * csubl - d.A[f] * udotm[f] - alpha[f]));
                             // Off diagonal value
                             suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, (alpha[f]));
                         }
                         else // missing neighbor case
                         {
                             // no mass in
-                            //                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+                            //                            elements[ idx_idx_off ] += V*csubl-d.A[f]*udotm[f]-alpha[f];
 
                             // allow mass into the domain from ghost cell
                             suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-                                    (-0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V));
+                                    (-0.1e-1 * alpha[f] - 1. * d.A[f] * udotm[f] + csubl * V));
                         }
                     }
                     else
                     {
-                        if (d->face_neigh[f])
+                        if (d.face_neigh[f])
                         {
                             int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
                             // Diagonal entry
@@ -1246,7 +1246,7 @@ void PBSM3D::run(mesh& domain)
                                     V * csubl - alpha[f]);
                             // Off diagonal entry
                             suspension_NNP->matrixSumIntoGlobalValues(idx, nidx,
-                                    -d->A[f] * udotm[f] + alpha[f]);
+                                    -d.A[f] * udotm[f] + alpha[f]);
                         }
                         else
                         {
@@ -1255,7 +1255,7 @@ void PBSM3D::run(mesh& domain)
 
                             // allow mass in
                             suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-                                    -0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V);
+                                    -0.1e-1 * alpha[f] - .99 * d.A[f] * udotm[f] + csubl * V);
                         }
                     }
                 }
@@ -1264,14 +1264,14 @@ void PBSM3D::run(mesh& domain)
                 if (z == 0)
                 {
 
-                    double alpha4 = d->A[4] * K[4] / (hs / 2.0 + v_edge_height / 2.0);
+                    double alpha4 = d.A[4] * K[4] / (hs / 2.0 + v_edge_height / 2.0);
 
                     // bottom face, only turbulent diffusion
                     //              elements[idx_idx_off] += V * csubl - alpha4;
 
                     // includes advection term
                     suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-                            V * csubl - d->A[4] * udotm[4] - alpha4);
+                            V * csubl - d.A[4] * udotm[4] - alpha4);
                     // RHS
                     double val = -alpha4 * c_salt;
                     suspension_NNP->rhsSumIntoGlobalValue(idx,val);
@@ -1283,7 +1283,7 @@ void PBSM3D::run(mesh& domain)
                     {
                         // Diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-                                V * csubl - d->A[3] * udotm[3] - alpha[3]);
+                                V * csubl - d.A[3] * udotm[3] - alpha[3]);
                         // Off diagonal
                         suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
 
@@ -1295,7 +1295,7 @@ void PBSM3D::run(mesh& domain)
                                 V * csubl - alpha[3]);
                         // Off diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
-                                -d->A[3] * udotm[3] + alpha[3]);
+                                -d.A[3] * udotm[3] + alpha[3]);
                     }
                 }
                 else if (z == nLayer - 1) // top z layer
@@ -1310,7 +1310,7 @@ void PBSM3D::run(mesh& domain)
                     {
                         // Diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-                                V * csubl - d->A[3] * udotm[3] - alpha[3]);
+                                V * csubl - d.A[3] * udotm[3] - alpha[3]);
                         // RHS
                         double val = -alpha[3] * cprecip;
                         suspension_NNP->rhsSumIntoGlobalValue(idx,val);
@@ -1321,7 +1321,7 @@ void PBSM3D::run(mesh& domain)
                         suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
                                 V * csubl - alpha[3]);
                         // RHS
-                        double val = d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
+                        double val = d.A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
                         suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
 
@@ -1331,7 +1331,7 @@ void PBSM3D::run(mesh& domain)
                     {
                         // Diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
-                                V * csubl - d->A[4] * udotm[4] - alpha[4]);
+                                V * csubl - d.A[4] * udotm[4] - alpha[4]);
 
                         // Off diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
@@ -1341,7 +1341,7 @@ void PBSM3D::run(mesh& domain)
                         // Diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
                         // Off diagonal entry
-                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d.A[4] * udotm[4] + alpha[4]);
                     }
                 }
                 else // middle layers
@@ -1351,7 +1351,7 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[3] > 0)
                     {
                         // Diagonal entry
-                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[3] * udotm[3] - alpha[3]);
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d.A[3] * udotm[3] - alpha[3]);
                         // Off diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
                     }
@@ -1360,7 +1360,7 @@ void PBSM3D::run(mesh& domain)
                         // Diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[3]);
                         // Off diagonal entry
-                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[3] * udotm[3] + alpha[3]);
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d.A[3] * udotm[3] + alpha[3]);
                     }
 
                     // ntri * (z + 1) + face->cell_local_id (looking down)
@@ -1368,7 +1368,7 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[4] > 0)
                     {
                         // Diagonal entry
-                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d->A[4] * udotm[4] - alpha[4]);
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d.A[4] * udotm[4] - alpha[4]);
                         // Off diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
@@ -1377,7 +1377,7 @@ void PBSM3D::run(mesh& domain)
                         // Diagonal entry
                         suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
                         // Off diagonal entry
-                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d->A[4] * udotm[4] + alpha[4]);
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d.A[4] * udotm[4] + alpha[4]);
                     }
                 }
 
@@ -1443,7 +1443,7 @@ void PBSM3D::run(mesh& domain)
     for (size_t i = 0; i < ntri; i++)
     {
         auto face = domain->face(i);
-        auto d = face->get_module_data<data>(ID);
+        auto& d = face->get_module_data<data>(ID);
         double Qsusp = 0;
 
         double Qsubl = 0;
@@ -1453,27 +1453,27 @@ void PBSM3D::run(mesh& domain)
             c = c < 0 || is_nan(c) ? 0 : c; // harden against some numerical issues that
             // occasionally come up for unknown reasons.
 
-            double u_z = d->u_z_susp.at(z);
+            double u_z = d.u_z_susp.at(z);
 
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
             if (debug_output)
             {
                 (*face)["c" + std::to_string(z)] = c;
-                (*face)["csubl" + std::to_string(z)] = d->csubl[z];
+                (*face)["csubl" + std::to_string(z)] = d.csubl[z];
                 // This is an approximation as it uses after transport concentrations.
                 // However this will have already taken into account sublimation during the coupled transport phase
                 // Eqn 20 Pomeroy 1993
 
             }
-            Qsubl += d->csubl[z] * c * v_edge_height; //  kg/(m^2 *s)=> per unit area of snowcover
+            Qsubl += d.csubl[z] * c * v_edge_height; //  kg/(m^2 *s)=> per unit area of snowcover
         }
         (*face)["Qsusp"_s] = Qsusp;
 
         (*face)["Qsubl"_s] = Qsubl;
         (*face)["Qsubl_mass"_s] = Qsubl * global_param->dt(); // kg/m^2 or mm
-        d->sum_subl += (*face)["Qsubl_mass"_s];
-        (*face)["sum_subl"_s] = d->sum_subl;
+        d.sum_subl += (*face)["Qsubl_mass"_s];
+        (*face)["sum_subl"_s] = d.sum_subl;
 
     }
 
@@ -1492,8 +1492,8 @@ void PBSM3D::run(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->get_module_data<data>(ID);
-        auto& m = d->m;
+        auto& d = face->get_module_data<data>(ID);
+        auto& m = d.m;
 
         double phi = (*face)["vw_dir"_s];
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
@@ -1547,7 +1547,7 @@ void PBSM3D::run(mesh& domain)
             }
             else // pointing into the wind, use upwind as donor
             {
-                if (d->face_neigh[j])
+                if (d.face_neigh[j])
                 {
                     auto neigh = face->neighbor(j);
 
@@ -1581,7 +1581,7 @@ void PBSM3D::run(mesh& domain)
 
             // we now have an edge Qtj & Qsj estimate
             // build up our neighbors
-            if (d->face_neigh[j])
+            if (d.face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
                 global_col = static_cast<int>(neigh->cell_global_id);
