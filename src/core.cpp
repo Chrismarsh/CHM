@@ -1220,6 +1220,19 @@ void core::init(int argc, char **argv)
     LOG_DEBUG << "Built with OpenMP support, #threads   = " << omp_get_max_threads();
 #endif
 
+    // Check if we are running under slurm
+    const char* SLURM_JOB_ID = std::getenv("SLURM_JOB_ID");
+    if(SLURM_JOB_ID)
+    {
+        const char* SLURM_TASK_PID = std::getenv("SLURM_TASK_PID"); //The process ID of the task being started.
+        const char* SLURM_PROCID = std::getenv("SLURM_PROCID"); // The MPI rank (or relative process ID) of the current process
+
+        LOG_DEBUG << "Detected running under SLURM as jobid " << SLURM_JOB_ID;
+        LOG_DEBUG << "SLURM_TASK_PID = " << SLURM_TASK_PID;
+        LOG_DEBUG << "SLURM_PROCID = " << SLURM_PROCID;
+    }
+
+
 
     pt::ptree cfg;
     try

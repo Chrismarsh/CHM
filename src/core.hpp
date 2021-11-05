@@ -46,6 +46,7 @@
 #include <chrono>
 #include <algorithm>
 #include <memory> //unique ptr
+#include <cstdlib>
 
 //boost includes
 #include <boost/graph/graph_traits.hpp>
