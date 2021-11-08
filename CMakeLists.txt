@@ -22,6 +22,8 @@ endif()
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_MPI "Enable MPI"  OFF )
 option(USE_OMP "Enable OpenMP"  ON )
+option(OMP_SAFE_EXCEPTION "Enables safe exception handling from within OMP regions." ON)
+option(ENABLE_SAFE_CHECKS "Enable variable map checking. Runtime perf cost. Allows for ensuring a variable is indeed available to be lookedup." ON)
 option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
@@ -32,7 +34,7 @@ option(BUILD_WITH_CONAN "Uses Conan for dependencies" ON)
 
 message(STATUS "This is an MPI build? ${USE_MPI}")
 
-set(ENABLE_SAFE_CHECKS FALSE CACHE BOOL "Enable variable map checking. Runtime perf cost. Enable to debug")
+
 
 if(BUILD_WITH_CONAN AND USE_JEMALLOC)
     message(WARNING "With a Conan build, USE_JEMALLOC will use a system jemalloc" )
@@ -228,6 +230,7 @@ else()
     set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${RELEASE_FLAGS}")
 endif()
 
+
 #CGAL requires strict rounding
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
     set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} -qoverride-limits -fp-model strict -msse4 -finline ")
@@ -242,6 +245,10 @@ if(USE_OMP)
 
     if(OpenMP_FOUND)
         set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${OpenMP_CXX_FLAGS}")
+        if(OMP_SAFE_EXCEPTION)
+            message(STATUS "Enabling safe OMP exception handling")
+            add_definitions(-DOMP_SAFE_EXCEPTION)
+        endif()
      #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
     endif()
 endif()

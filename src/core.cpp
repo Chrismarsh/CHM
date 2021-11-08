@@ -2077,7 +2077,9 @@ void core::run()
 
                     if (itr.at(0)->parallel_type() == module_base::parallel::data)
                     {
-
+#ifdef OMP_SAFE_EXCEPTION
+                        ompException e;
+#endif
                         #pragma omp parallel for
                         for (size_t i = 0; i < _mesh->size_faces(); i++)
                         {
@@ -2088,7 +2090,15 @@ void core::run()
                              //module calls
                              for (auto &jtr : itr)
                              {
-                                 jtr->run(face);
+#ifdef OMP_SAFE_EXCEPTION
+                                 e.Run([&]{
+#endif
+                                           jtr->run(face);
+#ifdef OMP_SAFE_EXCEPTION
+                                       });
+#endif
+
+
                              }
                         }
 

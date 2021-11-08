@@ -23,7 +23,7 @@ class CHMConan(ConanFile):
        "verbose_cmake":False,
        "build_tests":False,
         #default without openmp or mpi
-        "with_omp": False,
+        "with_omp": True,
         "with_mpi": False,
 
         #dependency options
