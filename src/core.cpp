@@ -2102,7 +2102,7 @@ void core::run()
                              }
                         }
 #ifdef OMP_SAFE_EXCEPTION
-                        e.Rethrow()
+                        e.Rethrow();
 #endif
 
                     } else
