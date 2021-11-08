@@ -2091,17 +2091,19 @@ void core::run()
                              for (auto &jtr : itr)
                              {
 #ifdef OMP_SAFE_EXCEPTION
-                                 e.Run([&]{
+                                 e.Run(
+                                     [&]
+                                     {
 #endif
-                                           jtr->run(face);
+                                         jtr->run(face);
 #ifdef OMP_SAFE_EXCEPTION
-                                       });
+                                     });
 #endif
-
-
                              }
                         }
-
+#ifdef OMP_SAFE_EXCEPTION
+                        e.Rethrow()
+#endif
 
                     } else
                     {
