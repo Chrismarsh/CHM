@@ -64,7 +64,8 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
     // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
     OGRSpatialReference insrs, outsrs;
-    insrs.SetWellKnownGeogCS("WGS84");
+//    insrs.SetWellKnownGeogCS("WGS84");
+    insrs.importFromProj4("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
     insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
     bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
     outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
@@ -75,7 +76,14 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
     }
     OGRCoordinateTransformation* coordTrans =  nullptr;
     if(!_is_geographic)
+    {
         coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
+        if(!coordTrans)
+        {
+            CHM_THROW_EXCEPTION(forcing_error,"Error creating CRS transform in Met loader");
+        }
+    }
+
 
     try
     {
@@ -154,11 +162,11 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
     } catch(netCDF::exceptions::NcException& e)
     {
-        delete coordTrans;
+        OGRCoordinateTransformation::DestroyCT(coordTrans);
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
     }
 
-    delete coordTrans;
+    OGRCoordinateTransformation::DestroyCT(coordTrans);
     _dt = _nc->get_dt();
 
     _current_ts = _start_time;
