@@ -178,8 +178,8 @@ public:
     //holds the corresponding x,y grid cell of the netcdf file
     // speeds up loading the stations' data on the metdata->next() call
     // shouldn't be used
-    double _nc_x;
-    double _nc_y;
+    size_t _nc_x;
+    size_t _nc_y;
 
 private:
     std::string _ID;
