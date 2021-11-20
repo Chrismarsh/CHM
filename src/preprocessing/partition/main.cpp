@@ -611,6 +611,9 @@ class preprocessingTriangulation : public triangulation
             determine_process_ghost_faces_nearest_neighbors();
 
             // TODO: Need to auto-determine how far to look based on module setups
+            // when this is called, it will output
+            // MPI Process 0 has XXX ghosted faces.
+            //regardless of what MPIrank we are here as it is using the super's _commworld for the output /only/
             determine_process_ghost_faces_by_distance(100.0);
 
 

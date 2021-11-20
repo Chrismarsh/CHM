@@ -174,7 +174,11 @@ void solar::init(mesh& domain)
     if(!domain->is_geographic())
     {
         monUtm.importFromProj4(domain->proj4().c_str());
+        monUtm.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
         monGeo.SetWellKnownGeogCS("WGS84");
+        monGeo.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
         coordTrans = OGRCreateCoordinateTransformation(&monUtm, &monGeo);
     }
 

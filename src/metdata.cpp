@@ -193,7 +193,9 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
         OGRSpatialReference insrs, outsrs;
         insrs.SetWellKnownGeogCS("WGS84");
+        insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
         bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
+        outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
         if(err)
         {
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
