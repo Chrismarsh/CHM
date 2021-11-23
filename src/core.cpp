@@ -854,7 +854,7 @@ void core::config_output(pt::ptree &value)
                     BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output=" + out.name + ": unable to convert coordinates to mesh format."));
                 }
 
-                delete coordTrans;
+                OGRCoordinateTransformation::DestroyCT(coordTrans);
             }
 
             out.face = _mesh->locate_face(out.longitude, out.latitude);

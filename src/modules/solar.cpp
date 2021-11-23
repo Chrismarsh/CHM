@@ -158,93 +158,94 @@ void solar::init(mesh& domain)
     //number of azimuthal sections
     int N = cfg.get("svf.nsectors", 12);
 
-
     double azimuthal_width = 360./(double)N; // in degrees
-
 
     bool svf_compute = cfg.get("svf.compute",true);
 
-    OGRSpatialReference monUtm;
-    OGRSpatialReference monGeo;
-    OGRCoordinateTransformation* coordTrans = nullptr;
-
-
-
-    // we are UTM and need to convert internally to lat long to calc the solar position
-    if(!domain->is_geographic())
+    #pragma omp parallel
     {
-        monUtm.importFromProj4(domain->proj4().c_str());
-        monUtm.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+        OGRSpatialReference monUtm;
+        OGRSpatialReference monGeo;
+        OGRCoordinateTransformation* coordTrans = nullptr;
 
-        monGeo.SetWellKnownGeogCS("WGS84");
-        monGeo.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+        // we are UTM and need to convert internally to lat long to calc the solar position
+        if(!domain->is_geographic())
+        {
+            monUtm.importFromProj4(domain->proj4().c_str());
+            monUtm.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
-        coordTrans = OGRCreateCoordinateTransformation(&monUtm, &monGeo);
+            monGeo.SetWellKnownGeogCS("WGS84");
+            monGeo.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
+            coordTrans = OGRCreateCoordinateTransformation(&monUtm, &monGeo);
+        }
+
+        #pragma omp for
+        for (size_t i = 0; i < domain->size_faces(); i++)
+        {
+
+            auto face = domain->face(i);
+
+            // we are UTM and need to convert internally to lat long to calc the solar position
+            if (!domain->is_geographic())
+            {
+                double x = face->center().x();
+                double y = face->center().y();
+                int reprojected = coordTrans->Transform(1, &x, &y);
+
+                auto& d = face->make_module_data<solar::data>(ID);
+                d.lat = y;
+                d.lng = x;
+            }
+
+            double svf = 0.0;
+
+            if (svf_compute)
+            {
+                Point_3 me = face->center();
+                auto cosSlope = cos(face->slope());
+                auto sinSlope = sin(face->slope());
+
+                // for each search azimuthal sector
+                for (int k = 0; k < N; k++)
+                {
+                    double phi = 0.;
+                    // search along each azimuth in j step increments to find horizon angle
+                    for (int j = 1; j <= steps; ++j)
+                    {
+                        double distance = j * size_of_step;
+
+                        auto f =
+                            domain->find_closest_face(math::gis::point_from_bearing(me, k * azimuthal_width, distance));
+
+                        double z_diff = (f->center().z() - me.z());
+                        if (z_diff > 0)
+                        {
+                            double dist = math::gis::distance(f->center(), me);
+                            phi = std::max(atan(z_diff / dist), phi);
+                        }
+                    }
+
+                    auto cosPhi = cos(phi);
+                    auto sinPhi = sin(phi);
+                    auto azi_in_rad = (k * azimuthal_width * M_PI / 180.);
+
+                    svf += cosSlope * cosPhi * cosPhi +
+                           sinSlope * cos(azi_in_rad - face->aspect()) * (M_PI_2 - phi - sinPhi * cosPhi);
+                }
+
+                svf /= (double)N;
+            }
+            else
+            {
+                svf = 1.;
+            }
+            face->parameter("svf"_s) = std::max(0.0, svf);
+        }
+
+        OGRCoordinateTransformation::DestroyCT(coordTrans);
     }
 
-    #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
-    {
 
-	       auto face = domain->face(i);
-
-	       // we are UTM and need to convert internally to lat long to calc the solar position
-	       if(!domain->is_geographic())
-	       {
-		   double x = face->center().x();
-		   double y = face->center().y();
-		   int reprojected = coordTrans->Transform(1, &x, &y);
-
-		   auto& d = face->make_module_data<solar::data>(ID);
-		   d.lat = y;
-		   d.lng = x;
-	       }
-
-	       double svf = 0.0;
-
-	       if(svf_compute)
-	       {
-               Point_3 me = face->center();
-               auto cosSlope = cos(face->slope());
-               auto sinSlope = sin(face->slope());
-
-               //for each search azimuthal sector
-               for (int k = 0; k < N; k++)
-               {
-                   double phi = 0.;
-                   // search along each azimuth in j step increments to find horizon angle
-                   for (int j = 1; j <= steps; ++j)
-                   {
-                   double distance = j * size_of_step;
-
-                   auto f = domain->find_closest_face(math::gis::point_from_bearing(me, k * azimuthal_width, distance));
-
-                   double z_diff = (f->center().z() - me.z());
-                   if (z_diff > 0)
-                   {
-                       double dist = math::gis::distance(f->center(), me);
-                       phi = std::max(atan(z_diff / dist), phi);
-                   }
-                   }
-
-                   auto cosPhi = cos(phi);
-                   auto sinPhi = sin(phi);
-                   auto azi_in_rad = (k * azimuthal_width * M_PI / 180.);
-
-                   svf += cosSlope * cosPhi * cosPhi +
-                 sinSlope * cos(azi_in_rad - face->aspect()) * (M_PI_2 - phi - sinPhi * cosPhi);
-
-               }
-
-               svf /= (double)N;
-	       } else{
-		        svf = 1.;
-	       }
-	       face->parameter("svf"_s) = std::max(0.0, svf);
-
-    }
-
-
-    delete coordTrans;
 
 }
