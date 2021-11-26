@@ -266,7 +266,6 @@ void PBSM3D::init(mesh& domain)
 
     // Size of the domain
     size_t ntri = domain->size_faces();
-    size_t n_global_tri = domain->size_global_faces();
 
     LOG_DEBUG << "#face=" << ntri;
 
@@ -409,8 +408,6 @@ void PBSM3D::run(mesh& domain)
         {
 
             auto face = domain->face(i);
-
-            auto id = face->cell_local_id;
 
             auto& d = face->get_module_data<data>(ID);
             auto& m = d.m;
@@ -843,7 +840,7 @@ void PBSM3D::run(mesh& domain)
                 }
 
                 // consider subgrid topographic effect
-                if (use_subgrid_topo or use_subgrid_topo_V2)
+                if (use_subgrid_topo || use_subgrid_topo_V2)
                 {
                     c_salt *= frac_contrib;
                 }
@@ -1411,7 +1408,7 @@ void PBSM3D::run(mesh& domain)
         {
             auto suspension_results = suspension_NNP->Solve();
             LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
-        } catch(Belos::StatusTestError& e)
+        } catch(const Belos::StatusTestError& e)
         {
             int rank = 0;
 #ifdef USE_MPI
@@ -1510,7 +1507,7 @@ void PBSM3D::run(mesh& domain)
 
         double V = face->get_area(); // V for consistency but actually an area
 
-        int local_row, global_row, local_col, global_col;
+        int global_row, local_col, global_col;
         global_row = static_cast<int>(face->cell_global_id);
 
         if(is_nan(V))
@@ -1518,7 +1515,7 @@ void PBSM3D::run(mesh& domain)
             LOG_DEBUG << "Triangle " << face->cell_global_id << " area is nan";
         }
         // Diagonal element
-        deposition_NNP->matrixReplaceGlobalValues(global_row, (global_row), (V));
+        deposition_NNP->matrixReplaceGlobalValues(global_row, global_row, V);
 
         // iterate over edges
         for (int j = 0; j < 3; j++)
@@ -1627,7 +1624,6 @@ void PBSM3D::run(mesh& domain)
                     LOG_DEBUG << "\t\towner: "<<face->neighbor(i)->owner;
                 }
                 LOG_DEBUG << "-------------------------------------------------";
-//		domain->_mpi_env.abort(-1);
             }
             deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }
