@@ -1415,7 +1415,7 @@ void PBSM3D::run(mesh& domain)
             rank = domain->_comm_world.rank();
 #endif
             std::string prefix = "suspension.rank" + std::to_string(rank);
-            suspension_NNP->writeSystemMatrixMarket(prefix);
+//            suspension_NNP->writeSystemMatrixMarket(prefix);
             LOG_ERROR << e.what();
             suspension_present = false;
 //            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
@@ -1668,7 +1668,7 @@ void PBSM3D::run(mesh& domain)
             rank = domain->_comm_world.rank();
 #endif
             std::string prefix = "deposition.rank" + std::to_string(rank);
-            deposition_NNP->writeSystemMatrixMarket(prefix);
+//            deposition_NNP->writeSystemMatrixMarket(prefix);
             LOG_ERROR << e.what();
             return;
 //            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
