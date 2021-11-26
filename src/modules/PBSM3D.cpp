@@ -1416,7 +1416,9 @@ void PBSM3D::run(mesh& domain)
 #endif
             std::string prefix = "suspension.rank" + std::to_string(rank);
             suspension_NNP->writeSystemMatrixMarket(prefix);
-            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
+            LOG_ERROR << errstr_info(e.what());
+            suspension_present = false;
+//            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
         }
 
 
@@ -1631,7 +1633,7 @@ void PBSM3D::run(mesh& domain)
 
     // Check if we exceed the threshold for blowing snow
     auto deposition_rhs_max = deposition_NNP->getRhsMax();
-    if ( deposition_rhs_max > deposition_present_threshold ) {
+    if ( suspension_present && deposition_rhs_max > deposition_present_threshold ) {
         deposition_present = true;
     }
 
@@ -1644,7 +1646,8 @@ void PBSM3D::run(mesh& domain)
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
 
-    if (deposition_present) {
+    if (deposition_present)
+    {
 
         ////////////////////////////////////////////////////////////////////////////
         // Printing out the solution
@@ -1666,7 +1669,9 @@ void PBSM3D::run(mesh& domain)
 #endif
             std::string prefix = "deposition.rank" + std::to_string(rank);
             deposition_NNP->writeSystemMatrixMarket(prefix);
-            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
+            LOG_ERROR << errstr_info(e.what());
+            return;
+//            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
         }
 
 
