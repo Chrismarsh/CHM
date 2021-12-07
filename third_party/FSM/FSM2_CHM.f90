@@ -18,7 +18,7 @@ real, protected :: &
   I0 = 1367,         &! Solar constant (W/m^2)
   Lf = 0.334e6,      &! Latent heat of fusion (J/kg)
   Lv = 2.501e6,      &! Latent heat of vapourisation (J/kg)
-  Ls = 2835000,      &! Lf + Lv Latent heat of sublimation (J/kg)
+  Ls = Lf + Lv,      &! Latent heat of sublimation (J/kg)
   mu_wat = 1.78e-3,  &! Dynamic viscosity of water (kg/m/s)
   pi = 3.14159,      &! pi
   Rair = 287,        &! Gas constant for air (J/K/kg)
@@ -64,23 +64,20 @@ end module LAYERS
 !-----------------------------------------------------------------------
 module PARAMETERS
 
-integer, parameter :: &
-  Nveg = 1            ! Number of vegetation types
-
 ! Vegetation parameters
 real, protected :: &
-  acn0(Nveg) = [0.1],  &! Snow-free dense canopy albedo
-  acns(Nveg) = [0.4],  &! Snow-covered dense canopy albedo
-  avg0(Nveg) = [0.21], &! Canopy element reflectivity
-  avgs(Nveg) = [0.6],  &! Canopy snow reflectivity
-  cvai(Nveg) = [3.6e4],&! Vegetation heat capacity per unit VAI (J/K/m^2)
-  gsnf(Nveg) = [0.01], &! Snow-free vegetation moisture conductance (m/s)
-  kext(Nveg) = [0.5],  &! Vegetation light extinction coefficient
-  leaf(Nveg) = [20],   &! Leaf boundary resistance (s/m)^(1/2)
-  svai(Nveg) = [4.4],  &! Intercepted snow capacity per unit VAI (kg/m^2)
-  tunl(Nveg) = [240*3600],  &! Canopy snow unloading time scale (s)
-  hbas = 2,            &! Canopy base height (m)
-  wcan = 2.5            ! Canopy wind decay coefficient
+  acn0 = 0.1,        &! Snow-free dense canopy albedo
+  acns = 0.4,        &! Snow-covered dense canopy albedo
+  avg0 = 0.21,       &! Canopy element reflectivity
+  avgs = 0.6,        &! Canopy snow reflectivity
+  cvai = 3.6e4,      &! Vegetation heat capacity per unit VAI (J/K/m^2)
+  gsnf = 0.01,       &! Snow-free vegetation moisture conductance (m/s)
+  hbas = 2,          &! Canopy base height (m)
+  kext = 0.5,        &! Vegetation light extinction coefficient
+  leaf = 20,         &! Leaf boundary resistance (s/m)^(1/2)
+  svai = 4.4,        &! Intercepted snow capacity per unit VAI (kg/m^2)
+  tunl = 240*3600,   &! Canopy snow unloading time scale (s)
+  wcan = 2.5          ! Canopy wind decay coefficient
 
 ! Snow parameters
 real, protected :: &
@@ -146,7 +143,7 @@ end module SOILPROPS
 !-----------------------------------------------------------------------
 subroutine FSM2_TIMESTEP(dt,elev,zT,zU,                                &
                          LW,Ps,Qa,Rf,Sdif,Sdir,Sf,Ta,trans,Ua,         &
-                         Ntyp,alb0,vegh,VAI,                           &
+                         alb0,vegh,VAI,                                &
                          albs,Tsrf,Dsnw,Nsnow,Qcan,Rgrn,Sice,Sliq,     &
                          Sveg,Tcan,Tsnow,Tsoil,Tveg,Vsmc,              &
                          H,LE,LWout,LWsub,Melt,Roff,snd,snw,subl,svg,  &
@@ -181,8 +178,6 @@ real, intent(inout) :: &
   Sf                  ! Snowfall rate (kg/m2/s)
 
 ! Vegetation characteristics
-integer, intent(in) :: &
-  Ntyp                ! Vegetation type
 real, intent(in) :: &
   alb0,              &! Snow-free ground albedo
   vegh,              &! Canopy height (m)
@@ -260,20 +255,20 @@ real :: &
   Eveg(Ncnpy),       &! Moisture flux from vegetation layers (kg/m^2/s)
   SWveg(Ncnpy)        ! SW absorbed by vegetation layers (W/m^2)
 
-call CANOPY(Ntyp,Sveg,Tveg,VAI,cveg,fcans,lveg,Scap,Tveg0)
+call CANOPY(Sveg,Tveg,VAI,cveg,fcans,lveg,Scap,Tveg0)
 
-call SWRAD(Ntyp,alb0,Dsnw,dt,elev,fcans,lveg,Sdif,Sdir,Sf,Tsrf,        &
+call SWRAD(alb0,Dsnw,dt,elev,fcans,lveg,Sdif,Sdir,Sf,Tsrf,             &
            albs,fsnow,SWout,SWsrf,SWsub,SWveg,tdif)
 
 call THERMAL(Dsnw,Nsnow,Sice,Sliq,Tsnow,Tsoil,Vsmc,csoil,Ds1,          &
              gs1,ksnow,ksoil,ks1,Ts1)
 
-call SRFEBAL(Ntyp,cveg,Ds1,dt,fcans,fsnow,gs1,ks1,lveg,LW,Ps,Qa,       &
+call SRFEBAL(cveg,Ds1,dt,fcans,fsnow,gs1,ks1,lveg,LW,Ps,Qa,            &
              SWsrf,Sveg,SWveg,Ta,tdif,Ts1,Tveg0,Ua,VAI,vegh,zT,zU,     &
              Tsrf,Qcan,Sice,Tcan,Tveg,                                 &
              Esrf,Eveg,Gsrf,H,LE,LWout,LWsub,Melt,subl,Usub)
 
-call INTERCEPT(Ntyp,dt,cveg,Eveg,Scap,Sf,Sveg,Tveg,drip,svg,unload)
+call INTERCEPT(dt,cveg,Eveg,Scap,Sf,Sveg,Tveg,drip,svg,unload)
 
 call SNOW(dt,drip,Esrf,Gsrf,ksnow,ksoil,Melt,Rf,Sf,Ta,trans,Tsrf,unload, &
           Nsnow,Dsnw,Rgrn,Sice,Sliq,Tsnow,Tsoil,Gsoil,Roff,snd,snw,Wflx)
@@ -285,7 +280,7 @@ end subroutine FSM2_TIMESTEP
 !-----------------------------------------------------------------------
 ! Properties of vegetation canopy layers
 !-----------------------------------------------------------------------
-subroutine CANOPY(Ntyp,Sveg,Tveg,VAI,cveg,fcans,lveg,Scap,Tveg0)
+subroutine CANOPY(Sveg,Tveg,VAI,cveg,fcans,lveg,Scap,Tveg0)
 
 use CONSTANTS, only: &
   hcap_ice            ! Specific heat capacity of ice (J/K/kg)
@@ -299,9 +294,6 @@ use PARAMETERS, only: &
   svai                ! Intercepted snow capacity per unit VAI (kg/m^2)
 
 implicit none
-
-integer, intent(in) :: &
-  Ntyp                ! Vegetation type
 
 real, intent(in) :: &
   Sveg(Ncnpy),       &! Snow mass on vegetation layers (kg/m^2)
@@ -317,8 +309,8 @@ real, intent(out) :: &
 
 lveg(1) = VAI
 
-cveg(:) = cvai(Ntyp)*lveg(:) + hcap_ice*Sveg(:)
-Scap = svai(Ntyp)*lveg(:)
+cveg(:) = cvai*lveg(:) + hcap_ice*Sveg(:)
+Scap = svai*lveg(:)
 fcans(:) = 0
 if (VAI > epsilon(VAI)) fcans(:) = (Sveg(:)/Scap(:))**0.67
 Tveg0 = Tveg
@@ -328,8 +320,7 @@ end subroutine CANOPY
 !-----------------------------------------------------------------------
 ! Mass balance of snow intercepted by vegetation
 !-----------------------------------------------------------------------
-subroutine INTERCEPT(Ntyp,dt,cveg,Eveg,Scap,Sf,Sveg,Tveg,              &
-                     drip,svg,unload)
+subroutine INTERCEPT(dt,cveg,Eveg,Scap,Sf,Sveg,Tveg,drip,svg,unload)
 
 use CONSTANTS, only: &
   Lf,                &! Latent heat of fusion (J/kg)
@@ -342,9 +333,6 @@ use PARAMETERS, only: &
   tunl                ! Canopy snow unloading time scale (s)
 
 implicit none
-
-integer, intent(in) :: &
-  Ntyp                ! Vegetation type
 
 real, intent(in) :: &
   dt,                &! Timestep (s)
@@ -388,8 +376,8 @@ if (Scap(1) > 0) then
     Sveg(k) = max(Sveg(k), 0.)
 
     ! Unloading of canopy snow
-    unload = unload + Sveg(k)*dt/tunl(Ntyp)
-    Sveg(k) = (1 - dt/tunl(Ntyp))*Sveg(k)
+    unload = unload + Sveg(k)*dt/tunl
+    Sveg(k) = (1 - dt/tunl)*Sveg(k)
 
     ! Melting of canopy snow
     if (Tveg(k) > Tm) then
@@ -1022,7 +1010,7 @@ end subroutine SOIL
 !-----------------------------------------------------------------------
 ! Surface energy balance
 !-----------------------------------------------------------------------
-subroutine SRFEBAL(Ntyp,cveg,Ds1,dt,fcans,fsnow,gs1,ks1,lveg,LW,Ps,Qa, &
+subroutine SRFEBAL(cveg,Ds1,dt,fcans,fsnow,gs1,ks1,lveg,LW,Ps,Qa,      &
                    SWsrf,Sveg,SWveg,Ta,tdif,Ts1,Tveg0,Ua,VAI,vegh,     &
                    zT,zU,Tsrf,Qcan,Sice,Tcan,Tveg,                     &
                    Esrf,Eveg,Gsrf,H,LE,LWout,LWsub,Melt,subl,Usub)
@@ -1055,9 +1043,6 @@ use PARAMETERS, only: &
   z0sn                ! Snow roughness length (m)
 
 implicit none
-
-integer, intent(in) :: &
-  Ntyp                ! Vegetation type
 
 real, intent(in) :: &
   Ds1,               &! Surface layer thickness (m)
@@ -1178,7 +1163,7 @@ zT1 = zT
 zh(1) = hbas + 0.5*(vegh - hbas)
 
 ! Roughness lengths
-fveg = 1 - exp(-kext(Ntyp)*VAI)
+fveg = 1 - exp(-kext*VAI)
 d = 0.67*fveg*vegh
 z0g = (z0sn**fsnow) * (z0sf**(1 - fsnow))
 z0h = 0.1*z0g
@@ -1298,7 +1283,7 @@ do ne = 1, 20
   do k = 1, Ncnpy
     Uc = fveg*exp(wcan*(zh(k)/vegh - 1))*Uh  +   &
          (1 - fveg)*(uso/vkman)*(log(zh(k)/z0g) - psim(zh(k),rL) + psim(z0g,rL))
-    gv(k) = sqrt(Uc)*lveg(k)/leaf(Ntyp)
+    gv(k) = sqrt(Uc)*lveg(k)/leaf
   end do
 
   k = Ncnpy
@@ -1337,7 +1322,7 @@ do ne = 1, 20
     if (Qcan(k) > Qveg(k)) then
       wveg(k) = 1
     else
-      wveg(k) = fcans(k) + (1 - fcans(k))*gsnf(Ntyp)/(gsnf(Ntyp) + gv(k))
+      wveg(k) = fcans(k) + (1 - fcans(k))*gsnf/(gsnf + gv(k))
     end if
   end do
 
@@ -1487,7 +1472,7 @@ end subroutine SRFEBAL
 !-----------------------------------------------------------------------
 ! Surface and vegetation net shortwave radiation
 !-----------------------------------------------------------------------
-subroutine SWRAD(Ntyp,alb0,Dsnw,dt,elev,fcans,lveg,Sdif,Sdir,Sf,Tsrf,  &
+subroutine SWRAD(alb0,Dsnw,dt,elev,fcans,lveg,Sdif,Sdir,Sf,Tsrf,       &
                  albs,fsnow,SWout,SWsrf,SWsub,SWveg,tdif)
 
 use CONSTANTS, only: &
@@ -1510,9 +1495,6 @@ use PARAMETERS, only: &
   tmlt                ! Melting snow albedo decay time scale (s)
  
 implicit none
-
-integer, intent(in) :: &
-  Ntyp                ! Vegetation type
 
 real, intent(in) :: &
   alb0,              &! Snow-free ground albedo
@@ -1577,10 +1559,10 @@ tdif(:) = 0
 tdir(:) = 0
 if (lveg(1) > 0) then
 
-  acan(:) = (1 - fcans(:))*acn0(Ntyp) + fcans(:)*acns(Ntyp)
-  tdif(:) = exp(-1.6*kext(Ntyp)*lveg(:))
+  acan(:) = (1 - fcans(:))*acn0 + fcans(:)*acns
+  tdif(:) = exp(-1.6*kext*lveg(:))
   tdir(:) = tdif(:)
-  if (elev > 0) tdir(:) = exp(-kext(Ntyp)*lveg(:)/sin(elev))
+  if (elev > 0) tdir(:) = exp(-kext*lveg(:)/sin(elev))
   rdif(:) = (1 - tdif(:))*acan(:)
   rdir(:) = (1 - tdir(:))*acan(:)
 
