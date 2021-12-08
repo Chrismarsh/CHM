@@ -58,7 +58,6 @@ FSM::FSM(config_file cfg)
     provides("sum_snowpack_subl");
     provides("subl");
 
-    conflicts("snow_slide"); // for now don't run w/ snowslide
 }
 
 void FSM::init(mesh& domain)
