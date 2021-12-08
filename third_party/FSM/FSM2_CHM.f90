@@ -18,7 +18,7 @@ real, protected :: &
   I0 = 1367,         &! Solar constant (W/m^2)
   Lf = 0.334e6,      &! Latent heat of fusion (J/kg)
   Lv = 2.501e6,      &! Latent heat of vapourisation (J/kg)
-  Ls = Lf + Lv,      &! Latent heat of sublimation (J/kg)
+  Ls = 2835000,      &! Latent heat of sublimation (J/kg)
   mu_wat = 1.78e-3,  &! Dynamic viscosity of water (kg/m/s)
   pi = 3.14159,      &! pi
   Rair = 287,        &! Gas constant for air (J/K/kg)

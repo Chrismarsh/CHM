@@ -42,6 +42,11 @@ FSM::FSM(config_file cfg)
     optional("rh_subcanopy");
     optional("ta_subcanopy");
     optional("ilwr_subcanopy");
+    optional("drift_mass");
+
+    // Optional avalanche variables
+    optional("delta_avalanche_snowdepth");
+    optional("delta_avalanche_mass");
 
     provides("swe");
     provides("snowdepthavg");
@@ -60,7 +65,7 @@ void FSM::init(mesh& domain)
     __layers_MOD_fvg1 = 0.5; // Fraction of vegetation in upper canopy layer
     __layers_MOD_zsub = 1.5; // Subcanopy wind speed diagnostic height (m)
 
-    __layers_MOD_ncnpy = 2; // Number of canopy layers
+//    __layers_MOD_ncnpy = 2; // Number of canopy layers
     __layers_MOD_nsmax = 3; // Maximum number of snow layers
     __layers_MOD_nsoil = 4; // Number of soil layers
 
@@ -87,7 +92,6 @@ void FSM::init(mesh& domain)
         d.veg.alb0 = 0.2;
         d.veg.vegh = 0;
         d.veg.VAI = 0;
-        d.veg.Ntyp = 1;
 
         d.diag.sum_snowpack_subl = 0;
     }
@@ -135,6 +139,7 @@ void FSM::run(mesh_elem& face)
     float Sdiff = (float)(*face)["iswr_diffuse"_s];
     float Sdir = (float)(*face)["iswr_direct"_s];
 
+
     //TODO: needs avalanching mass
 
     float t = -9999;
@@ -152,8 +157,23 @@ void FSM::run(mesh_elem& face)
 
     float U = (float)(*face)["U_2m_above_srf"_s];
 
-    //TODO: drift rate
+    //blowing snow
     float trans = 0;
+    if(has_optional("drift_mass"))
+    {
+        double mass = (*face)["drift_mass"_s];
+        mass = is_nan(mass) ? 0 : mass;
+        trans = mass / dt;
+    }
+
+    // If snow avalanche variables are available
+    if(has_optional("delta_avalanche_mass")) {
+        double delta_avalanche_swe = (*face)["delta_avalanche_mass"_s];
+
+        trans = trans + delta_avalanche_swe/dt;
+
+    }
+
 
     fsm2_timestep(
         // Driving variables
@@ -161,7 +181,7 @@ void FSM::run(mesh_elem& face)
         &ilwr, &Ps, &Qa, &Rf, &Sdiff, &Sdir, &Sf, &t, &trans, &U,
 
         // Vegetation characteristics
-        &d.veg.Ntyp, &d.veg.alb0, &d.veg.vegh, &d.veg.VAI,
+         &d.veg.alb0, &d.veg.vegh, &d.veg.VAI,
 
         // State variables
         &d.state.albs, &d.state.Tsrf, d.state.Dsnw, &d.state.Nsnow, d.state.Qcan,

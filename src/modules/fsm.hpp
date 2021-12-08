@@ -38,7 +38,7 @@ extern "C"
         float* LW, float* Ps, float* Qa, float* Rf, float* Sdif, float* Sdir, float* Sf, float* Ta, float* trans, float* Ua,
 
     // Vegetation characteristics
-        int* Ntyp, float* alb0, float* hveg, float* VAI,
+        float* alb0, float* hveg, float* VAI,
 
     // State variables
         float* albs, float* Tsrf, float* Dsnw, float* Nsnow, float* Qcan, float* Rgrn, float* Sice,
@@ -71,7 +71,6 @@ extern "C"
 
 // Fraction of vegetation in upper canopy layer
     extern float __layers_MOD_fvg1;
-    extern int __layers_MOD_ncnpy; // Number of canopy layers
     extern int __layers_MOD_nsmax; // Maximum number of snow layers
     extern int __layers_MOD_nsoil; // Number of soil layers
     extern float __layers_MOD_zsub; // Subcanopy wind speed diagnostic height (m)
@@ -162,7 +161,6 @@ class FSM : public module_base
             float alb0 = 0.2;
             float vegh = 0;
             float VAI = 0;
-            int Ntyp = 1;
         } veg;
 
         struct
