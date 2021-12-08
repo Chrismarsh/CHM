@@ -57,6 +57,7 @@ FSM::FSM(config_file cfg)
     provides("H");
     provides("sum_snowpack_subl");
     provides("subl");
+    provides("snow_albedo");
 
 }
 
@@ -220,6 +221,7 @@ void FSM::run(mesh_elem& face)
     d.diag.sum_snowpack_subl += d.diag.subl * global_param->dt();
 
     (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
+    (*face)["snow_albedo"] = d.state.albs;
 
 
 
