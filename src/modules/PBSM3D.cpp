@@ -1414,6 +1414,7 @@ void PBSM3D::run(mesh& domain)
 #ifdef USE_MPI
             rank = domain->_comm_world.rank();
 #endif
+            LOG_ERROR << "Rank " << rank << " suspension_rhs_max=" << suspension_rhs_max << " and suspension_present_threshold=" << suspension_present_threshold;
             std::string prefix = "suspension.rank" + std::to_string(rank);
 //            suspension_NNP->writeSystemMatrixMarket(prefix);
             LOG_ERROR << e.what();
@@ -1667,6 +1668,8 @@ void PBSM3D::run(mesh& domain)
 #ifdef USE_MPI
             rank = domain->_comm_world.rank();
 #endif
+            LOG_ERROR << "Rank " << rank << " deposition_rhs_max=" << deposition_rhs_max << " and deposition_present_threshold="<<deposition_present_threshold;
+            LOG_ERROR << "Rank " << rank << " suspension_rhs_max=" << suspension_rhs_max << " and suspension_present_threshold="<<suspension_present_threshold;
             std::string prefix = "deposition.rank" + std::to_string(rank);
 //            deposition_NNP->writeSystemMatrixMarket(prefix);
             LOG_ERROR << e.what();
