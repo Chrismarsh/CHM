@@ -841,15 +841,15 @@ void core::config_output(pt::ptree &value)
 
                 OGRSpatialReference insrs;
                 insrs.SetWellKnownGeogCS("WGS84");
-                insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
                 OGRSpatialReference outsrs;
                 outsrs.importFromProj4(_mesh->proj4().c_str());
-                outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
 
                 OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
-                if(!coordTrans->Transform(1, &out.longitude, &out.latitude))
+                //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
+                if(!coordTrans->Transform(1, &out.latitude, &out.longitude))
                 {
                     BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output=" + out.name + ": unable to convert coordinates to mesh format."));
                 }
