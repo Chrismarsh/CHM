@@ -164,19 +164,19 @@ void solar::init(mesh& domain)
 
     #pragma omp parallel
     {
-        OGRSpatialReference monUtm;
-        OGRSpatialReference monGeo;
+        OGRSpatialReference monUtm, monGeo;
         OGRCoordinateTransformation* coordTrans = nullptr;
 
         // we are UTM and need to convert internally to lat long to calc the solar position
         if(!domain->is_geographic())
         {
+            // the proj is likely x/y ordering but force it to be x/y so we know what goes where in the assignment below
             monUtm.importFromProj4(domain->proj4().c_str());
             monUtm.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
-            monGeo.SetWellKnownGeogCS("WGS84");
+            // "EPSG:4326" is lat/lon (y/x) so force it to be x,y so we know how to do the assignment below
+            monGeo.SetWellKnownGeogCS("EPSG:4326");
             monGeo.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
-
             coordTrans = OGRCreateCoordinateTransformation(&monUtm, &monGeo);
         }
 
@@ -191,7 +191,12 @@ void solar::init(mesh& domain)
             {
                 double x = face->center().x();
                 double y = face->center().y();
-                int reprojected = coordTrans->Transform(1, &x, &y);
+
+                // do the transform with the enforce x/y ordering
+                if(!coordTrans->Transform(1, &x, &y))
+                {
+                    CHM_THROW_EXCEPTION(module_error,"Unable to covert face coordinates to lat long for solar rad calcuation.");
+                }
 
                 auto& d = face->make_module_data<solar::data>(ID);
                 d.lat = y;

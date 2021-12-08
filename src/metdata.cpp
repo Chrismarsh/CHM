@@ -61,14 +61,10 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
         }
     }
 
-
     // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
     OGRSpatialReference insrs, outsrs;
-//    insrs.SetWellKnownGeogCS("WGS84");
-    insrs.importFromProj4("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
-    insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+    insrs.SetWellKnownGeogCS("EPSG:4326");
     bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
-    outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
     if(err)
     {
@@ -110,8 +106,9 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
         LOG_DEBUG << "Initializing datastructure";
 
-// #pragma omp parallel for
-// hangs, unclear why, critical sections around the json and gdal calls don't seem to help
+        // #pragma omp parallel for
+        // hangs, unclear why, critical sections around the json and gdal calls
+        // don't seem to help. Probably _dD_tree is not thread safe
         for (size_t y = 0; y < _nc->get_ysize(); y++)
         {
             for (size_t x = 0; x < _nc->get_xsize(); x++)
@@ -137,7 +134,8 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 //need to convert the input lat/long into the coordinate system our mesh is in
                 if (!_is_geographic)
                 {
-                    if (!coordTrans->Transform(1, &longitude, &latitude))
+                    //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
+                    if (!coordTrans->Transform(1, &latitude, &longitude))
                     {
                         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
                             "Station=" + station_name + ": unable to convert coordinates to mesh format."));
@@ -190,20 +188,20 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + itr.id + " coordinate is invalid."));
         }
 
-        // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
-        OGRSpatialReference insrs, outsrs;
-        insrs.SetWellKnownGeogCS("WGS84");
-        insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
-        bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
-        outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
-        if(err)
-        {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
-        }
 
         if (!_is_geographic)
         {
+            // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
+            OGRSpatialReference insrs, outsrs;
+            insrs.SetWellKnownGeogCS("EPSG:4326");
+            bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
+            if(err)
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
+            }
+
             OGRCoordinateTransformation* coordTrans =  OGRCreateCoordinateTransformation(&insrs, &outsrs);
+            //CRS created with the “EPSG:4326” use the latitude first, longitude second axis order.
             if (!coordTrans->Transform(1, &itr.latitude, &itr.longitude))
             {
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
