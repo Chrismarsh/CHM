@@ -42,6 +42,8 @@ FSM::FSM(config_file cfg)
     optional("rh_subcanopy");
     optional("ta_subcanopy");
     optional("ilwr_subcanopy");
+    optional("iswr_subcanopy");
+    optional("p_subcanopy");
     optional("drift_mass");
 
     // Optional avalanche variables
@@ -120,9 +122,15 @@ void FSM::run(mesh_elem& face)
         rh = (*face)["rh"_s];
     }
 
-    //TODO: needs to have subcanopy added?
-    float Rf = (*face)["p_rain"_s] / dt; // rainfall rate
-    float Sf = (*face)["p_snow"_s] / dt; // snowfall rate
+    float Rf = 0; // rainfall rate
+    float Sf = 0;  // snowfall rate
+    if(has_optional("p_subcanopy")) {
+        Rf = (*face)["p_rain_subcanopy"_s]  / dt; // rainfall rate
+        Sf = (*face)["p_snow_subcanopy"_s] / dt; // snowfall rate
+    } else {
+        Rf = (*face)["p_rain"_s]  / dt; // rainfall rate
+        Sf = (*face)["p_snow"_s] / dt; // snowfall rate
+    }
 
     auto& d = face->get_module_data<data>(ID);
 
@@ -135,12 +143,20 @@ void FSM::run(mesh_elem& face)
     }
 
 
-    // TODO: needs subcanopy
-    float Sdiff = (float)(*face)["iswr_diffuse"_s];
-    float Sdir = (float)(*face)["iswr_direct"_s];
+    float Sdiff = 0;
+    float Sdir = 0;
+    if(has_optional("iswr_subcanopy"))
+    {
+        // TODO: double check this is correct understanding. I don't believe canopy is giving us a diffuse through canopy
+        Sdiff = (float)(*face)["iswr_diffuse"_s];
+        Sdir  = (float)(*face)["iswr_subcanopy"_s];
+    }
+    else
+    {
+        Sdiff = (float)(*face)["iswr_diffuse"_s];
+        Sdir = (float)(*face)["iswr_direct"_s];
+    }
 
-
-    //TODO: needs avalanching mass
 
     float t = -9999;
     if(has_optional("ta_subcanopy")) {
