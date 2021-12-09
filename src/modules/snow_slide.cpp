@@ -75,6 +75,11 @@ void snow_slide::run(mesh& domain)
     // Make a vector of pairs (elevation + snowdepth, pointer to face)
     tbb::concurrent_vector< std::pair<double, mesh_elem> > sorted_z(domain->size_faces());
 
+    if(global_param->timestep_counter == 765)
+    {
+        LOG_DEBUG<< "Ok break";
+
+    }
 #pragma omp parallel for
     for(size_t i = 0; i  < domain->size_faces(); i++)
     {
