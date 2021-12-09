@@ -185,7 +185,7 @@ void FSM::run(mesh_elem& face)
     // If snow avalanche variables are available
     if(has_optional("delta_avalanche_mass")) {
         double delta_avalanche_swe = (*face)["delta_avalanche_mass"_s];
-        delta_avalanche_swe = delta_avalanche_swe / area * 1000.0; // delta_avalanche_swe is m^3 of swe. So ----> m^3 / m^2 * 1000 kg/m^3 = kg/m^2
+        delta_avalanche_swe = delta_avalanche_swe / face->get_area() * 1000.0; // delta_avalanche_swe is m^3 of swe. So ----> m^3 / m^2 * 1000 kg/m^3 = kg/m^2
         trans = trans + delta_avalanche_swe/dt;
 
     }
