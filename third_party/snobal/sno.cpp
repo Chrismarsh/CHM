@@ -66,7 +66,7 @@ double sno::satw(double tk)        /* air temperature (K)		*/
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("tk < 0"));
     }
 
-    errno = 0;
+//    errno = 0;
      l10 = log(1.e1);
 
      x = -7.90298 * (BOIL / tk - 1.) + 5.02808 * log(BOIL / tk) / l10 -
