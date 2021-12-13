@@ -124,13 +124,21 @@ void FSM::run(mesh_elem& face)
 
     float Rf = 0; // rainfall rate
     float Sf = 0;  // snowfall rate
-    if(has_optional("p_subcanopy")) {
+    if(has_optional("p_subcanopy"))
+    {
         Rf = (*face)["p_rain_subcanopy"_s]  / dt; // rainfall rate
         Sf = (*face)["p_snow_subcanopy"_s] / dt; // snowfall rate
     } else {
         Rf = (*face)["p_rain"_s]  / dt; // rainfall rate
         Sf = (*face)["p_snow"_s] / dt; // snowfall rate
     }
+
+    // drop if v. small mass value
+    float p_cutoff = 0.1/dt; //mm/dt
+    if( Rf < p_cutoff && Rf > -p_cutoff)
+        Rf = 0;
+    if( Sf < p_cutoff && Sf > -p_cutoff)
+        Sf = 0;
 
     auto& d = face->get_module_data<data>(ID);
 
@@ -177,8 +185,14 @@ void FSM::run(mesh_elem& face)
     float trans = 0;
     if(has_optional("drift_mass"))
     {
-        double mass = (*face)["drift_mass"_s];
+        double mass = (*face)["drift_mass"_s]; //kg/m^2  (mm)
+
         mass = is_nan(mass) ? 0 : mass;
+
+        // drop if v. small mass value
+        if( mass < 0.1 && mass > -0.1)
+            mass = 0;
+
         trans = mass / dt;
     }
 
