@@ -106,8 +106,8 @@ void FSM::run(mesh_elem& face)
         return;
     }
 
-    // met data
 
+    // met data
     float zT = 2; // m
     float zU = 2;
     float Ps = mio::Atmosphere::stdAirPressure(face->get_z()); // Pa
@@ -172,7 +172,7 @@ void FSM::run(mesh_elem& face)
     } else {
         t = (float)(*face)["t"_s];
     }
-    t += 271.15;
+    t += 273.15;
 
     float tc = (float)(t - 273.15);
     float Qs = __constants_MOD_eps * (__constants_MOD_e0 / Ps) *
@@ -197,13 +197,18 @@ void FSM::run(mesh_elem& face)
     }
 
     // If snow avalanche variables are available
-    if(has_optional("delta_avalanche_mass")) {
+    if(has_optional("delta_avalanche_mass"))
+    {
         double delta_avalanche_swe = (*face)["delta_avalanche_mass"_s];
-        delta_avalanche_swe = delta_avalanche_swe / face->get_area() * 1000.0; // delta_avalanche_swe is m^3 of swe. So ----> m^3 / m^2 * 1000 kg/m^3 = kg/m^2
+
+        // delta_avalanche_swe is m^3 of swe. So ----> m^3 / m^2 * 1000 kg/m^3 = kg/m^2
+        delta_avalanche_swe = delta_avalanche_swe / face->get_area() * 1000.0;
         trans = trans + delta_avalanche_swe/dt;
 
     }
 
+    // FSM has removal as positive and deposition as negative
+    trans = -trans;
 
     fsm2_timestep(
         // Driving variables

@@ -135,11 +135,6 @@ extern "C"
  * - Subcanopy air temperatue "ta_subcanopy" [ \f$ {}^\circ C \f$]
  * - Subcanopy incoming longwave radidation "ilwr_subcanopy" \f$[W \cdot m^{-2}\f$]
  *
- * **Conflicts:**
- *
- * Does not support avalanching or blowing snow
- * - ``snow_slide``
- * - ``PBSM3D``
  *
  * **References:**
  * - https://github.com/RichardEssery/FSM2
