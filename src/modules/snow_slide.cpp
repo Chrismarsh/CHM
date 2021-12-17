@@ -34,6 +34,10 @@ snow_slide::snow_slide(config_file cfg)
 
     provides("delta_avalanche_mass");
     provides("delta_avalanche_snowdepth");
+
+    provides("delta_avalanche_mass_sum");
+    provides("delta_avalanche_snowdepth_sum");
+
     provides("maxDepth");
 
 }
@@ -129,7 +133,7 @@ void snow_slide::run(mesh& domain)
 
         // Check if face normal snowdepth have exceeded normal maxDepth
         if (snowdepthavg > maxDepth) {
-            //LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
+            LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
             double del_depth = snowdepthavg - maxDepth; // Amount to be removed (positive) [m]
             double del_swe   = swe * (1 - maxDepth / snowdepthavg); // Amount of swe to be removed (positive) [m]
             double orig_mass = del_swe * cen_area;
@@ -237,6 +241,9 @@ void snow_slide::run(mesh& domain)
         (*face)["delta_avalanche_snowdepth"_s]= data.delta_avalanche_snowdepth;
         (*face)["delta_avalanche_mass"_s]= data.delta_avalanche_mass;
 
+        (*face)["delta_avalanche_snowdepth_sum"_s] += data.delta_avalanche_snowdepth;
+        (*face)["delta_avalanche_mass_sum"_s] += data.delta_avalanche_mass;
+
     } // End of each face
 
 
@@ -270,5 +277,7 @@ void snow_slide::init(mesh& domain)
         d.maxDepth_vert = d.maxDepth_norm * std::max(0.001,cos(face->slope()));
         // Max of either veg height or derived max holding snow depth.
         (*face)["maxDepth"_s]= d.maxDepth_norm;
+        (*face)["delta_avalanche_snowdepth_sum"_s] = 0;
+        (*face)["delta_avalanche_mass_sum"_s] = 0;
     }
 }
