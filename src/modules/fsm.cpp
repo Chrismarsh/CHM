@@ -134,7 +134,7 @@ void FSM::run(mesh_elem& face)
     }
 
     // drop if v. small mass value
-    float p_cutoff = 0.1/dt; //mm/dt
+    float p_cutoff = 0.1f/dt; //mm/dt
     if( Rf < p_cutoff && Rf > -p_cutoff)
         Rf = 0;
     if( Sf < p_cutoff && Sf > -p_cutoff)
@@ -190,8 +190,8 @@ void FSM::run(mesh_elem& face)
         mass = is_nan(mass) ? 0 : mass;
 
         // drop if v. small mass value
-        if( mass < 0.1 && mass > -0.1)
-            mass = 0;
+//        if( mass < 0.1 && mass > -0.1)
+//            mass = 0;
 
         trans = mass / dt;
     }
@@ -241,9 +241,6 @@ void FSM::run(mesh_elem& face)
 
     (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
     (*face)["snow_albedo"] = d.state.albs;
-
-
-
 }
 
 
