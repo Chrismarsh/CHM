@@ -346,7 +346,7 @@ void snobal::run(mesh_elem &face)
             sbal->percent_snow = (*face)["frac_precip_snow"_s];
         }
         sbal->rho_snow = 100.; //http://ccc.atmos.colostate.edu/pdfs/SnowDensity_BAMS.pdf
-        sbal->T_pp = t; //actually in C unlike everything else in the model!!  //+FREEZE;//std::min(t+FREEZE,0.0);
+        sbal->T_pp = t+FREEZE; // The comments are wrong this is definietly not in C and is K
         sbal->stop_no_snow=0;
     }
     else
