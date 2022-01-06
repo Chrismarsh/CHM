@@ -1437,11 +1437,13 @@ void core::init(int argc, char **argv)
                        _outputs.end());
 
 
-        LOG_DEBUG << _outputs.size();
-        if ( _metdata->nstations() != 1 ||
-                _outputs.size() !=1)
+        if( _outputs.size() !=1 )
         {
-            BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(">1 station or outputs in point mode"));
+            CHM_THROW_EXCEPTION(model_init_error, "The number of outputs is " + std::to_string(_outputs.size()) + ". In point mode must be equal to exactly 1" );
+        }
+        if ( _metdata->nstations() != 1 )
+        {
+            CHM_THROW_EXCEPTION(model_init_error, "The number of stations is " + std::to_string(_metdata->nstations()) + ". In point mode must be equal to exactly 1" );
 
         }
         for(auto s: _metdata->stations())
