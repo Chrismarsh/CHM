@@ -841,15 +841,19 @@ void core::config_output(pt::ptree &value)
 
                 OGRSpatialReference insrs;
                 insrs.SetWellKnownGeogCS("WGS84");
+                insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); //enforce ingoing as x y
 
                 OGRSpatialReference outsrs;
                 outsrs.importFromProj4(_mesh->proj4().c_str());
+                outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); //enforce outgoing as x y
 
+                out.x = out.longitude;
+                out.y = out.latitude;
 
                 OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
                 //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
-                if(!coordTrans->Transform(1, &out.latitude, &out.longitude))
+                if(!coordTrans->Transform(1, &out.x, &out.y))
                 {
                     BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output=" + out.name + ": unable to convert coordinates to mesh format."));
                 }
@@ -857,11 +861,14 @@ void core::config_output(pt::ptree &value)
                 OGRCoordinateTransformation::DestroyCT(coordTrans);
             }
 
-            out.face = _mesh->locate_face(out.longitude, out.latitude);
+            if(!_mesh->is_geographic())
+                out.face = _mesh->locate_face(out.x, out.y);
+            else
+                out.face = _mesh->locate_face(out.longitude, out.latitude);
 
             if(out.face != nullptr)
             {
-                // In MPI mode, we might not thave the output triangle on this node, so we just have to fail gracefully and hope that the other nodes have this.
+                // In MPI mode, we might not have the output triangle on this node, so we just have to fail gracefully and hope that the other nodes have this.
                 // in the future we need a comms here to check if the nodes successfully figured out the output points
                 // for now, if we don't have it, print an error but keep going
 
@@ -1420,35 +1427,45 @@ void core::init(int argc, char **argv)
     {
         LOG_INFO << "Running in point mode";
 
-        std::unordered_set< std::string > remove_set;
-        //remove everything but the one forcing
-
-        for(auto& itr : _metdata->stations())
+        //Each face knows which stations are closest to it and what it should use
+        // If we have a netcdf loaded, we can just keep on moving here as the face will known what to do
+        // This might not even be needed for ascii files loaded in point_mode?
+        if(!_metdata->is_netcdf())
         {
-            if( itr->ID() != point_mode.forcing)
-                remove_set.insert(itr->ID());
+            std::unordered_set<std::string> remove_set;
+            // remove everything but the one forcing
+
+            for (auto& itr : _metdata->stations())
+            {
+                if (itr->ID() != point_mode.forcing)
+                    remove_set.insert(itr->ID());
+            }
+
+            _metdata->prune_stations(remove_set);
+
+            _outputs.erase(std::remove_if(_outputs.begin(), _outputs.end(),
+                                          [this](const output_info& o) { return o.name != point_mode.output; }),
+                           _outputs.end());
+            if ( _metdata->nstations() != 1 )
+            {
+                CHM_THROW_EXCEPTION(model_init_error, "The number of stations is " + std::to_string(_metdata->nstations()) + ". In point mode must be equal to exactly 1" );
+            }
         }
-
-
-        _metdata->prune_stations(remove_set);
-
-        _outputs.erase(std::remove_if(_outputs.begin(),_outputs.end(),
-                                      [this](const output_info& o){return o.name  != point_mode.output;}),
-                       _outputs.end());
-
 
         if( _outputs.size() !=1 )
         {
             CHM_THROW_EXCEPTION(model_init_error, "The number of outputs is " + std::to_string(_outputs.size()) + ". In point mode must be equal to exactly 1" );
         }
-        if ( _metdata->nstations() != 1 )
-        {
-            CHM_THROW_EXCEPTION(model_init_error, "The number of stations is " + std::to_string(_metdata->nstations()) + ". In point mode must be equal to exactly 1" );
 
-        }
-        for(auto s: _metdata->stations())
+        if(_metdata->is_netcdf())
         {
-            LOG_DEBUG << *s;
+            LOG_DEBUG<< "Using the following input nc grid cells as forcing:";
+            for(auto& s:_outputs.at(0).face->stations())
+            {
+               LOG_DEBUG << "\t" << "x="<<s->_nc_x << " y="<< s->_nc_y << "lat=" << s->y() << " lon=" <<s->x();
+            }
+
+
         }
 
         for(auto o:_outputs)
@@ -1500,7 +1517,19 @@ void core::init(int argc, char **argv)
         }
     }
 
-
+    if(point_mode.enable)
+    {
+        for(auto itr:_chunked_modules)
+        {
+            for(auto jtr:itr)
+            {
+                if(jtr->parallel_type() == module_base::parallel::domain)
+                {
+                    BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Domain parallel module are being run in point-mode."));
+                }
+            }
+        }
+    }
 
     LOG_DEBUG << "Allocating face variable storage";
 
@@ -1512,27 +1541,33 @@ void core::init(int argc, char **argv)
         module_list.insert(itr.first->ID);
     }
 
+    // only init on the faces we are going to compute on
+    // seemed like a good idea but module init has no way to know that it shouldn't run on part of the mesh
+    // todo: revisit only init on parts of the mesh
+//    if(point_mode.enable)
+//    {
+//        LOG_DEBUG<< "Initialzing faces for point_mode only";
+//        std::vector<mesh_elem> faces_to_init;
+//
+//        for (auto &itr : _outputs)
+//        {
+//            if (itr.type == output_info::output_type::time_series)
+//            {
+//                faces_to_init.push_back(itr.face);
+//            }
+//        }
+//        _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list, faces_to_init);
+//    }
+//    else
+//    {
+//        _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
+//    }
+
     _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
-
-    if(point_mode.enable)
-    {
-        for(auto itr:_chunked_modules)
-        {
-            for(auto jtr:itr)
-            {
-                if(jtr->parallel_type() == module_base::parallel::domain)
-                {
-                    BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Domain parallel module being run in point-mode."));
-                }
-            }
-        }
-    }
-
 
     timer c;
     LOG_DEBUG << "Running init() for each module";
     c.tic();
-
 
     for (auto& itr : _modules)
     {
@@ -1700,7 +1735,7 @@ void core::_determine_module_dep()
 	  auto itr_module = itr_pair.first;
 
 	  // Get vector of current module's variable names
-	  auto itr_mod_provides_var_names = itr_module->get_variable_names_from_collection(*(itr_module->provides()));;
+	  auto itr_mod_provides_var_names = itr_module->get_variable_names_from_collection(*(itr_module->provides()));
             //don't check against our module
             if (module->ID.compare(itr_module->ID) != 0)
             {

@@ -845,6 +845,19 @@ public:
                   std::set< std::string >& vectors,
                   std::set< std::string >& module_data);
 
+    /**
+     * A special case of init_face_data that only initializes the face data for the faces we are computing on in point mode.
+     * Does not work with ghost regions and MPI rank > 1
+     * @param timeseries
+     * @param vectors
+     * @param module_data
+     * @param faces
+     */
+    void init_face_data_point_mode(std::set< std::string >& timeseries,
+                        std::set< std::string >& vectors,
+                        std::set< std::string >& module_data,
+                        std::vector<Face_handle>& faces);
+
 	/**
 	 * Updates the internal vtk structure with this timesteps data.
 	 * Must be called prior to calling the write_vt* functions.

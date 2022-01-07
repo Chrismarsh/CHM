@@ -325,6 +325,12 @@ protected:
             fname = "";
             latitude = 0;
             longitude = 0;
+
+
+            x = 0;
+            y = 0;
+
+
             face = nullptr;
             name = "";
             only_last_n = -1;
@@ -345,8 +351,16 @@ protected:
         std::string name;
         std::vector<mesh_outputs> mesh_output_formats;
         std::string fname;
+
+        // these are input by the user, assumed to be WGS84
         double latitude;
         double longitude;
+
+        // if we are outputting on a projected mesh then we need to store the projected coords here
+        double x;
+        double y;
+
+
         std::set<std::string> variables;
         mesh_elem face;
         timeseries ts;

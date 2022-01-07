@@ -63,6 +63,11 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
     // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
     OGRSpatialReference insrs, outsrs;
+
+    //enforce the order to be x,y
+    insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+    outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
     insrs.SetWellKnownGeogCS("EPSG:4326");
     bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
 
@@ -117,7 +122,7 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 double longitude = 0 ;
                 double z = 0;
 
-                latitude = lat[y][x];;
+                latitude = lat[y][x];
                 longitude = lon[y][x];
                 z = e[y][x];
 
@@ -135,7 +140,7 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 if (!_is_geographic)
                 {
                     //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
-                    if (!coordTrans->Transform(1, &latitude, &longitude))
+                    if (!coordTrans->Transform(1, &longitude, &latitude))
                     {
                         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
                             "Station=" + station_name + ": unable to convert coordinates to mesh format."));
@@ -193,6 +198,9 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         {
             // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
             OGRSpatialReference insrs, outsrs;
+
+            insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); // enforce x,y
+            outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); // enforce x,y
             insrs.SetWellKnownGeogCS("EPSG:4326");
             bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
             if(err)
@@ -202,7 +210,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
 
             OGRCoordinateTransformation* coordTrans =  OGRCreateCoordinateTransformation(&insrs, &outsrs);
             //CRS created with the “EPSG:4326” use the latitude first, longitude second axis order.
-            if (!coordTrans->Transform(1, &itr.latitude, &itr.longitude))
+            if (!coordTrans->Transform(1, &itr.longitude, &itr.latitude))
             {
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
                     "Station=" + itr.id + ": unable to convert coordinates to mesh format."));
@@ -343,6 +351,10 @@ void metdata::check_ts_consistency()
                                       errstr_info("Timestep mismatch at station: " + itr.second->id));
         }
     }
+}
+bool metdata::is_netcdf()
+{
+    return _use_netcdf;
 }
 void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime end)
 {

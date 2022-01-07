@@ -2330,6 +2330,19 @@ void triangulation::init_module_data(std::set< std::string > modules)
     }
 }
 
+void triangulation::init_face_data_point_mode(std::set< std::string >& timeseries,
+                               std::set< std::string >& vectors,
+                               std::set< std::string >& module_data,
+                               std::vector<Face_handle>& faces)
+{
+    for( auto& itr : faces )
+    {
+        itr->init_time_series(timeseries);
+        itr->init_module_data(module_data);
+        itr->init_vectors(vectors);
+    }
+
+}
 void triangulation::init_face_data(std::set< std::string >& timeseries,
                     std::set< std::string >& vectors,
                     std::set< std::string >& module_data)
@@ -2353,7 +2366,8 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
             face->init_module_data(module_data);
             face->init_time_series(timeseries);
             face->init_vectors(vectors);
-        }}
+        }
+}
 
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 {
