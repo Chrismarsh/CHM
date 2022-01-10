@@ -133,7 +133,7 @@ void snow_slide::run(mesh& domain)
 
         // Check if face normal snowdepth have exceeded normal maxDepth
         if (snowdepthavg > maxDepth) {
-            LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
+//            LOG_DEBUG << "avalanche! " << snowdepthavg << " " << maxDepth;
             double del_depth = snowdepthavg - maxDepth; // Amount to be removed (positive) [m]
             double del_swe   = swe * (1 - maxDepth / snowdepthavg); // Amount of swe to be removed (positive) [m]
             double orig_mass = del_swe * cen_area;
