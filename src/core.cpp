@@ -129,14 +129,31 @@ void core::config_options( pt::ptree &value)
         auto pm = value.get_child("point_mode");
 
         point_mode.enable = true;
-        point_mode.forcing = pm.get<std::string>("forcing");
-        point_mode.output  = pm.get<std::string>("output");
+        point_mode.use_specific_station = false;
+
+        try
+        {
+            // if we ask for a specific forcing point, then /only/use that point.
+            // Only works with ascii mode so we will need to check for this later
+            point_mode.forcing = pm.get<std::string>("forcing");
+            point_mode.use_specific_station = true;
+            if (ia != "nearest")
+            {
+                _interpolation_method = interp_alg::nearest_sta;
+                LOG_WARNING << "Station select has been changed to nearest station because a single point mode station was requested";
+            }
+        }
+        catch (pt::ptree_bad_path& e)
+        {
+            //pass
+        }
+
         _global->_is_point_mode = true;
+
     }
     catch(pt::ptree_bad_path &e)
     {
         point_mode.enable = false; // we don't have point_mode
-
     }
 
     auto notify_sh = value.get_optional<std::string>("notification_script");
@@ -645,9 +662,6 @@ void core::config_meshes( pt::ptree &value)
     }
 
     _provided_parameters = _mesh->parameters();
-
-
-
 
     // Before we read the mesh, we need to know if we are geographic or projected so we can hook up all the distance functions
     // correctly. So for either json or hdf5 we check, hook up the functions, then proceed to the main load which can assume the functions are available
@@ -1426,15 +1440,21 @@ void core::init(int argc, char **argv)
     if(point_mode.enable)
     {
         LOG_INFO << "Running in point mode";
-
         //Each face knows which stations are closest to it and what it should use
-        // If we have a netcdf loaded, we can just keep on moving here as the face will known what to do
-        // This might not even be needed for ascii files loaded in point_mode?
-        if(!_metdata->is_netcdf())
+
+        if(point_mode.use_specific_station && _metdata->is_netcdf())
+        {
+            CHM_THROW_EXCEPTION(model_init_error, "If a specific station is requested, this must be done using an ascii forcing file definition." );
+        }
+        if(point_mode.use_specific_station && _outputs.size() !=1)
+        {
+            CHM_THROW_EXCEPTION(model_init_error, "If a specific station is requested, there must be only 1 output location. This allows for a 1:1 mapping of station to output point." );
+        }
+
+        if(point_mode.use_specific_station)
         {
             std::unordered_set<std::string> remove_set;
-            // remove everything but the one forcing
-
+            // remove everything but the one forcing that the user asked for
             for (auto& itr : _metdata->stations())
             {
                 if (itr->ID() != point_mode.forcing)
@@ -1443,18 +1463,10 @@ void core::init(int argc, char **argv)
 
             _metdata->prune_stations(remove_set);
 
-            _outputs.erase(std::remove_if(_outputs.begin(), _outputs.end(),
-                                          [this](const output_info& o) { return o.name != point_mode.output; }),
-                           _outputs.end());
             if ( _metdata->nstations() != 1 )
             {
                 CHM_THROW_EXCEPTION(model_init_error, "The number of stations is " + std::to_string(_metdata->nstations()) + ". In point mode must be equal to exactly 1" );
             }
-        }
-
-        if( _outputs.size() !=1 )
-        {
-            CHM_THROW_EXCEPTION(model_init_error, "The number of outputs is " + std::to_string(_outputs.size()) + ". In point mode must be equal to exactly 1" );
         }
 
         if(_metdata->is_netcdf())
@@ -1462,15 +1474,8 @@ void core::init(int argc, char **argv)
             LOG_DEBUG<< "Using the following input nc grid cells as forcing:";
             for(auto& s:_outputs.at(0).face->stations())
             {
-               LOG_DEBUG << "\t" << "x="<<s->_nc_x << " y="<< s->_nc_y << "lat=" << s->y() << " lon=" <<s->x();
+               LOG_DEBUG << "\t" << "x="<<s->_nc_x << " y="<< s->_nc_y << " lat=" << s->y() << " lon=" <<s->x();
             }
-
-
-        }
-
-        for(auto o:_outputs)
-        {
-            LOG_DEBUG << o.name;
         }
     }
 
@@ -1544,24 +1549,21 @@ void core::init(int argc, char **argv)
     // only init on the faces we are going to compute on
     // seemed like a good idea but module init has no way to know that it shouldn't run on part of the mesh
     // todo: revisit only init on parts of the mesh
-//    if(point_mode.enable)
-//    {
-//        LOG_DEBUG<< "Initialzing faces for point_mode only";
-//        std::vector<mesh_elem> faces_to_init;
-//
-//        for (auto &itr : _outputs)
-//        {
-//            if (itr.type == output_info::output_type::time_series)
-//            {
-//                faces_to_init.push_back(itr.face);
-//            }
-//        }
-//        _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list, faces_to_init);
-//    }
-//    else
-//    {
-//        _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
-//    }
+    if(point_mode.enable)
+    {
+        LOG_DEBUG<< "Initialzing faces for point_mode only";
+        std::vector<mesh_elem> faces_to_init;
+
+        for (auto &itr : _outputs)
+        {
+            if (itr.type == output_info::output_type::time_series)
+            {
+                faces_to_init.push_back(itr.face);
+            }
+        }
+        _mesh->prune_faces(faces_to_init);
+        LOG_DEBUG << "Mesh now has #faces=" << _mesh->size_faces();
+    }
 
     _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
 
@@ -1576,7 +1578,7 @@ void core::init(int argc, char **argv)
     }
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 
-    //we do this here now because init is allowing a module to chance its mide and declar itself
+    //we do this here now because init is allowing a module to chance its mind and declare itself
     // data parallel or domain parallel after the fact.
     _schedule_modules();
 

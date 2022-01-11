@@ -846,17 +846,11 @@ public:
                   std::set< std::string >& module_data);
 
     /**
-     * A special case of init_face_data that only initializes the face data for the faces we are computing on in point mode.
-     * Does not work with ghost regions and MPI rank > 1
-     * @param timeseries
-     * @param vectors
-     * @param module_data
+     * Prunes the internal vector that holds faces to only hold a subset. Does not actually remove the faces from the
+     * triangulation. Cannot be used with MPI ranks >1 and outside point mode.
      * @param faces
      */
-    void init_face_data_point_mode(std::set< std::string >& timeseries,
-                        std::set< std::string >& vectors,
-                        std::set< std::string >& module_data,
-                        std::vector<Face_handle>& faces);
+    void prune_faces(std::vector<Face_handle>& faces);
 
 	/**
 	 * Updates the internal vtk structure with this timesteps data.
@@ -958,15 +952,13 @@ protected:
     size_t _num_global_faces; //number of global faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
-	bool _is_geographic;
-        bool _mesh_is_from_partition;
-	int _UTM_zone;
+    bool _is_geographic;
+    bool _mesh_is_from_partition;
+    int _UTM_zone;
 
-
-
-	std::string _srs_wkt;
-	//holds the vtk ugrid if we are outputing to vtk formats
-	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
+    std::string _srs_wkt;
+    //holds the vtk ugrid if we are outputing to vtk formats
+    vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
 
 	//holds the vectors we use to create the vtu file
 #ifdef USE_SPARSEHASH

@@ -29,6 +29,7 @@ The paper describing CHM can be found `here <https://www.geosci-model-dev.net/13
 
    build
    configuration
+   pointmode
    cli
    meshgen
    partition

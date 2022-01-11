@@ -310,8 +310,11 @@ protected:
     struct point_mode_info
     {
         bool enable;
-        std::string output;
-        std::string forcing;
+
+        // The default mode of point mode is to use whatever stations we'd use for the face containing
+        //  this output. If we ask sepficially for a single station, then only that station will be used.
+        bool use_specific_station;
+        std::string forcing; // empty unless the above is set true
 
     } point_mode;
 

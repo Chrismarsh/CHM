@@ -2330,17 +2330,20 @@ void triangulation::init_module_data(std::set< std::string > modules)
     }
 }
 
-void triangulation::init_face_data_point_mode(std::set< std::string >& timeseries,
-                               std::set< std::string >& vectors,
-                               std::set< std::string >& module_data,
-                               std::vector<Face_handle>& faces)
+void triangulation::prune_faces(std::vector<Face_handle>& faces)
 {
-    for( auto& itr : faces )
+    if(_comm_world.size() > 1)
     {
-        itr->init_time_series(timeseries);
-        itr->init_module_data(module_data);
-        itr->init_vectors(vectors);
+        CHM_THROW_EXCEPTION(config_error, "Cannot prune faces with ranks >1");
     }
+
+    _faces.clear();
+    _faces  = faces;
+
+    _local_faces.clear();
+    _local_faces = _faces;
+
+    _num_faces = _num_global_faces = _faces.size(); //number of global faces
 
 }
 void triangulation::init_face_data(std::set< std::string >& timeseries,

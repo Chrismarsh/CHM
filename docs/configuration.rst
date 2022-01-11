@@ -145,16 +145,11 @@ This section contains options for CHM and the simulation in general.
    Point mode selects that the model should be run in point mode, versus
    distributed mode. 
 
-   There are two keys that need to be specified:
+   There is one optional key that need to be specified:
 
-   - ``output`` (string)
    - ``forcing`` (string)
 
-   ``output`` needs to correspond to a specific output point of type timeseries as defined in the output section.
-
    ``forcing`` needs to correspond to a specific input point as defined in the forcing section
-
-   If other points are specified, these points will be ignored.
 
    Usage of this key also requires adding ``point_mode`` to the module list. Lastly, no
    modules which are defined ``parallel:domain`` may be used when point_mode is enabled.
@@ -163,8 +158,14 @@ This section contains options for CHM and the simulation in general.
 
        "point_mode":
        {
-         "output":"UpperClearing",
          "forcing":"UpperClearing"
+       },
+
+.. code:: json
+
+       "point_mode":
+       {
+         // empty to just enable it
        },
 
 .. confval:: notification_script
