@@ -495,6 +495,20 @@ void triangulation::from_json(pt::ptree &mesh)
     _num_faces = this->number_of_faces();
     _num_vertex = this->number_of_vertices();
 
+    // Get local sizes for each rank
+    // If not available, use the old "balanced" setting
+    try
+    {
+      for (auto itr : mesh.get_child("mesh.local_size"))
+      {
+	    _local_sizes.push_back(itr.second.get_value<size_t>());
+      }
+    }catch(pt::ptree_bad_path& e)
+    {
+        // If not, just ignore the exception
+        LOG_DEBUG << "No face local sizes.";
+    }
+
     // Permute the faces if they have explicit IDs set in the mesh file
     try
     {
@@ -572,6 +586,15 @@ void triangulation::to_hdf5(std::string filename_base)
 
     hsize_t ntri= size_global_faces();
     hsize_t nvert= size_vertex();
+
+    { // Local sizes
+      LOG_DEBUG << "Writing Local Sizes.";
+      hsize_t npart = _local_sizes.size();
+      H5::DataSpace dataspace(1, &npart);
+
+      H5::DataSet dataset = file.createDataSet("/mesh/local_sizes", PredType::STD_I32BE, dataspace);
+      dataset.write(_local_sizes.data(), PredType::NATIVE_INT);
+    }
 
     {  // Faces
       H5::DataSpace dataspace(1, &ntri);
@@ -781,6 +804,15 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             // non partition meshes won't have this
             _mesh_is_from_partition = false;
         }
+    }
+
+    {
+        H5::DataSet dataset = file.openDataSet("/mesh/local_sizes");
+        H5::DataSpace dataspace = dataset.getSpace();
+        hsize_t nelem;
+        int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+        _local_sizes.resize(nelem);
+        dataset.read(_local_sizes.data(), PredType::NATIVE_INT);
     }
 
     {
@@ -1004,6 +1036,28 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
 
     auto max_ghost_distance = partition.get<double>("max_ghost_distance");
     _num_global_faces = partition.get<size_t>("num_global_faces");
+
+    // local sizes of partitions
+    std::vector<int> mesh_partition_sizes;
+    try
+    {
+        for(auto &itr : partition.get_child("local_sizes"))
+        {
+	  auto size = stoi(itr.second.data());
+	  mesh_partition_sizes.push_back(size);
+        }
+    }
+    catch(pt::ptree_bad_path &e)
+    {
+        CHM_THROW_EXCEPTION(config_error, "A mesh is required and was not found");
+    }
+    _local_sizes.resize(nranks);
+    for( size_t i=0; i < nranks; ++i)
+    {
+      _local_sizes.at(i) = mesh_partition_sizes.at(i);
+    }
+
+
 
     // Paths for parameter files
     std::vector<std::string> mesh_file_paths;
@@ -1373,10 +1427,10 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
     }
 
     // Set up so that all processors know how 'big' all other processors are
-    _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
-    for (unsigned int i = 0; i < _num_global_faces % _comm_world.size(); ++i)
+    _num_faces_in_partition.resize(_comm_world.size());
+    for (unsigned int i = 0; i < _comm_world.size(); ++i)
     {
-        _num_faces_in_partition[i]++;
+        _num_faces_in_partition.at(i) = _local_sizes.at(i);
     }
 
     // each processor only knows its own start and end indices
@@ -1464,7 +1518,7 @@ void triangulation::partition_mesh()
     // Loop can't be parallel due to modifying map
     for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
     {
-        size_t offset_idx = face_start_idx + local_ind;
+        size_t offset_idx = global_cell_start_idx + local_ind;
         _global_to_locally_owned_index_map[_global_IDs.at(offset_idx)] = local_ind;
 
         _faces.at(_global_IDs.at(offset_idx))->is_ghost = false;
@@ -1486,7 +1540,7 @@ void triangulation::partition_mesh()
     }
 
     _num_faces = _local_faces.size();
-    LOG_DEBUG << "MPI Process " << my_rank << ": start " << face_start_idx << ", end " << face_end_idx << ", number "
+    LOG_DEBUG << "MPI Process " << my_rank << ": start " << global_cell_start_idx << ", end " << global_cell_end_idx << ", number "
               << _local_faces.size();
 
 #else // do not USE_MPI
@@ -2682,3 +2736,4 @@ segmented_AABB::~segmented_AABB()
     }
 
 }
+	// compute_balanced_partition_sizes();
