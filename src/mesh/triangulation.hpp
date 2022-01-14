@@ -981,7 +981,7 @@ protected:
     double _max_z;
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
-    //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
+    //as well, it seems to prevent openmp for applying parallelism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
     //that allows us to traverse the triangulation in a deterministic order, as well as play nice with openmp
     std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;

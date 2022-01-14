@@ -56,6 +56,7 @@ set(MODULE_SRCS
 		modules/scale_wind_vert.cpp
 		modules/sub_grid.cpp
     	modules/snow_slide.cpp
+		modules/snowslide_advc.cpp
 		modules/threshold_p_phase.cpp
 		modules/solar.cpp
 		modules/fast_shadow.cpp

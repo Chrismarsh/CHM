@@ -2190,30 +2190,30 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     if(_write_ghost_neighbors_to_vtu)
     {
 
-    /* Ghost neighbors */
-    for (size_t i = 0; i < this->_ghost_faces.size(); i++)
-    {
-        mesh_elem fit = _ghost_faces[i];
+        /* Ghost neighbors */
+        for (size_t i = 0; i < this->_ghost_faces.size(); i++)
+        {
+            mesh_elem fit = _ghost_faces[i];
 
-        vtkSmartPointer<vtkTriangle> tri =
-                vtkSmartPointer<vtkTriangle>::New();
+            vtkSmartPointer<vtkTriangle> tri =
+                    vtkSmartPointer<vtkTriangle>::New();
 
-	// loop over vertices of a face
-	for (int j=0;j<3;++j){
-	  auto vit = fit->vertex(j);
-	  int global_id = vit->get_id();
-	  // If point hasn't been seen yet, account for it
-	  if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
-	    global_to_local_vertex_id[global_id] = npoints;
-	    npoints++;
-	    points->InsertNextPoint(vit->point().x()*scale, vit->point().y()*scale, vit->point().z());
-	    global_vertex_id.push_back(global_id);
-	  }
-	  tri->GetPointIds()->SetId(j, global_to_local_vertex_id[global_id]);
-	}
+            // loop over vertices of a face
+            for (int j=0;j<3;++j){
+              auto vit = fit->vertex(j);
+              int global_id = vit->get_id();
+              // If point hasn't been seen yet, account for it
+              if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
+                global_to_local_vertex_id[global_id] = npoints;
+                npoints++;
+                points->InsertNextPoint(vit->point().x()*scale, vit->point().y()*scale, vit->point().z());
+                global_vertex_id.push_back(global_id);
+              }
+              tri->GetPointIds()->SetId(j, global_to_local_vertex_id[global_id]);
+            }
 
-        triangles->InsertNextCell(tri);
-    }
+            triangles->InsertNextCell(tri);
+        }
 
     }  // if write ghosts
 
