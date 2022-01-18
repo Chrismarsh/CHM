@@ -61,12 +61,16 @@ class preprocessingTriangulation : public triangulation
 
     void partition(int mpi_rank)
     { // Set up so that all processors know how 'big' all other processors are
-        _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
-        for (unsigned int i = 0; i < _num_global_faces % _comm_world.size(); ++i)
-        {
-            _num_faces_in_partition.at(i)++;
+      if(_comm_world.size() == 1) {
+        _num_faces_in_partition.resize(1);
+	_num_faces_in_partition.at(0) = _num_global_faces;
+      } else {
+        _num_faces_in_partition.resize(_comm_world.size());
+        for (size_t i = 0; i < _comm_world.size(); ++i )
+	{
+            _num_faces_in_partition.at(i) = _local_sizes.at(i);
         }
-
+      }
         // each processor only knows its own start and end indices
         size_t face_start_idx = 0;
         size_t face_end_idx = _num_faces_in_partition.at(0) - 1;
@@ -129,6 +133,15 @@ class preprocessingTriangulation : public triangulation
                 attribute.read(PredType::NATIVE_HBOOL, &_is_geographic);
 
             }
+
+	    {
+	      H5::DataSet dataset = file.openDataSet("/mesh/local_sizes");
+	      H5::DataSpace dataspace = dataset.getSpace();
+	      hsize_t nelem;
+	      int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+	      _local_sizes.resize(nelem);
+	      dataset.read(_local_sizes.data(), PredType::NATIVE_INT);
+	    }
 
             {
                 DataSet dataset = file.openDataSet("/mesh/cell_global_id");
@@ -558,6 +571,15 @@ class preprocessingTriangulation : public triangulation
         pt::ptree meshes;
         pt::ptree params;
 
+	pt::ptree local_sizes;
+	for(size_t i=0; i< _local_sizes.size(); ++i)
+	{
+	  pt::ptree s;
+	  s.put("",std::to_string(_local_sizes.at(i)));
+	  local_sizes.push_back(std::make_pair("",s));
+	}
+        tree.add_child("local_sizes",local_sizes);
+
         std::string filename_base = mesh_filename.substr(0,mesh_filename.length()-3);
 
         auto partition_dir = boost::filesystem::path(filename_base + ".np" +  std::to_string(_comm_world.size()) + ".partition.meshes");
@@ -757,7 +779,6 @@ class preprocessingTriangulation : public triangulation
         tree.add_child("meshes",meshes);
         tree.add_child("parameters",params);
 
-
         pt::write_json(filename_base + ".np" + std::to_string(_comm_world.size()) + ".partition", tree);
 
     }
@@ -782,6 +803,15 @@ class preprocessingTriangulation : public triangulation
             // local_faces here is slightly different than anywhere else by, at this  point, it will have ghosts
             // mixed in with it. This is thus all the faces this partition knows about
             hsize_t ntri = _local_faces.size();
+
+            { // Local sizes
+                LOG_DEBUG << "Writing Local Sizes.";
+		hsize_t npart = _comm_world.size();
+                H5::DataSpace dataspace(1, &npart);
+
+                H5::DataSet dataset = file.createDataSet("/mesh/local_sizes", PredType::STD_I32BE, dataspace);
+                dataset.write(_local_sizes.data(), PredType::NATIVE_INT);
+            }
 
             { // global elem id
                 LOG_DEBUG << "Writting Global IDs";

@@ -1002,6 +1002,7 @@ protected:
     // All MPI process are aware of the local sizes for all other MPI processes
     // Index = MPI rank
     std::vector<int> _num_faces_in_partition;
+    std::vector<int> _local_sizes;
 
     // If we are not using MPI, some code paths might still want to make use of these
     // This is initialized to [0, num_faces - 1]
