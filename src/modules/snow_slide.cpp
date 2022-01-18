@@ -316,7 +316,7 @@ void snow_slide::run(mesh& domain)
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_swe"_s);
 
 
-        bool ghost_transport = false;
+        size_t ghost_transport = false;
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
@@ -334,7 +334,7 @@ void snow_slide::run(mesh& domain)
             if((*face)["ghost_ss_delta_avalanche_snowdepth"_s] > 0)
             {
 #pragma omp atomic
-                ghost_transport = true;
+                ++ghost_transport;
             }
 
             (*face)["ghost_ss_snowdepthavg_vert_copy"] = data.snowdepthavg_vert_copy;
@@ -348,7 +348,7 @@ void snow_slide::run(mesh& domain)
 
         }
 
-        if(ghost_transport)
+        if(ghost_transport > 0)
             done = 0;
         else
             // we didn't need to move mass, we done?
