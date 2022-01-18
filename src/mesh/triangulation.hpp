@@ -667,6 +667,9 @@ public:
     */
   void ghost_neighbors_communicate_variable(const uint64_t& var);
 
+  void ghost_to_neighbors_communicate_variable(const std::string& var);
+  void ghost_to_neighbors_communicate_variable(const uint64_t& var);
+
     /**
     * Figures out which faces are required in the ghost region of an MPI process.
     * \param max_distance the maximum distance needed for communication

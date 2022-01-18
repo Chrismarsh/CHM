@@ -1932,6 +1932,113 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
 }
 
+void triangulation::ghost_to_neighbors_communicate_variable(const std::string& var)
+{
+    // This supports the use case if _s no-oped to const char * via
+    uint64_t hash = xxh64::hash (var.c_str(), var.length());
+    ghost_to_neighbors_communicate_variable(hash);
+}
+
+void triangulation::ghost_to_neighbors_communicate_variable(const uint64_t& var)
+{
+
+// Function is meaningful only when using MPI
+#ifdef USE_MPI
+
+    // For each communication partner:
+    // - pack vectors of the variable to send
+    // - send/recv it
+    // - unpack the recv'd vectors into mesh_elem->face_data (so it can be used exactly as local info)
+
+    std::vector<boost::mpi::request> reqs;
+
+    for(auto it : ghost_faces_to_recv) {
+        auto partner_id = it.first;
+        auto faces = it.second;
+        std::vector<double> send_buffer(faces.size());
+        std::transform(faces.begin(), faces.end(),
+                       send_buffer.begin(),
+                       [var](mesh_elem e){
+                           return (*e)[var]; });
+
+        for(int i=0; i < send_buffer.size(); ++i) {
+            double val = send_buffer[i];
+            if( isnan(val) )	{
+                auto f = ghost_faces_to_recv[partner_id][i];
+                LOG_DEBUG << "-------------------------------------------------";
+                LOG_DEBUG << "Detected SEND variable is NaN:";
+                LOG_DEBUG << "\tmy rank:            " << f->owner;
+                LOG_DEBUG << "\tdestination rank:  " << partner_id;
+                LOG_DEBUG << "\tsend_buffer entry: " << i;
+                LOG_DEBUG << "\tcell_global_id:    " << f->cell_global_id;
+                LOG_DEBUG << "\tcell_local_id:      " << f->cell_local_id;
+                //	  _mpi_env.abort(-1);
+            }
+        }
+
+
+        // Send variables
+        int send_tag = generate_unique_send_tag(_comm_world.rank(), partner_id);
+        _comm_world.isend(partner_id, send_tag, send_buffer);
+
+    }
+
+    // map of received data from comm partners
+    std::map< int, std::vector<double>> recv_buffer;
+    for( auto it : local_faces_to_send) {
+        auto partner_id = it.first;
+        auto faces = it.second;
+        recv_buffer[partner_id] = std::vector<double>(faces.size(),0.0);
+    }
+
+    for(auto it : local_faces_to_send) {
+        auto partner_id = it.first;
+
+        // Note only recv gets added to the list of requests to watch for
+        int recv_tag = generate_unique_recv_tag(_comm_world.rank(), partner_id);
+        reqs.push_back(_comm_world.irecv(partner_id, recv_tag, recv_buffer[partner_id] ));
+    }
+
+    // Wait for all communication to me before proceeding
+    boost::mpi::wait_all(reqs.begin(), reqs.end());
+
+    // Check for NaN entries in recv_buffer
+    for(auto it : recv_buffer) {
+        auto partner_id = it.first;
+        auto values = it.second;
+        for(int i=0; i < values.size(); ++i) {
+            double val = values[i];
+            if( isnan(val) )	{
+                auto f = local_faces_to_send[partner_id][i];
+                LOG_DEBUG << "-------------------------------------------------";
+                LOG_DEBUG << "Detected RECV variable is NaN:";
+                LOG_DEBUG << "\tmy rank:            " << f->owner;
+                LOG_DEBUG << "\tsent from rank:     " << partner_id;
+                LOG_DEBUG << "\trecv_buffer entry:  " << i;
+                LOG_DEBUG << "\tcell_global_id:     " << f->cell_global_id;
+                LOG_DEBUG << "\tcell_local_id:       " << f->cell_local_id;
+                //	  _mpi_env.abort(-1);
+            }
+        }
+
+    }
+
+    // Pack the data into the face pointers
+    for(auto it : local_faces_to_send) {
+        auto partner_id = it.first;
+        auto faces = it.second;
+
+        auto recv_it = recv_buffer[partner_id].begin();
+        for (auto f : faces ) {
+            (*f)[var] = *recv_it;
+            ++recv_it;
+        }
+
+    }
+
+#endif // USE_MPI
+
+}
 
 void dfs_to_max_distance_aux(mesh_elem starting_face, double max_distance, mesh_elem face, std::unordered_set<mesh_elem> &visited)
 {
@@ -2363,9 +2470,9 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
 	// - timeseries not needed here
 	LOG_DEBUG << "######### Current _ghost_neighbors.size(): " << _ghost_neighbors.size();
     #pragma omp parallel for
-        for (size_t it = 0; it < _ghost_neighbors.size(); it++)
+        for (size_t it = 0; it < _ghost_faces.size(); it++)
         {
-            auto face = _ghost_neighbors.at(it);
+            auto face = _ghost_faces.at(it);
             face->init_module_data(module_data);
             face->init_time_series(timeseries);
             face->init_vectors(vectors);
