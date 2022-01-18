@@ -365,11 +365,11 @@ void snow_slide::run(mesh& domain)
         else
             done =0;
 
-        if(!done && iterations > 50)
+        if(!done && iterations > 500)
         {
             //bail
             done = 1;
-            LOG_ERROR << "SnowSlide did not converge after 50 iterations";
+            LOG_ERROR << "SnowSlide did not converge after 500 iterations";
         }
 
         if(!done)
