@@ -134,7 +134,7 @@ void Marsh_shading_iswr::run(mesh& domain)
 //        }
 //    }
 
-    tbb::task_scheduler_init init;
+
 
 #pragma omp parallel for
     for (size_t i = 0; i < BBR->n_rows; i++)
