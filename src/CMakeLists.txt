@@ -142,7 +142,7 @@ set(EXT_TARGETS
 if(BUILD_WITH_CONAN)
 	list( APPEND EXT_TARGETS
 			netcdf-cxx::netcdf-cxx
-			tbb::tbb
+			TBB::tbb
 			Boost::Boost
 			Eigen3::Eigen3
 			armadillo::armadillo
