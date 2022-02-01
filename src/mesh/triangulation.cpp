@@ -821,8 +821,6 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         }
         _version.from_string(v);
 
-        if(!_version.mesh_ver_meets_min_h5())
-            CHM_THROW_EXCEPTION(mesh_error, "h5 mesh version to too old");
     }
 
     std::vector<std::array<double, 3>> vertex;
@@ -842,7 +840,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         attribute.read(PredType::NATIVE_HBOOL, &_is_geographic);
     }
 
-    { // are we loading from a h5 file that is participating in a a partitioned mesh?
+    { // are we loading from a h5 file that is participating in a partitioned mesh?
         try
         {
 
@@ -858,6 +856,12 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             _mesh_is_from_partition = false;
         }
     }
+
+    if(!_mesh_is_from_partition && !_version.mesh_ver_meets_min_h5())
+        CHM_THROW_EXCEPTION(mesh_error, "h5 mesh version to too old");
+
+    if(_mesh_is_from_partition && !_version.mesh_ver_meets_min_partition())
+        CHM_THROW_EXCEPTION(mesh_error, "partitioned mesh version to too old");
 
     try
     {

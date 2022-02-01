@@ -957,7 +957,7 @@ protected:
         std::string to_string()
         {
             std::string s;
-            s = std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(PATCH) + ".";
+            s = std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(PATCH);
             return s;
         }
         void from_string(std::string s)
