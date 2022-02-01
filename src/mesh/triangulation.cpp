@@ -852,7 +852,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
     // CHM now needs pre-partitioning via metis method, any other partitioned methods are no longer supported
     if (_mesh_is_from_partition && _partition_method != "metis")
     {
-        CHM_THROW_EXCEPTION(mesh_error, "CHM requires partitioned meshes require the metis method");
+        CHM_THROW_EXCEPTION(mesh_error, "CHM requires partitioned meshes built using the metis method");
     }
 
     {
