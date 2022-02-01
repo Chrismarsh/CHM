@@ -58,6 +58,9 @@ triangulation::triangulation()
     proj4_dims=1;
     proj4_t = H5::StrType(PredType::C_S1,256);
 
+    meshver_dims=1;
+    meshver_t = H5::StrType(PredType::C_S1,256);
+
     // Array datatype for partition method string
     partition_type_dims=1;
     partition_type_t = H5::StrType(PredType::C_S1,256);
@@ -267,6 +270,11 @@ void triangulation::serialize_parameter(std::string output_path, std::string par
 }
 void triangulation::from_json(pt::ptree &mesh)
 {
+
+    _version.from_string(mesh.get<std::string>("mesh.version",""));
+
+    if(!_version.mesh_ver_meets_min_json())
+        CHM_THROW_EXCEPTION(mesh_error, "JSON mesh version to too old");
 
     size_t nvertex_toread = mesh.get<size_t>("mesh.nvertex");
     LOG_DEBUG << "Reading in #vertex=" << nvertex_toread;
@@ -676,6 +684,12 @@ void triangulation::to_hdf5(std::string filename_base)
       attribute.write(proj4_t, _srs_wkt);
     }
 
+    {  // Write the mesh version
+        H5::DataSpace dataspace(1, &meshver_dims);
+        H5::Attribute attribute = file.createAttribute("/mesh/version", meshver_t, dataspace);
+        attribute.write(meshver_t, _version.to_string());
+    }
+
     { // Write the partition method
         H5::DataSpace dataspace(1, &partition_type_dims);
         H5::Attribute attribute = file.createAttribute("/mesh/partition_method", partition_type_t, dataspace);
@@ -790,6 +804,26 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
     // Open an existing file and dataset.
     H5File file(mesh_filename, H5F_ACC_RDONLY);
+
+// check the mesh version first
+    {
+        std::string v;
+        try
+        {
+            // Read the mesh version
+            H5::DataSpace dataspace(1, &meshver_dims);
+            H5::Attribute attribute = file.openAttribute("/mesh/version");
+            attribute.read(meshver_t, v);
+        }
+        catch(AttributeIException& e)
+        {
+            v = ""; // will cause a default to version 1.0.0
+        }
+        _version.from_string(v);
+
+        if(!_version.mesh_ver_meets_min_h5())
+            CHM_THROW_EXCEPTION(mesh_error, "h5 mesh version to too old");
+    }
 
     std::vector<std::array<double, 3>> vertex;
     std::vector<std::array<int, 3>> elem;

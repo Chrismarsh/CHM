@@ -78,6 +78,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <boost/tuple/tuple.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Projection_traits_xy_3.h>
@@ -579,6 +580,8 @@ public:
 #endif
     ~triangulation();
 
+
+
     /**
     * Creates an axis alligned bounding box that is segmented into rows x cols
     * \param rows number of rows in the AABB
@@ -682,12 +685,12 @@ public:
 
 
 
-	/**
-	 * Serializes a mesh attribute to file so it can be read into the model.
-	 * \param output_path Full qualified path to a file to output to.
-	 * \param variable The variable from a module to be output.
-	 */
-	void serialize_parameter(std::string output_path, std::string parameter);
+    /**
+     * Serializes a mesh attribute to file so it can be read into the model.
+     * \param output_path Full qualified path to a file to output to.
+     * \param variable The variable from a module to be output.
+     */
+    void serialize_parameter(std::string output_path, std::string parameter);
     /**
     * Initializes a triangulation from the given x,y,z vectors
     * \param x X values
@@ -937,6 +940,56 @@ protected:
         DIST
     };
 
+    class MESH_VERSION
+    {
+      public:
+        MESH_VERSION()
+        {
+            MAJOR=1;
+            MINOR=0;
+            PATCH=0;
+        }
+
+        int MAJOR;
+        int MINOR;
+        int PATCH;
+
+        std::string to_string()
+        {
+            std::string s;
+            s = std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(PATCH) + ".";
+            return s;
+        }
+        void from_string(std::string s)
+        {
+            if( s == "")
+            {
+                s = "1.0.0";
+            }
+
+            std::vector<std::string> r;
+            boost::algorithm::split(r, s, boost::is_any_of("."));
+
+            MAJOR = std::stoi(r[0]);
+            MINOR = std::stoi(r[1]);
+            PATCH = std::stoi(r[2]);
+        }
+
+        bool mesh_ver_meets_min_json()
+        {
+            return MAJOR >=1;
+        }
+        bool mesh_ver_meets_min_h5()
+        {
+            return MAJOR >=1 && MINOR >=3;
+        }
+        bool mesh_ver_meets_min_partition()
+        {
+            return MAJOR >=2;
+        }
+
+    } _version;
+
     /**
      * Loads a given mesh as h5 into the triangulation. Only loads the main topology.
      * @param mesh_filename
@@ -1077,7 +1130,11 @@ protected:
   hsize_t proj4_dims;
   H5::StrType proj4_t;
 
-  // Array datatype for proj4 string
+  // Array datatype for mesh version string
+  hsize_t meshver_dims;
+  H5::StrType meshver_t;
+
+  // Array datatype for partition type string
   hsize_t partition_type_dims;
   H5::StrType partition_type_t;
 

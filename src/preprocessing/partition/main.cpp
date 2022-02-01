@@ -115,6 +115,26 @@ class preprocessingTriangulation : public triangulation
             // Open an existing file and dataset.
             H5File file(mesh_filename, H5F_ACC_RDONLY);
 
+            // check the mesh version first
+            {
+                std::string v;
+                try
+                {
+                    // Read the mesh version
+                    H5::DataSpace dataspace(1, &meshver_dims);
+                    H5::Attribute attribute = file.openAttribute("/mesh/version");
+                    attribute.read(meshver_t, v);
+                }
+                catch(AttributeIException& e)
+                {
+                    v = ""; // will cause a default to version 1.0.0
+                }
+                _version.from_string(v);
+
+                if(!_version.mesh_ver_meets_min_h5())
+                    CHM_THROW_EXCEPTION(mesh_error, "h5 mesh version to too old");
+            }
+
             std::vector<std::array<double, 3>> vertex;
             std::vector<std::array<int, 3>> elem;
             std::vector<std::array<int, 3>> neigh;
@@ -800,6 +820,9 @@ class preprocessingTriangulation : public triangulation
     void to_hdf5(boost::filesystem::path partition_dir, std::string filename_base)
     {
 
+        // update our version
+        _version.from_string("2.0.0");
+
         std::string filename = filename_base + "_mesh.h5";
 
         //  a global to local that works with the local_faces that has all the ghosts mixed in
@@ -981,6 +1004,12 @@ class preprocessingTriangulation : public triangulation
                 H5::Attribute attribute =
                     file.createAttribute("/mesh/is_partition", PredType::NATIVE_HBOOL, dataspace);
                 attribute.write(PredType::NATIVE_HBOOL, &_is_partition);
+            }
+
+            {  // Write the mesh version
+                H5::DataSpace dataspace(1, &meshver_dims);
+                H5::Attribute attribute = file.createAttribute("/mesh/version", meshver_t, dataspace);
+                attribute.write(meshver_t, _version.to_string());
             }
 
 
