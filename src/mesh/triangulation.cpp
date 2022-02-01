@@ -688,6 +688,13 @@ void triangulation::to_hdf5(std::string filename_base)
       attribute.write(PredType::NATIVE_HBOOL, &_is_geographic);
     }
 
+    {
+        bool _is_partition = false; // will only ever be false here, true when created with the hd5 code path in partition
+        H5::DataSpace dataspace(1, &partition_dims);
+        H5::Attribute attribute = file.createAttribute("/mesh/is_partition", PredType::NATIVE_HBOOL, dataspace);
+        attribute.write(PredType::NATIVE_HBOOL, &_is_partition);
+    }
+
   } // end of try block
 
 
