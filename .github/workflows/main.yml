@@ -68,8 +68,8 @@ jobs:
         run: |
           export PATH="$pythonLocation:$PATH"
           python -m pip install conan --upgrade
-          python -m install conan --upgrade
-          python -m install conan_package_tools
+          python -m pip install conan --upgrade
+          python -m pip install conan_package_tools
 
 
       - name: Install linux dependencies
