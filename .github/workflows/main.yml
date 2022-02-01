@@ -81,7 +81,7 @@ jobs:
           sudo apt-get update
           sudo env ACCEPT_EULA=Y apt-get upgrade -y
           sudo apt-get update
-          sudo apt-get -y install libtiff-dev libcurl4-gnutls-dev libsqlite3-dev sqlite3 libcurl4-openssl-dev
+          sudo apt-get -y install libtiff-dev libsqlite3-dev sqlite3 libcurl4-openssl-dev
 
       - name: Install MPI
         if: ${{ matrix.use-mpi  == 'with-mpi' }}
