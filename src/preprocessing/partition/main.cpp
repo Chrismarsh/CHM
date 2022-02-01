@@ -134,14 +134,28 @@ class preprocessingTriangulation : public triangulation
 
             }
 
-	    {
-	      H5::DataSet dataset = file.openDataSet("/mesh/local_sizes");
-	      H5::DataSpace dataspace = dataset.getSpace();
-	      hsize_t nelem;
-	      int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
-	      _local_sizes.resize(nelem);
-	      dataset.read(_local_sizes.data(), PredType::NATIVE_INT);
-	    }
+            try
+            {
+                {
+                    // Read the proj4
+                    H5::DataSpace dataspace(1, &partition_type_dims);
+                    H5::Attribute attribute = file.openAttribute("/mesh/partition_method");
+                    attribute.read(partition_type_t, _partition_method);
+                }
+
+                {
+                    H5::DataSet dataset = file.openDataSet("/mesh/local_sizes");
+                    H5::DataSpace dataspace = dataset.getSpace();
+                    hsize_t nelem;
+                    int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+                    _local_sizes.resize(nelem);
+                    dataset.read(_local_sizes.data(), PredType::NATIVE_INT);
+                }
+            }
+            catch(...)
+            {
+                CHM_THROW_EXCEPTION(mesh_error, "This h5 was produced by an older version of partition/meshpermutation.py and is lacking a key field. Please rerun these tools");
+            }
 
             {
                 DataSet dataset = file.openDataSet("/mesh/cell_global_id");
@@ -943,6 +957,12 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &proj4_dims);
                 H5::Attribute attribute = file.createAttribute("/mesh/proj4", proj4_t, dataspace);
                 attribute.write(proj4_t, _srs_wkt);
+            }
+
+            { // Write the partition method
+                H5::DataSpace dataspace(1, &partition_type_dims);
+                H5::Attribute attribute = file.createAttribute("/mesh/partition_method", partition_type_t, dataspace);
+                attribute.write(partition_type_t, _partition_method);
             }
 
             { // Write the is_geographic

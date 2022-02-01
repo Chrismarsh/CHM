@@ -1049,6 +1049,8 @@ protected:
 
   std::vector< std::shared_ptr<station> > _stations;
 
+  std::string _partition_method;
+
 #ifdef NOMATLAB
     //ptr to the matlab engine
     boost::shared_ptr<maw::matlab_engine> _engine;
@@ -1074,6 +1076,10 @@ protected:
   // Array datatype for proj4 string
   hsize_t proj4_dims;
   H5::StrType proj4_t;
+
+  // Array datatype for proj4 string
+  hsize_t partition_type_dims;
+  H5::StrType partition_type_t;
 
   // Array datatype for is_geographic
   hsize_t geographic_dims;

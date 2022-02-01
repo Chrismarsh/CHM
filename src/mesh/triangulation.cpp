@@ -58,6 +58,11 @@ triangulation::triangulation()
     proj4_dims=1;
     proj4_t = H5::StrType(PredType::C_S1,256);
 
+    // Array datatype for partition method string
+    partition_type_dims=1;
+    partition_type_t = H5::StrType(PredType::C_S1,256);
+    _partition_method = "";
+
     // Array datatype for is_geographic
     geographic_dims=1;
     partition_dims=1;
@@ -275,6 +280,7 @@ void triangulation::from_json(pt::ptree &mesh)
     }
     _srs_wkt = mesh.get<std::string>("mesh.proj4","");
 
+    _partition_method = mesh.get<std::string>("mesh.partition_method","");
 
     if(_srs_wkt == "")
     {
@@ -670,6 +676,12 @@ void triangulation::to_hdf5(std::string filename_base)
       attribute.write(proj4_t, _srs_wkt);
     }
 
+    { // Write the partition method
+        H5::DataSpace dataspace(1, &partition_type_dims);
+        H5::Attribute attribute = file.createAttribute("/mesh/partition_method", partition_type_t, dataspace);
+        attribute.write(partition_type_t, _partition_method);
+    }
+
     {  // Write the is_geographic
       H5::DataSpace dataspace(1, &geographic_dims);
       H5::Attribute attribute = file.createAttribute("/mesh/is_geographic", PredType::NATIVE_HBOOL, dataspace);
@@ -806,13 +818,34 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         }
     }
 
+    try
     {
-        H5::DataSet dataset = file.openDataSet("/mesh/local_sizes");
-        H5::DataSpace dataspace = dataset.getSpace();
-        hsize_t nelem;
-        int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
-        _local_sizes.resize(nelem);
-        dataset.read(_local_sizes.data(), PredType::NATIVE_INT);
+
+        {
+            // Read the proj4
+            H5::DataSpace dataspace(1, &partition_type_dims);
+            H5::Attribute attribute = file.openAttribute("/mesh/partition_method");
+            attribute.read(partition_type_t, _partition_method);
+
+        }
+
+        {
+            H5::DataSet dataset = file.openDataSet("/mesh/local_sizes");
+            H5::DataSpace dataspace = dataset.getSpace();
+            hsize_t nelem;
+            int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+            _local_sizes.resize(nelem);
+            dataset.read(_local_sizes.data(), PredType::NATIVE_INT);
+        }
+    } catch(...)
+    {
+        CHM_THROW_EXCEPTION(mesh_error, "This h5 was produced by an older version of partition/meshpermutation.py and is lacking a key field. Please rerun these tools");
+    }
+
+    // CHM now needs pre-partitioning via metis method, any other partitioned methods are no longer supported
+    if (_mesh_is_from_partition && _partition_method != "metis")
+    {
+        CHM_THROW_EXCEPTION(mesh_error, "CHM requires partitioned meshes require the metis method");
     }
 
     {
