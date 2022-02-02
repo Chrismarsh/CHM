@@ -41,6 +41,7 @@ jobs:
       matrix:
         python-version: [3.8]
         use-mpi: ["without-mpi"] #"with-mpi",
+        use-conan: [ 'use-conan' ]
         cfg:
           - { os: "ubuntu-18.04", compiler: "gcc", version: 7 }
           - { os: "ubuntu-18.04", compiler: "gcc", version: 9 }
