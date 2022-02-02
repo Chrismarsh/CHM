@@ -24,24 +24,25 @@ In brief:
 
 .. code::
 
-   mesherpermuation.py -i meshfile.mesh
+   mesherpermuation.py -i meshfile.mesh -t metis -n 2
 
-Note, this will overwrite the input file.
+Note, this will overwrite the input file. This example will produce a 2 MPI rank metis permuted mesh for use with MPI.
 
 MPI compatibility
 -------------------
 In MPI mode, CHM needs to be able to only read part of the mesh on a per-MPI rank basis. Therefore a HDF5 mesh is used.
 Mesher does not produce this format. However, CHM can convert from the Mesher json format to HDF5.
 
+
 Conversion
 ++++++++++
 
-1. Create mesh as normal with Mesher and apply the permutation
+1. Create mesh as normal with Mesher and apply the permutation. This must use the ``metis`` partitioning type.
 2. Convert the mesh to h5 or partitioned h5 via the :doc:`partition`.
 
 .. warning::
 
-   Please see the above section on mesh permutation prior to performing the hdf5 conversion.
+   The mesh must be a metis permuted mesh
 
 To load the h5 files:
 
@@ -72,3 +73,38 @@ As the partition files are computed for *n* ranks, they cannot be used with any 
 .. warning::
 
    HDF5 and json meshes/param files **cannot** be mixed.
+
+Mesh versioning
+-----------------
+
+The mesh formats are versioned to ensure required features are present. Mesh versions follow `sematic <https://semver.org/>`__ versioning.
+
+Given a version number MAJOR.MINOR.PATCH, increment the:
+
+- MAJOR version when you make incompatible API changes,
+
+- MINOR version when you add functionality in a backwards compatible manner, and
+
+- PATCH version when you make backwards compatible bug fixes.
+
+
+.. list-table:: Mesh Versions
+   :widths: 20 35 35
+   :header-rows: 1
+
+   * - Version
+     - Features
+     - Usage
+   * - 1.0.0
+     - Base version from Mesher
+     - json + h5
+   * - 1.2.0
+     - RCM or nd permuted meshes
+     - json + h5
+   * - 2.0.0
+     - metis permuted mesh and partitioned meshes
+     - h5 + partitioned + mpi
+
+
+
+
