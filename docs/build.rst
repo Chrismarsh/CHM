@@ -85,6 +85,8 @@ prior to running the conan. Use the gcc settings for conan.
 Build dependencies
 *********************
 
+The required 3rd party libraries needed for CHM can be built using conan.
+
 Throughout, this section assumes a working development environment, but
 a blank conan environment. 
 
@@ -119,6 +121,15 @@ can rerun
 to detect the new compiler settings. The ``cppstd`` and ``libcxx``
 settings need to be reapplied once this is done.
 
+The next few steps can be avoided by installing the following config,
+
+::
+
+   conan config install https://github.com/Chrismarsh/conan-config.git
+
+This adds the CHM remote, enables revisions, and applies a ``settings.yml`` file that allows for distinguishing between the libc
+versions of ubuntu 18.04 and 20.04.
+
 Add Conan remote
 -----------------
 
@@ -140,6 +151,11 @@ Add the CHM artifactory repository as a conan remote -- this is where the conan 
       cd CHM && git submodule update --init --recursive  # get recipes for dependency builds
       ./conan_export_deps.sh  # tell conan which versions are needed
 
+
+Enable revisions
+-----------------
+Enable conan `revisions <https://docs.conan.io/en/latest/versioning/revisions.html#how-to-activate-the-revisions>`__ by
+adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf file.
 
 Build
 --------
