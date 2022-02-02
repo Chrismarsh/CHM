@@ -975,17 +975,23 @@ protected:
             PATCH = std::stoi(r[2]);
         }
 
+
         bool mesh_ver_meets_min_json()
         {
             return MAJOR >=1;
         }
+
+        /**
+         * Basic h5 versioning is currently the same as min json
+         * @return
+         */
         bool mesh_ver_meets_min_h5()
         {
-            return MAJOR >=1 && MINOR >=3;
+            return MAJOR >=1;
         }
         bool mesh_ver_meets_min_partition()
         {
-            return MAJOR >=2;
+            return MAJOR >=2 && MINOR >=0;
         }
 
     } _version;

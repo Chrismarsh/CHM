@@ -858,10 +858,10 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
     }
 
     if(!_mesh_is_from_partition && !_version.mesh_ver_meets_min_h5())
-        CHM_THROW_EXCEPTION(mesh_error, "h5 mesh version to too old");
+        CHM_THROW_EXCEPTION(mesh_error, "h5 mesh version too old");
 
     if(_mesh_is_from_partition && !_version.mesh_ver_meets_min_partition())
-        CHM_THROW_EXCEPTION(mesh_error, "partitioned mesh version to too old");
+        CHM_THROW_EXCEPTION(mesh_error, "partitioned mesh version too old");
 
     try
     {

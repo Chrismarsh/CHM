@@ -131,8 +131,8 @@ class preprocessingTriangulation : public triangulation
                 }
                 _version.from_string(v);
 
-                if(!_version.mesh_ver_meets_min_h5())
-                    CHM_THROW_EXCEPTION(mesh_error, "h5 mesh version to too old");
+                if(!_version.mesh_ver_meets_min_partition())
+                    CHM_THROW_EXCEPTION(mesh_error, "h5 mesh doesn't meet criteria to partition -- version to too old or was not permuted with -t metis?");
             }
 
             std::vector<std::array<double, 3>> vertex;
