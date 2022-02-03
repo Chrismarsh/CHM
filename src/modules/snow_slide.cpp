@@ -28,7 +28,7 @@ snow_slide::snow_slide(config_file cfg)
         : module_base("snow_slide", parallel::domain, cfg)
 {
     depends("snowdepthavg",SpatialType::neighbor);
-    depends("swe");
+    depends("swe",SpatialType::neighbor);
 
     use_vertical_snow = cfg.get("use_vertical_snow",true);
 
@@ -372,6 +372,7 @@ void snow_slide::run(mesh& domain)
             // because we don't have access to ndata.snowdepthavg_copy, pass it through here
             // only used for obtaining transport weights, but only do this comms if we are expecting another iter
             domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_vert_copy"_s);
+
     }while(!done);
 
     LOG_DEBUG << "[SnowSlide] needed " << iterations << " iterations";
