@@ -24,6 +24,7 @@ env:
   CONAN_REQUEST_TIMEOUT: 600
   CONAN_RETRY: 30
   CONAN_RETRY_WAIT: 60
+  CONAN_BASE_PROFILE: "chm_no_mpi"
   #CONAN_BUILD_POLICY: "missing"
   #ONAN_UPLOAD_DEPENDENCIES: "all"
   MAKEFLAGS: "-j2"
@@ -114,7 +115,7 @@ jobs:
         run: |
           conan profile new default --detect
           conan config install https://github.com/Chrismarsh/conan-config.git
-          
+
           if [ "$RUNNER_OS" == "Linux" ]; then
             conan profile update settings.os.distro="$CFG_OS" default
           else
