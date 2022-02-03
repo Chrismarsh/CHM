@@ -544,39 +544,13 @@ void triangulation::from_json(pt::ptree &mesh)
 
     _build_dDtree();
 
-  std::vector<double> temp_slope(_num_faces);
-
-#pragma omp parallel for
-    for (size_t i = 0; i < _num_faces; i++)
-    {
-        auto f = face(i);
-        std::vector<boost::tuple<double, double, double> > u;
-        for (size_t j = 0; j < 3; j++)
-        {
-          auto neigh = f->neighbor(j);
-          if (neigh != nullptr && !neigh->is_ghost)
-            u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), neigh->slope()));
-        }
-
-        auto query = boost::make_tuple(f->get_x(), f->get_y(), f->get_z());
-
-        interpolation interp(interp_alg::tpspline);
-        double new_slope = f->slope();
-
-        if(u.size() > 0)
-        {
-            new_slope = interp(u, query);
-        }
-
-        temp_slope.at(i) = new_slope;
-    }
 
 #pragma omp parallel for
     for (size_t i = 0; i < size_faces(); i++)
     {
         auto f = face(i);
-        f->_slope = temp_slope.at(i);
         //init these
+        f->slope();
         f->aspect();
         f->center();
         f->normal();
