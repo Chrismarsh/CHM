@@ -52,6 +52,105 @@ class preprocessingTriangulation : public triangulation
     {
         _is_standalone = false;
         _is_partition = true;
+        _write_ghost_neighbors_to_vtu = true;
+        _write_parameters_to_vtu = false;
+    }
+
+    void write_vtu(std::string file_name, std::vector<std::string> output_variables ={} )
+    {
+        vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+
+        vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
+
+        triangles->Allocate(_local_faces.size());
+
+        vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
+        proj4->SetNumberOfComponents(1);
+        proj4->SetName("proj4");
+        proj4->InsertNextValue(_srs_wkt);
+
+        double scale = is_geographic() == true ? 100000. : 1.;
+
+        std::map<int, int> global_to_local_vertex_id;
+        std::vector<int> global_vertex_id;
+
+        // npoints holds the total number of points
+        int npoints=0;
+        for (size_t i = 0; i < _local_faces.size(); i++)
+        {
+            mesh_elem fit = _local_faces.at(i);
+
+            vtkSmartPointer<vtkTriangle> tri =
+                vtkSmartPointer<vtkTriangle>::New();
+
+            // loop over vertices of a face
+            for (int j=0;j<3;++j)
+            {
+                auto vit = fit->vertex(j);
+                int global_id = vit->get_id();
+                // If point hasn't been seen yet, account for it
+                if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
+                    global_to_local_vertex_id[global_id] = npoints;
+                    npoints++;
+                    points->InsertNextPoint(vit->point().x()*scale, vit->point().y()*scale, vit->point().z());
+                    global_vertex_id.push_back(global_id);
+                }
+                tri->GetPointIds()->SetId(j, global_to_local_vertex_id[global_id]);
+            }
+
+            triangles->InsertNextCell(tri);
+        }
+        _vtk_unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+        _vtk_unstructuredGrid->SetPoints(points);
+        _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
+        _vtk_unstructuredGrid->GetFieldData()->AddArray(proj4);
+
+        auto variables = output_variables.size() == 0 ? this->face(0)->variables() : output_variables;
+        for(auto& v: variables)
+        {
+            data[v] = vtkSmartPointer<vtkFloatArray>::New();
+            data[v]->SetName(v.c_str());
+        }
+
+        data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
+        data["Elevation"]->SetName("Elevation");
+
+        // Global vertex ids -> only need to be set here, get written in the writer
+        vertex_data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
+        vertex_data["global_id"]->SetName("global_id");
+        for(int i=0;i<npoints;++i){
+            vertex_data["global_id"]->InsertTuple1(i,global_vertex_id[i]);
+        }
+
+        for (size_t i = 0; i < _local_faces.size(); i++)
+        {
+            mesh_elem fit = _local_faces.at(i);
+
+            for (auto &v: variables)
+            {
+                double d = (*fit)[v];
+                if(d == -9999.)
+                {
+                    d = nan("");
+                }
+
+                data[v]->InsertTuple1(i,d);
+            }
+
+            data["Elevation"]->InsertTuple1(i,fit->get_z());
+
+        }
+        for(auto& m : data)
+        {
+            _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
+        }
+
+        vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+        writer->SetFileName(file_name.c_str());
+
+        writer->SetInputData(_vtk_unstructuredGrid);
+
+        writer->Write();
     }
 
     void partition(int mpi_rank)
@@ -436,50 +535,6 @@ class preprocessingTriangulation : public triangulation
 
         LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbors.size()
                   << " ghosted nearest neighbors.";
-
-        // Determine the owners of the ghost faces (for communication setup)
-        _ghost_neighbor_owners.resize(_ghost_neighbors.size());
-        int start_index = 0;
-        int prev_owner;
-        int num_partners = 0;
-        // Construct ghost region ownership info
-        for (size_t i = 0; i < _ghost_neighbors.size(); ++i)
-        {
-            // index type needs to match type of elements of _num_faces_in_partition
-            int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
-            _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind, _num_faces_in_partition);
-            // on first it, no value of prev_owner exists
-            if (i == 0)
-                prev_owner = _ghost_neighbor_owners[i];
-            // if owner different from last iteration, store prev segment's ownership info
-            if (prev_owner != _ghost_neighbor_owners[i])
-            {
-                num_partners++;
-                _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i - start_index);
-                start_index = i;
-            }
-
-            if (i == _ghost_neighbors.size() - 1)
-            {
-                _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i - start_index + 1);
-            }
-
-            // prep prev_owner for next iteration
-            prev_owner = _ghost_neighbor_owners[i];
-        }
-
-        for (size_t i = 0; i < _ghost_neighbors.size(); ++i)
-        {
-            _global_index_to_local_ghost_map[_ghost_neighbors[i]->cell_global_id] = static_cast<int>(i);
-        }
-
-        LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _comm_partner_ownership.size()
-                  << " communication partners:";
-        for (auto it : _comm_partner_ownership)
-        {
-            LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << it.first << " owns local ghost indices "
-                      << it.second.first << " to " << it.second.first + it.second.second - 1;
-        }
     }
 
     void from_file_and_partition(const std::string& mesh_filename, const std::vector<std::string>& param_filenames,
@@ -663,6 +718,9 @@ class preprocessingTriangulation : public triangulation
             // regardless of what MPIrank we are here as it is using the super's _commworld for the output /only/
             determine_process_ghost_faces_by_distance(100.0);
 
+            determine_ghost_owners();
+
+
 // we need to flag all the ghosts that aren't neigh as radius ghosts
 #pragma omp parallel for
             for (size_t i = 0; i < _ghost_faces.size(); i++)
@@ -763,6 +821,8 @@ class preprocessingTriangulation : public triangulation
                 {
                     error.printErrorStack();
                 }
+
+
             }
 
             if (!_is_standalone)
@@ -788,6 +848,37 @@ class preprocessingTriangulation : public triangulation
                 filename_base + ".partition." + (_is_standalone ? "standalone." : "") + std::to_string(mpirank);
 
             to_hdf5(partition_dir, fname);
+
+            // the default write param setup isn't going to do what we want so be explicit here
+            std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type"}; //"ghost_type","owner"};
+            LOG_DEBUG << _local_faces.size();
+            // do it like this to ensure the ghosts get init for when we write them out
+#pragma omp parallel for
+            for (size_t it = 0; it < _local_faces.size(); it++)
+            {
+                auto face = _local_faces.at(it);
+                face->init_time_series(vtu_outputs);
+            }
+
+            for(int t = 0; t < _local_faces.size(); t++)
+            {
+                auto f = _local_faces.at(t);
+                (*f)["is_ghost"] = f->is_ghost;
+
+                if( f->is_ghost)
+                {
+                    (*f)["owner"] = _ghost_neighbor_owners[t];
+                    auto& gi = f->get_module_data<ghost_info>("partition_tool");
+                    (*f)["ghost_type"] = gi.ghost_type;
+
+                    LOG_DEBUG<<"mpirank="<<mpirank<<" ghost type="<<gi.ghost_type << " owner=" << _ghost_neighbor_owners[t];
+                }
+
+
+            }
+
+            write_vtu("rank."+std::to_string(mpirank)+".vtu");
+
 
             pt::ptree m;
             m.put("", (partition_dir / (fname + "_mesh.h5")).string());
@@ -1185,6 +1276,7 @@ int main(int argc, char* argv[])
 
             preprocessingTriangulation* tri = new preprocessingTriangulation();
             tri->from_file_and_partition(h5_mesh_name, h5_param_name, MPI_ranks, max_ghost_distance, standalone_rank);
+
         }
     }
     catch (exception_base& e)

@@ -1775,6 +1775,11 @@ void triangulation::determine_ghost_owners()
         int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
         _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
                                                                     _num_faces_in_partition);
+
+        if(_ghost_neighbor_owners[i]!= 1)
+        {
+            LOG_DEBUG <<_ghost_neighbor_owners[i];
+        }
         // on first it, no value of prev_owner exists
         if(i==0) prev_owner = _ghost_neighbor_owners[i];
         // if owner different from last iteration, store prev segment's ownership info
@@ -2354,7 +2359,6 @@ void triangulation::plot(std::string ID)
 void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-    // points->SetNumberOfPoints(this->_num_vertex);
 
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
     if(_write_ghost_neighbors_to_vtu)
