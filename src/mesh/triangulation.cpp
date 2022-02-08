@@ -1776,10 +1776,6 @@ void triangulation::determine_ghost_owners()
         _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
                                                                     _num_faces_in_partition);
 
-        if(_ghost_neighbor_owners[i]!= 1)
-        {
-            LOG_DEBUG <<_ghost_neighbor_owners[i];
-        }
         // on first it, no value of prev_owner exists
         if(i==0) prev_owner = _ghost_neighbor_owners[i];
         // if owner different from last iteration, store prev segment's ownership info

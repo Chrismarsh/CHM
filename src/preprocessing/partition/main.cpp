@@ -673,6 +673,15 @@ class preprocessingTriangulation : public triangulation
             end_rank = standalone_rank + 1;
             _is_standalone = true;
         }
+
+        std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type"}; //"ghost_type","owner"};
+#pragma omp parallel for
+        for (size_t i = 0; i < _faces.size(); ++i)
+        {
+            auto f = _faces.at(i);
+            f->init_time_series(vtu_outputs);
+        }
+
         for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
         {
             _comm_world._rank = mpirank;
@@ -695,14 +704,19 @@ class preprocessingTriangulation : public triangulation
 #pragma omp parallel for
             for (size_t i = 0; i < _faces.size(); ++i)
             {
-                _faces.at(i)->is_ghost = true; // default state, switches to false later
-                _faces.at(i)->init_module_data(pt);
+                auto f = _faces.at(i);
+                f->is_ghost = true; // default state, switches to false later
+                f->init_module_data(pt);
 
-                auto& gi = _faces.at(i)->make_module_data<ghost_info>("partition_tool");
+                auto& gi = f->make_module_data<ghost_info>("partition_tool");
 
                 // doesn't match the is_ghost default state. Here we assume false, and then switch it to the correct
                 // type when determined
                 gi.ghost_type = ghost_info::GHOST_TYPE::NONE;
+
+                (*f)["owner"] = -9999;
+                (*f)["is_ghost"] = -9999;
+                (*f)["ghost_type"]=-9999;
             }
 
             partition(_comm_world._rank);
@@ -849,32 +863,21 @@ class preprocessingTriangulation : public triangulation
 
             to_hdf5(partition_dir, fname);
 
-            // the default write param setup isn't going to do what we want so be explicit here
-            std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type"}; //"ghost_type","owner"};
-            LOG_DEBUG << _local_faces.size();
-            // do it like this to ensure the ghosts get init for when we write them out
+            // the default vtu write param setup isn't going to do what we want so be explicit here
 #pragma omp parallel for
-            for (size_t it = 0; it < _local_faces.size(); it++)
+            for(int t = 0; t < _ghost_faces.size(); t++)
             {
-                auto face = _local_faces.at(it);
-                face->init_time_series(vtu_outputs);
-            }
-
-            for(int t = 0; t < _local_faces.size(); t++)
-            {
-                auto f = _local_faces.at(t);
+                auto f = _ghost_faces.at(t);
+                auto& gi = f->get_module_data<ghost_info>("partition_tool");
+                (*f)["ghost_type"] = gi.ghost_type;
                 (*f)["is_ghost"] = f->is_ghost;
-
-                if( f->is_ghost)
-                {
-                    (*f)["owner"] = _ghost_neighbor_owners[t];
-                    auto& gi = f->get_module_data<ghost_info>("partition_tool");
-                    (*f)["ghost_type"] = gi.ghost_type;
-
-                    LOG_DEBUG<<"mpirank="<<mpirank<<" ghost type="<<gi.ghost_type << " owner=" << _ghost_neighbor_owners[t];
-                }
-
-
+            }
+#pragma omp parallel for
+            for(int t = 0; t < _ghost_neighbors.size(); t++)
+            {
+                auto f = _ghost_neighbors.at(t);
+                (*f)["owner"] = _ghost_neighbor_owners[t];
+                LOG_DEBUG<<"mpirank="<<mpirank<<" ghost type="<<f->get_module_data<ghost_info>("partition_tool").ghost_type << " owner=" << this->_ghost_neighbor_owners[t];
             }
 
             write_vtu("rank."+std::to_string(mpirank)+".vtu");
