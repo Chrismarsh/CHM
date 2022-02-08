@@ -37,6 +37,9 @@ namespace po = boost::program_options;
 
 using namespace H5;
 
+
+#define USE_MPI 1
+
 typedef struct _MeshParameters
 {
     std::vector<std::string> names;
@@ -411,85 +414,7 @@ class preprocessingTriangulation : public triangulation
             error.printErrorStack();
         }
     }
-    void determine_local_boundary_faces()
-    {
-        /*
-          - Store handles to boundary faces on the locally owned process
-          - Also store boolean value "is_global_boundary"
-        */
 
-        using th_safe_multicontainer_type = std::vector<std::pair<mesh_elem, bool>>[];
-
-        // Need to ensure we're starting from nothing?
-        assert(_boundary_faces.size() == 0);
-
-        LOG_DEBUG << "Determining local boundary faces";
-
-        std::unique_ptr<th_safe_multicontainer_type> th_local_boundary_faces;
-
-#pragma omp parallel
-        {
-            // We want an array of vectors, so that OMP threads can increment them
-            // separately, then join them afterwards
-#pragma omp single
-            {
-                th_local_boundary_faces = std::make_unique<th_safe_multicontainer_type>(omp_get_num_threads());
-            }
-#pragma omp for
-            for (size_t face_index = 0; face_index < _local_faces.size(); ++face_index)
-            {
-                // face_index is a local index... get the face handle
-                auto face = _local_faces.at(face_index);
-
-                int num_owned_neighbors = 0;
-                for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
-                {
-
-                    auto neigh = face->neighbor(neigh_index);
-
-                    // Test status of neighbor
-                    if (neigh == nullptr)
-                    {
-                        th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face, true));
-                        num_owned_neighbors = 3; // set this to avoid triggering the post-loop if statement
-                        break;
-                    }
-                    else
-                    {
-                        if (neigh->is_ghost == false)
-                        {
-                            num_owned_neighbors++;
-                        }
-                    }
-                }
-
-                // If we don't own 3 neighbors, we are a local, but not a global boundary face
-                if (num_owned_neighbors < 3)
-                {
-                    th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face, false));
-                }
-            }
-
-            // Join the vectors via a single thread in t operations
-            //  NOTE future optimizations:
-            //   - reserve space for insertions into _boundary_faces
-            //   - can be done recursively in log2(t) operations
-#pragma omp single
-            {
-                for (int thread_idx = 0; thread_idx < omp_get_num_threads(); ++thread_idx)
-                {
-                    _boundary_faces.insert(_boundary_faces.end(), th_local_boundary_faces[thread_idx].begin(),
-                                           th_local_boundary_faces[thread_idx].end());
-                }
-            }
-        }
-
-        // Some log debug output to see how many boundary faces on each
-        LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
-
-        LOG_DEBUG << "MPI Process " << _comm_world.rank() << " _faces.size(): " << _faces.size()
-                  << " _local_faces.size(): " << _local_faces.size();
-    }
     void determine_process_ghost_faces_nearest_neighbors()
     {
         // NOTE that this algorithm is not implemented for multithread
@@ -730,7 +655,7 @@ class preprocessingTriangulation : public triangulation
             // when this is called, it will output
             // MPI Process 0 has XXX ghosted faces.
             // regardless of what MPIrank we are here as it is using the super's _commworld for the output /only/
-            determine_process_ghost_faces_by_distance(100.0);
+            determine_process_ghost_faces_by_distance(max_ghost_distance);
 
             determine_ghost_owners();
 
