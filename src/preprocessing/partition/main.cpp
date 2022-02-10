@@ -455,6 +455,7 @@ class preprocessingTriangulation : public triangulation
         // NOTE:
         // - sorting this vector by cell_global_id effectively partitions the ghost neighbors to be contiguous in
         // communication partners
+        // This is required to put them into chunked sections
         std::sort(_ghost_neighbors.begin(), _ghost_neighbors.end(),
                   [&](const auto& a, const auto& b) { return a->cell_global_id < b->cell_global_id; });
 
@@ -599,7 +600,7 @@ class preprocessingTriangulation : public triangulation
             _is_standalone = true;
         }
 
-        std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type"}; //"ghost_type","owner"};
+        std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type", "global_id","local_id"}; //"ghost_type","owner"};
 #pragma omp parallel for
         for (size_t i = 0; i < _faces.size(); ++i)
         {
@@ -642,6 +643,8 @@ class preprocessingTriangulation : public triangulation
                 (*f)["owner"] = -9999;
                 (*f)["is_ghost"] = -9999;
                 (*f)["ghost_type"]=-9999;
+                (*f)["global_id"]=-9999;
+                (*f)["local_id"]=-9999;
             }
 
             partition(_comm_world._rank);
@@ -656,6 +659,13 @@ class preprocessingTriangulation : public triangulation
             // MPI Process 0 has XXX ghosted faces.
             // regardless of what MPIrank we are here as it is using the super's _commworld for the output /only/
             determine_process_ghost_faces_by_distance(max_ghost_distance);
+
+            // Convert the set to a vector
+            _ghost_faces.insert(std::end(_ghost_faces),
+                                std::begin(_ghost_neighbors),std::end(_ghost_neighbors));
+
+            std::sort(_ghost_faces.begin(), _ghost_faces.end(),
+                      [&](const auto& a, const auto& b) { return a->cell_global_id < b->cell_global_id; });
 
             determine_ghost_owners();
 
@@ -804,6 +814,14 @@ class preprocessingTriangulation : public triangulation
                 (*f)["owner"] = _ghost_neighbor_owners[t];
                 LOG_DEBUG<<"mpirank="<<mpirank<<" ghost type="<<f->get_module_data<ghost_info>("partition_tool").ghost_type << " owner=" << this->_ghost_neighbor_owners[t];
             }
+#pragma omp parallel for
+            for(int t = 0; t < _local_faces.size(); t++)
+            {
+                auto f = _local_faces.at(t);
+                (*f)["global_id"] = f->cell_global_id;
+                (*f)["local_id"] = f->cell_local_id;
+            }
+
 
             write_vtu("rank."+std::to_string(mpirank)+".vtu");
 
