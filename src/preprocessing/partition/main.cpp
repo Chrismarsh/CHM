@@ -652,21 +652,36 @@ class preprocessingTriangulation : public triangulation
             _num_faces = _local_faces.size();
 
             determine_local_boundary_faces();
+
+            // figure out which neighbours to our boundary faces are ghosts and store them
             determine_process_ghost_faces_nearest_neighbors();
 
             // TODO: Need to auto-determine how far to look based on module setups
             // when this is called, it will output
             // MPI Process 0 has XXX ghosted faces.
-            // regardless of what MPIrank we are here as it is using the super's _commworld for the output /only/
+            // regardless of what MPI rank we are here as it is using the super's _commworld for the output /only/
             determine_process_ghost_faces_by_distance(max_ghost_distance);
 
-            // Convert the set to a vector
+            // _ghost_faces as set by determine_process_ghost_faces_by_distance is missing the nearest neighbours
+            // and so add them in here
+
             _ghost_faces.insert(std::end(_ghost_faces),
                                 std::begin(_ghost_neighbors),std::end(_ghost_neighbors));
 
+            // Convert to a set to remove duplicates
+            std::unordered_set<mesh_elem> tmp_set(std::begin(_ghost_faces),
+                                                  std::end(_ghost_faces));
+
+            // rebuild after removing duplicates
+            _ghost_faces.clear();
+            _ghost_faces.insert(std::end(_ghost_faces),
+                                std::begin(tmp_set),std::end(tmp_set));
+
+            // sort as this is needed for the chunking of ghosts per mpi owner
             std::sort(_ghost_faces.begin(), _ghost_faces.end(),
                       [&](const auto& a, const auto& b) { return a->cell_global_id < b->cell_global_id; });
 
+            // determine the MPI rank that owns our Type I ghosts
             determine_ghost_owners();
 
 

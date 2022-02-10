@@ -638,6 +638,7 @@ public:
 
     /**
     * Figures out which faces lie on the boundary of an MPI process' domain
+     * Sets _boundary_faces
     */
   void determine_local_boundary_faces();
     /**
@@ -1074,6 +1075,8 @@ protected:
     std::vector< mesh_elem > _local_faces;
 
 
+    // These are the faces that lie on the boundary of the MPI domain
+    // as set by determine_local_boundary_faces
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
 
     // Array of pointers to the ghost neighbors for this rank
