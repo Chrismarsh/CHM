@@ -1497,7 +1497,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
     if (face_start_idx != _local_faces.front()->cell_global_id ||
         face_end_idx != _local_faces.back()->cell_global_id)
     {
-        LOG_ERROR << "The computed and read start/end indxe don't match. Computed:\n"
+        LOG_ERROR << "The computed and read start/end index don't match. Computed:\n"
                   << "\tface_start_idx = " << face_start_idx << "\n"
                   << "\tface_end_idx = " << face_end_idx << "\n"
                   << "Read:\n"
@@ -1768,6 +1768,7 @@ void triangulation::determine_ghost_owners()
     int start_index=0;
     int prev_owner;
     int num_partners=0;
+
     // Construct ghost region ownership info
     for(size_t i=0; i<_ghost_neighbors.size(); ++i)
     {
@@ -1775,6 +1776,9 @@ void triangulation::determine_ghost_owners()
         int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
         _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
                                                                     _num_faces_in_partition);
+
+        // local faces are set to current mpirank, so set the ghosts to be ID"d who owns them
+        _ghost_neighbors[i]->owner = _ghost_neighbor_owners[i];
 
         // on first it, no value of prev_owner exists
         if(i==0) prev_owner = _ghost_neighbor_owners[i];
@@ -2710,7 +2714,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 	    data["is_ghost"]->InsertTuple1(insert_offset,fit->is_ghost);
             data["ghost_type"]->InsertTuple1(insert_offset,fit->ghost_type);
 	    data["global_id"]->InsertTuple1(insert_offset,fit->cell_global_id);
-	    data["owner"]->InsertTuple1(insert_offset,nan(""));
+	    data["owner"]->InsertTuple1(insert_offset,fit->owner);
         }
         for(auto& v: vecs)
         {
