@@ -30,6 +30,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
+
+#include <algorithm>
+#include <numeric>
 #include <string>
 
 namespace pt = boost::property_tree;
@@ -464,7 +467,7 @@ class preprocessingTriangulation : public triangulation
     }
 
     void from_file_and_partition(const std::string& mesh_filename, const std::vector<std::string>& param_filenames,
-                                 size_t MPI_ranks, size_t max_ghost_distance, int standalone_rank)
+                                 size_t MPI_ranks, double max_ghost_distance, int standalone_rank, std::vector<int> ranks_to_keep)
     {
 
         _comm_world._size = MPI_ranks;
@@ -566,24 +569,32 @@ class preprocessingTriangulation : public triangulation
             return;
         }
 
-        _num_global_faces = _faces.size();
-
         pt::ptree tree;
-        tree.put("ranks", MPI_ranks);
+        tree.put("ranks", ranks_to_keep.size() == 0? MPI_ranks : ranks_to_keep.size());
         tree.put("max_ghost_distance", max_ghost_distance);
-        tree.put("num_global_faces", _num_global_faces);
 
         pt::ptree meshes;
         pt::ptree params;
 
+        std::vector<size_t> tmp_local_sizes;
         pt::ptree local_sizes;
         for (size_t i = 0; i < _local_sizes.size(); ++i)
         {
+            bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(),i) != ranks_to_keep.end());
+            if(!valid_rank)
+                continue;
+
             pt::ptree s;
+            tmp_local_sizes.push_back(_local_sizes.at(i));
             s.put("", std::to_string(_local_sizes.at(i)));
             local_sizes.push_back(std::make_pair("", s));
         }
         tree.add_child("local_sizes", local_sizes);
+
+        // If we are not running a specific set of ranks, then this will be the same as _faces.size();
+        _num_global_faces = std::accumulate(tmp_local_sizes.begin(), tmp_local_sizes.end(),
+                                       decltype(tmp_local_sizes)::value_type(0));
+        tree.put("num_global_faces", _num_global_faces);
 
         std::string filename_base = mesh_filename.substr(0, mesh_filename.length() - 3);
 
@@ -610,6 +621,10 @@ class preprocessingTriangulation : public triangulation
 
         for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
         {
+            bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(),mpirank) != ranks_to_keep.end());
+            if(!valid_rank)
+                continue;
+
             _comm_world._rank = mpirank;
 
             // reset everything
@@ -650,6 +665,12 @@ class preprocessingTriangulation : public triangulation
             partition(_comm_world._rank);
 
             _num_faces = _local_faces.size();
+
+            if( _num_faces != _local_sizes.at(mpirank))
+            {
+                LOG_ERROR<< "Read in #faces=" << _num_faces <<" faces but the partition defined #faces=" << _local_sizes.at(mpirank);
+                CHM_THROW_EXCEPTION(mesh_error, "Number of local faces does not match the expected number of faces defined in the partition");
+            }
 
             determine_local_boundary_faces();
 
@@ -789,6 +810,14 @@ class preprocessingTriangulation : public triangulation
 
             }
 
+            auto invalid_ghosts = std::remove_if(_ghost_faces.begin(), _ghost_faces.end(), [&](auto& itr)
+                           {
+                               bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(), itr->owner) != ranks_to_keep.end());
+                               return !valid_rank;
+                           });
+            _ghost_faces.erase(invalid_ghosts, _ghost_faces.end() );
+
+
             if (!_is_standalone)
             {
                 // now, augment the local faces with our ghosts, so that the ghosts are
@@ -815,26 +844,21 @@ class preprocessingTriangulation : public triangulation
 
             // the default vtu write param setup isn't going to do what we want so be explicit here
 #pragma omp parallel for
-            for(int t = 0; t < _ghost_faces.size(); t++)
-            {
-                auto f = _ghost_faces.at(t);
-                auto& gi = f->get_module_data<ghost_info>("partition_tool");
-                (*f)["ghost_type"] = gi.ghost_type;
-                (*f)["is_ghost"] = f->is_ghost;
-            }
-#pragma omp parallel for
-            for(int t = 0; t < _ghost_neighbors.size(); t++)
-            {
-                auto f = _ghost_neighbors.at(t);
-                (*f)["owner"] = _ghost_neighbor_owners[t];
-                LOG_DEBUG<<"mpirank="<<mpirank<<" ghost type="<<f->get_module_data<ghost_info>("partition_tool").ghost_type << " owner=" << this->_ghost_neighbor_owners[t];
-            }
-#pragma omp parallel for
             for(int t = 0; t < _local_faces.size(); t++)
             {
                 auto f = _local_faces.at(t);
                 (*f)["global_id"] = f->cell_global_id;
                 (*f)["local_id"] = f->cell_local_id;
+
+                if(f->is_ghost)
+                {
+                    auto& gi = f->get_module_data<ghost_info>("partition_tool");
+                    (*f)["ghost_type"] = gi.ghost_type;
+                    (*f)["is_ghost"] = f->is_ghost;
+                    (*f)["owner"] = f->owner;
+
+                }
+
             }
 
 
@@ -1148,14 +1172,16 @@ int main(int argc, char* argv[])
 
     std::string mesh_filename;
     size_t MPI_ranks = 2;
-    size_t max_ghost_distance = 100;
+    double max_ghost_distance = 100;
 
     int standalone_rank = -1;
 
     po::options_description desc("Allowed options.");
-    desc.add_options()("help", "This message")("mesh-file,m", po::value<std::string>(&mesh_filename), "Mesh file")(
-        "param-file,p", po::value<std::vector<std::string>>(),
-        "Parameter file")("max-ghost-distance,g", po::value<size_t>(&max_ghost_distance), "Parameter file")(
+    desc.add_options()("help", "This message")
+        ("mesh-file,m", po::value<std::string>(&mesh_filename), "Mesh file")(
+            "param-file,p", po::value<std::vector<std::string>>(),"Parameter file")(
+            "max-ghost-distance,g", po::value<double>(&max_ghost_distance), "Maximum ghost distance")(
+            "valid-ranks,v", po::value<std::vector<int>>(),"Only output these ranks")(
         "standalone,s", po::value<int>(&standalone_rank),
         "Write the paritioned mesh so-as to be loadable standalone. Advanced debugging feature. Arg is rank to do")(
         "mpi-ranks", po::value<size_t>(&MPI_ranks), "Number of MPI ranks to partition for");
@@ -1199,6 +1225,12 @@ int main(int argc, char* argv[])
         LOG_WARNING << "Using default max ghost distance of 100 m";
     }
 
+    std::vector<int> valid_ranks;
+    for (auto& itr : vm["valid-ranks"].as<std::vector<int>>())
+    {
+        valid_ranks.push_back(itr);
+    }
+
     std::vector<std::string> param_filenames;
     for (auto& itr : vm["param-file"].as<std::vector<std::string>>())
     {
@@ -1223,7 +1255,7 @@ int main(int argc, char* argv[])
         {
             preprocessingTriangulation* tri = new preprocessingTriangulation();
             tri->from_file_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
-                                         standalone_rank);
+                                         standalone_rank, valid_ranks);
         }
 
         // We have input as json and asked for mpi-ranks, so rerun the tool
@@ -1236,7 +1268,7 @@ int main(int argc, char* argv[])
                                                       "_param.h5"};
 
             preprocessingTriangulation* tri = new preprocessingTriangulation();
-            tri->from_file_and_partition(h5_mesh_name, h5_param_name, MPI_ranks, max_ghost_distance, standalone_rank);
+            tri->from_file_and_partition(h5_mesh_name, h5_param_name, MPI_ranks, max_ghost_distance, standalone_rank, valid_ranks);
 
         }
     }
