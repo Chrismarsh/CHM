@@ -619,6 +619,10 @@ class preprocessingTriangulation : public triangulation
             f->init_time_series(vtu_outputs);
         }
 
+        size_t proxy_global_id = 0;
+        std::map<size_t,size_t> _global_proxy_to_global_index_map;
+        std::map<size_t,size_t> _global_id_to_proxy_index_map;
+
         for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
         {
             bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(),mpirank) != ranks_to_keep.end());
@@ -718,6 +722,19 @@ class preprocessingTriangulation : public triangulation
                     gi.ghost_type = ghost_info::GHOST_TYPE::DIST;
             }
 
+
+            // Determine if there are any ghost faces owned by an MPIrank that we are not outputting. Default case
+            // is that there will be no invalid ghosts unless we use the -v option
+            auto invalid_ghosts = std::remove_if(
+                _ghost_faces.begin(), _ghost_faces.end(),
+                [&](auto& itr)
+                {
+                    bool valid_rank =
+                        (std::find(ranks_to_keep.begin(), ranks_to_keep.end(), itr->owner) != ranks_to_keep.end());
+                    return !valid_rank;
+                });
+            _ghost_faces.erase(invalid_ghosts, _ghost_faces.end());
+
             // load params
 
             // Space for extracting the parameter info
@@ -810,12 +827,8 @@ class preprocessingTriangulation : public triangulation
 
             }
 
-            auto invalid_ghosts = std::remove_if(_ghost_faces.begin(), _ghost_faces.end(), [&](auto& itr)
-                           {
-                               bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(), itr->owner) != ranks_to_keep.end());
-                               return !valid_rank;
-                           });
-            _ghost_faces.erase(invalid_ghosts, _ghost_faces.end() );
+
+
 
 
             if (!_is_standalone)
@@ -826,15 +839,30 @@ class preprocessingTriangulation : public triangulation
                 _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end());
             }
 
+            for(auto& f: _local_faces)
+            {
+                // If we haevn't seen this ID, add it to our list and inc our global id counter
+                if(_global_id_to_proxy_index_map.find( f->cell_global_id) ==
+                    _global_id_to_proxy_index_map.end())
+                {
+                    _global_id_to_proxy_index_map[f->cell_global_id] = proxy_global_id;
+                    _global_proxy_to_global_index_map[ proxy_global_id ] = f->cell_global_id; // save the old global id
+                    ++proxy_global_id;
+                }
+
+                // set out global ID to our proxy id
+                f->cell_global_id = _global_id_to_proxy_index_map[f->cell_global_id];
+            }
+
             // ensure the id order is monotonic increasing
             auto perm = sort_permutation(_local_faces, [](mesh_elem const& fa, mesh_elem const& fb)
                                          { return fa->cell_global_id < fb->cell_global_id; });
 
-            apply_permutation_in_place(_local_faces, perm);
+            _local_faces = apply_permutation_transform(_local_faces, perm);
 
             for (auto const& name : pars->names)
             {
-                apply_permutation_in_place(_param_data[name], perm);
+                _param_data[name] = apply_permutation_transform(_param_data[name], perm);
             }
 
             auto fname =
@@ -861,8 +889,13 @@ class preprocessingTriangulation : public triangulation
 
             }
 
-
             write_vtu("rank."+std::to_string(mpirank)+".vtu");
+
+            //undo the global id change
+            for(auto& f: _local_faces)
+            {
+                f->cell_global_id = _global_proxy_to_global_index_map[f->cell_global_id];
+            }
 
 
             pt::ptree m;
@@ -1226,10 +1259,20 @@ int main(int argc, char* argv[])
     }
 
     std::vector<int> valid_ranks;
-    for (auto& itr : vm["valid-ranks"].as<std::vector<int>>())
+    if(vm.count("valid-ranks"))
     {
-        valid_ranks.push_back(itr);
+        for (auto& itr : vm["valid-ranks"].as<std::vector<int>>())
+        {
+            valid_ranks.push_back(itr);
+        }
     }
+
+    if(valid_ranks.empty())
+    {
+        valid_ranks.resize(MPI_ranks);
+        std::iota(valid_ranks.begin(), valid_ranks.end(), 0);
+    }
+
 
     std::vector<std::string> param_filenames;
     for (auto& itr : vm["param-file"].as<std::vector<std::string>>())

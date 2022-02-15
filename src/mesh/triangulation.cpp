@@ -848,6 +848,11 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
         }
 
+        // if we are from a partition we are loading _local_sizes from the partition file not from the h5
+        // they're almost always identical /unless/ we have created a subset debugging partition file (e.g., -v 1 -v 2)
+        // in this case, the partition file will have the "real" number of partitions whereas this h5 is
+        // before we subset it
+        if(!_mesh_is_from_partition)
         {
             H5::DataSet dataset = file.openDataSet("/mesh/local_sizes");
             H5::DataSpace dataspace = dataset.getSpace();
@@ -1485,26 +1490,33 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
         _num_faces_in_partition.at(i) = _local_sizes.at(i);
     }
 
-    // each processor only knows its own start and end indices
-    size_t face_start_idx = 0;
-    size_t face_end_idx = _num_faces_in_partition[0] - 1;
-    for (int i = 1; i <= _comm_world.rank(); ++i)
+    if( _local_faces.size() != _num_faces_in_partition.at(_comm_world.rank()) )
     {
-        face_start_idx += _num_faces_in_partition[i - 1];
-        face_end_idx += _num_faces_in_partition[i];
+        LOG_ERROR <<"Expected to see #faces= " << _num_faces_in_partition.at(_comm_world.rank()) << "\n"
+            << "but got #faces="<<_local_faces.size();
+        CHM_THROW_EXCEPTION(mesh_error, "local_size and partition size mismatch" );
     }
 
-    if (face_start_idx != _local_faces.front()->cell_global_id ||
-        face_end_idx != _local_faces.back()->cell_global_id)
-    {
-        LOG_ERROR << "The computed and read start/end index don't match. Computed:\n"
-                  << "\tface_start_idx = " << face_start_idx << "\n"
-                  << "\tface_end_idx = " << face_end_idx << "\n"
-                  << "Read:\n"
-                  << "\t_local_faces[0] = " << _local_faces.front()->cell_global_id << "\n"
-                  << "\t_local_faces[-1] = " << _local_faces.back()->cell_global_id;
-        CHM_THROW_EXCEPTION(mesh_error, "Computed and read global indexs don't match");
-    }
+//    // each processor only knows its own start and end indices
+//    size_t face_start_idx = 0;
+//    size_t face_end_idx = _num_faces_in_partition[0] - 1;
+//    for (int i = 1; i <= _comm_world.rank(); ++i)
+//    {
+//        face_start_idx += _num_faces_in_partition[i - 1];
+//        face_end_idx += _num_faces_in_partition[i];
+//    }
+//
+//    if (face_start_idx != _local_faces.front()->cell_global_id ||
+//        face_end_idx != _local_faces.back()->cell_global_id)
+//    {
+//        LOG_ERROR << "The computed and read start/end index don't match. Computed:\n"
+//                  << "\tface_start_idx = " << face_start_idx << "\n"
+//                  << "\tface_end_idx = " << face_end_idx << "\n"
+//                  << "Read:\n"
+//                  << "\t_local_faces[0] = " << _local_faces.front()->cell_global_id << "\n"
+//                  << "\t_local_faces[-1] = " << _local_faces.back()->cell_global_id;
+//        CHM_THROW_EXCEPTION(mesh_error, "Computed and read global indexs don't match");
+//    }
 
     // Store in the public members
     global_cell_start_idx = _local_faces.front()->cell_global_id;

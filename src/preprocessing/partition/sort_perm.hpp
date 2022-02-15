@@ -34,8 +34,8 @@ std::vector<std::size_t> sort_permutation(
 {
     std::vector<std::size_t> p(vec.size());
     std::iota(p.begin(), p.end(), 0);
-    tbb::parallel_sort(p.begin(), p.end(),
-              [&](std::size_t i, std::size_t j){ return compare(vec[i], vec[j]); });
+    std::sort(p.begin(), p.end(),
+              [&](std::size_t i, std::size_t j){ return compare(vec.at(i), vec.at(j)); });
     return p;
 }
 
@@ -47,19 +47,45 @@ void apply_permutation_in_place(
     std::vector<bool> done(vec.size());
     for (std::size_t i = 0; i < vec.size(); ++i)
     {
-        if (done[i])
+        if (done.at(i))
         {
             continue;
         }
-        done[i] = true;
+        done.at(i) = true;
         std::size_t prev_j = i;
-        std::size_t j = p[i];
+        std::size_t j = p.at(i);
         while (i != j)
         {
-            std::swap(vec[prev_j], vec[j]);
-            done[j] = true;
+            std::swap(vec.at(prev_j), vec.at(j));
+            done.at(j) = true;
             prev_j = j;
-            j = p[j];
+            j = p.at(j);
         }
     }
+}
+
+template <typename T>
+std::vector<T> apply_permutation_transform(
+    std::vector<T>& vec,
+    const std::vector<std::size_t>& p)
+{
+    std::vector<T> sorted_vec(vec.size());
+    std::transform(p.begin(), p.end(), sorted_vec.begin(),
+                   [&](std::size_t i){ return vec[i]; });
+
+    return sorted_vec;
+}
+
+template <typename T>
+void apply_permutation_in_place_naive(
+    std::vector<T>& vec,
+    const std::vector<std::size_t>& p)
+{
+    assert(vec.size() == p.size());
+    std::vector<T> res(vec.size());
+    for (std::size_t i = 0; i < vec.size(); ++i)
+    {
+        res.at(p.at(i)) = vec.at(i);
+    }
+    std::swap(vec,res);
 }
