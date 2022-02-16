@@ -641,11 +641,11 @@ public:
      * Sets _boundary_faces
     */
   void determine_local_boundary_faces();
-    /**
+   /**
     * Figures out which faces are ghosted nearest neighbors of
     * This is useful for the communication needed in nearest-neighbor discretizations of spatial operators.
     */
-  void determine_process_ghost_faces_nearest_neighbors();
+  virtual void determine_process_ghost_faces_nearest_neighbors();
     /**
     * Set up the comm patterns for communicating nearest neighbor mesh data
     */
