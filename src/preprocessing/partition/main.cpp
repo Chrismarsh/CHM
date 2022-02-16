@@ -1023,7 +1023,7 @@ class preprocessingTriangulation : public triangulation
     {
 
         // update our version
-        _version.from_string("2.0.0");
+        _version.from_string("3.0.0");
 
         std::string filename = filename_base + "_mesh.h5";
 

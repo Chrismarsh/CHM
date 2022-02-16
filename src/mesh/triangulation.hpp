@@ -992,7 +992,7 @@ protected:
         }
         bool mesh_ver_meets_min_partition()
         {
-            return MAJOR >=2 && MINOR >=0;
+            return MAJOR >=3 && MINOR >=0;
         }
 
     } _version;

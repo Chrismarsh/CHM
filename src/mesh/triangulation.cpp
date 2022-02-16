@@ -841,7 +841,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
     {
 
         {
-            // Read the proj4
+            // Read the parition method
             H5::DataSpace dataspace(1, &partition_type_dims);
             H5::Attribute attribute = file.openAttribute("/mesh/partition_method");
             attribute.read(partition_type_t, _partition_method);
