@@ -273,7 +273,8 @@ class preprocessingTriangulation : public triangulation
                 }
                 _version.from_string(v);
 
-                if (!_version.mesh_ver_meets_min_partition())
+                // check it like this as the triangulation is more interested in knowing what it can /load/
+                if (_version.MAJOR < 2 )
                     CHM_THROW_EXCEPTION(mesh_error, "h5 mesh doesn't meet criteria to partition -- version to too old "
                                                     "or was not permuted with -t metis?");
             }
