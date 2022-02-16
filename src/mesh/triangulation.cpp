@@ -881,6 +881,16 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         dataset.read(_global_IDs.data(), PredType::NATIVE_INT);
     }
 
+    std::vector<int> owner; //what MPIrank owns each triangle,
+    {
+        H5::DataSet dataset = file.openDataSet("/mesh/owner");
+        H5::DataSpace dataspace = dataset.getSpace();
+        hsize_t nelem;
+        int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+        owner.resize(nelem);
+        dataset.read(owner.data(), PredType::NATIVE_INT);
+    }
+
     {
         // Open the vertices dataset
         DataSet dataset = file.openDataSet("/mesh/vertex");
@@ -939,6 +949,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             auto face = this->create_face(vert1, vert2, vert3);
             // get the global ID from file, so-as to support either pre partitioned or non partitioned meshes
             face->cell_global_id = _global_IDs.at(i);
+            face->owner = owner.at(i);
 
             // this local id will include local ids for ghosts. However, that will need to be reset once partition
             // splits out the ghosts
@@ -1786,11 +1797,12 @@ void triangulation::determine_ghost_owners()
     {
         // index type needs to match type of elements of _num_faces_in_partition
         int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
-        _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
-                                                                    _num_faces_in_partition);
+        _ghost_neighbor_owners[i] = _ghost_neighbors.at(i)->owner;
+//        _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
+//                                                                    _num_faces_in_partition);
 
         // local faces are set to current mpirank, so set the ghosts to be ID"d who owns them
-        _ghost_neighbors[i]->owner = _ghost_neighbor_owners[i];
+//        _ghost_neighbors[i]->owner = _ghost_neighbor_owners[i];
 
         // on first it, no value of prev_owner exists
         if(i==0) prev_owner = _ghost_neighbor_owners[i];
