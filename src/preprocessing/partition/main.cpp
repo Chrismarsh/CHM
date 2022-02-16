@@ -928,8 +928,8 @@ class preprocessingTriangulation : public triangulation
     std::unique_ptr<MeshParameters> read_h5_params(const std::vector<std::string>& param_filenames)
     {
         // Space for extracting the parameter info
-        std::__1::unique_ptr<MeshParameters> pars(new MeshParameters);
-        for (auto param_filename : param_filenames)
+        std::unique_ptr<MeshParameters> pars(new MeshParameters);
+        for (auto const& param_filename : param_filenames)
         {
             try
             {
