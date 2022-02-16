@@ -34,6 +34,8 @@ Options:
    - ``--max-ghost-distance``, ``-g``
    - ``--standalone``, ``-s``
    - ``--mpi-ranks``
+   - ``--valid-ranks``, ``-v``
+   - ``--write-vtu``
 
 
 ``--help``
@@ -91,6 +93,21 @@ Number of MPI ranks to split the mesh for. Ranks must be >1.
 
    --mpi-ranks <n ranks>
    --mpi-ranks 32
+
+``--valid-ranks``
+******************
+Only writes a subset of the partition out. This option will ensure the global IDs and MPI rank owners have been rewritten
+to support loading this subset into CHM. This is useful if a specific set of ranks is causing problems that should be
+debugged in isolation.
+
+For example, suppose there is a 448 rank partition that has a problematic interaction on ranks 199 and 208. Using
+``./partition -m my.partitioned.mesh.h5 -p params.h5 --mpi-ranks 448 -v 199 -v 208``
+will produce an output of only those two ranks, using the domain partition for the 448 ranks.
+
+
+``--write-vtu``
+****************
+Output each partition set as a separate vtu file for debugging.
 
 Output
 ++++++++
