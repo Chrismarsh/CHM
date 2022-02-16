@@ -159,6 +159,47 @@ class preprocessingTriangulation : public triangulation
         writer->Write();
     }
 
+    // sets the partition owner on every face
+    // we don't do a valid rank check here as every triangle will need it set so ghosts are correctly ID'd
+    void set_face_partition_owner(int mpi_rank)
+    { // Set up so that all processors know how 'big' all other processors are
+        if (_comm_world.size() == 1)
+        {
+            _num_faces_in_partition.resize(1);
+            _num_faces_in_partition.at(0) = _num_global_faces;
+        }
+        else
+        {
+            _num_faces_in_partition.resize(_comm_world.size());
+            for (size_t i = 0; i < _comm_world.size(); ++i)
+            {
+                _num_faces_in_partition.at(i) = _local_sizes.at(i);
+            }
+        }
+        // each processor only knows its own start and end indices
+        size_t face_start_idx = 0;
+        size_t face_end_idx = _num_faces_in_partition.at(0) - 1;
+        for (int i = 1; i <= _comm_world.rank(); ++i)
+        {
+            face_start_idx += _num_faces_in_partition.at(i - 1);
+            face_end_idx += _num_faces_in_partition.at(i);
+        }
+
+#pragma omp parallel for
+        for (size_t local_ind = 0; local_ind < _num_faces_in_partition.at(_comm_world.rank()); ++local_ind)
+        {
+            size_t offset_idx = face_start_idx + local_ind;
+            _faces.at(_global_IDs.at(offset_idx))->owner = mpi_rank;
+        }
+
+    }
+
+    /**
+     * This partitions the domain for the given rank. Differs from `partition_mesh` in triangulation by:
+     * - don't set the face->global_id as that is already set by set_face_parition_owner
+     * - don't set the global_IDs vector as that is read from the input h5 files
+     * @param mpi_rank
+     */
     void partition(int mpi_rank)
     { // Set up so that all processors know how 'big' all other processors are
         if (_comm_world.size() == 1)
@@ -196,7 +237,6 @@ class preprocessingTriangulation : public triangulation
             _global_to_locally_owned_index_map[_global_IDs.at(offset_idx)] = local_ind;
 
             _faces.at(_global_IDs.at(offset_idx))->is_ghost = false;
-            _faces.at(_global_IDs.at(offset_idx))->owner = mpi_rank;
             _faces.at(_global_IDs.at(offset_idx))->cell_local_id = local_ind;
             _local_faces.at(local_ind) = _faces.at(_global_IDs.at(offset_idx));
         }
@@ -418,6 +458,10 @@ class preprocessingTriangulation : public triangulation
         }
     }
 
+    /**
+     * This differences from triangulation::determine_process_ghost_faces_nearest_neighbors by including a modification
+     * to set the neigh ghost type
+     */
     void determine_process_ghost_faces_nearest_neighbors()
     {
         // NOTE that this algorithm is not implemented for multithread
@@ -467,7 +511,8 @@ class preprocessingTriangulation : public triangulation
     }
 
     void from_file_and_partition(const std::string& mesh_filename, const std::vector<std::string>& param_filenames,
-                                 size_t MPI_ranks, double max_ghost_distance, int standalone_rank, std::vector<int> ranks_to_keep)
+                                 size_t MPI_ranks, double max_ghost_distance, int standalone_rank,
+                                 std::vector<int> ranks_to_keep, bool output_vtu)
     {
 
         _comm_world._size = MPI_ranks;
@@ -604,6 +649,8 @@ class preprocessingTriangulation : public triangulation
 
         int start_rank = 0;
         int end_rank = MPI_ranks;
+
+        // if we output a standalone mesh only process that single mpirank
         if (standalone_rank > -1)
         {
             start_rank = standalone_rank;
@@ -611,18 +658,61 @@ class preprocessingTriangulation : public triangulation
             _is_standalone = true;
         }
 
-        std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type", "global_id","local_id"}; //"ghost_type","owner"};
-#pragma omp parallel for
-        for (size_t i = 0; i < _faces.size(); ++i)
+        if(output_vtu)
         {
-            auto f = _faces.at(i);
-            f->init_time_series(vtu_outputs);
+            // init the datastructs to hold information for outputting to VTU
+            std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type", "global_id","local_id"};
+#pragma omp parallel for
+            for (size_t i = 0; i < _faces.size(); ++i)
+            {
+                auto f = _faces.at(i);
+                f->init_time_series(vtu_outputs);
+            }
         }
 
+
+        // if we are only outputting a subset of the domain, we need to rewrite the owner to account for the number
+        // of mpi ranks that will participate in the subset. E.g., if we have 500 ranks but only output 3:
+        // -v 400 -v 100 -v 405
+        // then 100 will be mapped to rank 0
+        // 400 mapped to rank 1
+        // 405 mapped to rank 2
+        // for a total of 3 ranks for the 3 subsets
         size_t proxy_global_id = 0;
         std::map<size_t,size_t> _global_proxy_to_global_index_map;
         std::map<size_t,size_t> _global_id_to_proxy_index_map;
 
+        bool is_subset = (MPI_ranks != ranks_to_keep.size());
+        if(is_subset)
+            LOG_WARNING << "Processing will produce only subset output because tool was invoked with -v flag(s)";
+
+        // set all our owners first
+        LOG_DEBUG << "Determining partition owners";
+
+        std::map<size_t,size_t> _mpirank_proxy_to_mpirank_map;
+        std::map<size_t,size_t> _mpirank_to_proxy_mpirank_map;
+        int proxy_mpirank = start_rank;
+        for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
+        {
+            _comm_world._rank = mpirank;
+            set_face_partition_owner(mpirank);
+
+            bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(),mpirank) != ranks_to_keep.end());
+            if(valid_rank)
+            {
+                _mpirank_proxy_to_mpirank_map[proxy_mpirank] = mpirank;
+                _mpirank_to_proxy_mpirank_map[mpirank] = proxy_mpirank;
+
+                LOG_DEBUG<< "MPI rank = " << mpirank << " will be remapped to  " << _mpirank_to_proxy_mpirank_map[mpirank];
+
+                proxy_mpirank++;
+            }
+        }
+
+
+
+
+        // iterate over all the ranks but since we might be only doing a subset, we need to maintain a proxy rank
         for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
         {
             bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(),mpirank) != ranks_to_keep.end());
@@ -659,11 +749,15 @@ class preprocessingTriangulation : public triangulation
                 // type when determined
                 gi.ghost_type = ghost_info::GHOST_TYPE::NONE;
 
-                (*f)["owner"] = -9999;
-                (*f)["is_ghost"] = -9999;
-                (*f)["ghost_type"]=-9999;
-                (*f)["global_id"]=-9999;
-                (*f)["local_id"]=-9999;
+                if(output_vtu)
+                {
+                    (*f)["owner"] = -9999;
+                    (*f)["is_ghost"] = -9999;
+                    (*f)["ghost_type"]=-9999;
+                    (*f)["global_id"]=-9999;
+                    (*f)["local_id"]=-9999;
+                }
+
             }
 
             partition(_comm_world._rank);
@@ -676,20 +770,22 @@ class preprocessingTriangulation : public triangulation
                 CHM_THROW_EXCEPTION(mesh_error, "Number of local faces does not match the expected number of faces defined in the partition");
             }
 
+            // determine what faces in our partition are the boundary faces
             determine_local_boundary_faces();
 
-            // figure out which neighbours to our boundary faces are ghosts and store them
+            // figure out which neighbours of the  boundary faces are ghosts -- Type I ghosts
             determine_process_ghost_faces_nearest_neighbors();
 
             // TODO: Need to auto-determine how far to look based on module setups
             // when this is called, it will output
             // MPI Process 0 has XXX ghosted faces.
             // regardless of what MPI rank we are here as it is using the super's _commworld for the output /only/
+
+            // Find type II ghosts
             determine_process_ghost_faces_by_distance(max_ghost_distance);
 
             // _ghost_faces as set by determine_process_ghost_faces_by_distance is missing the nearest neighbours
             // and so add them in here
-
             _ghost_faces.insert(std::end(_ghost_faces),
                                 std::begin(_ghost_neighbors),std::end(_ghost_neighbors));
 
@@ -710,7 +806,7 @@ class preprocessingTriangulation : public triangulation
             determine_ghost_owners();
 
 
-// we need to flag all the ghosts that aren't neigh as radius ghosts
+            // flag all the ghosts that aren't Type I (neigh) as Typde II distance ghosts
 #pragma omp parallel for
             for (size_t i = 0; i < _ghost_faces.size(); i++)
             {
@@ -723,7 +819,7 @@ class preprocessingTriangulation : public triangulation
             }
 
 
-            // Determine if there are any ghost faces owned by an MPIrank that we are not outputting. Default case
+            // Determine if there are any ghost faces owned by an MPI rank that we are not outputting. Default case
             // is that there will be no invalid ghosts unless we use the -v option
             auto invalid_ghosts = std::remove_if(
                 _ghost_faces.begin(), _ghost_faces.end(),
@@ -736,100 +832,7 @@ class preprocessingTriangulation : public triangulation
             _ghost_faces.erase(invalid_ghosts, _ghost_faces.end());
 
             // load params
-
-            // Space for extracting the parameter info
-            std::unique_ptr<MeshParameters> pars(new MeshParameters);
-            for (auto param_filename : param_filenames)
-            {
-                try
-                {
-                    // Turn off the auto-printing when failure occurs so that we can
-                    // handle the errors appropriately
-                    Exception::dontPrint();
-
-                    // Open an existing file and dataset.
-                    H5File file(param_filename, H5F_ACC_RDONLY);
-
-                    // Extract all of the parameter info (names) from the file
-                    Group group = file.openGroup("parameters");
-                    herr_t idx =
-                        H5Literate(group.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, (void*)pars.get());
-
-                    for (auto const& name : pars->names)
-                    {
-                        _parameters.insert(name);
-                    }
-
-                    for (auto const& name : pars->names)
-                    {
-                        // hyperslab size that is as large as just the local meshes to read the block
-                        hsize_t local_size = static_cast<hsize_t>(_local_faces.size());
-
-                        if (!_is_standalone)
-                        {
-                            // but we need to ensure we have enough room for local + ghosts
-                            _param_data[name].resize(_local_faces.size() + _ghost_faces.size());
-                        }
-                        else
-                        {
-                            _param_data[name].resize(_local_faces.size());
-                        }
-                        hsize_t offset = static_cast<hsize_t>(_local_faces[0]->cell_global_id);
-
-                        DataSet dataset = group.openDataSet(name);
-                        DataSpace dataspace = dataset.getSpace();
-
-                        hsize_t nelem;
-                        int ndims = dataspace.getSimpleExtentDims(&nelem);
-
-                        dataspace.selectHyperslab(H5S_SELECT_SET, &local_size, &offset);
-
-                        DataSpace memspace(1, &nelem);
-                        hsize_t zero = 0;
-                        memspace.selectHyperslab(H5S_SELECT_SET, &local_size, &zero);
-
-                        dataset.read(_param_data[name].data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
-
-                        if (!_is_standalone)
-                        {
-                            // Read parameters for each ghost face individually
-                            hsize_t one = 1;
-                            // Do NOT do this loop in parallel (internal state of HDF5)
-                            for (size_t i = 0; i < _ghost_faces.size(); i++)
-                            {
-                                auto face = _ghost_faces.at(i);
-                                hsize_t global_id = face->cell_global_id;
-
-                                // Position and size in file
-                                dataspace.selectHyperslab(H5S_SELECT_SET, &one, &global_id);
-                                // Position and size in variable
-                                memspace.selectHyperslab(H5S_SELECT_SET, &one, &zero);
-
-                                double value;
-                                dataset.read(&value, PredType::NATIVE_DOUBLE, memspace, dataspace);
-
-                                _param_data[name][_local_faces.size() + i] = value;
-                            }
-                        }
-                    }
-                }
-                // catch failure caused by the H5File operations
-                catch (FileIException& error)
-                {
-                    error.printErrorStack();
-                }
-                // catch failure caused by the DataSet operations
-                catch (DataSetIException& error)
-                {
-                    error.printErrorStack();
-                }
-
-
-            }
-
-
-
-
+            std::unique_ptr<MeshParameters> pars = read_h5_params(param_filenames);
 
             if (!_is_standalone)
             {
@@ -839,19 +842,26 @@ class preprocessingTriangulation : public triangulation
                 _local_faces.insert(_local_faces.end(), _ghost_faces.begin(), _ghost_faces.end());
             }
 
-            for(auto& f: _local_faces)
+            // if we are outputting a subset, shim in all the proxy ranks and global IDs here
+            if(is_subset)
             {
-                // If we haevn't seen this ID, add it to our list and inc our global id counter
-                if(_global_id_to_proxy_index_map.find( f->cell_global_id) ==
-                    _global_id_to_proxy_index_map.end())
+                for(auto& f: _local_faces)
                 {
-                    _global_id_to_proxy_index_map[f->cell_global_id] = proxy_global_id;
-                    _global_proxy_to_global_index_map[ proxy_global_id ] = f->cell_global_id; // save the old global id
-                    ++proxy_global_id;
+                    // If we haevn't seen this ID, add it to our list and inc our global id counter
+                    if(_global_id_to_proxy_index_map.find( f->cell_global_id) ==
+                        _global_id_to_proxy_index_map.end())
+                    {
+                        _global_id_to_proxy_index_map[f->cell_global_id] = proxy_global_id;
+                        _global_proxy_to_global_index_map[ proxy_global_id ] = f->cell_global_id; // save the old global id
+                        ++proxy_global_id;
+                    }
+
+                    // set out global ID to our proxy id
+                    f->cell_global_id = _global_id_to_proxy_index_map[f->cell_global_id];
+
+                    f->owner = _mpirank_to_proxy_mpirank_map[f->owner];
                 }
 
-                // set out global ID to our proxy id
-                f->cell_global_id = _global_id_to_proxy_index_map[f->cell_global_id];
             }
 
             // ensure the id order is monotonic increasing
@@ -870,33 +880,36 @@ class preprocessingTriangulation : public triangulation
 
             to_hdf5(partition_dir, fname);
 
-            // the default vtu write param setup isn't going to do what we want so be explicit here
-#pragma omp parallel for
-            for(int t = 0; t < _local_faces.size(); t++)
+            if(output_vtu)
             {
-                auto f = _local_faces.at(t);
-                (*f)["global_id"] = f->cell_global_id;
-                (*f)["local_id"] = f->cell_local_id;
-
-                if(f->is_ghost)
+                // the default vtu write param setup isn't going to do what we want so be explicit here
+#pragma omp parallel for
+                for (int t = 0; t < _local_faces.size(); t++)
                 {
-                    auto& gi = f->get_module_data<ghost_info>("partition_tool");
-                    (*f)["ghost_type"] = gi.ghost_type;
-                    (*f)["is_ghost"] = f->is_ghost;
+                    auto f = _local_faces.at(t);
+                    (*f)["global_id"] = f->cell_global_id;
+                    (*f)["local_id"] = f->cell_local_id;
                     (*f)["owner"] = f->owner;
-
+                    if (f->is_ghost)
+                    {
+                        auto& gi = f->get_module_data<ghost_info>("partition_tool");
+                        (*f)["ghost_type"] = gi.ghost_type;
+                        (*f)["is_ghost"] = f->is_ghost;
+                    }
                 }
 
+                write_vtu("rank." + std::to_string(mpirank) + ".vtu");
             }
 
-            write_vtu("rank."+std::to_string(mpirank)+".vtu");
-
-            //undo the global id change
-            for(auto& f: _local_faces)
+            if(is_subset)
             {
-                f->cell_global_id = _global_proxy_to_global_index_map[f->cell_global_id];
+                //undo the proxy changes
+                for(auto& f: _local_faces)
+                {
+                    f->cell_global_id = _global_proxy_to_global_index_map[f->cell_global_id];
+                    f->owner = _mpirank_proxy_to_mpirank_map[f->owner];
+                }
             }
-
 
             pt::ptree m;
             m.put("", (partition_dir / (fname + "_mesh.h5")).string());
@@ -910,6 +923,100 @@ class preprocessingTriangulation : public triangulation
         tree.add_child("parameters", params);
 
         pt::write_json(filename_base + ".np" + std::to_string(_comm_world.size()) + ".partition", tree);
+    }
+
+    std::unique_ptr<MeshParameters> read_h5_params(const std::vector<std::string>& param_filenames)
+    {
+        // Space for extracting the parameter info
+        std::__1::unique_ptr<MeshParameters> pars(new MeshParameters);
+        for (auto param_filename : param_filenames)
+        {
+            try
+            {
+                // Turn off the auto-printing when failure occurs so that we can
+                // handle the errors appropriately
+                Exception::dontPrint();
+
+                // Open an existing file and dataset.
+                H5File file(param_filename, H5F_ACC_RDONLY);
+
+                // Extract all of the parameter info (names) from the file
+                Group group = file.openGroup("parameters");
+                herr_t idx =
+                    H5Literate(group.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, group_info, (void*)pars.get());
+
+                for (auto const& name : pars->names)
+                {
+                    _parameters.insert(name);
+                }
+
+                for (auto const& name : pars->names)
+                {
+                    // hyperslab size that is as large as just the local meshes to read the block
+                    hsize_t local_size = static_cast<hsize_t>(_local_faces.size());
+
+                    if (!_is_standalone)
+                    {
+                        // but we need to ensure we have enough room for local + ghosts
+                        _param_data[name].resize(_local_faces.size() + _ghost_faces.size());
+                    }
+                    else
+                    {
+                        _param_data[name].resize(_local_faces.size());
+                    }
+                    hsize_t offset = static_cast<hsize_t>(_local_faces[0]->cell_global_id);
+
+                    DataSet dataset = group.openDataSet(name);
+                    DataSpace dataspace = dataset.getSpace();
+
+                    hsize_t nelem;
+                    int ndims = dataspace.getSimpleExtentDims(&nelem);
+
+                    dataspace.selectHyperslab(H5S_SELECT_SET, &local_size, &offset);
+
+                    DataSpace memspace(1, &nelem);
+                    hsize_t zero = 0;
+                    memspace.selectHyperslab(H5S_SELECT_SET, &local_size, &zero);
+
+                    dataset.read(_param_data[name].data(), PredType::NATIVE_DOUBLE, memspace, dataspace);
+
+                    if (!_is_standalone)
+                    {
+                        // Read parameters for each ghost face individually
+                        hsize_t one = 1;
+                        // Do NOT do this loop in parallel (internal state of HDF5)
+                        for (size_t i = 0; i < _ghost_faces.size(); i++)
+                        {
+                            auto face = _ghost_faces.at(i);
+                            hsize_t global_id = face->cell_global_id;
+
+                            // Position and size in file
+                            dataspace.selectHyperslab(H5S_SELECT_SET, &one, &global_id);
+                            // Position and size in variable
+                            memspace.selectHyperslab(H5S_SELECT_SET, &one, &zero);
+
+                            double value;
+                            dataset.read(&value, PredType::NATIVE_DOUBLE, memspace, dataspace);
+
+                            _param_data[name][_local_faces.size() + i] = value;
+                        }
+                    }
+                }
+            }
+            // catch failure caused by the H5File operations
+            catch (FileIException& error)
+            {
+                error.printErrorStack();
+            }
+            // catch failure caused by the DataSet operations
+            catch (DataSetIException& error)
+            {
+                error.printErrorStack();
+            }
+
+
+        }
+            return pars;
     }
 
     void to_hdf5(boost::filesystem::path partition_dir, std::string filename_base)
@@ -943,6 +1050,20 @@ class preprocessingTriangulation : public triangulation
 
                 H5::DataSet dataset = file.createDataSet("/mesh/local_sizes", PredType::STD_I32BE, dataspace);
                 dataset.write(_local_sizes.data(), PredType::NATIVE_INT);
+            }
+
+            { // global elem id
+                LOG_DEBUG << "Writting owners";
+                H5::DataSpace dataspace(1, &ntri);
+                auto owners = std::vector<int>(ntri);
+
+                //                #pragma omp parallel for
+                for (size_t i = 0; i < ntri; ++i)
+                {
+                    owners.at(i) = _local_faces.at(i)->owner;
+                }
+                H5::DataSet dataset = file.createDataSet("/mesh/owner", PredType::STD_I32BE, dataspace);
+                dataset.write(owners.data(), PredType::NATIVE_INT);
             }
 
             { // global elem id
@@ -1053,14 +1174,14 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &ntri);
                 std::vector<int> is_ghost(ntri);
 #pragma omp parallel for
-                for (size_t i = 0; i < ntri; ++i)
+                for (size_t ii = 0; ii < ntri; ++ii)
                 {
                     // we need to save the following status for ghost faces:
                     // 0 = Not a ghost
                     // 1 = Neighbour ghost
                     // 2 = Radius search ghost
-                    auto& gi = _local_faces[i]->get_module_data<ghost_info>("partition_tool");
-                    is_ghost[i] = gi.ghost_type;
+                    auto& gi = _local_faces[ii]->get_module_data<ghost_info>("partition_tool");
+                    is_ghost[ii] = gi.ghost_type;
                 }
                 H5::DataSet dataset = file.createDataSet("/mesh/ghost_type", PredType::STD_I32BE, dataspace);
                 dataset.write(is_ghost.data(), PredType::NATIVE_INT);
@@ -1110,13 +1231,13 @@ class preprocessingTriangulation : public triangulation
         } // end of try block
 
         // catch failure caused by the H5File operations
-        catch (FileIException& error)
+        catch (const FileIException& error)
         {
             error.printErrorStack();
         }
 
         // catch failure caused by the DataSet operations
-        catch (DataSetIException& error)
+        catch (const DataSetIException& error)
         {
             error.printErrorStack();
         }
@@ -1201,13 +1322,14 @@ class preprocessingTriangulation : public triangulation
 
 int main(int argc, char* argv[])
 {
-    BOOST_LOG_FUNCTION();
+    BOOST_LOG_FUNCTION()
 
     std::string mesh_filename;
     size_t MPI_ranks = 2;
     double max_ghost_distance = 100;
 
     int standalone_rank = -1;
+    bool output_vtu=false;
 
     po::options_description desc("Allowed options.");
     desc.add_options()("help", "This message")
@@ -1217,6 +1339,7 @@ int main(int argc, char* argv[])
             "valid-ranks,v", po::value<std::vector<int>>(),"Only output these ranks")(
         "standalone,s", po::value<int>(&standalone_rank),
         "Write the paritioned mesh so-as to be loadable standalone. Advanced debugging feature. Arg is rank to do")(
+            "write-vtu", po::bool_switch(&output_vtu),"Output the rank partitions as vtu")(
         "mpi-ranks", po::value<size_t>(&MPI_ranks), "Number of MPI ranks to partition for");
 
     po::variables_map vm;
@@ -1298,7 +1421,7 @@ int main(int argc, char* argv[])
         {
             preprocessingTriangulation* tri = new preprocessingTriangulation();
             tri->from_file_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
-                                         standalone_rank, valid_ranks);
+                                         standalone_rank, valid_ranks, output_vtu);
         }
 
         // We have input as json and asked for mpi-ranks, so rerun the tool
@@ -1311,11 +1434,11 @@ int main(int argc, char* argv[])
                                                       "_param.h5"};
 
             preprocessingTriangulation* tri = new preprocessingTriangulation();
-            tri->from_file_and_partition(h5_mesh_name, h5_param_name, MPI_ranks, max_ghost_distance, standalone_rank, valid_ranks);
+            tri->from_file_and_partition(h5_mesh_name, h5_param_name, MPI_ranks, max_ghost_distance, standalone_rank, valid_ranks, output_vtu);
 
         }
     }
-    catch (exception_base& e)
+    catch (const exception_base& e)
     {
         LOG_ERROR << boost::diagnostic_information(e);
     }
