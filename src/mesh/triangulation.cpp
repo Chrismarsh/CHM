@@ -1800,9 +1800,7 @@ void triangulation::determine_ghost_owners()
             num_partners++;
             _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index);
             start_index=i;
-        }
-
-        if (i ==_ghost_neighbors.size()-1) {
+        } else if (i ==_ghost_neighbors.size()-1) {
             _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index+1);
         }
 
