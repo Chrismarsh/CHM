@@ -507,6 +507,7 @@ real :: &
   x,                 &! (1 - 16*z/L)^(1/4)
   zeta                ! z/L
 zeta = z*rL
+zeta = max(min(zeta,1.),-2.)
 if (zeta > 0) then
   psim = -5*zeta
 else
@@ -524,6 +525,7 @@ real :: &
   x,                 &! (1 - 16*z/L)^(1/4)
   zeta                ! z/L
 zeta = z*rL
+zeta = max(min(zeta,1.),-2.)
 if (zeta > 0) then
   psih = -5*zeta
 else
@@ -1095,7 +1097,6 @@ integer :: &
   ne                  ! Energy balance iteration counter
 
 real :: &
-  B,                 &! Kinematic bouyancy flux (Km/s)
   d,                 &! Displacement height (m)
   Dsrf,              &! dQsat/dT at ground surface temperature (1/K)
   dEs,               &! Change in surface moisture flux (kg/m^2/s)
@@ -1186,12 +1187,10 @@ ustar = vkman*Ua/log(zU1/z0g)
 ga = vkman*ustar/log(zT1/z0h)
 do ne = 1, 20
 
-  if (ne<10) B = ga*(Tsrf - Ta)
-  rL = -vkman*B/(Ta*ustar**3)
-  rL = max(min(rL,2.),-2.)
+  if (ne<10) rL = -vkman*g*ga*(Tsrf - Ta)/(Ta*ustar**3)
   ustar = vkman*Ua/(log(zU1/z0g) - psim(zU1,rL) + psim(z0g,rL))
-  ga = vkman*ustar/(log(zT1/z0h) - psih(zT1,rL) + psih(z0h,rL)) !+ 2/(rho*cp)
-
+  ga = vkman*ustar/(log(zT1/z0h) - psih(zT1,rL) + psih(z0h,rL))
+  
   ! Surface water availability
   if (Qa > Qsrf) then
     wsrf = 1
@@ -1264,9 +1263,7 @@ do ne = 1, 20
   ! Aerodynamic resistance
 
   ustar = fveg*usd + (1 - fveg)*uso
-  if (ne<10) B = ga*(Tcan(1) - Ta)
-  rL = -vkman*B/(Ta*ustar**3)
-  rL = max(min(rL,2.),-2.)
+  if (ne<10) rL = -vkman*g*ga*(Tcan(1) - Ta)/(Ta*ustar**3)
   usd = vkman*Ua/(log((zu1-d)/z0v) - psim(zU1-d,rL) + psim(z0v,rL))
   if (rL > 0) then
     Kh = vkman*usd*(vegh - d)/(1 + 5*(vegh - d)*rL)
@@ -1292,17 +1289,6 @@ do ne = 1, 20
        vegh*exp(wcan)*(exp(-wcan*hbas/vegh) - exp(-wcan*zh(k)))/(wcan*Kh)
   ro = (log(zh(k)/z0h) - psih(zh(k),rL) + psih(z0h,rL))/(vkman*uso)
   gs = fveg/rd + (1 - fveg)/ro
-
-!rd = log((zT1-d)/z0v)/(vkman*usd)  !!!!!!!!!!!!!
-!rd = (log((zT1-d)/(vegh-d)) - psih(zT1-d,rL) + psih(vegh-d,rL))/(vkman*usd) + log(vegh/zh(1))/(vkman*usd)  !!!!!!!!!
-!Uc = fveg*(usd/vkman)*log(zh(k)/z0g) + (1 - fveg)*(uso/vkman)*log(zh(k)/z0g)  !!!!!!!!
-!rd = log(zh(1)/zh(2))/(vkman*usd)  !!!!!!!!!!!!!!!!!!
-!rd = 4*log(zh(k)/z0h)/(vkman*usd)   !!!!!!!!!!!!!!!!!!! 
-
-!ga = (vkman*usd)/(log((zT1-d)/z0v) - psih(zT1-d,rL) + psih(z0v,rL))
-!gv(:) = (vkman*usd)/log(1/0.999)
-!gc = 1
-!gs = (vkman*usd)/log(z0v/z0h)/4
 
   ! Saturation humidity
   do k = 1, Ncnpy
