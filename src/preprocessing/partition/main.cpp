@@ -659,17 +659,6 @@ class preprocessingTriangulation : public triangulation
             _is_standalone = true;
         }
 
-        if(output_vtu)
-        {
-            // init the datastructs to hold information for outputting to VTU
-            std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type", "global_id","local_id"};
-#pragma omp parallel for
-            for (size_t i = 0; i < _faces.size(); ++i)
-            {
-                auto f = _faces.at(i);
-                f->init_time_series(vtu_outputs);
-            }
-        }
 
 
         // if we are only outputting a subset of the domain, we need to rewrite the owner to account for the number
@@ -708,6 +697,23 @@ class preprocessingTriangulation : public triangulation
 
                 proxy_mpirank++;
             }
+        }
+
+        if(output_vtu)
+        {
+            // init the datastructs to hold information for outputting to VTU
+            std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type", "global_id","local_id"};
+#pragma omp parallel for
+            for (size_t i = 0; i < _faces.size(); ++i)
+            {
+                auto f = _faces.at(i);
+                f->init_time_series(vtu_outputs);
+                (*f)["owner"] = f->owner;
+            }
+
+            _local_faces = _faces;
+            write_vtu("partition.vtu",{"owner"});
+
         }
 
 
