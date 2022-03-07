@@ -2476,6 +2476,9 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data[v]->SetName(v.c_str());
     }
 
+    data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
+    data["global_id"]->SetName("global_id");
+
     if(_write_parameters_to_vtu)
     {
         auto params = this->face(0)->parameters();
@@ -2515,12 +2518,6 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data["owner"] = vtkSmartPointer<vtkFloatArray>::New();
         data["owner"]->SetName("owner");
 #endif
-
-
-
-        data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
-        data["global_id"]->SetName("global_id");
-
     }
     auto vec = this->face(0)->vectors();
     for(auto& v: vec)
@@ -2531,11 +2528,12 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     }
 
     // Global vertex ids -> only need to be set here, get written in the writer
-    vertex_data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
-    vertex_data["global_id"]->SetName("global_id");
-    for(int i=0;i<npoints;++i){
-      vertex_data["global_id"]->InsertTuple1(i,global_vertex_id[i]);
-    }
+//    vertex_data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
+//    vertex_data["global_id"]->SetName("global_id");
+//    for(int i=0;i<npoints;++i)
+//    {
+//      vertex_data["global_id"]->InsertTuple1(i,global_vertex_id[i]);
+//    }
 }
 
 void triangulation::init_timeseries(std::set< std::string > variables)
@@ -2638,6 +2636,10 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
             data[v]->InsertTuple1(i,d);
         }
+
+        //this is mandatory now
+        data["global_id"]->InsertTuple1(i,fit->cell_global_id);
+
         if(_write_parameters_to_vtu)
         {
             for (auto &v: params)
@@ -2666,7 +2668,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["Area"]->InsertTuple1(i,fit->get_area());
 	    data["is_ghost"]->InsertTuple1(i,fit->is_ghost);
             data["ghost_type"]->InsertTuple1(i,fit->ghost_type);
-	    data["global_id"]->InsertTuple1(i,fit->cell_global_id);
+
 #ifdef USE_MPI
 	    data["owner"]->InsertTuple1(i,_comm_world.rank());
 #endif
@@ -2706,7 +2708,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data[v]->InsertTuple1(insert_offset,d);
         }
 
-
+        data["global_id"]->InsertTuple1(insert_offset,fit->cell_global_id);
         if(_write_parameters_to_vtu)
         {
             for (auto &v: params)
@@ -2735,7 +2737,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data["Area"]->InsertTuple1(insert_offset,fit->get_area());
 	    data["is_ghost"]->InsertTuple1(insert_offset,fit->is_ghost);
             data["ghost_type"]->InsertTuple1(insert_offset,fit->ghost_type);
-	    data["global_id"]->InsertTuple1(insert_offset,fit->cell_global_id);
+
 	    data["owner"]->InsertTuple1(insert_offset,fit->owner);
         }
         for(auto& v: vecs)
