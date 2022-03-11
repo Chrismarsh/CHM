@@ -821,7 +821,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             H5::DataSpace dataspace(1, &partition_dims);
             H5::Attribute attribute = file.openAttribute("/mesh/is_partition");
             attribute.read(PredType::NATIVE_HBOOL, &_mesh_is_from_partition);
-            LOG_DEBUG << "Loaded mesh is partitioned";
+
 
         }
         catch (AttributeIException& e)
@@ -829,6 +829,8 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             // non partition meshes won't have this
             _mesh_is_from_partition = false;
         }
+
+        LOG_DEBUG << "Loaded mesh is partitioned = " <<_mesh_is_from_partition;
     }
 
     if(!_mesh_is_from_partition && !_version.mesh_ver_meets_min_h5())
@@ -883,12 +885,21 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
     std::vector<int> owner; //what MPIrank owns each triangle,
     {
-        H5::DataSet dataset = file.openDataSet("/mesh/owner");
-        H5::DataSpace dataspace = dataset.getSpace();
-        hsize_t nelem;
-        int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
-        owner.resize(nelem);
-        dataset.read(owner.data(), PredType::NATIVE_INT);
+        // if we have a h5 that isn't partitioned (ie mesh v 1.0.0) then we are entirely owned by rank 0
+        if(_version.to_string() == "1.0.0")
+        {
+            owner.resize(_global_IDs.size(), 0);
+        }
+        else
+        {
+            H5::DataSet dataset = file.openDataSet("/mesh/owner");
+            H5::DataSpace dataspace = dataset.getSpace();
+            hsize_t nelem;
+            int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
+            owner.resize(nelem);
+            dataset.read(owner.data(), PredType::NATIVE_INT);
+        }
+
     }
 
     {
