@@ -615,6 +615,7 @@ class preprocessingTriangulation : public triangulation
             return;
         }
 
+        // only get here if we are reading the h5 files
         pt::ptree tree;
         tree.put("ranks", ranks_to_keep.size() == 0? MPI_ranks : ranks_to_keep.size());
         tree.put("max_ghost_distance", max_ghost_distance);
@@ -1332,7 +1333,7 @@ int main(int argc, char* argv[])
     BOOST_LOG_FUNCTION()
 
     std::string mesh_filename;
-    size_t MPI_ranks = 2;
+    size_t MPI_ranks = 1;
     double max_ghost_distance = 100;
 
     int standalone_rank = -1;
@@ -1378,6 +1379,12 @@ int main(int argc, char* argv[])
         exit(-1);
     }
 
+    if (vm.count("mpi-ranks") && MPI_ranks < 2)
+    {
+        LOG_ERROR << "Requires ranks >1";
+        exit(-1);
+    }
+
     if (vm.count("mpi-ranks") && is_json_mesh)
     {
         LOG_WARNING << "MPI ranks will be ignored for the json -> h5 conversion. ";
@@ -1416,11 +1423,6 @@ int main(int argc, char* argv[])
                        "rank as a standalone mesh for debugging.";
     }
 
-    if (MPI_ranks <= 1)
-    {
-        LOG_ERROR << "Requires ranks >1";
-        exit(-1);
-    }
 
     try
     {
