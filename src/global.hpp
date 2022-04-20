@@ -63,6 +63,7 @@ private:
     int _dt; //seconds
     bool _is_geographic;
     bool _is_point_mode;
+    bool _from_checkpoint;
 
 
 public:
@@ -91,6 +92,12 @@ public:
 
 
     bool first_time_step;
+
+    /**
+     * Returns true if we have loaded from a check point file
+     * @return
+     */
+    bool from_checkpoint();
 
 
     pt::ptree parameters;

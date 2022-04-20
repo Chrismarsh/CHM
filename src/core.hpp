@@ -63,6 +63,7 @@
 #include <boost/tokenizer.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/bind/bind.hpp>
 namespace pt = boost::property_tree;
@@ -147,7 +148,9 @@ public:
    * Reads the main JSON configuration file. It assumes the base of the JSON is an object. That is, the file
    * starts with { ... }.
    * Within this file are a collection of meshes that are expected to have the same number of x,y
-   * points. This is done so that, for example, elevation, forest cover, sky-view factor, etc
+   * points. This is do
+   *
+   * ne so that, for example, elevation, forest cover, sky-view factor, etc
    * may be added individually. Generation of the meshes should be done via the utilities for this.
    * An example of mesh.config is:
    * \code
@@ -376,11 +379,11 @@ protected:
 
     std::vector<output_info> _outputs;
 
-    netcdf _savestate; //file to save to when checkpointing.
+    boost::filesystem::path _ckpt_path; // root path to chckpoint folder
     netcdf _in_savestate; // if we are loading from checkpoint
     bool _do_checkpoint; // should we check point?
     bool _load_from_checkpoint; // are we loading from a checkpoint?
-    std::string _checkpoint_file;//file to load from
+
     size_t _checkpoint_feq; // frequency of checkpoints
 
 

@@ -173,7 +173,7 @@ class FSM : public module_base
             float Sveg[2] = {0, 0};
             float Tcan[2] = {285, 285};
             float Tsnow[3] = {273, 273, 273};
-            float Tsoil[4] = {285, 285, 285, 285};
+            float Tsoil[4] = {269, 269, 269, 269};
             float Tveg[2] = {285, 285};
 
             float Vsat = 0.27;
@@ -210,4 +210,6 @@ class FSM : public module_base
     ~FSM();
     virtual void run(mesh_elem& face);
     virtual void init(mesh& domain);
+    void checkpoint(mesh& domain, netcdf& chkpt);
+    void load_checkpoint(mesh& domain, netcdf& chkpt);
 };

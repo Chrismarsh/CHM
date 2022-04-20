@@ -305,24 +305,18 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
 void core::config_checkpoint( pt::ptree& value)
 {
     LOG_DEBUG << "Found checkpoint section";
-    _find_and_insert_subjson(value);
 
     _do_checkpoint = value.get("save_checkpoint",false);
 
     //this uses the output path defined in config_output, so this must run after that.
     if(_do_checkpoint)
     {
+
         auto dir = "checkpoint";
 
-        boost::filesystem::path ckpt_path;
-
         // Create empty folder
-        ckpt_path = o_path / dir;
-        boost::filesystem::create_directories(ckpt_path);
-
-        //this parses both the input and the output paths for the checkpoint.
-        auto f = ckpt_path / "checkpoint.nc";
-        _savestate.create( f.string());
+        _ckpt_path = o_path / dir;
+        boost::filesystem::create_directories(_ckpt_path);
 
         _checkpoint_feq = value.get("frequency",1);
         LOG_DEBUG << "Checkpointing every " << _checkpoint_feq << " timesteps.";
@@ -335,12 +329,46 @@ void core::config_checkpoint( pt::ptree& value)
     {
         _load_from_checkpoint = true;
 
-        boost::filesystem::path ckpt_path;
-        ckpt_path = cwd_dir / *file;
+        boost::filesystem::path ckpt_path = *file;
+//        ckpt_path = boost::filesystem::canonical(ckpt_path);
 
-        _checkpoint_file = ckpt_path.string();
+        auto chkp = read_json(ckpt_path.string());
 
-        _in_savestate.open(_checkpoint_file);
+        size_t csz = 1;
+        size_t rank = 0;
+
+#ifdef USE_MPI
+      csz = _comm_world.size();
+      rank = _comm_world.rank();
+#endif
+
+      if( csz != chkp.get<size_t>("ranks") )
+          CHM_THROW_EXCEPTION(config_error, "Checkpoint file was saved with a different number of ranks");
+
+      boost::filesystem::path ckpt_nc_path;
+      try
+      {
+          size_t i = 0;
+
+          for(auto &itr : chkp.get_child("files"))
+          {
+              if( i == rank)
+              {
+                  ckpt_nc_path = itr.second.data();
+                  break;
+              }
+
+              ++i;
+          }
+      }
+      catch(pt::ptree_bad_path &e)
+      {
+          CHM_THROW_EXCEPTION(config_error, "Error reading list of checkpoint files");
+      }
+
+      ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
+      LOG_DEBUG<< "Rank " << rank << " using checkpoint restore file " << ckpt_nc_path;
+      _in_savestate.open(ckpt_nc_path.string());
     }
 
 
@@ -1585,6 +1613,7 @@ void core::init(int argc, char **argv)
 //load a checkpoint as the last thing we do before a run
     if(_load_from_checkpoint  )
     {
+        _global->_from_checkpoint = true;
         LOG_DEBUG << "Loading from checkpoint";
         c.tic();
         for (auto &itr : _chunked_modules)
@@ -2193,24 +2222,84 @@ void core::run()
             if(_do_checkpoint && (current_ts % _checkpoint_feq ==0) )
             {
                 LOG_DEBUG << "Checkpointing...";
+
+                netcdf savestate; //file to save to when checkpointing.
+//                std::stringstream timestr;
+//                timestr <<
+                auto timestamp = _global->posix_time() + boost::posix_time::seconds(_global->_dt);
+                //also write it out in seconds because netcdf is struggling with the string
+                unsigned long long int ts_sec = _global->posix_time_int()+_global->_dt;
+
+                auto timestr = boost::posix_time::to_iso_string(timestamp); // start from current TS + dt
+
+
+                size_t rank = 0;
+#ifdef USE_MPI
+                rank = _comm_world.rank();
+#endif
+
+                auto dirpath = _ckpt_path / timestr;
+                boost::filesystem::create_directories(dirpath);
+
+                //this parses both the input and the output paths for the checkpoint.
+                auto fname = ("chkp"+timestr + "_" + std::to_string(rank) + ".nc");
+                auto f = dirpath / fname;
+                savestate.create( f.string());
+
                 c.tic();
                 for (auto &itr : _chunked_modules)
                 {
                     //module calls
                     for (auto &jtr : itr)
                     {
-                        jtr->checkpoint(_mesh, _savestate);
+                        jtr->checkpoint(_mesh, savestate);
                     }
                 }
-                std::stringstream timestr;
 
-                timestr << _global->posix_time() + boost::posix_time::seconds(_global->_dt); // start from current TS + dt
+                auto& ids = _mesh->get_global_IDs();
+                savestate.create_variable1D("global_id",ids.size());
 
-                //also write it out in seconds because netcdf is struggling with the string
-                unsigned long long int ts_sec = _global->posix_time_int()+_global->_dt;
+                for(size_t i; i <0; i++)
+                {
+                    savestate.put_var1D("global_id",i, ids[i]);
+                }
 
-                _savestate.get_ncfile().putAtt("restart_time",timestr.str());
-                _savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64,ts_sec);
+
+                savestate.get_ncfile().putAtt("restart_time",boost::posix_time::to_simple_string(timestamp));
+                savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64,ts_sec);
+
+                pt::ptree tree;
+
+                int nranks = 1;
+#ifdef USE_MPI
+                nranks = _comm_world.size();
+#endif
+
+                tree.put("ranks", nranks);
+                tree.put("restart_time_sec", ts_sec);
+                tree.put("startdate", timestr);
+
+                pt::ptree files;
+
+                pt::ptree tmp_files;
+                for (size_t i = 0; i < nranks; ++i)
+                {
+                    pt::ptree s;
+
+                    s.put("", timestr +"/" + "chkp"+timestr + "_" + std::to_string(i) + ".nc");
+                    tmp_files.push_back(std::make_pair("", s));
+                }
+                tree.add_child("files", tmp_files);
+
+
+                if(rank == 0)
+                {
+                    pt::write_json(
+                        (_ckpt_path / ("checkpoint_" + timestr + ".np" + std::to_string(nranks) + ".json")).string(),
+                        tree);
+                }
+
+
 
                 LOG_DEBUG << "Done checkpoint [ " << c.toc<s>() << "s]";
             }
