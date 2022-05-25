@@ -61,18 +61,30 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
         }
     }
 
-
     // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
     OGRSpatialReference insrs, outsrs;
-    insrs.SetWellKnownGeogCS("WGS84");
+
+    //enforce the order to be x,y
+    insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+    outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
+    insrs.SetWellKnownGeogCS("EPSG:4326");
     bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
+
     if(err)
     {
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
     }
     OGRCoordinateTransformation* coordTrans =  nullptr;
     if(!_is_geographic)
+    {
         coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
+        if(!coordTrans)
+        {
+            CHM_THROW_EXCEPTION(forcing_error,"Error creating CRS transform in Met loader");
+        }
+    }
+
 
     try
     {
@@ -99,8 +111,9 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
         LOG_DEBUG << "Initializing datastructure";
 
-// #pragma omp parallel for
-// hangs, unclear why, critical sections around the json and gdal calls don't seem to help
+        // #pragma omp parallel for
+        // hangs, unclear why, critical sections around the json and gdal calls
+        // don't seem to help. Probably _dD_tree is not thread safe
         for (size_t y = 0; y < _nc->get_ysize(); y++)
         {
             for (size_t x = 0; x < _nc->get_xsize(); x++)
@@ -109,9 +122,16 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 double longitude = 0 ;
                 double z = 0;
 
-                latitude = lat[y][x];;
+                latitude = lat[y][x];
                 longitude = lon[y][x];
                 z = e[y][x];
+
+                if( std::isnan(z))
+                {
+                    CHM_THROW_EXCEPTION(forcing_error,
+                                        "Elevation for x,y=" + std::to_string(x) + ","+ std::to_string(y)+
+                                            " is NaN. Regardless of the timestep the model is started from, it looks for timestep = 0 to define the elevations. Ensure it is defined then.");
+                }
 
                 size_t index = x + y * _nc->get_xsize();
                 std::string station_name = std::to_string(index); // these don't really have names
@@ -119,6 +139,7 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 //need to convert the input lat/long into the coordinate system our mesh is in
                 if (!_is_geographic)
                 {
+                    //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
                     if (!coordTrans->Transform(1, &longitude, &latitude))
                     {
                         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
@@ -144,11 +165,11 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
     } catch(netCDF::exceptions::NcException& e)
     {
-        delete coordTrans;
+        OGRCoordinateTransformation::DestroyCT(coordTrans);
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
     }
 
-    delete coordTrans;
+    OGRCoordinateTransformation::DestroyCT(coordTrans);
     _dt = _nc->get_dt();
 
     _current_ts = _start_time;
@@ -172,25 +193,30 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + itr.id + " coordinate is invalid."));
         }
 
-        // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
-        OGRSpatialReference insrs, outsrs;
-        insrs.SetWellKnownGeogCS("WGS84");
-        bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
-        if(err)
-        {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
-        }
-        OGRCoordinateTransformation* coordTrans =  nullptr;
-        if(!_is_geographic)
-            coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
         if (!_is_geographic)
         {
+            // spatial reference conversions to ensure the virtual station coordinates are the same as the meshes'
+            OGRSpatialReference insrs, outsrs;
+
+            insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); // enforce x,y
+            outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); // enforce x,y
+            insrs.SetWellKnownGeogCS("EPSG:4326");
+            bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
+            if(err)
+            {
+                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
+            }
+
+            OGRCoordinateTransformation* coordTrans =  OGRCreateCoordinateTransformation(&insrs, &outsrs);
+            //CRS created with the “EPSG:4326” use the latitude first, longitude second axis order.
             if (!coordTrans->Transform(1, &itr.longitude, &itr.latitude))
             {
                 BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
                     "Station=" + itr.id + ": unable to convert coordinates to mesh format."));
             }
+            // ensure we clean this up correctly
+            OGRCoordinateTransformation::DestroyCT(coordTrans);
         }
 
         std::shared_ptr<station> s = std::make_shared<station>();
@@ -325,6 +351,10 @@ void metdata::check_ts_consistency()
                                       errstr_info("Timestep mismatch at station: " + itr.second->id));
         }
     }
+}
+bool metdata::is_netcdf()
+{
+    return _use_netcdf;
 }
 void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime end)
 {
@@ -499,23 +529,24 @@ bool metdata::next_nc()
     for(size_t i = 0; i < nstations();i++)
     {
         auto s = _stations.at(i);
+        s->set_posix(_current_ts);
 
         // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
         for (auto &v: _nc->get_variable_names() )
         {
             double d = _nc->get_var(v, _current_ts, s->_nc_x, s->_nc_y);
             (*s)[v] = d;
-            s->set_posix(_current_ts);
 
-            for (auto& f : _netcdf_filters)
-            {
-                f.second->process(s);
-            }
+        }
+
+        // run all the filters for this station
+        for (auto& f : _netcdf_filters)
+        {
+            f.second->process(s);
         }
     }
 
     return true;
-
 
 }
 

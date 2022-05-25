@@ -176,16 +176,26 @@ void netcdf::open_GEM(const std::string &file)
     {
 
         //might be in iso format (2017-08-13T01:00:00)
-
         if(strs.size() != 3)
         {
             BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Epoch did not split properly, unknown units/ Epoch as read was: " + epoch));
         }
 
         //If it's 3, means there is a T b/w date and time, remove it.
-
         std::string s = strs[2];
-        s.replace(s.find("T"),1," ");
+        auto tpos = s.find("T");
+        if (tpos != std::string::npos)
+        {
+            s.replace(s.find("T"),1," ");
+        }
+
+        // midnight times can be reported without the 00:00 suffix. If we get this far and don't have : in the epoch
+        // then we need to add it
+        tpos = s.find(":");
+        if (tpos == std::string::npos)
+        {
+            s = s + " 00:00:00";
+        }
 
         _epoch = boost::posix_time::time_from_string(s);
 
@@ -199,10 +209,37 @@ void netcdf::open_GEM(const std::string &file)
     _timestep *= dt[1]-dt[0];
 
     //need to handle a start that is different from our epoch
+    // e.g., the epoch might be 'hours since 2021-01-01 00:00:00',
+    // but timestep 1 is "5 hours" making the start 2021-01-01 05:00:00
     _start = _epoch + _timestep * dt[0];
 
     //figure out what the end of the timeseries is
     _end = _epoch + _timestep * dt[_datetime_length-1];
+
+
+    // go through all the timesteps and ensure a consistent timesteping
+    // best to spend the time up front for this check than to get 90% into a sim and have it die
+    size_t pred_timestep = dt[0];
+    for(size_t i=1;  // intentional
+         i<_datetime_length; i++)
+    {
+        pred_timestep += (dt[1]-dt[0]);
+
+        if( dt[i] != pred_timestep)
+        {
+            std::stringstream expected;
+            expected << _epoch + _timestep * pred_timestep;
+            std::stringstream got;
+            got << _epoch + _timestep * dt[i];
+
+
+            CHM_THROW_EXCEPTION(forcing_error, "The timesteps in the netcdf file are not constant. At timestep " +
+                                                   std::to_string(i) + " offset " + std::to_string(pred_timestep) + " was expected but found " +
+                                std::to_string(dt[i]) + ".\n Expected=" + expected.str() + "\n Got=" + got .str()
+                                );
+
+        }
+    }
 
     LOG_DEBUG << "NetCDF epoch is " << _epoch;
     LOG_DEBUG << "NetCDF start is " << _start;

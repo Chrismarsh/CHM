@@ -50,8 +50,8 @@ void iswr_from_obs::init(mesh& domain)
     {
 
 	       auto face = domain->face(i);
-	       auto d = face->make_module_data<data>(ID);
-	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
+	       auto& d = face->make_module_data<data>(ID);
+	       d.interp.init(global_param->interp_algorithm,face->stations().size() );
 
     }
 
@@ -72,7 +72,7 @@ void iswr_from_obs::run(mesh_elem &face)
 
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-    double iswr_observed =face->get_module_data<data>(ID)->interp(lowered_values, query);
+    double iswr_observed =face->get_module_data<data>(ID).interp(lowered_values, query);
 
 
     // This is what is used in SUMMA

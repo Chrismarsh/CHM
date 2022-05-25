@@ -44,6 +44,7 @@ inline int omp_get_max_threads() { return 1;}
 #endif
 
 #include <iostream>
+#include <algorithm>
 #include <fstream>
 #include <cmath>
 #include <vector>
@@ -52,9 +53,11 @@ inline int omp_get_max_threads() { return 1;}
 #include <stack>
 #include <fstream>
 #include <utility>
-//#define ARMA_DONT_USE_CXX11 //intel on linux breaks otherwise
-//#define ARMA_64BIT_WORD
+
+
 #include <armadillo>
+
+#include <ogr_spatialref.h>
 
 #ifdef USE_SPARSEHASH
 #include <sparsehash/dense_hash_map>
@@ -66,12 +69,16 @@ inline int omp_get_max_threads() { return 1;}
 #include "utility/BBhash.h"
 #include "utility/wyhash.h"
 
+// json reader
+#include "utility/readjson.hpp"
 
+// boost includes
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
-
+#include <boost/filesystem/path.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Projection_traits_xy_3.h>
@@ -107,6 +114,7 @@ namespace pt = boost::property_tree;
 #include <vtkTriangle.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
+#include <vtkPointData.h>
 #include <vtkFloatArray.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkUnstructuredGrid.h>
@@ -119,7 +127,7 @@ namespace pt = boost::property_tree;
 
 #ifdef USE_MPI
 #include <boost/mpi.hpp>
-#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #endif
 
 #include "vertex.hpp"
@@ -129,7 +137,9 @@ namespace pt = boost::property_tree;
 
 #include "timeseries/variablestorage.hpp"
 
-
+// #include "hdf5.h"
+#include "H5Cpp.h"
+using namespace H5;
 /**
 * \struct face_info
 * A way of embedding arbirtrary data into the face. This is how modules should store their data.
@@ -237,7 +247,7 @@ public:
     /**
      * Returns the ith edge's length. Refering to the docs here
      * http://doc.cgal.org/latest/Triangulation_2/classCGAL_1_1Triangulation__2.html
-     * edgth_length(i) returns the length of the edge shared with neighbour(i),
+     * edgth_length(i) returns the length of the edge shared with neighbor(i),
      * opposite vertex(i)
      * @param i
      * @return
@@ -429,12 +439,12 @@ public:
     void to_file(std::string fname);
 
     template<typename T>
-    T*get_module_data(const std::string &module);
+    T& get_module_data(const std::string &module);
 
-    void set_module_data(const std::string &module, face_info *fi);
+//    void set_module_data(const std::string &module, face_info *fi);
 
     template<typename T>
-    T*make_module_data(const std::string &module);
+    T& make_module_data(const std::string &module);
 
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
@@ -480,9 +490,15 @@ public:
 
     bool _is_geographic;
 
-    bool _is_ghost=true;
+    bool is_ghost=true;
+    int ghost_type;
+
+    int  owner;  // MPI process that owns the face
 
 private:
+
+    OGRSpatialReference _insrs; // will hold the crs of the mesh
+    OGRSpatialReference _face_utm_srs; // will hold the crs of the face,
 
 
     double _slope;
@@ -491,6 +507,7 @@ private:
     double _x;
     double _y;
     double _z;
+
 
     //hold a pointer *back* to the triangulation. This let's use query triangles at distance X, etc
     //that allows for using data::parallel modules w/o having to use domain parallel.
@@ -504,7 +521,7 @@ private:
     variablestorage<double> _variables;
     variablestorage<double> _parameters;
 
-    variablestorage<face_info*> _module_face_data;
+    variablestorage< std::unique_ptr<face_info>> _module_face_data;
     variablestorage<double> _initial_conditions;
     variablestorage< Vector_3> _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
 
@@ -563,6 +580,8 @@ public:
 #endif
     ~triangulation();
 
+
+
     /**
     * Creates an axis alligned bounding box that is segmented into rows x cols
     * \param rows number of rows in the AABB
@@ -577,6 +596,31 @@ public:
 	void from_json(pt::ptree& mesh);
 
     /**
+    * Writes a mesh to an hdf5 file.
+    * \param filename_base Base name of file to write .
+    */
+	void to_hdf5(std::string filename_base);
+
+    /**
+    * Reads a mesh and parameters from an hdf5 file.
+    * \param mesh_filename Name of mesh file to read .
+    * \param param_filename Name of parameter file to read.
+    * \param [OPTIONAL] ic_filename Name of initial condition file to read.
+    */
+    void from_hdf5(const std::string& mesh_filename,
+                   const std::vector<std::string>& param_filename,
+                   const std::vector<std::string>& ic_filename);
+
+    /**
+     * Reads a partitioned mesh file (.partition) that holds multiple hdf5 files
+     * @param partition_filename Name of parition file to read
+     * @param cwd Current working directory of the calling code. Because the partition file can either include fully
+     *   qualified paths or relative paths, we need to know where we currently are so-as to ensure we open the correct
+     *   file.
+     */
+    void from_partitioned_hdf5(const std::string& partition_filename, boost::filesystem::path cwd = boost::filesystem::path("."));
+
+    /**
     * Sets a new order to the face numbering.
     * \param permutation desired ordering
     */
@@ -585,17 +629,51 @@ public:
     /**
     * Sets the MPI process ownership of mesh faces and nodes
     */
-  void partition_mesh();
+    void partition_mesh();
+
+    /**
+     * Load the partition from the h5 file instead of computing it
+     */
+    void load_partition_from_mesh(const std::string& mesh_filename);
 
     /**
     * Figures out which faces lie on the boundary of an MPI process' domain
+     * Sets _boundary_faces
     */
   void determine_local_boundary_faces();
-    /**
-    * Figures out which faces are ghosted nearest neighbours of
-    * This is useful for the communication needed in nearest-neighbour discretizations of spatial operators.
+   /**
+    * Figures out which faces are ghosted nearest neighbors of
+    * This is useful for the communication needed in nearest-neighbor discretizations of spatial operators.
     */
-  void determine_process_ghost_faces_nearest_neighbours();
+  virtual void determine_process_ghost_faces_nearest_neighbors();
+    /**
+    * Set up the comm patterns for communicating nearest neighbor mesh data
+    */
+  void setup_nearest_neighbor_communication();
+
+  /*
+    Debug output for detailed ghost cell_global_id and their owners
+  */
+  void print_ghost_neighbor_info();
+
+  /**
+   * Communicate the variable var for all ghost neighbors
+   * This signature supports the use case if _s no-oped to const char * via
+   * #define SAFE_CHECKS
+   * which is used to debug and print var names. In general the hash variant used via "var_name"_s should
+   * be used.
+   * @param var Variable name
+   */
+  void ghost_neighbors_communicate_variable(const std::string& var);
+    /**
+     * Communicate the variable var for all ghost neighbors
+     * @param var Variable name
+    */
+  void ghost_neighbors_communicate_variable(const uint64_t& var);
+
+  void ghost_to_neighbors_communicate_variable(const std::string& var);
+  void ghost_to_neighbors_communicate_variable(const uint64_t& var);
+
     /**
     * Figures out which faces are required in the ghost region of an MPI process.
     * \param max_distance the maximum distance needed for communication
@@ -604,16 +682,16 @@ public:
     /**
     * Shrink the local mesh to only contain owned entries and relevant ghost entries
     */
-  void shrink_local_mesh_to_owned_and_distance_neighbours();
+  void shrink_local_mesh_to_owned_and_distance_neighbors();
 
 
 
-	/**
-	 * Serializes a mesh attribute to file so it can be read into the model.
-	 * \param output_path Full qualified path to a file to output to.
-	 * \param variable The variable from a module to be output.
-	 */
-	void serialize_parameter(std::string output_path, std::string parameter);
+    /**
+     * Serializes a mesh attribute to file so it can be read into the model.
+     * \param output_path Full qualified path to a file to output to.
+     * \param variable The variable from a module to be output.
+     */
+    void serialize_parameter(std::string output_path, std::string parameter);
     /**
     * Initializes a triangulation from the given x,y,z vectors
     * \param x X values
@@ -623,10 +701,16 @@ public:
 //    void init(vector x, vector y, vector z);
 
     /**
-    * Return the number of faces in the triangluation
+    * Return the number of faces in the local triangluation
     * \return Number of triangle faces
     */
     size_t size_faces();
+
+    /**
+    * Return the number of faces in the global triangluation
+    * \return Number of triangle faces
+    */
+    size_t size_global_faces();
 
     /**
     * Return the number of verticies in the triangulation
@@ -697,6 +781,13 @@ public:
     mesh_elem face(size_t i);
 
     /**
+    * Returns the vector of locally owned global IDs
+    * - "locally owned" = this rank is responsible for their data
+    * \return A vector of global IDs for the locally owned elements
+    */
+    const std::vector<int>& get_global_IDs() const;
+
+    /**
     * Returns the finite vertex at index i. A given index will always return the same vertex.
     * \param i Index
     * \return A vertex handle to the ith vertex
@@ -761,6 +852,13 @@ public:
                   std::set< std::string >& vectors,
                   std::set< std::string >& module_data);
 
+    /**
+     * Prunes the internal vector that holds faces to only hold a subset. Does not actually remove the faces from the
+     * triangulation. Cannot be used with MPI ranks >1 and outside point mode.
+     * @param faces
+     */
+    void prune_faces(std::vector<Face_handle>& faces);
+
 	/**
 	 * Updates the internal vtk structure with this timesteps data.
 	 * Must be called prior to calling the write_vt* functions.
@@ -792,7 +890,14 @@ public:
 	//http://doc.cgal.org/latest/Spatial_searching/index.html
 	boost::shared_ptr<Tree> dD_tree;
 
+    /**
+     * Set the the private variable for writing parameters in vtu output
+     */
     void write_param_to_vtu(bool write_param);
+    /**
+     * Set the the private variable for writing the ghost neighbor data in vtu output
+     */
+    void write_ghost_neighbors_to_vtu(bool write_ghost_neighbors);
 
     /**
      * Returns the set of parameters available on the triangulation
@@ -821,45 +926,192 @@ public:
     //however, core might have found some parameters from modules
     // it will have to insert them into this list so that the static hashmaps can be properly init
     std::set<std::string> _parameters;
-private:
-    size_t _num_faces; //number of faces
+
+#ifdef USE_MPI
+    boost::mpi::environment _mpi_env;
+    boost::mpi::communicator _comm_world;
+#endif
+
+protected:
+
+    enum GHOST_TYPE
+    {
+        NONE,
+        NEIGH,
+        DIST
+    };
+
+    class MESH_VERSION
+    {
+      public:
+        MESH_VERSION()
+        {
+            MAJOR=1;
+            MINOR=0;
+            PATCH=0;
+        }
+
+        int MAJOR;
+        int MINOR;
+        int PATCH;
+
+        std::string to_string()
+        {
+            std::string s;
+            s = std::to_string(MAJOR) + "." + std::to_string(MINOR) + "." + std::to_string(PATCH);
+            return s;
+        }
+        void from_string(std::string s)
+        {
+            if( s == "")
+            {
+                s = "1.0.0";
+            }
+
+            std::vector<std::string> r;
+            boost::algorithm::split(r, s, boost::is_any_of("."));
+
+            MAJOR = std::stoi(r[0]);
+            MINOR = std::stoi(r[1]);
+            PATCH = std::stoi(r[2]);
+        }
+
+
+        bool mesh_ver_meets_min_json()
+        {
+            return MAJOR >=1;
+        }
+
+        /**
+         * Basic h5 versioning is currently the same as min json
+         * @return
+         */
+        bool mesh_ver_meets_min_h5()
+        {
+            return MAJOR >=1;
+        }
+        bool mesh_ver_meets_min_partition()
+        {
+            return MAJOR >=3 && MINOR >=0;
+        }
+
+    } _version;
+
+    /**
+     * Loads a given mesh as h5 into the triangulation. Only loads the main topology.
+     * @param mesh_filename
+     */
+    void load_mesh_from_h5(const std::string& mesh_filename);
+
+    void determine_ghost_owners();
+
+    /**
+     * Build the spatial search dD tree. Assumes _num_global_faces has been set and this needs to be called after
+     * the partition has happened
+     */
+    void _build_dDtree();
+
+    size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
+    size_t _num_global_faces; //number of global faces
     size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
     K::Iso_rectangle_2 _bbox;
-	bool _is_geographic;
-	int _UTM_zone;
+    bool _is_geographic;
+    bool _mesh_is_from_partition;
+    int _UTM_zone;
 
-
-
-	std::string _srs_wkt;
-	//holds the vtk ugrid if we are outputing to vtk formats
-	vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
+    std::string _srs_wkt;
+    //holds the vtk ugrid if we are outputing to vtk formats
+    vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
 
 	//holds the vectors we use to create the vtu file
 #ifdef USE_SPARSEHASH
     google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > data;
     google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > vectors;
+    google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > vertex_data;
 #else
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > vectors;
+        std::map<std::string, vtkSmartPointer<vtkFloatArray> > vertex_data;
 #endif
 
     //should we write parameters to the vtu file?
     bool _write_parameters_to_vtu;
+    //should we write ghost neighbor faces to the vtu file?
+    bool _write_ghost_neighbors_to_vtu;
 
     // min and max elevations
     double _min_z;
     double _max_z;
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
-    //as well, it seems to prevent openmp for applying parallism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
+    //as well, it seems to prevent openmp for applying parallelism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
     //that allows us to traverse the triangulation in a deterministic order, as well as play nice with openmp
     std::vector< mesh_elem > _faces;
     std::vector< Delaunay::Vertex_handle > _vertexes;
 
+    // Maps a global index to a local index
+    // Size of this vector is the number of locally owned elements in _faces and so incl _local_faces + ghosts
+    // key=global_index, entry=local_index
+    std::map<int,int> _global_to_locally_owned_index_map;
+
+    // Maps a global index to a local index FOR USE WITH _local_faces
+    // Size of this vector is the number of locally owned elements in _local_faces and DOES NOT INCL ghosts
+    // key=global_index, entry=local_index
+    std::map<int,int> _global_to_local_faces_index_map;
+
+    // All MPI process are aware of the local sizes for all other MPI processes
+    // Index = MPI rank
+    std::vector<int> _num_faces_in_partition;
+    std::vector<int> _local_sizes;
+
+    // If we are not using MPI, some code paths might still want to make use of these
+    // This is initialized to [0, num_faces - 1]
+    // In MPI mode this contains the global face index start and end
+    int  global_cell_start_idx, // in non-MPI this is 0,
+        global_cell_end_idx; // in non-MPI this is equal to _num_faces - 1
+
+    // The faces owned by this rank. In non MPI mode, this is identical to _faces
+    // does not include any ghosts
     std::vector< mesh_elem > _local_faces;
+
+
+    // These are the faces that lie on the boundary of the MPI domain
+    // as set by determine_local_boundary_faces
     std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
-    std::vector< mesh_elem > _ghost_neighbours;
+
+    // Array of pointers to the ghost neighbors for this rank
+    // These are only the nearest neighbour ghosts. i.e., GHOST_TYPE::NEIGH
+    std::vector< mesh_elem > _ghost_neighbors;
+
+    // Array of which other rank owns each ghost neighbor
+    std::vector< int > _ghost_neighbor_owners;
+
+    // Array of pointers to all ghost faces (in buffer region) for this rank
+    // This is all the ghost faces and is the super-set of ghosts that contains
+    // _ghost_neighbors + the distance (type 2) ghosts
     std::vector< mesh_elem > _ghost_faces;
+
+    // The communication partnership for each rank
+    // Partner ID, (start_local_idx, length)
+    std::map< int, std::pair<int,int> > _comm_partner_ownership;
+
+    // maps a global index to a local ghost
+    std::map<int,int> _global_index_to_local_ghost_map; // key=cell_global_id, entry=local index in _ghost_neighbors array
+
+    std::map< int, std::vector<int> > global_indices_to_send; // key=process to send to, entry = vector of global ids to send
+
+  std::map< int, std::vector<int>> local_indices_to_send; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
+  std::map< int, std::vector<mesh_elem> > local_faces_to_send; // key=process to send to, entry=locally owned pointer to face
+
+  std::map< int, std::vector<int>> ghost_indices_to_recv; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
+  std::map< int, std::vector<mesh_elem> >
+      ghost_faces_to_recv; // key=process to send to, entry=locally owned pointer to face
+
+    std::vector<int> _global_IDs;
+
+  std::vector< std::shared_ptr<station> > _stations;
+
+  std::string _partition_method;
 
 #ifdef NOMATLAB
     //ptr to the matlab engine
@@ -867,10 +1119,39 @@ private:
     boost::shared_ptr<maw::graphics> _gfx;
 #endif
 
-#ifdef USE_MPI
-    boost::mpi::environment _mpi_env;
-    boost::mpi::communicator _comm_world;
-#endif
+/*
+  Datatypes for reading/writing HDF5 files
+*/
+
+  // Array datatype for vertices
+  hsize_t vertex_dims;
+  H5::ArrayType vertex_t;
+
+  // Array datatype for vertices defining faces
+  hsize_t elem_dims;
+  H5::ArrayType elem_t;
+
+  // Array datatype for neighbors
+  hsize_t neighbor_dims;
+  H5::ArrayType neighbor_t;
+
+  // Array datatype for proj4 string
+  hsize_t proj4_dims;
+  H5::StrType proj4_t;
+
+  // Array datatype for mesh version string
+  hsize_t meshver_dims;
+  H5::StrType meshver_t;
+
+  // Array datatype for partition type string
+  hsize_t partition_type_dims;
+  H5::StrType partition_type_t;
+
+  // Array datatype for is_geographic
+  hsize_t geographic_dims;
+
+  // Array datatype for is_partition
+  hsize_t partition_dims;
 
 };
 
@@ -1278,16 +1559,6 @@ Vector_3 face<Gt, Fb>::normal()
             _normal = boost::make_shared<Vector_3>(CGAL::unit_normal(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
     }
 
-//    CGAL::Point_3<K> v0(this->vertex(0)->point()[0]*100000., this->vertex(0)->point()[1]*100000.,this->vertex(0)->point()[2]);
-//    CGAL::Point_3<K> v1(this->vertex(1)->point()[0]*100000., this->vertex(1)->point()[1]*100000.,this->vertex(1)->point()[2]);
-//    CGAL::Point_3<K> v2(this->vertex(2)->point()[0]*100000., this->vertex(2)->point()[1]*100000.,this->vertex(2)->point()[2]);
-
-//    CGAL::Point_3<CGAL::Exact_prediDocuments/PhD/code/CHM/cates_exact_constructions_kernel > v0_noscale(this->vertex(0)->point()[0], this->vertex(0)->point()[1],this->vertex(0)->point()[2]);
-//    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v1_noscale(this->vertex(1)->point()[0], this->vertex(1)->point()[1],this->vertex(1)->point()[2]);
-//    CGAL::Point_3<CGAL::Exact_predicates_exact_constructions_kernel > v2_noscale(this->vertex(2)->point()[0], this->vertex(2)->point()[1],this->vertex(2)->point()[2]);
-//
-//    CGAL::Exact_predicates_exact_constructions_kernel::Vector_3 un1 = CGAL::unit_normal(v0_noscale, v1_noscale, v2_noscale);
-//    Vector_3 un2 = CGAL::unit_normal(v0, v1, v2);
     return *_normal;
 }
 
@@ -1503,25 +1774,25 @@ timeseries::iterator face<Gt, Fb>::now()
 
 template < class Gt, class Vb>
 template<typename T>
-T* face<Gt, Vb>::make_module_data(const std::string &module)
+T& face<Gt, Vb>::make_module_data(const std::string &module)
 {
 
     //we don't already have this, make a new one.
     if(!_module_face_data[module])
     {
-        T* data = new T;
-        _module_face_data[module] = data;
+//        T* data = new T;
+        _module_face_data[module] = std::make_unique<T>();
     }
 
-    return get_module_data<T>(module);
+    return get_module_data<T&>(module);
 }
 
 
 template < class Gt, class Fb>
 template < typename T>
-T* face<Gt, Fb>::get_module_data(const std::string &module)
+T& face<Gt, Fb>::get_module_data(const std::string &module)
 {
-    return dynamic_cast<T*>(_module_face_data[module]);
+    return dynamic_cast<T&>(*_module_face_data[module]);
 }
 
 template < class Gt, class Fb>
@@ -1530,11 +1801,12 @@ void face<Gt, Fb>::set_face_vector(const std::string& variable, Vector_3 v)
     _module_face_vectors[variable] = v;
 };
 
-template < class Gt, class Fb>
-void face<Gt, Fb>::set_module_data(const std::string &module, face_info *fi)
-{
-    _module_face_data[module] = fi;
-}
+// I don't think this is used anywhere and is maybe not worth keeping given the make_module_data exists
+//template < class Gt, class Fb>
+//void face<Gt, Fb>::set_module_data(const std::string &module, face_info *fi)
+//{
+//    _module_face_data[module] = fi;
+//}
 template < class Gt, class Fb>
 double face<Gt, Fb>::get_area()
 {
@@ -1601,3 +1873,24 @@ double face<Gt, Fb>::get_subgrid_z(Point_2 query)
 
 
 };
+
+template <typename T>
+T determine_owner_of_global_index(T index, std::vector<T> num_faces_in_partition)
+{
+  assert(num_faces_in_partition.size() != 0 );
+
+  // zero init variables
+  T owner = T();
+  T highest_owned_index = T();
+
+  for(T i=0; i<static_cast<T>(num_faces_in_partition.size()); ++i)
+  {
+    highest_owned_index += num_faces_in_partition[i];
+    if (index < highest_owned_index)
+    {
+      owner = i;
+      break;
+    }
+  }
+  return owner;
+}

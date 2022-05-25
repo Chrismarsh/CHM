@@ -44,8 +44,8 @@ void rh_from_obs::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
-        d->interp.init(global_param->interp_algorithm,face->stations().size() );
+        auto& d = face->make_module_data<data>(ID);
+        d.interp.init(global_param->interp_algorithm,face->stations().size() );
     }
 }
 
@@ -104,7 +104,7 @@ void rh_from_obs::run(mesh_elem& face)
 
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-    double ea = face->get_module_data<data>(ID)->interp(lowered_values, query);
+    double ea = face->get_module_data<data>(ID).interp(lowered_values, query);
 
     //raise it back up
     ea = ea + lapse*( face->get_z() - 0.0);

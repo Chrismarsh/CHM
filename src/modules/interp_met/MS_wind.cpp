@@ -44,7 +44,7 @@ MS_wind::MS_wind(config_file cfg)
 
     provides("vw_dir_orig");
 
-    provides_vector("wind_direction");
+//    provides_vector("wind_direction");
 
     speedup_height = cfg.get("speedup_height",2.0);
     use_ryan_dir = cfg.get("use_ryan_dir",false);
@@ -59,9 +59,9 @@ void MS_wind::init(mesh& domain)
     {
         auto face = domain->face(i);
 
-         auto d = face->make_module_data<data>(ID);
-         d->interp.init(global_param->interp_algorithm,face->stations().size() );
-         d->interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
+         auto& d = face->make_module_data<data>(ID);
+         d.interp.init(global_param->interp_algorithm,face->stations().size() );
+         d.interp_smoothing.init(interp_alg::tpspline,3,{ {"reuse_LU","true"}});
     }
 }
 
@@ -102,8 +102,8 @@ void MS_wind::run(mesh& domain)
 
 		     // get an interpolated zonal U,V at our face
 		     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-		     double zonal_u = face->get_module_data<data>(ID)->interp(u, query);
-		     double zonal_v = face->get_module_data<data>(ID)->interp(v, query);
+		     double zonal_u = face->get_module_data<data>(ID).interp(u, query);
+		     double zonal_v = face->get_module_data<data>(ID).interp(v, query);
 
 		     (*face)["interp_zonal_u"_s]= zonal_u;
 		     (*face)["interp_zonal_v"_s]= zonal_v;
@@ -152,7 +152,7 @@ void MS_wind::run(mesh& domain)
 
 		     Vector_2 v_corr = math::gis::bearing_to_cartesian(theta * 180.0 / M_PI);
 		     Vector_3 v3(-v_corr.x(), -v_corr.y(), 0); //negate as direction it's blowing instead of where it is from!!
-		     face->set_face_vector("wind_direction", v3);
+//		     face->set_face_vector("wind_direction", v3);
 
 
 		     //        Vector_2 v_orig = math::gis::bearing_to_cartesian(theta_orig* 180.0 / M_PI);
@@ -163,6 +163,8 @@ void MS_wind::run(mesh& domain)
 
         }
 
+	// Need to access U_R from neighbors
+	domain->ghost_neighbors_communicate_variable("U_R"_s);
 
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -173,9 +175,38 @@ void MS_wind::run(mesh& domain)
           for (size_t j = 0; j < 3; j++)
           {
             auto neigh = face->neighbor(j);
-            if (neigh != nullptr && !neigh->_is_ghost)
-              u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(),
-                                            (*neigh)["U_R"_s]));
+
+            if (neigh != nullptr)
+            {
+                try
+                {
+                    u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_R"_s]));
+                }
+                catch (...)
+                {
+                    LOG_DEBUG << "face global id " << face->cell_global_id;
+                    LOG_DEBUG << "face is ghost? " << face->is_ghost;
+                    LOG_DEBUG << "neigh that caused problem has global id " << neigh->cell_global_id;
+                    LOG_DEBUG << "face neighbors are " << face->is_ghost;
+                    for(int i = 0; i < 3; i++)
+                    {
+                        auto neigh = face->neighbor(i);
+                        if (neigh != nullptr)
+                        {
+                            LOG_DEBUG << "\tneigh " << i << " global id " << neigh->cell_global_id;
+                            LOG_DEBUG << "\tneigh " << i << " local id " << neigh->cell_local_id;
+                            LOG_DEBUG << "\tneigh " << i << " is ghost? " << neigh->is_ghost;
+                        }
+                        else
+                        {
+                            LOG_DEBUG << "\tneigh " << i << " is nullptr";
+                        }
+                    }
+
+                    CHM_THROW_EXCEPTION(module_error, "RIP");
+                }
+            }
+
           }
 
           double new_u = (*face)["U_R"_s];
@@ -184,10 +215,10 @@ void MS_wind::run(mesh& domain)
           {
             auto query =
                 boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-            new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
+            new_u = face->get_module_data<data>(ID).interp_smoothing(u, query);
           }
 
-          face->get_module_data<data>(ID)->temp_u = new_u;
+          face->get_module_data<data>(ID).temp_u = new_u;
         }
 
 
@@ -197,7 +228,7 @@ void MS_wind::run(mesh& domain)
         {
             auto face = domain->face(i);
 
-		     (*face)["U_R"_s]= std::max(0.1, face->get_module_data<data>(ID)->temp_u);
+		     (*face)["U_R"_s]= std::max(0.1, face->get_module_data<data>(ID).temp_u);
         }
 
     }else
@@ -242,8 +273,8 @@ void MS_wind::run(mesh& domain)
              //http://mst.nerc.ac.uk/wind_vect_convs.html
 
              auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-             double zonal_u = face->get_module_data<data>(ID)->interp(u, query);
-             double zonal_v = face->get_module_data<data>(ID)->interp(v, query);
+             double zonal_u = face->get_module_data<data>(ID).interp(u, query);
+             double zonal_v = face->get_module_data<data>(ID).interp(v, query);
 
              double theta = 3.0 * M_PI * 0.5 - atan2(zonal_v, zonal_u);
 
@@ -258,8 +289,8 @@ void MS_wind::run(mesh& domain)
 
              double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
 
-             face->get_module_data<data>(ID)->corrected_theta = theta;
-             face->get_module_data<data>(ID)->W = W;
+             face->get_module_data<data>(ID).corrected_theta = theta;
+             face->get_module_data<data>(ID).W = W;
 
         }
 
@@ -270,8 +301,8 @@ void MS_wind::run(mesh& domain)
             auto face = domain->face(i);
 
 
-		     double theta= face->get_module_data<data>(ID)->corrected_theta;
-		     double W= face->get_module_data<data>(ID)->W;
+		     double theta= face->get_module_data<data>(ID).corrected_theta;
+		     double W= face->get_module_data<data>(ID).W;
 
 		     //what liston calls 'wind slope'
 		     double omega_s = face->slope() * cos(theta - face->aspect());
@@ -329,10 +360,12 @@ void MS_wind::run(mesh& domain)
 		     Vector_2 v = math::gis::bearing_to_cartesian(theta* 180.0 / M_PI);
 		     Vector_3 v3(-v.x(),-v.y(), 0); //negate as direction it's blowing instead of where it is from!!
 
-		     face->set_face_vector("wind_direction",v3);
+//		     face->set_face_vector("wind_direction",v3);
 
         }
 
+    // Need to access U_R from neighbors
+    domain->ghost_neighbors_communicate_variable("U_R"_s);
 
     #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -344,7 +377,7 @@ void MS_wind::run(mesh& domain)
 		     for (size_t j = 0; j < 3; j++)
 		     {
 		       auto neigh = face->neighbor(j);
-		       if (neigh != nullptr && !neigh->_is_ghost)
+		       if (neigh != nullptr)
 			 u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(),(*neigh)["U_R"_s]));
 		     }
 
@@ -353,10 +386,10 @@ void MS_wind::run(mesh& domain)
 		     if (u.size() > 0)
 		     {
 		       auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-		       new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
+		       new_u = face->get_module_data<data>(ID).interp_smoothing(u, query);
 		     }
 
-		     face->get_module_data<data>(ID)->temp_u = new_u;
+		     face->get_module_data<data>(ID).temp_u = new_u;
 
         }
 
@@ -365,7 +398,7 @@ void MS_wind::run(mesh& domain)
         {
             auto face = domain->face(i);
 
-		     (*face)["U_R"_s]= std::max(0.1,face->get_module_data<data>(ID)->temp_u) ;
+		     (*face)["U_R"_s]= std::max(0.1,face->get_module_data<data>(ID).temp_u) ;
 
         }
 
@@ -413,8 +446,8 @@ void MS_wind::run(mesh& domain)
 ////http://mst.nerc.ac.uk/wind_vect_convs.html
 //
 //        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-//        double zonal_u = face->get_module_data<data>(ID)->interp(u, query);
-//        double zonal_v = face->get_module_data<data>(ID)->interp(v, query);
+//        double zonal_u = face->get_module_data<data>(ID).interp(u, query);
+//        double zonal_v = face->get_module_data<data>(ID).interp(v, query);
 //
 //        double theta = 3.0 * M_PI * 0.5 - atan2(zonal_v, zonal_u);
 //
@@ -429,16 +462,16 @@ void MS_wind::run(mesh& domain)
 //
 //        double W = sqrt(zonal_u * zonal_u + zonal_v * zonal_v);
 //
-//        face->get_module_data<data>(ID)->corrected_theta = theta;
-//        face->get_module_data<data>(ID)->W = W;
+//        face->get_module_data<data>(ID).corrected_theta = theta;
+//        face->get_module_data<data>(ID).W = W;
 //    }
 //    #pragma omp parallel for
 //    for (size_t i = 0; i < domain->size_faces(); i++)
 //    {
 //        auto face = domain->face(i);
 //
-//        double theta= face->get_module_data<data>(ID)->corrected_theta;
-//        double W= face->get_module_data<data>(ID)->W;
+//        double theta= face->get_module_data<data>(ID).corrected_theta;
+//        double W= face->get_module_data<data>(ID).W;
 //
 //        //what liston calls 'wind slope'
 //        double omega_s = face->slope() * cos(theta - face->aspect());
@@ -509,8 +542,8 @@ void MS_wind::run(mesh& domain)
 //
 //        auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
 //
-//        double new_u = face->get_module_data<data>(ID)->interp_smoothing(u, query);
-//        face->get_module_data<data>(ID)->temp_u = new_u;
+//        double new_u = face->get_module_data<data>(ID).interp_smoothing(u, query);
+//        face->get_module_data<data>(ID).temp_u = new_u;
 //    }
 //#pragma omp parallel for
 //    for (size_t i = 0; i < domain->size_faces(); i++)

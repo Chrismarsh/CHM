@@ -33,6 +33,7 @@ int main (int argc, char *argv[])
 {
     core kernel;
 
+    int ret = 0;
     try
     {
         kernel.init(argc, argv) ;
@@ -41,16 +42,39 @@ int main (int argc, char *argv[])
 
         kernel.end();
     }
+    catch(chm_done& e)
+    {
+        kernel.end();
+    }
     catch( boost::exception& e)
     {
-        kernel.end(); //make sure endwin() is called so ncurses cleans up
-
+        ret = -1;
         LOG_ERROR << boost::diagnostic_information(e);
-
-        return -1;
+    }
+    catch(std::exception& e)
+    {
+        ret = -1;
+        LOG_ERROR << boost::diagnostic_information(e);
+    }
+    catch( ...)
+    {
+       LOG_ERROR << "Unknown exception";
+       ret = -1;
     }
 
-    boost::filesystem::copy_file(kernel.log_file_path,kernel.o_path / "CHM.log", boost::filesystem::copy_option::overwrite_if_exists);
+    // if we have an exception, ensure we tear down all of the MPI. In Non MPI mode this won't do anything
+    if(ret == -1)
+        kernel.end(true);
+    else
+        kernel.end();
+    try
+    {
+        boost::filesystem::copy_file(kernel.log_file_path,kernel.o_path / "CHM.log", boost::filesystem::copy_option::overwrite_if_exists);
+    }
+    catch(...)
+    {
 
-    return 0;
+    }
+
+    return ret;
 }

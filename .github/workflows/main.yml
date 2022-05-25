@@ -1,0 +1,141 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push or pull request events but only for the stable/proj7 branch
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0' # run every week
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  CONAN_USERNAME: CHM
+  CONAN_CHANNEL: stable
+  CONAN_UPLOAD: "http://conan.snowcast.ca:8081/artifactory/api/conan/chm"
+  CONAN_LOGIN_USERNAME: "github"
+  CONAN_PASSWORD: ${{ secrets.CONAN_PASSWORD }}
+  CONAN_STABLE_BRANCH_PATTERN: "stable/*"
+  CONAN_UPLOAD_ONLY_WHEN_STABLE: "1"
+  CONAN_REQUEST_TIMEOUT: 600
+  CONAN_RETRY: 30
+  CONAN_RETRY_WAIT: 60
+  CONAN_BASE_PROFILE: "chm_no_mpi"
+  #CONAN_BUILD_POLICY: "missing"
+  #ONAN_UPLOAD_DEPENDENCIES: "all"
+  MAKEFLAGS: "-j2"
+  USE_MPI: False
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.cfg.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        use-mpi: ["without-mpi"] #"with-mpi",
+        use-conan: [ 'use-conan' ]
+        cfg:
+          - { os: "ubuntu-18.04", compiler: "gcc", version: 7 }
+          - { os: "ubuntu-18.04", compiler: "gcc", version: 9 }
+          - { os: "ubuntu-18.04", compiler: "gcc", version: 10 }
+          - { os: "ubuntu-20.04", compiler: "gcc", version: 9 }
+          - { os: "ubuntu-20.04", compiler: "gcc", version: 10 }
+          - { os: "macos-10.15",  compiler: "apple-clang", version: "12.0" }
+          - { os: "macos-11",     compiler: "apple-clang", version: "13.0" }
+        lib-version: ["1.1"]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - uses: FranzDiebold/github-env-vars-action@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install python dependencies
+        run: |
+          export PATH="$pythonLocation:$PATH"
+          python -m pip install conan --upgrade
+          python -m pip install conan --upgrade
+          python -m pip install conan_package_tools
+
+
+      - name: Install linux dependencies
+        if: startsWith( matrix.cfg.os, 'ubuntu' )
+        env:
+          UBUNTU_VER: ${{ matrix.cfg.os }}
+        run: |
+          export PATH="$pythonLocation:$PATH"
+          sudo apt-get update
+          sudo env ACCEPT_EULA=Y apt-get upgrade -y
+          sudo apt-get update
+          sudo apt-get -y install libtiff-dev libsqlite3-dev sqlite3 libcurl4-openssl-dev
+
+      - name: Install MPI
+        if: ${{ matrix.use-mpi  == 'with-mpi' }}
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install libopenmpi-dev openmpi-bin
+          else
+            brew install openmpi
+          fi
+
+      - name: env linux
+        if: startsWith( matrix.cfg.os, 'ubuntu' )
+        uses: allenevans/set-env@v2.0.0
+        with:
+          CONAN_GCC_VERSIONS: ${{ matrix.cfg.version }}
+          CC: gcc-${{ matrix.cfg.version }}
+          CXX: g++-${{ matrix.cfg.version }}
+          GFORTRAN_NAME: gfortran-${{ matrix.cfg.version }}
+
+      - name: env macos
+        if: startsWith( matrix.cfg.os, 'macos' )
+        uses: allenevans/set-env@v2.0.0
+        with:
+          CONAN_APPLE_CLANG_VERSIONS: ${{ matrix.cfg.version }}
+          GFORTRAN_NAME: gfortran-10 # set the name to use for gfortran as we need to use gfotran-<version>
+
+      - name: Setup conan
+        if: ${{ matrix.use-conan == 'use-conan' }}
+        run: |
+          conan profile new default --detect
+          conan config install https://github.com/Chrismarsh/conan-config.git
+
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            conan profile update settings.os.distro="$CFG_OS" default
+          else
+            VERSION=$(echo "$CFG_OS" | cut -d'-' -f2)
+            echo "MacOS $VERSION"
+            if [[ "$VERSION" == "11" ]]; 
+            then 
+              VERSION="11.0"
+            fi
+            conan profile update settings.os.version="$VERSION" default
+          fi
+          cat ~/.conan/profiles/default
+        env:
+          CFG_OS: ${{matrix.cfg.os}}
+
+      - name: Build
+        run: |
+          python build.py
+        env:
+          USE_MPI: ${{ matrix.use-mpi }}
+
+
+

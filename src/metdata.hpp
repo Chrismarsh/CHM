@@ -126,7 +126,7 @@ class metdata
      * Returns the nearest station to x,y. Ignores elevation
      * @param x
      * @param y
-     * @param N Number neighbours to find
+     * @param N Number neighbors to find
      * @return
      */
     std::vector< std::shared_ptr<station> > nearest_station(double x, double y,unsigned int N=1);
@@ -151,6 +151,12 @@ class metdata
     std::string current_time_str();
     std::string start_time_str();
     std::string end_time_str();
+
+    /**
+     * True if a netcdf was loaded
+     * @return
+     */
+    bool is_netcdf();
 
     /// Subsets all timeseries to begin at [start, end]. For ascii, the underlying timeseries is modified.
     /// For nc, internal offsets are computed to start, end.

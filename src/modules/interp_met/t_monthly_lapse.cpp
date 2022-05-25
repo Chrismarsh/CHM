@@ -47,8 +47,8 @@ void t_monthly_lapse::init(mesh& domain)
     {
 
 	       auto face = domain->face(i);
-	       auto d = face->make_module_data<data>(ID);
-	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
+	       auto& d = face->make_module_data<data>(ID);
+	       d.interp.init(global_param->interp_algorithm,face->stations().size() );
 
     }
 
@@ -84,7 +84,7 @@ void t_monthly_lapse::run(mesh_elem& face)
 
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-    double value = face->get_module_data<data>(ID)->interp(lowered_values, query);
+    double value = face->get_module_data<data>(ID).interp(lowered_values, query);
 
     //raise value back up to the face's elevation from sea level
     value =  value + lapse_rate * (0.0 - face->get_z());

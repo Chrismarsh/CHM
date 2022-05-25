@@ -55,18 +55,18 @@ void Gray_inf::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto* d = face->make_module_data<Gray_inf::data>(ID);
+        auto& d = face->make_module_data<Gray_inf::data>(ID);
 
-        d->soil_depth = 400;
-        d->porosity = .4;
-        d->max_storage =  d->soil_depth * d->porosity;
-        //        d->storage =  d->max_storage  - (1 - d->max_storage * face->parameter("sm"_s)/100.);
-        d->storage =  d->max_storage * face->parameter("sm"_s)/100.;
+        d.soil_depth = 400;
+        d.porosity = .4;
+        d.max_storage =  d.soil_depth * d.porosity;
+        //        d.storage =  d.max_storage  - (1 - d.max_storage * face->parameter("sm"_s)/100.);
+        d.storage =  d.max_storage * face->parameter("sm"_s)/100.;
 
-        d->last_ts_potential_inf = 0;
-        d->opportunity_time=0.;
-        d->total_inf = 0.;
-        d->total_excess = 0.;
+        d.last_ts_potential_inf = 0;
+        d.opportunity_time=0.;
+        d.total_inf = 0.;
+        d.total_excess = 0.;
     }
 }
 void Gray_inf::run(mesh_elem &face)
@@ -78,7 +78,7 @@ void Gray_inf::run(mesh_elem &face)
     }
 
 
-    auto* d = face->get_module_data<Gray_inf::data>(ID);
+    auto& d = face->get_module_data<Gray_inf::data>(ID);
 
     auto id = face->cell_local_id;
     double C = 2.;
@@ -92,13 +92,13 @@ void Gray_inf::run(mesh_elem &face)
 
     double snowmelt = (*face)["snowmelt_int"_s];
 
-    double potential_inf = d->last_ts_potential_inf;
-    double avail_storage = (d->max_storage - d->storage);
+    double potential_inf = d.last_ts_potential_inf;
+    double avail_storage = (d.max_storage - d.storage);
 
     if(snowmelt > 0)
     {
-        d->opportunity_time += global_param->dt() / 3600.;
-        double t0 = d->opportunity_time;
+        d.opportunity_time += global_param->dt() / 3600.;
+        double t0 = d.opportunity_time;
         potential_inf = C * pow(S0,2.92) * pow((1. - SI),1.64) * pow((273.15 - TI) / 273.15, -0.45) * pow(t0,0.44);
 
 
@@ -108,11 +108,11 @@ void Gray_inf::run(mesh_elem &face)
             potential_inf = avail_storage;
         }
 
-        d->last_ts_potential_inf = potential_inf;
+        d.last_ts_potential_inf = potential_inf;
 
-        if( d->total_inf + snowmelt > potential_inf)
+        if( d.total_inf + snowmelt > potential_inf)
         {
-            runoff = (d->total_inf + snowmelt) - potential_inf;
+            runoff = (d.total_inf + snowmelt) - potential_inf;
         }
 
 
@@ -120,30 +120,30 @@ void Gray_inf::run(mesh_elem &face)
         inf    = snowmelt - runoff;
 
 
-        d->storage += inf;
+        d.storage += inf;
 
-        if (d->storage > d->max_storage)
+        if (d.storage > d.max_storage)
         {
-            d->storage = d->max_storage;
+            d.storage = d.max_storage;
         }
 
 
-        d->total_inf += inf;
-        d->total_excess += runoff;
+        d.total_inf += inf;
+        d.total_excess += runoff;
 
     }
 
 
     if( !is_nan(face->get_initial_condition("sm")))
     {
-        (*face)["total_excess"_s]=d->total_excess;
-        (*face)["total_inf"_s]=d->total_inf;
+        (*face)["total_excess"_s]=d.total_excess;
+        (*face)["total_inf"_s]=d.total_inf;
 
         (*face)["runoff"_s]=runoff;
         (*face)["inf"_s]=inf;
         (*face)["potential_inf"_s]=potential_inf;
-        (*face)["soil_storage"_s]= d->storage;
-        (*face)["opportunity_time"_s]=d->opportunity_time;
+        (*face)["soil_storage"_s]= d.storage;
+        (*face)["opportunity_time"_s]=d.opportunity_time;
         (*face)["available_storage"_s]=avail_storage;
     }
     else

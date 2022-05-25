@@ -83,7 +83,7 @@ class variablestorage
     size_t size();
 
   private:
-    const uint64_t seed = 2654435761U;
+
     template <typename Item> class wyandFunctor
     {
       public:
@@ -161,10 +161,10 @@ T& variablestorage<T>::operator[](const std::string& variable)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
     }
 
-    uint64_t hash = xxh64::hash (variable.c_str(), variable.length(), this->seed);
+    uint64_t hash = xxh64::hash (variable.c_str(), variable.length());
     uint64_t  idx = _variable_bphf->lookup(hash);
 
-    // did the table return garabage?
+    // did the table return garbage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
     if( idx >=  _size ||
         _variables[idx].xxhash != hash)
@@ -180,7 +180,7 @@ bool variablestorage<T>::has(const uint64_t& hash)
 
     uint64_t  idx = _variable_bphf->lookup(hash);
 
-    // did the table return garabage?
+    // did the table return garbage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
     if(_variables[idx].xxhash != hash)
         return false;
@@ -223,7 +223,7 @@ void variablestorage<T>::init(std::set<std::string>& variables)
     std::vector<u_int64_t> hash_vec;
     for(auto& v : variables)
     {
-        uint64_t hash = xxh64::hash (v.c_str(), v.length(), seed);
+        uint64_t hash = xxh64::hash (v.c_str(), v.length());
         hash_vec.push_back(hash);
     }
 
@@ -233,7 +233,7 @@ void variablestorage<T>::init(std::set<std::string>& variables)
     _variables.resize(variables.size());
     for(auto& v : variables)
     {
-        uint64_t hash = xxh64::hash (v.c_str(), v.length(), seed);
+        uint64_t hash = xxh64::hash (v.c_str(), v.length());
         uint64_t  idx = _variable_bphf->lookup(hash);
 
 

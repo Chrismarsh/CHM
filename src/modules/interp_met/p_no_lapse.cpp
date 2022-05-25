@@ -44,8 +44,8 @@ void p_no_lapse::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<p_no_lapse::data>(ID);
-        d->interp.init(global_param->interp_algorithm,face->stations().size() );
+        auto& d = face->make_module_data<p_no_lapse::data>(ID);
+        d.interp.init(global_param->interp_algorithm,face->stations().size() );
     }
 
 }
@@ -64,7 +64,7 @@ void p_no_lapse::run(mesh_elem& face)
     }
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-    double p0 = face->get_module_data<data>(ID)->interp(ppt, query);
+    double p0 = face->get_module_data<data>(ID).interp(ppt, query);
 
     double P_fin = -9999;
 

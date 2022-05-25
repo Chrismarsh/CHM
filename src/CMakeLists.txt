@@ -107,6 +107,7 @@ set (HEADER_FILES
 		physics
         modules/interp_met
 		modules/snobal
+		math
         libmaw
         interpolation
         timeseries
@@ -118,24 +119,63 @@ set (HEADER_FILES
 		)
 
 
+
 set(EXT_TARGETS
-		netcdf-cxx::netcdf-cxx
-		Boost::Boost
-		tbb::tbb
-		gsl::gsl
-		Threads::Threads
-		armadillo::armadillo
-		vtk::vtk
-		gdal::gdal #proj is brought it via this
-		viennacl::viennacl
-		cgal::cgal
-		hdf5::hdf5
-		sparsehash::sparsehash
-		meteoio::meteoio
-		func::func
 		${ARPACK_LIBRARY}
-		Eigen3::Eigen3
+
+		BLAS::BLAS
+		Threads::Threads
+		${GDAL}::${GDAL}
+		${GSL}::${GSL}
+		${PROJ}::${PROJ}
+		${CGAL}::${CGAL}
+		${HDF5}::${HDF5}
+
+		${METEOIO}::${METEOIO}
+		${TRILINOS}::${TRILINOS}
+		${SPARSEHASH}::${SPARSEHASH}
+
+		${FUNC}::${FUNC}
 		CACHE INTERNAL "" FORCE)
+
+
+if(BUILD_WITH_CONAN)
+	list( APPEND EXT_TARGETS
+			netcdf-cxx::netcdf-cxx
+			TBB::tbb
+			Boost::Boost
+			Eigen3::Eigen3
+			armadillo::armadillo
+			vtk::vtk
+
+			)
+else()
+	list( APPEND EXT_TARGETS
+			NetCDF::NetCDF
+			TBB::tbb
+			ARMADILLO::ARMADILLO
+			Eigen3::Eigen
+
+			VTK::CommonCore
+			VTK::CommonDataModel
+			VTK::CommonTransforms
+			VTK::FiltersCore
+			VTK::FiltersGeneral
+			VTK::FiltersGeometry
+			VTK::FiltersSources
+			VTK::IOXML
+
+			Boost::headers
+			Boost::system
+			Boost::filesystem
+			Boost::date_time
+			Boost::log
+			Boost::thread
+			Boost::regex
+			Boost::iostreams
+			Boost::program_options
+			)
+endif()
 
 #handle the optionals
 if(OpenMP_FOUND)
@@ -146,12 +186,19 @@ if(USE_OCL AND OPENCL_FOUND)
 	list( APPEND EXT_TARGETS OpenCL::OpenCL)
 endif()
 
-if(gperftools_FOUND)
-	list( APPEND EXT_TARGETS gperftools::gperftools)
+if(${GPERFTOOLS}_FOUND)
+	list( APPEND EXT_TARGETS ${GPERFTOOLS}::${GPERFTOOLS})
+endif()
+
+if(USE_JEMALLOC)
+	list( APPEND EXT_TARGETS Jemalloc::Jemalloc)
 endif()
 
 if(MPI_FOUND AND USE_MPI)
 	list( APPEND EXT_TARGETS MPI::MPI_CXX)
+	if(NOT BUILD_WITH_CONAN)
+		list( APPEND EXT_TARGETS Boost::mpi)
+	endif()
 endif()
 
 #are we linking against matlab?
@@ -181,6 +228,22 @@ else()
 	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
 endif()
 
+add_library(CHMmath OBJECT
+  math/LinearAlgebra.cpp
+  )
+
+target_link_libraries(CHMmath
+  ${EXT_TARGETS}
+  )
+
+target_include_directories(CHMmath PUBLIC
+  ${HEADER_FILES}
+)
+
+set_target_properties(CHMmath
+		PROPERTIES
+		COMPILE_FLAGS ${CHM_BUILD_FLAGS})
+
 
 add_executable(
 		CHM
@@ -188,21 +251,29 @@ add_executable(
 		${CHM_SRCS}
 		${FILTER_SRCS}
 		${MODULE_SRCS}
-		${CHM_THIRD_PARTY}
 		${LIBMAW_SRCS}
 )
 
 
-target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
-target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS} -std=f2003 -fno-underscoring)
+# target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
+target_include_directories(CHM PRIVATE ${HEADER_FILES} )
+if(MPI_FOUND AND USE_MPI)
+  target_include_directories(CHM PRIVATE ${MPI_CXX_INCLUDE_PATH} )
+  target_compile_options(CHM PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+endif()
+
+
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 		CHM
+		CHMmath
 		${EXT_TARGETS}
+		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(CHM
 		PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		COMPILE_FLAGS ${CHM_BUILD_FLAGS}
 		UNITY_BUILD OFF
 		UNITY_BUILD_BATCH_SIZE 2
 		)
@@ -260,9 +331,34 @@ endif()
 
 #make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
 install(TARGETS CHM RUNTIME)
-install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
-		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
+
+if(BUILD_WITH_CONAN)
+	install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
+			DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+endif()
+
+
+### Targets for the preprocessing tools
+add_executable(
+		partition
+		preprocessing/partition/main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
+		${CHM_SRCS}
+)
+target_compile_features(partition PRIVATE cxx_std_14)
+
+
+target_link_libraries(
+		partition
+		CHMmath
+		${EXT_TARGETS}
+		${THIRD_PARTY_TARGETS}
+)
+set_target_properties(partition
+		PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+		COMPILE_FLAGS "-g3 -O1 -fno-inline -ggdb -DSAFE_CHECKS"
+		)
 
 
 if(STATIC_ANLAYSIS)
@@ -303,20 +399,24 @@ if (BUILD_TESTS)
 			${CHM_SRCS}
 			${FILTER_SRCS}
 			${MODULE_SRCS}
-			${CHM_THIRD_PARTY}
 			${LIBMAW_SRCS}
 			${TEST_SRCS}
 	)
 
-	target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} ${HEADER_FILES} ${THIRD_PARTY_INCL_PATHS} )
-    target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS}  -std=f2003 -fno-underscoring)
+	target_include_directories(runUnitTests PRIVATE ${HEADER_FILES} )
+
+	if(MPI_FOUND AND USE_MPI)
+	  target_include_directories(runUnitTests PRIVATE ${MPI_CXX_INCLUDE_PATH} )
+	  target_compile_options(runUnitTests PRIVATE ${MPI_CXX_COMPILE_FLAGS})
+	endif()
 
 	target_link_libraries(
 			runUnitTests
+			CHMmath
+			netcdf-c::netcdf-c
 			${EXT_TARGETS}
+			${THIRD_PARTY_TARGETS}
 			${GTEST_LINK}
-			${MPI_CXX_LIBRARIES}
-			${MPI_CXX_LINK_FLAGS}
 	)
 
 	set_target_properties(runUnitTests

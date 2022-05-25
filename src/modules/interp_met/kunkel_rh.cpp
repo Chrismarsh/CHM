@@ -46,8 +46,8 @@ void kunkel_rh::init(mesh& domain)
     {
 
 	       auto face = domain->face(i);
-	       auto d = face->make_module_data<data>(ID);
-	       d->interp.init(global_param->interp_algorithm,face->stations().size() );
+	       auto& d = face->make_module_data<data>(ID);
+	       d.interp.init(global_param->interp_algorithm,face->stations().size() );
 
     }
 
@@ -85,7 +85,7 @@ void kunkel_rh::run(mesh_elem &face)
 
 
     auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-    double value = face->get_module_data<data>(ID)->interp(lowered_values, query);//C
+    double value = face->get_module_data<data>(ID).interp(lowered_values, query);//C
 
     double rh = value * exp(lapse * (face->get_z() - 0.0));
 

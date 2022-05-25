@@ -36,7 +36,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include "tbb/parallel_sort.h"
-#include "tbb/task_scheduler_init.h"
+
 struct module_shadow_face_info :  face_info
 {
     module_shadow_face_info()

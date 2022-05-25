@@ -91,12 +91,12 @@ void Lehning_snowpack::run(mesh_elem &face)
         set_all_nan_on_skip(face);
         return;
     }
-    auto data = face->get_module_data<Lehning_snowpack::data>(ID);
+    auto& data = face->get_module_data<Lehning_snowpack::data>(ID);
 
     /**
      * Builds this timestep's meteo data
      */
-    CurrentMeteo Mdata(data->config);
+    CurrentMeteo Mdata(data.config);
     Mdata.date   =  mio::Date( global_param->year(), global_param->month(), global_param->day(),global_param->hour(),global_param->min(),-6 );
     // Optional inputs if there is a canopy or not
     if(has_optional("ta_subcanopy")) {
@@ -140,7 +140,7 @@ void Lehning_snowpack::run(mesh_elem &face)
 //    }
 //    else
 //    {
-//        Mdata.rswr = std::max(0.0,data->Xdata->Albedo * Mdata.iswr);
+//        Mdata.rswr = std::max(0.0,data.Xdata->Albedo * Mdata.iswr);
 //        Mdata.mAlbedo = Constants::undefined; //this will trigger calculating a paramaterized albedo
 //    }
 
@@ -179,7 +179,7 @@ void Lehning_snowpack::run(mesh_elem &face)
 //    Mdata.ts.push_back(soil_meas("TS1"));
 //    Mdata.zv_ts.push_back(soil_meas("HTS1"));
 
-    Mdata.tss = data->Xdata->Ndata[data->Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
+    Mdata.tss = data.Xdata->Ndata[data.Xdata->getNumberOfElements()].T;  //we use previous timestep value//mio::IOUtils::nodata; //Constants::undefined;;//
     //setting this to tss is inline with Alpine3d if there is no soil node. However, it might make more sense to use a const ground temp?
     if(has_optional("T_g"))
         Mdata.ts0 = (*face)["T_g"_s] + 273.15;
@@ -189,8 +189,8 @@ void Lehning_snowpack::run(mesh_elem &face)
     Mdata.hs = mio::IOUtils::nodata; //follows alpine3d
     Mdata.elev      = (*face)["solar_el"_s]*mio::Cst::to_rad;
 
-    data->cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
-    data->meteo->compMeteo(Mdata,*(data->Xdata),false); // no canopy model
+    data.cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
+    data.meteo->compMeteo(Mdata,*(data.Xdata),false); // no canopy model
 
     double mass_erode = 0;
 
@@ -204,7 +204,7 @@ void Lehning_snowpack::run(mesh_elem &face)
         {
 
             Mdata.psum += mass;
-            data->cum_precip  += Mdata.psum;
+            data.cum_precip  += Mdata.psum;
             Mdata.psum_ph = 0;
         }
         else
@@ -225,11 +225,11 @@ void Lehning_snowpack::run(mesh_elem &face)
 
     try
     {
-        data->sp->runSnowpackModel(Mdata, *(data->Xdata), data->cum_precip, Bdata,surface_fluxes,mass_erode);
-        surface_fluxes.collectSurfaceFluxes(Bdata, *(data->Xdata), Mdata);
+        data.sp->runSnowpackModel(Mdata, *(data.Xdata), data.cum_precip, Bdata,surface_fluxes,mass_erode);
+        surface_fluxes.collectSurfaceFluxes(Bdata, *(data.Xdata), Mdata);
     }catch(...)
     {
-        if (data->Xdata->swe > 3)
+        if (data.Xdata->swe > 3)
         {
 
             auto details = "(" + std::to_string(face->center().x()) +
@@ -243,21 +243,21 @@ void Lehning_snowpack::run(mesh_elem &face)
 
     (*face)["sublimation"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
 
-    if(data->Xdata->swe > 0)
+    if(data.Xdata->swe > 0)
     {
 
         double bulk_T_s=0;
-        for(int i = 0; i < data->Xdata->getNumberOfElements(); ++i)
+        for(size_t i = 0; i < data.Xdata->getNumberOfElements(); ++i)
         {
-            bulk_T_s += data->Xdata->Ndata[i].T;
+            bulk_T_s += data.Xdata->Ndata[i].T;
         }
 
-        bulk_T_s /= data->Xdata->getNumberOfElements();
+        bulk_T_s /= data.Xdata->getNumberOfElements();
 
         (*face)["T_s"_s]=bulk_T_s;
         (*face)["T_s_0"_s]=Mdata.tss;
-        (*face)["n_nodes"_s]=data->Xdata->getNumberOfNodes();
-        (*face)["n_elem"_s]=data->Xdata->getNumberOfElements();
+        (*face)["n_nodes"_s]=data.Xdata->getNumberOfNodes();
+        (*face)["n_elem"_s]=data.Xdata->getNumberOfElements();
         (*face)["H"_s]=surface_fluxes.qs;
         (*face)["E"_s]=surface_fluxes.ql;
 
@@ -270,7 +270,7 @@ void Lehning_snowpack::run(mesh_elem &face)
         (*face)["dQ"_s]=surface_fluxes.dIntEnergy;
 //        if(!has_optional("snow_albedo"))
 //        {
-            (*face)["snow_albedo"_s]=data->Xdata->Albedo;  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
+            (*face)["snow_albedo"_s]=data.Xdata->Albedo;  //even if we have a measured albedo, Xdata will reflect this. //surface_fluxes.pAlbedo);
 //        }
 
     } else{
@@ -279,14 +279,14 @@ void Lehning_snowpack::run(mesh_elem &face)
     }
 
     //always write out 0 swe regardless of amount of swee
-    (*face)["swe"_s]=data->Xdata->swe;
-    (*face)["mass_snowpack_removed"_s]=data->Xdata->ErosionMass;
-    (*face)["snowdepthavg"_s]=data->Xdata->cH - data->Xdata->Ground; // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
+    (*face)["swe"_s]=data.Xdata->swe;
+    (*face)["mass_snowpack_removed"_s]=data.Xdata->ErosionMass;
+    (*face)["snowdepthavg"_s]=data.Xdata->cH - data.Xdata->Ground; // cH includes soil depth if SNP_SOIL == 1, hence subtracting Ground height
     (*face)["runoff"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF];
     (*face)["evap"_s]=surface_fluxes.mass[SurfaceFluxes::MS_EVAPORATION];
 //    (*face)["sum_runoff"_s]=  (*face["sum_runoff"_s] + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
-    data->sum_subl +=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
-    (*face)["sum_subl"_s]=   data->sum_subl ;
+    data.sum_subl +=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
+    (*face)["sum_subl"_s]=   data.sum_subl ;
 
 
     (*face)["MS_SWE"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SWE];
@@ -303,50 +303,50 @@ void Lehning_snowpack::init(mesh& domain)
     {
         auto face = domain->face(i);
 
-        auto d = face->make_module_data<Lehning_snowpack::data>(ID);
+        auto& d = face->make_module_data<Lehning_snowpack::data>(ID);
 
 
         //setup critical keys.
         //overwrite the user if a dangerous key is set
-        d->config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string( 3600.0 / global_param->dt())); // Hz. Number of met per hour
-        d->config.addKey("MEAS_TSS", "Snowpack", "false");
+        d.config.addKey("METEO_STEP_LENGTH", "Snowpack", std::to_string( 3600.0 / global_param->dt())); // Hz. Number of met per hour
+        d.config.addKey("MEAS_TSS", "Snowpack", "false");
 
         //specified as minutes, snowpack will convert to s for us. CHM dt is in s
-        d->config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt()  / 60 ) );
+        d.config.addKey("CALCULATION_STEP_LENGTH","Snowpack", std::to_string(global_param->dt()  / 60 ) );
         //default values for
         //	"Snowpack": { }
 
-        d->config.addKey("MEAS_TSS","Snowpack","false");
-        d->config.addKey("ENFORCE_MEASURED_SNOW_HEIGHTS","Snowpack","false");
-        d->config.addKey("SW_MODE","Snowpack","BOTH");
-        d->config.addKey("HEIGHT_OF_WIND_VALUE","Snowpack","2");
-        d->config.addKey("HEIGHT_OF_METEO_VALUES","Snowpack","2");
-        d->config.addKey("ATMOSPHERIC_STABILITY","Snowpack","MO_MICHLMAYR");
-        d->config.addKey("ROUGHNESS_LENGTH","Snowpack","0.001");
-        d->config.addKey("CHANGE_BC","Snowpack","false");
-        d->config.addKey("THRESH_CHANGE_BC","Snowpack","-1.0");
-        d->config.addKey("SNP_SOIL","Snowpack","false");
-        d->config.addKey("SOIL_FLUX","Snowpack","false");
-        d->config.addKey("GEO_HEAT","Snowpack","0.06");
-        d->config.addKey("CANOPY","Snowpack","false");
+        d.config.addKey("MEAS_TSS","Snowpack","false");
+        d.config.addKey("ENFORCE_MEASURED_SNOW_HEIGHTS","Snowpack","false");
+        d.config.addKey("SW_MODE","Snowpack","BOTH");
+        d.config.addKey("HEIGHT_OF_WIND_VALUE","Snowpack","2");
+        d.config.addKey("HEIGHT_OF_METEO_VALUES","Snowpack","2");
+        d.config.addKey("ATMOSPHERIC_STABILITY","Snowpack","MO_MICHLMAYR");
+        d.config.addKey("ROUGHNESS_LENGTH","Snowpack","0.001");
+        d.config.addKey("CHANGE_BC","Snowpack","false");
+        d.config.addKey("THRESH_CHANGE_BC","Snowpack","-1.0");
+        d.config.addKey("SNP_SOIL","Snowpack","false");
+        d.config.addKey("SOIL_FLUX","Snowpack","false");
+        d.config.addKey("GEO_HEAT","Snowpack","0.06");
+        d.config.addKey("CANOPY","Snowpack","false");
 
         //default values for
         //	"SnowpackAdvanced": { }
-        d->config.addKey("MAX_NUMBER_MEAS_TEMPERATURES","SnowpackAdvanced","1");
-        d->config.addKey("ALPINE3D","SnowpackAdvanced","true"); //must be true for any blowing snow module
-        d->config.addKey("SNOW_EROSION","SnowpackAdvanced","false");
-        d->config.addKey("MEAS_INCOMING_LONGWAVE","SnowpackAdvanced","true");
-        d->config.addKey("THRESH_RAIN","SnowpackAdvanced","2");
-        d->config.addKey("THRESH_RAIN_RANGE","SnowpackAdvanced","2");
-        d->config.addKey("WATERTRANSPORTMODEL_SNOW","SnowpackAdvanced","BUCKET");
-        d->config.addKey("VARIANT","SnowpackAdvanced","DEFAULT");
-        d->config.addKey("ADJUST_HEIGHT_OF_WIND_VALUE","SnowpackAdvanced","false"); // we always provide a 2m wind, even if there is snowcover
-        d->config.addKey("HN_DENSITY","SnowpackAdvanced","MEASURED"); //We can then set it in at run time. Do it this way so we can have temporally variable if we want.
+        d.config.addKey("MAX_NUMBER_MEAS_TEMPERATURES","SnowpackAdvanced","1");
+        d.config.addKey("ALPINE3D","SnowpackAdvanced","true"); //must be true for any blowing snow module
+        d.config.addKey("SNOW_EROSION","SnowpackAdvanced","false");
+        d.config.addKey("MEAS_INCOMING_LONGWAVE","SnowpackAdvanced","true");
+        d.config.addKey("THRESH_RAIN","SnowpackAdvanced","2");
+        d.config.addKey("THRESH_RAIN_RANGE","SnowpackAdvanced","2");
+        d.config.addKey("WATERTRANSPORTMODEL_SNOW","SnowpackAdvanced","BUCKET");
+        d.config.addKey("VARIANT","SnowpackAdvanced","DEFAULT");
+        d.config.addKey("ADJUST_HEIGHT_OF_WIND_VALUE","SnowpackAdvanced","false"); // we always provide a 2m wind, even if there is snowcover
+        d.config.addKey("HN_DENSITY","SnowpackAdvanced","MEASURED"); //We can then set it in at run time. Do it this way so we can have temporally variable if we want.
 
-        d->config.addKey("COMBINE_ELEMENTS","SnowpackAdvanced","true"); //Defines whether joining elements will be considered at all
+        d.config.addKey("COMBINE_ELEMENTS","SnowpackAdvanced","true"); //Defines whether joining elements will be considered at all
         //Activates algorithm to reduce the number of elements deeper in the snowpack AND to split elements again when they come back to the surface
         //Only works when COMBINE_ELEMENTS == TRUE.
-        d->config.addKey("REDUCE_N_ELEMENTS","SnowpackAdvanced","true");
+        d.config.addKey("REDUCE_N_ELEMENTS","SnowpackAdvanced","true");
 
 
         // because we use our own config, we need to do the conversion
@@ -359,14 +359,14 @@ void Lehning_snowpack::init(mesh& domain)
         {
             for(auto jtr : itr.second)
             {
-                d->config.addKey(jtr.first.data(),itr.first.data(),jtr.second.data());
+                d.config.addKey(jtr.first.data(),itr.first.data(),jtr.second.data());
             }
         }
         
 
-        d->Spackconfig = boost::make_shared<SnowpackConfig>(d->config);
+        d.Spackconfig = boost::make_shared<SnowpackConfig>(d.config);
 
-        d->cum_precip=0.;
+        d.cum_precip=0.;
 
         //addSpecial keys goes here to deal with Antarctica, canopy, and detect grass
 
@@ -423,19 +423,19 @@ void Lehning_snowpack::init(mesh& domain)
 
         SSdata.ErosionLevel = cfg.get<double>("sno.ErosionLevel",0);
 
-        d->Xdata = boost::make_shared<SnowStation>(false,false);
-        d->Xdata->initialize(SSdata,0);
-//        d->Xdata->cos_sl = 1;
-//        d->Xdata->windward = false;
-//        d->Xdata->rho_hn = 0;
-//        d->Xdata->hn = 0;
-//        d->Xdata->mH = 0;
+        d.Xdata = boost::make_shared<SnowStation>(false,false);
+        d.Xdata->initialize(SSdata,0);
+//        d.Xdata->cos_sl = 1;
+//        d.Xdata->windward = false;
+//        d.Xdata->rho_hn = 0;
+//        d.Xdata->hn = 0;
+//        d.Xdata->mH = 0;
 
-        d->sp = boost::make_shared<Snowpack>(*(d->Spackconfig));
-        d->meteo = boost::make_shared<Meteo>( (d->config));
-        d->stability = boost::make_shared<Stability> ( (d->config), false);
+        d.sp = boost::make_shared<Snowpack>(*(d.Spackconfig));
+        d.meteo = boost::make_shared<Meteo>( (d.config));
+        d.stability = boost::make_shared<Stability> ( (d.config), false);
 
-        d->sum_subl = 0;
+        d.sum_subl = 0;
 
 
     }

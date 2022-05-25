@@ -3,66 +3,111 @@ import os
 
 class CHMConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-   
 
     name = "CHM"
-    version = "1.0"
+    version = "1.1"
     license = "https://github.com/Chrismarsh/CHM/blob/master/LICENSE"
     author = "Chris Marsh"
     url = "https://github.com/Chrismarsh/CHM"
     description = "Canadian hydrological model"
     generators = "cmake_find_package"
-    # default_options = {"boost:without_python": True,
-    #                    "boost:without_mpi": True}
-    options = {"verbose_cmake":[True,False], "build_tests":[True,False] }
 
-    default_options = {"gperftools:heapprof":True,
-                       "verbose_cmake":False,
-                       "build_tests":True}
-    # [options]
-    # boost:without_python=True
-    # boost:without_mpi=False
+    options = {
+        "verbose_cmake":[True,False],
+        "build_tests":[True,False],
+        "with_mpi": [True, False],
+        "with_omp": [True,False]
+    }
 
-    # cgal:with_tbb=True
-    # cgal:with_gmp=True
+    default_options = {
+       "verbose_cmake":False,
+       "build_tests":False,
+        #default without openmp or mpi
+        "with_omp": True,
+        "with_mpi": False,
 
-    # netcdf-c:parallel4=False
+        #dependency options
+        "gdal:libcurl": True,
+        "gdal:netcdf": True
+        # "gperftools:heapprof":True
+    }
 
     def source(self):
 
-        # branch = os.environ.get("TRAVIS_BRANCH","master")
-        branch = os.environ["CONAN_TEST_BRANCH"]
+        #master default
+        branch = None
+
+        try:
+            is_ci = os.environ["CI"]
+        except KeyError as e:
+            raise Exception('This conanfile is intended to be called from within a CI environment. Please use CMake '
+                            'to compile.')
+
+        try:
+            branch = os.environ["GITHUB_SHA"]
+        except KeyError as e:
+            try:
+                if os.environ["CI"]:
+                    self.output.error('When running under CI, $GITHUB_SHA should be available.')
+            except KeyError as e:
+                pass
+
+
         git = tools.Git()
-        git.clone("https://github.com/Chrismarsh/CHM.git",branch=branch)
+        git.clone("https://github.com/Chrismarsh/CHM.git")
+        if branch is None:
+            raise Exception('No branch specified')
+
+        git.run(f'checkout {branch}')
         git.run("submodule update --init --recursive")
 
 
+
+
     def requirements(self):
-        self.requires( "cgal/5.0.0@CHM/stable" )
-        self.requires( "boost/1.71.0@CHM/stable" )
-        self.requires( "vtk/8.2.0@CHM/stable" )
-        self.requires( "netcdf-cxx/4.3.1@CHM/stable" )
-        self.requires( "proj/4.9.3@CHM/stable" )
-        self.requires( "gdal/2.4.1@CHM/stable" )
-        self.requires( "sparsehash/2.0.3@CHM/stable" )
-        self.requires( "gperftools/2.7@CHM/stable" )
-        self.requires( "gsl/2.6@CHM/stable" )
-        self.requires( "armadillo/9.800.2@CHM/stable" )
-        self.requires( "viennacl/1.7.1@CHM/stable" )
-        self.requires( "tbb/2019_u9@CHM/stable" )
-        self.requires( "eigen3/3.3.7@CHM/stable" )
+
+        self.requires( "cgal/[>=5.2]@CHM/stable" )
+        self.requires( "boost/[>=1.75]@CHM/stable" )
+        self.requires( "vtk/[>=9.0.1]@CHM/stable" )
+        self.requires( "netcdf-cxx/[>=4.3]@CHM/stable" )
+        self.requires( "proj/[>=7.2.1]@CHM/stable" )
+        self.requires( "gdal/[>=3.2.1]@CHM/stable" )
+        self.requires( "sparsehash/[>=2.0.3]@CHM/stable" )
+        self.requires( "gperftools/[>=2.7]@CHM/stable" )
+        self.requires( "gsl/[>=2.6]@CHM/stable" )
+        self.requires( "armadillo/[>=10.2.0]@CHM/stable" )
+        self.requires( "onetbb/[>=2021.3.0]@CHM/stable" )
+        self.requires( "eigen3/[>=3.3.9]@CHM/stable" )
         self.requires( "meteoio/2.8.0@CHM/stable")
         self.requires( "func/0.1@CHM/stable")
+        self.requires( "trilinos/chm@CHM/stable")
 
     def _configure_cmake(self):
         cmake = CMake(self)
 
+        if self.options['with_mpi']:
+        #default to no MPI
+            self.options["boost:without_mpi"] = False
+            self.options["trilinos:with_mpi"] = True
+
+        if self.options["with_omp"]:
+            # trilinos does not support omp on macos
+            if not tools.os_info.is_macos:
+                self.options["trilinos:with_openmp"] = True
+
+
         if self.options.build_tests:
-            cmake.definitions["BUILD_TESTS"] = True
+            cmake.definitions["BUILD_TESTS"] = "ON"
 
         if self.options.verbose_cmake:
             cmake.verbose = True
             cmake.definitions["CMAKE_FIND_DEBUG_MODE"]=1
+
+        if self.options["with_omp"]:
+            cmake.definitions["USE_OMP"] = "ON"
+
+        if self.options["with_mpi"]:
+            cmake.definitions["USE_MPI"] = "ON"
 
         cmake.configure(source_folder=self.source_folder)
 
@@ -71,7 +116,7 @@ class CHMConan(ConanFile):
     def build(self):
         cmake = self._configure_cmake()
         cmake.build()
-        cmake.test(target="check")
+        # cmake.test(target="check")
 
     def package(self):
         cmake = self._configure_cmake()

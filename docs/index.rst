@@ -21,13 +21,6 @@ The paper describing CHM can be found `here <https://www.geosci-model-dev.net/13
 
 .. image:: images/mesh.png
 
-Contributors
-~~~~~~~~~~~~~
-- `Chris Marsh <http://www.chrismarsh.ca>`__
-- `Kevin Green <https://github.com/kevinrichardgreen/>`__
-- `Nic Wayand <https://github.com/Nicwayand>`__
-- `Vincent Vionnet <https://github.com/VVionnet/>`__ 
-- `Wenxian Guo <https://github.com/WXGopher/>`__ 
 
 .. toctree::
    :maxdepth: 4
@@ -36,8 +29,10 @@ Contributors
 
    build
    configuration
+   pointmode
    cli
    meshgen
+   partition
    forcing
    output
    visualization

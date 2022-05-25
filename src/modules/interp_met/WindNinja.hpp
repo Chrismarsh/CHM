@@ -39,10 +39,6 @@
 #include <cmath>
 
 
-#include <viennacl/linalg/gmres.hpp>
-#include <viennacl/compressed_matrix.hpp>
-#include <viennacl/linalg/ilu.hpp>
-
 /**
  * \ingroup modules met wind
  * @{
@@ -184,16 +180,15 @@ public:
     };
     double distance;
     int N_windfield; //  Number of wind fields in the library
-    bool ninja_average; // Boolean to activate linear interpolation betweem the closest 2 wind fields from the library 
+    bool ninja_average; // Boolean to activate linear interpolation betweem the closest 2 wind fields from the library
     double H_forc; // Reference height for GEM forcing and WindNinja wind field library
     double Max_spdup;  // Maximal value of crest speedup
     double Min_spdup;  // Minimal value of crest speedup
-    int L_avg;   // Size of the square of averaging when computing the speed-up map 
-                 // Not used by default and set to -1 if not specified in the config file. 
+    int L_avg;   // Size of the square of averaging when computing the speed-up map
+                 // Not used by default and set to -1 if not specified in the config file.
     bool ninja_recirc; // Boolean to activate wind speed reduction on the leeside of mountainous terrain
 
     bool compute_Sx; // uses the Sx module to influence the windspeeds so Sx needs to be computed during the windspeed evaluation, instead of a seperate module
-    double Sx_crit;    // Critical values of the Winstral parameter to determine the occurence of flow separation.  
+    double Sx_crit;    // Critical values of the Winstral parameter to determine the occurence of flow separation.
     boost::shared_ptr<Winstral_parameters> Sx;
 };
-
