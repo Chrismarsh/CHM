@@ -47,8 +47,19 @@
  * snow thickness (taken perpendicular to the slope) of 3.08 m, 1.11 m, 0.45 m, and 0.15 m for slopes of 30° 45°, 60°,
  * and 75°, respectively.
  *
+ * In the manuscript it is unclear if the holding capacity (max depth) is parameterized for a snow thickness normal to
+ * the slope (i.e., how the snowmodels treat snow) or if it is in the vertical direction (i.e., how LiDAR would
+ * measure it, a.k.a cosine corrected snow depth). An analysis versus observed LiDAR derived snowdepths over the
+ * Kananaskis, Canada domain as well as data observed by Sommer et al. (2015) showed a better evaluation with snowdepths
+ * if it is assumed the parameterization is defined for snowdepths in the vertical.
+ *
+ * \rst
+ * .. image:: images/snowslide_eval1.png
+ * \endrst
+ *
  * **Depends:**
  * - Snow depth "snowdepthavg" [m]
+ * - Snow depth "snowdepthavg_vert" [m]
  * - Snow Water Equivalent "swe" [mm]
  *
  * **Provides:**
@@ -62,8 +73,7 @@
  *
  *    {
  *       "avalache_mult": 3178.4,
- *       "avalache_pow": -1.998,
- *       "use_vertical_snow": true
+ *       "avalache_pow": -1.998
  *   }
  *
  * .. confval:: avalache_mult
@@ -73,12 +83,6 @@
  * .. confval:: avalache_pow
  *
  *    :default: -1.998
- *
- * .. confval:: use_vertical_snow
- *
- *    :default: true
- *
- *    Use snowdepths vertical (ie, that corresponds to a gravitational load) or normal to the surface.
  *
  * \endrst
  *
@@ -104,8 +108,7 @@ public:
 
     struct data : public face_info
     {
-        double maxDepth_vert; // Vertical snow holding depth  m
-        double maxDepth_norm; // Slope-normal snow holding depth  m
+        double maxDepth; // Vertical snow holding depth  m
         double snowdepthavg_copy; // m
         double snowdepthavg_vert_copy; // m
         double slope; // rad

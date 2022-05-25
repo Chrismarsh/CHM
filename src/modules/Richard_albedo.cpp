@@ -49,7 +49,7 @@ void Richard_albedo::checkpoint(mesh& domain,  netcdf& chkpt)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        chkpt.put_var1D("Richard_albedo:albedo",i,face->get_module_data<Richard_albedo::data>(ID)->albedo);
+        chkpt.put_var1D("Richard_albedo:albedo",i,face->get_module_data<Richard_albedo::data>(ID).albedo);
     }
 }
 
@@ -58,7 +58,7 @@ void Richard_albedo::load_checkpoint(mesh& domain,  netcdf& chkpt)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        face->get_module_data<Richard_albedo::data>(ID)->albedo = chkpt.get_var1D("Richard_albedo:albedo",i);
+        face->get_module_data<Richard_albedo::data>(ID).albedo = chkpt.get_var1D("Richard_albedo:albedo",i);
     }
 }
 
@@ -69,7 +69,7 @@ void Richard_albedo::run(mesh_elem &face)
         set_all_nan_on_skip(face);
         return;
     }
-    double albedo = face->get_module_data<Richard_albedo::data>(ID)->albedo;
+    double albedo = face->get_module_data<Richard_albedo::data>(ID).albedo;
 
     double swe = (*face)["swe"_s];
 
@@ -113,7 +113,7 @@ void Richard_albedo::run(mesh_elem &face)
 
 
     (*face)["snow_albedo"_s]=albedo;
-    face->get_module_data<Richard_albedo::data>(ID)->albedo = albedo;
+    face->get_module_data<Richard_albedo::data>(ID).albedo = albedo;
 }
 
 void Richard_albedo::init(mesh& domain)
@@ -134,8 +134,8 @@ void Richard_albedo::init(mesh& domain)
     {
 
         auto face = domain->face(i);
-        auto* d = face->make_module_data<data>(ID);
-        d->albedo = albedo_bare;
+        auto& d = face->make_module_data<data>(ID);
+        d.albedo = albedo_bare;
 
     }
 

@@ -48,8 +48,8 @@ void uniform_wind::init(mesh& domain)
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<lwinddata>(ID);
-        d->interp.init(global_param->interp_algorithm,face->stations().size() );
+        auto& d = face->make_module_data<lwinddata>(ID);
+        d.interp.init(global_param->interp_algorithm,face->stations().size() );
         face->coloured = false;
     }
 
@@ -86,8 +86,8 @@ void uniform_wind::run(mesh& domain)
 
         // Interp over stations
         auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-        double zonal_u = face->get_module_data<lwinddata>(ID)->interp(u, query);
-        double zonal_v = face->get_module_data<lwinddata>(ID)->interp(v, query);
+        double zonal_u = face->get_module_data<lwinddata>(ID).interp(u, query);
+        double zonal_v = face->get_module_data<lwinddata>(ID).interp(v, query);
 
         // Convert back to direction and magnitude
         double theta = 3.0 * M_PI * 0.5 - atan2(zonal_v, zonal_u);
@@ -101,8 +101,8 @@ void uniform_wind::run(mesh& domain)
         if (corrected_theta > 2 * M_PI)
          corrected_theta = corrected_theta - 2 * M_PI;
 
-        face->get_module_data<lwinddata>(ID)->corrected_theta = corrected_theta;
-        face->get_module_data<lwinddata>(ID)->W = W;
+        face->get_module_data<lwinddata>(ID).corrected_theta = corrected_theta;
+        face->get_module_data<lwinddata>(ID).W = W;
 
     }
 
@@ -112,8 +112,8 @@ void uniform_wind::run(mesh& domain)
     {
         auto face = domain->face(i);
 
-        double corrected_theta= face->get_module_data<lwinddata>(ID)->corrected_theta;
-        double W= face->get_module_data<lwinddata>(ID)->W;
+        double corrected_theta= face->get_module_data<lwinddata>(ID).corrected_theta;
+        double W= face->get_module_data<lwinddata>(ID).W;
 
         W = std::max(W,0.1);
         (*face)["U_R"_s]= W;

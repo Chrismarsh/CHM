@@ -42,6 +42,7 @@ struct file_write_error: virtual io_error { };
 
 // Generic CHM errors
 struct chm_error: virtual exception_base { };
+struct chm_done: virtual exception_base { };
 struct model_init_error: virtual chm_error { };
 struct not_impl: virtual chm_error { };
 
@@ -85,6 +86,19 @@ struct mesh_lookup_error : virtual mesh_error{};
 
 
 //http://stackoverflow.com/questions/11828539/elegant-exceptionhandling-in-openmp
+/**
+    ompException e;
+
+    #pragma omp parallel for
+    for (int i = 0; i < n; i++)
+    {
+        e.Run([&]{
+                  // code that might throw
+                  // ...
+              });
+    }
+    e.Rethrow()
+ */
 class ompException
 {
     std::exception_ptr Ptr;

@@ -39,11 +39,24 @@ core::core()
     _load_from_checkpoint=false;
     _do_checkpoint=false;
     _metdata= nullptr;
+
 }
 
 core::~core()
 {
-    LOG_DEBUG << "Finished";
+    // clean up all the modules to ensure that Tpetra:~Map() is called prior to MPI_Finalize as per GitHib Issue #2372
+    for(auto& itr : _chunked_modules)
+    {
+        for(auto& jtr : itr )
+        {
+            jtr.reset();
+        }
+    }
+    for(auto& itr : _modules)
+    {
+        itr.first.reset();
+    }
+
 }
 
 void core::config_options( pt::ptree &value)
@@ -117,14 +130,31 @@ void core::config_options( pt::ptree &value)
         auto pm = value.get_child("point_mode");
 
         point_mode.enable = true;
-        point_mode.forcing = pm.get<std::string>("forcing");
-        point_mode.output  = pm.get<std::string>("output");
+        point_mode.use_specific_station = false;
+
+        try
+        {
+            // if we ask for a specific forcing point, then /only/use that point.
+            // Only works with ascii mode so we will need to check for this later
+            point_mode.forcing = pm.get<std::string>("forcing");
+            point_mode.use_specific_station = true;
+            if (ia != "nearest")
+            {
+                _interpolation_method = interp_alg::nearest_sta;
+                LOG_WARNING << "Station select has been changed to nearest station because a single point mode station was requested";
+            }
+        }
+        catch (pt::ptree_bad_path& e)
+        {
+            //pass
+        }
+
         _global->_is_point_mode = true;
+
     }
     catch(pt::ptree_bad_path &e)
     {
         point_mode.enable = false; // we don't have point_mode
-
     }
 
     auto notify_sh = value.get_optional<std::string>("notification_script");
@@ -143,7 +173,7 @@ void core::config_options( pt::ptree &value)
 
     if(radius)
     {
-        _metdata->get_stations = boost::bind( &metdata::get_stations_in_radius,_metdata,_1,_2, *radius);
+        _metdata->get_stations = boost::bind( &metdata::get_stations_in_radius,_metdata,boost::placeholders::_1,boost::placeholders::_2, *radius);
     }
     else
     {
@@ -170,7 +200,7 @@ void core::config_options( pt::ptree &value)
             BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
         }
 
-        _metdata->get_stations = boost::bind( &metdata::nearest_station,_metdata,_1,_2, n);
+        _metdata->get_stations = boost::bind( &metdata::nearest_station,_metdata,boost::placeholders::_1,boost::placeholders::_2, n);
     }
 
 
@@ -276,24 +306,18 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
 void core::config_checkpoint( pt::ptree& value)
 {
     LOG_DEBUG << "Found checkpoint section";
-    _find_and_insert_subjson(value);
 
     _do_checkpoint = value.get("save_checkpoint",false);
 
     //this uses the output path defined in config_output, so this must run after that.
     if(_do_checkpoint)
     {
+
         auto dir = "checkpoint";
 
-        boost::filesystem::path ckpt_path;
-
         // Create empty folder
-        ckpt_path = o_path / dir;
-        boost::filesystem::create_directories(ckpt_path);
-
-        //this parses both the input and the output paths for the checkpoint.
-        auto f = ckpt_path / "checkpoint.nc";
-        _savestate.create( f.string());
+        _ckpt_path = o_path / dir;
+        boost::filesystem::create_directories(_ckpt_path);
 
         _checkpoint_feq = value.get("frequency",1);
         LOG_DEBUG << "Checkpointing every " << _checkpoint_feq << " timesteps.";
@@ -306,12 +330,46 @@ void core::config_checkpoint( pt::ptree& value)
     {
         _load_from_checkpoint = true;
 
-        boost::filesystem::path ckpt_path;
-        ckpt_path = cwd_dir / *file;
+        boost::filesystem::path ckpt_path = *file;
+//        ckpt_path = boost::filesystem::canonical(ckpt_path);
 
-        _checkpoint_file = ckpt_path.string();
+        auto chkp = read_json(ckpt_path.string());
 
-        _in_savestate.open(_checkpoint_file);
+        size_t csz = 1;
+        size_t rank = 0;
+
+#ifdef USE_MPI
+      csz = _comm_world.size();
+      rank = _comm_world.rank();
+#endif
+
+      if( csz != chkp.get<size_t>("ranks") )
+          CHM_THROW_EXCEPTION(config_error, "Checkpoint file was saved with a different number of ranks");
+
+      boost::filesystem::path ckpt_nc_path;
+      try
+      {
+          size_t i = 0;
+
+          for(auto &itr : chkp.get_child("files"))
+          {
+              if( i == rank)
+              {
+                  ckpt_nc_path = itr.second.data();
+                  break;
+              }
+
+              ++i;
+          }
+      }
+      catch(pt::ptree_bad_path &e)
+      {
+          CHM_THROW_EXCEPTION(config_error, "Error reading list of checkpoint files");
+      }
+
+      ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
+      LOG_DEBUG<< "Rank " << rank << " using checkpoint restore file " << ckpt_nc_path;
+      _in_savestate.open(ckpt_nc_path.string());
     }
 
 
@@ -552,39 +610,133 @@ void core::config_meshes( pt::ptree &value)
 
     std::string mesh_path = value.get<std::string>("mesh");
     LOG_DEBUG << "Found mesh:" << mesh_path;
-
     mesh_path = (cwd_dir / mesh_path).string();
 
-    pt::ptree mesh = read_json(mesh_path);
+    auto mesh_file_extension = boost::filesystem::path(mesh_path).extension().string();
 
-    //we need to check if we've read in a geographic (lat/long) mesh or a UTM mesh. We then need to swap in the right distance and point_bearing functions
-    //so the modules and future code can blindly use them without worrying about these things
-
-    bool is_geographic = (bool)mesh.get<int>("mesh.is_geographic");
-    _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
-    if(is_geographic)
+    // only need to look for param + ic if we aren't loading a partition
+    std::vector<std::string> param_file_paths;
+    std::vector<std::string> initial_condition_file_paths;
+    if(mesh_file_extension != ".partition")
     {
+        // Paths for parameter files
+        try
+        {
+            for(auto &itr : value.get_child("parameters"))
+            {
+                auto param_file = itr.second.data();
+                LOG_DEBUG << "Found parameter file: " << param_file;
+                param_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
+            }
+        }
+        catch(pt::ptree_bad_path &e)
+        {
+            LOG_DEBUG << "No addtional parameters found in mesh section.";
+        }
 
+        // Paths for initial condition files
+        try
+        {
+            for(auto &itr : value.get_child("initial_conditions"))
+            {
+                auto ic_file = itr.second.data();
+                LOG_DEBUG << "Found initial condition file: " << ic_file;
+                initial_condition_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
+            }
+        }
+        catch(pt::ptree_bad_path &e)
+        {
+            LOG_DEBUG << "No addtional initial conditions found in mesh section.";
+        }
+    }
+
+
+    // Ensure all files are HDF5 in multiprocess MPI runs
+#ifdef USE_MPI
+    if ( _comm_world.size() > 1 )
+    {
+        bool h5_or_part = mesh_file_extension != ".h5" || mesh_file_extension != ".partition";
+        if(!h5_or_part)
+        {
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool\n\n"));
+        }
+
+        // only check the params and ics if we aren't using a parition file
+        if(mesh_file_extension != ".partition")
+        {
+            for(const auto& it : param_file_paths)
+            {
+                auto extension = boost::filesystem::path(it).extension();
+                if(extension != ".h5")
+                {
+                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 parameter files: " + it + "\n\n    Run the serial hdf5 conversion tool\n\n"));
+                }
+            }
+            for(const auto& it : initial_condition_file_paths)
+            {
+                auto extension = boost::filesystem::path(it).extension();
+                if(extension != ".h5")
+                {
+                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 initial condition files: " + it + "\n\n    Run the serial hdf5 conversion tool\n\n"));
+                }
+            }
+        }
+
+    }
+#endif
+
+    //we need to let the mesh know about any parameters the modules will provide so they can be correctly build into the static hashmaps
+    for(auto& p : _provided_parameters) {
+        _mesh->_parameters.insert(p);
+    }
+
+    _provided_parameters = _mesh->parameters();
+
+    // Before we read the mesh, we need to know if we are geographic or projected so we can hook up all the distance functions
+    // correctly. So for either json or hdf5 we check, hook up the functions, then proceed to the main load which can assume the functions are available
+    bool is_geographic = check_is_geographic(mesh_path);
+
+    _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
+    if( is_geographic)
+    {
         math::gis::point_from_bearing = & math::gis::point_from_bearing_latlong;
         math::gis::distance = &math::gis::distance_latlong;
-    } else
+    }
+    else
     {
-
         math::gis::point_from_bearing = &math::gis::point_from_bearing_UTM;
         math::gis::distance = &math::gis::distance_UTM;
     }
 
-    bool triarea_found = false;
-    //see if we have additional parameter files to load
-    try
+    ////////////////////////////////////////////////////////////
+    // Actually read the mesh, parameter and ic data here
+    ////////////////////////////////////////////////////////////
+    if(mesh_file_extension == ".h5")
     {
-        for(auto &itr : value.get_child("parameters"))
-        {
-            LOG_DEBUG << "Parameter file: " << itr.second.data();
+        _mesh->from_hdf5(mesh_path, param_file_paths, initial_condition_file_paths);
+    }
+    else if(mesh_file_extension == ".partition")
+    {
+#ifndef USE_MPI
+        CHM_THROW_EXCEPTION(config_error, "Using a partitioned mesh requires enabling MPI during CHM configure and build.");
+#endif
 
-            auto param_mesh_path = (cwd_dir / itr.second.data()).string();
+        _mesh->from_partitioned_hdf5(mesh_path);
 
-            pt::ptree param_json = read_json(param_mesh_path);
+
+
+    }
+    else  // Assume anything that is NOT h5 is json
+    {
+        auto mesh = read_json(mesh_path);
+
+        //mesh will have been loaded by the geographic check so don't re load it here
+      bool triarea_found = false;
+
+      // Parameter files
+      for (auto param_file : param_file_paths)
+      {
+	    pt::ptree param_json = read_json(param_file);
 
             for(auto& ktr : param_json)
             {
@@ -596,29 +748,18 @@ void core::config_meshes( pt::ptree &value)
                     triarea_found = true;
 
                 LOG_DEBUG << "Inserted parameter " << ktr.first.data() << " into the config tree.";
-            }
+	    }
+      }
 
+        if(is_geographic && !triarea_found)
+        {
+            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
         }
 
-    }
-    catch(pt::ptree_bad_path &e)
-    {
-        LOG_DEBUG << "No addtional parameters found in mesh section.";
-    }
-    if(is_geographic && !triarea_found)
-    {
-        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
-    }
-
-    try
-    {
-        for(auto &itr : value.get_child("initial_conditions"))
-        {
-            LOG_DEBUG << "Initial condition file: " << itr.second.data();
-
-            auto param_mesh_path = (cwd_dir / itr.second.data()).string();
-
-            pt::ptree ic_json = read_json(param_mesh_path);
+      // Initial condition files
+      for(auto ic_file : initial_condition_file_paths)
+      {
+            pt::ptree ic_json = read_json(ic_file);
 
             for(auto& ktr : ic_json)
             {
@@ -627,28 +768,14 @@ void core::config_meshes( pt::ptree &value)
                 mesh.put_child( "initial_conditions." + key ,ktr.second);
                 LOG_DEBUG << "Inserted initial condition " << ktr.first.data() << " into the config tree.";
             }
+      }
 
-        }
-    }
-    catch(pt::ptree_bad_path &e)
-    {
-        LOG_DEBUG << "No addtional initial conditions found in mesh section.";
+      _mesh->from_json(mesh);
+
     }
 
-    //we need to let the mesh know about any parameters the modules will provide so they can be correctly build into the static hashmaps
-    for(auto& p : _provided_parameters)
-        _mesh->_parameters.insert(p);
-    
-    _mesh->from_json(mesh);
-
-    _provided_parameters = _mesh->parameters();
-    
-    
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
-
-
-
 
 }
 
@@ -757,25 +884,34 @@ void core::config_output(pt::ptree &value)
 
                 OGRSpatialReference insrs;
                 insrs.SetWellKnownGeogCS("WGS84");
+                insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); //enforce ingoing as x y
 
                 OGRSpatialReference outsrs;
                 outsrs.importFromProj4(_mesh->proj4().c_str());
+                outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); //enforce outgoing as x y
+
+                out.x = out.longitude;
+                out.y = out.latitude;
 
                 OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
-                if(!coordTrans->Transform(1, &out.longitude, &out.latitude))
+                //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
+                if(!coordTrans->Transform(1, &out.x, &out.y))
                 {
                     BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output=" + out.name + ": unable to convert coordinates to mesh format."));
                 }
 
-                delete coordTrans;
+                OGRCoordinateTransformation::DestroyCT(coordTrans);
             }
 
-            out.face = _mesh->locate_face(out.longitude, out.latitude);
+            if(!_mesh->is_geographic())
+                out.face = _mesh->locate_face(out.x, out.y);
+            else
+                out.face = _mesh->locate_face(out.longitude, out.latitude);
 
             if(out.face != nullptr)
             {
-                // In MPI mode, we might not thave the output triangle on this node, so we just have to fail gracefully and hope that the other nodes have this.
+                // In MPI mode, we might not have the output triangle on this node, so we just have to fail gracefully and hope that the other nodes have this.
                 // in the future we need a comms here to check if the nodes successfully figured out the output points
                 // for now, if we don't have it, print an error but keep going
 
@@ -802,6 +938,9 @@ void core::config_output(pt::ptree &value)
 
             _mesh->write_param_to_vtu( itr.second.get("write_parameters",true) ) ;
 
+	    // Set option for writing ghost neighbor data, defaults to not
+            _mesh->write_ghost_neighbors_to_vtu( itr.second.get("write_ghost_neighbors",false) ) ;
+
             try
             {
                 for (auto &jtr: itr.second.get_child("variables"))
@@ -816,6 +955,14 @@ void core::config_output(pt::ptree &value)
 
             out.frequency = itr.second.get("frequency",1); //defaults to every timestep
             LOG_DEBUG << "Output every " << out.frequency <<" timesteps.";
+
+            out.only_last_n = itr.second.get("only_last_n",-1); //defaults to keep everything
+            LOG_DEBUG << "Output only on last n =  " << out.only_last_n <<" timesteps.";
+
+            if(out.frequency > 1 && out.only_last_n != -1)
+            {
+                LOG_WARNING << "Only only_last_n output option will be used";
+            }
 
             out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
 
@@ -886,7 +1033,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     std::string end;
 
     bool legacy_log=false;
-    
+
     po::options_description desc("Allowed options.");
     desc.add_options()
             ("help", "This message")
@@ -921,12 +1068,12 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if (vm.count("help"))
     {
         cout << desc << std::endl;
-        exit(0);
+        CHM_THROW_EXCEPTION(chm_done,"done");
     }
     else if (vm.count("version"))
     {
         cout << version << std::endl;
-        exit(0);
+        CHM_THROW_EXCEPTION(chm_done,"done");
     }
 
     std::vector<std::pair<std::string, std::string>> config_extra;
@@ -1022,7 +1169,10 @@ void core::init(int argc, char **argv)
 
     //do this here though as we need cwd_dir for the log output path
     boost::filesystem::path path(cmdl_options.get<0>());
-    cwd_dir = path.parent_path();
+    cwd_dir = boost::filesystem::current_path();
+
+    LOG_DEBUG << "Current working directory: " << cwd_dir.string();
+
 
     std::string log_dir = "log";
     auto log_path = cwd_dir / log_dir;
@@ -1044,12 +1194,12 @@ void core::init(int argc, char **argv)
 
         log_name =  "CHM.log";
         log_file_path = cwd_dir / log_name;
-    } 
+    }
     else {
         log_file_path = log_path / log_name;
         log_name =  log_file_path.string();
     }
-   
+
 
     _log_sink = boost::make_shared<text_sink>();
     text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
@@ -1119,6 +1269,19 @@ void core::init(int argc, char **argv)
 #ifdef _OPENMP
     LOG_DEBUG << "Built with OpenMP support, #threads   = " << omp_get_max_threads();
 #endif
+
+    // Check if we are running under slurm
+    const char* SLURM_JOB_ID = std::getenv("SLURM_JOB_ID");
+    if(SLURM_JOB_ID)
+    {
+        const char* SLURM_TASK_PID = std::getenv("SLURM_TASK_PID"); //The process ID of the task being started.
+        const char* SLURM_PROCID = std::getenv("SLURM_PROCID"); // The MPI rank (or relative process ID) of the current process
+
+        LOG_DEBUG << "Detected running under SLURM as jobid " << SLURM_JOB_ID;
+        LOG_DEBUG << "SLURM_TASK_PID = " << SLURM_TASK_PID;
+        LOG_DEBUG << "SLURM_PROCID = " << SLURM_PROCID;
+    }
+
 
 
     pt::ptree cfg;
@@ -1229,10 +1392,10 @@ void core::init(int argc, char **argv)
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
 
-    // This needs to be initialized with the mesh prior to the forcing and output being dealt with. 
+    // This needs to be initialized with the mesh prior to the forcing and output being dealt with.
     // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further
     _metdata = std::make_shared<metdata>(_mesh->proj4());
-    
+
     //output should come before forcing, controls if we should output the vtp file of station locations
     try
     {
@@ -1306,39 +1469,42 @@ void core::init(int argc, char **argv)
     if(point_mode.enable)
     {
         LOG_INFO << "Running in point mode";
+        //Each face knows which stations are closest to it and what it should use
 
-        std::unordered_set< std::string > remove_set;
-        //remove everything but the one forcing
-
-        for(auto& itr : _metdata->stations())
+        if(point_mode.use_specific_station && _metdata->is_netcdf())
         {
-            if( itr->ID() != point_mode.forcing)
-                remove_set.insert(itr->ID());
+            CHM_THROW_EXCEPTION(model_init_error, "If a specific station is requested, this must be done using an ascii forcing file definition." );
+        }
+        if(point_mode.use_specific_station && _outputs.size() !=1)
+        {
+            CHM_THROW_EXCEPTION(model_init_error, "If a specific station is requested, there must be only 1 output location. This allows for a 1:1 mapping of station to output point." );
         }
 
-
-        _metdata->prune_stations(remove_set);
-
-        _outputs.erase(std::remove_if(_outputs.begin(),_outputs.end(),
-                                      [this](const output_info& o){return o.name  != point_mode.output;}),
-                       _outputs.end());
-
-
-        LOG_DEBUG << _outputs.size();
-        if ( _metdata->nstations() != 1 ||
-                _outputs.size() !=1)
+        if(point_mode.use_specific_station)
         {
-            BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(">1 station or outputs in point mode"));
+            std::unordered_set<std::string> remove_set;
+            // remove everything but the one forcing that the user asked for
+            for (auto& itr : _metdata->stations())
+            {
+                if (itr->ID() != point_mode.forcing)
+                    remove_set.insert(itr->ID());
+            }
 
-        }
-        for(auto s: _metdata->stations())
-        {
-            LOG_DEBUG << *s;
+            _metdata->prune_stations(remove_set);
+
+            if ( _metdata->nstations() != 1 )
+            {
+                CHM_THROW_EXCEPTION(model_init_error, "The number of stations is " + std::to_string(_metdata->nstations()) + ". In point mode must be equal to exactly 1" );
+            }
         }
 
-        for(auto o:_outputs)
+        if(_metdata->is_netcdf())
         {
-            LOG_DEBUG << o.name;
+            LOG_DEBUG<< "Using the following input nc grid cells as forcing:";
+            for(auto& s:_outputs.at(0).face->stations())
+            {
+               LOG_DEBUG << "\t" << "x="<<s->_nc_x << " y="<< s->_nc_y << " lat=" << s->y() << " lon=" <<s->x();
+            }
         }
     }
 
@@ -1385,7 +1551,19 @@ void core::init(int argc, char **argv)
         }
     }
 
-
+    if(point_mode.enable)
+    {
+        for(auto itr:_chunked_modules)
+        {
+            for(auto jtr:itr)
+            {
+                if(jtr->parallel_type() == module_base::parallel::domain)
+                {
+                    BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Domain parallel module are being run in point-mode."));
+                }
+            }
+        }
+    }
 
     LOG_DEBUG << "Allocating face variable storage";
 
@@ -1397,27 +1575,30 @@ void core::init(int argc, char **argv)
         module_list.insert(itr.first->ID);
     }
 
-    _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
-
+    // only init on the faces we are going to compute on
+    // seemed like a good idea but module init has no way to know that it shouldn't run on part of the mesh
+    // todo: revisit only init on parts of the mesh
     if(point_mode.enable)
     {
-        for(auto itr:_chunked_modules)
+        LOG_DEBUG<< "Initialzing faces for point_mode only";
+        std::vector<mesh_elem> faces_to_init;
+
+        for (auto &itr : _outputs)
         {
-            for(auto jtr:itr)
+            if (itr.type == output_info::output_type::time_series)
             {
-                if(jtr->parallel_type() == module_base::parallel::domain)
-                {
-                    BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Domain parallel module being run in point-mode."));
-                }
+                faces_to_init.push_back(itr.face);
             }
         }
+        _mesh->prune_faces(faces_to_init);
+        LOG_DEBUG << "Mesh now has #faces=" << _mesh->size_faces();
     }
 
+    _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
 
     timer c;
     LOG_DEBUG << "Running init() for each module";
     c.tic();
-
 
     for (auto& itr : _modules)
     {
@@ -1426,13 +1607,14 @@ void core::init(int argc, char **argv)
     }
     LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
 
-    //we do this here now because init is allowing a module to chance its mide and declar itself
+    //we do this here now because init is allowing a module to chance its mind and declare itself
     // data parallel or domain parallel after the fact.
     _schedule_modules();
 
 //load a checkpoint as the last thing we do before a run
     if(_load_from_checkpoint  )
     {
+        _global->_from_checkpoint = true;
         LOG_DEBUG << "Loading from checkpoint";
         c.tic();
         for (auto &itr : _chunked_modules)
@@ -1585,7 +1767,7 @@ void core::_determine_module_dep()
 	  auto itr_module = itr_pair.first;
 
 	  // Get vector of current module's variable names
-	  auto itr_mod_provides_var_names = itr_module->get_variable_names_from_collection(*(itr_module->provides()));;
+	  auto itr_mod_provides_var_names = itr_module->get_variable_names_from_collection(*(itr_module->provides()));
             //don't check against our module
             if (module->ID.compare(itr_module->ID) != 0)
             {
@@ -1775,11 +1957,11 @@ void core::_determine_module_dep()
         file.close();
 
         //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
-        std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp > /dev/null 2>&1");
-        std::system("dot -Tpdf modules.dot -o modules.pdf > /dev/null 2>&1");
-        std::remove("modules.dot.tmp");
-        std::remove("filter.gvpr");
-        std::remove("modules.dot");
+        int ierr = std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp > /dev/null 2>&1"); CHK_SYSTEM_ERR(ierr);
+        ierr = std::system("dot -Tpdf modules.dot -o modules.pdf > /dev/null 2>&1"); CHK_SYSTEM_ERR(ierr);
+        ierr = std::remove("modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
+        ierr = std::remove("filter.gvpr"); CHK_SYSTEM_ERR(ierr);
+        ierr = std::remove("modules.dot"); CHK_SYSTEM_ERR(ierr);
 
         BOOST_THROW_EXCEPTION(config_error() << errstr_info("Module graph must be a DAG. Please review modules.pdf to determine where the cycle occured."));
 
@@ -1815,11 +1997,10 @@ void core::_determine_module_dep()
     file.close();
 
     //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
-    std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp");
-    std::system("dot -Tpdf modules.dot -o modules.pdf");
-    std::remove("modules.dot.tmp");
-    std::remove("filter.gvpr");
-
+    int ierr = std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
+    ierr = std::system("dot -Tpdf modules.dot -o modules.pdf"); CHK_SYSTEM_ERR(ierr);
+    ierr = std::remove("modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
+    ierr = std::remove("filter.gvpr"); CHK_SYSTEM_ERR(ierr);
 
     std::stringstream ss;
     size_t order = 0;
@@ -1965,7 +2146,9 @@ void core::run()
 
                     if (itr.at(0)->parallel_type() == module_base::parallel::data)
                     {
-
+#ifdef OMP_SAFE_EXCEPTION
+                        ompException e;
+#endif
                         #pragma omp parallel for
                         for (size_t i = 0; i < _mesh->size_faces(); i++)
                         {
@@ -1976,10 +2159,20 @@ void core::run()
                              //module calls
                              for (auto &jtr : itr)
                              {
-                                 jtr->run(face);
+#ifdef OMP_SAFE_EXCEPTION
+                                 e.Run(
+                                     [&]
+                                     {
+#endif
+                                         jtr->run(face);
+#ifdef OMP_SAFE_EXCEPTION
+                                     });
+#endif
                              }
                         }
-
+#ifdef OMP_SAFE_EXCEPTION
+                        e.Rethrow();
+#endif
 
                     } else
                     {
@@ -2004,6 +2197,14 @@ void core::run()
                 LOG_ERROR << boost::diagnostic_information(e);
 
             }
+            catch(std::exception& e)
+            {
+                LOG_ERROR << "Exception at timestep: " << _global->posix_time();
+                LOG_ERROR << "Unknown exception:";
+                LOG_ERROR << e.what();
+                *_end_ts = _global->posix_time();
+                done = true;
+            }
 
             //check that we actually need a mesh output.
             for (auto &itr : _outputs)
@@ -2022,24 +2223,84 @@ void core::run()
             if(_do_checkpoint && (current_ts % _checkpoint_feq ==0) )
             {
                 LOG_DEBUG << "Checkpointing...";
+
+                netcdf savestate; //file to save to when checkpointing.
+//                std::stringstream timestr;
+//                timestr <<
+                auto timestamp = _global->posix_time() + boost::posix_time::seconds(_global->_dt);
+                //also write it out in seconds because netcdf is struggling with the string
+                unsigned long long int ts_sec = _global->posix_time_int()+_global->_dt;
+
+                auto timestr = boost::posix_time::to_iso_string(timestamp); // start from current TS + dt
+
+
+                size_t rank = 0;
+#ifdef USE_MPI
+                rank = _comm_world.rank();
+#endif
+
+                auto dirpath = _ckpt_path / timestr;
+                boost::filesystem::create_directories(dirpath);
+
+                //this parses both the input and the output paths for the checkpoint.
+                auto fname = ("chkp"+timestr + "_" + std::to_string(rank) + ".nc");
+                auto f = dirpath / fname;
+                savestate.create( f.string());
+
                 c.tic();
                 for (auto &itr : _chunked_modules)
                 {
                     //module calls
                     for (auto &jtr : itr)
                     {
-                        jtr->checkpoint(_mesh, _savestate);
+                        jtr->checkpoint(_mesh, savestate);
                     }
                 }
-                std::stringstream timestr;
 
-                timestr << _global->posix_time() + boost::posix_time::seconds(_global->_dt); // start from current TS + dt
+                auto& ids = _mesh->get_global_IDs();
+                savestate.create_variable1D("global_id",ids.size());
 
-                //also write it out in seconds because netcdf is struggling with the string
-                unsigned long long int ts_sec = _global->posix_time_int()+_global->_dt;
+                for(size_t i; i <0; i++)
+                {
+                    savestate.put_var1D("global_id",i, ids[i]);
+                }
 
-                _savestate.get_ncfile().putAtt("restart_time",timestr.str());
-                _savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64,ts_sec);
+
+                savestate.get_ncfile().putAtt("restart_time",boost::posix_time::to_simple_string(timestamp));
+                savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64,ts_sec);
+
+                pt::ptree tree;
+
+                int nranks = 1;
+#ifdef USE_MPI
+                nranks = _comm_world.size();
+#endif
+
+                tree.put("ranks", nranks);
+                tree.put("restart_time_sec", ts_sec);
+                tree.put("startdate", timestr);
+
+                pt::ptree files;
+
+                pt::ptree tmp_files;
+                for (size_t i = 0; i < nranks; ++i)
+                {
+                    pt::ptree s;
+
+                    s.put("", timestr +"/" + "chkp"+timestr + "_" + std::to_string(i) + ".nc");
+                    tmp_files.push_back(std::make_pair("", s));
+                }
+                tree.add_child("files", tmp_files);
+
+
+                if(rank == 0)
+                {
+                    pt::write_json(
+                        (_ckpt_path / ("checkpoint_" + timestr + ".np" + std::to_string(nranks) + ".json")).string(),
+                        tree);
+                }
+
+
 
                 LOG_DEBUG << "Done checkpoint [ " << c.toc<s>() << "s]";
             }
@@ -2048,7 +2309,24 @@ void core::run()
             {
                 if (itr.type == output_info::output_type::mesh)
                 {
-                    if(current_ts % itr.frequency == 0)
+                    // check if we should output or not
+                    bool should_output = false;
+
+                    if(itr.only_last_n != -1)
+                    {
+                        auto ts_left = max_ts - current_ts;
+                        if( ts_left <= itr.only_last_n) // if we are within the last n timesteps, output
+                            should_output = true;
+                    }
+                    else
+                    {
+                        if(current_ts % itr.frequency == 0)
+                            should_output = true;
+                    }
+
+
+
+                    if(should_output)
                     {
 
                         #pragma omp parallel
@@ -2195,13 +2473,77 @@ void core::run()
     if(_notification_script != "")
     {
         LOG_DEBUG << "Calling notification script";
-        std::system(_notification_script.c_str());
+        int ierr = std::system(_notification_script.c_str()); CHK_SYSTEM_ERR(ierr);
     }
 }
 
-void core::end()
+void core::end(const bool abort)
 {
+#ifdef USE_MPI
+    if(abort)
+    {
+        LOG_ERROR << "An exception has occurred, requesting MPI Abort!";
+        _mpi_env.abort(-1);
+    }
+#endif
+
     LOG_DEBUG << "Cleaning up";
+}
+
+bool core::check_is_geographic(const std::string& path)
+{
+    auto mesh_file_extension = boost::filesystem::path(path).extension();
+
+    std::string mesh_path = path;
+    bool is_geographic = false;
+
+    // we have a partition so load just the first part of the partition
+    if(mesh_file_extension == ".partition")
+    {
+        try
+        {
+            auto json = read_json(path);
+            for(auto &itr : json.get_child("meshes"))
+            {
+                auto mesh_file_paths = boost::filesystem::path(itr.second.data());
+                if(mesh_file_paths.is_relative())
+                    mesh_path = (cwd_dir / mesh_file_paths).string();
+                else
+                    mesh_path = mesh_file_paths.string();
+                mesh_file_extension = boost::filesystem::path(mesh_path).extension();
+                break;
+            }
+        }
+        catch(pt::ptree_bad_path &e)
+        {
+            CHM_THROW_EXCEPTION(config_error, "A mesh is required and was not found");
+        }
+    }
+
+    if(mesh_file_extension == ".h5")
+    {
+        hsize_t geographic_dims = 1;
+        H5::DataSpace dataspace(1, &geographic_dims);
+
+        H5File  file(mesh_path, H5F_ACC_RDONLY);
+        H5::Attribute attribute = file.openAttribute("/mesh/is_geographic");
+        attribute.read(PredType::NATIVE_HBOOL, &is_geographic);
+        file.close();
+    }
+    else
+    {
+        auto mesh = read_json(path);
+        if( mesh.get<int>("mesh.is_geographic") == 1)
+        {
+            is_geographic = true;
+        }
+        else
+        {
+            is_geographic = false;
+        }
+    }
+
+    return is_geographic;
 }
 
 void core::populate_face_station_lists()

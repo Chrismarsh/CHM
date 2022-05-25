@@ -7,16 +7,19 @@ real, protected :: &
   cp = 1005,         &! Specific heat capacity of air (J/K/kg)
   eps = 0.622,       &! Ratio of molecular weights of water and dry air
   e0 = 611.213,      &! Saturation vapour pressure at Tm (Pa)
-  grav = 9.81,       &! Acceleration due to gravity (m/s^2)
+  g = 9.81,          &! Acceleration due to gravity (m/s^2)
   hcap_ice = 2100,   &! Specific heat capacity of ice (J/K/kg)
   hcap_wat = 4180,   &! Specific heat capacity of water (J/K/kg)
   hcon_air = 0.025,  &! Thermal conductivity of air (W/m/K)
+  hcon_clay = 1.16,  &! Thermal conductivity of clay (W/m/K)
   hcon_ice = 2.24,   &! Thermal conducivity of ice (W/m/K)
+  hcon_sand = 1.57,  &! Thermal conductivity of sand (W/m/K)
   hcon_wat = 0.56,   &! Thermal conductivity of water (W/m/K)
   I0 = 1367,         &! Solar constant (W/m^2)
   Lf = 0.334e6,      &! Latent heat of fusion (J/kg)
   Lv = 2.501e6,      &! Latent heat of vapourisation (J/kg)
-  Ls = 2835000 ,      &! Lf + Lv Latent heat of sublimation (J/kg)
+  Ls = 2835000,      &! Latent heat of sublimation (J/kg)
+  mu_wat = 1.78e-3,  &! Dynamic viscosity of water (kg/m/s)
   pi = 3.14159,      &! pi
   Rair = 287,        &! Gas constant for air (J/K/kg)
   Rwat = 462,        &! Gas constant for water vapour (J/K/kg)
@@ -26,6 +29,19 @@ real, protected :: &
   Tm = 273.15,       &! Melting point (K)
   vkman = 0.4         ! von Karman constant
 end module CONSTANTS
+
+!-----------------------------------------------------------------------
+! Input / output file unit numbers
+!-----------------------------------------------------------------------
+module IOUNITS
+integer, parameter :: &
+  ucan = 11,         &! Subcanopy diagnostics file unit number
+  udmp = 12,         &! Start / dump file unit number
+  uflx = 13,         &! Flux output file unit number
+  umap = 14,         &! Map input file unit number
+  umet = 15,         &! Meteorological driving file unit number
+  usta = 16           ! State output file unit number
+end module IOUNITS
 
 !-----------------------------------------------------------------------
 ! Canopy, snow and soil layers
@@ -38,6 +54,9 @@ integer :: &
 real, allocatable :: &
   Dzsnow(:),         &! Minimum snow layer thicknesses (m)
   Dzsoil(:)           ! Soil layer thicknesses (m)
+real :: &
+  fvg1,              &! Fraction of vegetation in upper canopy layer
+  zsub                ! Subcanopy wind speed diagnostic height (m)
 end module LAYERS
 
 !-----------------------------------------------------------------------
@@ -45,53 +64,48 @@ end module LAYERS
 !-----------------------------------------------------------------------
 module PARAMETERS
 
-integer :: &
-  Nitr = 4            ! Iterations in energy balance calculation
-
 ! Vegetation parameters
 real, protected :: &
-  avg0 = 0.1,        &! Snow-free vegetation albedo
-  avgs = 0.4,        &! Snow-covered vegetation albedo
-  cvai = 2500,       &! Vegetation heat capacity per unit VAI (J/K/m^2)
-  fvg1 = 0.5,        &! Fraction of vegetation in upper layer
+  acn0 = 0.1,        &! Snow-free dense canopy albedo
+  acns = 0.4,        &! Snow-covered dense canopy albedo
+  avg0 = 0.21,       &! Canopy element reflectivity
+  avgs = 0.6,        &! Canopy snow reflectivity
+  cvai = 3.6e4,      &! Vegetation heat capacity per unit VAI (J/K/m^2)
   gsnf = 0.01,       &! Snow-free vegetation moisture conductance (m/s)
+  hbas = 2,          &! Canopy base height (m)
   kext = 0.5,        &! Vegetation light extinction coefficient
-  rveg = 20,         &! Leaf boundary resistance (s/m)^(1/2)
+  leaf = 20,         &! Leaf boundary resistance (s/m)^(1/2)
   svai = 4.4,        &! Intercepted snow capacity per unit VAI (kg/m^2)
-  tunc = 240*3600,   &! Unloading time scale for cold snow (s)
-  tunm = 2.4*3600,   &! Unloading time scale for melting snow (s)
-  vint = 0.7,        &! Vegetation snow interception efficiency
-  wcan = 2.5,        &! Canopy wind decay coefficient
-  zsub = 1.5          ! Subcanopy wind speed diagnostic height (m)
+  tunl = 240*3600,   &! Canopy snow unloading time scale (s)
+  wcan = 2.5          ! Canopy wind decay coefficient
 
 ! Snow parameters
 real, protected :: &
   asmn = 0.5,        &! Minimum albedo for melting snow
-  asmx = 0.8,        &! Maximum albedo for fresh snow
+  asmx = 0.85,       &! Maximum albedo for fresh snow
+  eta0 = 3.7e7,      &! Reference snow viscosity (Pa s)
   hfsn = 0.1,        &! Snowcover fraction depth scale (m)
   kfix = 0.24,       &! Fixed thermal conductivity of snow (W/m/K)
   rcld = 300,        &! Maximum density for cold snow (kg/m^3)
   rfix = 300,        &! Fixed snow density (kg/m^3)
   rgr0 = 5e-5,       &! Fresh snow grain radius (m)
   rhof = 100,        &! Fresh snow density (kg/m^3)
+  rhow = 300,        &! Wind-packed snow density (kg/m^3)
   rmlt = 500,        &! Maximum density for melting snow (kg/m^3)
   Salb = 10,         &! Snowfall to refresh albedo (kg/m^2)
+  snda = 2.8e-6,     &! Thermal metamorphism parameter (1/s)
   Talb = -2,         &! Snow albedo decay temperature threshold (C)
   tcld = 3.6e6,      &! Cold snow albedo decay time scale (s)
   tmlt = 3.6e5,      &! Melting snow albedo decay time scale (s)
   trho = 200*3600,   &! Snow compaction timescale (s)
   Wirr = 0.03,       &! Irreducible liquid water content of snow
-  z0sn = 0.01         ! Snow roughness length (m)
+  z0sn = 0.001        ! Snow roughness length (m)
 
 ! Ground surface and soil parameters
 real, protected :: &
-  b = 7.63,          &! Clapp-Hornberger exponent
+  fcly = 0.3,        &! Soil clay fraction
+  fsnd = 0.6,        &! Soil sand fraction
   gsat = 0.01,       &! Surface conductance for saturated soil (m/s)
-  hcap_soil = 2.3e6, &! Volumetric heat capacity of dry soil (J/K/m^3)
-  hcon_soil = 0.11,  &! Thermal conductivity of dry soil (W/m/K)
-  sathh = 0.41,      &! Saturated soil water pressure (m)
-  Vcrit = 0.26,      &! Volumetric soil moisture at critical point
-  Vsat = 0.27,       &! Volumetric soil moisture at saturation
   z0sf = 0.1          ! Snow-free surface roughness length (m)
 
 end module PARAMETERS
@@ -100,7 +114,7 @@ subroutine allocate()
   use LAYERS, only: &
           Nsmax,             &! Maximum number of snow layers
           Nsoil,             &  ! Number of soil layers
-          Dzsnow,&
+          Dzsnow,            &
           Dzsoil
 
   ! Snow and soil layersdo
@@ -112,26 +126,33 @@ subroutine allocate()
 end subroutine allocate
 
 !-----------------------------------------------------------------------
+! Soil properties
+!-----------------------------------------------------------------------
+module SOILPROPS
+real :: &
+  b,                 &! Clapp-Hornberger exponent
+  hcap_soil,         &! Volumetric heat capacity of dry soil (J/K/m^3)
+  hcon_soil,         &! Thermal conductivity of dry soil (W/m/K)
+  sathh,             &! Saturated soil water pressure (m)
+  Vcrit,             &! Volumetric soil moisture concentration at critical point
+  Vsat                ! Volumetric soil moisture concentration at saturation
+end module SOILPROPS
+
+!-----------------------------------------------------------------------
 ! Call FSM2 physics subroutines for one timestep at one point
 !-----------------------------------------------------------------------
-subroutine FSM2_TIMESTEP(dt,elev,zT,zU,LW,Ps,Qa,Rf,Sdif,Sdir,Sf,Ta,Ua, &
-                         alb0,hveg,VAI,                                &
+subroutine FSM2_TIMESTEP(dt,elev,zT,zU,                                &
+                         LW,Ps,Qa,Rf,Sdif,Sdir,Sf,Ta,trans,Ua,         &
+                         alb0,vegh,VAI, rhod,                               &
                          albs,Tsrf,Dsnw,Nsnow,Qcan,Rgrn,Sice,Sliq,     &
                          Sveg,Tcan,Tsnow,Tsoil,Tveg,Vsmc,              &
-                         H,LE,LWout,LWsub,Melt,Roff,snd,Svg,SWE,       &
-                         SWout,SWsub,Usub)
-use iso_c_binding
+                         H,LE,LWout,LWsub,Melt,Roff,snd,snw,subl,svg,  &
+                         SWout,SWsub,Usub,Wflx)
 
 use LAYERS, only: &
   Ncnpy,             &! Number of canopy layers
   Nsmax,             &! Maximum number of snow layers
-  Nsoil,             &  ! Number of soil layers
-  Dzsnow,&
-  Dzsoil
-
-
-use PARAMETERS, only: &
-  Nitr                ! Iterations in energy balance calculation
+  Nsoil               ! Number of soil layers
 
 implicit none
 
@@ -151,6 +172,7 @@ real, intent(in) :: &
   Sdif,              &! Diffuse shortwave radiation (W/m^2)
   Sdir,              &! Direct-beam shortwave radiation (W/m^2)
   Ta,                &! Air temperature (K)
+  trans,             &! Wind-blown snow transport rate (kg/m^2/s)
   Ua                  ! Wind speed (m/s)
 real, intent(inout) :: &
   Sf                  ! Snowfall rate (kg/m2/s)
@@ -158,8 +180,11 @@ real, intent(inout) :: &
 ! Vegetation characteristics
 real, intent(in) :: &
   alb0,              &! Snow-free ground albedo
-  hveg,              &! Vegetation height (m)
+  vegh,              &! Canopy height (m)
   VAI                 ! Vegetation area index
+
+real, intent(in) :: &
+  rhod 
 
 ! State variables
 integer, intent(inout) :: &
@@ -185,23 +210,25 @@ real, intent(out) :: &
   LE,                &! Latent heat flux to the atmosphere (W/m^2)
   LWout,             &! Outgoing LW radiation (W/m^2)
   LWsub,             &! Subcanopy downward LW radiation (W/m^2)
-  Melt,              &! Surface melt (kg/m^2)
-  Roff,              &! Runoff from snow (kg/m^2)
+  Melt,              &! Surface melt rate (kg/m^2/s)
+  Roff,              &! Runoff from snow (kg/m^2/s)
   snd,               &! Snow depth (m)
-  Svg,               &! Total snow mass on vegetation (kg/m^2)
-  SWE,               &! Total snow mass on ground (kg/m^2) 
+  snw,               &! Total snow mass on ground (kg/m^2) 
+  subl,              &! Sublimation rate (kg/m^2/s)
+  svg,               &! Total snow mass on vegetation (kg/m^2)
   SWout,             &! Outgoing SW radiation (W/m^2)
   SWsub,             &! Subcanopy downward SW radiation (W/m^2)
-  Usub                ! Subcanopy wind speed (m/s)
+  Usub,              &! Subcanopy wind speed (m/s)
+  Wflx(Nsmax)         ! Water flux into snow layer (kg/m^2/s)
 
 ! Vegetation properties
 real :: &
-  aveg(Ncnpy),       &! Vegetation area indices in layers
-  cveg(Ncnpy),       &! Vegetation layer heat capacities (J/K/m^2)
-  fvegs(Ncnpy),      &! Vegetation layer snowcover fractions
-  Scap(Ncnpy),       &! Vegetation layer snow capacities (kg/m^2)
-  tdif(Ncnpy),       &! Veg layer transmissivities for diffuse radiation
-  Tveg0(Ncnpy)        ! Veg layer temperatures at start of timestep (K)
+  cveg(Ncnpy),       &! Vegetation heat capacities (J/K/m^2)
+  fcans(Ncnpy),      &! Canopy layer snowcover fractions
+  lveg(Ncnpy),       &! Canopy layer vegetation area indices
+  Scap(Ncnpy),       &! Canopy layer snow capacities (kg/m^2)
+  tdif(Ncnpy),       &! Canopy layer diffuse transmittances
+  Tveg0(Ncnpy)        ! Vegetation temperatures at start of timestep (K)
 
 ! Snow properties
 real :: &
@@ -220,15 +247,9 @@ real :: &
   csoil(Nsoil),      &! Areal heat capacity of soil layers (J/K/m^2)
   ksoil(Nsoil)        ! Thermal conductivity of soil layers (W/m/K)
 
-! Aerodynamic conductances
-real :: &
-  ga,                &! Aerodynamic conductance to the atmosphere (m/s)
-  gc,                &! Conductance within canopy air space (m/s)
-  gs,                &! Surface to canopy air space conductance (m/s)
-  gv(Ncnpy)           ! Vegetation to canopy air space conductance (m/s)
-
 ! Fluxes
 real :: &
+  drip,              &! Melt water drip from vegetation (kg/m^2)
   Esrf,              &! Moisture flux from the surface (kg/m^2/s)
   Gsrf,              &! Heat flux into snow/ground surface (W/m^2)
   Gsoil,             &! Heat flux into soil (W/m^2)
@@ -237,31 +258,23 @@ real :: &
   Eveg(Ncnpy),       &! Moisture flux from vegetation layers (kg/m^2/s)
   SWveg(Ncnpy)        ! SW absorbed by vegetation layers (W/m^2)
 
-integer :: n          ! Iteration counter
+call CANOPY(Sveg,Tveg,VAI,cveg,fcans,lveg,Scap,Tveg0)
 
-
-
-call CANOPY(Sveg,Tveg,VAI,aveg,cveg,fvegs,Scap,Tveg0)
-
-call SWRAD(alb0,aveg,Dsnw,dt,elev,fvegs,Sdif,Sdir,Sf,Tsrf,albs,fsnow,  &
-           SWout,SWsrf,SWsub,SWveg,tdif)
+call SWRAD(alb0,Dsnw,dt,elev,fcans,lveg,Sdif,Sdir,Sf,Tsrf,             &
+           albs,fsnow,SWout,SWsrf,SWsub,SWveg,tdif)
 
 call THERMAL(Dsnw,Nsnow,Sice,Sliq,Tsnow,Tsoil,Vsmc,csoil,Ds1,          &
              gs1,ksnow,ksoil,ks1,Ts1)
 
-do n = 1, Nitr
+call SRFEBAL(cveg,Ds1,dt,fcans,fsnow,gs1,ks1,lveg,LW,Ps,Qa,            &
+             SWsrf,Sveg,SWveg,Ta,tdif,Ts1,Tveg0,Ua,VAI,vegh,zT,zU,     &
+             Tsrf,Qcan,Sice,Tcan,Tveg,                                 &
+             Esrf,Eveg,Gsrf,H,LE,LWout,LWsub,Melt,subl,Usub)
 
-  call SRFEXCH(aveg,fsnow,hveg,Ua,VAI,zT,zU,ga,gc,gs,gv,Usub)
- 
-  call SRFEBAL(cveg,Ds1,dt,fvegs,ga,gc,gs,gs1,gv,ks1,LW,Ps,Qa,SWsrf,   &
-               SWveg,Ta,tdif,Ts1,Tveg0,VAI,Tsrf,Qcan,Sice,Tcan,Tveg,   &
-               Esrf,Eveg,Gsrf,H,LE,LWout,LWsub,Melt)
-end do
+call INTERCEPT(dt,cveg,Eveg,Scap,Sf,Sveg,Tveg,drip,svg,unload)
 
-call INTERCEPT(dt,Eveg,Scap,Tveg,Sf,Sveg,Svg,unload)
-
-call SNOW(dt,Esrf,Gsrf,ksnow,ksoil,Melt,Rf,Sf,Ta,Tsrf,unload,Nsnow,    &
-          Dsnw,Rgrn,Sice,Sliq,Tsnow,Tsoil,Gsoil,Roff,snd,SWE)
+call SNOW(dt,drip,Esrf,Gsrf,ksnow,ksoil,Melt,Rf,Sf,Ta,trans,Tsrf,unload, &
+          Nsnow,Dsnw,Rgrn,Sice,Sliq,Tsnow,Tsoil,Gsoil,Roff,snd,snw,Wflx,rhod)
 
 call SOIL(csoil,dt,Gsoil,ksoil,Tsoil)
 
@@ -270,14 +283,17 @@ end subroutine FSM2_TIMESTEP
 !-----------------------------------------------------------------------
 ! Properties of vegetation canopy layers
 !-----------------------------------------------------------------------
-subroutine CANOPY(Sveg,Tveg,VAI,aveg,cveg,fvegs,Scap,Tveg0)
+subroutine CANOPY(Sveg,Tveg,VAI,cveg,fcans,lveg,Scap,Tveg0)
+
+use CONSTANTS, only: &
+  hcap_ice            ! Specific heat capacity of ice (J/K/kg)
 
 use LAYERS, only: &
-  Ncnpy               ! Number of canopy layers
+  Ncnpy,             &! Number of canopy layers
+  fvg1                ! Fraction of vegetation in upper canopy layer
 
 use PARAMETERS, only: &
   cvai,              &! Vegetation heat capacity per unit VAI (J/K/m^2)
-  fvg1,              &! Fraction of vegetation in upper layer
   svai                ! Intercepted snow capacity per unit VAI (kg/m^2)
 
 implicit none
@@ -288,19 +304,18 @@ real, intent(in) :: &
   VAI                 ! Vegetation area index
 
 real, intent(out) :: &
-  aveg(Ncnpy),       &! Vegetation area indices in layers
-  cveg(Ncnpy),       &! Vegetation layer heat capacities (J/K/m^2)
-  fvegs(Ncnpy),      &! Vegetation layer snowcover fractions
-  Scap(Ncnpy),       &! Vegetation layer snow capacities (kg/m^2)
+  cveg(Ncnpy),       &! Vegetation heat capacities (J/K/m^2)
+  fcans(Ncnpy),      &! Canopy layer snowcover fractions
+  lveg(Ncnpy),       &! Canopy layer vegetation area indices
+  Scap(Ncnpy),       &! Canopy layer snow capacities (kg/m^2)
   Tveg0(Ncnpy)        ! Vegetation temperatures at start of timestep (K)
 
-aveg(1) = fvg1*VAI
-aveg(2) = (1 - fvg1)*VAI
+lveg(1) = VAI
 
-cveg = cvai*aveg
-Scap = svai*aveg
-fvegs = 0
-if (VAI > epsilon(VAI)) fvegs = Sveg / Scap
+cveg(:) = cvai*lveg(:) + hcap_ice*Sveg(:)
+Scap = svai*lveg(:)
+fcans(:) = 0
+if (VAI > epsilon(VAI)) fcans(:) = (Sveg(:)/Scap(:))**0.67
 Tveg0 = Tveg
 
 end subroutine CANOPY
@@ -308,66 +323,77 @@ end subroutine CANOPY
 !-----------------------------------------------------------------------
 ! Mass balance of snow intercepted by vegetation
 !-----------------------------------------------------------------------
-subroutine INTERCEPT(dt,Eveg,Scap,Tveg,Sf,Sveg,Svg,unload)
+subroutine INTERCEPT(dt,cveg,Eveg,Scap,Sf,Sveg,Tveg,drip,svg,unload)
 
 use CONSTANTS, only: &
+  Lf,                &! Latent heat of fusion (J/kg)
   Tm                  ! Melting point (K)
 
 use LAYERS, only: &
   Ncnpy               ! Number of canopy layers
 
 use PARAMETERS, only: &
-  tunc,              &! Unloading time scale for cold snow (s)
-  tunm,              &! Unloading time scale for melting snow (s)
-  vint                ! Vegetation snow interception efficiency
+  tunl                ! Canopy snow unloading time scale (s)
 
 implicit none
 
 real, intent(in) :: &
   dt,                &! Timestep (s)
+  cveg(Ncnpy),       &! Vegetation heat capacities (J/K/m^2)
   Eveg(Ncnpy),       &! Moisture flux from vegetation layers (kg/m^2/s)
-  Scap(Ncnpy),       &! Vegetation layer snow capacities (kg/m^2)
-  Tveg(Ncnpy)         ! Vegetation layer temperatures (K)
+  Scap(Ncnpy)         ! Vegetation layer snow capacities (kg/m^2)
 
 real, intent(inout) :: &
   Sf,                &! Snowfall rate (kg/m2/s)
-  Sveg(Ncnpy)         ! Snow mass on vegetation layers (kg/m^2)
+  Sveg(Ncnpy),       &! Snow mass on vegetation layers (kg/m^2)
+  Tveg(Ncnpy)         ! Vegetation layer temperatures (K)
 
 real, intent(out) :: &
-  Svg,               &! Total snow mass on vegetation (kg/m^2)
+  drip,              &! Melt water drip from vegetation (kg/m^2)
+  svg,               &! Total snow mass on vegetation (kg/m^2)
   unload              ! Snow mass unloaded from vegetation (kg/m^2)
 
 integer :: k          ! Vegetation layer counter
 
 real :: &
-  intcpt              ! Vegetation layer snow interception (kg/m^2)
+  intcpt,            &! Vegetation layer snow interception (kg/m^2)
+  melt                ! Vegetation layer snow melt (kg/m^2)
 
-Svg = 0
+drip = 0
+svg = 0
 unload = 0
 if (Scap(1) > 0) then
   do k = 1, Ncnpy
 
     ! Interception of falling snow
-    intcpt = vint*(Scap(k) - Sveg(k))*(1 - exp(-Sf*dt/Scap(k)))
+    intcpt = (Scap(k) - Sveg(k))*(1 - exp(-Sf*dt/Scap(k)))
     Sveg(k) = Sveg(k) + intcpt
     Sf = Sf - intcpt/dt
 
     ! Sublimation of canopy snow
-    if (Sveg(k) > 0 .or. Tveg(k) < Tm) Sveg(k) = Sveg(k) - Eveg(k)*dt
+    if (Eveg(k)>0) then
+      if (Sveg(k)>0) Sveg(k) = Sveg(k) - Eveg(k)*dt
+    else
+      if (Tveg(k)<Tm) Sveg(k) = Sveg(k) - Eveg(k)*dt
+    end if
     Sveg(k) = max(Sveg(k), 0.)
 
-    ! Unloading of cold or melting canopy snow
-    if (Tveg(k) < Tm) then
-      unload = unload + Sveg(k)*dt/tunc
-      Sveg(k) = (1 - dt/tunc)*Sveg(k)
-    else
-      unload = unload + Sveg(k)*dt/tunm
-      Sveg(k) = (1 - dt/tunm)*Sveg(k)
+    ! Unloading of canopy snow
+    unload = unload + Sveg(k)*dt/tunl
+    Sveg(k) = (1 - dt/tunl)*Sveg(k)
+
+    ! Melting of canopy snow
+    if (Tveg(k) > Tm) then
+      melt = cveg(k)*(Tveg(k) - Tm)/Lf
+      if (melt > Sveg(k)) melt = Sveg(k)
+      drip = drip + melt
+      Sveg(k) = Sveg(k) - melt
+      Tveg(k) = Tveg(k) - Lf*melt/cveg(k)
     end if
 
   end do
 end if
-Svg = sum(Sveg)
+svg = sum(Sveg)
 
 end subroutine INTERCEPT
 
@@ -470,6 +496,49 @@ end do
 end subroutine LUDCMP
 
 !-----------------------------------------------------------------------
+! Monin-Obukhov stability functions
+!-----------------------------------------------------------------------
+
+real function psim(z,rL)  ! Stability function for momentum
+use CONSTANTS, only: &
+  pi                  ! pi
+implicit none
+real, intent(in) :: &
+  rL,                &! Reciprocal of Obukhov length (1/m)
+  z                   ! Height (m)
+real :: &
+  x,                 &! (1 - 16*z/L)^(1/4)
+  zeta                ! z/L
+zeta = z*rL
+zeta = max(min(zeta,1.),-2.)
+if (zeta > 0) then
+  psim = -5*zeta
+else
+  x = (1 - 16*zeta)**0.25
+  psim = 2*log((1 + x)/2) + log((1 + x**2)/2) - 2*atan(x) + pi/2
+end if
+end function psim
+
+real function psih(z,rL)  ! Stability function for heat
+implicit none
+real, intent(in) :: &
+  rL,                &! Reciprocal of Obukhov length (1/m)
+  z                   ! Height (m)
+real :: &
+  x,                 &! (1 - 16*z/L)^(1/4)
+  zeta                ! z/L
+zeta = z*rL
+zeta = max(min(zeta,1.),-2.)
+if (zeta > 0) then
+  psih = -5*zeta
+else
+  x = (1 - 16*zeta)**0.25
+  psih = 2*log((1 + x**2)/2)
+end if
+end function psih
+
+
+!-----------------------------------------------------------------------
 ! Saturation specific humidity
 !-----------------------------------------------------------------------
 subroutine QSAT(P,T,Qs)
@@ -505,14 +574,17 @@ end subroutine QSAT
 !-----------------------------------------------------------------------
 ! Snow thermodynamics and hydrology
 !-----------------------------------------------------------------------
-subroutine SNOW(dt,Esrf,Gsrf,ksnow,ksoil,Melt,Rf,Sf,Ta,Tsrf,unload,    &
-                Nsnow,Dsnw,Rgrn,Sice,Sliq,Tsnow,Tsoil,Gsoil,Roff,snd,SWE)
+subroutine SNOW(dt,drip,Esrf,Gsrf,ksnow,ksoil,Melt,Rf,Sf,Ta,trans,     &
+                Tsrf,unload,Nsnow,Dsnw,Rgrn,Sice,Sliq,Tsnow,Tsoil,     &
+                Gsoil,Roff,snd,snw,Wflx, rhod)
 
 use CONSTANTS, only: &
+  g,                 &! Acceleration due to gravity (m/s^2)
   hcap_ice,          &! Specific heat capacity of ice (J/K/kg)
   hcap_wat,          &! Specific heat capacity of water (J/K/kg)
   Lf,                &! Latent heat of fusion (J/kg)
   Ls,                &! Latent heat of sublimation (J/kg)
+  mu_wat,            &! Dynamic viscosity of water (kg/m/s)
   rho_ice,           &! Density of ice (kg/m^3)
   rho_wat,           &! Density of water (kg/m^3)
   Tm                  ! Melting point (K)
@@ -524,11 +596,14 @@ use LAYERS, only: &
   Nsoil               ! Number of soil layers
 
 use PARAMETERS, only: &
+  eta0,              &! Reference snow viscosity (Pa s)
   rcld,              &! Maximum density for cold snow (kg/m^3)
   rfix,              &! Fixed snow density (kg/m^3)
   rgr0,              &! Fresh snow grain radius (m)
   rhof,              &! Fresh snow density (kg/m^3)
+  rhow,              &! Wind-packed snow density (kg/m^3)
   rmlt,              &! Maximum density for melting snow (kg/m^3)
+  snda,              &! Thermal metamorphism parameter (1/s)
   trho,              &! Snow compaction timescale (s)
   Wirr                ! Irreducible liquid water content of snow
 
@@ -536,12 +611,14 @@ implicit none
 
 real, intent(in) :: &
   dt,                &! Timestep (s)
+  drip,              &! Melt water drip from vegetation (kg/m^2)
   Esrf,              &! Moisture flux from the surface (kg/m^2/s)
   Gsrf,              &! Heat flux into snow/ground surface (W/m^2)
-  Melt,              &! Surface melt (kg/m^2)
+  Melt,              &! Surface melt rate (kg/m^2/s)
   Rf,                &! Rainfall rate (kg/m^2/s)
   Sf,                &! Snowfall rate (kg/m^2/s)
   Ta,                &! Air temperature (K)
+  trans,             &! Wind-blown snow transport rate (kg/m^2/s)
   Tsrf,              &! Snow/ground surface temperature (K)
   unload,            &! Snow mass unloaded from vegetation (kg/m^2)
   ksnow(Nsmax),      &! Thermal conductivity of snow layers (W/m/K)
@@ -560,11 +637,16 @@ real, intent(inout) :: &
 
 real, intent(out) :: &
   Gsoil,             &! Heat flux into soil (W/m^2)
-  Roff,              &! Runoff from snow (kg/m^2)
+  Roff,              &! Runoff from snow (kg/m^2/s)
   snd,               &! Snow depth (m)
-  SWE                 ! Total snow mass on ground (kg/m^2) 
+  snw,               &! Total snow mass on ground (kg/m^2)
+  Wflx(Nsmax)         ! Water flux into snow layer (kg/m^2/s)
+  
+real, intent(in) :: &
+  rhod
 
 integer :: &
+  i,j,               &! Hydrology iteration counters
   k,                 &! Snow layer counter
   knew,              &! New snow layer pointer
   kold,              &! Old snow layer pointer
@@ -577,7 +659,6 @@ real :: &
   Esnow,             &! Snow sublimation rate (kg/m^2/s)
   ggr,               &! Grain area growth rate (m^2/s)
   mass,              &! Mass of overlying snow (kg/m^2)
-  phi,               &! Porosity
   rhos,              &! Density of snow layer (kg/m^3)
   SliqMax,           &! Maximum liquid content for layer (kg/m^2)
   wt                  ! Layer weighting
@@ -591,17 +672,30 @@ real :: &
   D(Nsmax),          &! Layer thickness before adjustment (m)
   E(Nsmax),          &! Energy contents before adjustment (J/m^2)
   Gs(Nsmax),         &! Thermal conductivity between layers (W/m^2/k)
+  phi(Nsmax),        &! Porosity of snow layers
   rhs(Nsmax),        &! Matrix equation rhs
   R(Nsmax),          &! Snow grain radii before adjustment (kg/m^2)
   S(Nsmax),          &! Ice contents before adjustment (kg/m^2)
   U(Nsmax),          &! Layer internal energy contents (J/m^2)
   W(Nsmax)            ! Liquid contents before adjustment (kg/m^2)
 
+real :: &
+  dth,               &! Hydrology timestep (s)
+  dtheta(Nsmax),     &! Change in liquid water content
+  ksat(Nsmax),       &! Saturated hydraulic conductivity (m/s)
+  thetar(Nsmax),     &! Irreducible water content
+  thetaw(Nsmax),     &! Volumetric liquid water content
+  theta0(Nsmax),     &! Liquid water content at start of timestep
+  Qw(Nsmax+1)         ! Water flux at snow layer boundaruess (m/s)
+
+
+! No snow
 Gsoil = Gsrf
-Roff = Rf*dt
+Roff = Rf + drip/dt
+Wflx(:) = 0
 
 ! Existing snowpack
-if (Nsnow > 0) then  
+if (Nsnow > 0) then 
 
   ! Heat conduction
   do k = 1, Nsnow
@@ -642,7 +736,7 @@ if (Nsnow > 0) then
   Gsoil = Gs(k)*(Tsnow(k) - Tsoil(1))
 
   ! Convert melting ice to liquid water
-  dSice = Melt
+  dSice = Melt*dt
   do k = 1, Nsnow
     coldcont = csnow(k)*(Tm - Tsnow(k))
     if (coldcont < 0) then
@@ -659,13 +753,13 @@ if (Nsnow > 0) then
         Dsnw(k) = (1 - dSice/Sice(k))*Dsnw(k)
         Sice(k) = Sice(k) - dSice
         Sliq(k) = Sliq(k) + dSice
-        dSice = 0                ! Melt exhausted
+        dSice = 0
       end if
     end if
   end do
 
   ! Remove snow by sublimation 
-  dSice = max(Esrf, 0.)*dt
+  dSice = Esrf*dt
   if (dSice > 0) then
     do k = 1, Nsnow
       if (dSice > Sice(k)) then  ! Layer sublimates completely
@@ -675,30 +769,26 @@ if (Nsnow > 0) then
       else                       ! Layer sublimates partially
         Dsnw(k) = (1 - dSice/Sice(k))*Dsnw(k)
         Sice(k) = Sice(k) - dSice
-        dSice = 0                ! Sublimation exhausted
+        dSice = 0
       end if
     end do
   end if
 
-  ! Bucket storage 
-  do k = 1, Nsnow
-    phi = 0
-    if (Dsnw(k) > epsilon(Dsnw)) phi = 1 - Sice(k)/(rho_ice*Dsnw(k))
-    SliqMax = rho_wat*Dsnw(k)*phi*Wirr
-    Sliq(k) = Sliq(k) + Roff
-    Roff = 0
-    if (Sliq(k) > SliqMax) then       ! Liquid capacity exceeded
-      Roff = Sliq(k) - SliqMax        ! so drainage to next layer
-      Sliq(k) = SliqMax
-    end if
-    coldcont = csnow(k)*(Tm - Tsnow(k))
-    if (coldcont > 0) then            ! Liquid can freeze
-      dSice = min(Sliq(k), coldcont/Lf)
-      Sliq(k) = Sliq(k) - dSice
-      Sice(k) = Sice(k) + dSice
-      Tsnow(k) = Tsnow(k) + Lf*dSice/csnow(k)
-    end if
-  end do
+  ! Remove wind-trasported snow 
+  dSice = trans*dt
+  if (dSice > 0) then
+    do k = 1, Nsnow
+      if (dSice > Sice(k)) then  ! Layer completely removed
+        dSice = dSice - Sice(k)
+        Dsnw(k) = 0
+        Sice(k) = 0
+      else                       ! Layer partially removed
+        Dsnw(k) = (1 - dSice/Sice(k))*Dsnw(k)
+        Sice(k) = Sice(k) - dSice
+        dSice = 0
+      end if
+    end do
+  end if
 
   ! Snow compaction with age
   do k = 1, Nsnow
@@ -740,14 +830,22 @@ Sice(1) = Sice(1) + dSice
 
 ! Add canopy unloading to layer 1 with bulk snow density and grain size
 rhos = rhof
-SWE = sum(Sice(:)) + sum(Sliq(:))
+snw = sum(Sice(:)) + sum(Sliq(:))
 snd = sum(Dsnw(:))
-if (snd > epsilon(snd)) rhos = SWE / snd
+if (snd > epsilon(snd)) rhos = snw / snd
 Dsnw(1) = Dsnw(1) + unload / rhos
 if (Sice(1) + unload > epsilon(Sice)) then
   Rgrn(1) = (Sice(1)*Rgrn(1) + unload*rgr0) / (Sice(1) + unload)
 end if
 Sice(1) = Sice(1) + unload
+
+! Add wind-blown snow to layer 1 with wind-packed density and fresh grain size
+dSice = - trans*dt
+if (dSice > 0) then
+  Dsnw(1) = Dsnw(1) + dSice / rhod
+  Rgrn(1) = (Sice(1)*Rgrn(1) + dSice*rgr0) / (Sice(1) + dSice)
+  Sice(1) = Sice(1) + dSice
+end if
 
 ! New snowpack
 if (Nsnow == 0 .and. Sice(1) > 0) then
@@ -778,7 +876,7 @@ U(:) = 0
 Nsnow = 0
 
 if (snd > 0) then  ! Existing or new snowpack
-
+ 
   ! Re-assign and count snow layers
   dnew = snd
   Dsnw(1) = dnew
@@ -828,11 +926,35 @@ if (snd > 0) then  ! Existing or new snowpack
 
   ! Diagnose snow layer temperatures
   do k = 1, Nsnow
-   csnow(k) = Sice(k)*hcap_ice + Sliq(k)*hcap_wat
-   Tsnow(k) = Tm + U(k) / csnow(k)
-   Rgrn(k) = Rgrn(k) / Sice(k)
+    csnow(k) = Sice(k)*hcap_ice + Sliq(k)*hcap_wat
+    Tsnow(k) = Tm + U(k) / csnow(k)
+    Rgrn(k) = Rgrn(k) / Sice(k)
   end do
 
+  ! Drain, retain or freeze snow in layers
+  ! Bucket storage 
+  if (maxval(Sliq)>0 .or. Rf>0) then
+  do k = 1, Nsnow
+    phi(k) = 1 - Sice(k)/(rho_ice*Dsnw(k))
+    SliqMax = rho_wat*Dsnw(k)*phi(k)*Wirr
+    Sliq(k) = Sliq(k) + Roff*dt
+    Wflx(k) = Roff
+    Roff = 0
+    if (Sliq(k) > SliqMax) then       ! Liquid capacity exceeded
+      Roff = (Sliq(k) - SliqMax)/dt   ! so drainage to next layer
+      Sliq(k) = SliqMax
+    end if
+    csnow(k) = Sice(k)*hcap_ice + Sliq(k)*hcap_wat
+    coldcont = csnow(k)*(Tm - Tsnow(k))
+    if (coldcont > 0) then            ! Liquid can freeze
+      dSice = min(Sliq(k), coldcont/Lf)
+      Sliq(k) = Sliq(k) - dSice
+      Sice(k) = Sice(k) + dSice
+      Tsnow(k) = Tsnow(k) + Lf*dSice/csnow(k)
+    end if
+  end do
+  end if
+snw = sum(Sice(:)) + sum(Sliq(:))
 end if ! Existing or new snowpack
 
 end subroutine SNOW
@@ -897,36 +1019,44 @@ end subroutine SOIL
 !-----------------------------------------------------------------------
 ! Surface energy balance
 !-----------------------------------------------------------------------
-subroutine SRFEBAL(cveg,Ds1,dt,fvegs,ga,gc,gs,gs1,gv,ks1,LW,Ps,Qa,     &
-                   SWsrf,SWveg,Ta,tdif,Ts1,Tveg0,VAI,                  &
-                   Tsrf,Qcan,Sice,Tcan,Tveg,                           &
-                   Esrf,Eveg,Gsrf,H,LE,LWout,LWsub,Melt)
+subroutine SRFEBAL(cveg,Ds1,dt,fcans,fsnow,gs1,ks1,lveg,LW,Ps,Qa,      &
+                   SWsrf,Sveg,SWveg,Ta,tdif,Ts1,Tveg0,Ua,VAI,vegh,     &
+                   zT,zU,Tsrf,Qcan,Sice,Tcan,Tveg,                     &
+                   Esrf,Eveg,Gsrf,H,LE,LWout,LWsub,Melt,subl,Usub)
 
 use CONSTANTS, only : &
   cp,                &! Specific heat capacity of air (J/K/kg)
+  g,                 &! Acceleration due to gravity (m/s^2)
   Lf,                &! Latent heat of fusion (J/kg)
   Ls,                &! Latent heat of sublimation (J/kg)
   Lv,                &! Latent heat of vapourisation (J/kg)
   Rair,              &! Gas constant for air (J/K/kg)
   Rwat,              &! Gas constant for water vapour (J/K/kg)
   sb,                &! Stefan-Boltzmann constant (W/m^2/K^4)
-  Tm                  ! Melting point (K)
+  Tm,                &! Melting point (K)
+  vkman               ! Von Karman constant
 
 use LAYERS, only: &
   Ncnpy,             &! Number of canopy layers
-  Nsmax               ! Maximum number of snow layers
+  Nsmax,             &! Maximum number of snow layers
+  fvg1,              &! Fraction of vegetation in upper canopy layer
+  zsub                ! Subcanopy wind speed diagnostic height (m)
 
 use PARAMETERS, only: &
-  gsnf                ! Snow-free vegetation moisture conductance (m/s)
+  gsnf,              &! Snow-free vegetation moisture conductance (m/s)
+  hbas,              &! Canopy base height (m)
+  kext,              &! Vegetation light extinction coefficient
+  leaf,              &! Leaf boundary resistance (s/m)^(1/2)
+  wcan,              &! Canopy wind decay coefficient
+  z0sf,              &! Snow-free surface roughness length (m)
+  z0sn                ! Snow roughness length (m)
 
 implicit none
 
 real, intent(in) :: &
   Ds1,               &! Surface layer thickness (m)
   dt,                &! Timestep (s)
-  ga,                &! Aerodynamic conductance to the atmosphere (m/s)
-  gc,                &! Conductance within canopy air space (m/s)
-  gs,                &! Surface to canopy air space conductance (m/s)
+  fsnow,             &! Ground snowcover fraction
   gs1,               &! Surface moisture conductance (m/s)
   ks1,               &! Surface layer thermal conductivity (W/m/K)
   LW,                &! Incoming longwave radiation (W/m2)
@@ -935,20 +1065,27 @@ real, intent(in) :: &
   SWsrf,             &! SW absorbed by snow/ground surface (W/m^2)
   Ta,                &! Air temperature (K)
   Ts1,               &! Surface layer temperature (K)
+  Ua,                &! Wind speed (m/s)
   VAI,               &! Vegetation area index
-  cveg(Ncnpy),       &! Vegetation layer heat capacities (J/K/m^2)
-  fvegs(Ncnpy),      &! Vegetation layer snowcover fractions
-  gv(Ncnpy),         &! Vegetation to canopy air space conductance (m/s)
+  vegh,              &! Canopy height (m)
+  zT,                &! Temperature and humidity measurement height (m)
+  zU                  ! Wind speed measurement height (m)
+
+real, intent(in) :: &
+  cveg(Ncnpy),       &! Vegetation heat capacities (J/K/m^2)
+  fcans(Ncnpy),      &! Canopy layer snowcover fractions
+  lveg(Ncnpy),       &! Canopy layer vegetation area indices
+  Sveg(Ncnpy),       &! Snow mass on vegetation layers (kg/m^2)
   SWveg(Ncnpy),      &! SW absorbed by vegetation layers (W/m^2)
-  tdif(Ncnpy),       &! Veg layer transmissivities for diffuse radiation
-  Tveg0(Ncnpy)        ! Veg layer temperatures at start of timestep (K)
+  tdif(Ncnpy),       &! Canopy layer diffuse transmittances
+  Tveg0(Ncnpy)        ! Vegetation temperatures at start of timestep (K)
 
 real, intent(inout) :: &
   Tsrf,              &! Snow/ground surface temperature (K)
   Qcan(Ncnpy),       &! Canopy air space humidities
+  Sice(Nsmax),       &! Ice content of snow layers (kg/m^2)
   Tcan(Ncnpy),       &! Canopy air space temperatures (K)
-  Tveg(Ncnpy),       &! Vegetation layer temperatures (K)
-  Sice(Nsmax)         ! Ice content of snow layers (kg/m^2)
+  Tveg(Ncnpy)         ! Vegetation layer temperatures (K)
 
 real, intent(out) :: &
   Esrf,              &! Moisture flux from the surface (kg/m^2/s)
@@ -957,30 +1094,53 @@ real, intent(out) :: &
   LE,                &! Latent heat flux to the atmosphere (W/m^2)
   LWout,             &! Outgoing LW radiation (W/m^2)
   LWsub,             &! Subcanopy downward LW radiation (W/m^2)
-  Melt,              &! Surface melt (kg/m^2)
+  Melt,              &! Surface melt rate (kg/m^2/s)
+  subl,              &! Sublimation rate (kg/m^2/s)
+  Usub,              &! Subcanopy wind speed (m/s)
   Eveg(Ncnpy)         ! Moisture flux from vegetation layers (kg/m^2/s)
 
-real :: &
-  A(3*Ncnpy+1,3*Ncnpy+1),&! Jacobian of energy and mass balance equations
-  b(3*Ncnpy+1),      &! Residuals of energy and mass balance equations
-  x(3*Ncnpy+1)        ! Temperature and humidity increments
+integer :: &
+  k,                 &! Canopy layer counter
+  ne                  ! Energy balance iteration counter
 
 real :: &
+  d,                 &! Displacement height (m)
   Dsrf,              &! dQsat/dT at ground surface temperature (1/K)
   dEs,               &! Change in surface moisture flux (kg/m^2/s)
   dGs,               &! Change in surface heat flux (kg/m^2/s)
   dHs,               &! Change in surface sensible heat flux (kg/m^2/s)
   dTs,               &! Change in surface temperature (K)
   E,                 &! Moisture flux to the atmosphere (kg/m^2/s)
+  ebal,              &! Surface energy balance closure (W/m^2)
   Ecan,              &! Within-canopy moisture flux (kg/m^2/s)
+  fveg,              &! Vegetation weighting
+  ga,                &! Aerodynamic conductance to the atmosphere (m/s)
+  gc,                &! Conductance within canopy air space (m/s)
+  gs,                &! Surface to canopy air space conductance (m/s)
   Hcan,              &! Within-canopy sensible heat flux (W/m^2)
   Hsrf,              &! Sensible heat flux from the surface (W/m^2)
+  Kh,                &! Eddy diffusivity at canopy top (m^2/s)
   Lsrf,              &! Latent heat for phase change on ground (J/kg)
+  psih,              &! Stability function for heat
+  psim,              &! Stability function for momentum
   Qsrf,              &! Saturation humidity at surface temperature
+  rd,                &! Dense vegetation aerodynamic resistance (s/m)
   rho,               &! Air density (kg/m^3)
+  rL,                &! Reciprocal of Obukhov length (1/m)
+  ro,                &! Open aerodynamic resistance (s/m)
   Rsrf,              &! Net radiation absorbed by the surface (W/m^2)
   Ssub,              &! Mass of snow available for sublimation (kg/m^2)
-  wsrf                ! Surface water availability factor
+  Uc,                &! Within-canopy wind speed (m/s)
+  Uh,                &! Wind speed at canopy top (m/s)
+  usd,               &! Dense canopy friction velocity (m/s)
+  uso,               &! Friction velocity (m/s)
+  ustar,             &! Open friction velocity (m/s)
+  wsrf,              &! Surface water availability factor
+  zT1,               &! Temperature measurement height with offset (m)
+  zU1,               &! Wind measurement height with offset (m)
+  z0g,               &! Snow/ground surface roughness length (m)
+  z0h,               &! Roughness length for heat (m)
+  z0v                 ! Vegetation roughness length (m)
 
 real :: &
   dEv(Ncnpy),        &! Change in vegetation moisture flux (kg/m^2/s)
@@ -989,13 +1149,36 @@ real :: &
   dTv(Ncnpy),        &! Change in vegetation temperature (K)
   dTc(Ncnpy),        &! Change in canopy air temperature (K)
   Dveg(Ncnpy),       &! dQsat/dT at vegetation layer temperature (1/K)
+  gv(Ncnpy),         &! Vegetation to canopy air space conductance (m/s)
   Hveg(Ncnpy),       &! Sensible heat flux from vegetation (W/m^2)
-  Lveg(Ncnpy),       &! Latent heat for phase change on veg (J/kg)
+  Lcan(Ncnpy),       &! Latent heat for canopy water phase change (J/kg)
   Qveg(Ncnpy),       &! Saturation humidity at vegetation temperature
   Rveg(Ncnpy),       &! Net radiation absorbed by vegetation (W/m^2)
-  wveg(Ncnpy)         ! Vegetation water availability factor
+  wveg(Ncnpy),       &! Vegetation water availability factor
+  zh(Ncnpy)           ! Vegetation layer heights (m)
 
-integer :: k          ! Vegetation layer counter
+real :: &
+  J(3*Ncnpy+1,3*Ncnpy+1),&! Jacobian of energy and mass balance equations
+  f(3*Ncnpy+1),          &! Residuals of energy and mass balance equations
+  x(3*Ncnpy+1)            ! Temperature and humidity increments
+
+real RiB
+
+! Heights specified above ground
+zU1 = zU
+zT1 = zT
+
+zh(1) = hbas + 0.5*(vegh - hbas)
+
+! Roughness lengths
+fveg = 1 - exp(-kext*VAI)
+d = 0.67*fveg*vegh
+z0g = (z0sn**fsnow) * (z0sf**(1 - fsnow))
+z0h = 0.1*z0g
+z0v = ((0.05*vegh)**fveg) * (z0g**(1 - fveg))
+
+d = 0.67*vegh
+z0v = 0.1*vegh
 
 ! Saturation humidity and air density
 call QSAT(Ps,Tsrf,Qsrf)
@@ -1004,20 +1187,28 @@ if (Tsrf > Tm) Lsrf = Lv
 Dsrf = Lsrf*Qsrf/(Rwat*Tsrf**2)
 rho = Ps/(Rair*Ta)
 
-Gsrf = 2*ks1*(Tsrf - Ts1)/Ds1
-
 if (VAI == 0) then  ! open
+Eveg(:) = 0
+Hveg(:) = 0
+ustar = vkman*Ua/log(zU1/z0g)
+ga = vkman*ustar/log(zT1/z0h)
+do ne = 1, 20
 
+  if (ne<10) rL = -vkman*g*ga*(Tsrf - Ta)/(Ta*ustar**3)
+  ustar = vkman*Ua/(log(zU1/z0g) - psim(zU1,rL) + psim(z0g,rL))
+  ga = vkman*ustar/(log(zT1/z0h) - psih(zT1,rL) + psih(z0h,rL))
+  
   ! Surface water availability
-  if (Sice(1) > 0 .or. Qa > Qsrf) then
+  if (Qa > Qsrf) then
     wsrf = 1
   else
-    wsrf = gs1/(gs1 + ga)
+    wsrf = fsnow + (1 - fsnow)*gs1/(gs1 + ga)
   end if
 
   ! Explicit fluxes
   Esrf = rho*wsrf*ga*(Qsrf - Qa)
   Eveg = 0
+  Gsrf = 2*ks1*(Tsrf - Ts1)/Ds1
   Hsrf = cp*rho*ga*(Tsrf - Ta)
   Hveg = 0
   Melt = 0
@@ -1032,8 +1223,8 @@ if (VAI == 0) then  ! open
 
   ! Surface melting
   if (Tsrf + dTs > Tm .and. Sice(1) > 0) then
-    Melt = sum(Sice)
-    dTs = (Rsrf - Gsrf - Hsrf - Lsrf*Esrf - Lf*Melt/dt) /  &
+    Melt = sum(Sice) / dt
+    dTs = (Rsrf - Gsrf - Hsrf - Lsrf*Esrf - Lf*Melt) /  &
           (4*sb*Tsrf**3 + 2*ks1/Ds1 + rho*(cp + Ls*Dsrf*wsrf)*ga)
     dEs = rho*wsrf*ga*Dsrf*dTs
     dGs = 2*ks1*dTs/Ds1
@@ -1044,7 +1235,7 @@ if (VAI == 0) then  ! open
       Gsrf = 2*ks1*(Tm - Ts1)/Ds1
       Hsrf = cp*rho*ga*(Tm - Ta)
       Rsrf = SWsrf + LW - sb*Tm**4 
-      Melt = (Rsrf - Gsrf - Hsrf - Lsrf*Esrf)*dt/Lf
+      Melt = (Rsrf - Gsrf - Hsrf - Lsrf*Esrf)/Lf
       Melt = max(Melt, 0.)
       dEs = 0
       dGs = 0
@@ -1053,193 +1244,174 @@ if (VAI == 0) then  ! open
     end if
   end if
 
+  ! Update surface temperature and fluxes
+  Esrf = Esrf + dEs
+  Gsrf = Gsrf + dGs
+  Hsrf = Hsrf + dHs
+  Tsrf = Tsrf + dTs
+  ! Diagnostics
+  ebal = SWsrf + LW - sb*Tsrf**4 - Gsrf - Hsrf - Lsrf*Esrf - Lf*Melt
   LWout = sb*Tsrf**4
   LWsub = LW
+  Usub = (ustar/vkman)*(log(zsub/z0g) - psim(zsub,rL) + psim(z0g,rL))
+
+if (ne>4 .and. abs(ebal)<0.01) exit
+end do
 
 else ! forest
+rL = 0
+usd = vkman*Ua/log((zU1-d)/z0v)
+Kh = vkman*usd*(vegh - d)
+rd = log((zT1-d)/(vegh-d))/(vkman*usd) + vegh*(exp(wcan*(1 - zh(1)/vegh) - 1))/(wcan*Kh)
+uso = vkman*Ua/log(zU1/z0g)
+ro = log(zT1/zh(1))/(vkman*uso)
+ga = fveg/rd + (1 - fveg)/ro
+do ne = 1, 20
+  ! Aerodynamic resistance
+
+  ustar = fveg*usd + (1 - fveg)*uso
+  if (ne<10) rL = -vkman*g*ga*(Tcan(1) - Ta)/(Ta*ustar**3)
+  usd = vkman*Ua/(log((zu1-d)/z0v) - psim(zU1-d,rL) + psim(z0v,rL))
+  if (rL > 0) then
+    Kh = vkman*usd*(vegh - d)/(1 + 5*(vegh - d)*rL)
+  else
+    Kh = vkman*usd*(vegh - d)*sqrt(1 - 16*(vegh - d)*rL)
+  end if
+  rd = (log((zT1-d)/(vegh-d)) - psih(zT1-d,rL) + psih(vegh-d,rL))/(vkman*usd) +  &
+       vegh*(exp(wcan*(1 - zh(1)/vegh) - 1))/(wcan*Kh)
+  uso = vkman*Ua/(log(zU1/z0g) - psim(zU1,rL) + psim(z0g,rL))
+  ro = (log(zT1/zh(1)) - psih(zT1,rL) + psih(zh(1),rL))/(vkman*uso)
+  ga = fveg/rd + (1 - fveg)/ro !+ 2/(rho*cp)
+
+  Uh = (usd/vkman)*(log((vegh-d)/z0v) - psim(vegh-d,rl) + psim(z0v,rl))
+  do k = 1, Ncnpy
+    Uc = fveg*exp(wcan*(zh(k)/vegh - 1))*Uh  +   &
+         (1 - fveg)*(uso/vkman)*(log(zh(k)/z0g) - psim(zh(k),rL) + psim(z0g,rL))
+    gv(k) = sqrt(Uc)*lveg(k)/leaf
+  end do
+
+  k = Ncnpy
+  Uc = exp(wcan*(hbas/vegh - 1))*Uh
+  rd = log(hbas/z0g)*log(hbas/z0h)/(vkman**2*Uc) +  &
+       vegh*exp(wcan)*(exp(-wcan*hbas/vegh) - exp(-wcan*zh(k)))/(wcan*Kh)
+  ro = (log(zh(k)/z0h) - psih(zh(k),rL) + psih(z0h,rL))/(vkman*uso)
+  gs = fveg/rd + (1 - fveg)/ro
 
   ! Saturation humidity
   do k = 1, Ncnpy
     call QSAT(Ps,Tveg(k),Qveg(k))
-    Lveg(k) = Ls
-    if (Tveg(k) > Tm) Lveg(k) = Lv
+    Lcan(k) = Ls
+    if (Tveg(k) > Tm) Lcan(k) = Lv
   end do
-  Dveg(:) = Lveg(:)*Qveg(:)/(Rwat*Tveg(:)**2)
+  Dveg(:) = Lcan(:)*Qveg(:)/(Rwat*Tveg(:)**2)
 
   ! Water availability
-  if (Sice(1) > 0 .or. Qcan(Ncnpy) > Qsrf) then
+  if (Qcan(Ncnpy) > Qsrf) then
     wsrf = 1
   else
-    wsrf = gs1/(gs1 + gs)
+    wsrf = fsnow + (1 - fsnow)*gs1/(gs1 + gs)
   end if
   do k = 1, Ncnpy
     if (Qcan(k) > Qveg(k)) then
       wveg(k) = 1
     else
-      wveg(k) = fvegs(k) + (1 - fvegs(k))*gsnf/(gsnf + gv(k))
+      wveg(k) = fcans(k) + (1 - fcans(k))*gsnf/(gsnf + gv(k))
     end if
   end do
 
-! 2-layer canopy model
+! 1-layer canopy model
 
   ! Explicit fluxes
   E = rho*ga*(Qcan(1) - Qa)
-  Ecan = rho*gc*(Qcan(2) - Qcan(1))
-  Esrf = rho*wsrf*gs*(Qsrf - Qcan(2))
+  Esrf = rho*wsrf*gs*(Qsrf - Qcan(1))
   Eveg(1) = rho*wveg(1)*gv(1)*(Qveg(1) - Qcan(1))
-  Eveg(2) = rho*wveg(2)*gv(2)*(Qveg(2) - Qcan(2))
+  Gsrf = 2*ks1*(Tsrf - Ts1)/Ds1
   H = rho*cp*ga*(Tcan(1) - Ta)
-  Hcan = rho*cp*gs*(Tcan(2) - Tcan(1))
-  Hsrf = rho*cp*gs*(Tsrf - Tcan(2))
+  Hsrf = rho*cp*gs*(Tsrf - Tcan(1))
   Hveg(1) = rho*cp*gv(1)*(Tveg(1) - Tcan(1))
-  Hveg(2) = rho*cp*gv(2)*(Tveg(2) - Tcan(2))
   Melt = 0
-  Rsrf = SWsrf + tdif(1)*tdif(2)*LW +              &
-         (1 - tdif(1))*tdif(2)*sb*Tveg(1)**4 +     &
-         (1 - tdif(2))*sb*Tveg(1)**4 - sb*Tsrf**4 
-  Rveg(1) = SWveg(1) + (1 - tdif(1))*(LW - 2*sb*Tveg(1)**4    & 
-            + (1 - tdif(2))*sb*Tveg(2)**4 + tdif(2)*sb*Tsrf**4) 
-  Rveg(2) = SWveg(2) +                                               & 
-            (1 - tdif(2))*(tdif(1)*LW + (1 - tdif(1))*sb*Tveg(1)**4  & 
-               - 2*sb*Tveg(2)**4 + sb*Tsrf**4) 
+  Rsrf = SWsrf + tdif(1)*LW - sb*Tsrf**4 + (1 - tdif(1))*sb*Tveg(1)**4
+  Rveg(1) = SWveg(1) + (1 - tdif(1))*(LW + sb*Tsrf**4 - 2*sb*Tveg(1)**4)
 
-! Surface energy balance increments without melt
-  A(1,1) = - rho*gs*(cp + Lsrf*Dsrf*wsrf) - 4*sb*Tsrf**3 - 2*ks1/Ds1
-  A(1,2) = 0
-  A(1,3) = 0
-  A(1,4) = 4*(1 - tdif(1))*tdif(2)*sb*Tveg(1)**3
-  A(1,5) = Lsrf*rho*wsrf*gs
-  A(1,6) = rho*cp*gs
-  A(1,7) = 4*(1 - tdif(2))*sb*Tveg(2)**3
-  A(2,1) = 4*(1 - tdif(1))*tdif(2)*sb*Tveg(2)**3 
-  A(2,2) = Lveg(1)*rho*wveg(1)*gv(1)
-  A(2,3) = rho*cp*gv(1)
-  A(2,4) = - rho*gv(1)*(cp + Lveg(1)*Dveg(1)*wveg(1))    & 
+  ! Surface energy balance increments without melt
+  J(1,1) = -rho*gs*(cp + Lsrf*Dsrf*wsrf) - 4*sb*Tsrf**3 - 2*ks1/Ds1
+  J(1,2) = Lsrf*rho*wsrf*gs
+  J(1,3) = rho*cp*gs
+  J(1,4) = 4*(1 - tdif(1))*sb*Tveg(1)**3
+  J(2,1) = 4*(1 - tdif(1))*sb*Tsrf**3
+  J(2,2) = Lcan(1)*rho*wveg(1)*gv(1)
+  J(2,3) = rho*cp*gv(1)
+  J(2,4) = - rho*gv(1)*(cp + Lcan(1)*Dveg(1)*wveg(1))        &
            - 8*(1 - tdif(1))*sb*Tveg(1)**3 - cveg(1)/dt
-  A(2,5) = 0
-  A(2,6) = 0
-  A(2,7) = 4*(1 - tdif(1))*(1 - tdif(2))*sb*Tveg(2)**3
-  A(3,1) = 4*(1 - tdif(2))*sb*Tsrf**3 
-  A(3,2) = 0
-  A(3,3) = 0
-  A(3,4) = 4*(1 - tdif(1))*(1 - tdif(2))*sb*Tveg(1)**3
-  A(3,5) = Lveg(2)*rho*wveg(2)*gv(2)
-  A(3,6) = rho*cp*gv(2)
-  A(3,7) = - rho*gv(2)*(cp + Lveg(2)*Dveg(2)*wveg(2))    &
-           - 8*(1 - tdif(2))*sb*Tveg(2)**3 - cveg(2)/dt
-  A(4,1) = 0
-  A(4,2) = 0
-  A(4,3) = ga + gc + gv(1)
-  A(4,4) = -gv(1)
-  A(4,5) = 0
-  A(4,6) = -gc
-  A(4,7) = 0
-  A(5,1) = -gs
-  A(5,2) = 0
-  A(5,3) = -gc
-  A(5,4) = 0
-  A(5,5) = 0
-  A(5,6) = gc + gs + gv(2)
-  A(5,7) = -gv(2)
-  A(6,1) = 0
-  A(6,2) = ga + gc + wveg(1)*gv(1)
-  A(6,3) = 0
-  A(6,4) = -Dveg(1)*wveg(1)*gv(1)
-  A(6,5) = -gc
-  A(6,6) = 0
-  A(6,7) = 0
-  A(7,1) = -Dsrf*wsrf*gs
-  A(7,2) = -gc
-  A(7,3) = 0
-  A(7,4) = 0
-  A(7,5) = gc + wsrf*gs + wveg(2)*gv(2)
-  A(7,6) = 0
-  A(7,7) = -Dveg(2)*wveg(2)*gv(2)
-  b(1)   = -(Rsrf - Gsrf - Hsrf - Lsrf*Esrf)
-  b(2)   = -(Rveg(1) - Hveg(1) - Lveg(1)*Eveg(1) -  & 
+  J(3,1) = -gs
+  J(3,2) = 0
+  J(3,3) = ga + gs + gv(1)
+  J(3,4) = -gv(1)
+  J(4,1) = -Dsrf*wsrf*gs
+  J(4,2) = ga + wsrf*gs + wveg(1)*gv(1)
+  J(4,3) = 0
+  J(4,4) = -Dveg(1)*wveg(1)*gv(1)
+  f(1)   = -(Rsrf - Gsrf - Hsrf - Lsrf*Esrf)
+  f(2)   = -(Rveg(1) - Hveg(1) - Lcan(1)*Eveg(1) -           &
              cveg(1)*(Tveg(1) - Tveg0(1))/dt)
-  b(3)   = -(Rveg(2) - Hveg(2) - Lveg(2)*Eveg(2)    &
-             - cveg(2)*(Tveg(2) - Tveg0(2))/dt)
-  b(4)   = -(H - Hcan - Hveg(1))/(rho*cp)
-  b(5)   = -(Hcan - Hsrf - Hveg(2))/(rho*cp)
-  b(6)   = -(E - Ecan - Eveg(1))/rho
-  b(7)   = -(Ecan - Esrf - Eveg(2))/rho
-  call LUDCMP(7,A,b,x)
-  dTs    = x(1)
+  f(3)   = -(H - Hveg(1) - Hsrf) / (rho*cp)
+  f(4)   = -(E - Eveg(1) - Esrf) / rho
+  call LUDCMP(4,J,f,x)
+  dTs = x(1)
   dQc(1) = x(2)
   dTc(1) = x(3)
   dTv(1) = x(4)
-  dQc(2) = x(5)
-  dTc(2) = x(6)
-  dTv(2) = x(7)
-  dEs = rho*wsrf*gs*(Dsrf*dTs - dQc(2))
-  dEv(:) = rho*wveg(:)*gv(:)*(Dveg(:)*dTv(:) - dQc(:))
+  dEs = rho*wsrf*gs*(Dsrf*dTs - dQc(1))
+  dEv(1) = rho*wveg(1)*gv(1)*(Dveg(1)*dTv(1) - dQc(1))
   dGs = 2*ks1*dTs/Ds1
-  dHs = rho*cp*gs*(dTs - dTc(2))
-  dHv(:) = rho*cp*gv(:)*(dTv(:) - dTc(:))
+  dHs = rho*cp*gs*(dTs - dTc(1))
+  dHv(1) = rho*cp*gv(1)*(dTv(1) - dTc(1))
 
   ! Surface melting
   if (Tsrf + dTs > Tm .and. Sice(1) > 0) then
-    Melt = sum(Sice)
-    b(1) = b(1) + Lf*Melt/dt
-    call LUDCMP(7,A,b,x)
-    dTs    = x(1)
+    Melt = sum(Sice) / dt
+    f(1) = f(1) + Lf*Melt
+    call LUDCMP(4,J,f,x)
+    dTs = x(1)
     dQc(1) = x(2)
     dTc(1) = x(3)
     dTv(1) = x(4)
-    dQc(2) = x(5)
-    dTc(2) = x(6)
-    dTv(2) = x(7)
-    dEs = rho*wsrf*gs*(Dsrf*dTs - dQc(2))
-    dEv(:) = rho*wveg(:)*gv(:)*(Dveg(:)*dTv(:) - dQc(:))
+    dEs = rho*wsrf*gs*(Dsrf*dTs - dQc(1))
+    dEv(1) = rho*wveg(1)*gv(1)*(Dveg(1)*dTv(1) - dQc(1))
     dGs = 2*ks1*dTs/Ds1
-    dHs = rho*cp*gs*(dTs - dTc(2))
-    dHv(:) = rho*cp*gv(:)*(dTv(:) - dTc(:))
+    dHs = rho*cp*gs*(dTs - dTc(1))
+    dHv(1) = rho*cp*gv(1)*(dTv(1) - dTc(1))
     if (Tsrf + dTs < Tm) then
       call QSAT(Ps,Tm,Qsrf)
-      Esrf = rho*wsrf*gs*(Qsrf - Qcan(2))
-      Hsrf = rho*cp*gs*(Tm - Tcan(2))
-      Rsrf = Rsrf + sb*Tsrf**4 - sb*Tm**4
-      Rveg(1) = Rveg(1) + (1 - tdif(1))*tdif(2)*sb*(Tm**4 - Tsrf**4) 
-      Rveg(2) = Rveg(2) + (1 - tdif(2))*sb*(Tm**4 - Tsrf**4)
-      A(1,1) = -1
-      A(2,1) = 0
-      A(3,1) = 0
-      A(4,1) = 0
-      A(5,1) = 0
-      A(6,1) = 0
-      A(7,1) = 0
-      b(1) = -(Rsrf - Gsrf - Hsrf - Lsrf*Esrf)
-      b(2) = -(Rveg(1) - Hveg(1) - Lveg(1)*Eveg(1)    & 
-               - cveg(1)*(Tveg(1) - Tveg0(1))/dt)
-      b(3) = -(Rveg(2) - Hveg(2) - Lveg(2)*Eveg(2)    &
-               - cveg(2)*(Tveg(2) - Tveg0(2))/dt)
-      b(4) = -(H - Hcan - Hveg(1))/(rho*cp)
-      b(5) = -(Hcan - Hsrf - Hveg(2))/(rho*cp)
-      b(6) = -(E - Ecan - Eveg(1))/rho
-      b(7) = -(Ecan - Esrf - Eveg(2))/rho
-      call LUDCMP(7,A,b,x)
-      Melt = x(1)*dt/Lf
+      Esrf = rho*wsrf*gs*(Qsrf - Qcan(1))
+      Gsrf = 2*ks1*(Tm - Ts1)/Ds1
+      Hsrf = rho*cp*gs*(Tm - Tcan(1))
+      Rsrf = SWsrf + tdif(1)*LW - sb*Tm**4 + (1 - tdif(1))*sb*Tveg(1)**4
+      Rveg(1) = SWveg(1) + (1 - tdif(1))*(LW + sb*Tm**4 - 2*sb*Tveg(1)**4) 
+      J(1,1) = -1
+      J(2,1) = 0
+      J(3,1) = 0
+      J(4,1) = 0
+      f(1)   = -(Rsrf - Gsrf - Hsrf - Lsrf*Esrf)
+      f(2)   = -(Rveg(1) - Hveg(1) - Lcan(1)*Eveg(1) -  &
+                 cveg(1)*(Tveg(1) - Tveg0(1))/dt)
+      f(3)   = -(H - Hveg(1) - Hsrf)/(rho*cp)
+      f(4)   = -(E - Eveg(1) - Esrf)/rho
+      call LUDCMP(4,J,f,x)
+      Melt = x(1)/Lf
       dQc(1) = x(2)
       dTc(1) = x(3)
       dTv(1) = x(4)
-      dQc(2) = x(5)
-      dTc(2) = x(6)
-      dTv(2) = x(7)
       dTs = Tm - Tsrf
       dEs = 0
-      dEv(:) = rho*wveg(:)*gv(:)*(Dveg(:)*dTv(:) - dQc(:))
+      dEv(1) = rho*wveg(1)*gv(1)*(Dveg(1)*dTv(1) - dQc(1))
       dGs = 0
       dHs = 0
-      dHv(:) = rho*cp*gv(:)*(dTv(:) - dTc(:))
+      dHv(1) = rho*cp*gv(1)*(dTv(1) - dTc(1))
     end if
   end if
-  LWout = (1 - tdif(1))*sb*Tveg(1)**4 +          &
-          (1 - tdif(2))*tdif(1)*sb*Tveg(1)**4 +  &
-          tdif(1)*tdif(2)*sb*Tsrf**4
-  LWsub = tdif(1)*tdif(2)*LW +                   &
-          (1 - tdif(1))*tdif(2)*sb*Tveg(1)**4 +  &
-          (1 - tdif(2))*sb*Tveg(2)**4
+  LWout = (1 - tdif(1))*sb*Tveg(1)**4 + tdif(1)*sb*Tsrf**4
+  LWsub = tdif(1)*LW + (1 - tdif(1))*sb*Tveg(1)**4 
 
   ! Update vegetation temperatures and fluxes
   Eveg(:) = Eveg(:) + dEv(:)
@@ -1248,126 +1420,52 @@ else ! forest
   Tcan(:) = Tcan(:) + dTc(:)
   Tveg(:) = Tveg(:) + dTv(:)
 
+  ! Update surface temperature and fluxes
+  Esrf = Esrf + dEs
+  Gsrf = Gsrf + dGs
+  Hsrf = Hsrf + dHs
+  Tsrf = Tsrf + dTs
+  ! Diagnostics
+  ebal = SWsrf + LWsub - sb*Tsrf**4 - Gsrf - Hsrf - Lsrf*Esrf - Lf*Melt
+  Uc = exp(wcan*(hbas/vegh - 1))*Uh
+  Usub = fveg*Uc*log(zsub/z0g)/log(hbas/z0g) +  &
+         (1 - fveg)*Ua*(log(zsub/z0g) - psim(zsub,rL) + psim(z0g,rL)) / &
+                       (log(zU/z0g) - psim(zU,rL) + psim(z0g,rL))
+
+if (ne>4 .and. abs(ebal)<0.01) exit
+end do
 end if  ! forest
+!print*,ne,ebal
+!write(31,*) SWsrf,LWsub - sb*Tsrf**4,Gsrf,Hsrf,Lsrf*Esrf,Lf*Melt
 
-! Update surface temperature and fluxes
-Esrf = Esrf + dEs
-Gsrf = Gsrf + dGs
-Hsrf = Hsrf + dHs
-Tsrf = Tsrf + dTs
-
-! Sublimation limited by amount of snow after melt
-Ssub = sum(Sice(:)) - Melt
-if (Ssub > 0 .and. Esrf*dt > Ssub) then
-  Esrf = Ssub / dt
-  Hsrf = Rsrf - Gsrf - Ls*Esrf - Lf*Melt/dt
+! Sublimation limited by available snow
+subl = 0
+Ssub = sum(Sice(:)) - Melt*dt
+if (Ssub > 0 .or. Tsrf<Tm) then
+  Esrf = min(Esrf, Ssub/dt)
+  subl = Esrf
+end if
+if (VAI>0) then
+  do k = 1, Ncnpy
+    if (Sveg(k)>0 .or. Tveg(k)<Tm) then
+      Eveg(k) = min(Eveg(k), Sveg(k)/dt)
+      subl = subl + Eveg(k)
+    end if
+  end do
 end if
 
 ! Fluxes to the atmosphere
 E = Esrf + sum(Eveg(:))
 H = Hsrf + sum(Hveg(:))
-LE = Lsrf*Esrf + sum(Lveg(:)*Eveg(:))
+LE = Lsrf*Esrf + sum(Lcan(:)*Eveg(:))
 
 end subroutine SRFEBAL
 
 
 !-----------------------------------------------------------------------
-! Surface exchange coefficients
-!-----------------------------------------------------------------------
-subroutine SRFEXCH(aveg,fsnow,hveg,Ua,VAI,zT,zU,ga,gc,gs,gv,Usub)
-
-use CONSTANTS, only: &
-  vkman               ! Von Karman constant
-
-use LAYERS, only: &
-  Ncnpy               ! Number of canopy layers
-
-use PARAMETERS, only: &
-  rveg,              &! Leaf boundary resistance (s/m)^(1/2)
-  fvg1,              &! Fraction of vegetation in upper layer
-  wcan,              &! Canopy wind decay coefficient
-  zsub,              &! Subcanopy wind speed diagnostic height (m)
-  z0sf,              &! Snow-free surface roughness length (m)
-  z0sn                ! Snow roughness length (m)
-
-implicit none
-
-real, intent(in) :: &
-  aveg(Ncnpy),       &! Vegetation area indices in layers
-  fsnow,             &! Ground snowcover fraction
-  hveg,              &! Vegetation height (m)
-  Ua,                &! Wind speed (m/s)
-  VAI,               &! Vegetation area index
-  zT,                &! Temperature and humidity measurement height (m)
-  zU                  ! Wind speed measurement height (m)
-
-real, intent(out) :: &
-  ga,                &! Aerodynamic conductance to the atmosphere (m/s)
-  gc,                &! Conductance within canopy air space (m/s)
-  gs,                &! Surface to canopy air space conductance (m/s)
-  gv(Ncnpy),         &! Vegetation to canopy air space conductance (m/s)
-  Usub                ! Subcanopy wind speed (m/s)
-
-integer :: k          ! Vegetation layer counter
-
-real :: &
-  d,                 &! Displacement height (m)
-  fveg,              &! Vegetation weighting
-  Kh,                &! Eddy diffusivity at canopy top (m2/s)
-  rd,                &! Dense vegetation aerodynamic resistance (s/m)
-  ro,                &! Open aerodynamic resistance (s/m)
-  Uc,                &! Within-canopy wind speed (m/s)
-  Uh,                &! Wind speed at canopy top (m/s)
-  ustar,             &! Friction velocity (m/s)
-  zT1,               &! Temperature measurement height with offset (m)
-  zU1,               &! Wind measurement height with offset (m)
-  z0,                &! Roughness length for momentum (m)
-  z0g,               &! Snow/ground surface roughness length (m)
-  z0h,               &! Roughness length for heat (m)
-  zh(Ncnpy)           ! Dimensionless vegetation layer heights
-
-! Heights specified above ground
-zU1 = zU
-zT1 = zT
-
-z0g = (z0sn**fsnow) * (z0sf**(1 - fsnow))
-Usub = Ua*log(zsub/z0g)/log(zU1/z0g)
-if (VAI == 0) then
-  z0h = 0.1*z0g
-  ustar = vkman*Ua/log(zU1/z0g)
-  ga = vkman*ustar/log(zT1/z0h)
-else
-  d = 0.67*hveg
-  z0 = 0.05*hveg
-  fveg = 1 - exp(-0.5*VAI)
-  ustar = vkman*Ua/log((zU1 - d)/z0)
-  Uh = (ustar/vkman)*log((hveg - d)/z0)
-  Kh = vkman*ustar*(hveg - d)
-  zh(1) = 1 - fvg1/2
-  zh(2) = (1 - fvg1)/2
-  rd = log((zT1 - d)/(hveg - d))/(vkman*ustar) +  & 
-       hveg*(exp(wcan*(1 - zh(1))) - 1)/(wcan*Kh)
-  ro = log(zT1/zh(1))/(vkman*ustar)
-  ga = fveg/rd + (1 - fveg)/ro
-  do k = 1, Ncnpy
-    Uc = exp(wcan*(zh(k) - 1))*Uh
-    gv(k) = sqrt(Uc)*aveg(k)/rveg
-  end do
-  rd = hveg*exp(wcan)*(exp(-wcan*zh(2)) - exp(-wcan*zh(1)))/(wcan*Kh)
-  ro = log(zh(1)/zh(2))/(vkman*ustar)
-  gc = fveg/rd + (1 - fveg)/ro
-  rd = hveg*exp(wcan)*(exp(-wcan*z0g/hveg) - exp(-wcan*zh(2)))/(wcan*Kh)
-  ro = log(zh(2)*hveg/z0g)/(vkman*ustar)
-  gs = fveg/rd + (1 - fveg)/ro
-  Usub = fveg*exp(wcan*(zsub/hveg - 1))*Uh + (1 - fveg)*Usub
-end if
-
-end subroutine SRFEXCH
-
-!-----------------------------------------------------------------------
 ! Surface and vegetation net shortwave radiation
 !-----------------------------------------------------------------------
-subroutine SWRAD(alb0,aveg,Dsnw,dt,elev,fvegs,Sdif,Sdir,Sf,Tsrf,       &
+subroutine SWRAD(alb0,Dsnw,dt,elev,fcans,lveg,Sdif,Sdir,Sf,Tsrf,       &
                  albs,fsnow,SWout,SWsrf,SWsub,SWveg,tdif)
 
 use CONSTANTS, only: &
@@ -1378,10 +1476,10 @@ use LAYERS, only: &
   Nsmax               ! Maximum number of snow layers
 
 use PARAMETERS, only: &
+  acn0,              &! Snow-free dense canopy albedo
+  acns,              &! Snow-covered dense canopy albedo
   asmx,              &! Maximum albedo for fresh snow
   asmn,              &! Minimum albedo for melting snow
-  avg0,              &! Snow-free vegetation albedo
-  avgs,              &! Snow-covered vegetation albedo
   hfsn,              &! Snowcover fraction depth scale (m)
   kext,              &! Vegetation light extinction coefficient
   Salb,              &! Snowfall to refresh albedo (kg/m^2)
@@ -1399,9 +1497,9 @@ real, intent(in) :: &
   Sdir,              &! Direct-beam shortwave radiation (W/m^2)
   Sf,                &! Snowfall rate (kg/m2/s)
   Tsrf,              &! Snow/ground surface temperature (K)
-  aveg(Ncnpy),       &! Vegetation area indices
   Dsnw(Nsmax),       &! Snow layer thicknesses (m)
-  fvegs(Ncnpy)        ! Vegetation layer snowcover fractions
+  fcans(Ncnpy),      &! Canopy layer snowcover fractions
+  lveg(Ncnpy)         ! Canopy layer vegetation area indices
 
 real, intent(inout) :: &
   albs                ! Snow albedo
@@ -1412,22 +1510,24 @@ real, intent(out) :: &
   SWsrf,             &! SW absorbed by snow/ground surface (W/m^2)
   SWsub,             &! Subcanopy downward SW radiation (W/m^2)
   SWveg(Ncnpy),      &! SW absorbed by vegetation layers (W/m^2)
-  tdif(Ncnpy)         ! Veg layer transmissivities for diffuse radiation
+  tdif(Ncnpy)         ! Canopy layer diffuse transmittances
 
-integer :: k          ! Vegetation layer counter
+integer :: k          ! Canopy layer counter
 
 real :: &
   alim,              &! Limiting snow albedo
   asrf,              &! Snow/ground surface albedo
-  snwd,              &! Snow depth (m)
+  snd,               &! Snow depth (m)
   tdec                ! Snow albedo decay time scale (s)
 
 real :: &
-  A(2*Ncnpy+1,2*Ncnpy+1),   &! Vegetation radiative transfer matrix
-  b(2*Ncnpy+1),      &! Vegetation layer boundary SW fluxes (W/m^2)
-  x(2*Ncnpy+1),      &! Vegetation SW sources (W/m^2)
+  A(2*Ncnpy+1,2*Ncnpy+1),   &! Canopy radiative transfer matrix
+  b(2*Ncnpy+1),      &! Canopy layer boundary SW fluxes (W/m^2)
+  x(2*Ncnpy+1),      &! Canopy SW sources (W/m^2)
   acan(Ncnpy),       &! Dense canopy albedo
-  tdir(Ncnpy)         ! Veg layer transmissivities for direct radiation
+  rdif(Ncnpy),       &! Canopy layer diffuse reflectance
+  rdir(Ncnpy),       &! Canopy layer direct-beam reflectance
+  tdir(Ncnpy)         ! Canopy layer direct-beam transmittance
 
 ! Prognostic snow albedo
 tdec = tcld
@@ -1438,9 +1538,9 @@ albs = alim + (albs - alim)*exp(-(1/tdec + Sf/Salb)*dt)
 albs = max(min(albs,asmx),asmn)
 
 ! Partial snowcover on ground
-snwd = sum(Dsnw(:))
+snd = sum(Dsnw(:))
 
-fsnow = tanh(snwd/hfsn)
+fsnow = min(snd/hfsn, 1.)
 
 ! Surface and vegetation net shortwave radiation
 asrf = (1 - fsnow)*alb0 + fsnow*albs
@@ -1450,31 +1550,30 @@ SWout = asrf*(Sdif + Sdir)
 SWsub = Sdif + Sdir
 tdif(:) = 0
 tdir(:) = 0
-if (aveg(1) > 0) then
-  acan(:) = (1 - fvegs(:))*avg0 + fvegs(:)*avgs
-  tdif(:) = exp(-1.6*kext*aveg(:))
-  if (elev > 0) tdir(:) = exp(-kext*aveg(:)/sin(elev))
+if (lveg(1) > 0) then
+
+  acan(:) = (1 - fcans(:))*acn0 + fcans(:)*acns
+  tdif(:) = exp(-1.6*kext*lveg(:))
+  tdir(:) = tdif(:)
+  if (elev > 0) tdir(:) = exp(-kext*lveg(:)/sin(elev))
+  rdif(:) = (1 - tdif(:))*acan(:)
+  rdir(:) = (1 - tdir(:))*acan(:)
+
   A(:,:) = 0
   do k = 1, 2*Ncnpy + 1
     A(k,k) = 1
   end do
-  A(1,4) = -(1 - tdif(1))*acan(1)
-  A(2,1) = -tdif(2)
-  A(2,3) = -(1 - tdif(2))*acan(2)
-  A(3,2) = -asrf
-  A(4,1) = -(1 - tdif(2))*acan(2)
-  A(4,3) = -tdif(2)
-  A(5,4) = -tdif(1)
+
+  A(1,2) = -rdif(1)
+  A(2,1) = -asrf
+  A(3,2) = -tdif(1)
   b(1) = tdif(1)*Sdif
-  b(2) = 0
-  b(3) = asrf*tdir(1)*tdir(2)*Sdir
-  b(4) = (1 - tdif(2))*acan(2)*tdir(1)*Sdir
-  b(5) = (1 - tdif(1))*acan(1)*Sdif + (1 - tdir(1))*acan(1)*Sdir
-  call LUDCMP(5,A,b,x)
-  SWout = x(5)
-  SWveg(1) = Sdif - x(1) + x(4) - x(5) + (1 - tdir(1))*Sdir
-  SWveg(2) = x(1) - x(2) + x(3) - x(4) + tdir(1)*(1 - tdir(2))*Sdir
-  SWsub = x(2) + tdir(1)*tdir(2)*Sdir
+  b(2) = asrf*tdir(1)*Sdir
+  b(3) = rdif(1)*Sdif + rdir(1)*Sdir
+  call LUDCMP(3,A,b,x)
+  SWout = x(3)
+  SWveg(1) = Sdif - x(1) + x(2) - x(3) + (1 - tdir(1))*Sdir
+  SWsub = x(1) + tdir(1)*Sdir
   SWsrf = (1 - asrf)*SWsub
 end if
 
@@ -1487,7 +1586,7 @@ subroutine THERMAL(Dsnw,Nsnow,Sice,Sliq,Tsnow,Tsoil,Vsmc,              &
                    csoil,Ds1,gs1,ksnow,ksoil,ks1,Ts1)
 
 use CONSTANTS, only: &
-  grav,              &! Acceleration due to gravity (m/s^2)
+  g,                 &! Acceleration due to gravity (m/s^2)
   hcap_ice,          &! Specific heat capacity of ice (J/K/kg)
   hcap_wat,          &! Specific heat capacity of water (J/K/kg)
   hcon_air,          &! Thermal conductivity of air (W/m/K)
@@ -1504,12 +1603,14 @@ use LAYERS, only: &
   Nsoil               ! Number of soil layers
 
 use PARAMETERS, only: &
-  b,                 &! Clapp-Hornberger exponent
   gsat,              &! Surface conductance for saturated soil (m/s)
+  kfix,              &! Fixed thermal conductivity of snow (W/m/K)
+  rhof                ! Fresh snow density (kg/m^3)
+
+use SOILPROPS, only: &
+  b,                 &! Clapp-Hornberger exponent
   hcap_soil,         &! Volumetric heat capacity of dry soil (J/K/m^3)
   hcon_soil,         &! Thermal conductivity of dry soil (W/m/K)
-  kfix,              &! Fixed thermal conductivity of snow (W/m/K)
-  rhof,              &! Fresh snow density (kg/m^3)
   sathh,             &! Saturated soil water pressure (m)
   Vcrit,             &! Volumetric soil moisture at critical point
   Vsat                ! Volumetric soil moisture at saturation
@@ -1548,6 +1649,7 @@ real :: &
   rhos,              &! Snow density (kg/m^3)
   Smf,               &! Fractional frozen soil moisture content
   Smu,               &! Fractional unfrozen soil moisture content
+  snd,               &! Snow depth (m)
   sthf,              &! Frozen soil moisture content
   sthu,              &! Unfrozen soil moisure content
   Tc,                &! Soil temperature (C)
@@ -1560,12 +1662,11 @@ ksnow = kfix
 do k = 1, Nsnow
   rhos = rhof
   if (Dsnw(k) > epsilon(Dsnw)) rhos = (Sice(k) + Sliq(k)) / Dsnw(k)
-
   ksnow(k) = 2.224*(rhos/rho_wat)**1.885
 end do
 
 ! Heat capacity and thermal conductivity of soil
-dPsidT = - rho_ice*Lf/(rho_wat*grav*Tm)
+dPsidT = - rho_ice*Lf/(rho_wat*g*Tm)
 do k = 1, Nsoil
   csoil(k) = hcap_soil*Dzsoil(k)
   ksoil(k) = hcon_soil
@@ -1576,8 +1677,7 @@ do k = 1, Nsoil
     Tc = Tsoil(k) - Tm
     Tmax = Tm + (sathh/dPsidT)*(Vsat/Vsmc(k))**b
     if (Tsoil(k) < Tmax) then
-      dthudT = (-dPsidT*Vsat/(b*sathh)) *  &
-               (dPsidT*Tc/sathh)**(-1/b - 1)
+      dthudT = (-dPsidT*Vsat/(b*sathh)) * (dPsidT*Tc/sathh)**(-1/b - 1)
       sthu = Vsat*(dPsidT*Tc/sathh)**(-1/b)
       sthu = min(sthu, Vsmc(k))
       sthf = (Vsmc(k) - sthu)*rho_wat/rho_ice
@@ -1603,8 +1703,9 @@ end do
 Ds1 = max(Dzsoil(1), Dsnw(1))
 Ts1 = Tsoil(1) + (Tsnow(1) - Tsoil(1))*Dsnw(1)/Dzsoil(1)
 ks1 = Dzsoil(1)/(2*Dsnw(1)/ksnow(1) + (Dzsoil(1) - 2*Dsnw(1))/ksoil(1))
-if (Dsnw(1) > 0.5*Dzsoil(1)) ks1 = ksnow(1)
-if (Dsnw(1) > Dzsoil(1)) Ts1 = Tsnow(1)
+snd = sum(Dsnw)
+if (snd > 0.5*Dzsoil(1)) ks1 = ksnow(1)
+if (snd > Dzsoil(1)) Ts1 = Tsnow(1)
 
 end subroutine THERMAL
 

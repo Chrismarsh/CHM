@@ -1,0 +1,178 @@
+{
+    "option": {
+        "station_N_nearest": "1",
+        "interpolant": "nearest",
+        "per_triangle_timeseries": "false",
+        "ui": "false",
+        "debug_level": "debug",
+        "prj_name": "Kananaskis"
+//         "startdate": "20170918T120000",
+//         "enddate": "20170919T120000"
+
+        // "startdate": "20171002T060000",
+        // "enddate": "20171004T060000"
+    },
+    "modules": [
+        "solar",
+        "Liston_wind",
+//        "WindNinja",
+        "iswr_from_obs",
+        "Longwave_from_obs",
+//        "fast_shadow",
+        "iswr",
+        "kunkel_rh",
+        "p_no_lapse",
+        "t_monthly_lapse",
+        "scale_wind_vert",
+        "Harder_precip_phase",
+//        "Simple_Canopy",
+
+        // "FSM",
+
+        "Richard_albedo",
+        "snobal",
+
+//        "snowslideadv"
+
+        "snow_slide"
+//        "PBSM3D",
+//        "fetchr"
+
+    ],
+    "remove_depency": {
+        "Simple_Canopy": "snobal",
+        "Richard_albedo": "snobal",
+        "scale_wind_vert": "snobal",
+
+        "Simple_Canopy": "Lehning_snowpack",
+        "Richard_albedo": "Lehning_snowpack",
+        "scale_wind_vert": "Lehning_snowpack",
+
+        "scale_wind_vert": "FSM",
+        "snow_slide": "snobal",
+        "PBSM3D": "snobal",
+        "WindNinja": "snobal",
+        "WindNinja": "FSM",
+        "WindNinja": "Lehning_snowpack",
+
+        "Simple_Canopy": "FSM",
+        "scale_wind_vert": "FSM",
+        "snow_slide": "FSM",
+        "PBSM3D": "FSM",
+        "WindNinja": "FSM"
+    },
+    "config": {
+        "Richard_albedo": {
+            "min_swe_refresh": "10",
+            "init_albedo_snow": "0.8",
+            "a2": "3.6e5"
+        },
+        "snobal": {
+            "param_snow_compaction": "1"
+        },
+        "Thornton_p": {
+            "apply_cosine_correction": "true"
+        },
+        "p_no_lapse": {
+            "apply_cosine_correction": "true"
+        },
+        "snow_slide": {
+            "use_vertical_snow": "true"
+        },
+        "PBSM3D": {
+            "nLayer": "10",
+            "smooth_coeff": "6500",
+            "rouault_diffusion_coef": "false",
+            "min_sd_trans": "0.1",
+            "enable_veg": "true",
+            "snow_diffusion_const": "0.3",
+            "settling_velocity": "0.5",
+            "do_fixed_settling": "true",
+            "do_sublimation": "true",
+            "use_tanh_fetch": "true",
+            "use_R94_lambda": "false",
+            "use_PomLi_probability": "false",
+            "use_subgrid_topo": "false",
+            "use_subgrid_topo_V2": "false",
+            "z0_ustar_coupling": "false",
+            "debug_output": "false"
+        },
+        "fetchr": {
+            "incl_veg": "false",
+            "I": "0.06"
+        },
+        "WindNinja": {
+            "Max_spdup": "3.5",
+            "ninja_recirc": "true",
+            "compute_Sx": "false",
+            "Sx_crit": "20.0",
+            "L_avg": "1000"
+        },
+        "iswr": {
+            "already_cosine_corrected": "true"
+        }
+    },
+    "meshes": {
+
+
+         "mesh": "slope.metis_mesh.np2.partition"
+
+
+    },
+    "parameter_mapping": {
+        "landcover": {
+            "1": {
+                "canopyType": "1",
+                "LAI": "0",
+                "CanopyHeight": "0"
+            },
+            "0": {
+                "canopyType": "0",
+                "LAI": "3",
+                "CanopyHeight": "10"
+            },
+            "2": {
+                "canopyType": "2",
+                "LAI": "3",
+                "CanopyHeight": "10"
+            },
+            "3": {
+                "canopyType": "3",
+                "is_water": "true",
+                "LAI": "3",
+                "CanopyHeight": "10"
+            }
+        }
+    },
+    "output": {
+        "output_dir":"testing",
+        "mesh": {
+            "base_name": "SC",
+            // "base_name": "FSM",
+            "write_parameters": "true",
+            "write_ghost_neighbors": false
+        }
+
+    },
+    "forcing":
+    {
+        "UTC_offset":6,
+
+        "UpperClearing":
+        {
+            "file":"met/uc_2005_2020.txt",
+            "longitude": -115.175362,
+            "latitude":  50.956547,
+            "elevation": 1844.6,
+             "filter": {
+                "scale_wind_speed": {
+                  "Z_F": 40,
+                  "variable": "u"
+                }
+              }
+
+        }
+
+
+    }
+}

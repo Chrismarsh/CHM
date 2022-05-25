@@ -116,7 +116,7 @@ double Winstral_parameters::Sx(const mesh &domain, mesh_elem& face) const
         double max_tan_sx = 0.;
 
         //direction it is from,i need upwind fetch
-        double wdir = wind_dir - this->angular_window / 2 + (i - 1) * this->delta_angle;
+        double wdir = wind_dir - this->angular_window / 2.0 + (i - 1) * this->delta_angle;
 
        // search along wdir azimuth in j step increments
         for (int j = 1; j <= this->steps; ++j)
@@ -124,7 +124,7 @@ double Winstral_parameters::Sx(const mesh &domain, mesh_elem& face) const
            double distance = j * this->size_of_step;
 
            // Select point along the line
-           Point_2 pref =  math::gis::point_from_bearing(face_centre,wind_dir,distance);
+           Point_2 pref =  math::gis::point_from_bearing(face_centre, wdir, distance);
            // Find corresponding triangle
            auto f = domain->find_closest_face (pref );
 

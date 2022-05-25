@@ -37,10 +37,6 @@
 #include <cmath>
 
 
-#include <viennacl/linalg/gmres.hpp>
-#include <viennacl/compressed_matrix.hpp>
-#include <viennacl/linalg/ilu.hpp>
-
 /**
  * \ingroup modules met wind
  * @{
@@ -120,4 +116,3 @@ public:
     bool use_ryan_dir;
     double speedup_height; // height at which the speedup is for
 };
-

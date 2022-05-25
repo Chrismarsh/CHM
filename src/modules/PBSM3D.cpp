@@ -1,4 +1,4 @@
-; //
+//
 // Canadian Hydrological Model - The Canadian Hydrological Model (CHM) is a
 // novel modular unstructured mesh based approach for hydrological modelling
 // Copyright (C) 2018 Christopher Marsh
@@ -24,18 +24,6 @@
 #include "PBSM3D.hpp"
 
 REGISTER_MODULE_CPP(PBSM3D);
-
-// starting at row_start until row_end find offset for col
-inline unsigned int offset(const unsigned int& row_start, const unsigned int& row_end, const unsigned int* col_buffer,
-                           const unsigned int& col)
-{
-    for (unsigned int i = row_start; i < row_end; ++i)
-    {
-        if (col_buffer[i] == col)
-            return i;
-    }
-    return -1; // wrap it and index garbage
-}
 
 struct my_fill_topo_params
 {
@@ -121,8 +109,9 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     depends("rh");
     depends("U_R");
 
-//    depends("p_snow");
-//    depends("p");
+    provides("global_cell_id");
+    //    depends("p_snow");
+    //    depends("p");
 
     // Determine if we want fetch, and if so, which one. Default is to use Pomeroy
     // Tanh
@@ -243,10 +232,10 @@ void PBSM3D::init(mesh& domain)
     // settling_velocity is used if the user chooses a fixed settling velocity
     // (do_fixed_settling=true)
     settling_velocity = cfg.get("settling_velocity",
-                                0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall
-                                      // (2008), Inhomogeneous precipitation distribution and snow
-                                      // transport in steep terrain, Water Resour. Res., 44(7),
-                                      // 1–19, doi:10.1029/2007WR006545.
+            0.5); // m/s, Lehning, M., H. Löwe, M. Ryser, and N. Raderschall
+    // (2008), Inhomogeneous precipitation distribution and snow
+    // transport in steep terrain, Water Resour. Res., 44(7),
+    // 1–19, doi:10.1029/2007WR006545.
 
     if (settling_velocity < 0)
         BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D settling velocity must be positive"));
@@ -257,10 +246,10 @@ void PBSM3D::init(mesh& domain)
     min_sd_trans = cfg.get("min_sd_trans", 0.1); // m Snow holding capacity for flat terrain
 
     cutoff = cfg.get("cutoff",
-                     0.3); // cutoff veg-snow diff (m) that we inhibit saltation entirely
+            0.3); // cutoff veg-snow diff (m) that we inhibit saltation entirely
 
     snow_diffusion_const = cfg.get("snow_diffusion_const",
-                                   0.3); // Beta * K, this is beta and scales the eddy diffusivity
+            0.3); // Beta * K, this is beta and scales the eddy diffusivity
     rouault_diffusion_coeff = cfg.get("rouault_diffusion_coef", false);
 
     enable_veg = cfg.get("enable_veg", true);
@@ -270,25 +259,27 @@ void PBSM3D::init(mesh& domain)
     if (rouault_diffusion_coeff)
     {
         LOG_WARNING << "rouault_diffusion_coef overrides const "
-                       "snow_diffusion_const values.";
+            "snow_diffusion_const values.";
     }
 
     n_non_edge_tri = 0;
 
-    // use this to build the sparsity pattern for suspension matrix
+    // Size of the domain
     size_t ntri = domain->size_faces();
-    std::vector<std::map<unsigned int, vcl_scalar_type>> C(ntri * nLayer);
-
-    // sparsity pattern for drift
-    std::vector<std::map<unsigned int, vcl_scalar_type>> A(ntri);
 
     LOG_DEBUG << "#face=" << ntri;
 
+    // **************************************************************
+    // **************************************************************
+    // TODO can this loop be combined with the trilinos GrsGraph creations?
+    // - it's easier to follow along with separated loops, but likely less efficient
+    // **************************************************************
+    // **************************************************************
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < ntri; i++)
     {
         auto face = domain->face(i);
-        auto d = face->make_module_data<data>(ID);
+        auto& d = face->make_module_data<data>(ID);
 
         if (!face->has_vegetation() && enable_veg)
         {
@@ -296,29 +287,29 @@ void PBSM3D::init(mesh& domain)
         }
         if (face->has_vegetation() && enable_veg)
         {
-            d->CanopyHeight = face->veg_attribute("CanopyHeight");
+            d.CanopyHeight = face->veg_attribute("CanopyHeight");
 
             // only grab LAI if we are using the R90 lambda formulation
             if (use_R94_lambda)
-                d->LAI = face->veg_attribute("LAI");
+                d.LAI = face->veg_attribute("LAI");
             else
-                d->LAI = 0;
+                d.LAI = 0;
         }
         else
         {
-            d->CanopyHeight = 0;
-            d->LAI = 0;
+            d.CanopyHeight = 0;
+            d.LAI = 0;
             enable_veg = false;
         }
 
-        d->F_fill.function = &my_fill_topo;
-        d->F_fill2.function = &my_fill_topo2;
-        d->F_fill3.function = &my_fill_topo3;
+        d.F_fill.function = &my_fill_topo;
+        d.F_fill2.function = &my_fill_topo2;
+        d.F_fill3.function = &my_fill_topo3;
 
         // pre alloc for the windpseeds
-        d->u_z_susp.resize(nLayer);
+        d.u_z_susp.resize(nLayer);
 
-        auto& m = d->m;
+        auto& m = d.m;
         // edge unit normals
         m[0].set_size(3);
         m[0](0) = face->edge_unit_normal(0).x();
@@ -347,85 +338,42 @@ void PBSM3D::init(mesh& domain)
 
         // face areas
         for (int j = 0; j < 3; ++j)
-            d->A[j] = face->edge_length(j) * v_edge_height;
+            d.A[j] = face->edge_length(j) * v_edge_height;
 
         // top, bottom
-        d->A[3] = d->A[4] = face->get_area();
+        d.A[3] = d.A[4] = face->get_area();
 
-        d->is_edge = false;
-        // which faces have neighbours? Ie, are we an edge?
+        d.is_edge = false;
+        // which faces have neighbors? Ie, are we an edge?
         for (int a = 0; a < 3; ++a)
         {
-            A[i][i] = -9999;
-
             auto neigh = face->neighbor(a);
-            if (neigh == nullptr || neigh->_is_ghost)
+            if (neigh == nullptr)
             {
-                d->face_neigh[a] = false;
-                d->is_edge = true;
+                d.face_neigh[a] = false;
+                d.is_edge = true;
             }
             else
             {
-                d->face_neigh[a] = true;
-
-                A[i][neigh->cell_local_id] = -9999;
+                d.face_neigh[a] = true;
             }
         }
-        if (!d->is_edge)
+        if (!d.is_edge)
         {
-            d->cell_local_id = n_non_edge_tri;
+            d.cell_local_id = n_non_edge_tri;
             ++n_non_edge_tri;
         }
 
-        d->sum_drift = 0;
-        d->sum_subl = 0;
-        d->csubl.resize(nLayer);
+        d.sum_drift = 0;
+        d.sum_subl = 0;
+        d.csubl.resize(nLayer);
         (*face)["sum_drift"_s]=0;
 
-        // iterate over the vertical layers
-        for (int z = 0; z < nLayer; ++z)
-        {
-            size_t idx = ntri * z + face->cell_local_id;
-            for (int f = 0; f < 3; f++)
-            {
-                if (d->face_neigh[f])
-                {
-                    size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
-                    C[idx][idx] = -9999;
-                    C[idx][nidx] = -9999;
-                }
-                else
-                {
-                    C[idx][idx] = -9999;
-                }
-            }
-
-            if (z == 0)
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_local_id] = -9999;
-            }
-            else if (z == nLayer - 1)
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
-            }
-            else // middle layers
-            {
-                C[idx][idx] = -9999;
-                C[idx][ntri * (z + 1) + face->cell_local_id] = -9999;
-                C[idx][ntri * (z - 1) + face->cell_local_id] = -9999;
-            }
-        }
     }
 
-    viennacl::copy(C, vl_C); // copy C -> vl_C, sets up the sparsity pattern
-    viennacl::copy(A, vl_A); // copy A -> vl_A, sets up the sparsity pattern
+    suspension_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain,nLayer));
+    deposition_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain));
 
-    b.resize(ntri * nLayer);
-    bb.resize(ntri);
-    nnz = vl_C.nnz();
-    nnz_drift = vl_A.nnz();
 }
 
 void PBSM3D::run(mesh& domain)
@@ -435,42 +383,15 @@ void PBSM3D::run(mesh& domain)
 
     // needed for linear system offsets
     size_t ntri = domain->size_faces();
+    size_t n_global_tri = domain->size_global_faces();
 
-    // vcl_scalar_type is defined in the main CMakeLists.txt file.
-    // Some GPUs do not have double precision so the run will fail if the wrong
-    // precision is used
-
-#ifdef VIENNACL_WITH_OPENCL
-    viennacl::context host_ctx(viennacl::MAIN_MEMORY);
-    vl_C.switch_memory_context(host_ctx);
-    vl_A.switch_memory_context(host_ctx);
-
-    b.switch_memory_context(host_ctx);
-    bb.switch_memory_context(host_ctx);
-#endif
-
-    // zero CSR vector in vl_C
-    viennacl::vector_base<vcl_scalar_type> init_temporary(
-        vl_C.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz + 1), 0, 1);
-    // write:
-    init_temporary = viennacl::zero_vector<vcl_scalar_type>(
-        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz + 1), viennacl::traits::context(vl_C));
-
-    // zero-fill RHS
-    b.clear();
-
-    // get row buffer
-    unsigned int const* row_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle1());
-    unsigned int const* col_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_C.handle2());
-    vcl_scalar_type* elements =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_C.handle());
-
+    suspension_NNP->zeroSystem();
+    deposition_NNP->zeroSystem();
 
     // Set this flag if the RHS of the suspension system is ever nonzero
     // Thread-safe because it is only ever switched in one direction
-    suspension_present=false;
+    suspension_present = false;
+    deposition_present = false;
 
 #pragma omp parallel
     {
@@ -488,10 +409,8 @@ void PBSM3D::run(mesh& domain)
 
             auto face = domain->face(i);
 
-            auto id = face->cell_local_id;
-
-            auto d = face->get_module_data<data>(ID);
-            auto& m = d->m;
+            auto& d = face->get_module_data<data>(ID);
+            auto& m = d.m;
 
             double fetch = 1000;
             if (use_exp_fetch || use_tanh_fetch)
@@ -514,8 +433,8 @@ void PBSM3D::run(mesh& domain)
             if (z10 < Atmosphere::Z_U_R)
             {
                 u10 = Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, z10,
-                                                 snow_depth); // used by the pom probability forumuation, so don't
-                                                              // hide behide debug output
+                        snow_depth); // used by the pom probability forumuation, so don't
+                // hide behide debug output
             }
             else
             {
@@ -527,10 +446,10 @@ void PBSM3D::run(mesh& domain)
 
             double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
             swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
-                                           // updated if we override the module order
+            // updated if we override the module order
 
             // height difference between snowcover and veg
-            double height_diff = std::max(0.0, d->CanopyHeight - snow_depth);
+            double height_diff = std::max(0.0, d.CanopyHeight - snow_depth);
             if (!enable_veg)
                 height_diff = 0;
             if (debug_output)
@@ -598,11 +517,11 @@ void PBSM3D::run(mesh& domain)
 
                         // Compute normalization factor
                         struct my_fill_topo_params params = {a1, b1, a2, b2, moy_tpi, std_tpi};
-                        d->F_fill.params = &params;
+                        d.F_fill.params = &params;
 
                         gsl_integration_workspace* w = gsl_integration_workspace_alloc(1000);
                         double result, error;
-                        int code = gsl_integration_qags(&d->F_fill, -50, 50, 0, 1e-7, 1000, w, &result, &error);
+                        int code = gsl_integration_qags(&d.F_fill, -50, 50, 0, 1e-7, 1000, w, &result, &error);
                         gsl_integration_workspace_free(w);
 
                         (*face)["test_int"_s] = result;
@@ -624,21 +543,21 @@ void PBSM3D::run(mesh& domain)
 
                         // Determine area-averaged snow depth which is stored in the non-filled gullies
                         struct my_fill_topo2_params params2 = {a1, b1, a2, b2, moy_tpi, std_tpi, snow_depth, result};
-                        d->F_fill2.params = &params2;
+                        d.F_fill2.params = &params2;
 
                         gsl_integration_workspace* w2 = gsl_integration_workspace_alloc(1000);
                         double h1;
-                        int code2 = gsl_integration_qags(&d->F_fill2, -50, tpi_lim, 0, 1e-7, 1000, w2, &h1, &error);
+                        int code2 = gsl_integration_qags(&d.F_fill2, -50, tpi_lim, 0, 1e-7, 1000, w2, &h1, &error);
                         gsl_integration_workspace_free(w2);
 
                         // Determine area-averaged snow depth which is stored in the filled gullies
                         struct my_fill_topo3_params params3 = {moy_tpi, std_tpi, fac_fill};
-                        d->F_fill3.params = &params3;
+                        d.F_fill3.params = &params3;
 
                         gsl_integration_workspace* w3 = gsl_integration_workspace_alloc(1000);
                         double h2;
-                        int code3 = gsl_integration_qags(&d->F_fill3, tpi_lim, -min_sd_trans / fac_fill, 0, 1e-7, 1000,
-                                                         w3, &h2, &error);
+                        int code3 = gsl_integration_qags(&d.F_fill3, tpi_lim, -min_sd_trans / fac_fill, 0, 1e-7, 1000,
+                                w3, &h2, &error);
                         gsl_integration_workspace_free(w3);
 
                         // Determine area-averaged snow depth hold in the area of positive TPI
@@ -677,7 +596,7 @@ void PBSM3D::run(mesh& domain)
                         double scale_gam = -pow(std_tpi_neg, 2.0) / moy_tpi_neg;
                         //
                         frac_contrib = (1. - frac_neg) + // f_TPI>0.
-                                       frac_neg * gsl_cdf_gamma_P(snow_depth, shape_gam, scale_gam);
+                            frac_neg * gsl_cdf_gamma_P(snow_depth, shape_gam, scale_gam);
 
                         frac_contrib_nosnw = (1. - frac_neg);
 
@@ -688,14 +607,14 @@ void PBSM3D::run(mesh& domain)
                             double hint =
                                 shape_gam * scale_gam -
                                 scale_gam * (snow_depth * gsl_ran_gamma_pdf(snow_depth, shape_gam, scale_gam) -
-                                             min_sd_trans * gsl_ran_gamma_pdf(min_sd_trans, shape_gam, scale_gam) +
-                                             shape_gam * gsl_cdf_gamma_P(min_sd_trans, shape_gam, scale_gam) +
-                                             shape_gam * gsl_cdf_gamma_Q(snow_depth, shape_gam, scale_gam));
+                                        min_sd_trans * gsl_ran_gamma_pdf(min_sd_trans, shape_gam, scale_gam) +
+                                        shape_gam * gsl_cdf_gamma_P(min_sd_trans, shape_gam, scale_gam) +
+                                        shape_gam * gsl_cdf_gamma_Q(snow_depth, shape_gam, scale_gam));
 
                             min_sd_trans_avg =
                                 (1. - frac_neg) * min_sd_trans +
                                 frac_neg * (min_sd_trans * gsl_cdf_gamma_P(min_sd_trans, shape_gam, scale_gam) + hint +
-                                            snow_depth * gsl_cdf_gamma_Q(snow_depth, shape_gam, scale_gam));
+                                        snow_depth * gsl_cdf_gamma_Q(snow_depth, shape_gam, scale_gam));
                         }
                     }
                 }
@@ -722,8 +641,7 @@ void PBSM3D::run(mesh& domain)
             // exposed vegetation w/ the z0 estimate
             double lambda = 0;
 
-
-            d->saltation = false; // default case
+            d.saltation = false; // default case
 
             // threshold friction velocity. Compute here as it's used below as well
             // Pomeroy and Li, 2000
@@ -742,7 +660,7 @@ void PBSM3D::run(mesh& domain)
                 if (use_R94_lambda)
                     // LAI/2.0 suggestion from Raupach 1994 (DOI:10.1007/BF00709229)
                     // Section 3(a)
-                    lambda = 0.5 * d->LAI * height_diff;
+                    lambda = 0.5 * d.LAI * height_diff;
                 else
                     lambda = N * dv * height_diff; // Pomeroy formulation
 
@@ -762,7 +680,7 @@ void PBSM3D::run(mesh& domain)
                         // g   = 9.81;
 
                         return u2 * PhysConst::kappa / log(2.0 / (0.6131702345e-2 * ustar * ustar + .5 * lambda)) -
-                               ustar;
+                            ustar;
                     };
                     try
                     {
@@ -772,7 +690,7 @@ void PBSM3D::run(mesh& domain)
                     catch (...)
                     {
                         // Didn't converge
-                        d->saltation = false;
+                        d.saltation = false;
                     }
                 }
                 else
@@ -783,7 +701,7 @@ void PBSM3D::run(mesh& domain)
 
                 if (ustar >= u_star_saltation_threshold)
                 {
-                    d->saltation = true;
+                    d.saltation = true;
 
                     if (z0_ustar_coupling)
                     {
@@ -794,36 +712,36 @@ void PBSM3D::run(mesh& domain)
                         // c_3 = 0.07519;
                         // c_4 = 0.5;
                         // g   = 9.81;
-                        d->z0 = 0.6131702345e-2 * ustar * ustar + .5 * lambda; // pom and li 2000, eqn 4
+                        d.z0 = 0.6131702345e-2 * ustar * ustar + .5 * lambda; // pom and li 2000, eqn 4
                     }
                     else
                     {
-                        d->z0 = Snow::Z0_SNOW;
+                        d.z0 = Snow::Z0_SNOW;
                     }
                 }
             }
 
-            if (!d->saltation)
+            if (!d.saltation)
             {
                 // we still need a u* for spatial K estimation later
-                d->z0 = Snow::Z0_SNOW;
-                ustar = std::max(0.01, PhysConst::kappa * uref / log(Atmosphere::Z_U_R / d->z0));
+                d.z0 = Snow::Z0_SNOW;
+                ustar = std::max(0.01, PhysConst::kappa * uref / log(Atmosphere::Z_U_R / d.z0));
             }
 
             // sanity checks
-            d->z0 = std::max(Snow::Z0_SNOW, d->z0);
+            d.z0 = std::max(Snow::Z0_SNOW, d.z0);
             ustar = std::max(0.01, ustar);
             if (debug_output)
                 (*face)["ustar"_s] = ustar;
             if (debug_output)
-                (*face)["z0"_s] = d->z0;
+                (*face)["z0"_s] = d.z0;
 
             // depth of saltation layer
             double hs = 0;
-            if (d->saltation)
+            if (d.saltation)
                 hs = 0.08436 * pow(ustar, 1.27); // pomeroy
 
-            d->hs = hs;
+            d.hs = hs;
             if (debug_output)
                 (*face)["hs"_s] = hs;
             if (debug_output)
@@ -839,12 +757,12 @@ void PBSM3D::run(mesh& domain)
             // Are we above saltation threshold?
             // Do we have enough mass in this triangle?
             // Has saltation been disabled because there is too much veg?
-            if (d->saltation)
+            if (d.saltation)
             {
 
                 double rho_f =
                     mio::Atmosphere::stdDryAirDensity(face->get_z(),
-                                                      t); // air density kg/m^3, comment in mio is wrong.1.225;
+                            t); // air density kg/m^3, comment in mio is wrong.1.225;
 
                 if (debug_output)
                     (*face)["blowingsnow_probability"_s] = 0; // default to 0%
@@ -881,7 +799,7 @@ void PBSM3D::run(mesh& domain)
                 if (c_salt < 0 || std::isnan(c_salt))
                 {
                     c_salt = 0;
-                    d->saltation = false;
+                    d.saltation = false;
                 }
 
                 if (debug_output)
@@ -907,7 +825,7 @@ void PBSM3D::run(mesh& domain)
 
                 // consider the temporal non-steady effects
                 if (use_PomLi_probability) // Pomeroy and Li 2000 upscaled
-                                           // probability
+                    // probability
                 {
                     // Essery, Li, and Pomeroy 1999
                     // Probability of blowing snow
@@ -922,7 +840,7 @@ void PBSM3D::run(mesh& domain)
                 }
 
                 // consider subgrid topographic effect
-                if (use_subgrid_topo or use_subgrid_topo_V2)
+                if (use_subgrid_topo || use_subgrid_topo_V2)
                 {
                     c_salt *= frac_contrib;
                 }
@@ -946,17 +864,17 @@ void PBSM3D::run(mesh& domain)
                 double udotm[3] = {0, 0, 0};
                 double E[3] = {0, 0, 0};
 
-                //compute a divergence mass flux of saltation assuming our neighbours are 0 flux
-                //however, we can't compute it w/ an upwind scheme like we do for the true solution later
-                //as we don't know the neighbours values (might not have been computed yet). So this is just an
+                // compute a divergence mass flux of saltation assuming our neighbors are 0 flux
+                // however, we can't compute it w/ an upwind scheme like we do for the true solution later
+                // as we don't know the neighbors values (might not have been computed yet). So this is just an
                 for (int j = 0; j < 3; ++j)
                 {
-                    udotm[j] = arma::dot(uvw, d->m[j]);
+                    udotm[j] = arma::dot(uvw, d.m[j]);
                     E[j] = face->edge_length(j);
                     mass += -E[j] * Qsalt * udotm[j];
                 }
 
-                mass = mass/V * global_param->dt();
+                mass = mass / V * global_param->dt();
 
                 if (debug_output)
                 {
@@ -964,15 +882,15 @@ void PBSM3D::run(mesh& domain)
                     (*face)["mass_qsalt"_s] = mass;
                 }
 
-                if( mass < 0 && std::fabs(mass) > swe)
+                if (mass < 0 && std::fabs(mass) > swe)
                 {
-                  c_salt = 0;
-                  //-swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
-                  // kg/(m*s)
-                  Qsalt = c_salt * uhs * hs; // integrate over the depth of the saltation layer, kg/(m*s)
+                    c_salt = 0;
+                    //-swe*V/(hs*uhs*(E[0]*udotm[0]+E[1]*udotm[1]+E[2]*udotm[2])*global_param->dt());
+                    // kg/(m*s)
+                    Qsalt = c_salt * uhs * hs; // integrate over the depth of the saltation layer, kg/(m*s)
 
-                  if (debug_output)
-                      (*face)["csalt_reset"_s] = c_salt;
+                    if (debug_output)
+                        (*face)["csalt_reset"_s] = c_salt;
                 }
             }
 
@@ -1000,9 +918,9 @@ void PBSM3D::run(mesh& domain)
                 double hz = cz + snow_depth;
 
                 // the suspension layer discretization 'floats' on top of the snow
-                // surface so height_diff = d->CanopyHeight - snowdepth which is
+                // surface so height_diff = d.CanopyHeight - snowdepth which is
                 // looking to see if cz is within this part of the canopy
-                if (d->saltation && cz < height_diff)
+                if (d.saltation && cz < height_diff)
                 {
                     // saltating so used the z0 with veg, but we are in the canopy so
                     // use the saltation vel
@@ -1022,17 +940,17 @@ void PBSM3D::run(mesh& domain)
                     //                //bring wind down to canopy top
                     //                double u_cantop = std::max(0.01,
                     //                Atmosphere::log_scale_wind(uref,
-                    //                Atmosphere::Z_U_R, d->CanopyHeight, 0 , d->z0));
+                    //                Atmosphere::Z_U_R, d.CanopyHeight, 0 , d.z0));
                     //
                     //                u_z = Atmosphere::exp_scale_wind(u_cantop,
-                    //                d->CanopyHeight, cz, LAI);
+                    //                d.CanopyHeight, cz, LAI);
                 }
                 else
                 {
                     if (hz < Atmosphere::Z_U_R)
                     {
                         u_z =
-                            std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, hz, snow_depth, d->z0));
+                            std::max(0.01, Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, hz, snow_depth, d.z0));
                     }
                     else
                     {
@@ -1040,7 +958,7 @@ void PBSM3D::run(mesh& domain)
                     }
                 }
 
-                d->u_z_susp.at(z) = u_z;
+                d.u_z_susp.at(z) = u_z;
 
                 // calculate dm/dt from
                 // equation 13 from Pomeroy and Li 2000
@@ -1068,7 +986,7 @@ void PBSM3D::run(mesh& domain)
                 // 52, 53 P&G 1995
                 double mm_alpha = 4.08 + 12.6 * cz; // 24
                 double mm = 4. / 3. * M_PI * rho_p * rm * rm * rm *
-                            (1.0 + 3.0 / mm_alpha + 2. / (mm_alpha * mm_alpha)); // mean mass, eqn 23
+                    (1.0 + 3.0 / mm_alpha + 2. / (mm_alpha * mm_alpha)); // mean mass, eqn 23
 
                 // mean radius of mean mass particle
                 double r_z = pow((3.0 * mm) / (4 * M_PI * rho_p), 0.3333333); // 50 in p&g 1995
@@ -1089,7 +1007,7 @@ void PBSM3D::run(mesh& domain)
                 double Vr = omega + 3.0 * xrz * cos(M_PI / 4.0); // eqn 14
 
                 double v = 1.88e-5;             // kinematic viscosity of air, below eqn 13 in
-                                                // Pomeroy 1993
+                // Pomeroy 1993
                 double Re = 2.0 * r_z * Vr / v; // eqn  55 in p&g 1995
 
                 double Nu, Sh;
@@ -1099,14 +1017,14 @@ void PBSM3D::run(mesh& domain)
 
                 // (A.6)
                 double D = 2.06e-5 * pow(t / 273.15,
-                                         1.75); // diffusivity of water vapour in air, t in K,
-                                                // eqn A-7 in Liston 1998 or Harder 2013 A.6
+                        1.75); // diffusivity of water vapour in air, t in K,
+                // eqn A-7 in Liston 1998 or Harder 2013 A.6
 
                 // (A.9)
                 double lambda_t =
                     0.000063 * t + 0.00673; //  thermal conductivity, user Harder 2013 A.9, Pomeroy's
-                                            //  is off by an order of magnitude, this matches this
-                                            //  https://www.engineeringtoolbox.com/air-properties-d_156.html
+                //  is off by an order of magnitude, this matches this
+                //  https://www.engineeringtoolbox.com/air-properties-d_156.html
 
                 // Standard constant value, e.g.,
                 // https://link.springer.com/referenceworkentry/10.1007%2F978-90-481-2642-2_329
@@ -1130,17 +1048,17 @@ void PBSM3D::run(mesh& domain)
                     // use Harder 2013 (A.5) Formulation, but Pa formulation for e
                     auto fx = [=](double Ti) {
                         return boost::math::make_tuple(
-                            T +
+                                T +
                                 D * L *
-                                    (rho / (1000.0) -
-                                     .611 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15) * (1000.0))) /
-                                    lambda_t -
+                                (rho / (1000.0) -
+                                 .611 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15) * (1000.0))) /
+                                lambda_t -
                                 Ti,
-                            D * L *
-                                    (-0.6110000000e-3 * mw * (17.3 / (237.3 + Ti) - 17.3 * Ti / pow(237.3 + Ti, 2)) *
-                                         exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15)) +
-                                     0.6110000000e-3 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * pow(Ti + 273.15, 2))) /
-                                    lambda_t -
+                                D * L *
+                                (-0.6110000000e-3 * mw * (17.3 / (237.3 + Ti) - 17.3 * Ti / pow(237.3 + Ti, 2)) *
+                                 exp(17.3 * Ti / (237.3 + Ti)) / (R * (Ti + 273.15)) +
+                                 0.6110000000e-3 * mw * exp(17.3 * Ti / (237.3 + Ti)) / (R * pow(Ti + 273.15, 2))) /
+                                lambda_t -
                                 1);
                     };
 
@@ -1156,8 +1074,8 @@ void PBSM3D::run(mesh& domain)
                     dmdtz = 2.0 * M_PI * rm * lambda_t / L * Nu * (Ts - (t + 273.15)); // eqn 13 in Pomeroy and Li 2000
                 }
                 else // Use PBSM. Eqn 11 Pomeroy, Gray, Ladine, 1993  "﻿The
-                     // prairie blowing snow model: characteristics, validation,
-                     // operation"
+                    // prairie blowing snow model: characteristics, validation,
+                    // operation"
                 {
                     double M = 18.01; // molecular weight of water kg kmol-1
                     double R = 8313;  // universal fas constant J mol-1 K-1
@@ -1169,15 +1087,15 @@ void PBSM3D::run(mesh& domain)
                     // radiative energy absorebed by the particle -- take from CRHM's
                     // PBSM implimentation
                     double Qr = 0.9 * M_PI * rm * rm * 120.0; // 120.0 = PBSM_constants::Qstar (Solar Radiation
-                                                              // Input), 0.9 comes from Schmidt (1972) assuming a
-                                                              // snow particle albedo of 0.5 and a snow surface
-                                                              // albedo of 0.8
-                                                              // rm ise used here as in Liston and Sturm (1998)
+                    // Input), 0.9 comes from Schmidt (1972) assuming a
+                    // snow particle albedo of 0.5 and a snow surface
+                    // albedo of 0.8
+                    // rm ise used here as in Liston and Sturm (1998)
 
                     // eqn 11 in PGL 1993, r_z is used here as in PG95 and Liston ans Sturm (1998)
                     dmdtz = Sh * rho * D *
-                            (6.283185308 * Nu * R * r_z * sigma * t * t * lambda_t - L * M * Qr + Qr * R * t) /
-                            (D * L * Sh * (L * M - R * t) * rho + lambda_t * t * t * Nu * R);
+                        (6.283185308 * Nu * R * r_z * sigma * t * t * lambda_t - L * M * Qr + Qr * R * t) /
+                        (D * L * Sh * (L * M - R * t) * rho + lambda_t * t * t * Nu * R);
                 }
                 if (debug_output)
                     (*face)["dm/dt"_s] = dmdtz;
@@ -1201,8 +1119,8 @@ void PBSM3D::run(mesh& domain)
                 {
                     for (int a = 0; a < 3; ++a)
                     {
-                        auto neigh = face->neighbor(a);
-                        alpha[a] = d->A[a];
+                        // auto neigh = face->neighbor(a);
+                        alpha[a] = d.A[a];
 
                         // do just very low horz diffusion for numerics
                         K[a] = 0.00001;
@@ -1210,7 +1128,7 @@ void PBSM3D::run(mesh& domain)
                     }
                 }
                 // Li and Pomeroy 2000
-                double l = PhysConst::kappa * (cz + d->z0) * l__max / (PhysConst::kappa * (cz + d->z0) + l__max);
+                double l = PhysConst::kappa * (cz + d.z0) * l__max / (PhysConst::kappa * (cz + d.z0) + l__max);
                 if (debug_output)
                     (*face)["l"_s] = l;
 
@@ -1219,8 +1137,8 @@ void PBSM3D::run(mesh& domain)
                     (*face)["w"_s] = w;
 
                 double diffusion_coeff = snow_diffusion_const; // snow_diffusion_const is a shared param so
-                                                               // need a seperate copy here we can
-                                                               // overwrite
+                // need a seperate copy here we can
+                // overwrite
                 if (rouault_diffusion_coeff)
                 {
                     double c2 = 1.0;
@@ -1239,9 +1157,9 @@ void PBSM3D::run(mesh& domain)
                 if (debug_output)
                     (*face)["K" + std::to_string(z)] = K[3];
                 // top
-                alpha[3] = d->A[3] * K[3] / v_edge_height;
+                alpha[3] = d.A[3] * K[3] / v_edge_height;
                 // bottom
-                alpha[4] = d->A[4] * K[4] / v_edge_height;
+                alpha[4] = d.A[4] * K[4] / v_edge_height;
 
                 double phi = (*face)["vw_dir"_s]; // wind direction
                 Vector_2 vwind = -math::gis::bearing_to_cartesian(phi);
@@ -1274,23 +1192,20 @@ void PBSM3D::run(mesh& domain)
                     udotm[j] = arma::dot(uvw, m[j]);
                 }
                 // lateral
-                size_t idx = ntri * z + face->cell_local_id;
+                int idx = n_global_tri * z + face->cell_global_id;
 
-                //[idx][idx]
-                size_t idx_idx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, idx);
-                b[idx] = 0;
                 double V = face->get_area() * v_edge_height;
-
                 // the sink term is added on for each edge check, which isn't right
                 // and ends up 5x counting it so / by 5 for V so it's
                 // not 5x counted.
                 V /= 5.0;
+
                 if (!do_sublimation)
                 {
                     csubl = 0.0;
                 }
 
-                d->csubl[z] = csubl;
+                d.csubl[z] = csubl;
 
 
                 for (int f = 0; f < 3; f++)
@@ -1298,43 +1213,46 @@ void PBSM3D::run(mesh& domain)
                     if (udotm[f] > 0)
                     {
 
-                        if (d->face_neigh[f])
+                        if (d.face_neigh[f])
                         {
-                            size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
+                            int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
 
-                            elements[idx_idx_off] += V * csubl - d->A[f] * udotm[f] - alpha[f];
-
-                            size_t idx_nidx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, nidx);
-
-                            elements[idx_nidx_off] += alpha[f];
+                            // Diagonal value
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                    (V * csubl - d.A[f] * udotm[f] - alpha[f]));
+                            // Off diagonal value
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, (alpha[f]));
                         }
-                        else // missing neighbour case
+                        else // missing neighbor case
                         {
                             // no mass in
-//                            elements[ idx_idx_off ] += V*csubl-d->A[f]*udotm[f]-alpha[f];
+                            //                            elements[ idx_idx_off ] += V*csubl-d.A[f]*udotm[f]-alpha[f];
 
                             // allow mass into the domain from ghost cell
-                            elements[idx_idx_off] += -0.1e-1 * alpha[f] - 1. * d->A[f] * udotm[f] + csubl * V;
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                    (-0.1e-1 * alpha[f] - 1. * d.A[f] * udotm[f] + csubl * V));
                         }
                     }
                     else
                     {
-                        if (d->face_neigh[f])
+                        if (d.face_neigh[f])
                         {
-                            size_t nidx = ntri * z + face->neighbor(f)->cell_local_id;
-
-                            size_t idx_nidx_off = offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, nidx);
-
-                            elements[idx_idx_off] += V * csubl - alpha[f];
-                            elements[idx_nidx_off] += -d->A[f] * udotm[f] + alpha[f];
+                            int nidx = n_global_tri * z + face->neighbor(f)->cell_global_id;
+                            // Diagonal entry
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                    V * csubl - alpha[f]);
+                            // Off diagonal entry
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, nidx,
+                                    -d.A[f] * udotm[f] + alpha[f]);
                         }
                         else
                         {
                             // No mass in
-//                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
+                            //                            elements[ idx_idx_off ] +=  V*csubl-alpha[f];
 
                             // allow mass in
-                            elements[idx_idx_off] += -0.1e-1 * alpha[f] - .99 * d->A[f] * udotm[f] + csubl * V;
+                            suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                    -0.1e-1 * alpha[f] - .99 * d.A[f] * udotm[f] + csubl * V);
                         }
                     }
                 }
@@ -1343,29 +1261,38 @@ void PBSM3D::run(mesh& domain)
                 if (z == 0)
                 {
 
-                    double alpha4 = d->A[4] * K[4] / (hs / 2.0 + v_edge_height / 2.0);
+                    double alpha4 = d.A[4] * K[4] / (hs / 2.0 + v_edge_height / 2.0);
 
                     // bottom face, only turbulent diffusion
                     //              elements[idx_idx_off] += V * csubl - alpha4;
 
                     // includes advection term
-                    elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha4;
-
-                    b[idx] += -alpha4 * c_salt;
+                    suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                            V * csubl - d.A[4] * udotm[4] - alpha4);
+                    // RHS
+                    double val = -alpha4 * c_salt;
+                    suspension_NNP->rhsSumIntoGlobalValue(idx,val);
 
                     // ntri * (z + 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z + 1) + face->cell_local_id);
+                    int nidx = n_global_tri*(z+1) + face->cell_global_id;
 
                     if (udotm[3] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        elements[idx_nidx_off] += alpha[3];
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - d.A[3] * udotm[3] - alpha[3]);
+                        // Off diagonal
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
+
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        elements[idx_nidx_off] += -d->A[3] * udotm[3] + alpha[3];
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - alpha[3]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, (nidx),
+                                -d.A[3] * udotm[3] + alpha[3]);
                     }
                 }
                 else if (z == nLayer - 1) // top z layer
@@ -1378,64 +1305,78 @@ void PBSM3D::run(mesh& domain)
 
                     if (udotm[3] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        b[idx] += -alpha[3] * cprecip;
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - d.A[3] * udotm[3] - alpha[3]);
+                        // RHS
+                        double val = -alpha[3] * cprecip;
+                        suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        b[idx] += d->A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - alpha[3]);
+                        // RHS
+                        double val = d.A[3] * cprecip * udotm[3] - alpha[3] * cprecip;
+                        suspension_NNP->rhsSumIntoGlobalValue(idx,val);
                     }
 
                     // ntri * (z - 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z - 1) + face->cell_local_id);
+                    int nidx = n_global_tri*(z-1)+face->cell_global_id;
                     if (udotm[4] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha[4];
-                        elements[idx_nidx_off] += alpha[4];
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx,
+                                V * csubl - d.A[4] * udotm[4] - alpha[4]);
+
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[4];
-                        elements[idx_nidx_off] += -d->A[4] * udotm[4] + alpha[4];
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d.A[4] * udotm[4] + alpha[4]);
                     }
                 }
                 else // middle layers
                 {
-                    // ntri * (z + 1) + face->cell_local_id
-                    size_t idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z + 1) + face->cell_local_id);
-
+                    // ntri * (z + 1) + face->cell_local_id (looking up)
+                    int nidx = n_global_tri*(z+1) + face->cell_global_id;
                     if (udotm[3] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[3] * udotm[3] - alpha[3];
-                        elements[idx_nidx_off] += alpha[3];
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d.A[3] * udotm[3] - alpha[3]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[3]);
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[3];
-                        elements[idx_nidx_off] += -d->A[3] * udotm[3] + alpha[3];
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[3]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d.A[3] * udotm[3] + alpha[3]);
                     }
 
-                    idx_nidx_off =
-                        offset(row_buffer[idx], row_buffer[idx + 1], col_buffer, ntri * (z - 1) + face->cell_local_id);
+                    // ntri * (z + 1) + face->cell_local_id (looking down)
+                    nidx = n_global_tri*(z-1) + face->cell_global_id;
                     if (udotm[4] > 0)
                     {
-                        elements[idx_idx_off] += V * csubl - d->A[4] * udotm[4] - alpha[4];
-                        elements[idx_nidx_off] += alpha[4];
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - d.A[4] * udotm[4] - alpha[4]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, alpha[4]);
                     }
                     else
                     {
-                        elements[idx_idx_off] += V * csubl - alpha[4];
-                        elements[idx_nidx_off] += -d->A[4] * udotm[4] + alpha[4];
+                        // Diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, idx, V * csubl - alpha[4]);
+                        // Off diagonal entry
+                        suspension_NNP->matrixSumIntoGlobalValues(idx, nidx, -d.A[4] * udotm[4] + alpha[4]);
                     }
                 }
-
-		// Set flag if RHS component is non-zero
-		if ( abs(b[idx]) > suspension_present_threshold ) {
-		  suspension_present = true;
-		}
 
             } // end z iter
 
@@ -1443,132 +1384,116 @@ void PBSM3D::run(mesh& domain)
 
     } // end pragma omp parallel thread pool
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Write mat/rhs
+    ////////////////////////////////////////////////////////////////////////////
+    // static int count=0;
 
-    std::vector<vcl_scalar_type> x(ntri*nLayer,0.0);
+    // std::string suspension_file_prefix="Suspension_";
+    // suspension_file_prefix += std::to_string(count);
+    // suspension_NNP->writeSystemMatrixMarket(suspension_file_prefix);
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
 
-if (suspension_present) {
+    // Check if we exceed the threshold for blowing snow
+    auto suspension_rhs_max = suspension_NNP->getRhsMax();
+    if ( suspension_rhs_max > suspension_present_threshold ) {
+        suspension_present = true;
+    }
 
-    // setup the compressed matrix on the compute device, if available
-#ifdef VIENNACL_WITH_OPENCL
-    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);
-    vl_C.switch_memory_context(gpu_ctx);
-    b.switch_memory_context(gpu_ctx);
+    if (suspension_present)
+    {
+
+        try
+        {
+            auto suspension_results = suspension_NNP->Solve();
+            LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
+        } catch(const Belos::StatusTestError& e)
+        {
+            int rank = 0;
+#ifdef USE_MPI
+            rank = domain->_comm_world.rank();
 #endif
-
-    // This solves the steady-state suspension layer concentration
-
-    // configuration of preconditioner:
-    viennacl::linalg::ilut_tag ilut_config(20,1e-4); // defaults: 20 entries/row, 1e-4 drop tol
-    viennacl::linalg::ilut_precond<viennacl::compressed_matrix<vcl_scalar_type>> ilut(
-        vl_C, ilut_config);
-
-    // Set up convergence tolerance to have an average value for each unknown
-    double suspension_gmres_tol = 1e-8;
-    // Set max iterations and maximum Krylov dimension before restart
-    size_t suspension_gmres_max_iterations = 1000;
-    size_t suspension_gmres_krylov_dimension = 30;
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::linalg::gmres_tag suspension_custom_gmres(suspension_gmres_tol, suspension_gmres_max_iterations,
-                                                        suspension_gmres_krylov_dimension);
-    viennacl::vector<vcl_scalar_type> vl_x = viennacl::linalg::solve(vl_C, b, suspension_custom_gmres, ilut);
-    viennacl::copy(vl_x, x);
-
-    // Log final state of the linear solve
-    LOG_DEBUG << "  Suspension_GMRES # of iterations: " << suspension_custom_gmres.iters();
-    LOG_DEBUG << "  Suspension_GMRES final residual : " << suspension_custom_gmres.error();
-
-    /*
-      Dump matrix to ASCII file
-    */
-    //    ofstream ofile;
-    //    ofile.open("C.out");
-    //    ofile << std::setprecision(12) << vl_C;
-    //    ofile.close();
-    //
-    //    ofile.open("b.out");
-    //    ofile << std::setprecision(12) << b;
-    //    ofile.close();
-    //
-    //    ofile.open("x.out");
-    //    ofile << std::setprecision(12) << vl_x;
-    //    ofile.close();
-
-    // Now we have the concentration, compute the suspension flux
- } else {
-    LOG_DEBUG << "  No suspension present.";
- }
+            LOG_ERROR << "Rank " << rank << " suspension_rhs_max=" << suspension_rhs_max << " and suspension_present_threshold=" << suspension_present_threshold;
+            std::string prefix = "suspension.rank" + std::to_string(rank);
+//            suspension_NNP->writeSystemMatrixMarket(prefix);
+            LOG_ERROR << e.what();
+            suspension_present = false;
+//            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
+        }
 
 
+        ////////////////////////////////////////////////////////////////////////////
+        // Write solution
+//        suspension_NNP->writeSolutionMatrixMarket(prefix);
+        ////////////////////////////////////////////////////////////////////////////
+
+    } // if suspension_present fails
+    else {
+        LOG_DEBUG << "  No suspended snow.";
+    }
+
+    // Note we still have to do the following if there is no suspended snow.
+    // - In that case suspension_solution should be the 0 vector it was initialized to for this iteration
+
+    // auto suspension_sol_array = suspension_solution->get1dView();
+    auto suspension_sol_array = suspension_NNP->getSolutionView();
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < ntri; i++)
     {
         auto face = domain->face(i);
-        auto d = face->get_module_data<data>(ID);
+        auto& d = face->get_module_data<data>(ID);
         double Qsusp = 0;
 
         double Qsubl = 0;
         for (int z = 0; z < nLayer; ++z)
         {
-            double c = x[ntri * z + face->cell_local_id];
+            double c = suspension_sol_array[ntri * z + face->cell_local_id];
             c = c < 0 || is_nan(c) ? 0 : c; // harden against some numerical issues that
-                                            // occasionally come up for unknown reasons.
+            // occasionally come up for unknown reasons.
 
-            double u_z = d->u_z_susp.at(z);
+            double u_z = d.u_z_susp.at(z);
 
             Qsusp += c * u_z * v_edge_height; /// kg/m^3 ---->  kg/(m.s)
 
             if (debug_output)
             {
                 (*face)["c" + std::to_string(z)] = c;
-                (*face)["csubl" + std::to_string(z)] = d->csubl[z];
+                (*face)["csubl" + std::to_string(z)] = d.csubl[z];
                 // This is an approximation as it uses after transport concentrations.
                 // However this will have already taken into account sublimation during the coupled transport phase
                 // Eqn 20 Pomeroy 1993
 
             }
-            Qsubl += d->csubl[z] * c * v_edge_height; //  kg/(m^2 *s)=> per unit area of snowcover
+            Qsubl += d.csubl[z] * c * v_edge_height; //  kg/(m^2 *s)=> per unit area of snowcover
         }
         (*face)["Qsusp"_s] = Qsusp;
 
         (*face)["Qsubl"_s] = Qsubl;
         (*face)["Qsubl_mass"_s] = Qsubl * global_param->dt(); // kg/m^2 or mm
-        d->sum_subl += (*face)["Qsubl_mass"_s];
-        (*face)["sum_subl"_s] = d->sum_subl;
+        d.sum_subl += (*face)["Qsubl_mass"_s];
+        (*face)["sum_subl"_s] = d.sum_subl;
 
     }
 
-    // Setup the matrix to be used to the solution of the gradient of the
-    // suspension flux this will give us our deposition flux
-    // get row buffer
-    unsigned int const* A_row_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle1());
-    unsigned int const* A_col_buffer =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<unsigned int>(vl_A.handle2());
-    vcl_scalar_type* A_elements =
-        viennacl::linalg::host_based::detail::extract_raw_pointer<vcl_scalar_type>(vl_A.handle());
+    /*
+       Communicate necessary (neighbor) vars for deposition linear system setup
+       */
+    // LOG_DEBUG << "Qsusp"_s << "     " << "Qsalt"_s;
+    domain->ghost_neighbors_communicate_variable("Qsusp"_s);
+    domain->ghost_neighbors_communicate_variable("Qsalt"_s);
 
-    // zero CSR vector in vl_A
-    viennacl::vector_base<vcl_scalar_type> init_temporaryA(
-        vl_A.handle(), viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), 0, 1);
-    // write:
-    init_temporaryA = viennacl::zero_vector<vcl_scalar_type>(
-        viennacl::compressed_matrix<vcl_scalar_type>::size_type(nnz_drift + 1), viennacl::traits::context(vl_A));
-
-//     zero fill RHS for drift
-    bb.clear();
-
-    saltation_present=false;
-
+    /*
+       Setup and solve the linear system for deposition
+       */
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
-        auto d = face->get_module_data<data>(ID);
-        auto& m = d->m;
+        auto& d = face->get_module_data<data>(ID);
+        auto& m = d.m;
 
         double phi = (*face)["vw_dir"_s];
         Vector_2 v = -math::gis::bearing_to_cartesian(phi);
@@ -1579,16 +1504,23 @@ if (suspension_present) {
         uvw(1) = v.y(); // U_y
         uvw(2) = 0;
 
-        double udotm[3]= {0, 0, 0}; // Qt is in direction u_hat
-        double E[3] = {0, 0, 0}; // edge lengths b/c 2d now
+        double udotm[3] = {0, 0, 0};    // Qt is in direction u_hat
+        double E[3] = {0, 0, 0};        // edge lengths b/c 2d now
         double dx[3] = {2.0, 2.0, 2.0}; // cell centre distances
 
         double V = face->get_area(); // V for consistency but actually an area
 
-        size_t i_i_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, i);
-        A_elements[i_i_off] = V;
+        int global_row, local_col, global_col;
+        global_row = static_cast<int>(face->cell_global_id);
 
-        //iterate over edges
+        if(is_nan(V))
+        {
+            LOG_DEBUG << "Triangle " << face->cell_global_id << " area is nan";
+        }
+        // Diagonal element
+        deposition_NNP->matrixReplaceGlobalValues(global_row, global_row, V);
+
+        // iterate over edges
         for (int j = 0; j < 3; j++)
         {
             // just unit vectors as qsusp/qsalt flux has magnitude
@@ -1598,117 +1530,188 @@ if (suspension_present) {
             double Qtj = 0;
             double Qsj = 0;
 
-            //Pointing same way, we advect downwind
-            if(udotm[j] > 0)
+            // Pointing same way, we advect downwind
+            if (udotm[j] > 0)
             {
-                    Qtj = (*face)["Qsusp"_s];
-                    Qsj = (*face)["Qsalt"_s];
+                Qtj = (*face)["Qsusp"_s];
+                Qsj = (*face)["Qsalt"_s];
+
+                if(is_nan(Qtj))
+                {
+                    LOG_DEBUG << "udotm >0 Qtj is nan";
+                }
+                if(is_nan(Qsj))
+                {
+                    LOG_DEBUG << "udotm >0 Qsj is nan";
+                }
             }
             else // pointing into the wind, use upwind as donor
             {
-                if (d->face_neigh[j])
+                if (d.face_neigh[j])
                 {
                     auto neigh = face->neighbor(j);
+
+                    // if (neigh->_is_ghost) {
+                    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsusp: " << (*neigh)["Qsusp"_s];
+                    //   LOG_DEBUG << "Ghost global_id " << neigh->cell_global_id << " ghost_Qsalt: " << (*neigh)["Qsalt"_s];
+                    // }
+
                     Qtj = (*neigh)["Qsusp"_s];
                     Qsj = (*neigh)["Qsalt"_s];
+                    if(is_nan(Qsj))
+                    
+                    {
+                        //todo: remove this
+                        Qsj = 0;
+                        LOG_DEBUG <<"udotm <0 neigh Qsj is nan";
+                    }
                 }
                 else
                 {
-                    //neighbour doesn't exist, treat as duplicate ghost node
+                    // neighbor doesn't exist, i.e., we're on an actual boundary, treat as duplicate node outside of domain
                     Qtj = (*face)["Qsusp"_s];
                     Qsj = (*face)["Qsalt"_s];
+
+                    if(is_nan(Qsj))
+                    {
+                        LOG_DEBUG << "udotm <0 non neigh Qsj is nan" ;
+                    }
                 }
             }
 
-            //we now have an edge Qtj & Qsj estimate
-            //build up our neighbours
-            if (d->face_neigh[j])
+            // we now have an edge Qtj & Qsj estimate
+            // build up our neighbors
+            if (d.face_neigh[j])
             {
                 auto neigh = face->neighbor(j);
+                global_col = static_cast<int>(neigh->cell_global_id);
                 dx[j] = math::gis::distance(face->center(), neigh->center());
 
-                A_elements[i_i_off] += eps*E[j]/dx[j];
+                if(is_nan(eps))
+                {
+                    LOG_DEBUG << "eps is nan!";
+                }
+                if(is_nan(dx[j]))
+                {
+                    LOG_DEBUG << "dx is nan!";
+                }
+                // diagonal entry
+                deposition_NNP->matrixSumIntoGlobalValues(global_row, global_row, eps * E[j] / dx[j]);
 
-                size_t i_ni_off = offset(A_row_buffer[i], A_row_buffer[i + 1], A_col_buffer, neigh->cell_local_id);
-                A_elements[i_ni_off] += -eps*E[j]/dx[j];
-
+                // off diagonal entry
+                deposition_NNP->matrixSumIntoGlobalValues(global_row, global_col, -eps * E[j] / dx[j]);
             }
-            bb[i] +=  -E[j]*(Qtj+Qsj)*udotm[j];
+
+            // RHS
+            double val = -E[j] * (Qtj + Qsj) * udotm[j];
+            if( is_nan(val) )
+            {
+                LOG_DEBUG << "Detected val is nan:";
+		domain->print_ghost_neighbor_info();
+
+                LOG_DEBUG << "\tSusp: " << Qtj << " salt: "<< Qsj;
+
+                LOG_DEBUG << "\ttri global id: " << face->cell_global_id;
+                (*face)["global_cell_id"_s] = face->cell_global_id;
+                LOG_DEBUG << "\tlocal_cell_id: " << face->cell_local_id;
+                LOG_DEBUG << "\tis_ghost: " << face->is_ghost;	
+                LOG_DEBUG << "\towner: " << face->owner;
+                for(int i =0; i < 3; i++)
+                {
+
+                    LOG_DEBUG << "\t Neigh " << i << " information:";
+                    LOG_DEBUG << "\t\tcell_global_id: " << face->neighbor(i)->cell_global_id;
+
+                    LOG_DEBUG << "\t\tqsalt: " << face->neighbor(i)->operator[]("Qsalt"_s);
+                    LOG_DEBUG << "\t\tis_ghost: "<<face->neighbor(i)->is_ghost;
+                    LOG_DEBUG << "\t\towner: "<<face->neighbor(i)->owner;
+                }
+                LOG_DEBUG << "-------------------------------------------------";
+            }
+            deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }
-	if (abs(bb[i]) > saltation_present_threshold) {
-	  saltation_present=true;
-	}
-    } // end face itr
+    } // end face iteration
 
-    std::vector<vcl_scalar_type> dSdt(ntri,0.0);
-
-    if (saltation_present) {
-
-// setup the compressed matrix on the compute device, if available
-#ifdef VIENNACL_WITH_OPENCL
-    //    viennacl::context gpu_ctx(viennacl::OPENCL_MEMORY);  <--- already
-    //    defined above
-    vl_A.switch_memory_context(gpu_ctx);
-    bb.switch_memory_context(gpu_ctx);
-#endif
-
-//     Solve the deposition flux --> how much drifting there is.
-
-//     configuration of preconditioner:
-    viennacl::linalg::chow_patel_tag deposition_flux_chow_patel_config;
-    deposition_flux_chow_patel_config.sweeps(3);       //  nonlinear sweeps
-    deposition_flux_chow_patel_config.jacobi_iters(2); //  Jacobi iterations per triangular 'solve' Rx=r
-    viennacl::linalg::chow_patel_icc_precond<viennacl::compressed_matrix<vcl_scalar_type>>
-        deposition_flux_chow_patel_icc(vl_A, deposition_flux_chow_patel_config);
-
-    // Set up convergence tolerance to have an average value for each unknown
-    double deposition_flux_cg_tol = 1e-8;
-    // Set max iterations and maximum Krylov dimension before restart
-    size_t deposition_flux_cg_max_iterations = 500;
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::linalg::cg_tag deposition_flux_custom_cg(deposition_flux_cg_tol, deposition_flux_cg_max_iterations);
-
-    // compute result and copy back to CPU device (if an accelerator was used),
-    // otherwise access is slow
-    viennacl::vector<vcl_scalar_type> vl_dSdt =
-        viennacl::linalg::solve(vl_A, bb, deposition_flux_custom_cg, deposition_flux_chow_patel_icc);
-    // viennacl::vector<vcl_scalar_type> vl_dSdt = viennacl::linalg::solve(vl_A,
-    // bb, deposition_flux_custom_cg);
-    viennacl::copy(vl_dSdt, dSdt);
-
-    // Log final state of the linear solve
-    LOG_DEBUG << "  deposition_flux_CG # of iterations: " << deposition_flux_custom_cg.iters();
-    LOG_DEBUG << "  deposition_flux_CG final residual : " << deposition_flux_custom_cg.error();
-
-    } // if saltation_present
-    else {
-      LOG_DEBUG << "  No saltation present. ";
+    // Check if we exceed the threshold for blowing snow
+    auto deposition_rhs_max = deposition_NNP->getRhsMax();
+    if ( suspension_present && deposition_rhs_max > deposition_present_threshold ) {
+        deposition_present = true;
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Printing out the mat/rhs
+    ////////////////////////////////////////////////////////////////////////////
+    // std::string deposition_file_prefix="Deposition_";
+    // deposition_file_prefix += std::to_string(count);
+    // deposition_NNP->writeSystemMatrixMarket(deposition_file_prefix);
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    if (deposition_present)
+    {
+
+        ////////////////////////////////////////////////////////////////////////////
+        // Printing out the solution
+        ////////////////////////////////////////////////////////////////////////////
+        // deposition_NNP->writeSolutionMatrixMarket(deposition_file_prefix);
+        // count++;
+        ////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////
+
+        try
+        {
+            auto deposition_results = deposition_NNP->Solve();
+            LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
+        } catch(Belos::StatusTestError& e)
+        {
+            int rank = 0;
+#ifdef USE_MPI
+            rank = domain->_comm_world.rank();
+#endif
+            LOG_ERROR << "Rank " << rank << " deposition_rhs_max=" << deposition_rhs_max << " and deposition_present_threshold="<<deposition_present_threshold;
+            LOG_ERROR << "Rank " << rank << " suspension_rhs_max=" << suspension_rhs_max << " and suspension_present_threshold="<<suspension_present_threshold;
+            std::string prefix = "deposition.rank" + std::to_string(rank);
+//            deposition_NNP->writeSystemMatrixMarket(prefix);
+            LOG_ERROR << e.what();
+            return;
+//            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
+        }
+
+
+
+        // auto deposition_sol_array = deposition_solution->get1dView();
+        auto deposition_sol_array = deposition_NNP->getSolutionView();
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
-    {
-        auto face = domain->face(i);
-        double qdep = is_nan(dSdt[i]) ? 0 : dSdt[i];
+        for (size_t i = 0; i < domain->size_faces(); i++)
+        {
+            auto face = domain->face(i);
+            double qdep = is_nan(deposition_sol_array[i]) ? 0 : deposition_sol_array[i];
 
-        double mass = 0;
+            double mass = 0;
 
-        //     take one FE integration step to get the total mass (SWE) that is eroded or deposited
-        mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
+            //     take one FE integration step to get the total mass (SWE) that is eroded or deposited
+            mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
 
-        // could we have eroded more mass than what exists? cap it
-        double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
-        swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
-        // updated if we override the module order
-//        if( mass < 0 && std::fabs(mass) > swe )
-//        {
-//            mass = -swe;
-//        }
-        (*face)["drift_mass"_s] = mass;
-        (*face)["sum_drift"_s] += mass;
+            // could we have eroded more mass than what exists? cap it
+            // double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
+            // swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
+            // updated if we override the module order
+            //        if( mass < 0 && std::fabs(mass) > swe )
+            //        {
+            //            mass = -swe;
+            //        }
+            (*face)["drift_mass"_s] = mass;
+            (*face)["sum_drift"_s] += mass;
+        }
+
+    } // if deposition_present fails
+    else {
+        LOG_DEBUG << "  No deposited snow.";
     }
+
+
 }
 
-PBSM3D::~PBSM3D() {}
+PBSM3D::~PBSM3D() {
+}

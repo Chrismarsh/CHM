@@ -153,8 +153,8 @@ void scale_wind_vert::init(mesh& domain)
       auto face = domain->face(i);
       // Exception throwing from OpenMP needs to be here
 
-       auto data = face->make_module_data<d>(ID);
-       data->interp.init(interp_alg::tpspline,3,{{"reuse_LU","true"}});
+       auto& data = face->make_module_data<d>(ID);
+       data.interp.init(interp_alg::tpspline,3,{{"reuse_LU","true"}});
 
     }
 
@@ -180,6 +180,8 @@ void scale_wind_vert::run(mesh& domain)
 
     }
 
+    // Need to access U_2m_above_srf from neighbors
+    domain->ghost_neighbors_communicate_variable("U_2m_above_srf"_s);
 
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
@@ -191,7 +193,7 @@ void scale_wind_vert::run(mesh& domain)
         {
          auto neigh = face->neighbor(j);
 
-         if (neigh != nullptr && !neigh->_is_ghost)
+         if (neigh != nullptr)
            u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_2m_above_srf"_s]));
         }
 
@@ -199,12 +201,12 @@ void scale_wind_vert::run(mesh& domain)
 
         if(u.size()>0)
         {
-         double new_u =  face->get_module_data<d>(ID)->interp(u, query);
-         face->get_module_data<d>(ID)->temp_u = std::max(0.1,new_u);
+         double new_u =  face->get_module_data<d>(ID).interp(u, query);
+         face->get_module_data<d>(ID).temp_u = std::max(0.1,new_u);
         }
         else
         {
-         face->get_module_data<d>(ID)->temp_u = std::max(0.1,(*face)["U_2m_above_srf"_s]);
+         face->get_module_data<d>(ID).temp_u = std::max(0.1,(*face)["U_2m_above_srf"_s]);
         }
 
     }
@@ -216,7 +218,7 @@ void scale_wind_vert::run(mesh& domain)
       auto face = domain->face(i);
       // Exception throwing from OpenMP needs to be here
 
-	       (*face)["U_2m_above_srf"_s]=face->get_module_data<d>(ID)->temp_u ;
+	       (*face)["U_2m_above_srf"_s]=face->get_module_data<d>(ID).temp_u ;
 
     }
 

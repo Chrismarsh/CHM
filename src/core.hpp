@@ -46,6 +46,7 @@
 #include <chrono>
 #include <algorithm>
 #include <memory> //unique ptr
+#include <cstdlib>
 
 //boost includes
 #include <boost/graph/graph_traits.hpp>
@@ -62,8 +63,9 @@
 #include <boost/tokenizer.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 
@@ -146,7 +148,9 @@ public:
    * Reads the main JSON configuration file. It assumes the base of the JSON is an object. That is, the file
    * starts with { ... }.
    * Within this file are a collection of meshes that are expected to have the same number of x,y
-   * points. This is done so that, for example, elevation, forest cover, sky-view factor, etc
+   * points. This is do
+   *
+   * ne so that, for example, elevation, forest cover, sky-view factor, etc
    * may be added individually. Generation of the meshes should be done via the utilities for this.
    * An example of mesh.config is:
    * \code
@@ -203,6 +207,12 @@ public:
      */
     void populate_distributed_station_lists();
 
+    /**
+     * Checks if the mesh is geographic
+     * @param path
+     */
+    bool check_is_geographic(const std::string& path);
+
     // .first = config file to use
     // .second = extra options, if any.
     typedef boost::tuple<
@@ -223,7 +233,13 @@ public:
     ~core();
 
     void run();
-    void end();
+
+    /**
+     * Shutdown. In MPI mode allows us to trigger an MPI_Abort on exception
+     * @param abort
+     */
+    void end(const bool abort = false );
+
     pt::ptree _cfg;
     boost::filesystem::path o_path; //path to output folder
     boost::filesystem::path log_file_path; // fully qualified path to the log file
@@ -297,8 +313,11 @@ protected:
     struct point_mode_info
     {
         bool enable;
-        std::string output;
-        std::string forcing;
+
+        // The default mode of point mode is to use whatever stations we'd use for the face containing
+        //  this output. If we ask sepficially for a single station, then only that station will be used.
+        bool use_specific_station;
+        std::string forcing; // empty unless the above is set true
 
     } point_mode;
 
@@ -312,8 +331,15 @@ protected:
             fname = "";
             latitude = 0;
             longitude = 0;
+
+
+            x = 0;
+            y = 0;
+
+
             face = nullptr;
             name = "";
+            only_last_n = -1;
         }
         enum output_type
         {
@@ -331,23 +357,43 @@ protected:
         std::string name;
         std::vector<mesh_outputs> mesh_output_formats;
         std::string fname;
+
+        // these are input by the user, assumed to be WGS84
         double latitude;
         double longitude;
+
+        // if we are outputting on a projected mesh then we need to store the projected coords here
+        double x;
+        double y;
+
+
         std::set<std::string> variables;
         mesh_elem face;
         timeseries ts;
         size_t frequency;
 
+        //Only output the last n timesteps. -1 = all
+        size_t only_last_n;
+
     };
 
     std::vector<output_info> _outputs;
 
-    netcdf _savestate; //file to save to when checkpointing.
+    boost::filesystem::path _ckpt_path; // root path to chckpoint folder
     netcdf _in_savestate; // if we are loading from checkpoint
     bool _do_checkpoint; // should we check point?
     bool _load_from_checkpoint; // are we loading from a checkpoint?
-    std::string _checkpoint_file;//file to load from
+
     size_t _checkpoint_feq; // frequency of checkpoints
+
+
+    //command line argument options we need to keep track of
+
+    struct
+    {
+        bool tmp;  // empty until we use this more
+
+    } cli_options;
 
 
 #ifdef USE_MPI
@@ -356,3 +402,10 @@ protected:
 #endif
 
 };
+
+// Macro to quickyl check return of system calls
+// TODO: Decide what to do if system call error has occurred
+#define CHK_SYSTEM_ERR(ierr)					\
+  if (ierr < 0) {						\
+    LOG_ERROR << strerror(errno);				\
+  };

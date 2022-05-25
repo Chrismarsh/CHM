@@ -145,16 +145,11 @@ This section contains options for CHM and the simulation in general.
    Point mode selects that the model should be run in point mode, versus
    distributed mode. 
 
-   There are two keys that need to be specified:
+   There is one optional key that need to be specified:
 
-   - ``output`` (string)
    - ``forcing`` (string)
 
-   ``output`` needs to correspond to a specific output point of type timeseries as defined in the output section.
-
    ``forcing`` needs to correspond to a specific input point as defined in the forcing section
-
-   If other points are specified, these points will be ignored.
 
    Usage of this key also requires adding ``point_mode`` to the module list. Lastly, no
    modules which are defined ``parallel:domain`` may be used when point_mode is enabled.
@@ -163,8 +158,14 @@ This section contains options for CHM and the simulation in general.
 
        "point_mode":
        {
-         "output":"UpperClearing",
          "forcing":"UpperClearing"
+       },
+
+.. code:: json
+
+       "point_mode":
+       {
+         // empty to just enable it
        },
 
 .. confval:: notification_script
@@ -217,7 +218,7 @@ that the account is active on:
    :default: None
 
 
-Allows for a different start start time that that specified by the input timeseries.
+Allows for a different start time than that specified by the input timeseries.
 In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 
 .. code:: json 
@@ -229,7 +230,7 @@ In the same ISO format as the forcing data: ``YYYYMDTHMS``.
    :type: string
    :default: None
 
-Allows for a different start start time that that specified by the input timeseries.
+Allows for a different end time than that specified by the input timeseries.
 In the same ISO format as the forcing data: ``YYYYMDTHMS``.
 
 .. code:: json 
@@ -382,7 +383,8 @@ This section has two keys:
     }
    }
 
-
+If CHM is in MPI mode, then HDF5-based meshes need to be used to ensure fast partial loading of the mesh on a per-MPI rank basis.
+Please see :ref:`meshgen` for how to convert the mesh.
 
 
 
@@ -436,7 +438,6 @@ Both mesh and timeseries can be used together.
    :default: "output"
 
    The output directory name.
-
 
 
 timeseries output
@@ -533,6 +534,13 @@ For more details, please see the :ref:`output` section.
 
    Disables/enables writing parameters to the output.
 
+.. confval write_ghost_neighbors::
+
+   :type: boolean
+   :default: false
+
+   Write each MPI rank's ghost face data to vtu output
+
 Example:
 
 .. code:: json
@@ -548,7 +556,8 @@ Example:
                 "iswr"
             ],
             "frequency": "24",
-            "write_parameters": false
+            "write_parameters": false,
+            "write_ghost_neighbors": false
         }
    }
 
