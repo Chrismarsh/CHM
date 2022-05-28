@@ -4,7 +4,7 @@ Compilation
 CHM uses `conan <https://conan.io/>`__ to manage and build all
 dependencies. Because of the various requirements on build
 configuration, versions, and interdependencies, using system libraries
-it not supported.
+is not supported.
 
 All of the CHM dependencies are built on Travis-CI and uploaded to the an Artifactory repository to serve
 prebuilt binaries and build scripts. This means that *if* the CHM build is done with
@@ -121,7 +121,7 @@ can rerun
 to detect the new compiler settings. The ``cppstd`` and ``libcxx``
 settings need to be reapplied once this is done.
 
-The next few steps can be avoided by installing the following config,
+If you install the following config then you can skip to the "Setup CHM source folders" step (below)
 
 ::
 
@@ -157,11 +157,27 @@ Enable revisions
 Enable conan `revisions <https://docs.conan.io/en/latest/versioning/revisions.html#how-to-activate-the-revisions>`__ by
 adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf file.
 
+Setup CHM source folders
+------------------------
+
+An out of source build should be used. That is, build in a separate folder removed from the CHM source. This makes it easier to clean up
+and start from scratch. An example is given below:
+
+::
+
+   cd ~/
+   git clone https://github.com/Chrismarsh/CHM
+
+   mkdir ~/build-CHM
+
+.. note::
+   The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
+
 Build
 --------
 This step will install the dependencies into your local conan cache (``~/.conan/data``).
-Further, this command will produce the ``FindXXX.cmake`` files required for the
-CHM build.
+Further, this command will put ``FindXXX.cmake`` files required for the CHM build in the
+current working directory.
 
 .. note::
 
@@ -250,23 +266,6 @@ On MacOS, the openmp library should be installed via homebrew:
 
 Build CHM
 ***********
-
-Setup CHM source folders
-------------------------
-
-An out of source build should be used. That is, build in a separate folder removed from the CHM source. This makes it easier to clean up
-and start from scratch. An example is given below:
-
-::
-
-   cd ~/
-   git clone https://github.com/Chrismarsh/CHM
-
-   mkdir ~/build-CHM
-
-.. note::
-   The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
-
 
 Run cmake
 ---------
