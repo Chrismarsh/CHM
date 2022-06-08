@@ -31,20 +31,22 @@
 #include "chm_sati_function.hpp"
 using namespace snobalMacros;
 
-/* FunC integration TODO:
- * - We should hard code a stepsize that satisfies a tol of 1e-8
- *  or just generate a LUT from a json file
+/* FunC TODO:
+ * - We can avoid any function evals by reading a good LUT from a json file
  * - higher order interpolation _might_ be desirable */
 static FunctionContainer<double> func_w {MyFunction_satw<double>};
 static FunctionContainer<double> func_i {MyFunction_sati<double>};
 
-UniformLookupTableGenerator<double> gen_w(&func_w, FREEZE - 50.0, FREEZE + 50.0);
-UniformLookupTableGenerator<double> gen_i(&func_i, 90.0, FREEZE);
-std::string implName = "UniformLinearInterpolationTable";
-double tableTol = 1e-8;
-// gen_by_tol returns unique pointers to LUT:
-static auto impl_w = gen_w.generate_by_tol(implName, tableTol);
-static auto impl_i = gen_i.generate_by_tol(implName, tableTol);
+static UniformLinearInterpolationTable<double> satw_lut(&func_w, LookupTableParameters<double> {FREEZE - 50.0, FREEZE + 50.0, 0.00258598});
+static UniformLinearInterpolationTable<double> sati_lut(&func_i, LookupTableParameters<double> {90.0, FREEZE, 0.000388715});
+
+//UniformLookupTableGenerator<double> gen_w(&func_w, FREEZE - 50.0, FREEZE + 50.0);
+//UniformLookupTableGenerator<double> gen_i(&func_i, 90.0, FREEZE);
+//std::string implName = "UniformLinearInterpolationTable";
+//// Hard coded stepsizes satisfy a tolerance of 1e-8;
+//// gen_by_tol returns unique pointers to LUT:
+//static auto satw_lut = gen_w.generate_by_step(implName, 0.00258598);
+//static auto sati_lut = gen_i.generate_by_step(implName, 0.000388715);
 
 double sno::ssxfr(
         double k1,    /* layer 1's thermal conductivity (J / (m K sec))  */
@@ -71,17 +73,7 @@ double sno::satw(double tk)        /* air temperature (K)		*/
         BOOST_THROW_EXCEPTION(module_error() << errstr_info ("tk < 0"));
     }
 
-     l10 = log(1.e1);
-
-     x = -7.90298 * (BOIL / tk - 1.) + 5.02808 * log(BOIL / tk) / l10 -
-         1.3816e-7 * (pow(1.e1, 1.1344e1 * (1. - tk / BOIL)) - 1.) +
-         8.1328e-3 * (pow(1.e1, -3.49149 * (BOIL / tk - 1.)) - 1.) +
-         log(SEA_LEVEL) / l10;
-
-     x = pow(1.e1, x);
-
-
-    return (*impl_w)(tk);
+    return (satw_lut)(tk);
 }
 
 double sno::sati(double tk)        /* air temperature (K)	*/
@@ -100,20 +92,12 @@ double sno::sati(double tk)        /* air temperature (K)	*/
         return (x);
     }
 
-     l10 = log(1.e1);
-
-     x = pow(1.e1, -9.09718 * ((FREEZE / tk) - 1.) - 3.56654 * log(FREEZE / tk) / l10 +
-                   8.76793e-1 * (1. - (tk / FREEZE)) + log(6.1071) / l10);
-
-
-     return (x * 1.e2);
     if (tk < 90.0)
     {
         return 0.0;
     }
 
-
-    return (*impl_i)(tk);
+    return (sati_lut)(tk);
 }
 
 double sno::new_tsno(

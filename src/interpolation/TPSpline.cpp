@@ -24,19 +24,18 @@
 
 #include "TPSpline.hpp"
 
-//#define FUNC_RECORD
-#include <func/UniformCubicPrecomputedInterpolationTable.hpp>
-#include <func/DirectEvaluation.hpp>
+#define FUNC_RECORD
+#include <func/func.hpp>
+//#include <quadmath.h>
+//#include <func/DirectEvaluation.hpp>
 
 // Build FunC lookup table for -(log(x)+c+gsl_sf_expint_E1(x))
-static FunctionContainer<double> FC {SET_F(CHM_Elliptic_Equation,double)};
+static FunctionContainer<double> FC {CHM_Elliptic_Equation<double>};
 
 // TODO play around with table ranges in more elaborate experiments
-// TODO why does granger cause CHM to end with "terminating with uncaught exception of type boost::wrapexcept<module_error>: std::exception"
-// just before finishing the program?
-//static DirectEvaluation<double> const Elliptic_Equation_LUT(&FC, 1e-8, 1);
+//static DirectEvaluation<double> Elliptic_Equation_DE(&FC, 1e-8, 6443);
 // approximate -(log(x) + c + gsl_sf_expint_E1(x)) to a tol = 1e-8
-static UniformCubicPrecomputedInterpolationTable<double> Elliptic_Equation_LUT(&FC, UniformLookupTableParameters<double> {1e-8, 1, 0.002});
+static FailureProofTable<double,double,UniformArmadilloPrecomputedInterpolationTable<double,double,7>> Elliptic_Equation_LUT(&FC, LookupTableParameters<double> {1e-5, 600, 1}, 600, 6443);
 
 double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
@@ -93,6 +92,7 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
                     //it is all rather confusing. But this follows Mitášová exactly, and produces essentially the same answer
                     //as the worked example in box 16.2 in Chang
                     // set Rd = -(log(dij) + c + gsl_sf_expint_E1(dij))
+                    //Rd = Elliptic_Equation_DE(dij);
                     Rd = Elliptic_Equation_LUT(dij);
                 }
 
@@ -147,6 +147,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         double dij = sqrt(xdiff*xdiff + ydiff*ydiff);
         dij = (dij * weight/2.0) * (dij * weight/2.0);
         // set Rd equal to -(log(dij) + c + gsl_sf_expint_E1(dij))
+        
+        //double Rd = Elliptic_Equation_DE(dij);
         double Rd = Elliptic_Equation_LUT(dij);
 
         z0 = z0 + x(i)*Rd;
