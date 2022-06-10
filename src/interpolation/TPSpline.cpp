@@ -24,18 +24,19 @@
 
 #include "TPSpline.hpp"
 
-#define FUNC_RECORD
+//#define FUNC_DEBUG
 #include <func/func.hpp>
 //#include <quadmath.h>
-//#include <func/DirectEvaluation.hpp>
+#include "CHM_TPSpline_Elliptic_Equation.hpp"
 
 // Build FunC lookup table for -(log(x)+c+gsl_sf_expint_E1(x))
 static FunctionContainer<double> FC {CHM_Elliptic_Equation<double>};
 
 // TODO play around with table ranges in more elaborate experiments
 //static DirectEvaluation<double> Elliptic_Equation_DE(&FC, 1e-8, 6443);
-// approximate -(log(x) + c + gsl_sf_expint_E1(x)) to a tol = 1e-8
-static FailureProofTable<double,double,UniformArmadilloPrecomputedInterpolationTable<double,double,7>> Elliptic_Equation_LUT(&FC, LookupTableParameters<double> {1e-5, 600, 1}, 600, 6443);
+// approximate -(log(x) + c + gsl_sf_expint_E1(x))
+static FailureProofTable<double,double,UniformArmadilloPrecomputedInterpolationTable<double,double,7>> Elliptic_Equation_LUT(&FC, LookupTableParameters<double> {1e-5, 6443, 1});
+
 
 double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {

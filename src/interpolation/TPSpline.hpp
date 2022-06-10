@@ -29,8 +29,6 @@
 #include <Eigen/Dense>
 #include <armadillo>
 
-#include "CHM_TPSpline_Elliptic_Equation.hpp"
-
 #include <boost/throw_exception.hpp>
 #include <exception.hpp>
 #include <iostream>
