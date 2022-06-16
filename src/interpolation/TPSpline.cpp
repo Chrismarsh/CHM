@@ -26,17 +26,13 @@
 
 //#define FUNC_DEBUG
 #include <func/func.hpp>
-//#include <quadmath.h>
 #include "CHM_TPSpline_Elliptic_Equation.hpp"
 
 // Build FunC lookup table for -(log(x)+c+gsl_sf_expint_E1(x))
 static FunctionContainer<double> FC {CHM_Elliptic_Equation<double>};
 
-// TODO play around with table ranges in more elaborate experiments
-//static DirectEvaluation<double> Elliptic_Equation_DE(&FC, 1e-8, 6443);
-// approximate -(log(x) + c + gsl_sf_expint_E1(x))
-static FailureProofTable<double,double,UniformArmadilloPrecomputedInterpolationTable<double,double,7>> Elliptic_Equation_LUT(&FC, LookupTableParameters<double> {1e-5, 6443, 1});
-
+//static DirectEvaluation<double> Elliptic_Equation_LUT(&FC, 1e-8, 6500);
+static FailureProofTable<double,double,UniformCubicPrecomputedInterpolationTable<double>> Elliptic_Equation_LUT(&FC, LookupTableParameters<double> {1e-5, 32, 0.0169});
 
 double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
@@ -93,7 +89,6 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
                     //it is all rather confusing. But this follows Mitášová exactly, and produces essentially the same answer
                     //as the worked example in box 16.2 in Chang
                     // set Rd = -(log(dij) + c + gsl_sf_expint_E1(dij))
-                    //Rd = Elliptic_Equation_DE(dij);
                     Rd = Elliptic_Equation_LUT(dij);
                 }
 
@@ -148,8 +143,7 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         double dij = sqrt(xdiff*xdiff + ydiff*ydiff);
         dij = (dij * weight/2.0) * (dij * weight/2.0);
         // set Rd equal to -(log(dij) + c + gsl_sf_expint_E1(dij))
-        
-        //double Rd = Elliptic_Equation_DE(dij);
+         
         double Rd = Elliptic_Equation_LUT(dij);
 
         z0 = z0 + x(i)*Rd;
@@ -187,10 +181,4 @@ thin_plate_spline::thin_plate_spline()
     uninit_lu_decomp = true;
 }
 
-thin_plate_spline::~thin_plate_spline()
-{
-#ifdef FUNC_RECORD
-  // TODO this spams a bunch of output. I assume the solution is to use logger.hpp somehow.
-  Elliptic_Equation_LUT.print_details(std::cerr);
-#endif
-}
+thin_plate_spline::~thin_plate_spline(){}

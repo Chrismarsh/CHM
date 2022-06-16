@@ -3,13 +3,11 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_sf_expint.h> // need libgsl (gnu scientific library)
 #include <cmath>
-#include <iostream>
-#define FUNC(x) -(log(x) + 0.577215 + gsl_sf_expint_E1(x))
 #define FUNCNAME "CHM Elliptic Integral Function"
 
 // I assume this shouldn't be here, but it's a static variable so hopefully
 // it doesn't cause any problems...
-static gsl_error_handler_t *old_error_handler=gsl_set_error_handler_off();
+//static gsl_error_handler_t *old_error_handler=gsl_set_error_handler_off();
 
 /* gsl_sf_expint_E1() isn't overridden by Boost so we'll
    compute its first ORDER derivatives by hand. The good news
@@ -40,6 +38,9 @@ CHM_fvar<REAL_TYPE,ORDER> gsl_sf_expint_E1(CHM_fvar<REAL_TYPE,ORDER> const& cr){
 }
 
 template <typename T>
-T MyFunction(T x){
-  return -(log(x) + 0.577215 + gsl_sf_expint_E1(x));
+T CHM_Elliptic_Equation(T x){
+  T c = 0.577215;
+  // gsl_sf_expint_E1(x) < epsilon_double and ln(x) > 1 for x > 32
+  // so -(log(x) + c + gsl_sf_expint_E1(x)) == -(log(x) + c) evaluates to 1 for x > 32
+  return (x <= 32) ? -(log(x) + c + gsl_sf_expint_E1(x)) : -(log(x) + c);
 }
