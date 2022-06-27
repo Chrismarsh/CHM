@@ -39,6 +39,7 @@ core::core()
     _load_from_checkpoint=false;
     _do_checkpoint=false;
     _metdata= nullptr;
+
 }
 
 core::~core()

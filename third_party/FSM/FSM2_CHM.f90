@@ -143,7 +143,7 @@ end module SOILPROPS
 !-----------------------------------------------------------------------
 subroutine FSM2_TIMESTEP(dt,elev,zT,zU,                                &
                          LW,Ps,Qa,Rf,Sdif,Sdir,Sf,Ta,trans,Ua,         &
-                         alb0,vegh,VAI,                                &
+                         alb0,vegh,VAI, rhod,                               &
                          albs,Tsrf,Dsnw,Nsnow,Qcan,Rgrn,Sice,Sliq,     &
                          Sveg,Tcan,Tsnow,Tsoil,Tveg,Vsmc,              &
                          H,LE,LWout,LWsub,Melt,Roff,snd,snw,subl,svg,  &
@@ -182,6 +182,9 @@ real, intent(in) :: &
   alb0,              &! Snow-free ground albedo
   vegh,              &! Canopy height (m)
   VAI                 ! Vegetation area index
+
+real, intent(in) :: &
+  rhod 
 
 ! State variables
 integer, intent(inout) :: &
@@ -271,7 +274,7 @@ call SRFEBAL(cveg,Ds1,dt,fcans,fsnow,gs1,ks1,lveg,LW,Ps,Qa,            &
 call INTERCEPT(dt,cveg,Eveg,Scap,Sf,Sveg,Tveg,drip,svg,unload)
 
 call SNOW(dt,drip,Esrf,Gsrf,ksnow,ksoil,Melt,Rf,Sf,Ta,trans,Tsrf,unload, &
-          Nsnow,Dsnw,Rgrn,Sice,Sliq,Tsnow,Tsoil,Gsoil,Roff,snd,snw,Wflx)
+          Nsnow,Dsnw,Rgrn,Sice,Sliq,Tsnow,Tsoil,Gsoil,Roff,snd,snw,Wflx,rhod)
 
 call SOIL(csoil,dt,Gsoil,ksoil,Tsoil)
 
@@ -573,7 +576,7 @@ end subroutine QSAT
 !-----------------------------------------------------------------------
 subroutine SNOW(dt,drip,Esrf,Gsrf,ksnow,ksoil,Melt,Rf,Sf,Ta,trans,     &
                 Tsrf,unload,Nsnow,Dsnw,Rgrn,Sice,Sliq,Tsnow,Tsoil,     &
-                Gsoil,Roff,snd,snw,Wflx)
+                Gsoil,Roff,snd,snw,Wflx, rhod)
 
 use CONSTANTS, only: &
   g,                 &! Acceleration due to gravity (m/s^2)
@@ -638,6 +641,9 @@ real, intent(out) :: &
   snd,               &! Snow depth (m)
   snw,               &! Total snow mass on ground (kg/m^2)
   Wflx(Nsmax)         ! Water flux into snow layer (kg/m^2/s)
+  
+real, intent(in) :: &
+  rhod
 
 integer :: &
   i,j,               &! Hydrology iteration counters
@@ -681,6 +687,7 @@ real :: &
   thetaw(Nsmax),     &! Volumetric liquid water content
   theta0(Nsmax),     &! Liquid water content at start of timestep
   Qw(Nsmax+1)         ! Water flux at snow layer boundaruess (m/s)
+
 
 ! No snow
 Gsoil = Gsrf
@@ -835,7 +842,7 @@ Sice(1) = Sice(1) + unload
 ! Add wind-blown snow to layer 1 with wind-packed density and fresh grain size
 dSice = - trans*dt
 if (dSice > 0) then
-  Dsnw(1) = Dsnw(1) + dSice / rhow
+  Dsnw(1) = Dsnw(1) + dSice / rhod
   Rgrn(1) = (Sice(1)*Rgrn(1) + dSice*rgr0) / (Sice(1) + dSice)
   Sice(1) = Sice(1) + dSice
 end if

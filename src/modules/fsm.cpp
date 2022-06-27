@@ -192,6 +192,7 @@ void FSM::run(mesh_elem& face)
         trans = mass / dt;
     }
 
+    float rhod = 300;
     // If snow avalanche variables are available
     if(has_optional("delta_avalanche_mass"))
     {
@@ -200,6 +201,9 @@ void FSM::run(mesh_elem& face)
         // delta_avalanche_swe is m^3 of swe. So ----> m^3 / m^2 * 1000 kg/m^3 = kg/m^2
         delta_avalanche_swe = delta_avalanche_swe / face->get_area() * 1000.0;
         trans = trans + delta_avalanche_swe/dt;
+
+        if(delta_avalanche_swe >0)
+            rhod = 500;
 
     }
 
@@ -212,7 +216,7 @@ void FSM::run(mesh_elem& face)
         &ilwr, &Ps, &Qa, &Rf, &Sdiff, &Sdir, &Sf, &t, &trans, &U,
 
         // Vegetation characteristics
-         &d.veg.alb0, &d.veg.vegh, &d.veg.VAI,
+         &d.veg.alb0, &d.veg.vegh, &d.veg.VAI, &rhod,
 
         // State variables
         &d.state.albs, &d.state.Tsrf, d.state.Dsnw, &d.state.Nsnow, d.state.Qcan,

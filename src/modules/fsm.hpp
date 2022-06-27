@@ -40,6 +40,8 @@ extern "C"
     // Vegetation characteristics
         float* alb0, float* hveg, float* VAI,
 
+        float* rhod,
+
     // State variables
         float* albs, float* Tsrf, float* Dsnw, float* Nsnow, float* Qcan, float* Rgrn, float* Sice,
         float* Sliq, float* Sveg, float* Tcan, float* Tsnow, float* Tsoil, float* Tveg, float* Vsmc,
