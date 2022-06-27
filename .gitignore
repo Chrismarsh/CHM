@@ -8,12 +8,14 @@ err.xml
 CRHMr.log
 .Rhistory
 
+/.idea/
 
 /cmake-build-debug/*
 /cmake-build-release/*
 
 /src/version.h
 
+/functional_tests/
 /tools/scripts/cppcheck/*
 
 
