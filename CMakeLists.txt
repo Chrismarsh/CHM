@@ -291,7 +291,8 @@ if(BUILD_WITH_CONAN)
     endif()
 endif()
 
-if(MACOSX AND "${blasloc}" STREQUAL "")
+# we build blas from conan so do not do this if we are using the full conan stack
+if(MACOSX AND "${blasloc}" STREQUAL "" AND NOT BUILD_WITH_CONAN)
 
     execute_process(
             COMMAND brew --prefix openblas
@@ -385,7 +386,7 @@ endif()
 #create_target(${VTK})
 
 if(VTK_MAJOR_VERSION EQUAL 8 AND VTK_MINOR_VERSION LESS 1)
-    message( FATAL_ERROR "VTK >= 8.1 is required to avoid libproj4 name collision. You can build a compatible VTK using -DBUILD_VTK=ON." )
+    message( FATAL_ERROR "VTK >= 8.1 is required to avoid libproj4 name collision." )
 endif()
 
 find_program(GVPR gvpr)

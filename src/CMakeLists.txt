@@ -286,17 +286,27 @@ set_target_properties(CHM
 if(APPLE)
 	add_custom_command(TARGET CHM POST_BUILD
 			#patch CHM to look for @rpath/ for all dylibs that aren't looking for @rpath
-			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep name | grep -v segname |  grep -v sectname | grep -v /usr | grep -v @rpath  | awk '{print $2}' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
+			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
+
+			#patch all our lib to look in @rpath
+			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/lib/$f; done; done"
+
+#			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep '/Users' | while read x; do install_name_tool -change $x `echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/lib/$f; done; done"
 
 			# These are likely no longer needed
 				#patch netcdf-cxx to look for an @rpath
 				#COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_+\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
 
-				#strip all LC_RPATH from our non-install binary
-				#COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
+			#strip all LC_RPATH from our non-install binary
+			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
 
-				#update LC_RPATH for our non-install binary
-				#COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
+			#strip all LC_RPATH from our libs
+			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/lib/$f; done; done"
+
+			#update LC_RPATH for our non-install binary
+			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
+
+#			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do install_name_tool -add_rpath @executable_path ${CMAKE_BINARY_DIR}/lib/$f; done"
 
 			VERBATIM
 			)
