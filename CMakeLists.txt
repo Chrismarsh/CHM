@@ -6,13 +6,14 @@ project (CHM-project CXX Fortran)
 #https://cmake.org/cmake/help/latest/policy/CMP0074.html
 cmake_policy(SET CMP0074 NEW)
 
+#https://cmake.org/cmake/help/latest/policy/CMP0042.html#policy:CMP0042
+# set RPATH ON
+cmake_policy(SET CMP0042 NEW)
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-#http://stackoverflow.com/questions/31561309/cmake-warnings-under-os-x-macosx-rpath-is-not-specified-for-the-following-targe
-#https://cmake.org/cmake/help/v3.0/policy/CMP0042.html
-set(CMAKE_MACOSX_RPATH 1)
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(MACOSX TRUE)
     set(CMAKE_FIND_FRAMEWORK NEVER) #Can cause frameworks to take priority over superbuild libraries
