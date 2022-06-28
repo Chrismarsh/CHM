@@ -87,6 +87,7 @@ class CHMConan(ConanFile):
         self.requires( "boost/[>=1.75]@CHM/stable" )
         self.requires( "vtk/[>=9.0.1]@CHM/stable" )
 
+        self.requires("netcdf/4.7.4", override=True )
         self.requires("netcdf-cxx/[>=4.3]@CHM/stable" )
 
         self.requires( "proj/[>=7.2.1]" )
