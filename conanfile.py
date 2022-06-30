@@ -27,27 +27,16 @@ class CHMConan(ConanFile):
         "with_mpi": False,
 
         #dependency options
-
         "*:shared": True,
-
-        "gdal:shared": True,
         "gdal:with_curl": True,
         "gdal:with_netcdf": True,
 
-        "netcdf:shared": True,
         "netcdf:dap": False,
 
         "proj:with_curl": False,
 
-        "hdf5:shared": True,
-        "hdf5:enable_cxx": True,
+        "hdf5:enable_cxx": True
 
-        "openblas:shared": True,
-        "openblas:build_lapack":True
-
-
-
-        # "gperftools:heapprof":True
     }
 
     def source(self):
@@ -87,14 +76,15 @@ class CHMConan(ConanFile):
         self.requires( "boost/[>=1.75]@CHM/stable" )
         self.requires( "vtk/[>=9.0.1]@CHM/stable" )
 
-        self.requires("netcdf/4.7.4", override=True )
+        self.requires("netcdf/4.7.4" )
         self.requires("netcdf-cxx/[>=4.3]@CHM/stable" )
 
+        # Guide libtiff (via gdal) to make the right version selection, but this is not a depednency we explicitly declare
+        self.requires( "libdeflate/1.12", override=True)
         self.requires( "proj/[>=7.2.1]" )
         self.requires( "gdal/[>=3.2.1]" )
 
-        # Guide libtiff to make the right version selection
-        self.requires( "libdeflate/1.12",override=True)
+
 
         self.requires( "sparsehash/[>=2.0.3]@CHM/stable" )
         self.requires( "gperftools/[>=2.7]@CHM/stable" )
