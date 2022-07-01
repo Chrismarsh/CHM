@@ -339,16 +339,6 @@ else()
 
 endif()
 
-#make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
-install(TARGETS CHM RUNTIME)
-
-
-if(BUILD_WITH_CONAN)
-	install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
-			DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-endif()
-
-
 ### Targets for the preprocessing tools
 add_executable(
 		partition
@@ -367,9 +357,17 @@ target_link_libraries(
 set_target_properties(partition
 		PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-		COMPILE_FLAGS "-g3 -O1 -fno-inline -ggdb -DSAFE_CHECKS"
+		COMPILE_FLAGS ${CHM_BUILD_FLAGS}
 		)
 
+#make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
+install(TARGETS CHM RUNTIME)
+install(TARGETS partition RUNTIME)
+
+if(BUILD_WITH_CONAN)
+	install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
+			DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+endif()
 
 if(STATIC_ANLAYSIS)
 	include( ${CMAKE_SOURCE_DIR}/CMake/PVS-Studio.cmake)
