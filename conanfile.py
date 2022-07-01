@@ -31,7 +31,7 @@ class CHMConan(ConanFile):
         "gdal:with_curl": True,
         "gdal:with_netcdf": True,
 
-        "netcdf:dap": False,
+        # "netcdf:dap": False,
 
         "proj:with_curl": False,
 
