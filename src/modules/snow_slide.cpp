@@ -113,9 +113,10 @@ void snow_slide::run(mesh& domain)
 
             }
         }
-
+#ifdef USE_MPI
         // update our ghosts from other ranks values
         domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_to_xfer"_s);
+#endif
 
 #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -305,12 +306,13 @@ void snow_slide::run(mesh& domain)
             } // end if snowdepth > maxdepth
         } // End of each face
 
+#ifdef USE_MPI
         // communicate values set on our ghosts to the other ranks
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_snowdepthavg_to_xfer"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_swe_to_xfer"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_snowdepth"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_swe"_s);
-
+#endif
 
         size_t ghost_transport = false;
         #pragma omp parallel for
@@ -354,8 +356,9 @@ void snow_slide::run(mesh& domain)
 
         // a global all reduce to determine the minimum value across all ranks. Min = 0 implies we are not done and need to iterate again
         int global_done=1;
+#ifdef USE_MPI
         boost::mpi::all_reduce(domain->_comm_world, done, global_done, boost::mpi::minimum<int>());
-
+#endif
         if(global_done)
             done = 1;
         else
@@ -368,11 +371,13 @@ void snow_slide::run(mesh& domain)
             LOG_ERROR << "SnowSlide did not converge after 500 iterations";
         }
 
+#ifdef USE_MPI
         if(!done)
             // because we don't have access to ndata.snowdepthavg_copy, pass it through here
             // only used for obtaining transport weights, but only do this comms if we are expecting another iter
             domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_vert_copy"_s);
-
+#endif
+        
     }while(!done);
 
     LOG_DEBUG << "[SnowSlide] needed " << iterations << " iterations";
