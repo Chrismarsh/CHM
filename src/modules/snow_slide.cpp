@@ -377,7 +377,7 @@ void snow_slide::run(mesh& domain)
             // only used for obtaining transport weights, but only do this comms if we are expecting another iter
             domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_vert_copy"_s);
 #endif
-        
+
     }while(!done);
 
     LOG_DEBUG << "[SnowSlide] needed " << iterations << " iterations";
