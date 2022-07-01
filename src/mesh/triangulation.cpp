@@ -2580,10 +2580,12 @@ void triangulation::init_module_data(std::set< std::string > modules)
 
 void triangulation::prune_faces(std::vector<Face_handle>& faces)
 {
+#ifdef USE_MPI
     if(_comm_world.size() > 1)
     {
         CHM_THROW_EXCEPTION(config_error, "Cannot prune faces with ranks >1");
     }
+#endif
 
     _faces.clear();
     _faces  = faces;
