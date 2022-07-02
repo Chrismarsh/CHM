@@ -352,7 +352,7 @@ target_link_libraries(
 		partition
 		CHMmath
 		${EXT_TARGETS}
-		${THIRD_PARTY_TARGETS}
+#		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(partition
 		PROPERTIES
