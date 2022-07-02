@@ -351,7 +351,7 @@ target_compile_features(partition PRIVATE cxx_std_14)
 target_link_libraries(
 		partition
 		CHMmath
-		${EXT_TARGETS}
+#      		${EXT_TARGETS}
 #		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(partition
