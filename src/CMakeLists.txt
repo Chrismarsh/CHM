@@ -268,7 +268,6 @@ target_link_libraries(
 		CHM
 		CHMmath
 		${EXT_TARGETS}
-		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(CHM
 		PROPERTIES
@@ -351,8 +350,7 @@ target_compile_features(partition PRIVATE cxx_std_14)
 target_link_libraries(
 		partition
 		CHMmath
-#      		${EXT_TARGETS}
-#		${THIRD_PARTY_TARGETS}
+		${EXT_TARGETS}
 )
 set_target_properties(partition
 		PROPERTIES
@@ -364,10 +362,10 @@ set_target_properties(partition
 install(TARGETS CHM RUNTIME)
 install(TARGETS partition RUNTIME)
 
-if(BUILD_WITH_CONAN)
-	install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
-			DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-endif()
+#if(BUILD_WITH_CONAN)
+#	install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
+#			DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+#endif()
 
 if(STATIC_ANLAYSIS)
 	include( ${CMAKE_SOURCE_DIR}/CMake/PVS-Studio.cmake)
@@ -421,9 +419,7 @@ if (BUILD_TESTS)
 	target_link_libraries(
 			runUnitTests
 			CHMmath
-			netcdf-c::netcdf-c
 			${EXT_TARGETS}
-			${THIRD_PARTY_TARGETS}
 			${GTEST_LINK}
 	)
 

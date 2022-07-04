@@ -276,22 +276,22 @@ endif()
 # If so, conaninfo.txt has information on the custom blas location if given with the -o trilinos:blas_root=<root> option
 # If conaninfo.txt has a custom blas location, extract it and pass it as a hint to find_package(blas) which will detect any blas.
 # Then use the find_package link target in CHM to fully avoid any problems of linking against the wrong blas or not being able to find it.
-if(BUILD_WITH_CONAN)
-    if(EXISTS "${CMAKE_BINARY_DIR}/conaninfo.txt")
-        file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt conaninfotxt)
-        string(REGEX MATCH "trilinos:blas_root=([^ ]+)lib" blasloc "${conaninfotxt}") # because cmake regex is only greedy
-        if(NOT "${blasloc}" STREQUAL "")
-            string(REPLACE "\n" "" blasloc ${CMAKE_MATCH_1}) # strip out a new line we've picked up
-            message(WARNING "Using the conaninfo.txt trilinos:blas_root=${blasloc}")
-            set(BLAS_ROOT ${blasloc})
-        endif()
-    elseif()
-        set(blasloc "")
-    endif()
-endif()
+#if(BUILD_WITH_CONAN)
+#    if(EXISTS "${CMAKE_BINARY_DIR}/conaninfo.txt")
+#        file(READ ${CMAKE_BINARY_DIR}/conaninfo.txt conaninfotxt)
+#        string(REGEX MATCH "trilinos:blas_root=([^ ]+)lib" blasloc "${conaninfotxt}") # because cmake regex is only greedy
+#        if(NOT "${blasloc}" STREQUAL "")
+#            string(REPLACE "\n" "" blasloc ${CMAKE_MATCH_1}) # strip out a new line we've picked up
+#            message(WARNING "Using the conaninfo.txt trilinos:blas_root=${blasloc}")
+#            set(BLAS_ROOT ${blasloc})
+#        endif()
+#    elseif()
+#        set(blasloc "")
+#    endif()
+#endif()
 
 # we build blas from conan so do not do this if we are using the full conan stack
-if(MACOSX AND "${blasloc}" STREQUAL "" AND NOT BUILD_WITH_CONAN)
+if(MACOSX AND NOT BUILD_WITH_CONAN)
 
     execute_process(
             COMMAND brew --prefix openblas
