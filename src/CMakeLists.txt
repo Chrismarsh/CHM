@@ -332,8 +332,8 @@ else()
 #			#see if there are any hard coded paths in your binary and if so replace with just the so name
 #			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
 #
-#			VERBATIM
-#			)
+			VERBATIM
+			)
 
 endif()
 
