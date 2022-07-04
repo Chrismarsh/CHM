@@ -122,8 +122,6 @@ set (HEADER_FILES
 
 set(EXT_TARGETS
 		${ARPACK_LIBRARY}
-
-		BLAS::BLAS
 		Threads::Threads
 		${GDAL}::${GDAL}
 		${GSL}::${GSL}

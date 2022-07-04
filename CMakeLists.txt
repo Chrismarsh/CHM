@@ -308,13 +308,6 @@ if(MACOSX AND NOT BUILD_WITH_CONAN)
 
 endif()
 
-find_package(${BLAS}
-            REQUIRED
-            )
-
-# cmake < 3.18 doesn't produce a BLAS target
-create_target(${BLAS})
-
 
 find_package(${SPARSEHASH})
 if( ${SPARSEHASH}_FOUND )
