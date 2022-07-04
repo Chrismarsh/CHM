@@ -1,4 +1,5 @@
 from conans import ConanFile, CMake
+from six import StringIO
 import os
 
 
@@ -17,6 +18,9 @@ class CHMTestConan(ConanFile):
 
 
     def test(self):
+        mybuf = StringIO()
+        self.run('ldd ./bin/CHM', output=mybuf)
+
         cmd = "%s -v" % os.path.join(".", "bin", "CHM")
         print(cmd)
         self.run(cmd)
