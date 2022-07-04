@@ -85,13 +85,12 @@ class CHMConan(ConanFile):
         self.requires( "gdal/[>=3.2.1]" )
 
 
-
         self.requires( "sparsehash/[>=2.0.3]@CHM/stable" )
         self.requires( "gperftools/[>=2.7]@CHM/stable" )
         self.requires( "gsl/[>=2.6]@CHM/stable" )
         self.requires( "armadillo/[>=10.2.0]@CHM/stable" )
         self.requires( "onetbb/[>=2021.3.0]@CHM/stable" )
-        self.requires( "eigen3/[>=3.3.9]@CHM/stable" )
+        self.requires( "eigen3/[>=3.3.9]" )
         self.requires( "meteoio/2.8.0@CHM/stable")
         self.requires( "func/0.1@CHM/stable")
         self.requires( "trilinos/13.4.0@CHM/stable")
