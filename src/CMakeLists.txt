@@ -268,6 +268,7 @@ target_link_libraries(
 		CHM
 		CHMmath
 		${EXT_TARGETS}
+		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(CHM
 		PROPERTIES
@@ -351,6 +352,7 @@ target_link_libraries(
 		partition
 		CHMmath
 		${EXT_TARGETS}
+		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(partition
 		PROPERTIES
@@ -421,6 +423,7 @@ if (BUILD_TESTS)
 			CHMmath
 			${EXT_TARGETS}
 			${GTEST_LINK}
+			${THIRD_PARTY_TARGETS}
 	)
 
 	set_target_properties(runUnitTests
