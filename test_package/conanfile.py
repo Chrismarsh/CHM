@@ -18,8 +18,8 @@ class CHMTestConan(ConanFile):
 
 
     def test(self):
-        mybuf = StringIO()
-        self.run('ldd ./bin/CHM', output=mybuf)
+
+        self.run("""patchelf --set-rpath '\$ORIGIN/../lib' ./bin/CHM""")
 
         cmd = "%s -v" % os.path.join(".", "bin", "CHM")
         print(cmd)

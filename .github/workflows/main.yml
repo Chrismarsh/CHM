@@ -66,6 +66,7 @@ jobs:
         run: |
           export PATH="$pythonLocation:$PATH"
           python -m pip install conan --upgrade
+          python -m pip install six --upgrade
           python -m pip install conan_package_tools
 
 
