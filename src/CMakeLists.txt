@@ -362,10 +362,10 @@ set_target_properties(partition
 install(TARGETS CHM RUNTIME)
 install(TARGETS partition RUNTIME)
 
-#if(BUILD_WITH_CONAN)
-#	install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
-#			DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-#endif()
+if(BUILD_WITH_CONAN)
+	install(DIRECTORY ${CMAKE_BINARY_DIR}/lib/
+			DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+endif()
 
 if(STATIC_ANLAYSIS)
 	include( ${CMAKE_SOURCE_DIR}/CMake/PVS-Studio.cmake)
