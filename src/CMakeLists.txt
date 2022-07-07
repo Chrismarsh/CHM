@@ -276,65 +276,66 @@ set_target_properties(CHM
 		UNITY_BUILD_BATCH_SIZE 2
 		)
 
+if(BUILD_WITH_CONAN)
+	# the patches suggested by conan https://docs.conan.io/en/latest/howtos/manage_shared_libraries/rpaths.html
+	# don't work for the gdal target (despite working elsewhere) for some reason. So, the strategy here is:
+	# 1) The gdal libraries are patched at the conan package stage to fix the rpath issue
+	# 2) Patch the CHM binary to ensure that we are absolutely looking for @rpath/dylibs
+	if(APPLE)
+		add_custom_command(TARGET CHM POST_BUILD
+				#patch CHM to look for @rpath/ for all dylibs that aren't looking for @rpath
+				COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
 
-# the patches suggested by conan https://docs.conan.io/en/latest/howtos/manage_shared_libraries/rpaths.html
-# don't work for the gdal target (despite working elsewhere) for some reason. So, the strategy here is:
-# 1) The gdal libraries are patched at the conan package stage to fix the rpath issue
-# 2) Patch the CHM binary to ensure that we are absolutely looking for @rpath/dylibs
-if(APPLE)
-	add_custom_command(TARGET CHM POST_BUILD
-			#patch CHM to look for @rpath/ for all dylibs that aren't looking for @rpath
-			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
+				#patch all our lib to look in @rpath
+				COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/lib/$f; done; done"
 
-			#patch all our lib to look in @rpath
-			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/lib/$f; done; done"
+	#			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep '/Users' | while read x; do install_name_tool -change $x `echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/lib/$f; done; done"
 
-#			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep '/Users' | while read x; do install_name_tool -change $x `echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/lib/$f; done; done"
+				# These are likely no longer needed
+					#patch netcdf-cxx to look for an @rpath
+					#COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_+\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
 
-			# These are likely no longer needed
-				#patch netcdf-cxx to look for an @rpath
-				#COMMAND bash -c "nccxx=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf-cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_+\.-]+\.dylib'`; nc=`otool -l ${CMAKE_BINARY_DIR}/bin/CHM |grep libnetcdf | grep -v cxx | awk '{print $2}' | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'`; install_name_tool -change $nc @rpath/$nc ${CMAKE_BINARY_DIR}/lib/$nccxx"
+				#strip all LC_RPATH from our non-install binary
+				COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
 
-			#strip all LC_RPATH from our non-install binary
-			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/CHM | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/CHM; done"
+				#strip all LC_RPATH from our libs
+				COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/lib/$f; done; done"
 
-			#strip all LC_RPATH from our libs
-			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do otool -l ${CMAKE_BINARY_DIR}/lib/$f | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/lib/$f; done; done"
+				#update LC_RPATH for our non-install binary
+				COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
 
-			#update LC_RPATH for our non-install binary
-			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/CHM"
+	#			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do install_name_tool -add_rpath @executable_path ${CMAKE_BINARY_DIR}/lib/$f; done"
 
-#			COMMAND bash -c "ls ${CMAKE_BINARY_DIR}/lib | while read f; do install_name_tool -add_rpath @executable_path ${CMAKE_BINARY_DIR}/lib/$f; done"
+				VERBATIM
+				)
+	else()
+		# General note for this whole section: it's important to note that RUNPATH has become the default for ld, superceeding RPATH
+		# The search paths are RPATH -> LD_LIBRARY_PATH -> RUNPATH
+		# However, RPATH resolves transient libraries (eg., netcdf-cxx requires netcdf-c) whereas RUNPATH does NOT
+		# https://stackoverflow.com/a/55283740/410074
+		# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=847298
 
-			VERBATIM
-			)
-else()
-	# General note for this whole section: it's important to note that RUNPATH has become the default for ld, superceeding RPATH
-	# The search paths are RPATH -> LD_LIBRARY_PATH -> RUNPATH
-	# However, RPATH resolves transient libraries (eg., netcdf-cxx requires netcdf-c) whereas RUNPATH does NOT
-	# https://stackoverflow.com/a/55283740/410074
-	# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=847298
+		# So the approach here will be to use the old style dtags -Wl,--disable-new-dtags
+		# ie., use RPATH instead of RUNPATH
+		# and update the RPATH to be like our install path. Note RPATH is not used if RUNPATH is present.
+		target_link_options(CHM
+				PUBLIC "LINKER:--disable-new-dtags" )
 
-	# So the approach here will be to use the old style dtags -Wl,--disable-new-dtags
-	# ie., use RPATH instead of RUNPATH
-	# and update the RPATH to be like our install path. Note RPATH is not used if RUNPATH is present.
-	target_link_options(CHM
-			PUBLIC "LINKER:--disable-new-dtags" )
+		add_custom_command(TARGET CHM POST_BUILD
+	#			# Some .so will have runpaths, some do not. Just remove them all. The RUNPATHS override the binarie's rpath (I don't know why)
+				COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
+	#
+	#			# RPATH correctly works, so unlikely to be needed but kept just in case.
+	#			# This removes all runpaths , and then here we will patch each .so to have the correct RUNPATH
+				COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
+	#
+	#			#see if there are any hard coded paths in your binary and if so replace with just the so name
+	#			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
+	#
+				VERBATIM
+				)
 
-	add_custom_command(TARGET CHM POST_BUILD
-#			# Some .so will have runpaths, some do not. Just remove them all. The RUNPATHS override the binarie's rpath (I don't know why)
-			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
-#
-#			# RPATH correctly works, so unlikely to be needed but kept just in case.
-#			# This removes all runpaths , and then here we will patch each .so to have the correct RUNPATH
-			COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
-#
-#			#see if there are any hard coded paths in your binary and if so replace with just the so name
-#			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
-#
-			VERBATIM
-			)
-
+	endif()
 endif()
 
 ### Targets for the preprocessing tools
