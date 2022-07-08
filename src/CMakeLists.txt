@@ -308,6 +308,8 @@ if(BUILD_WITH_CONAN)
 
 				VERBATIM
 				)
+
+
 	else()
 		# General note for this whole section: it's important to note that RUNPATH has become the default for ld, superceeding RPATH
 		# The search paths are RPATH -> LD_LIBRARY_PATH -> RUNPATH
@@ -358,6 +360,17 @@ set_target_properties(partition
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 		COMPILE_FLAGS ${CHM_BUILD_FLAGS}
 		)
+
+if(BUILD_WITH_CONAN)
+	add_custom_command(TARGET partition POST_BUILD
+			#patch CHM to look for @rpath/ for all dylibs that aren't looking for @rpath
+			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/partition | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/partition; done"
+			#strip all LC_RPATH from our non-install binary
+			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/partition | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/partition; done"
+			#update LC_RPATH for our non-install binary
+			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/partition"
+			VERBATIM)
+endif()
 
 #make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
 install(TARGETS CHM RUNTIME)
