@@ -67,6 +67,9 @@ public:
 
     double Qs(double air_pressure, double ta);
 
+    void checkpoint(mesh& domain, netcdf& chkpt);
+    void load_checkpoint(mesh& domain, netcdf& chkpt);
+
     struct data : public face_info {
 
         // parameters
