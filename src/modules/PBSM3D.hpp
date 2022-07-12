@@ -404,6 +404,9 @@ class PBSM3D : public module_base
         // struct my_fill_topo_params params = { 1.1, 0.3, 0.6 , 0.4};
     };
 
+    void checkpoint(mesh& domain,  netcdf& chkpt);
+    void load_checkpoint(mesh& domain,  netcdf& chkpt);
+
 private:
 
   // For detecting if there is suspension and/or saltation
