@@ -60,11 +60,18 @@ void snow_slide::checkpoint(mesh& domain,  netcdf& chkpt)
     chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth", domain->size_faces());
     chkpt.create_variable1D("snow_slide:delta_avalanche_mass", domain->size_faces());
 
+    chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth_sum", domain->size_faces());
+    chkpt.create_variable1D("snow_slide:delta_avalanche_mass_sum", domain->size_faces());
+
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         chkpt.put_var1D("snow_slide:delta_avalanche_snowdepth",i,face->get_module_data<data>(ID).delta_avalanche_snowdepth);
         chkpt.put_var1D("snow_slide:delta_avalanche_mass",i,face->get_module_data<data>(ID).delta_avalanche_mass);
+
+        chkpt.put_var1D("snow_slide:delta_avalanche_snowdepth_sum",i,  (*face)["delta_avalanche_snowdepth_sum"_s]);
+        chkpt.put_var1D("snow_slide:delta_avalanche_mass_sum",i, (*face)["delta_avalanche_mass_sum"_s]);
+
     }
 }
 
@@ -75,6 +82,10 @@ void snow_slide::load_checkpoint(mesh& domain,  netcdf& chkpt)
         auto face = domain->face(i);
         face->get_module_data<data>(ID).delta_avalanche_snowdepth = chkpt.get_var1D("snow_slide:delta_avalanche_snowdepth",i);
         face->get_module_data<data>(ID).delta_avalanche_mass = chkpt.get_var1D("snow_slide:delta_avalanche_mass",i);
+
+        (*face)["delta_avalanche_snowdepth_sum"_s] = chkpt.get_var1D("snow_slide:delta_avalanche_snowdepth_sum",i);
+        (*face)["delta_avalanche_mass_sum"_s] = chkpt.get_var1D("snow_slide:delta_avalanche_mass_sum",i);
+
     }
 }
 
