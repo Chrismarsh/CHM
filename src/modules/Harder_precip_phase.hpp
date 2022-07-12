@@ -84,6 +84,9 @@ public:
 
     };
 
+    void checkpoint(mesh& domain,  netcdf& chkpt);
+    void load_checkpoint(mesh& domain, netcdf& chkpt);
+
 
 };
 

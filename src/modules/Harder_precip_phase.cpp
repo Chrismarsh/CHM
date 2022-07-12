@@ -153,3 +153,33 @@ void Harder_precip_phase::run(mesh_elem& face)
 
 
 }
+
+void Harder_precip_phase::checkpoint(mesh& domain,  netcdf& chkpt)
+{
+
+    chkpt.create_variable1D("Harder_precip_phase:hours_since_snowfall", domain->size_faces());
+    chkpt.create_variable1D("Harder_precip_phase:acc_rain", domain->size_faces());
+    chkpt.create_variable1D("Harder_precip_phase:acc_snow", domain->size_faces());
+
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        chkpt.put_var1D("Harder_precip_phase:hours_since_snowfall",i,face->get_module_data<data>(ID).hours_since_snowfall);
+        chkpt.put_var1D("Harder_precip_phase:acc_rain",i,face->get_module_data<data>(ID).acc_rain);
+        chkpt.put_var1D("Harder_precip_phase:acc_snow",i,face->get_module_data<data>(ID).acc_snow);
+    }
+
+}
+void Harder_precip_phase::load_checkpoint(mesh& domain, netcdf& chkpt)
+{
+
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        face->get_module_data<data>(ID).hours_since_snowfall = chkpt.get_var1D("Harder_precip_phase:hours_since_snowfall",i);
+        face->get_module_data<data>(ID).acc_rain = chkpt.get_var1D("Harder_precip_phase:acc_rain",i);
+        face->get_module_data<data>(ID).acc_snow = chkpt.get_var1D("Harder_precip_phase:acc_snow",i);
+    }
+
+
+}
