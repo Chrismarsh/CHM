@@ -215,15 +215,17 @@ if(MATLAB)
 
 endif()
 
-# when we run make install all the RPATHs will be stripped out and set to these
-# n.b. $ORIGIN should have its dollar sign escaped with a backslash to have it end up with proper
-# syntax in the final executable.
-# https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling
-# !!!  these must be done before targets are defined in add_executable !!!!
-if (APPLE)
-	set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
-else()
-	set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
+if(BUILD_WITH_CONAN)
+	# when we run make install all the RPATHs will be stripped out and set to these
+	# n.b. $ORIGIN should have its dollar sign escaped with a backslash to have it end up with proper
+	# syntax in the final executable.
+	# https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/RPATH-handling
+	# !!!  these must be done before targets are defined in add_executable !!!!
+	if (APPLE)
+		set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
+	else()
+		set(CMAKE_INSTALL_RPATH "\$ORIGIN/../lib")
+	endif()
 endif()
 
 add_library(CHMmath OBJECT
