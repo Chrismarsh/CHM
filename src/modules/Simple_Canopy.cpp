@@ -639,3 +639,59 @@ double Simple_Canopy::Qs(double air_pressure, double T1) {
     double es = 611.213*exp(22.4422*T1/(272.186+T1)); // Pa
     return(0.622 * ( es / (air_pressure - es) )); // kg/kg
 }
+
+void Simple_Canopy::checkpoint(mesh& domain,  netcdf& chkpt)
+{
+
+    chkpt.create_variable1D("Simple_Canopy:LAI", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:CanopyHeight", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:canopyType", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:rain_load", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:Snow_load", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_net_snow", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_net_rain", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_Subl_Cpy", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_intcp_evap", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_SUnload_H2O", domain->size_faces());
+
+
+    //netcdf puts are not threadsafe.
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto& d = face->get_module_data<data>(ID);
+
+        chkpt.put_var1D("Simple_Canopy:LAI", i, d.LAI);
+        chkpt.put_var1D("Simple_Canopy:CanopyHeight", i, d.CanopyHeight);
+        chkpt.put_var1D("Simple_Canopy:canopyType", i, d.canopyType);
+        chkpt.put_var1D("Simple_Canopy:rain_load", i, d.rain_load);
+        chkpt.put_var1D("Simple_Canopy:Snow_load", i, d.Snow_load);
+        chkpt.put_var1D("Simple_Canopy:cum_net_snow", i, d.cum_net_snow);
+        chkpt.put_var1D("Simple_Canopy:cum_net_rain", i, d.cum_net_rain);
+        chkpt.put_var1D("Simple_Canopy:cum_Subl_Cpy", i, d.cum_Subl_Cpy);
+        chkpt.put_var1D("Simple_Canopy:cum_intcp_evap", i, d.cum_intcp_evap);
+        chkpt.put_var1D("Simple_Canopy:cum_SUnload_H2O", i, d.cum_SUnload_H2O);
+
+    }
+}
+
+void Simple_Canopy::load_checkpoint(mesh& domain, netcdf& chkpt)
+{
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto& d = face->get_module_data<data>(ID);
+
+        d.LAI = chkpt.get_var1D("Simple_Canopy:LAI", i);
+        d.CanopyHeight = chkpt.get_var1D("Simple_Canopy:CanopyHeight", i);
+        d.canopyType = chkpt.get_var1D("Simple_Canopy:canopyType", i);
+        d.rain_load = chkpt.get_var1D("Simple_Canopy:rain_load", i);
+        d.Snow_load = chkpt.get_var1D("Simple_Canopy:Snow_load", i);
+        d.cum_net_snow = chkpt.get_var1D("Simple_Canopy:cum_net_snow", i);
+        d.cum_net_rain = chkpt.get_var1D("Simple_Canopy:cum_net_rain", i);
+        d.cum_Subl_Cpy = chkpt.get_var1D("Simple_Canopy:cum_Subl_Cpy", i);
+        d.cum_SUnload_H2O = chkpt.get_var1D("Simple_Canopy:cum_SUnload_H2O", i);
+
+    }
+
+}

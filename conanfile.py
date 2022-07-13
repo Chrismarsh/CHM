@@ -27,9 +27,16 @@ class CHMConan(ConanFile):
         "with_mpi": False,
 
         #dependency options
-        "gdal:libcurl": True,
-        "gdal:netcdf": True
-        # "gperftools:heapprof":True
+        "*:shared": True,
+        "gdal:with_curl": True,
+        "gdal:with_netcdf": True,
+
+        # "netcdf:dap": False,
+
+        "proj:with_curl": False,
+
+        "hdf5:enable_cxx": True
+
     }
 
     def source(self):
@@ -65,22 +72,29 @@ class CHMConan(ConanFile):
 
 
     def requirements(self):
-
         self.requires( "cgal/[>=5.2]@CHM/stable" )
         self.requires( "boost/[>=1.75]@CHM/stable" )
         self.requires( "vtk/[>=9.0.1]@CHM/stable" )
-        self.requires( "netcdf-cxx/[>=4.3]@CHM/stable" )
-        self.requires( "proj/[>=7.2.1]@CHM/stable" )
-        self.requires( "gdal/[>=3.2.1]@CHM/stable" )
+
+        self.requires("netcdf/4.7.4" )
+        self.requires("netcdf-cxx/[>=4.3]@CHM/stable" )
+
+        # Guide libtiff (via gdal) to make the right version selection, but this is not a depednency we explicitly declare
+        self.requires( "libdeflate/1.12", override=True)
+        self.requires( "proj/[>=7.2.1]" )
+        self.requires( "gdal/[>=3.2.1]" )
+
+
         self.requires( "sparsehash/[>=2.0.3]@CHM/stable" )
         self.requires( "gperftools/[>=2.7]@CHM/stable" )
         self.requires( "gsl/[>=2.6]@CHM/stable" )
         self.requires( "armadillo/[>=10.2.0]@CHM/stable" )
         self.requires( "onetbb/[>=2021.3.0]@CHM/stable" )
-        self.requires( "eigen3/[>=3.3.9]@CHM/stable" )
+        self.requires( "eigen/[>=3.3.9]" )
         self.requires( "meteoio/2.8.0@CHM/stable")
         self.requires( "func/0.1@CHM/stable")
-        self.requires( "trilinos/chm@CHM/stable")
+        self.requires( "trilinos/13.4.0@CHM/stable")
+
 
     def _configure_cmake(self):
         cmake = CMake(self)

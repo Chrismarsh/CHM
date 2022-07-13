@@ -885,8 +885,10 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
     std::vector<int> owner; //what MPIrank owns each triangle,
     {
-        // if we have a h5 that isn't partitioned (ie mesh v 1.0.0) then we are entirely owned by rank 0
-        if(_version.to_string() == "1.0.0")
+        // if we have a h5 that isn't partitioned (ie mesh <v3.0.0) then we are entirely owned by rank 0
+        if(_version.to_string() == "1.0.0" ||
+            _version.to_string() == "1.2.0" ||
+            _version.to_string() == "2.0.0")
         {
             owner.resize(_global_IDs.size(), 0);
         }
@@ -1218,8 +1220,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
     // catch failure caused by the H5File operations
     catch (FileIException& e)
     {
-        LOG_ERROR << "Error loading HDF5 file: " << mesh_filename;
         e.printErrorStack();
+        CHM_THROW_EXCEPTION(mesh_error, "Error loading HDF5 file: " + mesh_filename);
     }
     // catch failure caused by the DataSet operations
     catch (DataSetIException& e) {
@@ -2580,10 +2582,12 @@ void triangulation::init_module_data(std::set< std::string > modules)
 
 void triangulation::prune_faces(std::vector<Face_handle>& faces)
 {
+#ifdef USE_MPI
     if(_comm_world.size() > 1)
     {
         CHM_THROW_EXCEPTION(config_error, "Cannot prune faces with ranks >1");
     }
+#endif
 
     _faces.clear();
     _faces  = faces;

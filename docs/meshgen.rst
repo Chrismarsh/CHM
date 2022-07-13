@@ -101,9 +101,9 @@ Given a version number MAJOR.MINOR.PATCH, increment the:
    * - 1.2.0
      - RCM or nd permuted meshes
      - json + h5
-   * - 2.0.0 (no longer supported)
-     - metis permuted mesh and partitioned meshes
-     - h5 + partitioned + mpi
+   * - 2.0.0
+     - metis permuted mesh
+     - h5 only
    * - 3.0.0
      - Same as 2.0.0, but partition rank owner is computed during partition
      - h5 + partitioned + mpi

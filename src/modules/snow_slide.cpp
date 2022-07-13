@@ -60,11 +60,18 @@ void snow_slide::checkpoint(mesh& domain,  netcdf& chkpt)
     chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth", domain->size_faces());
     chkpt.create_variable1D("snow_slide:delta_avalanche_mass", domain->size_faces());
 
+    chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth_sum", domain->size_faces());
+    chkpt.create_variable1D("snow_slide:delta_avalanche_mass_sum", domain->size_faces());
+
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
         auto face = domain->face(i);
         chkpt.put_var1D("snow_slide:delta_avalanche_snowdepth",i,face->get_module_data<data>(ID).delta_avalanche_snowdepth);
         chkpt.put_var1D("snow_slide:delta_avalanche_mass",i,face->get_module_data<data>(ID).delta_avalanche_mass);
+
+        chkpt.put_var1D("snow_slide:delta_avalanche_snowdepth_sum",i,  (*face)["delta_avalanche_snowdepth_sum"_s]);
+        chkpt.put_var1D("snow_slide:delta_avalanche_mass_sum",i, (*face)["delta_avalanche_mass_sum"_s]);
+
     }
 }
 
@@ -75,6 +82,10 @@ void snow_slide::load_checkpoint(mesh& domain,  netcdf& chkpt)
         auto face = domain->face(i);
         face->get_module_data<data>(ID).delta_avalanche_snowdepth = chkpt.get_var1D("snow_slide:delta_avalanche_snowdepth",i);
         face->get_module_data<data>(ID).delta_avalanche_mass = chkpt.get_var1D("snow_slide:delta_avalanche_mass",i);
+
+        (*face)["delta_avalanche_snowdepth_sum"_s] = chkpt.get_var1D("snow_slide:delta_avalanche_snowdepth_sum",i);
+        (*face)["delta_avalanche_mass_sum"_s] = chkpt.get_var1D("snow_slide:delta_avalanche_mass_sum",i);
+
     }
 }
 
@@ -113,9 +124,10 @@ void snow_slide::run(mesh& domain)
 
             }
         }
-
+#ifdef USE_MPI
         // update our ghosts from other ranks values
         domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_to_xfer"_s);
+#endif
 
 #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -305,12 +317,13 @@ void snow_slide::run(mesh& domain)
             } // end if snowdepth > maxdepth
         } // End of each face
 
+#ifdef USE_MPI
         // communicate values set on our ghosts to the other ranks
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_snowdepthavg_to_xfer"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_swe_to_xfer"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_snowdepth"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_swe"_s);
-
+#endif
 
         size_t ghost_transport = false;
         #pragma omp parallel for
@@ -354,8 +367,9 @@ void snow_slide::run(mesh& domain)
 
         // a global all reduce to determine the minimum value across all ranks. Min = 0 implies we are not done and need to iterate again
         int global_done=1;
+#ifdef USE_MPI
         boost::mpi::all_reduce(domain->_comm_world, done, global_done, boost::mpi::minimum<int>());
-
+#endif
         if(global_done)
             done = 1;
         else
@@ -368,10 +382,12 @@ void snow_slide::run(mesh& domain)
             LOG_ERROR << "SnowSlide did not converge after 500 iterations";
         }
 
+#ifdef USE_MPI
         if(!done)
             // because we don't have access to ndata.snowdepthavg_copy, pass it through here
             // only used for obtaining transport weights, but only do this comms if we are expecting another iter
             domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_vert_copy"_s);
+#endif
 
     }while(!done);
 

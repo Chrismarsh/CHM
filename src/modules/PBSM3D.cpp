@@ -1715,3 +1715,25 @@ void PBSM3D::run(mesh& domain)
 
 PBSM3D::~PBSM3D() {
 }
+
+void PBSM3D::checkpoint(mesh& domain,  netcdf& chkpt)
+{
+    chkpt.create_variable1D("PBSM3D:sum_drift", domain->size_faces());
+
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        chkpt.put_var1D("PBSM3D:sum_drift", i,
+                        (*face)["sum_drift"_s]);
+    }
+
+}
+
+void PBSM3D::load_checkpoint(mesh& domain,  netcdf& chkpt)
+{
+    for (size_t i = 0; i < domain->size_faces(); i++)
+    {
+        auto face = domain->face(i);
+        (*face)["sum_drift"_s] = chkpt.get_var1D("PBSM3D:sum_drift", i);
+    }
+}
