@@ -247,6 +247,7 @@ void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
 {
     chkpt.create_variable1D("fsm:snw", domain->size_faces());
     chkpt.create_variable1D("fsm:snd", domain->size_faces());
+    chkpt.create_variable1D("fsm:sum_snowpack_subl", domain->size_faces());
 
     chkpt.create_variable1D("fsm:albs", domain->size_faces());
     chkpt.create_variable1D("fsm:Tsrf", domain->size_faces());
@@ -299,6 +300,7 @@ void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
 
         chkpt.put_var1D("fsm:snd", i, d.diag.snd);
         chkpt.put_var1D("fsm:snw", i, d.diag.snw);
+        chkpt.put_var1D("fsm:sum_snowpack_subl", i, d.diag.sum_snowpack_subl);
 
         chkpt.put_var1D("fsm:albs", i, d.state.albs);
         chkpt.put_var1D("fsm:Tsrf", i, d.state.Tsrf);
@@ -354,6 +356,7 @@ void FSM::load_checkpoint(mesh& domain, netcdf& chkpt)
 
         d.diag.snd = chkpt.get_var1D("fsm:snd", i);
         d.diag.snw = chkpt.get_var1D("fsm:snw", i);
+        d.diag.sum_snowpack_subl =  chkpt.get_var1D("fsm:sum_snowpack_subl", i);
 
         d.state.albs = chkpt.get_var1D("fsm:albs", i);
         d.state.Tsrf = chkpt.get_var1D("fsm:Tsrf", i);
@@ -399,14 +402,12 @@ void FSM::load_checkpoint(mesh& domain, netcdf& chkpt)
         (*face)["swe"_s] = d.diag.snw;
         (*face)["snowdepthavg"_s] = d.diag.snd;
         (*face)["snowdepthavg_vert"_s] = d.diag.snd/std::max(0.001,cos(face->slope()));
+        (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
 
         (*face)["H"_s] = d.diag.H;
         (*face)["E"_s] = d.diag.LE;
         (*face)["subl"_s] = d.diag.subl;
 
-        d.diag.sum_snowpack_subl += d.diag.subl * global_param->dt();
-
-        (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
         (*face)["snow_albedo"] = d.state.albs;
     }
 }
