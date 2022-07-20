@@ -325,7 +325,7 @@ if( ${USE_TCMALLOC})
 endif()
 
 if( USE_JEMALLOC )
-    find_package(Jemalloc REQUIRED)
+    find_package(Jemalloc 5.3 REQUIRED)
     message(STATUS "Found JeMalloc, disabling builtin malloc, free")
     set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
 endif()
