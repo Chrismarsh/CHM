@@ -474,39 +474,39 @@ void WindNinja::run(mesh& domain)
         }
 
 	// Communicate U_R for neighbour access
-	domain->ghost_neighbors_communicate_variable("U_R"_s);
-
-        #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
-        {
-
-            auto face = domain->face(i);
-            std::vector<boost::tuple<double, double, double> > u;
-            for (size_t j = 0; j < 3; j++)
-            {
-                auto neigh = face->neighbor(j);
-                if (neigh != nullptr)
-                    u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(),(*neigh)["U_R"_s]));
-            }
-
-            auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
-            if(u.size() > 0)
-            {
-                double new_u = face->get_module_data<data>(ID).interp_smoothing(u, query);
-                face->get_module_data<data>(ID).temp_u = new_u;
-            }
-            else
-            {
-                face->get_module_data<data>(ID).temp_u = (*face)["U_R"_s];
-            }
-
-        }
-        #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
-        {
-            auto face = domain->face(i);
-            (*face)["U_R"_s]= std::max(0.1, face->get_module_data<data>(ID).temp_u);
-        }
+//	domain->ghost_neighbors_communicate_variable("U_R"_s);
+//
+//        #pragma omp parallel for
+//        for (size_t i = 0; i < domain->size_faces(); i++)
+//        {
+//
+//            auto face = domain->face(i);
+//            std::vector<boost::tuple<double, double, double> > u;
+//            for (size_t j = 0; j < 3; j++)
+//            {
+//                auto neigh = face->neighbor(j);
+//                if (neigh != nullptr)
+//                    u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(),(*neigh)["U_R"_s]));
+//            }
+//
+//            auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+//            if(u.size() > 0)
+//            {
+//                double new_u = face->get_module_data<data>(ID).interp_smoothing(u, query);
+//                face->get_module_data<data>(ID).temp_u = new_u;
+//            }
+//            else
+//            {
+//                face->get_module_data<data>(ID).temp_u = (*face)["U_R"_s];
+//            }
+//
+//        }
+//        #pragma omp parallel for
+//        for (size_t i = 0; i < domain->size_faces(); i++)
+//        {
+//            auto face = domain->face(i);
+//            (*face)["U_R"_s]= std::max(0.1, face->get_module_data<data>(ID).temp_u);
+//        }
    }
 
 WindNinja::~WindNinja()
