@@ -1974,7 +1974,7 @@ void triangulation::ghost_neighbors_communicate_variable(const std::string& var)
 {
     // This supports the use case if _s no-oped to const char * via
     uint64_t hash = xxh64::hash (var.c_str(), var.length());
-    LOG_DEBUG << hash << " " << var;
+//    LOG_DEBUG << hash << " " << var;
     ghost_neighbors_communicate_variable(hash);
 }
 
@@ -2002,7 +2002,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
     for(int i=0; i < send_buffer.size(); ++i) {
       double val = send_buffer[i];
-      if( true )	{
+      if( isnan(val) )	{
 	  auto f = local_faces_to_send[partner_id][i];
 	  LOG_DEBUG << "-------------------------------------------------";
 	  LOG_DEBUG << "Detected SEND variable is NaN:";
@@ -2048,7 +2048,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
     auto values = it.second;
     for(int i=0; i < values.size(); ++i) {
       double val = values[i];
-      if( true )	{
+      if( isnan(val) )	{
 	auto f = ghost_faces_to_recv[partner_id][i];
 	  LOG_DEBUG << "-------------------------------------------------";
 	  LOG_DEBUG << "Detected RECV variable is NaN:";
@@ -2073,7 +2073,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
     for (auto f : faces ) {
 
       (*f)[var] = *recv_it;
-      LOG_DEBUG << "Rank=" <<f->owner << " Var="<<var<<" *f="<<(*f)[var]<< " recv_it="<<*recv_it << " is_ghost="<<f->is_ghost;
+//      LOG_DEBUG << "Rank=" <<f->owner << " Var="<<var<<" *f="<<(*f)[var]<< " recv_it="<<*recv_it << " is_ghost="<<f->is_ghost;
       ++recv_it;
     }
 

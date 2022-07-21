@@ -125,7 +125,6 @@ void snow_slide::run(mesh& domain)
                     data.delta_avalanche_snowdepth = 0.0;
                     data.delta_avalanche_mass = 0.0; // m
 
-                    (*face)["test"] = face->owner;
                     for (int j = 0; j < 3; ++j)
                     {
                         auto n = face->neighbor(j);
@@ -141,7 +140,7 @@ void snow_slide::run(mesh& domain)
             }
         }
 
-        domain->ghost_neighbors_communicate_variable("test");
+
         //#ifdef USE_MPI
 //        // update our ghosts from other ranks values
 ////        // first iteration this will be 0
@@ -352,17 +351,17 @@ void snow_slide::run(mesh& domain)
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_swe"_s);
 #endif
 
-#pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
-        {
-            auto face = domain->face(i); // Get face
-            auto val = (*face)["ghost_ss_snowdepthavg_to_xfer"_s];
-            (*face)["ghost_ss_sum_swe_xfer"] += (*face)["ghost_ss_snowdepthavg_to_xfer"];
-            if (val > 0)
-            {
-                LOG_DEBUG << "Face got from ghost = " << val;
-            }
-        }
+//#pragma omp parallel for
+//        for (size_t i = 0; i < domain->size_faces(); i++)
+//        {
+//            auto face = domain->face(i); // Get face
+//            auto val = (*face)["ghost_ss_snowdepthavg_to_xfer"_s];
+//            (*face)["ghost_ss_sum_swe_xfer"] += (*face)["ghost_ss_snowdepthavg_to_xfer"];
+//            if (val > 0)
+//            {
+//                LOG_DEBUG << "Face got from ghost = " << val;
+//            }
+//        }
 
 
         size_t ghost_transport = 0;
@@ -384,7 +383,7 @@ void snow_slide::run(mesh& domain)
             {
 #pragma omp atomic
                 ++ghost_transport;
-                LOG_DEBUG << (*face)["ghost_ss_delta_avalanche_snowdepth"_s];
+//                LOG_DEBUG << (*face)["ghost_ss_delta_avalanche_snowdepth"_s];
             }
 
             (*face)["ghost_ss_snowdepthavg_vert_copy"] = data.snowdepthavg_vert_copy;
@@ -401,7 +400,7 @@ void snow_slide::run(mesh& domain)
         // only do another iteration if we have incoming mass transport from the ghosts or if we have moved mass this itr
         // this algorithm tends to need a couple passes to make sure there are no straglers
         if(ghost_transport > 0 || this_iter_moved_snow)
-            done = 1; //TODO: put this back to 0
+            done = 0; //TODO: put this back to 0
         else
             done = 1;
 
