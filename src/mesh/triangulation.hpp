@@ -657,7 +657,8 @@ public:
   void print_ghost_neighbor_info();
 
   /**
-   * Puts the variable on the locally owned MPI faces onto the corresponding ghost faces of the paired MPI ranks
+   * Transfers the variable from the locally owned non-ghost face to the corresponding ghost-face on
+   * another MPI rank.
    * This signature supports the use case if _s no-oped to const char * via
    * #define SAFE_CHECKS
    * which is used to debug and print var names. In general the hash variant used via "var_name"_s should
@@ -665,13 +666,26 @@ public:
    * @param var Variable name
    */
   void ghost_neighbors_communicate_variable(const std::string& var);
-    /**
-     * Communicate the variable var for all ghost neighbors
+
+  /**
+     * Transfers the variable from the locally owned non-ghost face to the corresponding ghost-face on
+     * another MPI rank.
      * @param var Variable name
     */
   void ghost_neighbors_communicate_variable(const uint64_t& var);
 
+  /**
+   * Transfers the variable from the local ghost-face to the corresponding non-ghost face on another MPI rank.
+   *
+   * @param var Variable name
+   */
   void ghost_to_neighbors_communicate_variable(const std::string& var);
+
+  /**
+   * Transfers the variable from the local ghost-face to the corresponding non-ghost face on another MPI rank
+   *
+   * @param var Variable name
+   */
   void ghost_to_neighbors_communicate_variable(const uint64_t& var);
 
     /**
@@ -683,8 +697,6 @@ public:
     * Shrink the local mesh to only contain owned entries and relevant ghost entries
     */
   void shrink_local_mesh_to_owned_and_distance_neighbors();
-
-
 
     /**
      * Serializes a mesh attribute to file so it can be read into the model.
