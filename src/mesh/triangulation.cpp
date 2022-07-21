@@ -1974,6 +1974,7 @@ void triangulation::ghost_neighbors_communicate_variable(const std::string& var)
 {
     // This supports the use case if _s no-oped to const char * via
     uint64_t hash = xxh64::hash (var.c_str(), var.length());
+    LOG_DEBUG << hash << " " << var;
     ghost_neighbors_communicate_variable(hash);
 }
 
@@ -2055,6 +2056,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 	  LOG_DEBUG << "\trecv_buffer entry:  " << i;
 	  LOG_DEBUG << "\tcell_global_id:     " << f->cell_global_id;
 	  LOG_DEBUG << "\tcell_local_id:       " << f->cell_local_id;
+          LOG_DEBUG << "\tvalue:       " << val;
 //	  _mpi_env.abort(-1);
 	}
     }
@@ -2068,7 +2070,9 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
     auto recv_it = recv_buffer[partner_id].begin();
     for (auto f : faces ) {
+
       (*f)[var] = *recv_it;
+      LOG_DEBUG << "Rank=" <<f->owner << " Var="<<var<<" *f="<<(*f)[var]<< " recv_it="<<*recv_it << " is_ghost="<<f->is_ghost;
       ++recv_it;
     }
 

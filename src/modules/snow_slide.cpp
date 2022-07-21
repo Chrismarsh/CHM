@@ -47,6 +47,10 @@ snow_slide::snow_slide(config_file cfg)
     provides("ghost_ss_delta_avalanche_snowdepth");
     provides("ghost_ss_delta_avalanche_swe");
 
+    provides("ghost_ss_sum_swe_xfer");
+
+    provides("test");
+
 }
 
 snow_slide::~snow_slide()
@@ -93,10 +97,12 @@ void snow_slide::run(mesh& domain)
 {
 
     int done = 1; // int because we run a global reduce on it to determine a min global state
+
     int iterations = 0; // number of iterations we've run
     do
     {
 
+        int this_iter_moved_snow = false;
         // Make a vector of pairs (elevation + snowdepth, pointer to face)
         tbb::concurrent_vector<std::pair<double, mesh_elem>> sorted_z(domain->size_faces());
 
@@ -109,25 +115,39 @@ void snow_slide::run(mesh& domain)
                 auto face = domain->face(i); // Get face
                 auto& data = face->get_module_data<snow_slide::data>(ID); // Get data
 
-                // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
-                data.snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
-                data.snowdepthavg_vert_copy = (*face)["snowdepthavg_vert"_s]; // Vertical snow depth
-                data.swe_copy = (*face)["swe"_s] / 1000.0;                             // mm to m
-                data.slope = face->slope();                                          // slope in rad
+                    // Make copy of snowdepthavg and swe to modify within snow_slide (not saved)
+                    data.snowdepthavg_copy = (*face)["snowdepthavg"_s]; // Store copy of snowdepth for snow_slide use
+                    data.snowdepthavg_vert_copy = (*face)["snowdepthavg_vert"_s]; // Vertical snow depth
+                    data.swe_copy = (*face)["swe"_s] / 1000.0;                    // mm to m
+                    data.slope = face->slope();                                   // slope in rad
 
-                // Initalize snow transport to zero
-                data.delta_avalanche_snowdepth = 0.0;
-                data.delta_avalanche_mass = 0.0; // m
+                    // Initalize snow transport to zero
+                    data.delta_avalanche_snowdepth = 0.0;
+                    data.delta_avalanche_mass = 0.0; // m
 
-                (*face)["ghost_ss_snowdepthavg_to_xfer"] = 0; // snowdepth to transfer this timestep
-                (*face)["ghost_ss_swe_to_xfer"] = 0;
+                    (*face)["test"] = face->owner;
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        auto n = face->neighbor(j);
+                        if (n!=nullptr && n->is_ghost)
+                        {
+                             #pragma omp critical
+                            {
+                                (*n)["ghost_ss_sum_swe_xfer"] = 0;
+                            }
+                        }
+                    }
 
             }
         }
-#ifdef USE_MPI
-        // update our ghosts from other ranks values
-        domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_to_xfer"_s);
-#endif
+
+        domain->ghost_neighbors_communicate_variable("test");
+        //#ifdef USE_MPI
+//        // update our ghosts from other ranks values
+////        // first iteration this will be 0
+////        domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_to_xfer"_s);
+//        domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_vert_copy"_s);
+//#endif
 
 #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
@@ -164,6 +184,11 @@ void snow_slide::run(mesh& domain)
 
         }
 
+#ifdef USE_MPI
+        // update everyone's ghosts with our values
+        domain->ghost_neighbors_communicate_variable("ghost_ss_snowdepthavg_vert_copy"_s);
+#endif
+
         // Sort faces by elevation + snowdepth
         tbb::parallel_sort(sorted_z.begin(), sorted_z.end(),
                            [](const std::pair<double, mesh_elem>& a, const std::pair<double, mesh_elem>& b)
@@ -187,6 +212,7 @@ void snow_slide::run(mesh& domain)
             if (snowdepthavg > maxDepth)
             {
                 done = 0;
+                this_iter_moved_snow = true;
 
                 double del_depth = snowdepthavg - maxDepth;           // Amount to be removed (positive) [m]
                 double del_swe = swe * (1 - maxDepth / snowdepthavg); // Amount of swe to be removed (positive) [m]
@@ -199,7 +225,7 @@ void snow_slide::run(mesh& domain)
 
                 // Calc weights for routing snow
                 // Possible Cases:
-                //      1) edge cell, then edge_flag is true, and snow is dumpped off mesh
+                //      1) edge cell, then edge_flag is true, and snow is dumped off mesh
                 //      2) non-edge cell, w_dem is greater than 0 -> there is at least one lower neighbor, route so to it/them 3) non-edge cell, w_dem = 0, "sink" case. Don't route any snow.
                 // Calc weighting based on height diff
                 // std::max insures that if one neighbor is higher, its weight will be zero
@@ -230,7 +256,7 @@ void snow_slide::run(mesh& domain)
                 // Case 2) Non-Edge cell, but w_dem=0, "sink" cell. Don't route snow.
                 if (w_dem == 0)
                 {
-                    continue; // Restart to next loop.
+                    continue; // Restart to next iteration.
                 }
 
                 // Must be Case 3), Divide by sum height differences to create weights that sum to unity
@@ -250,7 +276,7 @@ void snow_slide::run(mesh& domain)
                         // Special case: dump snow out of domain (loosing mass) by just removing from current edge cell.
                         out_mass += del_swe * cen_area * w[j];
                     }
-                    else
+                    else //move the mass to a non domain edge neighbour triangle
                     {
                         double n_area = n->get_area(); // Area of neighbor triangle
 
@@ -318,14 +344,28 @@ void snow_slide::run(mesh& domain)
         } // End of each face
 
 #ifdef USE_MPI
-        // communicate values set on our ghosts to the other ranks
+        // At this point we've set values on the our ghost faces. These correspond with actual faces on other ranks
+        // So we need to send these data back
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_snowdepthavg_to_xfer"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_swe_to_xfer"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_snowdepth"_s);
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_swe"_s);
 #endif
 
-        size_t ghost_transport = false;
+#pragma omp parallel for
+        for (size_t i = 0; i < domain->size_faces(); i++)
+        {
+            auto face = domain->face(i); // Get face
+            auto val = (*face)["ghost_ss_snowdepthavg_to_xfer"_s];
+            (*face)["ghost_ss_sum_swe_xfer"] += (*face)["ghost_ss_snowdepthavg_to_xfer"];
+            if (val > 0)
+            {
+                LOG_DEBUG << "Face got from ghost = " << val;
+            }
+        }
+
+
+        size_t ghost_transport = 0;
         #pragma omp parallel for
         for (size_t i = 0; i < domain->size_faces(); i++)
         {
@@ -344,6 +384,7 @@ void snow_slide::run(mesh& domain)
             {
 #pragma omp atomic
                 ++ghost_transport;
+                LOG_DEBUG << (*face)["ghost_ss_delta_avalanche_snowdepth"_s];
             }
 
             (*face)["ghost_ss_snowdepthavg_vert_copy"] = data.snowdepthavg_vert_copy;
@@ -357,9 +398,10 @@ void snow_slide::run(mesh& domain)
 
         }
 
-        // only do another iteration if we have incoming mass transport from the ghosts
-        if(ghost_transport > 0)
-            done = 0;
+        // only do another iteration if we have incoming mass transport from the ghosts or if we have moved mass this itr
+        // this algorithm tends to need a couple passes to make sure there are no straglers
+        if(ghost_transport > 0 || this_iter_moved_snow)
+            done = 1; //TODO: put this back to 0
         else
             done = 1;
 
@@ -370,10 +412,8 @@ void snow_slide::run(mesh& domain)
 #ifdef USE_MPI
         boost::mpi::all_reduce(domain->_comm_world, done, global_done, boost::mpi::minimum<int>());
 #endif
-        if(global_done)
-            done = 1;
-        else
-            done =0;
+
+        done = global_done;
 
         if(!done && iterations > 500)
         {

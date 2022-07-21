@@ -657,7 +657,7 @@ public:
   void print_ghost_neighbor_info();
 
   /**
-   * Communicate the variable var for all ghost neighbors
+   * Puts the variable on the locally owned MPI faces onto the corresponding ghost faces of the paired MPI ranks
    * This signature supports the use case if _s no-oped to const char * via
    * #define SAFE_CHECKS
    * which is used to debug and print var names. In general the hash variant used via "var_name"_s should
