@@ -1483,7 +1483,9 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
     for (size_t i = 0; i < _faces.size(); ++i)
     {
         _faces[i]->ghost_type = ghost_info[i];
-        _faces[i]->owner = my_rank;
+
+        // owner has already been set from loading in the h5
+//        _faces[i]->owner = my_rank;
         if (ghost_info[i] != GHOST_TYPE::NONE)
         {
             _faces[i]->is_ghost = true;
