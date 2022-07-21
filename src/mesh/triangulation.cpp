@@ -2002,7 +2002,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
     for(int i=0; i < send_buffer.size(); ++i) {
       double val = send_buffer[i];
-      if( isnan(val) )	{
+      if( true )	{
 	  auto f = local_faces_to_send[partner_id][i];
 	  LOG_DEBUG << "-------------------------------------------------";
 	  LOG_DEBUG << "Detected SEND variable is NaN:";
@@ -2011,6 +2011,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 	  LOG_DEBUG << "\tsend_buffer entry: " << i;
 	  LOG_DEBUG << "\tcell_global_id:    " << f->cell_global_id;
 	  LOG_DEBUG << "\tcell_local_id:      " << f->cell_local_id;
+          LOG_DEBUG << "\tvalue:       " << val;
 //	  _mpi_env.abort(-1);
 	}
     }
@@ -2047,7 +2048,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
     auto values = it.second;
     for(int i=0; i < values.size(); ++i) {
       double val = values[i];
-      if( isnan(val) )	{
+      if( true )	{
 	auto f = ghost_faces_to_recv[partner_id][i];
 	  LOG_DEBUG << "-------------------------------------------------";
 	  LOG_DEBUG << "Detected RECV variable is NaN:";
