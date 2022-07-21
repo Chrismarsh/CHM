@@ -41,15 +41,13 @@ snow_slide::snow_slide(config_file cfg)
     provides("maxDepth");
 
     provides("ghost_ss_snowdepthavg_vert_copy");
+
     provides("ghost_ss_snowdepthavg_to_xfer");
     provides("ghost_ss_swe_to_xfer");
 
     provides("ghost_ss_delta_avalanche_snowdepth");
     provides("ghost_ss_delta_avalanche_swe");
 
-    provides("ghost_ss_sum_swe_xfer");
-
-    provides("test");
 
 }
 
@@ -125,18 +123,6 @@ void snow_slide::run(mesh& domain)
                     data.delta_avalanche_snowdepth = 0.0;
                     data.delta_avalanche_mass = 0.0; // m
 
-                    for (int j = 0; j < 3; ++j)
-                    {
-                        auto n = face->neighbor(j);
-                        if (n!=nullptr && n->is_ghost)
-                        {
-                             #pragma omp critical
-                            {
-                                (*n)["ghost_ss_sum_swe_xfer"] = 0;
-                            }
-                        }
-                    }
-
             }
         }
 
@@ -208,7 +194,7 @@ void snow_slide::run(mesh& domain)
             double swe = data.swe_copy;                             // m
 
             // Check if face normal snowdepth have exceeded normal maxDepth
-            if (snowdepthavg > maxDepth)
+            if ( snowdepthavg >= maxDepth)
             {
                 done = 0;
                 this_iter_moved_snow = true;
@@ -351,17 +337,6 @@ void snow_slide::run(mesh& domain)
         domain->ghost_to_neighbors_communicate_variable("ghost_ss_delta_avalanche_swe"_s);
 #endif
 
-//#pragma omp parallel for
-//        for (size_t i = 0; i < domain->size_faces(); i++)
-//        {
-//            auto face = domain->face(i); // Get face
-//            auto val = (*face)["ghost_ss_snowdepthavg_to_xfer"_s];
-//            (*face)["ghost_ss_sum_swe_xfer"] += (*face)["ghost_ss_snowdepthavg_to_xfer"];
-//            if (val > 0)
-//            {
-//                LOG_DEBUG << "Face got from ghost = " << val;
-//            }
-//        }
 
 
         size_t ghost_transport = 0;
@@ -383,7 +358,6 @@ void snow_slide::run(mesh& domain)
             {
 #pragma omp atomic
                 ++ghost_transport;
-//                LOG_DEBUG << (*face)["ghost_ss_delta_avalanche_snowdepth"_s];
             }
 
             (*face)["ghost_ss_snowdepthavg_vert_copy"] = data.snowdepthavg_vert_copy;
@@ -399,8 +373,8 @@ void snow_slide::run(mesh& domain)
 
         // only do another iteration if we have incoming mass transport from the ghosts or if we have moved mass this itr
         // this algorithm tends to need a couple passes to make sure there are no straglers
-        if(ghost_transport > 0 || this_iter_moved_snow)
-            done = 0; //TODO: put this back to 0
+        if(ghost_transport > 0) // || this_iter_moved_snow)
+            done = 0;
         else
             done = 1;
 
@@ -414,7 +388,7 @@ void snow_slide::run(mesh& domain)
 
         done = global_done;
 
-        if(!done && iterations > 500)
+        if(!done && iterations > 25)
         {
             //bail
             done = 1;
