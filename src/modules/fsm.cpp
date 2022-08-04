@@ -59,6 +59,11 @@ FSM::FSM(config_file cfg)
     provides("subl");
     provides("snow_albedo");
 
+    provides("Tsoil[0]");
+    provides("Tsoil[1]");
+    provides("Tsoil[2]");
+    provides("Tsoil[3]");
+
 }
 
 void FSM::init(mesh& domain)
@@ -241,6 +246,11 @@ void FSM::run(mesh_elem& face)
 
     (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
     (*face)["snow_albedo"] = d.state.albs;
+
+    (*face)["Tsoil[0]"_s] = d.state.Tsoil[0];
+    (*face)["Tsoil[1]"_s] = d.state.Tsoil[1];
+    (*face)["Tsoil[2]"_s] = d.state.Tsoil[2];
+    (*face)["Tsoil[3]"_s] = d.state.Tsoil[3];
 }
 
 void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
