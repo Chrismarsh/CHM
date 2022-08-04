@@ -1076,6 +1076,9 @@ protected:
     std::vector<int> _num_faces_in_partition;
     std::vector<int> _local_sizes;
 
+    // number of ghost partners this triangle has
+    std::vector<int> _ghost_partners;
+
     // If we are not using MPI, some code paths might still want to make use of these
     // This is initialized to [0, num_faces - 1]
     // In MPI mode this contains the global face index start and end

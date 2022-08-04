@@ -718,7 +718,10 @@ class preprocessingTriangulation : public triangulation
         }
 
 
+        _ghost_partners.resize(_faces.size());
+        std::fill(_ghost_partners.begin(), _ghost_partners.end(), 0);
 
+        LOG_DEBUG << _ghost_partners.size();
 
         // iterate over all the ranks but since we might be only doing a subset, we need to maintain a proxy rank
         for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
@@ -814,7 +817,7 @@ class preprocessingTriangulation : public triangulation
             determine_ghost_owners();
 
 
-            // flag all the ghosts that aren't Type I (neigh) as Typde II distance ghosts
+            // flag all the ghosts that aren't Type I (neigh) as Type II distance ghosts
 #pragma omp parallel for
             for (size_t i = 0; i < _ghost_faces.size(); i++)
             {
@@ -931,6 +934,33 @@ class preprocessingTriangulation : public triangulation
         tree.add_child("parameters", params);
 
         pt::write_json(filename_base + ".np" + std::to_string(_comm_world.size()) + ".partition", tree);
+
+        bool invalid_mesh = false;
+        for(int i =0 ; i <_ghost_partners.size(); ++i)
+        {
+            if(_ghost_partners[i] > 1)
+            {
+                invalid_mesh = true;
+                auto& face = _faces.at(i);
+                LOG_DEBUG << "Triangle gid = "<<i<<":";
+                LOG_DEBUG <<"\t#ghost partners= " << _ghost_partners[i];
+                LOG_DEBUG << "\towner rank = "<< face->owner;
+
+            }
+        }
+
+        if(invalid_mesh)
+        {
+            LOG_ERROR << "The mesh has a triangle that participates as the ghost to two or more ranks.\n"
+                         "\tThis is currently considered an error.\n"
+                         "\tThis topology may indicate that the mesh is partitioned too heavily.\n"
+                         "\tTry decreasing the number of partitions.\n";
+        }
+        else
+        {
+            LOG_DEBUG << "No triangle is participating in more than 1 rank partition";
+        }
+
     }
 
     std::unique_ptr<MeshParameters> read_h5_params(const std::vector<std::string>& param_filenames)

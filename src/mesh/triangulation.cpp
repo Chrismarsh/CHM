@@ -1813,6 +1813,9 @@ void triangulation::determine_ghost_owners()
         // index type needs to match type of elements of _num_faces_in_partition
         int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
         _ghost_neighbor_owners[i] = _ghost_neighbors.at(i)->owner;
+
+//        LOG_DEBUG << "Inc global ind " << global_ind;
+        _ghost_partners.at(global_ind)++;
 //        _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
 //                                                                    _num_faces_in_partition);
 
