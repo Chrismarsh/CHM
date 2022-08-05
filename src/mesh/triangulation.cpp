@@ -1248,6 +1248,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
     }
 
 #ifdef USE_MPI
+    _ghost_partners.resize(size_global_faces());
+    std::fill(_ghost_partners.begin(), _ghost_partners.end(), 0);
     determine_ghost_owners();
     setup_nearest_neighbor_communication();
 
