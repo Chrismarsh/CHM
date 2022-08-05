@@ -1824,9 +1824,10 @@ void triangulation::determine_ghost_owners()
         // local faces are set to current mpirank, so set the ghosts to be ID"d who owns them
 //        _ghost_neighbors[i]->owner = _ghost_neighbor_owners[i];
 
-        // on first it, no value of prev_owner exists
+        // on first it, no value of prev_owner exists... set it
         if(i==0) prev_owner = _ghost_neighbor_owners[i];
-        // if owner different from last iteration, store prev segment's ownership info
+
+        // if owner different from last owner, store prev segment's ownership info
         if (prev_owner != _ghost_neighbor_owners[i])
         {
             num_partners++;
@@ -1835,6 +1836,15 @@ void triangulation::determine_ghost_owners()
         } else if (i ==_ghost_neighbors.size()-1) {
             _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index+1);
         }
+
+	// If the last neighbor rank owns only a single ghost
+	// - would have followed the if branch of previous conditional
+	//   - this implies i==start_index
+	// - we set the last ownership info explicitly
+	if (start_index ==_ghost_neighbors.size()-1) {
+	  assert(i==start_index);
+	  _comm_partner_ownership[_ghost_neighbor_owners[i]] = std::make_pair(i,1);
+	}
 
         // prep prev_owner for next iteration
         prev_owner=_ghost_neighbor_owners[i];
