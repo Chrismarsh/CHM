@@ -1248,8 +1248,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
     }
 
 #ifdef USE_MPI
-    _ghost_partners.resize(size_global_faces());
-    std::fill(_ghost_partners.begin(), _ghost_partners.end(), 0);
     determine_ghost_owners();
     setup_nearest_neighbor_communication();
 
@@ -1817,10 +1815,8 @@ void triangulation::determine_ghost_owners()
         _ghost_neighbor_owners[i] = _ghost_neighbors.at(i)->owner;
 
 //        LOG_DEBUG << "Inc global ind " << global_ind;
-        _ghost_partners.at(global_ind)++;
 //        _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
 //                                                                    _num_faces_in_partition);
-
         // local faces are set to current mpirank, so set the ghosts to be ID"d who owns them
 //        _ghost_neighbors[i]->owner = _ghost_neighbor_owners[i];
 
