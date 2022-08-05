@@ -59,6 +59,8 @@ FSM::FSM(config_file cfg)
     provides("subl");
     provides("snow_albedo");
 
+    provides("Nsnow");
+
     provides("Tsoil[0]");
     provides("Tsoil[1]");
     provides("Tsoil[2]");
@@ -100,7 +102,14 @@ void FSM::init(mesh& domain)
         d.veg.vegh = 0;
         d.veg.VAI = 0;
 
+
+        d.diag.snd = 0;
+        d.diag.snw = 0;
         d.diag.sum_snowpack_subl = 0;
+
+        // the other d.* are init in the stat struct
+
+
     }
 }
 void FSM::run(mesh_elem& face)
@@ -147,7 +156,7 @@ void FSM::run(mesh_elem& face)
 
     auto& d = face->get_module_data<data>(ID);
 
-    float elev = (float)(*face)["solar_el"_s];
+    float elev = (float)(*face)["solar_el"_s] * M_PI / 180.0;
     float ilwr = -9999;
     if(has_optional("ilwr_subcanopy")) {
         ilwr = (float)(*face)["ilwr_subcanopy"_s];
@@ -251,6 +260,8 @@ void FSM::run(mesh_elem& face)
     (*face)["Tsoil[1]"_s] = d.state.Tsoil[1];
     (*face)["Tsoil[2]"_s] = d.state.Tsoil[2];
     (*face)["Tsoil[3]"_s] = d.state.Tsoil[3];
+
+    (*face)["Nsnow"_s] = d.state.Nsnow;
 }
 
 void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
