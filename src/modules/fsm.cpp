@@ -109,6 +109,29 @@ void FSM::init(mesh& domain)
 
         // the other d.* are init in the stat struct
 
+        // IC soil temp workaround
+        // Todo: make this FSM an IC instead of using param
+
+        float st1 = 269.0; //level 1 is the surface temperature of the force restore
+        float st2 = 269.0; //lvl 2 represents the deep soil temperature of the FR approach
+        if(face->has_parameter("soilT_1"_s))
+        {
+            st1 = face->parameter("soilT_1"_s);
+        }
+        if(face->has_parameter("soilT_2"_s))
+        {
+            st2 = face->parameter("soilT_2"_s);
+        }
+
+        float ds = (st2 - st1) / 4.0;
+
+        d.state.Tsoil[0] = st1;
+
+        d.state.Tsoil[1] = st1 + ds;
+        d.state.Tsoil[2] = st1 + 2*ds;
+
+        d.state.Tsoil[3] = st2;
+
 
     }
 }
