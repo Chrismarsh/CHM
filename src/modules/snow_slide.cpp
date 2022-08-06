@@ -194,7 +194,7 @@ void snow_slide::run(mesh& domain)
             double swe = data.swe_copy;                             // m
 
             // Check if face normal snowdepth have exceeded normal maxDepth
-            if ( snowdepthavg >= maxDepth)
+            if ( snowdepthavg > maxDepth)
             {
                 done = 0;
                 this_iter_moved_snow = true;
@@ -433,7 +433,9 @@ void snow_slide::init(mesh& domain)
         // (m) Estimate min depth that avalanche occurs
         // The max depth parameterization is defined for the vertical case, so we need to correct it to be valid for comparing
         // against the "normal" snow depth
-        d.maxDepth = std::max(avalache_mult * pow(slopeDeg,avalache_pow),Z_CanTop) * std::max(0.001,cos(face->slope()));
+        d.maxDepth = std::max(avalache_mult * pow(slopeDeg,avalache_pow),
+                              Z_CanTop) *
+                     std::max(0.001,cos(face->slope()));
 
         // Max of either veg height or derived max holding snow depth.
         (*face)["maxDepth"_s]= d.maxDepth;
