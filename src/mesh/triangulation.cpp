@@ -2507,7 +2507,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data[v]->SetName(v.c_str());
     }
 
-    data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
+    data["global_id"] = vtkSmartPointer<vtkUnsignedLongArray>::New();
     data["global_id"]->SetName("global_id");
 
     if(_write_parameters_to_vtu)
