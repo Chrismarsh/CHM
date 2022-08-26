@@ -24,7 +24,7 @@
 
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
-// spatial tree  -- cgal includes
+// CGAL includes
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Kd_tree.h>
 #include <CGAL/algorithm.h>
@@ -33,6 +33,20 @@
 #include <CGAL/Orthogonal_k_neighbor_search.h>
 #include <CGAL/Splitters.h>
 #include <CGAL/Euclidean_distance.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Projection_traits_xy_3.h>
+#include <CGAL/Triangulation_ds_face_base_2.h>
+#include <CGAL/Triangle_2.h>
+#include <CGAL/Constrained_Delaunay_triangulation_2.h>
+#include <CGAL/Triangulation_conformer_2.h>
+#include <CGAL/Triangulation_data_structure_2.h>
+#include <CGAL/bounding_box.h>
+#include <CGAL/Triangulation_2.h>
+#include <CGAL/Search_traits_2.h>
+#include <CGAL/Search_traits_adapter.h>
+#include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/Euclidean_distance.h>
+#include <CGAL/property_map.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -79,35 +93,23 @@ inline int omp_get_max_threads() { return 1;}
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string.hpp>
-
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Projection_traits_xy_3.h>
-#include <CGAL/Triangulation_ds_face_base_2.h>
-#include <CGAL/Triangle_2.h>
-#include <CGAL/Constrained_Delaunay_triangulation_2.h>
-#include <CGAL/Triangulation_conformer_2.h>
-#include <CGAL/Triangulation_data_structure_2.h>
-#include <CGAL/bounding_box.h>
-#include <CGAL/Triangulation_2.h>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/iterator/zip_iterator.hpp>
 
 
+// tbb includes
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_sort.h>
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
+
 
 namespace pt = boost::property_tree;
 
 //required for the spatial searching
-#include <CGAL/Search_traits_2.h>
-#include <CGAL/Search_traits_adapter.h>
-#include <CGAL/Orthogonal_k_neighbor_search.h>
 
-#include <CGAL/Euclidean_distance.h>
-#include <CGAL/property_map.h>
-#include <boost/iterator/zip_iterator.hpp>
 
+// vtk includes
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
 #include <vtkStringArray.h>
@@ -116,6 +118,7 @@ namespace pt = boost::property_tree;
 #include <vtkCellData.h>
 #include <vtkPointData.h>
 #include <vtkFloatArray.h>
+#include <vtkUnsignedLongArray.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkPoints.h>
@@ -1035,7 +1038,9 @@ protected:
     //holds the vtk ugrid if we are outputing to vtk formats
     vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
 
-	//holds the vectors we use to create the vtu file
+    //holds the vectors we use to create the vtu file
+    // these must be ints so cannot be stored in the other maps
+    vtkSmartPointer<vtkUnsignedLongArray> _vtu_global_id;
 #ifdef USE_SPARSEHASH
     google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > data;
     google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > vectors;

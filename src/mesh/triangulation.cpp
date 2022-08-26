@@ -2507,8 +2507,8 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data[v]->SetName(v.c_str());
     }
 
-    data["global_id"] = vtkSmartPointer<vtkUnsignedLongArray>::New();
-    data["global_id"]->SetName("global_id");
+    _vtu_global_id = vtkSmartPointer<vtkUnsignedLongArray>::New();
+    _vtu_global_id->SetName("global_id");
 
     if(_write_parameters_to_vtu)
     {
@@ -2741,7 +2741,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data[v]->InsertTuple1(insert_offset,d);
         }
 
-        data["global_id"]->InsertTuple1(insert_offset,fit->cell_global_id);
+        _vtu_global_id->InsertTuple1(insert_offset,fit->cell_global_id);
+
         if(_write_parameters_to_vtu)
         {
             for (auto &v: params)
@@ -2785,6 +2786,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
     } // if write ghosts
 
+    _vtk_unstructuredGrid->GetCellData()->AddArray(_vtu_global_id);
+    
     for(auto& m : vectors)
     {
         _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
