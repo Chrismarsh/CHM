@@ -2671,7 +2671,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         }
 
         //this is mandatory now
-        data["global_id"]->InsertTuple1(i,fit->cell_global_id);
+        _vtu_global_id->InsertTuple1(i, fit->cell_global_id);
 
         if(_write_parameters_to_vtu)
         {
@@ -2787,7 +2787,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
     } // if write ghosts
 
     _vtk_unstructuredGrid->GetCellData()->AddArray(_vtu_global_id);
-    
+
     for(auto& m : vectors)
     {
         _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
