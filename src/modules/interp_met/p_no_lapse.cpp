@@ -79,10 +79,9 @@ void p_no_lapse::run(mesh_elem& face)
     }
 
     P_fin =  std::max(0.0,P_fin);
+
     (*face)["p"_s]= P_fin;
     (*face)["p_no_slope"_s]= std::max(0.0,p0);
-
-
 
 }
 

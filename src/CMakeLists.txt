@@ -65,6 +65,7 @@ set(MODULE_SRCS
 		modules/snobal.cpp
 		modules/fsm.cpp
 
+		modules/testing/mpi_example.cpp
 
 
 		CACHE INTERNAL "" FORCE )
@@ -107,6 +108,7 @@ set (HEADER_FILES
 		physics
         modules/interp_met
 		modules/snobal
+		modules/testing
 		math
         libmaw
         interpolation

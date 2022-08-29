@@ -59,6 +59,13 @@ FSM::FSM(config_file cfg)
     provides("subl");
     provides("snow_albedo");
 
+    provides("Nsnow");
+
+    provides("Tsoil[0]");
+    provides("Tsoil[1]");
+    provides("Tsoil[2]");
+    provides("Tsoil[3]");
+
 }
 
 void FSM::init(mesh& domain)
@@ -95,7 +102,37 @@ void FSM::init(mesh& domain)
         d.veg.vegh = 0;
         d.veg.VAI = 0;
 
+
+        d.diag.snd = 0;
+        d.diag.snw = 0;
         d.diag.sum_snowpack_subl = 0;
+
+        // the other d.* are init in the stat struct
+
+        // IC soil temp workaround
+        // Todo: make this FSM an IC instead of using param
+
+        float st1 = 269.0; //level 1 is the surface temperature of the force restore
+        float st2 = 269.0; //lvl 2 represents the deep soil temperature of the FR approach
+        if(face->has_parameter("soilT_1"_s))
+        {
+            st1 = face->parameter("soilT_1"_s);
+        }
+        if(face->has_parameter("soilT_2"_s))
+        {
+            st2 = face->parameter("soilT_2"_s);
+        }
+
+        float ds = (st2 - st1) / 4.0;
+
+        d.state.Tsoil[0] = st1;
+
+        d.state.Tsoil[1] = st1 + ds;
+        d.state.Tsoil[2] = st1 + 2*ds;
+
+        d.state.Tsoil[3] = st2;
+
+
     }
 }
 void FSM::run(mesh_elem& face)
@@ -142,7 +179,7 @@ void FSM::run(mesh_elem& face)
 
     auto& d = face->get_module_data<data>(ID);
 
-    float elev = (float)(*face)["solar_el"_s];
+    float elev = (float)(*face)["solar_el"_s] * M_PI / 180.0;
     float ilwr = -9999;
     if(has_optional("ilwr_subcanopy")) {
         ilwr = (float)(*face)["ilwr_subcanopy"_s];
@@ -241,12 +278,20 @@ void FSM::run(mesh_elem& face)
 
     (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
     (*face)["snow_albedo"] = d.state.albs;
+
+    (*face)["Tsoil[0]"_s] = d.state.Tsoil[0];
+    (*face)["Tsoil[1]"_s] = d.state.Tsoil[1];
+    (*face)["Tsoil[2]"_s] = d.state.Tsoil[2];
+    (*face)["Tsoil[3]"_s] = d.state.Tsoil[3];
+
+    (*face)["Nsnow"_s] = d.state.Nsnow;
 }
 
 void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
 {
     chkpt.create_variable1D("fsm:snw", domain->size_faces());
     chkpt.create_variable1D("fsm:snd", domain->size_faces());
+    chkpt.create_variable1D("fsm:sum_snowpack_subl", domain->size_faces());
 
     chkpt.create_variable1D("fsm:albs", domain->size_faces());
     chkpt.create_variable1D("fsm:Tsrf", domain->size_faces());
@@ -299,6 +344,7 @@ void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
 
         chkpt.put_var1D("fsm:snd", i, d.diag.snd);
         chkpt.put_var1D("fsm:snw", i, d.diag.snw);
+        chkpt.put_var1D("fsm:sum_snowpack_subl", i, d.diag.sum_snowpack_subl);
 
         chkpt.put_var1D("fsm:albs", i, d.state.albs);
         chkpt.put_var1D("fsm:Tsrf", i, d.state.Tsrf);
@@ -354,6 +400,7 @@ void FSM::load_checkpoint(mesh& domain, netcdf& chkpt)
 
         d.diag.snd = chkpt.get_var1D("fsm:snd", i);
         d.diag.snw = chkpt.get_var1D("fsm:snw", i);
+        d.diag.sum_snowpack_subl =  chkpt.get_var1D("fsm:sum_snowpack_subl", i);
 
         d.state.albs = chkpt.get_var1D("fsm:albs", i);
         d.state.Tsrf = chkpt.get_var1D("fsm:Tsrf", i);
@@ -399,14 +446,12 @@ void FSM::load_checkpoint(mesh& domain, netcdf& chkpt)
         (*face)["swe"_s] = d.diag.snw;
         (*face)["snowdepthavg"_s] = d.diag.snd;
         (*face)["snowdepthavg_vert"_s] = d.diag.snd/std::max(0.001,cos(face->slope()));
+        (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
 
         (*face)["H"_s] = d.diag.H;
         (*face)["E"_s] = d.diag.LE;
         (*face)["subl"_s] = d.diag.subl;
 
-        d.diag.sum_snowpack_subl += d.diag.subl * global_param->dt();
-
-        (*face)["sum_snowpack_subl"_s] = d.diag.sum_snowpack_subl;
         (*face)["snow_albedo"] = d.state.albs;
     }
 }

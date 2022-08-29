@@ -24,7 +24,7 @@
 
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
-// spatial tree  -- cgal includes
+// CGAL includes
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Kd_tree.h>
 #include <CGAL/algorithm.h>
@@ -33,6 +33,20 @@
 #include <CGAL/Orthogonal_k_neighbor_search.h>
 #include <CGAL/Splitters.h>
 #include <CGAL/Euclidean_distance.h>
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Projection_traits_xy_3.h>
+#include <CGAL/Triangulation_ds_face_base_2.h>
+#include <CGAL/Triangle_2.h>
+#include <CGAL/Constrained_Delaunay_triangulation_2.h>
+#include <CGAL/Triangulation_conformer_2.h>
+#include <CGAL/Triangulation_data_structure_2.h>
+#include <CGAL/bounding_box.h>
+#include <CGAL/Triangulation_2.h>
+#include <CGAL/Search_traits_2.h>
+#include <CGAL/Search_traits_adapter.h>
+#include <CGAL/Orthogonal_k_neighbor_search.h>
+#include <CGAL/Euclidean_distance.h>
+#include <CGAL/property_map.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -79,35 +93,23 @@ inline int omp_get_max_threads() { return 1;}
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/algorithm/string.hpp>
-
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Projection_traits_xy_3.h>
-#include <CGAL/Triangulation_ds_face_base_2.h>
-#include <CGAL/Triangle_2.h>
-#include <CGAL/Constrained_Delaunay_triangulation_2.h>
-#include <CGAL/Triangulation_conformer_2.h>
-#include <CGAL/Triangulation_data_structure_2.h>
-#include <CGAL/bounding_box.h>
-#include <CGAL/Triangulation_2.h>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/iterator/zip_iterator.hpp>
 
 
+// tbb includes
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_sort.h>
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
+
 
 namespace pt = boost::property_tree;
 
 //required for the spatial searching
-#include <CGAL/Search_traits_2.h>
-#include <CGAL/Search_traits_adapter.h>
-#include <CGAL/Orthogonal_k_neighbor_search.h>
 
-#include <CGAL/Euclidean_distance.h>
-#include <CGAL/property_map.h>
-#include <boost/iterator/zip_iterator.hpp>
 
+// vtk includes
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
 #include <vtkStringArray.h>
@@ -116,6 +118,7 @@ namespace pt = boost::property_tree;
 #include <vtkCellData.h>
 #include <vtkPointData.h>
 #include <vtkFloatArray.h>
+#include <vtkUnsignedLongArray.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkPoints.h>
@@ -657,7 +660,8 @@ public:
   void print_ghost_neighbor_info();
 
   /**
-   * Communicate the variable var for all ghost neighbors
+   * Transfers the variable from the locally owned non-ghost face to the corresponding ghost-face on
+   * another MPI rank.
    * This signature supports the use case if _s no-oped to const char * via
    * #define SAFE_CHECKS
    * which is used to debug and print var names. In general the hash variant used via "var_name"_s should
@@ -665,13 +669,26 @@ public:
    * @param var Variable name
    */
   void ghost_neighbors_communicate_variable(const std::string& var);
-    /**
-     * Communicate the variable var for all ghost neighbors
+
+  /**
+     * Transfers the variable from the locally owned non-ghost face to the corresponding ghost-face on
+     * another MPI rank.
      * @param var Variable name
     */
   void ghost_neighbors_communicate_variable(const uint64_t& var);
 
+  /**
+   * Transfers the variable from the local ghost-face to the corresponding non-ghost face on another MPI rank.
+   *
+   * @param var Variable name
+   */
   void ghost_to_neighbors_communicate_variable(const std::string& var);
+
+  /**
+   * Transfers the variable from the local ghost-face to the corresponding non-ghost face on another MPI rank
+   *
+   * @param var Variable name
+   */
   void ghost_to_neighbors_communicate_variable(const uint64_t& var);
 
     /**
@@ -683,8 +700,6 @@ public:
     * Shrink the local mesh to only contain owned entries and relevant ghost entries
     */
   void shrink_local_mesh_to_owned_and_distance_neighbors();
-
-
 
     /**
      * Serializes a mesh attribute to file so it can be read into the model.
@@ -1023,7 +1038,9 @@ protected:
     //holds the vtk ugrid if we are outputing to vtk formats
     vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
 
-	//holds the vectors we use to create the vtu file
+    //holds the vectors we use to create the vtu file
+    // these must be ints so cannot be stored in the other maps
+    vtkSmartPointer<vtkUnsignedLongArray> _vtu_global_id;
 #ifdef USE_SPARSEHASH
     google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > data;
     google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > vectors;
@@ -1063,7 +1080,7 @@ protected:
     // Index = MPI rank
     std::vector<int> _num_faces_in_partition;
     std::vector<int> _local_sizes;
-
+    
     // If we are not using MPI, some code paths might still want to make use of these
     // This is initialized to [0, num_faces - 1]
     // In MPI mode this contains the global face index start and end

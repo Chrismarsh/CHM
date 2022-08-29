@@ -1483,7 +1483,9 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
     for (size_t i = 0; i < _faces.size(); ++i)
     {
         _faces[i]->ghost_type = ghost_info[i];
-        _faces[i]->owner = my_rank;
+
+        // owner has already been set from loading in the h5
+//        _faces[i]->owner = my_rank;
         if (ghost_info[i] != GHOST_TYPE::NONE)
         {
             _faces[i]->is_ghost = true;
@@ -1811,15 +1813,17 @@ void triangulation::determine_ghost_owners()
         // index type needs to match type of elements of _num_faces_in_partition
         int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
         _ghost_neighbor_owners[i] = _ghost_neighbors.at(i)->owner;
+
+//        LOG_DEBUG << "Inc global ind " << global_ind;
 //        _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
 //                                                                    _num_faces_in_partition);
-
         // local faces are set to current mpirank, so set the ghosts to be ID"d who owns them
 //        _ghost_neighbors[i]->owner = _ghost_neighbor_owners[i];
 
-        // on first it, no value of prev_owner exists
+        // on first it, no value of prev_owner exists... set it
         if(i==0) prev_owner = _ghost_neighbor_owners[i];
-        // if owner different from last iteration, store prev segment's ownership info
+
+        // if owner different from last owner, store prev segment's ownership info
         if (prev_owner != _ghost_neighbor_owners[i])
         {
             num_partners++;
@@ -1828,6 +1832,15 @@ void triangulation::determine_ghost_owners()
         } else if (i ==_ghost_neighbors.size()-1) {
             _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index+1);
         }
+
+	// If the last neighbor rank owns only a single ghost
+	// - would have followed the if branch of previous conditional
+	//   - this implies i==start_index
+	// - we set the last ownership info explicitly
+	if (start_index ==_ghost_neighbors.size()-1) {
+	  assert(i==start_index);
+	  _comm_partner_ownership[_ghost_neighbor_owners[i]] = std::make_pair(i,1);
+	}
 
         // prep prev_owner for next iteration
         prev_owner=_ghost_neighbor_owners[i];
@@ -1974,6 +1987,7 @@ void triangulation::ghost_neighbors_communicate_variable(const std::string& var)
 {
     // This supports the use case if _s no-oped to const char * via
     uint64_t hash = xxh64::hash (var.c_str(), var.length());
+//    LOG_DEBUG << hash << " " << var;
     ghost_neighbors_communicate_variable(hash);
 }
 
@@ -2010,6 +2024,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 	  LOG_DEBUG << "\tsend_buffer entry: " << i;
 	  LOG_DEBUG << "\tcell_global_id:    " << f->cell_global_id;
 	  LOG_DEBUG << "\tcell_local_id:      " << f->cell_local_id;
+          LOG_DEBUG << "\tvalue:       " << val;
 //	  _mpi_env.abort(-1);
 	}
     }
@@ -2055,6 +2070,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 	  LOG_DEBUG << "\trecv_buffer entry:  " << i;
 	  LOG_DEBUG << "\tcell_global_id:     " << f->cell_global_id;
 	  LOG_DEBUG << "\tcell_local_id:       " << f->cell_local_id;
+          LOG_DEBUG << "\tvalue:       " << val;
 //	  _mpi_env.abort(-1);
 	}
     }
@@ -2068,7 +2084,9 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
     auto recv_it = recv_buffer[partner_id].begin();
     for (auto f : faces ) {
+
       (*f)[var] = *recv_it;
+//      LOG_DEBUG << "Rank=" <<f->owner << " Var="<<var<<" *f="<<(*f)[var]<< " recv_it="<<*recv_it << " is_ghost="<<f->is_ghost;
       ++recv_it;
     }
 
@@ -2489,8 +2507,8 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
         data[v]->SetName(v.c_str());
     }
 
-    data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
-    data["global_id"]->SetName("global_id");
+    _vtu_global_id = vtkSmartPointer<vtkUnsignedLongArray>::New();
+    _vtu_global_id->SetName("global_id");
 
     if(_write_parameters_to_vtu)
     {
@@ -2653,7 +2671,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         }
 
         //this is mandatory now
-        data["global_id"]->InsertTuple1(i,fit->cell_global_id);
+        _vtu_global_id->InsertTuple1(i, fit->cell_global_id);
 
         if(_write_parameters_to_vtu)
         {
@@ -2723,7 +2741,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
             data[v]->InsertTuple1(insert_offset,d);
         }
 
-        data["global_id"]->InsertTuple1(insert_offset,fit->cell_global_id);
+        _vtu_global_id->InsertTuple1(insert_offset,fit->cell_global_id);
+
         if(_write_parameters_to_vtu)
         {
             for (auto &v: params)
@@ -2766,6 +2785,8 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
     }
 
     } // if write ghosts
+
+    _vtk_unstructuredGrid->GetCellData()->AddArray(_vtu_global_id);
 
     for(auto& m : vectors)
     {

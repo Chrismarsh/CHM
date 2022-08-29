@@ -179,6 +179,9 @@ void Harder_precip_phase::load_checkpoint(mesh& domain, netcdf& chkpt)
         face->get_module_data<data>(ID).hours_since_snowfall = chkpt.get_var1D("Harder_precip_phase:hours_since_snowfall",i);
         face->get_module_data<data>(ID).acc_rain = chkpt.get_var1D("Harder_precip_phase:acc_rain",i);
         face->get_module_data<data>(ID).acc_snow = chkpt.get_var1D("Harder_precip_phase:acc_snow",i);
+
+        (*face)["acc_rain"_s]=face->get_module_data<data>(ID).acc_rain;
+        (*face)["acc_snow"_s]=face->get_module_data<data>(ID).acc_snow;
     }
 
 
