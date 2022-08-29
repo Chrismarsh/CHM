@@ -25,14 +25,16 @@
 #include "TPSpline.hpp"
 
 //#define FUNC_DEBUG
-#include <func/func.hpp>
-#include "CHM_TPSpline_Elliptic_Equation.hpp"
+//#include <func/func.hpp>
+#include <func/CubicInterpolationTable.hpp>
+#include <func/FailureProofTable.hpp>
+#include "TPSBasis.hpp"
 
 // Build FunC lookup table for -(log(x)+c+gsl_sf_expint_E1(x))
-static FunctionContainer<double> FC {CHM_Elliptic_Equation<double>};
-
-//static DirectEvaluation<double> Elliptic_Equation_LUT(&FC, 1e-8, 6500);
-static FailureProofTable<double,double,UniformCubicPrecomputedInterpolationTable<double>> Elliptic_Equation_LUT(&FC, LookupTableParameters<double> {1e-5, 32, 0.0169});
+//static func::FunctionContainer<double> FC {TPSBasis<double>};
+//static func::FailureProofTable<double,double,func::UniformCubicInterpolationTable<double>> TPSBasis_LUT(&FC, func::LookupTableParameters<double> {1e-5, 32, 0.0169});
+static func::FunctionContainer<double> FC {OLD_TPSBasis<double>};
+static func::DirectEvaluation<double> TPSBasis_LUT(&FC, 1e-8, 6500);
 
 double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
@@ -89,7 +91,7 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
                     //it is all rather confusing. But this follows Mitášová exactly, and produces essentially the same answer
                     //as the worked example in box 16.2 in Chang
                     // set Rd = -(log(dij) + c + gsl_sf_expint_E1(dij))
-                    Rd = Elliptic_Equation_LUT(dij);
+                    Rd = TPSBasis_LUT(dij);
                 }
 
                 A(i, j + 1) = Rd;
@@ -144,7 +146,7 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         dij = (dij * weight/2.0) * (dij * weight/2.0);
         // set Rd equal to -(log(dij) + c + gsl_sf_expint_E1(dij))
          
-        double Rd = Elliptic_Equation_LUT(dij);
+        double Rd = TPSBasis_LUT(dij);
 
         z0 = z0 + x(i)*Rd;
     }

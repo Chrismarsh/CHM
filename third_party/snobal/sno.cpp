@@ -31,22 +31,12 @@
 #include "chm_sati_function.hpp"
 using namespace snobalMacros;
 
-/* FunC TODO:
- * - We can avoid any function evals by reading a good LUT from a json file
- * - higher order interpolation _might_ be desirable */
-static FunctionContainer<double> func_w {MyFunction_satw<double>};
-static FunctionContainer<double> func_i {MyFunction_sati<double>};
+static func::FunctionContainer<double> func_w {MyFunction_satw<double>};
+static func::FunctionContainer<double> func_i {MyFunction_sati<double>};
 
-static UniformLinearInterpolationTable<double> satw_lut(&func_w, LookupTableParameters<double> {FREEZE - 50.0, FREEZE + 50.0, 0.00258598});
-static UniformLinearInterpolationTable<double> sati_lut(&func_i, LookupTableParameters<double> {90.0, FREEZE, 0.000388715});
-
-//UniformLookupTableGenerator<double> gen_w(&func_w, FREEZE - 50.0, FREEZE + 50.0);
-//UniformLookupTableGenerator<double> gen_i(&func_i, 90.0, FREEZE);
-//std::string implName = "UniformLinearInterpolationTable";
-//// Hard coded stepsizes satisfy a tolerance of 1e-8;
-//// gen_by_tol returns unique pointers to LUT:
-//static auto satw_lut = gen_w.generate_by_step(implName, 0.00258598);
-//static auto sati_lut = gen_i.generate_by_step(implName, 0.000388715);
+// These hard coded stepsizes satisfy a tolerance of 1e-8;
+static func::UniformLinearRawInterpolationTable<double> satw_lut(&func_w, func::LookupTableParameters<double> {FREEZE - 50.0, FREEZE + 50.0, 0.00258598});
+static func::UniformLinearRawInterpolationTable<double> sati_lut(&func_i, func::LookupTableParameters<double> {90.0, FREEZE, 0.000388715});
 
 double sno::ssxfr(
         double k1,    /* layer 1's thermal conductivity (J / (m K sec))  */
