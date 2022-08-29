@@ -5,7 +5,7 @@ import os
 
 class CHMTestConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
-    requires = "CHM/10@CHM/stable"
+    requires = "CHM/1.1@CHM/testing"
     generators = "cmake"
 
     def build(self):
@@ -19,7 +19,7 @@ class CHMTestConan(ConanFile):
 
     def test(self):
 
-        self.run("""patchelf --set-rpath '\$ORIGIN/../lib' ./bin/CHM""")
+        # self.run("""patchelf --set-rpath '\$ORIGIN/../lib' ./bin/CHM""")
 
         cmd = "%s -v" % os.path.join(".", "bin", "CHM")
         print(cmd)

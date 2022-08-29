@@ -43,7 +43,7 @@ extern "C"
         float* rhod,
 
     // State variables
-        float* albs, float* Tsrf, float* Dsnw, float* Nsnow, float* Qcan, float* Rgrn, float* Sice,
+        float* albs, float* Tsrf, float* Dsnw, int* Nsnow, float* Qcan, float* Rgrn, float* Sice,
         float* Sliq, float* Sveg, float* Tcan, float* Tsnow, float* Tsoil, float* Tveg, float* Vsmc,
 
     // Diagnostics
@@ -166,7 +166,7 @@ class FSM : public module_base
             float albs = 0.8;
             float Tsrf = 285;
             float Dsnw[3] = {0, 0, 0};
-            float Nsnow = 0;
+            int Nsnow = 0;
             float Qcan[2] = {0, 0};
             float Rgrn[3] = {__parameters_MOD_rgr0, __parameters_MOD_rgr0, __parameters_MOD_rgr0};
             float Sice[3] = {0, 0, 0};

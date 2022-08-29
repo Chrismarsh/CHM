@@ -170,6 +170,7 @@ thin_plate_spline::thin_plate_spline(size_t sz, std::map<std::string,std::string
         if(config["reuse_LU"] == "true")
             reuse_LU = true;
     }
+    reuse_LU = false;
 }
 
 thin_plate_spline::thin_plate_spline()

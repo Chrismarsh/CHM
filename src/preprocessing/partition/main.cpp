@@ -718,8 +718,6 @@ class preprocessingTriangulation : public triangulation
         }
 
 
-
-
         // iterate over all the ranks but since we might be only doing a subset, we need to maintain a proxy rank
         for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
         {
@@ -814,7 +812,7 @@ class preprocessingTriangulation : public triangulation
             determine_ghost_owners();
 
 
-            // flag all the ghosts that aren't Type I (neigh) as Typde II distance ghosts
+            // flag all the ghosts that aren't Type I (neigh) as Type II distance ghosts
 #pragma omp parallel for
             for (size_t i = 0; i < _ghost_faces.size(); i++)
             {
@@ -931,6 +929,7 @@ class preprocessingTriangulation : public triangulation
         tree.add_child("parameters", params);
 
         pt::write_json(filename_base + ".np" + std::to_string(_comm_world.size()) + ".partition", tree);
+
     }
 
     std::unique_ptr<MeshParameters> read_h5_params(const std::vector<std::string>& param_filenames)

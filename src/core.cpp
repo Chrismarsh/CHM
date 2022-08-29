@@ -2260,7 +2260,7 @@ void core::run()
                 auto& ids = _mesh->get_global_IDs();
                 savestate.create_variable1D("global_id",ids.size());
 
-                for(size_t i; i <0; i++)
+                for(size_t i = 0; i <0; i++)
                 {
                     savestate.put_var1D("global_id",i, ids[i]);
                 }
