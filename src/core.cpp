@@ -2624,7 +2624,8 @@ void core::populate_distributed_station_lists()
     for(auto& itr: _metdata->stations())
     {
         if( keep_set.find(itr) == keep_set.end() ) // not found in the set we want to keep, mark for removal
-            remove_set.insert(itr->ID());
+            if(itr) // might be a nan point in the nc
+                remove_set.insert(itr->ID());
     }
 
     // Store the local stations in the triangulations mpi-local stationslist vector

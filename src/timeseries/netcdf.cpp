@@ -197,7 +197,15 @@ void netcdf::open_GEM(const std::string &file)
             s = s + " 00:00:00";
         }
 
-        _epoch = boost::posix_time::time_from_string(s);
+        try
+        {
+            _epoch = boost::posix_time::time_from_string(s);
+        }
+        catch(boost::bad_lexical_cast& e)
+        {
+            CHM_THROW_EXCEPTION(forcing_error, "Unable to parse netcdf epoch time " + s);
+        }
+
 
     }
     else
@@ -335,6 +343,15 @@ double netcdf::get_var1D(std::string var, size_t index)
     double data=-9999.0;
     itr->second.getVar(startp,countp,&data);
 
+    auto fill_value_attr  = itr->second.getAtt("_FillValue");
+    double fill_value=0;
+    fill_value_attr.getValues(&fill_value);
+
+    if( data == fill_value)
+    {
+        data = std::nan("nan");
+    }
+
     return data;
 }
 
@@ -353,6 +370,19 @@ netcdf::data netcdf::get_var2D(std::string var)
     netcdf::data array(boost::extents[ygrid][xgrid]);
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, array.data());
+
+    auto fill_value_attr  = itr->second.getAtt("_FillValue");
+    double fill_value=0;
+    fill_value_attr.getValues(&fill_value);
+
+    for(size_t i =0; i< array.shape()[0]; i++)
+    {
+        for(size_t j =0; j< array.shape()[1]; j++)
+        {
+            if (array[i][j] == fill_value)
+                array[i][j] = std::nan("nan");
+        }
+    }
 
     return array;
 }
@@ -373,6 +403,13 @@ double netcdf::get_var2D(std::string var, size_t x, size_t y)
 
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, &val);
+
+    auto fill_value_attr  = itr->second.getAtt("_FillValue");
+    double fill_value=0;
+    fill_value_attr.getValues(&fill_value);
+
+    if(val == fill_value)
+        val = std::nan("nan");
 
     return val;
 }
@@ -433,6 +470,12 @@ double netcdf::get_var(std::string var, size_t timestep, size_t x, size_t y)
     {
         itr->second.getVar(startp, countp, &val);
     }
+    auto fill_value_attr  = itr->second.getAtt("_FillValue");
+    double fill_value=0;
+    fill_value_attr.getValues(&fill_value);
+
+    if(val == fill_value)
+        val = std::nan("nan");
 
     return val;
 }
@@ -459,8 +502,21 @@ netcdf::data netcdf::get_var(std::string var, size_t timestep)
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, array.data());
 
+    auto fill_value_attr  = itr->second.getAtt("_FillValue");
+    double fill_value=0;
+    fill_value_attr.getValues(&fill_value);
 
-     return array;
+    for(size_t i =0; i< array.shape()[0]; i++)
+    {
+        for(size_t j =0; j< array.shape()[1]; j++)
+        {
+            if (array[i][j] == fill_value)
+                array[i][j] = std::nan("nan");
+        }
+    }
+
+    return array;
+
 }
 
 double netcdf::get_var(std::string var, boost::posix_time::ptime timestep, size_t x, size_t y)

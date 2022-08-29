@@ -118,6 +118,8 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
         {
             for (size_t x = 0; x < _nc->get_xsize(); x++)
             {
+                size_t index = x + y * _nc->get_xsize();
+
                 double latitude = 0;
                 double longitude = 0 ;
                 double z = 0;
@@ -126,6 +128,17 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 longitude = lon[y][x];
                 z = e[y][x];
 
+                // Some Netcdf files have NaN grid squares, For these cases we will just insert a nullptr station and
+                // don't add the station to the dD list which is the only way it ever gets to modules
+                if ( std::isnan(latitude) &&
+                    std::isnan(longitude) )
+                {
+                    _stations.at(index) = nullptr;
+                    continue;
+                }
+
+
+
                 if( std::isnan(z))
                 {
                     CHM_THROW_EXCEPTION(forcing_error,
@@ -133,7 +146,7 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                                             " is NaN. Regardless of the timestep the model is started from, it looks for timestep = 0 to define the elevations. Ensure it is defined then.");
                 }
 
-                size_t index = x + y * _nc->get_xsize();
+
                 std::string station_name = std::to_string(index); // these don't really have names
 
                 //need to convert the input lat/long into the coordinate system our mesh is in
@@ -425,6 +438,8 @@ void metdata::write_stations_to_ptv(const std::string& path)
     for(size_t i = 0; i < _nstations;i++)
     {
         auto s = _stations.at(i);
+        if(!s)
+            continue ;
         points->InsertNextPoint(s->x(), s->y(), s->z());
         labels->SetValue(i, s->ID() );
     }
@@ -529,6 +544,11 @@ bool metdata::next_nc()
     for(size_t i = 0; i < nstations();i++)
     {
         auto s = _stations.at(i);
+
+        // we might have a NaN point, so so a nullptr station, just keep going
+        if(!s)
+            continue;
+
         s->set_posix(_current_ts);
 
         // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
@@ -589,7 +609,8 @@ void metdata::prune_stations(std::unordered_set<std::string>& station_ids)
         std::remove_if(std::begin(_stations), std::end(_stations),
         [&](auto const& it)
         {
-          return (station_ids.find(it->ID()) != std::end(station_ids));
+                           //handle nan stations from the nc
+          return (!it || station_ids.find(it->ID()) != std::end(station_ids));
         }),
         std::end(_stations));
 
