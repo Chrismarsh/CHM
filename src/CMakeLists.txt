@@ -201,21 +201,6 @@ if(MPI_FOUND AND USE_MPI)
 	endif()
 endif()
 
-#are we linking against matlab?
-if(MATLAB)
-    set(LIBMAW_SRCS
-        libmaw/graphics.cpp
-        libmaw/matlab_engine.cpp
-		CACHE INTERNAL "" FORCE )
-
-    list( APPEND EXT_TARGETS
-            ${MATLAB_ENG_LIBRARY}
-            ${MATLAB_MX_LIBRARY})
-
-    list( APPEND HEADER_FILES
-        ${MATLAB_INCLUDE_DIR})
-
-endif()
 
 if(BUILD_WITH_CONAN)
 	# when we run make install all the RPATHs will be stripped out and set to these

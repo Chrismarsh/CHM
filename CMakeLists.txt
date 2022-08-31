@@ -25,7 +25,6 @@ option(USE_OMP "Enable OpenMP"  ON )
 option(OMP_SAFE_EXCEPTION "Enables safe exception handling from within OMP regions." ON)
 option(ENABLE_SAFE_CHECKS "Enable variable map checking. Runtime perf cost. Allows for ensuring a variable is indeed available to be lookedup." ON)
 option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
-option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 option(USE_JEMALLOC "Use jemalloc" OFF)
@@ -254,13 +253,6 @@ if(USE_OMP)
      #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
     endif()
 endif()
-
-
-if(MATLAB)
-    #for matlab to run you need csh installed
-    find_package(Matlab REQUIRED)
-endif()
-
 
 #already makes a target
 find_package(${METEOIO} REQUIRED)

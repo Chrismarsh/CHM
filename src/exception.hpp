@@ -30,11 +30,6 @@
 
 struct exception_base: virtual std::exception, virtual boost::exception { };
 
-//matlab
-struct matlab_error: virtual exception_base {};
-struct matlab_null_return : virtual matlab_error{};
-struct matlab_engine_failure : virtual matlab_error{};
-
 // IO errors
 struct io_error: virtual exception_base { };
 struct file_read_error: virtual io_error { };

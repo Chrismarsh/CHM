@@ -613,11 +613,8 @@ void core::config_parameters(pt::ptree &value)
 void core::config_meshes( pt::ptree &value)
 {
     LOG_DEBUG << "Found meshes sections.";
-#ifdef MATLAB
-    _mesh = boost::make_shared<triangulation>(_engine);
-#else
+
     _mesh = boost::make_shared<triangulation>();
-#endif
 
     _mesh->_global = _global;
 
@@ -792,35 +789,6 @@ void core::config_meshes( pt::ptree &value)
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 
-}
-
-void core::config_matlab( pt::ptree &value)
-{
-    LOG_DEBUG << "Found matlab section";
-#ifdef MATLAB
-    //loop over the list of matlab options
-    for (auto& jtr : value.get_obj())
-    {
-        const json_spirit::Pair& pair = jtr;
-        const std::string& name = pair.name_;
-        const json_spirit::Value& value = pair.value_;
-
-        if (name == "mfile_paths")
-        {
-            LOG_DEBUG << "Found " << name;
-            for (auto& ktr : value.get_obj()) //loop over all the paths
-            {
-                const json_spirit::Pair& pair = ktr;
-                //                const std::string& name = pair.name_;
-                const json_spirit::Value& value = pair.value_;
-
-
-                _engine->add_dir_to_path(value.get_str());
-
-            }
-        }
-    }
-#endif
 }
 
 void core::config_output(pt::ptree &value)
@@ -1257,17 +1225,6 @@ void core::init(int argc, char **argv)
     LOG_DEBUG << version;
 
 
-
-#ifdef NOMATLAB
-    _engine = boost::make_shared<maw::matlab_engine>();
-
-
-    _engine->start();
-    _engine->set_working_dir();
-
-    LOG_DEBUG << "Matlab engine started";
-#endif
-
     _global = boost::make_shared<global>();
 
     // This needs to be set so that underflows in gsl math
@@ -1473,10 +1430,6 @@ void core::init(int argc, char **argv)
     {
         LOG_DEBUG << "Optional section checkpoint not found";
     }
-
-//#ifdef NOMATLAB
-//            config_matlab(value);
-//#endif
 
     //if we are to run in point mode, we need to remove all the input and outputs that aren't associated with point mode
     // we do this so the user doesn't have to modify a lot of the config file when going between point and dist mode.

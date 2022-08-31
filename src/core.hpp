@@ -182,7 +182,6 @@ public:
     void config_forcing(pt::ptree& value);
     void config_module_overrides( pt::ptree& value);
     void config_parameters(pt::ptree &value);
-    void config_matlab( pt::ptree& value);
     void config_output(pt::ptree& value);
     void config_global( pt::ptree& value);
     void config_checkpoint( pt::ptree& value);
@@ -228,7 +227,7 @@ public:
     cmdl_opt config_cmdl_options(int argc, char **argv);
 
     /**
-     * Initializes the logger and Matlab engine
+     * Initializes the logger
      */
     core();
     ~core();
@@ -275,12 +274,6 @@ protected:
     //if radius selection for stations is chosen this holds that
     double radius;
     double N; // meters, radius for station search
-
-
-#ifdef MATLAB
-    //matlab engine
-    boost::shared_ptr<maw::matlab_engine> _engine;
-#endif
 
     //holds all the modules that are to be run on each mesh element
     //pair as we also need to store the make order

@@ -43,7 +43,7 @@ struct vertex_info
 * \class ex_vertex
 *
 * The base CGAL vertex class is extended by ex_vertex to allow for add arbitrary vertex information as well as for incorperating the conecept of an ID. This ID is a global
-* reference that allows for creating a Matlab or VTK based triangulation datastructure.
+* reference that allows for creating a VTK based triangulation datastructure.
 */
 template < class Gt, class Vb = CGAL::Triangulation_vertex_base_2<Gt> >
 class ex_vertex : public Vb

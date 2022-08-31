@@ -19,11 +19,7 @@
 
 triangulation::triangulation()
 {
- //   LOG_WARNING << "No Matlab engine, plotting and all Matlab functionality will be disabled";
-#ifdef MATLAB
-    _engine = NULL;
-    _gfx = NULL;
-#endif
+
     _num_faces = 0;
     _vtk_unstructuredGrid = nullptr;
     _is_geographic = false;
@@ -72,44 +68,12 @@ triangulation::triangulation()
 
 }
 
-#ifdef MATLAB
 
-triangulation::triangulation(boost::shared_ptr<maw::matlab_engine> engine)
-{
-    _engine = engine;
-    _gfx = boost::make_shared<maw::graphics>(_engine.get());
-    _size = 0;
-}
-#endif
 
 triangulation::~triangulation()
 {
-#ifdef MATLAB
-    _engine = NULL;
-    _gfx = NULL;
-#endif
-}
 
-//void triangulation::init(vector x, vector y, vector z)
-//{
-//    //    _mesh = boost::make_shared<Delaunay>();
-//    for (size_t i = 0; i < x->size(); i++)
-//    {
-//        Point_3 p(x->at(i), y->at(i), z->at(i));
-//        Delaunay::Vertex_handle Vh = this->insert(p);
-//        Vh->set_id(i);
-//        ++i;
-//    }
-//
-//    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
-//            fit != this->finite_faces_end(); ++fit)
-//    {
-//        mesh_elem face = fit;
-//        _faces.push_back(face);
-//    }
-//
-//    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
-//}
+}
 
 std::string triangulation::proj4()
 {
@@ -221,35 +185,6 @@ mesh_elem triangulation::find_closest_face(double x, double y) const
 
 }
 
-#ifdef NOMATLAB
-
-void triangulation::plot_time_series(double x, double y, std::string ID)
-{
-    if (!_engine)
-    {
-        LOG_WARNING << "No Matlab engine, plotting is disabled";
-        return;
-    }
-    mesh_elem m = this->locate_face(x, y);
-
-    if (m == NULL)
-        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
-
-    maw::d_vec v(new arma::vec(m->face_time_series(ID).size()));
-
-    timeseries::variable_vec ts = m->face_time_series(ID);
-
-    for (size_t i = 0; i < v->size(); i++)
-    {
-        (*v)(i) = ts.at(i);
-    }
-
-    _engine->put_double_matrix(ID, v);
-    double handle = _gfx->plot_line(ID);
-    _gfx->add_title(ID);
-    _gfx->spin_until_close(handle);
-}
-#endif
 
 void triangulation::serialize_parameter(std::string output_path, std::string parameter)
 {
@@ -2341,73 +2276,6 @@ void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 
     m->to_file(fname);
 }
-#ifdef NOMATLAB
-
-void triangulation::plot(std::string ID)
-{
-    if (!_engine)
-    {
-        LOG_WARNING << "No Matlab engine, plotting is disabled";
-        return;
-    }
-    LOG_DEBUG << "Sending triangulation to matlab...";
-
-
-
-    maw::d_mat tri(new arma::mat(_size, 3));
-    maw::d_mat xyz(new arma::mat(_data_size, 3));
-    maw::d_mat cdata(new arma::mat(_size, 1));
-
-    size_t i = 0;
-
-    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
-            fit != this->finite_faces_end(); ++fit)
-    {
-        auto face = fit;
-
-        (*tri)(i, 0) = face->vertex(0)->get_id() + 1; //+1 because matlab indexing starts at 1
-        (*tri)(i, 1) = face->vertex(1)->get_id() + 1;
-        (*tri)(i, 2) = face->vertex(2)->get_id() + 1;
-
-        Delaunay::Triangle t = this->triangle(face);
-
-        //        std::cout  << "xyz1:" << (*tri)(i, 0)-1 <<std::endl;
-        (*xyz)((*tri)(i, 0) - 1, 0) = t[0].x();
-        (*xyz)((*tri)(i, 0) - 1, 1) = t[0].y();
-        (*xyz)((*tri)(i, 0) - 1, 2) = t[0].z();
-
-
-        //        std::cout  << "xyz2:"<<(*tri)(i, 1)-1 <<std::endl;
-        (*xyz)((*tri)(i, 1) - 1, 0) = t[1].x();
-        (*xyz)((*tri)(i, 1) - 1, 1) = t[1].y();
-        (*xyz)((*tri)(i, 1) - 1, 2) = t[1].z();
-
-        //        std::cout  << "xyz3:"<<(*tri)(i, 2)-1 <<std::endl;
-        (*xyz)((*tri)(i, 2) - 1, 0) = t[2].x();
-        (*xyz)((*tri)(i, 2) - 1, 1) = t[2].y();
-        (*xyz)((*tri)(i, 2) - 1, 2) = t[2].z();
-
-
-        double d = fit->face_data(ID);
-        (*cdata)(i) = d;
-        //        std::cout << i <<std::endl;
-        ++i;
-    }
-
-
-    LOG_DEBUG << "Sending data to matlab...";
-    _engine->put_double_matrix("tri", tri);
-    _engine->put_double_matrix("elevation_data", xyz);
-    _engine->put_double_matrix("face_data", cdata);
-
-    double handle = _gfx->plot_patch("[elevation_data(:,1) elevation_data(:,2) elevation_data(:,3)]", "tri", "face_data(:)");
-    _gfx->add_title(ID);
-
-    _gfx->spin_until_close(handle);
-    //    _engine->evaluate("save lol.mat");
-    _engine->evaluate("clear tri elevation_data face_data");
-}
-#endif
 
 void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {
