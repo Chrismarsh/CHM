@@ -35,6 +35,7 @@ The paper describing CHM can be found `here <https://www.geosci-model-dev.net/13
    partition
    forcing
    output
+   checkpointing
    visualization
    modules
    filters

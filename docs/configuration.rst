@@ -795,6 +795,48 @@ Example
 
 
 
+checkpoint
+*************
+
+CHM can save its state after a timestep, allowing CHM to resume from this timestep. Details on can be found in the Checkpointing section.0
+
+.. confval:: save_checkpoint
+
+   :type: boolean
+   :default: false
+
+   Enable checkpointing. One of ``frequency`` or ``on_last`` must be set.
+
+
+.. confval:: frequency
+
+   :type: int64
+   :default: 0
+
+   The frequency of checkpointing. Checkpoints ever ``frequency`` timesteps. Can be used with ``on_last``.
+
+.. confval:: on_last
+
+   :type: bool
+   :default: false
+
+   Check point on the last timestep. Can be used with ``frequency``
+
+.. confval:: load_checkpoint_path
+
+   :type: string
+   :default: empty
+
+   Path to checkpoint file to load from (specifically, the json file). Can be used with the other checkpointing options
+
+.. code:: json
+     "checkpoint":
+     {
+        "save_checkpoint": true,
+        "frequency": 4,
+        "on_last": true,
+        "load_checkpoint_path":"output/checkpoint/checkpoint_20001001T140000.np1.json"
+     }
 
 
 
