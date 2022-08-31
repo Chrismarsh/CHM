@@ -830,6 +830,7 @@ CHM can save its state after a timestep, allowing CHM to resume from this timest
    Path to checkpoint file to load from (specifically, the json file). Can be used with the other checkpointing options
 
 .. code:: json
+
      "checkpoint":
      {
         "save_checkpoint": true,
