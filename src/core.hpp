@@ -191,6 +191,7 @@ public:
      * Determines what the start end times should be, and ensures consistency from a check pointed file
      */
     void determine_startend_ts_forcing();
+
     /**
      * Determines the order modules need to be scheduleled in to maximize parallelism
      */
@@ -379,12 +380,46 @@ protected:
 
     std::vector<output_info> _outputs;
 
-    boost::filesystem::path _ckpt_path; // root path to chckpoint folder
-    netcdf _in_savestate; // if we are loading from checkpoint
-    bool _do_checkpoint; // should we check point?
-    bool _load_from_checkpoint; // are we loading from a checkpoint?
+    // Checkpointing options
+    class chkptOp
+    {
+      public:
+        chkptOp():
+                    do_checkpoint{false},
+                    load_from_checkpoint{false},
+                    on_last{false}{  }
 
-    size_t _checkpoint_feq; // frequency of checkpoints
+        boost::filesystem::path ckpt_path; // root path to chckpoint folder
+        netcdf in_savestate; // if we are loading from checkpoint
+        bool do_checkpoint; // should we check point?
+        bool load_from_checkpoint; // are we loading from a checkpoint?
+
+        boost::optional<bool> on_last; //only checkpoint on the last timestep
+        boost::optional<size_t> frequency; // frequency of checkpoints
+
+        /**
+         * Should checkpointing occur
+         * @param current_ts
+         * @param is_last_ts
+         * @return
+         */
+        bool should_checkpoint(size_t current_ts, bool is_last_ts)
+        {
+            if(!do_checkpoint)
+                return false;
+
+            if(on_last && *on_last && is_last_ts)
+                return true;
+
+            if( frequency && (current_ts % *frequency ==0) )
+                return true;
+
+            return false;
+        }
+
+
+    } _checkpoint_opts;
+
 
 
     //command line argument options we need to keep track of

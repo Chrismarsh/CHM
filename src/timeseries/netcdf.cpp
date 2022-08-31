@@ -329,6 +329,19 @@ std::set<std::string> netcdf::get_coordinate_names()
 
 }
 
+double netcdf::get_fillvalue(const netCDF::NcVar& var)
+{
+    double fill_value=-9999;
+    try {
+        auto fill_value_attr  = var.getAtt("_FillValue");
+        fill_value_attr.getValues(&fill_value);
+    }catch(netCDF::exceptions::NcException& e)
+    {
+        // no CF _FillValue, use -9999 default
+    }
+    return fill_value;
+}
+
 double netcdf::get_var1D(std::string var, size_t index)
 {
     std::vector<size_t> startp, countp;
@@ -343,9 +356,8 @@ double netcdf::get_var1D(std::string var, size_t index)
     double data=-9999.0;
     itr->second.getVar(startp,countp,&data);
 
-    auto fill_value_attr  = itr->second.getAtt("_FillValue");
-    double fill_value=0;
-    fill_value_attr.getValues(&fill_value);
+
+    double fill_value = get_fillvalue(itr->second);
 
     if( data == fill_value)
     {
@@ -371,9 +383,7 @@ netcdf::data netcdf::get_var2D(std::string var)
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, array.data());
 
-    auto fill_value_attr  = itr->second.getAtt("_FillValue");
-    double fill_value=0;
-    fill_value_attr.getValues(&fill_value);
+    double fill_value = get_fillvalue(itr->second);
 
     for(size_t i =0; i< array.shape()[0]; i++)
     {
@@ -404,9 +414,7 @@ double netcdf::get_var2D(std::string var, size_t x, size_t y)
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, &val);
 
-    auto fill_value_attr  = itr->second.getAtt("_FillValue");
-    double fill_value=0;
-    fill_value_attr.getValues(&fill_value);
+    double fill_value = get_fillvalue(itr->second);
 
     if(val == fill_value)
         val = std::nan("nan");
@@ -470,9 +478,7 @@ double netcdf::get_var(std::string var, size_t timestep, size_t x, size_t y)
     {
         itr->second.getVar(startp, countp, &val);
     }
-    auto fill_value_attr  = itr->second.getAtt("_FillValue");
-    double fill_value=0;
-    fill_value_attr.getValues(&fill_value);
+    double fill_value = get_fillvalue(itr->second);
 
     if(val == fill_value)
         val = std::nan("nan");
@@ -502,9 +508,8 @@ netcdf::data netcdf::get_var(std::string var, size_t timestep)
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, array.data());
 
-    auto fill_value_attr  = itr->second.getAtt("_FillValue");
-    double fill_value=0;
-    fill_value_attr.getValues(&fill_value);
+    double fill_value = get_fillvalue(itr->second);
+
 
     for(size_t i =0; i< array.shape()[0]; i++)
     {
