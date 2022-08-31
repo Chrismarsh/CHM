@@ -4,10 +4,10 @@ Checkpointing
 CHM can save the current state of all modules to disk and then later resume from this point. The provides a form of
 checkpointing.
 
-The states are stored as in netcdf files located in ``output_dir/checkpoint``. Within this file is a json meta file named in the form
+The states are stored as json metadata and netcdf files located in ``output_dir/checkpoint/``. Within this folder are json meta file named in the form
 ``checkpoint_YYYYMMddTHHMMSS.npRANKS.json``. This file provides the list of the netcdf files that need to be loaded for each MPI rank,
 along with sanity checks for how many MPI ranks were used in the checkpoint run and what time to restart from. If a checkpoint file was saved
-with ``n`` ranks, then it must be loaded with ``n`` ranks.
+with ``n`` ranks, then it must be loaded with ``n`` ranks. The netcdf files are saved in a sub-directory ``YYYYMMddTHHMMSS``.
 
 .. code:: json
 
@@ -29,7 +29,7 @@ with ``n`` ranks, then it must be loaded with ``n`` ranks.
 
 
 
-There is one netcdf file per rank, and each row corresponds to a single triangle index with ``global_id``. A simple
+There is one netcdf file per rank, and each row in the netcdf file corresponds to a single triangle ``global_id``, indexed with ``global_id``. A simple
 pointmode checkpoint file example is given below:
 
  .. code:: json
