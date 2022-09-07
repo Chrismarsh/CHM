@@ -404,7 +404,8 @@ protected:
             if(on_last && *on_last && is_last_ts)
                 return true;
 
-            if( frequency && (current_ts % *frequency ==0) )
+            // don't checkpoint on the first ts if we are doing frequency checkpoints
+            if( frequency && current_ts !=0 && (current_ts % *frequency ==0) )
                 return true;
 
             return false;
