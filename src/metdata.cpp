@@ -114,6 +114,8 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
         // #pragma omp parallel for
         // hangs, unclear why, critical sections around the json and gdal calls
         // don't seem to help. Probably _dD_tree is not thread safe
+
+        int skipped = 0; // keep track of how many we skipped due to nans
         for (size_t y = 0; y < _nc->get_ysize(); y++)
         {
             for (size_t x = 0; x < _nc->get_xsize(); x++)
@@ -130,20 +132,13 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
                 // Some Netcdf files have NaN grid squares, For these cases we will just insert a nullptr station and
                 // don't add the station to the dD list which is the only way it ever gets to modules
-                if ( std::isnan(latitude) &&
-                    std::isnan(longitude) )
+                if ( std::isnan(latitude) ||
+                    std::isnan(longitude) ||
+                    std::isnan(z))
                 {
                     _stations.at(index) = nullptr;
+                    ++skipped;
                     continue;
-                }
-
-
-
-                if( std::isnan(z))
-                {
-                    CHM_THROW_EXCEPTION(forcing_error,
-                                        "Elevation for x,y=" + std::to_string(x) + ","+ std::to_string(y)+
-                                            " is NaN. Regardless of the timestep the model is started from, it looks for timestep = 0 to define the elevations. Ensure it is defined then.");
                 }
 
 
@@ -174,6 +169,14 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
                 _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
             }
+        }
+
+        if( skipped == _nstations)
+        {
+            CHM_THROW_EXCEPTION(forcing_error,
+                                "All forcing grid cells were skipped due to being NaN values. Elevation and lat/lon,"
+                                " regardless of the timestep the model is started from, are defined from timestep = 0 "
+                                ". Ensure it is defined then.");
         }
 
     } catch(netCDF::exceptions::NcException& e)
