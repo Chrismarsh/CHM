@@ -600,7 +600,14 @@ public:
     */
     void from_hdf5(const std::string& mesh_filename,
                    const std::vector<std::string>& param_filename,
-                   const std::vector<std::string>& ic_filename);
+                   const std::vector<std::string>& ic_filename,
+                   bool delay_param_ic_load = false    );
+
+    /**
+     * Loads just the mesh parameters. This is used to delay the memory heavy load of params until later in the model init
+     * @param param_filename
+     */
+    void load_hdf5_parameters( const std::vector<std::string>& param_filenames);
 
     /**
      * Reads a partitioned mesh file (.partition) that holds multiple hdf5 files
@@ -608,8 +615,13 @@ public:
      * @param cwd Current working directory of the calling code. Because the partition file can either include fully
      *   qualified paths or relative paths, we need to know where we currently are so-as to ensure we open the correct
      *   file.
+     * @param only_load_params Only load the parameters from the mesh. Requires a loaded mesh. Used to break up
+     * memory intensive tasks
      */
-    void from_partitioned_hdf5(const std::string& partition_filename, boost::filesystem::path cwd = boost::filesystem::path("."));
+    void from_partitioned_hdf5(const std::string& partition_filename,
+                               bool only_load_params=false,
+                               boost::filesystem::path cwd = boost::filesystem::path(".")
+                               );
 
     /**
     * Sets a new order to the face numbering.

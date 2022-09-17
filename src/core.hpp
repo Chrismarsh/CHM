@@ -268,7 +268,8 @@ protected:
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
 
-
+    // these are saved here so-as to be used elsewhere
+    std::string _mesh_path;
 
 
     //if radius selection for stations is chosen this holds that

@@ -1032,7 +1032,10 @@ void triangulation::_build_dDtree()
     );
 }
 
-void triangulation::from_partitioned_hdf5(const std::string& partition_filename, boost::filesystem::path cwd)
+void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
+                                          bool only_load_params,
+                                          boost::filesystem::path cwd
+                                          )
 {
     // we are loading a partition mesh
     auto partition = read_json(partition_filename);
@@ -1141,11 +1144,17 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
     if(param_file_paths.size() > 0)
         param_file.push_back( param_file_paths[tmp_rank] );
 
-    from_hdf5(mesh_file, param_file, {} );
+    if(!only_load_params)
+        from_hdf5(mesh_file, {}, {}, true );
+
+    if(only_load_params)
+        load_hdf5_parameters(param_file);
+
 }
 void triangulation::from_hdf5(const std::string& mesh_filename,
 			      const std::vector<std::string>& param_filenames,
-			      const std::vector<std::string>& ic_filenames
+			      const std::vector<std::string>& ic_filenames,
+                              bool delay_param_ic_load
 			      )
 {
     try
@@ -1192,13 +1201,16 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
     _build_dDtree();
 
+    // load param
+    if(!delay_param_ic_load)
+        load_hdf5_parameters(param_filenames);
 
+    // TODO: include initial condition files
 
-////////////////////////////////////////////////////////////////////////////
-// Parameters
-////////////////////////////////////////////////////////////////////////////
+}
 
-
+void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_filenames)
+{
     for (auto param_filename : param_filenames)
     {
         try
@@ -1224,10 +1236,10 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
             if(_mesh_is_from_partition)
             {
-                // init the parameter storage on each face
-                // as we are using a pre-partitioned mesh, _faces holds local+ghosts, so can do it in one go which is
-                // faster
-                #pragma omp parallel for
+// init the parameter storage on each face
+// as we are using a pre-partitioned mesh, _faces holds local+ghosts, so can do it in one go which is
+// faster
+#pragma omp parallel for
                 for (size_t i = 0; i < _faces.size(); i++)
                 {
                     _faces.at(i)->init_parameters(_parameters);
@@ -1235,17 +1247,17 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
             }
             else
             {
-                // if we are not reading from a partitioned file, we need to ensure we do the local faces + ghosts
-                // separetely
-                // init the parameter storage on each face
-                #pragma omp parallel for
+// if we are not reading from a partitioned file, we need to ensure we do the local faces + ghosts
+// separetely
+// init the parameter storage on each face
+#pragma omp parallel for
                 for (size_t i = 0; i < _num_faces; i++)
                 {
                     face(i)->init_parameters(_parameters);
                 }
 
-                // init the parameter storage for the ghost regions
-                #pragma omp parallel for
+// init the parameter storage for the ghost regions
+#pragma omp parallel for
                 for (size_t i = 0; i < _ghost_faces.size(); i++)
                 {
                     _ghost_faces.at(i)->init_parameters(_parameters);
@@ -1286,8 +1298,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
                 if(_mesh_is_from_partition)
                 {
-                    // since the params are for all our faces + ghosts, we can load it all at once
-                    #pragma omp parallel for
+// since the params are for all our faces + ghosts, we can load it all at once
+#pragma omp parallel for
                     for (size_t i = 0; i < _faces.size(); i++)
                     {
                         _faces.at(i)->parameter(name) = data.at(i);
@@ -1295,8 +1307,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
                 }
                 else
                 {
-                    // we have to load the ghosts and local faces separate.
-                    #pragma omp parallel for
+// we have to load the ghosts and local faces separate.
+#pragma omp parallel for
                     for (size_t i = 0; i < _num_faces; i++)
                     {
                         face(i)->parameter(name) = data[i];
@@ -1341,8 +1353,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
         }
 
     } // end of param_filenames loop
-
-    // TODO: include initial condition files
 
 }
 

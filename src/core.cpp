@@ -620,11 +620,11 @@ void core::config_meshes( pt::ptree &value)
 
     _find_and_insert_subjson(value);
 
-    std::string mesh_path = value.get<std::string>("mesh");
-    LOG_DEBUG << "Found mesh:" << mesh_path;
-    mesh_path = (cwd_dir / mesh_path).string();
+    _mesh_path = value.get<std::string>("mesh");
+    LOG_DEBUG << "Found mesh:" << _mesh_path;
+    _mesh_path = (cwd_dir / _mesh_path).string();
 
-    auto mesh_file_extension = boost::filesystem::path(mesh_path).extension().string();
+    auto mesh_file_extension = boost::filesystem::path(_mesh_path).extension().string();
 
     // only need to look for param + ic if we aren't loading a partition
     std::vector<std::string> param_file_paths;
@@ -706,7 +706,7 @@ void core::config_meshes( pt::ptree &value)
 
     // Before we read the mesh, we need to know if we are geographic or projected so we can hook up all the distance functions
     // correctly. So for either json or hdf5 we check, hook up the functions, then proceed to the main load which can assume the functions are available
-    bool is_geographic = check_is_geographic(mesh_path);
+    bool is_geographic = check_is_geographic(_mesh_path);
 
     _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
     if( is_geographic)
@@ -725,7 +725,7 @@ void core::config_meshes( pt::ptree &value)
     ////////////////////////////////////////////////////////////
     if(mesh_file_extension == ".h5")
     {
-        _mesh->from_hdf5(mesh_path, param_file_paths, initial_condition_file_paths);
+        _mesh->from_hdf5(_mesh_path, param_file_paths, initial_condition_file_paths);
     }
     else if(mesh_file_extension == ".partition")
     {
@@ -733,14 +733,14 @@ void core::config_meshes( pt::ptree &value)
         CHM_THROW_EXCEPTION(config_error, "Using a partitioned mesh requires enabling MPI during CHM configure and build.");
 #endif
 
-        _mesh->from_partitioned_hdf5(mesh_path);
+        _mesh->from_partitioned_hdf5(_mesh_path);
 
 
 
     }
     else  // Assume anything that is NOT h5 is json
     {
-        auto mesh = read_json(mesh_path);
+        auto mesh = read_json(_mesh_path);
 
         //mesh will have been loaded by the geographic check so don't re load it here
       bool triarea_found = false;
@@ -1362,6 +1362,9 @@ void core::init(int argc, char **argv)
      * The rest may be optional, and will override the defaults.
      */
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
+
+    // This has the delayed param load enabled, so mesh path is saved to _mesh_path which is used to load
+    // the params letter
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with.
@@ -1396,6 +1399,8 @@ void core::init(int argc, char **argv)
     populate_face_station_lists();
     populate_distributed_station_lists();
 
+    //load the parameters now that the station list has been pruned
+    _mesh->from_partitioned_hdf5(_mesh_path, true);
 
     boost::filesystem::path full_path(boost::filesystem::current_path());
 
