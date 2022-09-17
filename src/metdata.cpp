@@ -41,7 +41,7 @@ metdata::~metdata()
 
 }
 
-void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boost::shared_ptr<filter_base> > filters)
+void metdata::load_from_netcdf(const std::string& path, const triangulation::bounding_box& box, std::map<std::string, boost::shared_ptr<filter_base> > filters)
 {
     if(_mesh_proj4 == "")
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Met loader not initialized with proj4 string" ));
@@ -155,6 +155,14 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                     }
                 }
 
+                if( longitude > box.x_max || longitude < box.x_min ||
+                    latitude > box.y_max || latitude < box.y_min)
+                {
+                    _stations.at(index) = nullptr;
+                    ++skipped;
+                    continue;
+                }
+
                 double elevation = z;
 
                 std::shared_ptr<station> s = std::make_shared<station>(station_name,
@@ -176,7 +184,7 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
             CHM_THROW_EXCEPTION(forcing_error,
                                 "All forcing grid cells were skipped due to being NaN values. Elevation and lat/lon,"
                                 " regardless of the timestep the model is started from, are defined from timestep = 0 "
-                                ". Ensure it is defined then.");
+                                ". Ensure it is defined then. Also, could be a bounding box issue.");
         }
 
     } catch(netCDF::exceptions::NcException& e)

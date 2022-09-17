@@ -433,7 +433,7 @@ void core::config_forcing(pt::ptree &value)
         }
 
         // this delegates all filter responsibility to metdata from now on
-        _metdata->load_from_netcdf(file, netcdf_filters);
+        _metdata->load_from_netcdf(file, _mesh->_bounding_box,netcdf_filters);
         nstations = _metdata->nstations();
     } else
     {
@@ -1364,7 +1364,7 @@ void core::init(int argc, char **argv)
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
 
     // This has the delayed param load enabled, so mesh path is saved to _mesh_path which is used to load
-    // the params letter
+    // the params latter
     config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with.

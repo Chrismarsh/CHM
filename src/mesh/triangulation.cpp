@@ -855,9 +855,15 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         for (size_t i = 0; i < nvert; i++)
         {
 
-            Point_3 pt(vertex[i][0], vertex[i][1], vertex[i][2]);
+            Point_3 pt(vertex[i][0], vertex[i][1], vertex[i][2]); // x y z
             _max_z = std::max(_max_z, vertex[i][2]);
             _min_z = std::min(_min_z, vertex[i][2]);
+
+            _bounding_box.x_max = std::max(_bounding_box.x_max, vertex[i][0]);
+            _bounding_box.x_min = std::min(_bounding_box.x_min, vertex[i][0]);
+
+            _bounding_box.y_max = std::max(_bounding_box.y_max, vertex[i][1]);
+            _bounding_box.y_min = std::min(_bounding_box.y_min, vertex[i][1]);
 
             Vertex_handle Vh = this->create_vertex();
             Vh->set_point(pt);

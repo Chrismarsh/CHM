@@ -931,6 +931,13 @@ public:
     boost::mpi::communicator _comm_world;
 #endif
 
+    struct bounding_box{
+        double x_min {0};
+        double x_max {0};
+        double y_min {0};
+        double y_max {0};
+    } _bounding_box;
+
 protected:
 
     enum GHOST_TYPE
@@ -1043,6 +1050,8 @@ protected:
     // min and max elevations
     double _min_z;
     double _max_z;
+
+
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallelism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
