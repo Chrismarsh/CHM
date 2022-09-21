@@ -351,14 +351,35 @@ set_target_properties(partition
 		)
 
 if(BUILD_WITH_CONAN)
-	add_custom_command(TARGET partition POST_BUILD
-			#patch CHM to look for @rpath/ for all dylibs that aren't looking for @rpath
-			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/partition | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/partition; done"
-			#strip all LC_RPATH from our non-install binary
-			COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/partition | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/partition; done"
-			#update LC_RPATH for our non-install binary
-			COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/partition"
-			VERBATIM)
+	if(APPLE)
+		add_custom_command(TARGET partition POST_BUILD
+				#patch CHM to look for @rpath/ for all dylibs that aren't looking for @rpath
+				COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/partition | grep name | grep -v segname |  grep -v sectname | grep -v @rpath  | awk '{print $2}' | grep -v '^/' | while read x; do install_name_tool -change $x @rpath/`echo $x | grep -Eo '[a-zA-Z0-9_\.-]+\.dylib'` ${CMAKE_BINARY_DIR}/bin/partition; done"
+				#strip all LC_RPATH from our non-install binary
+				COMMAND bash -c "otool -l ${CMAKE_BINARY_DIR}/bin/partition | grep LC_RPATH -A2 | grep path | awk '{print $2}' | while read x; do install_name_tool -delete_rpath $x ${CMAKE_BINARY_DIR}/bin/partition; done"
+				#update LC_RPATH for our non-install binary
+				COMMAND bash -c "install_name_tool -add_rpath @executable_path/../lib ${CMAKE_BINARY_DIR}/bin/partition"
+				VERBATIM)
+	else()
+		# same as CHM build
+		target_link_options(partition
+				PUBLIC "LINKER:--disable-new-dtags" )
+
+		add_custom_command(TARGET partition POST_BUILD
+				#			# Some .so will have runpaths, some do not. Just remove them all. The RUNPATHS override the binarie's rpath (I don't know why)
+				COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --remove-rpath $x; done"
+				#
+				#			# RPATH correctly works, so unlikely to be needed but kept just in case.
+				#			# This removes all runpaths , and then here we will patch each .so to have the correct RUNPATH
+				COMMAND bash -c "cd ${CMAKE_BINARY_DIR}/lib ; ls | while read x; do patchelf --set-rpath '\$ORIGIN/../lib' $x; done"
+				#
+				#			#see if there are any hard coded paths in your binary and if so replace with just the so name
+				#			COMMAND  bash -c "readelf ${CMAKE_BINARY_DIR}/bin/CHM -d | grep NEEDED |awk '{print $5}' | grep '\\[/'  | awk -F'[\\[\\]]' '{print $2}' | while read x; do patchelf --replace-needed $x `echo $x | grep -Eo '[a-zA-Z0-9_+\\.-]+so.*?'` ${CMAKE_BINARY_DIR}/bin/CHM; done"
+				#
+				VERBATIM
+				)
+
+	endif()
 endif()
 
 #make install will correctly set the rpath for us to find the lib/ dir with the so/dylibs we need
