@@ -184,6 +184,12 @@ endif()
 #need this for calling the logger from multiple modules
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
+# Note the boost::bind deprecation warnings for the global namespace:
+#
+#   ‘#pragma message: The practice of declaring the Bind placeholders (_1, _2, ...) in the global namespace is deprecated. Please use <boost/bind/bind.hpp> + using namespace boost::placeholders, or define BOOST_BIND_GLOBAL_PLACEHOLDERS to retain the current behavior.’
+add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
+
+
 find_package(${CGAL} 5.0 REQUIRED)
 
 # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
