@@ -474,16 +474,16 @@ void triangulation::from_json(pt::ptree &mesh)
         LOG_DEBUG << "No face permutation.";
     }
 
-    partition_mesh();
-
+    // Don't actually want to partition the mesh. Use the non-MPI one
+    partition_mesh_nonMPI(_faces.size());
 
     _build_dDtree();
 
 
 #pragma omp parallel for
-    for (size_t i = 0; i < size_faces(); i++)
+    for (size_t i = 0; i < _faces.size(); i++)
     {
-        auto f = face(i);
+        auto f = _faces.at(i); // ensure we access like this as json mode is generally non MPI unless we are partitioning
         //init these
         f->slope();
         f->aspect();
@@ -1517,6 +1517,32 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 
 #endif
 }
+
+void triangulation::partition_mesh_nonMPI(size_t _num_global_faces)
+{
+    // If we are not using MPI, some code paths might still want to make use of these
+    //  initialized to [0, num_faces - 1]
+    global_cell_start_idx = 0;
+    global_cell_end_idx = _num_faces - 1;
+
+    _global_IDs.resize(_num_global_faces);
+#pragma omp parallel for
+    for (size_t i = 0; i < _num_global_faces; ++i)
+    {
+        _global_IDs[i] = i;
+        _faces.at(i)->is_ghost = false;
+        _faces.at(i)->cell_local_id =
+            i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
+    }
+
+    // make sure these setup when in MPI mode for partition
+    _num_faces =  _faces.size();
+    _num_global_faces = _faces.size();
+    _local_faces = _faces;
+
+    LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces - 1) << ", number " << _local_faces.size();
+}
+
 void triangulation::partition_mesh()
 {
     /*
@@ -1586,21 +1612,7 @@ void triangulation::partition_mesh()
 
 #else // do not USE_MPI
 
-    // If we are not using MPI, some code paths might still want to make use of these
-    //  initialized to [0, num_faces - 1]
-    global_cell_start_idx = 0;
-    global_cell_end_idx = _num_faces - 1;
-
-    _global_IDs.resize(_num_global_faces);
-#pragma omp parallel for
-    for (size_t i = 0; i < _num_global_faces; ++i)
-    {
-        _global_IDs[i] = i;
-        _faces.at(i)->is_ghost = false;
-        _faces.at(i)->cell_local_id =
-            i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
-    }
-    LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces - 1) << ", number " << _local_faces.size();
+    partition_mesh_nonMPI(size_t _num_global_faces);
 
 #endif // USE_MPI
 }

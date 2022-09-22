@@ -149,6 +149,15 @@ the ensure the file, when loaded, matches the runtime MPI configuration.
 
 Secondly a new folder is created ``basename_mesh.np<MPI_RANKS>.partition.meshes`` that holds the underlying h5 mesh and param files.
 
+Partition is MPI aware and can be run with multiple processors. This will not speed up the json -> h5 creation, but
+it will allow parallel decomposition. Each MPI rank must be able to hold the entire mesh in memory. The ranks used to run
+parition need not be the same number of ranks used in the domain decomp. For example,
+
+.. code::
+    
+    # use 8 mpi ranks to decompose granger1m_mesh into 20 sub-domains
+    mpirun -np 8 ./partition --mesh-file granger1m_mesh.h5 --param-file granger1m_param.h5 --mpi-ranks 20
+
 
 Example Usage
 ++++++++++++++

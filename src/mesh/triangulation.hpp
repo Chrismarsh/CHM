@@ -634,6 +634,7 @@ public:
     */
     void partition_mesh();
 
+
     /**
      * Load the partition from the h5 file instead of computing it
      */
@@ -1010,6 +1011,11 @@ protected:
     void load_mesh_from_h5(const std::string& mesh_filename);
 
     void determine_ghost_owners();
+
+    /**
+     * Inits required datastructures if we are in non-MPI mode and doesn't actually do any partitioning
+     */
+    void partition_mesh_nonMPI(size_t _num_global_faces);
 
     /**
      * Build the spatial search dD tree. Assumes _num_global_faces has been set and this needs to be called after

@@ -34,14 +34,54 @@
 #include <algorithm>
 #include <numeric>
 #include <string>
+#include <vector>
 
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 
 using namespace H5;
 
+// MPI stuff
+#include <boost/mpi.hpp>
+#include <boost/serialization/string.hpp>
+
+// these are the real mpi environments used for parallel processing in this program and
+// are not the faked ones we rely on for the abitrary partition generation in triangulation
+boost::mpi::environment real_mpi_env;
+boost::mpi::communicator real_comm_world;
 
 #define USE_MPI 1
+
+
+// based on https://stackoverflow.com/a/27260261/410074
+// used to split an array in n chunks
+template<typename T>
+std::vector<std::vector<T>> array_split(const std::vector<T>& source, size_t chunks)
+{
+    std::vector<std::vector<T>> result;
+
+    size_t chunkSize = std::floor(source.size() / chunks);
+    size_t remainder = source.size() % chunks;
+
+    auto start = source.begin();
+    auto end = source.end();
+
+    bool first = true;
+
+    while (start != end)
+    {
+        size_t cs = first ? chunkSize + remainder : chunkSize;
+        auto next = std::distance(start, end) >= cs
+                        ? start + cs
+                        : end;
+
+        result.emplace_back(start, next);
+        start = next;
+        first = false;
+    }
+
+    return result;
+}
 
 typedef struct _MeshParameters
 {
@@ -400,7 +440,14 @@ class preprocessingTriangulation : public triangulation
                 }
 
                 _num_faces = _faces.size();
+
+                if(size_faces() == 0)
+                {
+                    CHM_THROW_EXCEPTION(mesh_error, "Created a mesh with 0 elements!");
+                }
+
                 LOG_DEBUG << "Created a mesh with " << size_faces() << " triangles";
+
             }
 
             {
@@ -516,6 +563,9 @@ class preprocessingTriangulation : public triangulation
                                  std::vector<int> ranks_to_keep, bool output_vtu)
     {
 
+        // all the _comm_world here in are "faked" and not real MPI. These are used to force a domain decomp at a
+        // arbitrary rank count. Where as the global real_* MPI are real MPI comm world used for parallel processing in here
+
         _comm_world._size = MPI_ranks;
 
         {
@@ -608,11 +658,22 @@ class preprocessingTriangulation : public triangulation
             }
             from_json(mesh);
 
+
             LOG_DEBUG << "Converting mesh to hdf5...";
             auto base_name = boost::filesystem::path(mesh_filename).stem().string();
+
+            // make sure these setup when in MPI mode for partition
+            _num_faces =  _faces.size();
+            _num_global_faces = _faces.size();
+            _local_faces = _faces;
             triangulation::to_hdf5(base_name);
             LOG_DEBUG << "HDF5 written, terminating";
             return;
+        }
+
+        if(_local_sizes.size() != MPI_ranks)
+        {
+            CHM_THROW_EXCEPTION(mesh_error, "Mesh was partitioned for " + std::to_string(_local_sizes.size()) + " partitions but was requested split into " + std::to_string(MPI_ranks));
         }
 
         // only get here if we are reading the h5 files
@@ -653,14 +714,18 @@ class preprocessingTriangulation : public triangulation
         int end_rank = MPI_ranks;
 
         // if we output a standalone mesh only process that single mpirank
-        if (standalone_rank > -1)
+        if (standalone_rank > -1 )
         {
             start_rank = standalone_rank;
             end_rank = standalone_rank + 1;
+
             _is_standalone = true;
+
+            if(real_comm_world.size() > 1)
+            {
+                CHM_THROW_EXCEPTION(mesh_error, "Cannot create standalone mesh with MPI run");
+            }
         }
-
-
 
         // if we are only outputting a subset of the domain, we need to rewrite the owner to account for the number
         // of mpi ranks that will participate in the subset. E.g., if we have 500 ranks but only output 3:
@@ -675,7 +740,13 @@ class preprocessingTriangulation : public triangulation
 
         bool is_subset = (MPI_ranks != ranks_to_keep.size());
         if(is_subset)
+        {
+            if(real_comm_world.size() > 1)
+            {
+                CHM_THROW_EXCEPTION(mesh_error, "Cannot create subset mesh with MPI run");
+            }
             LOG_WARNING << "Processing will produce only subset output because tool was invoked with -v flag(s)";
+        }
 
         // set all our owners first
         LOG_DEBUG << "Determining partition owners";
@@ -694,7 +765,11 @@ class preprocessingTriangulation : public triangulation
                 _mpirank_proxy_to_mpirank_map[proxy_mpirank] = mpirank;
                 _mpirank_to_proxy_mpirank_map[mpirank] = proxy_mpirank;
 
-                LOG_DEBUG<< "MPI rank = " << mpirank << " will be remapped to  " << _mpirank_to_proxy_mpirank_map[mpirank];
+                if( mpirank != _mpirank_to_proxy_mpirank_map[mpirank])
+                {
+                    LOG_DEBUG<< "MPI rank = " << mpirank << " will be remapped to  " << _mpirank_to_proxy_mpirank_map[mpirank];
+                }
+
 
                 proxy_mpirank++;
             }
@@ -702,22 +777,45 @@ class preprocessingTriangulation : public triangulation
 
         if(output_vtu)
         {
-            // init the datastructs to hold information for outputting to VTU
-            std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type", "global_id","local_id"};
-#pragma omp parallel for
-            for (size_t i = 0; i < _faces.size(); ++i)
+            if(real_comm_world.rank() == 0)
             {
-                auto f = _faces.at(i);
-                f->init_time_series(vtu_outputs);
-                (*f)["owner"] = f->owner;
+                LOG_DEBUG << "Writting partition.vtu";
+                // init the datastructs to hold information for outputting to VTU
+                std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type", "global_id","local_id"};
+#pragma omp parallel for
+                for (size_t i = 0; i < _faces.size(); ++i)
+                {
+                    auto f = _faces.at(i);
+                    f->init_time_series(vtu_outputs);
+                    (*f)["owner"] = f->owner;
+                }
+
+                _local_faces = _faces;
+                write_vtu("partition.vtu",{"owner"});
             }
-
-            _local_faces = _faces;
-            write_vtu("partition.vtu",{"owner"});
-
         }
 
+        // Split the valid ranks into nrank chunks
+        auto split = array_split(ranks_to_keep, real_comm_world.size());
 
+        if( split.size() != real_comm_world.size())
+        {
+            LOG_ERROR << "rank=" << real_comm_world.rank()<< ":\tsplit=" << split.size();
+
+            CHM_THROW_EXCEPTION(mesh_error, "Didn't split to correct number of ranks");
+        }
+
+        // we can't get here in standalone or subset mode which are the only other place start/end are modified
+        // thus can update these ok
+        start_rank = split.at(real_comm_world.rank()).front();
+
+        //because the way the split works we need to include the last item
+        // e.g., the following valid_ranks [1,9] split in 2 will be
+        // [ [1 2 3 4],  [6 7 8 9] ]
+        // back() gives 4, but the for loop uses < on the last so the +1 is needed to ensure we use the last elem
+        end_rank = split.at(real_comm_world.rank()).back() + 1 ;
+
+        LOG_DEBUG << "Rank " << real_comm_world.rank() << "\tstart="<<start_rank << "\tend=" << end_rank;
         // iterate over all the ranks but since we might be only doing a subset, we need to maintain a proxy rank
         for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
         {
@@ -806,7 +904,8 @@ class preprocessingTriangulation : public triangulation
 
             // sort as this is needed for the chunking of ghosts per mpi owner
             std::sort(_ghost_faces.begin(), _ghost_faces.end(),
-                      [&](const auto& a, const auto& b) { return a->cell_global_id < b->cell_global_id; });
+                      [&](const auto& a, const auto& b)
+                      { return a->cell_global_id < b->cell_global_id; });
 
             // determine the MPI rank that owns our Type I ghosts
             determine_ghost_owners();
@@ -904,6 +1003,7 @@ class preprocessingTriangulation : public triangulation
                     }
                 }
 
+                //per-rank so doesn't need to be protected on comm_world_rank = 0;
                 write_vtu("rank." + std::to_string(mpirank) + ".vtu");
             }
 
@@ -917,18 +1017,34 @@ class preprocessingTriangulation : public triangulation
                 }
             }
 
-            pt::ptree m;
-            m.put("", (partition_dir / (fname + "_mesh.h5")).string());
-            meshes.push_back(std::make_pair("", m));
+        } // end MPI rank loop
 
-            pt::ptree p;
-            p.put("", (partition_dir / (fname + "_param.h5")).string());
-            params.push_back(std::make_pair("", p));
+        if(real_comm_world.rank() == 0)
+        {
+            LOG_DEBUG << "Writting partition file";
+            for (int mpirank = 0; mpirank < MPI_ranks; mpirank++)
+            {
+                bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(),mpirank) != ranks_to_keep.end());
+                if(!valid_rank)
+                    continue;
+
+                auto fname =
+                    filename_base + ".partition." + (_is_standalone ? "standalone." : "") + std::to_string(mpirank);
+
+                pt::ptree m;
+                m.put("", (partition_dir / (fname + "_mesh.h5")).string());
+                meshes.push_back(std::make_pair("", m));
+
+                pt::ptree p;
+                p.put("", (partition_dir / (fname + "_param.h5")).string());
+                params.push_back(std::make_pair("", p));
+            }
+
+            tree.add_child("meshes", meshes);
+            tree.add_child("parameters", params);
+
+            pt::write_json(filename_base + ".np" + std::to_string(_comm_world.size()) + ".partition", tree);
         }
-        tree.add_child("meshes", meshes);
-        tree.add_child("parameters", params);
-
-        pt::write_json(filename_base + ".np" + std::to_string(_comm_world.size()) + ".partition", tree);
 
     }
 
@@ -1409,7 +1525,6 @@ int main(int argc, char* argv[])
         std::iota(valid_ranks.begin(), valid_ranks.end(), 0);
     }
 
-
     std::vector<std::string> param_filenames;
     for (auto& itr : vm["param-file"].as<std::vector<std::string>>())
     {
@@ -1428,11 +1543,30 @@ int main(int argc, char* argv[])
 
         {
             preprocessingTriangulation* tri = new preprocessingTriangulation();
-            tri->from_file_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
-                                         standalone_rank, valid_ranks, output_vtu);
+
+            // need to process the json file in serial, only rank 0 can do it
+            if(is_json_mesh && real_comm_world.size() > 1)
+            {
+                if (real_comm_world.rank() == 0)
+                {
+                    LOG_DEBUG << "Rank 0 doing json -> h5 conversation";
+                    tri->from_file_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
+                                                 standalone_rank, valid_ranks, output_vtu);
+                }
+            }
+            else // not a json file or in serial mode and json, we can let the MPI logic in here proceed as normal
+            {
+                tri->from_file_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
+                                             standalone_rank, valid_ranks, output_vtu);
+            }
+
         }
 
-        // We have input as json and asked for mpi-ranks, so rerun the tool
+        // wait until everyone is caught up
+        real_comm_world.barrier();
+
+        // We have input as json and asked for mpi-ranks, so rerun the tool to do the partition
+        // Previous from_file_and_partition will have terminated early after the json -> h5 conversion
         if (is_json_mesh && vm.count("mpi-ranks"))
         {
             LOG_DEBUG << "Partitioning h5 mesh";
