@@ -154,7 +154,7 @@ it will allow parallel decomposition. Each MPI rank must be able to hold the ent
 parition need not be the same number of ranks used in the domain decomp. For example,
 
 .. code::
-    
+
     # use 8 mpi ranks to decompose granger1m_mesh into 20 sub-domains
     mpirun -np 8 ./partition --mesh-file granger1m_mesh.h5 --param-file granger1m_param.h5 --mpi-ranks 20
 
