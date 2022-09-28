@@ -702,7 +702,7 @@ if (Nsnow > 0) then
     csnow(k) = Sice(k)*hcap_ice + Sliq(k)*hcap_wat
   end do
   if (Nsnow == 1) then
-    Gs(1) = 0 !2 / (Dsnw(1)/ksnow(1) + Dzsoil(1)/ksoil(1))
+    Gs(1) = 2 / (Dsnw(1)/ksnow(1) + Dzsoil(1)/ksoil(1))
     dTs(1) = (Gsrf + Gs(1)*(Tsoil(1) - Tsnow(1)))*dt /  &
              (csnow(1) + Gs(1)*dt)
   else
@@ -721,7 +721,7 @@ if (Nsnow > 0) then
                + Gs(k)*(Tsnow(k+1) - Tsnow(k))*dt 
     end do
     k = Nsnow
-    Gs(k) = 0 ! 2 / (Dsnw(k)/ksnow(k) + Dzsoil(1)/ksoil(1))
+    Gs(k) = 2 / (Dsnw(k)/ksnow(k) + Dzsoil(1)/ksoil(1))
     a(k) = c(k-1)
     b(k) = csnow(k) + (Gs(k-1) + Gs(k))*dt
     c(k) = 0
