@@ -247,6 +247,11 @@ void FSM::run(mesh_elem& face)
     // FSM has removal as positive and deposition as negative
     trans = -trans;
 
+    d.state.Tsoil[0] = 263;
+    d.state.Tsoil[1] = 263.1;
+    d.state.Tsoil[2] = 263.2;
+    d.state.Tsoil[3] = 263.3;
+
     fsm2_timestep(
         // Driving variables
         &dt, &elev, &zT, &zU,

@@ -164,7 +164,7 @@ class FSM : public module_base
         {
             // State variables
             float albs = 0.8;
-            float Tsrf = 285;
+            float Tsrf = 263.0; // cold soils
             float Dsnw[3] = {0, 0, 0};
             int Nsnow = 0;
             float Qcan[2] = {0, 0};
@@ -174,8 +174,8 @@ class FSM : public module_base
             float Sliq[3] = {0, 0, 0};
             float Sveg[2] = {0, 0};
             float Tcan[2] = {285, 285};
-            float Tsnow[3] = {273, 273, 273};
-            float Tsoil[4] = {269, 269, 269, 269};
+            float Tsnow[3] = {270, 270, 270};
+            float Tsoil[4] = {263, 263.1, 263.2, 263.3}; //cold soils
             float Tveg[2] = {285, 285};
 
             float Vsat = 0.27;
