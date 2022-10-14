@@ -213,9 +213,6 @@ void netcdf::open_GEM(const std::string &file)
         _epoch = boost::posix_time::time_from_string(strs[2]+" "+strs[3]);
     }
 
-    //get our dt, assuming constant dt throughout the nc file
-    _timestep *= dt[1]-dt[0];
-
     //need to handle a start that is different from our epoch
     // e.g., the epoch might be 'hours since 2021-01-01 00:00:00',
     // but timestep 1 is "5 hours" making the start 2021-01-01 05:00:00
@@ -224,6 +221,9 @@ void netcdf::open_GEM(const std::string &file)
     //figure out what the end of the timeseries is
     _end = _epoch + _timestep * dt[_datetime_length-1];
 
+
+    //get our dt, assuming constant dt throughout the nc file
+    _timestep *= dt[1]-dt[0];
 
     // go through all the timesteps and ensure a consistent timesteping
     // best to spend the time up front for this check than to get 90% into a sim and have it die
