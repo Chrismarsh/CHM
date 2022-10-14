@@ -232,16 +232,23 @@ void triangulation::from_json(pt::ptree &mesh)
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
     {
-        std::vector<double> items;
+        std::vector<double> vertex;
         //iterate over the vertex triples
         for(auto& jtr: itr.second)
         {
-            items.push_back(jtr.second.get_value<double>());
+            vertex.push_back(jtr.second.get_value<double>());
         }
-        Point_3 pt( items[0], items[1], items[2]);
+        Point_3 pt( vertex[0], vertex[1], vertex[2]);
 
-        _max_z = std::max(_max_z,items[2]);
-        _min_z = std::min(_min_z,items[2]);
+        _max_z = std::max(_max_z,vertex[2]);
+        _min_z = std::min(_min_z,vertex[2]);
+
+        _bounding_box.x_max = std::max(_bounding_box.x_max, vertex[0]);
+        _bounding_box.x_min = std::min(_bounding_box.x_min, vertex[0]);
+
+        _bounding_box.y_max = std::max(_bounding_box.y_max, vertex[1]);
+        _bounding_box.y_min = std::min(_bounding_box.y_min, vertex[1]);
+
 
         Vertex_handle Vh = this->create_vertex();
         Vh->set_point(pt);
