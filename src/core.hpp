@@ -178,7 +178,13 @@ public:
     void init(int argc, char **argv);
     void config_options( pt::ptree &value);
     void config_modules( pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
-    void config_meshes( pt::ptree& value);
+
+    /**
+     *
+     * @param value True if loading a partitioned mesh
+     * @return
+     */
+    bool config_meshes( pt::ptree& value);
     void config_forcing(pt::ptree& value);
     void config_module_overrides( pt::ptree& value);
     void config_parameters(pt::ptree &value);

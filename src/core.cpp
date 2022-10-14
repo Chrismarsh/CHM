@@ -610,7 +610,7 @@ void core::config_parameters(pt::ptree &value)
 
 }
 
-void core::config_meshes( pt::ptree &value)
+bool core::config_meshes( pt::ptree &value)
 {
     LOG_DEBUG << "Found meshes sections.";
 
@@ -626,11 +626,13 @@ void core::config_meshes( pt::ptree &value)
 
     auto mesh_file_extension = boost::filesystem::path(_mesh_path).extension().string();
 
+    bool is_partition = false;
     // only need to look for param + ic if we aren't loading a partition
     std::vector<std::string> param_file_paths;
     std::vector<std::string> initial_condition_file_paths;
     if(mesh_file_extension != ".partition")
     {
+
         // Paths for parameter files
         try
         {
@@ -676,6 +678,7 @@ void core::config_meshes( pt::ptree &value)
         // only check the params and ics if we aren't using a parition file
         if(mesh_file_extension != ".partition")
         {
+            is_partition = true;
             for(const auto& it : param_file_paths)
             {
                 auto extension = boost::filesystem::path(it).extension();
@@ -789,6 +792,7 @@ void core::config_meshes( pt::ptree &value)
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 
+    return is_partition;
 }
 
 void core::config_output(pt::ptree &value)
@@ -1365,7 +1369,7 @@ void core::init(int argc, char **argv)
 
     // This has the delayed param load enabled, so mesh path is saved to _mesh_path which is used to load
     // the params latter
-    config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
+     bool ispart = config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with.
     // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further
@@ -1399,8 +1403,9 @@ void core::init(int argc, char **argv)
     populate_face_station_lists();
     populate_distributed_station_lists();
 
-    //load the parameters now that the station list has been pruned
-    _mesh->from_partitioned_hdf5(_mesh_path, true);
+    //load the parameters now that the station list has been pruned and we have a partitioned mesh
+    if( ispart)
+        _mesh->from_partitioned_hdf5(_mesh_path, true);
 
     boost::filesystem::path full_path(boost::filesystem::current_path());
 
