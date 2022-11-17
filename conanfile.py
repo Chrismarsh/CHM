@@ -81,8 +81,8 @@ class CHMConan(ConanFile):
 
         # Guide libtiff (via gdal) to make the right version selection, but this is not a depednency we explicitly declare
         self.requires( "libdeflate/1.12", override=True)
-        self.requires( "proj/[>=7.2.1]" )
-        self.requires( "gdal/[>=3.2.1]" )
+        self.requires( "proj/9.0.1" )
+        self.requires( "gdal/3.5.2" )
 
 
         self.requires( "sparsehash/[>=2.0.3]@CHM/stable" )
