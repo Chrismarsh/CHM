@@ -104,11 +104,50 @@ void netcdf::open_GEM(const std::string &file)
 {
     _data.open(file.c_str(), netCDF::NcFile::read);
 
-    //gem netcdf files have 1 coordinate, datetime
+    // gem netcdf files have 1 coordinate, datetime
 
+//    for (auto& itr : _data.getVars())
+//    {
+//        LOG_DEBUG << itr.first;
+//    }
+//
+//    LOG_DEBUG << "-----";
+//    for (auto& itr : _data.getCoordVars())
+//    {
+//        LOG_DEBUG << itr.first;
+//    }
+//    LOG_DEBUG << "-----";
+//    for (auto& itr : _data.getDims())
+//    {
+//        LOG_DEBUG << itr.first;
+//    }
     auto coord_vars = _data.getCoordVars();
+
+    // a few NC have time as a variable and not a coordinate variable so look for time/datetime there
+    if(coord_vars.size() == 0)
+    {
+        CHM_THROW_EXCEPTION(forcing_error,"Netcdf file does not have a coordinate variable defined.");
+    }
     _datetime_field = "datetime";
-    _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
+
+    try
+    {
+        _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
+    }
+    catch (netCDF::exceptions::NcNullGrp& e)
+    {
+        _datetime_field = "time";
+        try {
+            _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
+        }
+        catch (netCDF::exceptions::NcNullGrp& e)
+        {
+            LOG_ERROR << "Tried datetime and time, coord not found";
+            throw e;
+        }
+
+    }
+
 
     // if we don't have at least two timesteps, we can't figure out the model internal timestep length (dt)
     if(_datetime_length == 1)
@@ -128,6 +167,7 @@ void netcdf::open_GEM(const std::string &file)
 //    }
 
     netCDF::NcVar times = _data.getVar(_datetime_field);
+
     if(times.getType().getName() != "int64")
     {
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Datetime dimension not in int64 format"));
