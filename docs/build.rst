@@ -12,6 +12,11 @@ supported compilers and operating system (described later), the
 dependencies do not need to be built by the end user. However it is generally recommended to build all dependencies
 from source and this is especially the case for high-performance environments and MPI.
 
+Given CHM may optionally use  conan (which requires Python + pip install) and requires the mesher and windmapper python
+packages, it is best to create a python virtual environment to install these packages into.
+
+
+
 Build requirements
 *******************
 
@@ -58,7 +63,7 @@ On Ubuntu 20.04 these can be installed as:
 
 .. note::
 
-   For distributed MPI support, optionally ensure MPI is installed:
+   For distributed MPI support, optionally ensure MPI is installed on linux:
    ``libopenmpi-dev`` and ``openmpi-bin``
 
 
