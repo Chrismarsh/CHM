@@ -42,10 +42,9 @@ If using conan to build the dependencies, the only requirements are:
    - C++14 compiler (gcc 7.2+) (via apt-get/brew)
    - Fortran 90+ compiler (gfortran) (via apt-get/brew)
    - m4 (via apt-get/brew)
-   - autotools (although this is generally installed in most environments) (via apt-get/brew)
-   - BLAS library (via apt-get/brew) e.g., ``libopenblas-dev``
+   - autotools (although this is generally installed in most environments) (via apt-get; not needed on brew)
+   - BLAS library (via apt-get/brew) e.g., ``libopenblas-dev`` / ``brew install openblas``
 
-Using system sqlite3, curl, and libtiff enables the compilation of gdal to proceed smoothly.
 
 On Ubuntu 20.04 these can be installed as:
 
