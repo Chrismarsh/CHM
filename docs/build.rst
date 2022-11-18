@@ -88,7 +88,14 @@ Build dependencies
 The required 3rd party libraries needed for CHM can be built using conan.
 
 Throughout, this section assumes a working development environment, but
-a blank conan environment. 
+a blank conan environment.
+
+Install `Conan <https://docs.conan.io/en/latest/installation.html>`__.
+
+::
+
+    pip install conan
+
 
 Setup conan
 -------------
