@@ -169,8 +169,27 @@ Enable conan `revisions <https://docs.conan.io/en/latest/versioning/revisions.ht
 adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf file. The conf file is in the ``~/.conan``
 directory.
 
-Build
---------
+
+
+Setup CHM source folders
+------------------------
+
+An out of source build should be used. That is, build in a separate folder removed from the CHM source. This makes it easier to clean up
+and start from scratch. An example is given below:
+
+::
+
+   cd ~/
+   git clone https://github.com/Chrismarsh/CHM
+
+   mkdir ~/build-CHM
+
+.. note::
+   The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
+
+Build dependencies
+---------------------
+
 This step will install the dependencies into your local conan cache (``~/.conan/data``).
 Further, this command will produce the ``FindXXX.cmake`` files required for the
 CHM build.
@@ -178,6 +197,8 @@ CHM build.
 .. note::
 
    If something goes wrong, you can remove this directory (``~/.conan/data``) or a specific package (``~/.conan/data/package``) to "start fresh".
+
+
 
 Without MPI
 ~~~~~~~~~~~~~~
@@ -259,26 +280,10 @@ On MacOS, the openmp library should be installed via homebrew:
    ``-o trilinos:with_openmp=False``
 
 
-
 Build CHM
 ***********
 
-Setup CHM source folders
-------------------------
-
-An out of source build should be used. That is, build in a separate folder removed from the CHM source. This makes it easier to clean up
-and start from scratch. An example is given below:
-
-::
-
-   cd ~/
-   git clone https://github.com/Chrismarsh/CHM
-
-   mkdir ~/build-CHM
-
-.. note::
-   The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
-
+Ensure you are in the ``build-CHM`` folder.
 
 Run cmake
 ---------
