@@ -166,7 +166,8 @@ Add the CHM artifactory repository as a conan remote -- this is where the conan 
 Enable revisions
 -----------------
 Enable conan `revisions <https://docs.conan.io/en/latest/versioning/revisions.html#how-to-activate-the-revisions>`__ by
-adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf file.
+adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf file. The conf file is in the ``~/.conan``
+directory.
 
 Build
 --------
