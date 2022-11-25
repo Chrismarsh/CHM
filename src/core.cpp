@@ -1395,7 +1395,7 @@ void core::init(int argc, char **argv)
         config_options(cfg.get_child("option"));
     } catch (pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "Optional section option not found";
+        CHM_THROW_EXCEPTION(config_error, "The configuration option section is missing and is required.");
     }
 
 

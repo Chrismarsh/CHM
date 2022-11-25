@@ -84,7 +84,7 @@ Sections
 option
 ********
 
-This section contains options for CHM and the simulation in general. 
+This section contains options for CHM and the simulation in general. This is a required section.
 
 .. code:: json
 
