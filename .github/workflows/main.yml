@@ -46,7 +46,7 @@ jobs:
         cfg:
           - {os: "ubuntu-20.04", compiler: "gcc", version: 9}
           - {os: "ubuntu-20.04", compiler: "gcc", version: 10}
-          - {os: "macos-12", compiler: "apple-clang", version: "13.1"}
+          - {os: "macos-12", compiler: "apple-clang", version: "14.0"}
         lib-version: ["1.1"]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
