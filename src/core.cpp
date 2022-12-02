@@ -678,7 +678,7 @@ bool core::config_meshes( pt::ptree &value)
         // only check the params and ics if we aren't using a parition file
         if(mesh_file_extension != ".partition")
         {
-            is_partition = true;
+
             for(const auto& it : param_file_paths)
             {
                 auto extension = boost::filesystem::path(it).extension();
@@ -735,7 +735,7 @@ bool core::config_meshes( pt::ptree &value)
 #ifndef USE_MPI
         CHM_THROW_EXCEPTION(config_error, "Using a partitioned mesh requires enabling MPI during CHM configure and build.");
 #endif
-
+        is_partition = true;
         _mesh->from_partitioned_hdf5(_mesh_path);
 
 
