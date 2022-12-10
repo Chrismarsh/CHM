@@ -248,7 +248,7 @@ endif()
 ########
 
 if(USE_OMP)
-    find_package(OpenMP ) # This will produce the target for us
+    find_package(OpenMP REQUIRED) # This will produce the target for us
 
     if(OpenMP_FOUND)
         set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${OpenMP_CXX_FLAGS}")
