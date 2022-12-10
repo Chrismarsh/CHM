@@ -65,7 +65,7 @@ jobs:
       - name: Install python dependencies
         run: |
           export PATH="$pythonLocation:$PATH"
-          python -m pip install conan --upgrade
+          python -m pip install conan==1.54
           python -m pip install six --upgrade
           python -m pip install conan_package_tools
 
