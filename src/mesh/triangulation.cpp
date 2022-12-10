@@ -1619,7 +1619,7 @@ void triangulation::partition_mesh()
 
 #else // do not USE_MPI
 
-    partition_mesh_nonMPI(size_t _num_global_faces);
+    partition_mesh_nonMPI(_num_global_faces);
 
 #endif // USE_MPI
 }
