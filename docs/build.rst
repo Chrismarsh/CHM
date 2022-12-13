@@ -180,7 +180,7 @@ and start from scratch. An example is given below:
 ::
 
    cd ~/
-   git clone https://github.com/Chrismarsh/CHM
+   git clone --recurse-submodules https://github.com/Chrismarsh/CHM
 
    mkdir ~/build-CHM
 
