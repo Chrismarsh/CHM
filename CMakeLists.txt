@@ -16,6 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(MACOSX TRUE)
+    set(CMAKE_FIND_FRAMEWORK LAST) # framework gdal, etc can end up superceeding other search paths
 endif()
 
 
