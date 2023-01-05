@@ -433,7 +433,7 @@ void core::config_forcing(pt::ptree &value)
         }
 
         // this delegates all filter responsibility to metdata from now on
-        _metdata->load_from_netcdf(file, _mesh->_bounding_box,netcdf_filters);
+        _metdata->load_from_netcdf(file, &_mesh->_bounding_box,netcdf_filters);
         nstations = _metdata->nstations();
     } else
     {

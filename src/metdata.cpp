@@ -41,7 +41,7 @@ metdata::~metdata()
 
 }
 
-void metdata::load_from_netcdf(const std::string& path, const triangulation::bounding_box& box, std::map<std::string, boost::shared_ptr<filter_base> > filters)
+void metdata::load_from_netcdf(const std::string& path, const triangulation::bounding_box* box, std::map<std::string, boost::shared_ptr<filter_base> > filters)
 {
     if(_mesh_proj4 == "")
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Met loader not initialized with proj4 string" ));
@@ -155,13 +155,17 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
                     }
                 }
 
-                if( longitude > box.x_max || longitude < box.x_min ||
-                    latitude > box.y_max || latitude < box.y_min)
+                if(box)
                 {
-                    _stations.at(index) = nullptr;
-                    ++skipped;
-                    continue;
+                    if( longitude > box->x_max || longitude < box->x_min ||
+                        latitude > box->y_max || latitude < box->y_min)
+                    {
+                        _stations.at(index) = nullptr;
+                        ++skipped;
+                        continue;
+                    }
                 }
+
 
                 double elevation = z;
 
