@@ -1583,6 +1583,8 @@ int main(int argc, char* argv[])
     catch (const exception_base& e)
     {
         LOG_ERROR << boost::diagnostic_information(e);
+        real_mpi_env.abort(-1);
+
     }
 
     LOG_DEBUG << "Done";
