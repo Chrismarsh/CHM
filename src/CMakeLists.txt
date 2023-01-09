@@ -425,6 +425,8 @@ if (BUILD_TESTS)
 			gtest
 			)
 
+
+
 	add_executable(
 			runUnitTests
 			${CHM_SRCS}
@@ -433,6 +435,9 @@ if (BUILD_TESTS)
 			${LIBMAW_SRCS}
 			${TEST_SRCS}
 	)
+	set_target_properties(runUnitTests
+			PROPERTIES
+			COMPILE_FLAGS ${CHM_BUILD_FLAGS})
 
 	target_include_directories(runUnitTests PRIVATE ${HEADER_FILES} )
 
