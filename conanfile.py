@@ -79,8 +79,6 @@ class CHMConan(ConanFile):
         self.requires("netcdf/4.8.1" )
         self.requires("netcdf-cxx/4.3.1@CHM/stable" )
 
-        # Guide libtiff (via gdal) to make the right version selection, but this is not a depednency we explicitly declare
-        # self.requires( "libdeflate/1.12", override=True)
         self.requires( "proj/9.0.1" )
         self.requires( "gdal/3.5.2" )
 
@@ -89,6 +87,7 @@ class CHMConan(ConanFile):
         self.requires( "libtiff/4.4.0", override=True)
         self.requires( "sqlite3/3.39.3", override=True)
         self.requires( "libcurl/7.85.0", override=True)
+        self.requires( "libdeflate/1.12", override=True)
 
         self.requires( "sparsehash/[>=2.0.3]@CHM/stable" )
         self.requires( "gperftools/[>=2.7]@CHM/stable" )
