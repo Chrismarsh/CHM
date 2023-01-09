@@ -1367,6 +1367,15 @@ void core::init(int argc, char **argv)
      */
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
 
+    //update the internal config ptree so when we right it out for auditing
+    cfg.erase( "modules") ;
+
+    pt::ptree array;
+    for(auto& itr : get_active_module_list())
+        array.push_back(pt::ptree::value_type("", itr.first->ID));
+
+    cfg.put_child("modules", array);
+
     // This has the delayed param load enabled, so mesh path is saved to _mesh_path which is used to load
     // the params latter
      bool ispart = config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
