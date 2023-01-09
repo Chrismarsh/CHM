@@ -246,6 +246,8 @@ public:
      */
     void end(const bool abort = false );
 
+    std::vector< std::pair<module,size_t> >& get_active_module_list();
+
     pt::ptree _cfg;
     boost::filesystem::path o_path; //path to output folder
     boost::filesystem::path log_file_path; // fully qualified path to the log file

@@ -2614,3 +2614,7 @@ void core::populate_distributed_station_lists()
 #endif
 }
 
+std::vector< std::pair<module,size_t> >& core::get_active_module_list()
+{
+    return _modules;
+}
