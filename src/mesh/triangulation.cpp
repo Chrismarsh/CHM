@@ -407,10 +407,18 @@ void triangulation::from_json(pt::ptree &mesh)
 
             for (auto &jtr : itr.second)
             {
-                auto face = _faces.at(i);
-                auto value = jtr.second.get_value<double>();
-                face->parameter(name) = value;
-                i++;
+                try
+                {
+                    auto face = _faces.at(i);
+                    auto value = jtr.second.get_value<double>();
+                    face->parameter(name) = value;
+                    i++;
+                }catch(std::out_of_range& e)
+                {
+                    LOG_ERROR << "Something is wrong with the parameter file. There are more parameter elements than triangulation elements";
+                    CHM_THROW_EXCEPTION(mesh_error, "Something is wrong with the parameter file. There are more parameter elements than triangulation elements");
+                }
+
             }
         }
     }catch(pt::ptree_bad_path& e)
