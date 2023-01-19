@@ -291,9 +291,18 @@ void PBSM3D::init(mesh& domain)
 
             // only grab LAI if we are using the R90 lambda formulation
             if (use_R94_lambda)
+            {
                 d.LAI = face->veg_attribute("LAI");
-            else
+                d.N = 0;
+                d.dv = 0;
+            }
+            else // use stalk formulation
+            {
                 d.LAI = 0;
+                d.N =  face->veg_attribute("stalk_number");
+                d.dv = face->veg_attribute("stalk_diameter");
+            }
+
         }
         else
         {
@@ -662,7 +671,7 @@ void PBSM3D::run(mesh& domain)
                     // Section 3(a)
                     lambda = 0.5 * d.LAI * height_diff;
                 else
-                    lambda = N * dv * height_diff; // Pomeroy formulation
+                    lambda = d.N * d.dv * height_diff; // Pomeroy formulation
 
                 if (debug_output)
                     (*face)["lambda"_s] = lambda;
