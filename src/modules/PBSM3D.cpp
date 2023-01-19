@@ -136,11 +136,6 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
         depends("p_snow_hours");
     use_R94_lambda = cfg.get("use_R94_lambda", true);
 
-    if (!use_R94_lambda)
-    {
-        N = cfg.get("N", 1);
-        dv = cfg.get("dv", 0.8);
-    }
 
     provides("blowingsnow_probability");
     debug_output = cfg.get("debug_output", false);
@@ -299,8 +294,18 @@ void PBSM3D::init(mesh& domain)
             else // use stalk formulation
             {
                 d.LAI = 0;
-                d.N =  face->veg_attribute("stalk_number");
-                d.dv = face->veg_attribute("stalk_diameter");
+
+                try{
+                    d.N =  face->veg_attribute("stalk_number");
+                    d.dv = face->veg_attribute("stalk_diameter");
+                }
+                catch(module_error& e)
+                {
+                    // default values that work well for scrubby alpine terrain as per Macdonald's work in the Arctic
+                    d.N = 1;
+                    d.dv = 0.8;
+                }
+
             }
 
         }
@@ -308,6 +313,8 @@ void PBSM3D::init(mesh& domain)
         {
             d.CanopyHeight = 0;
             d.LAI = 0;
+            d.N = 0;
+            d.dv = 0;
             enable_veg = false;
         }
 
