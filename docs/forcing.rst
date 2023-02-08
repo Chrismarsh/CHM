@@ -62,6 +62,12 @@ This format is easily parseable with Pandas in Python
    obs.set_index('datetime',inplace=True)
    obs.index = pd.to_datetime(obs.index)
 
+If you have dates in a different format:
+.. code:: python
+
+   obs = pd.read_csv('rosthern_met.csv',parse_dates=[1])
+   obs.to_csv("file.txt", sep='\t', index_label='datetime', date_format='%Y%m%dT%H%M%S', na_rep='-9999',index=False)
+
 Various conversion scripts for other models’ input/output are located in the ``tools`` directory.
 
 NetCDF

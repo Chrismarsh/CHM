@@ -73,7 +73,7 @@
  * \rst
  * .. code:: json
  *
- *    {
+ *    "provide":{
  *       "t": true,
  *       "rh": true,
  *       "U_R": true,
