@@ -290,6 +290,15 @@ void FSM::run(mesh_elem& face)
     (*face)["Tsoil[3]"_s] = d.state.Tsoil[3];
 
     (*face)["Nsnow"_s] = d.state.Nsnow;
+
+    (*face)["LWout"_s] = d.diag.LWout;
+    (*face)["Sliq[0]"_s] = d.state.Sliq[0];
+    (*face)["Sliq[1]"_s] = d.state.Sliq[1];
+    (*face)["Sliq[2]"_s] = d.state.Sliq[2];
+
+    (*face)["Tsnow[0]"_s] = d.state.Tsnow[0];
+    (*face)["Tsnow[1]"_s] = d.state.Tsnow[1];
+    (*face)["Tsnow[2]"_s] = d.state.Tsnow[2];
 }
 
 void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
