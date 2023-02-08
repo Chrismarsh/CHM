@@ -66,6 +66,17 @@ FSM::FSM(config_file cfg)
     provides("Tsoil[2]");
     provides("Tsoil[3]");
 
+
+    provides("LWout");
+
+    provides("Sliq[0]");
+    provides("Sliq[1]");
+    provides("Sliq[2]");
+
+    provides("Tsnow[0]");
+    provides("Tsnow[1]");
+    provides("Tsnow[2]");
+
 }
 
 void FSM::init(mesh& domain)
