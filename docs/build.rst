@@ -56,6 +56,7 @@ On Ubuntu 20.04 these can be installed as:
 ::
 
    libopenblas-dev
+   libcgal-dev
    libtiff-dev
    libcurl4-gnutls-dev
    libsqlite3-dev
@@ -98,7 +99,7 @@ Install `Conan <https://docs.conan.io/en/latest/installation.html>`__.
 
 ::
 
-    pip install conan
+    pip install "conan==1.59.0"
 
 
 Setup conan
