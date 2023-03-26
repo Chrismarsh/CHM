@@ -16,6 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(MACOSX TRUE)
+    set(CMAKE_FIND_FRAMEWORK LAST) # framework gdal, etc can end up superceeding other search paths
 endif()
 
 
@@ -25,7 +26,6 @@ option(USE_OMP "Enable OpenMP"  ON )
 option(OMP_SAFE_EXCEPTION "Enables safe exception handling from within OMP regions." ON)
 option(ENABLE_SAFE_CHECKS "Enable variable map checking. Runtime perf cost. Allows for ensuring a variable is indeed available to be lookedup." ON)
 option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
-option(MATLAB "Enable Matlab linkage"  OFF )
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)
 option(USE_TCMALLOC "Use tcmalloc from gperftools " ON)
 option(USE_JEMALLOC "Use jemalloc" OFF)
@@ -56,6 +56,8 @@ endif()
 
 LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}")
+
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMake/")
 
 if(NOT BUILD_WITH_CONAN)
     LIST(APPEND CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/CMake-without-conan/")
@@ -183,6 +185,12 @@ endif()
 #need this for calling the logger from multiple modules
 add_definitions(-DBOOST_LOG_DYN_LINK)
 
+# Note the boost::bind deprecation warnings for the global namespace:
+#
+#   ‘#pragma message: The practice of declaring the Bind placeholders (_1, _2, ...) in the global namespace is deprecated. Please use <boost/bind/bind.hpp> + using namespace boost::placeholders, or define BOOST_BIND_GLOBAL_PLACEHOLDERS to retain the current behavior.’
+add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
+
+
 find_package(${CGAL} 5.0 REQUIRED)
 
 # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
@@ -241,7 +249,7 @@ endif()
 ########
 
 if(USE_OMP)
-    find_package(OpenMP ) # This will produce the target for us
+    find_package(OpenMP REQUIRED) # This will produce the target for us
 
     if(OpenMP_FOUND)
         set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${OpenMP_CXX_FLAGS}")
@@ -252,13 +260,6 @@ if(USE_OMP)
      #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
     endif()
 endif()
-
-
-if(MATLAB)
-    #for matlab to run you need csh installed
-    find_package(Matlab REQUIRED)
-endif()
-
 
 #already makes a target
 find_package(${METEOIO} REQUIRED)

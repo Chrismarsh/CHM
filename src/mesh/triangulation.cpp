@@ -19,11 +19,7 @@
 
 triangulation::triangulation()
 {
- //   LOG_WARNING << "No Matlab engine, plotting and all Matlab functionality will be disabled";
-#ifdef MATLAB
-    _engine = NULL;
-    _gfx = NULL;
-#endif
+
     _num_faces = 0;
     _vtk_unstructuredGrid = nullptr;
     _is_geographic = false;
@@ -72,44 +68,12 @@ triangulation::triangulation()
 
 }
 
-#ifdef MATLAB
 
-triangulation::triangulation(boost::shared_ptr<maw::matlab_engine> engine)
-{
-    _engine = engine;
-    _gfx = boost::make_shared<maw::graphics>(_engine.get());
-    _size = 0;
-}
-#endif
 
 triangulation::~triangulation()
 {
-#ifdef MATLAB
-    _engine = NULL;
-    _gfx = NULL;
-#endif
-}
 
-//void triangulation::init(vector x, vector y, vector z)
-//{
-//    //    _mesh = boost::make_shared<Delaunay>();
-//    for (size_t i = 0; i < x->size(); i++)
-//    {
-//        Point_3 p(x->at(i), y->at(i), z->at(i));
-//        Delaunay::Vertex_handle Vh = this->insert(p);
-//        Vh->set_id(i);
-//        ++i;
-//    }
-//
-//    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
-//            fit != this->finite_faces_end(); ++fit)
-//    {
-//        mesh_elem face = fit;
-//        _faces.push_back(face);
-//    }
-//
-//    LOG_DEBUG << "Created a mesh with " + boost::lexical_cast<std::string>(this->size_faces()) + " triangles";
-//}
+}
 
 std::string triangulation::proj4()
 {
@@ -221,35 +185,6 @@ mesh_elem triangulation::find_closest_face(double x, double y) const
 
 }
 
-#ifdef NOMATLAB
-
-void triangulation::plot_time_series(double x, double y, std::string ID)
-{
-    if (!_engine)
-    {
-        LOG_WARNING << "No Matlab engine, plotting is disabled";
-        return;
-    }
-    mesh_elem m = this->locate_face(x, y);
-
-    if (m == NULL)
-        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
-
-    maw::d_vec v(new arma::vec(m->face_time_series(ID).size()));
-
-    timeseries::variable_vec ts = m->face_time_series(ID);
-
-    for (size_t i = 0; i < v->size(); i++)
-    {
-        (*v)(i) = ts.at(i);
-    }
-
-    _engine->put_double_matrix(ID, v);
-    double handle = _gfx->plot_line(ID);
-    _gfx->add_title(ID);
-    _gfx->spin_until_close(handle);
-}
-#endif
 
 void triangulation::serialize_parameter(std::string output_path, std::string parameter)
 {
@@ -297,16 +232,23 @@ void triangulation::from_json(pt::ptree &mesh)
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
     {
-        std::vector<double> items;
+        std::vector<double> vertex;
         //iterate over the vertex triples
         for(auto& jtr: itr.second)
         {
-            items.push_back(jtr.second.get_value<double>());
+            vertex.push_back(jtr.second.get_value<double>());
         }
-        Point_3 pt( items[0], items[1], items[2]);
+        Point_3 pt( vertex[0], vertex[1], vertex[2]);
 
-        _max_z = std::max(_max_z,items[2]);
-        _min_z = std::min(_min_z,items[2]);
+        _max_z = std::max(_max_z,vertex[2]);
+        _min_z = std::min(_min_z,vertex[2]);
+
+        _bounding_box.x_max = std::max(_bounding_box.x_max, vertex[0]);
+        _bounding_box.x_min = std::min(_bounding_box.x_min, vertex[0]);
+
+        _bounding_box.y_max = std::max(_bounding_box.y_max, vertex[1]);
+        _bounding_box.y_min = std::min(_bounding_box.y_min, vertex[1]);
+
 
         Vertex_handle Vh = this->create_vertex();
         Vh->set_point(pt);
@@ -465,10 +407,18 @@ void triangulation::from_json(pt::ptree &mesh)
 
             for (auto &jtr : itr.second)
             {
-                auto face = _faces.at(i);
-                auto value = jtr.second.get_value<double>();
-                face->parameter(name) = value;
-                i++;
+                try
+                {
+                    auto face = _faces.at(i);
+                    auto value = jtr.second.get_value<double>();
+                    face->parameter(name) = value;
+                    i++;
+                }catch(std::out_of_range& e)
+                {
+                    LOG_ERROR << "Something is wrong with the parameter file. There are more parameter elements than triangulation elements";
+                    CHM_THROW_EXCEPTION(mesh_error, "Something is wrong with the parameter file. There are more parameter elements than triangulation elements");
+                }
+
             }
         }
     }catch(pt::ptree_bad_path& e)
@@ -539,16 +489,16 @@ void triangulation::from_json(pt::ptree &mesh)
         LOG_DEBUG << "No face permutation.";
     }
 
-    partition_mesh();
-
+    // Don't actually want to partition the mesh. Use the non-MPI one
+    partition_mesh_nonMPI(_faces.size());
 
     _build_dDtree();
 
 
 #pragma omp parallel for
-    for (size_t i = 0; i < size_faces(); i++)
+    for (size_t i = 0; i < _faces.size(); i++)
     {
-        auto f = face(i);
+        auto f = _faces.at(i); // ensure we access like this as json mode is generally non MPI unless we are partitioning
         //init these
         f->slope();
         f->aspect();
@@ -920,9 +870,15 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         for (size_t i = 0; i < nvert; i++)
         {
 
-            Point_3 pt(vertex[i][0], vertex[i][1], vertex[i][2]);
+            Point_3 pt(vertex[i][0], vertex[i][1], vertex[i][2]); // x y z
             _max_z = std::max(_max_z, vertex[i][2]);
             _min_z = std::min(_min_z, vertex[i][2]);
+
+            _bounding_box.x_max = std::max(_bounding_box.x_max, vertex[i][0]);
+            _bounding_box.x_min = std::min(_bounding_box.x_min, vertex[i][0]);
+
+            _bounding_box.y_max = std::max(_bounding_box.y_max, vertex[i][1]);
+            _bounding_box.y_min = std::min(_bounding_box.y_min, vertex[i][1]);
 
             Vertex_handle Vh = this->create_vertex();
             Vh->set_point(pt);
@@ -1097,7 +1053,10 @@ void triangulation::_build_dDtree()
     );
 }
 
-void triangulation::from_partitioned_hdf5(const std::string& partition_filename, boost::filesystem::path cwd)
+void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
+                                          bool only_load_params,
+                                          boost::filesystem::path cwd
+                                          )
 {
     // we are loading a partition mesh
     auto partition = read_json(partition_filename);
@@ -1206,11 +1165,17 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
     if(param_file_paths.size() > 0)
         param_file.push_back( param_file_paths[tmp_rank] );
 
-    from_hdf5(mesh_file, param_file, {} );
+    if(!only_load_params)
+        from_hdf5(mesh_file, {}, {}, true );
+
+    if(only_load_params)
+        load_hdf5_parameters(param_file);
+
 }
 void triangulation::from_hdf5(const std::string& mesh_filename,
 			      const std::vector<std::string>& param_filenames,
-			      const std::vector<std::string>& ic_filenames
+			      const std::vector<std::string>& ic_filenames,
+                              bool delay_param_ic_load
 			      )
 {
     try
@@ -1257,13 +1222,16 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
     _build_dDtree();
 
+    // load param
+    if(!delay_param_ic_load)
+        load_hdf5_parameters(param_filenames);
 
+    // TODO: include initial condition files
 
-////////////////////////////////////////////////////////////////////////////
-// Parameters
-////////////////////////////////////////////////////////////////////////////
+}
 
-
+void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_filenames)
+{
     for (auto param_filename : param_filenames)
     {
         try
@@ -1289,10 +1257,10 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
             if(_mesh_is_from_partition)
             {
-                // init the parameter storage on each face
-                // as we are using a pre-partitioned mesh, _faces holds local+ghosts, so can do it in one go which is
-                // faster
-                #pragma omp parallel for
+// init the parameter storage on each face
+// as we are using a pre-partitioned mesh, _faces holds local+ghosts, so can do it in one go which is
+// faster
+#pragma omp parallel for
                 for (size_t i = 0; i < _faces.size(); i++)
                 {
                     _faces.at(i)->init_parameters(_parameters);
@@ -1300,17 +1268,17 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
             }
             else
             {
-                // if we are not reading from a partitioned file, we need to ensure we do the local faces + ghosts
-                // separetely
-                // init the parameter storage on each face
-                #pragma omp parallel for
+// if we are not reading from a partitioned file, we need to ensure we do the local faces + ghosts
+// separetely
+// init the parameter storage on each face
+#pragma omp parallel for
                 for (size_t i = 0; i < _num_faces; i++)
                 {
                     face(i)->init_parameters(_parameters);
                 }
 
-                // init the parameter storage for the ghost regions
-                #pragma omp parallel for
+// init the parameter storage for the ghost regions
+#pragma omp parallel for
                 for (size_t i = 0; i < _ghost_faces.size(); i++)
                 {
                     _ghost_faces.at(i)->init_parameters(_parameters);
@@ -1351,8 +1319,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
                 if(_mesh_is_from_partition)
                 {
-                    // since the params are for all our faces + ghosts, we can load it all at once
-                    #pragma omp parallel for
+// since the params are for all our faces + ghosts, we can load it all at once
+#pragma omp parallel for
                     for (size_t i = 0; i < _faces.size(); i++)
                     {
                         _faces.at(i)->parameter(name) = data.at(i);
@@ -1360,8 +1328,8 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
                 }
                 else
                 {
-                    // we have to load the ghosts and local faces separate.
-                    #pragma omp parallel for
+// we have to load the ghosts and local faces separate.
+#pragma omp parallel for
                     for (size_t i = 0; i < _num_faces; i++)
                     {
                         face(i)->parameter(name) = data[i];
@@ -1406,8 +1374,6 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
         }
 
     } // end of param_filenames loop
-
-    // TODO: include initial condition files
 
 }
 
@@ -1566,6 +1532,32 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 
 #endif
 }
+
+void triangulation::partition_mesh_nonMPI(size_t _num_global_faces)
+{
+    // If we are not using MPI, some code paths might still want to make use of these
+    //  initialized to [0, num_faces - 1]
+    global_cell_start_idx = 0;
+    global_cell_end_idx = _num_faces - 1;
+
+    _global_IDs.resize(_num_global_faces);
+#pragma omp parallel for
+    for (size_t i = 0; i < _num_global_faces; ++i)
+    {
+        _global_IDs[i] = i;
+        _faces.at(i)->is_ghost = false;
+        _faces.at(i)->cell_local_id =
+            i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
+    }
+
+    // make sure these setup when in MPI mode for partition
+    _num_faces =  _faces.size();
+    _num_global_faces = _faces.size();
+    _local_faces = _faces;
+
+    LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces - 1) << ", number " << _local_faces.size();
+}
+
 void triangulation::partition_mesh()
 {
     /*
@@ -1635,21 +1627,7 @@ void triangulation::partition_mesh()
 
 #else // do not USE_MPI
 
-    // If we are not using MPI, some code paths might still want to make use of these
-    //  initialized to [0, num_faces - 1]
-    global_cell_start_idx = 0;
-    global_cell_end_idx = _num_faces - 1;
-
-    _global_IDs.resize(_num_global_faces);
-#pragma omp parallel for
-    for (size_t i = 0; i < _num_global_faces; ++i)
-    {
-        _global_IDs[i] = i;
-        _faces.at(i)->is_ghost = false;
-        _faces.at(i)->cell_local_id =
-            i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
-    }
-    LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces - 1) << ", number " << _local_faces.size();
+    partition_mesh_nonMPI(_num_global_faces);
 
 #endif // USE_MPI
 }
@@ -2341,73 +2319,6 @@ void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 
     m->to_file(fname);
 }
-#ifdef NOMATLAB
-
-void triangulation::plot(std::string ID)
-{
-    if (!_engine)
-    {
-        LOG_WARNING << "No Matlab engine, plotting is disabled";
-        return;
-    }
-    LOG_DEBUG << "Sending triangulation to matlab...";
-
-
-
-    maw::d_mat tri(new arma::mat(_size, 3));
-    maw::d_mat xyz(new arma::mat(_data_size, 3));
-    maw::d_mat cdata(new arma::mat(_size, 1));
-
-    size_t i = 0;
-
-    for (Delaunay::Finite_faces_iterator fit = this->finite_faces_begin();
-            fit != this->finite_faces_end(); ++fit)
-    {
-        auto face = fit;
-
-        (*tri)(i, 0) = face->vertex(0)->get_id() + 1; //+1 because matlab indexing starts at 1
-        (*tri)(i, 1) = face->vertex(1)->get_id() + 1;
-        (*tri)(i, 2) = face->vertex(2)->get_id() + 1;
-
-        Delaunay::Triangle t = this->triangle(face);
-
-        //        std::cout  << "xyz1:" << (*tri)(i, 0)-1 <<std::endl;
-        (*xyz)((*tri)(i, 0) - 1, 0) = t[0].x();
-        (*xyz)((*tri)(i, 0) - 1, 1) = t[0].y();
-        (*xyz)((*tri)(i, 0) - 1, 2) = t[0].z();
-
-
-        //        std::cout  << "xyz2:"<<(*tri)(i, 1)-1 <<std::endl;
-        (*xyz)((*tri)(i, 1) - 1, 0) = t[1].x();
-        (*xyz)((*tri)(i, 1) - 1, 1) = t[1].y();
-        (*xyz)((*tri)(i, 1) - 1, 2) = t[1].z();
-
-        //        std::cout  << "xyz3:"<<(*tri)(i, 2)-1 <<std::endl;
-        (*xyz)((*tri)(i, 2) - 1, 0) = t[2].x();
-        (*xyz)((*tri)(i, 2) - 1, 1) = t[2].y();
-        (*xyz)((*tri)(i, 2) - 1, 2) = t[2].z();
-
-
-        double d = fit->face_data(ID);
-        (*cdata)(i) = d;
-        //        std::cout << i <<std::endl;
-        ++i;
-    }
-
-
-    LOG_DEBUG << "Sending data to matlab...";
-    _engine->put_double_matrix("tri", tri);
-    _engine->put_double_matrix("elevation_data", xyz);
-    _engine->put_double_matrix("face_data", cdata);
-
-    double handle = _gfx->plot_patch("[elevation_data(:,1) elevation_data(:,2) elevation_data(:,3)]", "tri", "face_data(:)");
-    _gfx->add_title(ID);
-
-    _gfx->spin_until_close(handle);
-    //    _engine->evaluate("save lol.mat");
-    _engine->evaluate("clear tri elevation_data face_data");
-}
-#endif
 
 void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {

@@ -31,7 +31,7 @@
 /**
  * \ingroup modules exp
  * @{
- * \class deform_meshs
+ * \class deform_mesh
  *
  * Example of how to deform the mesh's z-coords.
  * \rst

@@ -84,7 +84,7 @@ Sections
 option
 ********
 
-This section contains options for CHM and the simulation in general. 
+This section contains options for CHM and the simulation in general. This is a required section.
 
 .. code:: json
 
@@ -795,6 +795,50 @@ Example
 
 
 
+checkpoint
+*************
+
+CHM can save its state after a timestep, allowing CHM to resume from this timestep. Further details on can be found in the Checkpointing section.
+
+.. confval:: save_checkpoint
+
+   :type: boolean
+   :default: false
+
+   Enable checkpointing. One of ``frequency`` or ``on_last`` must be set. Must be set true to enable the checkpointing.
+
+
+.. confval:: frequency
+
+   :type: int64
+   :default: empty
+
+   The frequency of checkpointing. Checkpoints every ``frequency`` timesteps. Can be used with ``on_last`` to produce
+   checkpoints every ``frequency`` timesteps as well as on the last timestep.
+
+.. confval:: on_last
+
+   :type: bool
+   :default: false
+
+   Check point only on the last timestep. Can be used with ``frequency``, but does not require ``frequency`` to be set.
+
+.. confval:: load_checkpoint_path
+
+   :type: string
+   :default: empty
+
+   Path to checkpoint file to load from (specifically, the json file). Can be used with the other checkpointing options.
+
+.. code:: json
+
+     "checkpoint":
+     {
+        "save_checkpoint": true,
+        "frequency": 4,
+        "on_last": true,
+        "load_checkpoint_path":"output/checkpoint/checkpoint_20001001T140000.np1.json"
+     }
 
 
 

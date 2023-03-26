@@ -124,10 +124,6 @@ namespace pt = boost::property_tree;
 #include <vtkPoints.h>
 
 
-#ifdef NOMATLAB
-#include "libmaw.h"
-#endif
-
 #ifdef USE_MPI
 #include <boost/mpi.hpp>
 #include <boost/serialization/vector.hpp>
@@ -574,15 +570,7 @@ class triangulation
 {
 public:
     triangulation();
-#ifdef MATLAB
-/**
-* If the Matlab engine integration is enabled, a pointer to the engine instance must be passed in.
-* \param engine Pointer to a valid matlab engine instant
-*/
-    triangulation(boost::shared_ptr<maw::matlab_engine> engine);
-#endif
     ~triangulation();
-
 
 
     /**
@@ -612,7 +600,14 @@ public:
     */
     void from_hdf5(const std::string& mesh_filename,
                    const std::vector<std::string>& param_filename,
-                   const std::vector<std::string>& ic_filename);
+                   const std::vector<std::string>& ic_filename,
+                   bool delay_param_ic_load = false    );
+
+    /**
+     * Loads just the mesh parameters. This is used to delay the memory heavy load of params until later in the model init
+     * @param param_filename
+     */
+    void load_hdf5_parameters( const std::vector<std::string>& param_filenames);
 
     /**
      * Reads a partitioned mesh file (.partition) that holds multiple hdf5 files
@@ -620,8 +615,13 @@ public:
      * @param cwd Current working directory of the calling code. Because the partition file can either include fully
      *   qualified paths or relative paths, we need to know where we currently are so-as to ensure we open the correct
      *   file.
+     * @param only_load_params Only load the parameters from the mesh. Requires a loaded mesh. Used to break up
+     * memory intensive tasks
      */
-    void from_partitioned_hdf5(const std::string& partition_filename, boost::filesystem::path cwd = boost::filesystem::path("."));
+    void from_partitioned_hdf5(const std::string& partition_filename,
+                               bool only_load_params=false,
+                               boost::filesystem::path cwd = boost::filesystem::path(".")
+                               );
 
     /**
     * Sets a new order to the face numbering.
@@ -633,6 +633,7 @@ public:
     * Sets the MPI process ownership of mesh faces and nodes
     */
     void partition_mesh();
+
 
     /**
      * Load the partition from the h5 file instead of computing it
@@ -808,22 +809,6 @@ public:
     * \return A vertex handle to the ith vertex
     */
     Delaunay::Vertex_handle vertex(size_t i);
-#ifdef NOMATLAB
-    /**
-    * If Matlab integration is enabled, plots the given variable at the current timestep.
-    * \param ID variable
-    */
-    void plot(std::string ID);
-
-    /**
-    * If Matlab integration is enabled, plots the given variable over time for the given triangle that contains the point x,y
-    * \param x x coord
-    * \param y y coord
-    * \param ID variable to plot
-    */
-
-    void plot_time_series(double x, double y, std::string ID);
-#endif
 
     /**
     * Saves the timeseries as a csv for the triangle that contains the point x,y to file
@@ -947,6 +932,13 @@ public:
     boost::mpi::communicator _comm_world;
 #endif
 
+    struct bounding_box{
+        double x_min {0};
+        double x_max {0};
+        double y_min {0};
+        double y_max {0};
+    } _bounding_box;
+
 protected:
 
     enum GHOST_TYPE
@@ -1021,6 +1013,11 @@ protected:
     void determine_ghost_owners();
 
     /**
+     * Inits required datastructures if we are in non-MPI mode and doesn't actually do any partitioning
+     */
+    void partition_mesh_nonMPI(size_t _num_global_faces);
+
+    /**
      * Build the spatial search dD tree. Assumes _num_global_faces has been set and this needs to be called after
      * the partition has happened
      */
@@ -1028,7 +1025,7 @@ protected:
 
     size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
     size_t _num_global_faces; //number of global faces
-    size_t _num_vertex; //number of rows in the original data matrix. useful for exporting to matlab, etc
+    size_t _num_vertex; //number of rows in the original data matrix.
     K::Iso_rectangle_2 _bbox;
     bool _is_geographic;
     bool _mesh_is_from_partition;
@@ -1059,6 +1056,8 @@ protected:
     // min and max elevations
     double _min_z;
     double _max_z;
+
+
 
     //If the triangulation is traversed using the finite_faces_begin/end iterators, the determinism of the order of traversal is not guaranteed
     //as well, it seems to prevent openmp for applying parallelism to the for-loops. Therefore, we will just store a predefined list of faces and vertex handles
@@ -1130,11 +1129,6 @@ protected:
 
   std::string _partition_method;
 
-#ifdef NOMATLAB
-    //ptr to the matlab engine
-    boost::shared_ptr<maw::matlab_engine> _engine;
-    boost::shared_ptr<maw::graphics> _gfx;
-#endif
 
 /*
   Datatypes for reading/writing HDF5 files

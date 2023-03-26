@@ -178,11 +178,16 @@ public:
     void init(int argc, char **argv);
     void config_options( pt::ptree &value);
     void config_modules( pt::ptree& value,const pt::ptree& config,std::vector<std::string> remove,std::vector<std::string> add);
-    void config_meshes( pt::ptree& value);
+
+    /**
+     *
+     * @param value True if loading a partitioned mesh
+     * @return
+     */
+    bool config_meshes( pt::ptree& value);
     void config_forcing(pt::ptree& value);
     void config_module_overrides( pt::ptree& value);
     void config_parameters(pt::ptree &value);
-    void config_matlab( pt::ptree& value);
     void config_output(pt::ptree& value);
     void config_global( pt::ptree& value);
     void config_checkpoint( pt::ptree& value);
@@ -191,6 +196,7 @@ public:
      * Determines what the start end times should be, and ensures consistency from a check pointed file
      */
     void determine_startend_ts_forcing();
+
     /**
      * Determines the order modules need to be scheduleled in to maximize parallelism
      */
@@ -227,7 +233,7 @@ public:
     cmdl_opt config_cmdl_options(int argc, char **argv);
 
     /**
-     * Initializes the logger and Matlab engine
+     * Initializes the logger
      */
     core();
     ~core();
@@ -239,6 +245,8 @@ public:
      * @param abort
      */
     void end(const bool abort = false );
+
+    std::vector< std::pair<module,size_t> >& get_active_module_list();
 
     pt::ptree _cfg;
     boost::filesystem::path o_path; //path to output folder
@@ -268,18 +276,13 @@ protected:
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
 
-
+    // these are saved here so-as to be used elsewhere
+    std::string _mesh_path;
 
 
     //if radius selection for stations is chosen this holds that
     double radius;
     double N; // meters, radius for station search
-
-
-#ifdef MATLAB
-    //matlab engine
-    boost::shared_ptr<maw::matlab_engine> _engine;
-#endif
 
     //holds all the modules that are to be run on each mesh element
     //pair as we also need to store the make order
@@ -379,12 +382,47 @@ protected:
 
     std::vector<output_info> _outputs;
 
-    boost::filesystem::path _ckpt_path; // root path to chckpoint folder
-    netcdf _in_savestate; // if we are loading from checkpoint
-    bool _do_checkpoint; // should we check point?
-    bool _load_from_checkpoint; // are we loading from a checkpoint?
+    // Checkpointing options
+    class chkptOp
+    {
+      public:
+        chkptOp():
+                    do_checkpoint{false},
+                    load_from_checkpoint{false},
+                    on_last{false}{  }
 
-    size_t _checkpoint_feq; // frequency of checkpoints
+        boost::filesystem::path ckpt_path; // root path to chckpoint folder
+        netcdf in_savestate; // if we are loading from checkpoint
+        bool do_checkpoint; // should we check point?
+        bool load_from_checkpoint; // are we loading from a checkpoint?
+
+        boost::optional<bool> on_last; //only checkpoint on the last timestep
+        boost::optional<size_t> frequency; // frequency of checkpoints
+
+        /**
+         * Should checkpointing occur
+         * @param current_ts
+         * @param is_last_ts
+         * @return
+         */
+        bool should_checkpoint(size_t current_ts, bool is_last_ts)
+        {
+            if(!do_checkpoint)
+                return false;
+
+            if(on_last && *on_last && is_last_ts)
+                return true;
+
+            // don't checkpoint on the first ts if we are doing frequency checkpoints
+            if( frequency && current_ts !=0 && (current_ts % *frequency ==0) )
+                return true;
+
+            return false;
+        }
+
+
+    } _checkpoint_opts;
+
 
 
     //command line argument options we need to keep track of

@@ -76,21 +76,26 @@ class CHMConan(ConanFile):
         self.requires( "boost/[>=1.75]@CHM/stable" )
         self.requires( "vtk/[>=9.0.1]@CHM/stable" )
 
-        self.requires("netcdf/4.7.4" )
-        self.requires("netcdf-cxx/[>=4.3]@CHM/stable" )
+        self.requires("netcdf/4.8.1" )
+        self.requires("netcdf-cxx/4.3.1@CHM/stable" )
 
-        # Guide libtiff (via gdal) to make the right version selection, but this is not a depednency we explicitly declare
+        self.requires( "proj/9.0.1" )
+        self.requires( "gdal/3.5.2" )
+
+        #because libproj and gdal conflict on what libtiff to use
+        self.requires( "zlib/1.2.13", override=True)
+        self.requires( "libtiff/4.4.0", override=True)
+        self.requires( "sqlite3/3.39.3", override=True)
+        self.requires( "libcurl/7.85.0", override=True)
         self.requires( "libdeflate/1.12", override=True)
-        self.requires( "proj/[>=7.2.1]" )
-        self.requires( "gdal/[>=3.2.1]" )
-
 
         self.requires( "sparsehash/[>=2.0.3]@CHM/stable" )
         self.requires( "gperftools/[>=2.7]@CHM/stable" )
         self.requires( "gsl/[>=2.6]@CHM/stable" )
         self.requires( "armadillo/[>=10.2.0]@CHM/stable" )
-        self.requires( "onetbb/[>=2021.3.0]@CHM/stable" )
+        self.requires( "onetbb/[>=2021.5.0]@CHM/stable" )
         self.requires( "eigen/[>=3.3.9]" )
+
         self.requires( "meteoio/2.8.0@CHM/stable")
         self.requires( "func/0.1@CHM/stable")
         self.requires( "trilinos/13.4.0@CHM/stable")

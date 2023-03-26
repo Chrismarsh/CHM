@@ -344,8 +344,7 @@ class PBSM3D : public module_base
     bool iterative_subl; // if True, enables the iterative sublimation calculation as per Pomeroy and Li 2000
     bool use_R94_lambda; // use the ﻿Raupach 1990 lambda expression using LAI/2 instead of pomeroy stalk density
 
-    double N;  // vegetation number density
-    double dv; // stalk diameter
+
 
     // this is the suspension transport matrix
     double nnz; // number non zero
@@ -382,6 +381,10 @@ class PBSM3D : public module_base
 
         double CanopyHeight;
         double LAI;
+
+        // used for the pomeroy stalk formulation
+        double N;  // vegetation number density
+        double dv; // stalk diameter
 
         // saltation height
         double hs;

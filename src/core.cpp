@@ -34,10 +34,11 @@ core::core()
 
     //default logging level
     _log_level = debug;
+
+    //chkpoointing
     _output_station_ptv = true;
     _use_netcdf=false;
-    _load_from_checkpoint=false;
-    _do_checkpoint=false;
+
     _metdata= nullptr;
 
 }
@@ -307,20 +308,34 @@ void core::config_checkpoint( pt::ptree& value)
 {
     LOG_DEBUG << "Found checkpoint section";
 
-    _do_checkpoint = value.get("save_checkpoint",false);
+    _checkpoint_opts.do_checkpoint = value.get("save_checkpoint",false);
 
     //this uses the output path defined in config_output, so this must run after that.
-    if(_do_checkpoint)
+    if(_checkpoint_opts.do_checkpoint)
     {
 
         auto dir = "checkpoint";
 
         // Create empty folder
-        _ckpt_path = o_path / dir;
-        boost::filesystem::create_directories(_ckpt_path);
+        _checkpoint_opts.ckpt_path = o_path / dir;
+        boost::filesystem::create_directories(_checkpoint_opts.ckpt_path);
 
-        _checkpoint_feq = value.get("frequency",1);
-        LOG_DEBUG << "Checkpointing every " << _checkpoint_feq << " timesteps.";
+        _checkpoint_opts.frequency = value.get_optional<size_t>("frequency");
+        if (_checkpoint_opts.frequency)
+        {
+            LOG_DEBUG << "Checkpointing every " << *(_checkpoint_opts.frequency) << " timesteps.";
+        }
+
+        _checkpoint_opts.on_last = value.get_optional<bool>("on_last");
+        if (_checkpoint_opts.on_last && *(_checkpoint_opts.on_last))
+        {
+            LOG_DEBUG << "Checkpointing on last timestep";
+        }
+
+        if(!_checkpoint_opts.on_last && !_checkpoint_opts.frequency)
+        {
+            CHM_THROW_EXCEPTION(config_error, "Checkpointing is enabled but checkpoint.frequency or checkpoint.on_last are not specified.");
+        }
 
     }
 
@@ -328,7 +343,7 @@ void core::config_checkpoint( pt::ptree& value)
 
     if (file)
     {
-        _load_from_checkpoint = true;
+        _checkpoint_opts.load_from_checkpoint = true;
 
         boost::filesystem::path ckpt_path = *file;
 //        ckpt_path = boost::filesystem::canonical(ckpt_path);
@@ -338,38 +353,38 @@ void core::config_checkpoint( pt::ptree& value)
         size_t csz = 1;
         size_t rank = 0;
 
-#ifdef USE_MPI
-      csz = _comm_world.size();
-      rank = _comm_world.rank();
-#endif
+        #ifdef USE_MPI
+            csz = _comm_world.size();
+            rank = _comm_world.rank();
+        #endif
 
-      if( csz != chkp.get<size_t>("ranks") )
+        if( csz != chkp.get<size_t>("ranks") )
           CHM_THROW_EXCEPTION(config_error, "Checkpoint file was saved with a different number of ranks");
 
-      boost::filesystem::path ckpt_nc_path;
-      try
-      {
+        boost::filesystem::path ckpt_nc_path;
+        try
+        {
           size_t i = 0;
 
-          for(auto &itr : chkp.get_child("files"))
-          {
-              if( i == rank)
-              {
-                  ckpt_nc_path = itr.second.data();
-                  break;
-              }
+            for(auto &itr : chkp.get_child("files"))
+            {
+                if( i == rank)
+                {
+                    ckpt_nc_path = itr.second.data();
+                    break;
+                }
 
-              ++i;
-          }
-      }
-      catch(pt::ptree_bad_path &e)
-      {
+                ++i;
+            }
+        }
+        catch(pt::ptree_bad_path &e)
+        {
           CHM_THROW_EXCEPTION(config_error, "Error reading list of checkpoint files");
-      }
+        }
 
-      ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
-      LOG_DEBUG<< "Rank " << rank << " using checkpoint restore file " << ckpt_nc_path;
-      _in_savestate.open(ckpt_nc_path.string());
+        ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
+        LOG_DEBUG<< "Rank " << rank << " using checkpoint restore file " << ckpt_nc_path;
+        _checkpoint_opts.in_savestate.open(ckpt_nc_path.string());
     }
 
 
@@ -418,7 +433,7 @@ void core::config_forcing(pt::ptree &value)
         }
 
         // this delegates all filter responsibility to metdata from now on
-        _metdata->load_from_netcdf(file, netcdf_filters);
+        _metdata->load_from_netcdf(file, &_mesh->_bounding_box,netcdf_filters);
         nstations = _metdata->nstations();
     } else
     {
@@ -514,10 +529,10 @@ void core::determine_startend_ts_forcing()
     }
 
     // If we ended on time T, restart from T+1. T+1 is written out to attr, so we can just start from this
-    if(_load_from_checkpoint)
+    if(_checkpoint_opts.load_from_checkpoint)
     {
         size_t t = 0;
-        _in_savestate.get_ncfile().getAtt("restart_time_sec").getValues(&t);
+        _checkpoint_opts.in_savestate.get_ncfile().getAtt("restart_time_sec").getValues(&t);
         _start_ts = new boost::posix_time::ptime(boost::posix_time::from_time_t(t));
 
         LOG_WARNING << "Loading from checkpoint. Overriding start time to match. New start time = " << *_start_ts;
@@ -595,30 +610,29 @@ void core::config_parameters(pt::ptree &value)
 
 }
 
-void core::config_meshes( pt::ptree &value)
+bool core::config_meshes( pt::ptree &value)
 {
     LOG_DEBUG << "Found meshes sections.";
-#ifdef MATLAB
-    _mesh = boost::make_shared<triangulation>(_engine);
-#else
+
     _mesh = boost::make_shared<triangulation>();
-#endif
 
     _mesh->_global = _global;
 
     _find_and_insert_subjson(value);
 
-    std::string mesh_path = value.get<std::string>("mesh");
-    LOG_DEBUG << "Found mesh:" << mesh_path;
-    mesh_path = (cwd_dir / mesh_path).string();
+    _mesh_path = value.get<std::string>("mesh");
+    LOG_DEBUG << "Found mesh:" << _mesh_path;
+    _mesh_path = (cwd_dir / _mesh_path).string();
 
-    auto mesh_file_extension = boost::filesystem::path(mesh_path).extension().string();
+    auto mesh_file_extension = boost::filesystem::path(_mesh_path).extension().string();
 
+    bool is_partition = false;
     // only need to look for param + ic if we aren't loading a partition
     std::vector<std::string> param_file_paths;
     std::vector<std::string> initial_condition_file_paths;
     if(mesh_file_extension != ".partition")
     {
+
         // Paths for parameter files
         try
         {
@@ -664,6 +678,7 @@ void core::config_meshes( pt::ptree &value)
         // only check the params and ics if we aren't using a parition file
         if(mesh_file_extension != ".partition")
         {
+
             for(const auto& it : param_file_paths)
             {
                 auto extension = boost::filesystem::path(it).extension();
@@ -694,7 +709,7 @@ void core::config_meshes( pt::ptree &value)
 
     // Before we read the mesh, we need to know if we are geographic or projected so we can hook up all the distance functions
     // correctly. So for either json or hdf5 we check, hook up the functions, then proceed to the main load which can assume the functions are available
-    bool is_geographic = check_is_geographic(mesh_path);
+    bool is_geographic = check_is_geographic(_mesh_path);
 
     _global->_is_geographic = is_geographic; // save it here so modules can determine if this is true
     if( is_geographic)
@@ -713,22 +728,22 @@ void core::config_meshes( pt::ptree &value)
     ////////////////////////////////////////////////////////////
     if(mesh_file_extension == ".h5")
     {
-        _mesh->from_hdf5(mesh_path, param_file_paths, initial_condition_file_paths);
+        _mesh->from_hdf5(_mesh_path, param_file_paths, initial_condition_file_paths);
     }
     else if(mesh_file_extension == ".partition")
     {
 #ifndef USE_MPI
         CHM_THROW_EXCEPTION(config_error, "Using a partitioned mesh requires enabling MPI during CHM configure and build.");
 #endif
-
-        _mesh->from_partitioned_hdf5(mesh_path);
+        is_partition = true;
+        _mesh->from_partitioned_hdf5(_mesh_path);
 
 
 
     }
     else  // Assume anything that is NOT h5 is json
     {
-        auto mesh = read_json(mesh_path);
+        auto mesh = read_json(_mesh_path);
 
         //mesh will have been loaded by the geographic check so don't re load it here
       bool triarea_found = false;
@@ -777,35 +792,7 @@ void core::config_meshes( pt::ptree &value)
     if (_mesh->size_faces() == 0)
         BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
 
-}
-
-void core::config_matlab( pt::ptree &value)
-{
-    LOG_DEBUG << "Found matlab section";
-#ifdef MATLAB
-    //loop over the list of matlab options
-    for (auto& jtr : value.get_obj())
-    {
-        const json_spirit::Pair& pair = jtr;
-        const std::string& name = pair.name_;
-        const json_spirit::Value& value = pair.value_;
-
-        if (name == "mfile_paths")
-        {
-            LOG_DEBUG << "Found " << name;
-            for (auto& ktr : value.get_obj()) //loop over all the paths
-            {
-                const json_spirit::Pair& pair = ktr;
-                //                const std::string& name = pair.name_;
-                const json_spirit::Value& value = pair.value_;
-
-
-                _engine->add_dir_to_path(value.get_str());
-
-            }
-        }
-    }
-#endif
+    return is_partition;
 }
 
 void core::config_output(pt::ptree &value)
@@ -1242,17 +1229,6 @@ void core::init(int argc, char **argv)
     LOG_DEBUG << version;
 
 
-
-#ifdef NOMATLAB
-    _engine = boost::make_shared<maw::matlab_engine>();
-
-
-    _engine->start();
-    _engine->set_working_dir();
-
-    LOG_DEBUG << "Matlab engine started";
-#endif
-
     _global = boost::make_shared<global>();
 
     // This needs to be set so that underflows in gsl math
@@ -1390,7 +1366,19 @@ void core::init(int argc, char **argv)
      * The rest may be optional, and will override the defaults.
      */
     config_modules(cfg.get_child("modules"), cfg.get_child("config"), cmdl_options.get<3>(), cmdl_options.get<4>());
-    config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
+
+    //update the internal config ptree so when we right it out for auditing
+    cfg.erase( "modules") ;
+
+    pt::ptree array;
+    for(auto& itr : get_active_module_list())
+        array.push_back(pt::ptree::value_type("", itr.first->ID));
+
+    cfg.put_child("modules", array);
+
+    // This has the delayed param load enabled, so mesh path is saved to _mesh_path which is used to load
+    // the params latter
+     bool ispart = config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
 
     // This needs to be initialized with the mesh prior to the forcing and output being dealt with.
     // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further
@@ -1416,7 +1404,7 @@ void core::init(int argc, char **argv)
         config_options(cfg.get_child("option"));
     } catch (pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "Optional section option not found";
+        CHM_THROW_EXCEPTION(config_error, "The configuration option section is missing and is required.");
     }
 
 
@@ -1424,6 +1412,9 @@ void core::init(int argc, char **argv)
     populate_face_station_lists();
     populate_distributed_station_lists();
 
+    //load the parameters now that the station list has been pruned and we have a partitioned mesh
+    if( ispart)
+        _mesh->from_partitioned_hdf5(_mesh_path, true);
 
     boost::filesystem::path full_path(boost::filesystem::current_path());
 
@@ -1458,10 +1449,6 @@ void core::init(int argc, char **argv)
     {
         LOG_DEBUG << "Optional section checkpoint not found";
     }
-
-//#ifdef NOMATLAB
-//            config_matlab(value);
-//#endif
 
     //if we are to run in point mode, we need to remove all the input and outputs that aren't associated with point mode
     // we do this so the user doesn't have to modify a lot of the config file when going between point and dist mode.
@@ -1612,7 +1599,7 @@ void core::init(int argc, char **argv)
     _schedule_modules();
 
 //load a checkpoint as the last thing we do before a run
-    if(_load_from_checkpoint  )
+    if(_checkpoint_opts.load_from_checkpoint  )
     {
         _global->_from_checkpoint = true;
         LOG_DEBUG << "Loading from checkpoint";
@@ -1622,7 +1609,7 @@ void core::init(int argc, char **argv)
             //module calls
             for (auto &jtr : itr)
             {
-                jtr->load_checkpoint(_mesh, _in_savestate);
+                jtr->load_checkpoint(_mesh, _checkpoint_opts.in_savestate);
             }
         }
 
@@ -2099,6 +2086,8 @@ void core::_schedule_modules()
     }
 }
 
+
+
 void core::run()
 {
 
@@ -2220,13 +2209,12 @@ void core::run()
             }
 
             // save the current state
-            if(_do_checkpoint && (current_ts % _checkpoint_feq ==0) )
+            if(_checkpoint_opts.should_checkpoint(current_ts, (max_ts-1) == current_ts)) // -1 because current_ts is 0 indexed
             {
                 LOG_DEBUG << "Checkpointing...";
 
                 netcdf savestate; //file to save to when checkpointing.
-//                std::stringstream timestr;
-//                timestr <<
+
                 auto timestamp = _global->posix_time() + boost::posix_time::seconds(_global->_dt);
                 //also write it out in seconds because netcdf is struggling with the string
                 unsigned long long int ts_sec = _global->posix_time_int()+_global->_dt;
@@ -2239,7 +2227,7 @@ void core::run()
                 rank = _comm_world.rank();
 #endif
 
-                auto dirpath = _ckpt_path / timestr;
+                auto dirpath = _checkpoint_opts.ckpt_path / timestr;
                 boost::filesystem::create_directories(dirpath);
 
                 //this parses both the input and the output paths for the checkpoint.
@@ -2260,11 +2248,10 @@ void core::run()
                 auto& ids = _mesh->get_global_IDs();
                 savestate.create_variable1D("global_id",ids.size());
 
-                for(size_t i = 0; i <0; i++)
+                for (size_t i = 0; i < ids.size(); i++)
                 {
-                    savestate.put_var1D("global_id",i, ids[i]);
+                    savestate.put_var1D("global_id", i, ids[i]);
                 }
-
 
                 savestate.get_ncfile().putAtt("restart_time",boost::posix_time::to_simple_string(timestamp));
                 savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64,ts_sec);
@@ -2296,7 +2283,7 @@ void core::run()
                 if(rank == 0)
                 {
                     pt::write_json(
-                        (_ckpt_path / ("checkpoint_" + timestr + ".np" + std::to_string(nranks) + ".json")).string(),
+                        (_checkpoint_opts.ckpt_path / ("checkpoint_" + timestr + ".np" + std::to_string(nranks) + ".json")).string(),
                         tree);
                 }
 
@@ -2624,7 +2611,8 @@ void core::populate_distributed_station_lists()
     for(auto& itr: _metdata->stations())
     {
         if( keep_set.find(itr) == keep_set.end() ) // not found in the set we want to keep, mark for removal
-            remove_set.insert(itr->ID());
+            if(itr) // might be a nan point in the nc
+                remove_set.insert(itr->ID());
     }
 
     // Store the local stations in the triangulations mpi-local stationslist vector
@@ -2633,4 +2621,9 @@ void core::populate_distributed_station_lists()
 #ifdef USE_MPI
     LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _metdata->nstations() << " locally owned stations.";
 #endif
+}
+
+std::vector< std::pair<module,size_t> >& core::get_active_module_list()
+{
+    return _modules;
 }
