@@ -66,6 +66,17 @@ FSM::FSM(config_file cfg)
     provides("Tsoil[2]");
     provides("Tsoil[3]");
 
+
+    provides("LWout");
+
+    provides("Sliq[0]");
+    provides("Sliq[1]");
+    provides("Sliq[2]");
+
+    provides("Tsnow[0]");
+    provides("Tsnow[1]");
+    provides("Tsnow[2]");
+
 }
 
 void FSM::init(mesh& domain)
@@ -247,6 +258,11 @@ void FSM::run(mesh_elem& face)
     // FSM has removal as positive and deposition as negative
     trans = -trans;
 
+    d.state.Tsoil[0] = 263;
+    d.state.Tsoil[1] = 263.1;
+    d.state.Tsoil[2] = 263.2;
+    d.state.Tsoil[3] = 263.3;
+
     fsm2_timestep(
         // Driving variables
         &dt, &elev, &zT, &zU,
@@ -285,6 +301,15 @@ void FSM::run(mesh_elem& face)
     (*face)["Tsoil[3]"_s] = d.state.Tsoil[3];
 
     (*face)["Nsnow"_s] = d.state.Nsnow;
+
+    (*face)["LWout"_s] = d.diag.LWout;
+    (*face)["Sliq[0]"_s] = d.state.Sliq[0];
+    (*face)["Sliq[1]"_s] = d.state.Sliq[1];
+    (*face)["Sliq[2]"_s] = d.state.Sliq[2];
+
+    (*face)["Tsnow[0]"_s] = d.state.Tsnow[0];
+    (*face)["Tsnow[1]"_s] = d.state.Tsnow[1];
+    (*face)["Tsnow[2]"_s] = d.state.Tsnow[2];
 }
 
 void FSM::checkpoint(mesh& domain,  netcdf& chkpt)

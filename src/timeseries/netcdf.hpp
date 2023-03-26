@@ -70,6 +70,13 @@ public:
     data get_z();
     double get_z(size_t x, size_t y);
 
+    /**
+     * Get the CF _FillValue if present, defaults to -9999.0 if that attribute is not present.
+     * Currently assumes double!
+     * @param var
+     * @return
+     */
+    double get_fillvalue(const netCDF::NcVar& var);
 
     data get_var(std::string var, size_t timestep);
     data get_var(std::string var, boost::posix_time::ptime timestep);

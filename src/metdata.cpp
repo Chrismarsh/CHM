@@ -41,7 +41,7 @@ metdata::~metdata()
 
 }
 
-void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boost::shared_ptr<filter_base> > filters)
+void metdata::load_from_netcdf(const std::string& path, const triangulation::bounding_box* box, std::map<std::string, boost::shared_ptr<filter_base> > filters)
 {
     if(_mesh_proj4 == "")
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Met loader not initialized with proj4 string" ));
@@ -114,10 +114,14 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
         // #pragma omp parallel for
         // hangs, unclear why, critical sections around the json and gdal calls
         // don't seem to help. Probably _dD_tree is not thread safe
+
+        int skipped = 0; // keep track of how many we skipped due to nans
         for (size_t y = 0; y < _nc->get_ysize(); y++)
         {
             for (size_t x = 0; x < _nc->get_xsize(); x++)
             {
+                size_t index = x + y * _nc->get_xsize();
+
                 double latitude = 0;
                 double longitude = 0 ;
                 double z = 0;
@@ -126,14 +130,18 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                 longitude = lon[y][x];
                 z = e[y][x];
 
-                if( std::isnan(z))
+                // Some Netcdf files have NaN grid squares, For these cases we will just insert a nullptr station and
+                // don't add the station to the dD list which is the only way it ever gets to modules
+                if ( std::isnan(latitude) ||
+                    std::isnan(longitude) ||
+                    std::isnan(z))
                 {
-                    CHM_THROW_EXCEPTION(forcing_error,
-                                        "Elevation for x,y=" + std::to_string(x) + ","+ std::to_string(y)+
-                                            " is NaN. Regardless of the timestep the model is started from, it looks for timestep = 0 to define the elevations. Ensure it is defined then.");
+                    _stations.at(index) = nullptr;
+                    ++skipped;
+                    continue;
                 }
 
-                size_t index = x + y * _nc->get_xsize();
+
                 std::string station_name = std::to_string(index); // these don't really have names
 
                 //need to convert the input lat/long into the coordinate system our mesh is in
@@ -146,6 +154,18 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
                             "Station=" + station_name + ": unable to convert coordinates to mesh format."));
                     }
                 }
+
+                if(box)
+                {
+                    if( longitude > box->x_max || longitude < box->x_min ||
+                        latitude > box->y_max || latitude < box->y_min)
+                    {
+                        _stations.at(index) = nullptr;
+                        ++skipped;
+                        continue;
+                    }
+                }
+
 
                 double elevation = z;
 
@@ -161,6 +181,14 @@ void metdata::load_from_netcdf(const std::string& path,std::map<std::string, boo
 
                 _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
             }
+        }
+
+        if( skipped == _nstations)
+        {
+            CHM_THROW_EXCEPTION(forcing_error,
+                                "All forcing grid cells were skipped due to being NaN values. Elevation and lat/lon,"
+                                " regardless of the timestep the model is started from, are defined from timestep = 0 "
+                                ". Ensure it is defined then. Also, could be a bounding box issue.");
         }
 
     } catch(netCDF::exceptions::NcException& e)
@@ -425,6 +453,8 @@ void metdata::write_stations_to_ptv(const std::string& path)
     for(size_t i = 0; i < _nstations;i++)
     {
         auto s = _stations.at(i);
+        if(!s)
+            continue ;
         points->InsertNextPoint(s->x(), s->y(), s->z());
         labels->SetValue(i, s->ID() );
     }
@@ -529,6 +559,11 @@ bool metdata::next_nc()
     for(size_t i = 0; i < nstations();i++)
     {
         auto s = _stations.at(i);
+
+        // we might have a NaN point, so so a nullptr station, just keep going
+        if(!s)
+            continue;
+
         s->set_posix(_current_ts);
 
         // don't use the stations variable map as it'll contain anything inserted by a filter which won't exist in the nc file
@@ -589,7 +624,8 @@ void metdata::prune_stations(std::unordered_set<std::string>& station_ids)
         std::remove_if(std::begin(_stations), std::end(_stations),
         [&](auto const& it)
         {
-          return (station_ids.find(it->ID()) != std::end(station_ids));
+                           //handle nan stations from the nc
+          return (!it || station_ids.find(it->ID()) != std::end(station_ids));
         }),
         std::end(_stations));
 

@@ -136,11 +136,6 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
         depends("p_snow_hours");
     use_R94_lambda = cfg.get("use_R94_lambda", true);
 
-    if (!use_R94_lambda)
-    {
-        N = cfg.get("N", 1);
-        dv = cfg.get("dv", 0.8);
-    }
 
     provides("blowingsnow_probability");
     debug_output = cfg.get("debug_output", false);
@@ -291,14 +286,35 @@ void PBSM3D::init(mesh& domain)
 
             // only grab LAI if we are using the R90 lambda formulation
             if (use_R94_lambda)
+            {
                 d.LAI = face->veg_attribute("LAI");
-            else
+                d.N = 0;
+                d.dv = 0;
+            }
+            else // use stalk formulation
+            {
                 d.LAI = 0;
+
+                try{
+                    d.N =  face->veg_attribute("stalk_number");
+                    d.dv = face->veg_attribute("stalk_diameter");
+                }
+                catch(module_error& e)
+                {
+                    // default values that work well for scrubby alpine terrain as per Macdonald's work in the Arctic
+                    d.N = 1;
+                    d.dv = 0.8;
+                }
+
+            }
+
         }
         else
         {
             d.CanopyHeight = 0;
             d.LAI = 0;
+            d.N = 0;
+            d.dv = 0;
             enable_veg = false;
         }
 
@@ -662,7 +678,7 @@ void PBSM3D::run(mesh& domain)
                     // Section 3(a)
                     lambda = 0.5 * d.LAI * height_diff;
                 else
-                    lambda = N * dv * height_diff; // Pomeroy formulation
+                    lambda = d.N * d.dv * height_diff; // Pomeroy formulation
 
                 if (debug_output)
                     (*face)["lambda"_s] = lambda;

@@ -12,6 +12,11 @@ supported compilers and operating system (described later), the
 dependencies do not need to be built by the end user. However it is generally recommended to build all dependencies
 from source and this is especially the case for high-performance environments and MPI.
 
+Given CHM may optionally use  conan (which requires Python + pip install) and requires the mesher and windmapper python
+packages, it is best to create a python virtual environment to install these packages into.
+
+
+
 Build requirements
 *******************
 
@@ -42,10 +47,9 @@ If using conan to build the dependencies, the only requirements are:
    - C++14 compiler (gcc 7.2+) (via apt-get/brew)
    - Fortran 90+ compiler (gfortran) (via apt-get/brew)
    - m4 (via apt-get/brew)
-   - autotools (although this is generally installed in most environments) (via apt-get/brew)
-   - BLAS library (via apt-get/brew) e.g., ``libopenblas-dev``
+   - autotools (although this is generally installed in most environments) (via apt-get; not needed on brew)
+   - BLAS library (via apt-get/brew) e.g., ``libopenblas-dev`` / ``brew install openblas``
 
-Using system sqlite3, curl, and libtiff enables the compilation of gdal to proceed smoothly.
 
 On Ubuntu 20.04 these can be installed as:
 
@@ -59,7 +63,7 @@ On Ubuntu 20.04 these can be installed as:
 
 .. note::
 
-   For distributed MPI support, optionally ensure MPI is installed:
+   For distributed MPI support, optionally ensure MPI is installed on linux:
    ``libopenmpi-dev`` and ``openmpi-bin``
 
 
@@ -88,7 +92,14 @@ Build dependencies
 The required 3rd party libraries needed for CHM can be built using conan.
 
 Throughout, this section assumes a working development environment, but
-a blank conan environment. 
+a blank conan environment.
+
+Install `Conan <https://docs.conan.io/en/latest/installation.html>`__.
+
+::
+
+    pip install conan
+
 
 Setup conan
 -------------
@@ -155,7 +166,9 @@ Add the CHM artifactory repository as a conan remote -- this is where the conan 
 Enable revisions
 -----------------
 Enable conan `revisions <https://docs.conan.io/en/latest/versioning/revisions.html#how-to-activate-the-revisions>`__ by
-adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf file.
+adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf file. The conf file is in the ``~/.conan``
+directory.
+
 
 Setup CHM source folders
 ------------------------
@@ -175,6 +188,8 @@ and start from scratch. An example is given below:
 
 Build
 --------
+=======
+
 This step will install the dependencies into your local conan cache (``~/.conan/data``).
 Further, this command will put ``FindXXX.cmake`` files required for the CHM build in the
 current working directory.
@@ -182,6 +197,8 @@ current working directory.
 .. note::
 
    If something goes wrong, you can remove this directory (``~/.conan/data``) or a specific package (``~/.conan/data/package``) to "start fresh".
+
+
 
 Without MPI
 ~~~~~~~~~~~~~~
@@ -263,9 +280,10 @@ On MacOS, the openmp library should be installed via homebrew:
    ``-o trilinos:with_openmp=False``
 
 
-
 Build CHM
 ***********
+
+Ensure you are in the ``build-CHM`` folder.
 
 Run cmake
 ---------

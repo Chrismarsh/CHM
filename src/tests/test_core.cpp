@@ -24,6 +24,7 @@
 
 #include "core.hpp"
 #include "gtest/gtest.h"
+
 #include <stdlib.h>
 #include <string>
 #include <utility>
@@ -36,7 +37,7 @@
 
 class CoreTest : public testing::Test
 {
-
+friend class core;
 protected:
 
     virtual void SetUp()
@@ -280,4 +281,123 @@ TEST_F(CoreTest,CmdlOptionsErase)
     ASSERT_ANY_THROW(c1._cfg.get<int>("global.UTC_offset"));
     ASSERT_ANY_THROW(c1._cfg.get_child("output"));  //confirms the entire section got nuked
 }
+
+//tests removing modules
+TEST_F(CoreTest,CmdlModuleMultipleErase)
+{
+    core c1;
+
+    char* argv[] =
+        {
+            (char*) "/path/to/CHM",
+            (char*) "-f",
+            (char*) "test_config_file.json",
+            (char*) "-d",
+            (char*) "Richard_albedo",
+            (char*) "-d",
+            (char*) "snobal"
+
+        };
+
+
+//    ASSERT_NO_THROW(c1.init(5, argv));
+
+    try {
+        c1.init(7, argv);
+    }catch(exception_base& e)
+    {
+        FAIL() <<  boost::diagnostic_information(e);
+    }
+    auto& m = c1.get_active_module_list();
+
+    for(auto& itr : m)
+    {
+        ASSERT_NE(itr.first->ID, "Richard_albedo");
+    }
+
+}
+
+//tests removing modules
+TEST_F(CoreTest,CmdlModuleMultipleEraseAndAdd)
+{
+    core c1;
+
+    char* argv[] =
+        {
+            (char*) "/path/to/CHM",
+            (char*) "-f",
+            (char*) "test_config_file.json",
+            (char*) "-d",
+            (char*) "Richard_albedo",
+            (char*) "-d",
+            (char*) "snobal",
+            (char*) "-d",
+            (char*) "snobal",
+            (char*) "-m",
+            (char*) "deform_mesh"
+        };
+
+
+    //    ASSERT_NO_THROW(c1.init(5, argv));
+
+    try {
+        c1.init(11, argv);
+    }catch(exception_base& e)
+    {
+        FAIL() <<  boost::diagnostic_information(e);
+    }
+    auto& m = c1.get_active_module_list();
+
+    bool found_deform = false;
+    for(auto& itr : m)
+    {
+        // we should never find these
+        ASSERT_NE(itr.first->ID, "Richard_albedo");
+        ASSERT_NE(itr.first->ID, "snobal");
+
+        if(itr.first->ID == "deform_mesh")
+            found_deform = true;
+    }
+
+    //make sure we added the deform mesh
+    ASSERT_TRUE(found_deform);
+
+
+}
+
+TEST_F(CoreTest,ConfigCmdlOptions)
+{
+    core c1;
+
+    char* argv[] =
+        {
+            (char*) "/path/to/CHM",
+            (char*) "-f",
+            (char*) "test_config_file.json",
+            (char*) "-d",
+            (char*) "Richard_albedo",
+
+
+        };
+
+    /*
+        typedef boost::tuple<
+        std::string, //config file path to load. defaults to CHM.config
+        std::vector<std::pair<std::string,std::string>>, //insert or overide config value
+        std::vector<std::string>, //remove config value
+        std::vector<std::string>, //remove module
+        std::vector<std::string>,  // add module
+        bool //legacy-log
+        > cmdl_opt;
+     */
+    auto args = c1.config_cmdl_options(5, argv);
+
+    ASSERT_EQ(args.get<0>(), "test_config_file.json");
+
+    ASSERT_EQ(args.get<3>().size(), 1);
+    ASSERT_EQ(args.get<3>().at(0), "Richard_albedo");
+
+}
+
+
 

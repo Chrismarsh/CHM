@@ -104,11 +104,50 @@ void netcdf::open_GEM(const std::string &file)
 {
     _data.open(file.c_str(), netCDF::NcFile::read);
 
-    //gem netcdf files have 1 coordinate, datetime
+    // gem netcdf files have 1 coordinate, datetime
 
+//    for (auto& itr : _data.getVars())
+//    {
+//        LOG_DEBUG << itr.first;
+//    }
+//
+//    LOG_DEBUG << "-----";
+//    for (auto& itr : _data.getCoordVars())
+//    {
+//        LOG_DEBUG << itr.first;
+//    }
+//    LOG_DEBUG << "-----";
+//    for (auto& itr : _data.getDims())
+//    {
+//        LOG_DEBUG << itr.first;
+//    }
     auto coord_vars = _data.getCoordVars();
+
+    // a few NC have time as a variable and not a coordinate variable so look for time/datetime there
+    if(coord_vars.size() == 0)
+    {
+        CHM_THROW_EXCEPTION(forcing_error,"Netcdf file does not have a coordinate variable defined.");
+    }
     _datetime_field = "datetime";
-    _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
+
+    try
+    {
+        _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
+    }
+    catch (netCDF::exceptions::NcNullGrp& e)
+    {
+        _datetime_field = "time";
+        try {
+            _datetime_length = coord_vars[_datetime_field].getDim(_datetime_field).getSize();
+        }
+        catch (netCDF::exceptions::NcNullGrp& e)
+        {
+            LOG_ERROR << "Tried datetime and time, coord not found";
+            throw e;
+        }
+
+    }
+
 
     // if we don't have at least two timesteps, we can't figure out the model internal timestep length (dt)
     if(_datetime_length == 1)
@@ -128,6 +167,7 @@ void netcdf::open_GEM(const std::string &file)
 //    }
 
     netCDF::NcVar times = _data.getVar(_datetime_field);
+
     if(times.getType().getName() != "int64")
     {
         BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Datetime dimension not in int64 format"));
@@ -197,16 +237,21 @@ void netcdf::open_GEM(const std::string &file)
             s = s + " 00:00:00";
         }
 
-        _epoch = boost::posix_time::time_from_string(s);
+        try
+        {
+            _epoch = boost::posix_time::time_from_string(s);
+        }
+        catch(boost::bad_lexical_cast& e)
+        {
+            CHM_THROW_EXCEPTION(forcing_error, "Unable to parse netcdf epoch time " + s);
+        }
+
 
     }
     else
     {
         _epoch = boost::posix_time::time_from_string(strs[2]+" "+strs[3]);
     }
-
-    //get our dt, assuming constant dt throughout the nc file
-    _timestep *= dt[1]-dt[0];
 
     //need to handle a start that is different from our epoch
     // e.g., the epoch might be 'hours since 2021-01-01 00:00:00',
@@ -216,6 +261,9 @@ void netcdf::open_GEM(const std::string &file)
     //figure out what the end of the timeseries is
     _end = _epoch + _timestep * dt[_datetime_length-1];
 
+
+    //get our dt, assuming constant dt throughout the nc file
+    _timestep *= dt[1]-dt[0];
 
     // go through all the timesteps and ensure a consistent timesteping
     // best to spend the time up front for this check than to get 90% into a sim and have it die
@@ -321,6 +369,19 @@ std::set<std::string> netcdf::get_coordinate_names()
 
 }
 
+double netcdf::get_fillvalue(const netCDF::NcVar& var)
+{
+    double fill_value=-9999;
+    try {
+        auto fill_value_attr  = var.getAtt("_FillValue");
+        fill_value_attr.getValues(&fill_value);
+    }catch(netCDF::exceptions::NcException& e)
+    {
+        // no CF _FillValue, use -9999 default
+    }
+    return fill_value;
+}
+
 double netcdf::get_var1D(std::string var, size_t index)
 {
     std::vector<size_t> startp, countp;
@@ -334,6 +395,14 @@ double netcdf::get_var1D(std::string var, size_t index)
     auto itr = vars.find(var);
     double data=-9999.0;
     itr->second.getVar(startp,countp,&data);
+
+
+    double fill_value = get_fillvalue(itr->second);
+
+    if( data == fill_value)
+    {
+        data = std::nan("nan");
+    }
 
     return data;
 }
@@ -354,6 +423,17 @@ netcdf::data netcdf::get_var2D(std::string var)
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, array.data());
 
+    double fill_value = get_fillvalue(itr->second);
+
+    for(size_t i =0; i< array.shape()[0]; i++)
+    {
+        for(size_t j =0; j< array.shape()[1]; j++)
+        {
+            if (array[i][j] == fill_value)
+                array[i][j] = std::nan("nan");
+        }
+    }
+
     return array;
 }
 
@@ -373,6 +453,11 @@ double netcdf::get_var2D(std::string var, size_t x, size_t y)
 
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, &val);
+
+    double fill_value = get_fillvalue(itr->second);
+
+    if(val == fill_value)
+        val = std::nan("nan");
 
     return val;
 }
@@ -433,6 +518,10 @@ double netcdf::get_var(std::string var, size_t timestep, size_t x, size_t y)
     {
         itr->second.getVar(startp, countp, &val);
     }
+    double fill_value = get_fillvalue(itr->second);
+
+    if(val == fill_value)
+        val = std::nan("nan");
 
     return val;
 }
@@ -459,8 +548,20 @@ netcdf::data netcdf::get_var(std::string var, size_t timestep)
     auto itr = vars.find(var);
     itr->second.getVar(startp,countp, array.data());
 
+    double fill_value = get_fillvalue(itr->second);
 
-     return array;
+
+    for(size_t i =0; i< array.shape()[0]; i++)
+    {
+        for(size_t j =0; j< array.shape()[1]; j++)
+        {
+            if (array[i][j] == fill_value)
+                array[i][j] = std::nan("nan");
+        }
+    }
+
+    return array;
+
 }
 
 double netcdf::get_var(std::string var, boost::posix_time::ptime timestep, size_t x, size_t y)

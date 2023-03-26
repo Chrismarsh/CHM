@@ -45,7 +45,8 @@
  * \class WindNinja
  *
  * Calculates wind speed and direction following the downscaling stategy of Barcons et al. (2018). This is via a library
- * of high-resolution wind field generated with the WindNinja wind flow model.
+ * of high-resolution wind field generated with the WindNinja wind flow model. Unless the reference height windspeed is
+ * provided, use the scale_wind_speed filter to log-scale the windspeed up to U_R.
  *
  * **Depends from met:**
  * - Wind at reference height "U_R" [ \f$ m \cdot s^{-1}\f$ ]
