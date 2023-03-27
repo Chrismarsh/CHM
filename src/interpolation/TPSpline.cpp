@@ -24,17 +24,18 @@
 
 #include "TPSpline.hpp"
 
-//#define FUNC_DEBUG
-//#include <func/func.hpp>
-#include <func/CubicInterpolationTable.hpp>
-#include <func/FailureProofTable.hpp>
+#define FUNC_DEBUG
+#include <func/func.hpp>
+//#include <func/CubicInterpolationTable.hpp>
+//#include <func/FailureProofTable.hpp>
 #include "TPSBasis.hpp"
 
 // Build FunC lookup table for -(log(x)+c+gsl_sf_expint_E1(x))
-//static func::FunctionContainer<double> FC {TPSBasis<double>};
-//static func::FailureProofTable<double,double,func::UniformCubicInterpolationTable<double>> TPSBasis_LUT(&FC, func::LookupTableParameters<double> {1e-5, 32, 0.0169});
-static func::FunctionContainer<double> FC {OLD_TPSBasis<double>};
-static func::DirectEvaluation<double> TPSBasis_LUT(&FC, 1e-8, 6500);
+static func::FunctionContainer<double> FC {TPSBasis<double>};
+//static func::FailureProofTable<double,double,func::UniformCubicInterpolationTable<double>> TPSBasis_LUT(&FC, func::LookupTableParameters<double> {1e-5, 32, 0.0169}); // error of 6e-12
+static func::FailureProofTable<float,float,func::UniformCubicInterpolationTable<float>> TPSBasis_LUT(&FC, func::LookupTableParameters<float> {1e-5, 32, 0.042}); // error of 2e-6
+//static func::FunctionContainer<double> FC {OLD_TPSBasis<double>};
+//static func::DirectEvaluation<double> TPSBasis_LUT(&FC, 1e-8, 6500);
 
 double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
