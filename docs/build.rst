@@ -456,17 +456,17 @@ Ensure the environment is correctly setup
    module load func
    module load netcdf/4.7.4
    module load gdal/3.2.3
-   module load boost-mpi
-   module load openblas
-   module load gsl
+   module load boost-mpi/1.72.0
+   module load openblas/0.3.9
+   module load gsl/2.6
    module load eigen/3.3.7
    module load sparsehash
-   module load tbb
-   module load trilinos/chm
-   module load netcdf-c++4
-   module load vtk
-   module load proj
-   module load jemalloc
+   module load tbb/2020.2
+   module load trilinos/13.3.0
+   module load netcdf-c++4/4.3.1
+   module load vtk/9.0.1
+   module load proj/9.0.1
+   module load jemalloc/5.3.0
    module load cmake
 
 Optionally you can save this with ``module save chm``.
