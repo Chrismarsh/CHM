@@ -109,6 +109,8 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     depends("rh");
     depends("U_R");
 
+    provides("pbsm_more_than_avail");
+
     provides("global_cell_id");
     //    depends("p_snow");
     //    depends("p");
@@ -1710,13 +1712,14 @@ void PBSM3D::run(mesh& domain)
             mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
 
             // could we have eroded more mass than what exists? cap it
-            // double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
-            // swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
+             double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
+             swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
             // updated if we override the module order
-            //        if( mass < 0 && std::fabs(mass) > swe )
-            //        {
-            //            mass = -swe;
-            //        }
+                    if( mass < 0 && std::fabs(mass) > swe )
+                    {
+                        (*face)["pbsm_more_than_avail"_s] = 1;
+                        mass = -swe;
+                    }
             (*face)["drift_mass"_s] = mass;
             (*face)["sum_drift"_s] += mass;
         }
