@@ -31,12 +31,9 @@
 #include "chm_sati_function.hpp"
 using namespace snobalMacros;
 
-static func::FunctionContainer<double> func_w {MyFunction_satw<double>};
-static func::FunctionContainer<double> func_i {MyFunction_sati<double>};
-
-// These hard coded stepsizes satisfy a tolerance of 1e-8;
-static func::UniformLinearRawInterpolationTable<double> satw_lut(&func_w, func::LookupTableParameters<double> {FREEZE - 50.0, FREEZE + 50.0, 0.00258598});
-static func::UniformLinearRawInterpolationTable<double> sati_lut(&func_i, func::LookupTableParameters<double> {90.0, FREEZE, 0.000388715});
+// These hard coded stepsizes satisfy a tolerance of 1e-8. LookupTableParameters takes {min, max, step}
+static func::UniformLinearRawInterpTable<double> satw_lut({MyFunction_satw<double>}, {FREEZE - 50.0, FREEZE + 50.0, 0.00258598});
+static func::UniformLinearRawInterpTable<double> sati_lut({MyFunction_sati<double>}, {90.0, FREEZE, 0.000388715});
 
 double sno::ssxfr(
         double k1,    /* layer 1's thermal conductivity (J / (m K sec))  */

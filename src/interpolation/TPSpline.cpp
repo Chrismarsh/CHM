@@ -24,21 +24,29 @@
 
 #include "TPSpline.hpp"
 
-#define FUNC_DEBUG
+//#include <iostream>
+//#define FUNC_DEBUG
 #include <func/func.hpp>
-//#include <func/CubicInterpolationTable.hpp>
-//#include <func/FailureProofTable.hpp>
 #include "TPSBasis.hpp"
 
-// Build FunC lookup table for -(log(x)+c+gsl_sf_expint_E1(x))
-static func::FunctionContainer<double> FC {TPSBasis<double>};
-//static func::FailureProofTable<double,double,func::UniformCubicInterpolationTable<double>> TPSBasis_LUT(&FC, func::LookupTableParameters<double> {1e-5, 32, 0.0169}); // error of 6e-12
-static func::FailureProofTable<float,float,func::UniformCubicInterpolationTable<float>> TPSBasis_LUT(&FC, func::LookupTableParameters<float> {1e-5, 32, 0.042}); // error of 2e-6
-//static func::FunctionContainer<double> FC {OLD_TPSBasis<double>};
-//static func::DirectEvaluation<double> TPSBasis_LUT(&FC, 1e-8, 6500);
+// Build FunC lookup table for -(log(x)+gamma+gsl_sf_expint_E1(x))
+
+// hardcoded error of 1e-8
+//static func::FailureProofTable<func::UniformEqSpaceInterpTable<3,double>,double> TPSBasis_LUT({TPSBasis<double>}, {1e-5, 32, 0.11111});
+static func::FailureProofTable<func::NonUniformEqSpaceInterpTable<3,double>,double> TPSBasis_LUT({FUNC_SET_F(TPSBasis,double)}, {1e-5, 32, 0.154207});
+//static func::DirectEvaluation<double> TPSBasis_LUT({OLD_TPSBasis<double>}, 1e-8, 6500);
+
+
+/* Each MPI process will print that text from the destructor after it finishes */
+//static struct Counter{
+//  double total = 0.0;
+//  ~Counter(){ std::cerr << "Spent " << total << " seconds in spline::operator()" << std::endl; }
+//} counter;
+
 
 double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
+    //func::Timer t;
     //see if we can reuse our
     if(sample_points.size() + 1 != size)
     {
@@ -152,6 +160,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         z0 = z0 + x(i)*Rd;
     }
 
+    //t.stop();
+    //counter.total += t.duration();
     return z0;
 }
 
