@@ -109,6 +109,8 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     depends("rh");
     depends("U_R");
 
+    provides("pbsm_more_than_avail");
+
     provides("global_cell_id");
     //    depends("p_snow");
     //    depends("p");
@@ -843,12 +845,16 @@ void PBSM3D::run(mesh& domain)
                 if (use_PomLi_probability) // Pomeroy and Li 2000 upscaled
                     // probability
                 {
-                    // Essery, Li, and Pomeroy 1999
+                    //    1.Essery, R., Li, L. & Pomeroy, J. A distributed model of blowing snow over complex terrain. Hydrological Processes 13, 2423–2438 (1999).
                     // Probability of blowing snow
                     double A = (*face)["p_snow_hours"_s];                              // hours since last snowfall
                     double u_mean = 11.2 + 0.365 * T + 0.00706 * T * T + 0.9 * log(A); // eqn 10  T -> air temp, degC
                     double delta = 0.145 * T + 0.00196 * T * T + 4.3;                  // eqn 11
-                    double Pu10 = 1.0 / (1.0 + exp((sqrt(M_PI) * (u_mean - u10)) / delta)); // eqn 12
+
+                    double z0v = (d.N * d.dv * height_diff) / 2.0; // eqn 14
+                    double us = u10 / sqrt((1+340.0*z0v));         // eqn 13
+
+                    double Pu10 = 1.0 / (1.0 + exp((sqrt(M_PI) * (u_mean - us)) / delta)); // eqn 12
                     (*face)["blowingsnow_probability"_s] = Pu10;
 
                     // decrease the saltation by the probability amount
@@ -1710,13 +1716,22 @@ void PBSM3D::run(mesh& domain)
             mass = qdep * global_param->dt(); // kg/m^2*s *dt -> kg/m^2
 
             // could we have eroded more mass than what exists? cap it
-            // double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
-            // swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
+             double swe = (*face)["swe"_s]; // mm   -->    kg/m^2
+             swe = is_nan(swe) ? 0 : swe;   // handle the first timestep where swe won't have been
             // updated if we override the module order
-            //        if( mass < 0 && std::fabs(mass) > swe )
-            //        {
-            //            mass = -swe;
-            //        }
+            if( mass < 0 && std::fabs(mass) > swe )
+            {
+                (*face)["pbsm_more_than_avail"_s] = 1;
+                mass = -swe;
+            }
+
+            // if this triangle did not saltate, it is not a candidate for removal
+            auto& d = face->get_module_data<data>(ID);
+            if (mass < 0 && !d.saltation)
+            {
+                mass = 0;
+            }
+
             (*face)["drift_mass"_s] = mass;
             (*face)["sum_drift"_s] += mass;
         }
