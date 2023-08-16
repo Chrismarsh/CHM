@@ -4,7 +4,7 @@ Compilation
 CHM uses `conan <https://conan.io/>`__ to manage and build all
 dependencies. Because of the various requirements on build
 configuration, versions, and interdependencies, using system libraries
-it not supported.
+is not supported.
 
 All of the CHM dependencies are built on Travis-CI and uploaded to the an Artifactory repository to serve
 prebuilt binaries and build scripts. This means that *if* the CHM build is done with
@@ -56,6 +56,7 @@ On Ubuntu 20.04 these can be installed as:
 ::
 
    libopenblas-dev
+   libcgal-dev
    libtiff-dev
    libcurl4-gnutls-dev
    libsqlite3-dev
@@ -98,7 +99,7 @@ Install `Conan <https://docs.conan.io/en/latest/installation.html>`__.
 
 ::
 
-    pip install conan
+    pip install "conan==1.59.0"
 
 
 Setup conan
@@ -132,7 +133,7 @@ can rerun
 to detect the new compiler settings. The ``cppstd`` and ``libcxx``
 settings need to be reapplied once this is done.
 
-The next few steps can be avoided by installing the following config,
+If you install the following config then you can skip to the "Setup CHM source folders" step (below)
 
 ::
 
@@ -170,7 +171,6 @@ adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf f
 directory.
 
 
-
 Setup CHM source folders
 ------------------------
 
@@ -180,19 +180,20 @@ and start from scratch. An example is given below:
 ::
 
    cd ~/
-   git clone --recurse-submodules https://github.com/Chrismarsh/CHM
+   git clone https://github.com/Chrismarsh/CHM
 
    mkdir ~/build-CHM
 
 .. note::
    The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
 
-Build dependencies
----------------------
+Build
+--------
+=======
 
 This step will install the dependencies into your local conan cache (``~/.conan/data``).
-Further, this command will produce the ``FindXXX.cmake`` files required for the
-CHM build.
+Further, this command will put ``FindXXX.cmake`` files required for the CHM build in the
+current working directory.
 
 .. note::
 
