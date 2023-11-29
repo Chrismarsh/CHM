@@ -33,22 +33,21 @@ find_library(FUNC_LIBRARY
         NAMES func
         PATHS ${Func_DIR}/lib
         )
-find_library(FUNC_IMPLS_LIBRARY
-        NAMES func_impls
-        PATHS ${Func_DIR}/lib
-        )
+#find_library(FUNC_IMPLS_LIBRARY
+#        NAMES func_impls
+#        PATHS ${Func_DIR}/lib
+#        )
 
 find_package_handle_standard_args(Func DEFAULT_MSG
-        FUNC_INCLUDE_DIR FUNC_LIBRARY FUNC_IMPLS_LIBRARY)
+        FUNC_INCLUDE_DIR FUNC_LIBRARY)
 
 if(Func_FOUND)
     set( Func_INCLUDE_DIRS ${FUNC_INCLUDE_DIR})
-    set( Func_LIBRARIES ${FUNC_LIBRARY} ${FUNC_IMPLS_LIBRARY})
+    set( Func_LIBRARIES ${FUNC_LIBRARY})
 
     mark_as_advanced(
             FUNC_INCLUDE_DIR
             FUNC_LIBRARY
-            FUNC_IMPLS_LIBRARY
     )
 
     add_library(Func::Func INTERFACE IMPORTED)

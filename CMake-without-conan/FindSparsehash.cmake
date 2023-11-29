@@ -26,7 +26,7 @@ if(Sparsehash_FOUND)
             Sparsehash_DIR
     )
 
-    message(STATUS "Sparsehash found: " ${Sparsehash_INCLUDE_DIR})
+#    message(STATUS "Sparsehash found: " ${Sparsehash_INCLUDE_DIR})
 
     add_library(Sparsehash::Sparsehash INTERFACE IMPORTED)
     set_target_properties(Sparsehash::Sparsehash PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${Sparsehash_INCLUDE_DIRS})
