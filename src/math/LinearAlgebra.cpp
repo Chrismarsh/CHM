@@ -126,7 +126,8 @@ namespace math
 	Preferred construction of CrsGraph uses a Teuchos::ArrayView<T> for num entries/row
       */
       Teuchos::ArrayView<size_t> num_entries_view(num_entries.data(),ntri*nLayer);
-      m_graph = rcp (new graph_type (m_map, num_entries_view, Tpetra::StaticProfile));
+      m_graph = rcp (new graph_type (m_map, num_entries_view)); // I believe these are all StaticProfile by default now
+
 
       // Set all of the desired nonzero columns in the graph
       // due to insertGlobalIndices args
