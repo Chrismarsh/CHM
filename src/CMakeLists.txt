@@ -125,57 +125,46 @@ set (HEADER_FILES
 set(EXT_TARGETS
 		${ARPACK_LIBRARY}
 		Threads::Threads
-		${GDAL}::${GDAL}
-		${GSL}::${GSL}
-		${PROJ}::${PROJ}
-		${CGAL}::${CGAL}
-		${HDF5}::${HDF5}
+		GDAL::GDAL
+		GSL::GSL
+		PROJ::PROJ
+		CGAL::CGAL
+		HDF5::HDF5
 
-		${METEOIO}::${METEOIO}
-		${TRILINOS}::${TRILINOS}
-		${SPARSEHASH}::${SPARSEHASH}
+		MeteoIO::MeteoIO
+		Trilinos::Trilinos
+		Sparsehash::Sparsehash
 
-		${FUNC}::${FUNC}
+		Func::Func
+
+		NetCDF::NetCDF
+		TBB::tbb
+		ARMADILLO::ARMADILLO # needs to be upper case
+		Eigen3::Eigen
+
+		BLAS::BLAS
+
+		VTK::CommonCore
+		VTK::CommonDataModel
+		VTK::CommonTransforms
+		VTK::FiltersCore
+		VTK::FiltersGeneral
+		VTK::FiltersGeometry
+		VTK::FiltersSources
+		VTK::IOXML
+
+		Boost::headers
+		Boost::system
+		Boost::filesystem
+		Boost::date_time
+		Boost::log
+		Boost::thread
+		Boost::regex
+		Boost::iostreams
+		Boost::program_options
+
 		CACHE INTERNAL "" FORCE)
 
-
-if(BUILD_WITH_CONAN)
-	list( APPEND EXT_TARGETS
-			netcdf-cxx::netcdf-cxx
-			TBB::tbb
-			Boost::Boost
-			Eigen3::Eigen3
-			armadillo::armadillo
-			vtk::vtk
-
-			)
-else()
-	list( APPEND EXT_TARGETS
-			NetCDF::NetCDF
-			TBB::tbb
-			ARMADILLO::ARMADILLO
-			Eigen3::Eigen
-
-			VTK::CommonCore
-			VTK::CommonDataModel
-			VTK::CommonTransforms
-			VTK::FiltersCore
-			VTK::FiltersGeneral
-			VTK::FiltersGeometry
-			VTK::FiltersSources
-			VTK::IOXML
-
-			Boost::headers
-			Boost::system
-			Boost::filesystem
-			Boost::date_time
-			Boost::log
-			Boost::thread
-			Boost::regex
-			Boost::iostreams
-			Boost::program_options
-			)
-endif()
 
 #handle the optionals
 if(OpenMP_FOUND)
@@ -187,7 +176,7 @@ if(USE_OCL AND OPENCL_FOUND)
 endif()
 
 if(${GPERFTOOLS}_FOUND)
-	list( APPEND EXT_TARGETS ${GPERFTOOLS}::${GPERFTOOLS})
+	list( APPEND EXT_TARGETS Gperftools::Gperftools)
 endif()
 
 if(USE_JEMALLOC)

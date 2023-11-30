@@ -5,7 +5,6 @@ SET(_VERSION "-D_VERSION=\\\"${_versionString}\\\"")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_VERSION}")
 
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/third_party/snowpack/CMakeLists.txt)
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake_find_names.cmake)
 
 SET(SNOWPACK_SRCS "")
 FOREACH(f ${snowpacklib_sources})
@@ -19,7 +18,7 @@ add_library(SNOWPACK OBJECT
 
 
 target_link_libraries(SNOWPACK PUBLIC
-        ${METEOIO}::${METEOIO}
+        MeteoIO::MeteoIO
         )
 
 if(BUILD_WITH_CONAN)
@@ -49,7 +48,7 @@ add_library(SNOBAL OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/third_party/snobal/sno.cpp
   )
 target_link_libraries(SNOBAL PUBLIC
-  ${FUNC}::${FUNC}
+  Func::Func
   )
 
 

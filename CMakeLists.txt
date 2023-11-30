@@ -120,7 +120,6 @@ endmacro()
 # ---------------------------------------------------------------
 # ------ Start of find_package section --------------------------
 # ---------------------------------------------------------------
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake_find_names.cmake)
 
 # Need to check for MPI before building external libraries
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran) # MPI_C is needed for the mpi that HDF can bring in
@@ -176,7 +175,7 @@ add_definitions(-DBOOST_LOG_DYN_LINK)
 add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
 
 
-find_package(${CGAL} 5.0 REQUIRED)
+find_package(CGAL 5.0 REQUIRED)
 
 # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
 # https://bugs.llvm.org/show_bug.cgi?id=43266
@@ -247,43 +246,31 @@ if(USE_OMP)
 endif()
 
 #already makes a target
-find_package(${METEOIO} REQUIRED)
+find_package(MeteoIO REQUIRED)
 
-find_package(${ARMADILLO} REQUIRED)
-create_target(ARMADILLO) #needs to be upper-case
+# needs to be title case
+find_package(Armadillo REQUIRED)
 
-find_package(${EIGEN3} REQUIRED NO_MODULE)
+# needs to be upper-case
+# https://cmake.org/cmake/help/latest/module/FindArmadillo.html
+create_target(ARMADILLO)
 
+find_package(Eigen3 REQUIRED NO_MODULE)
 
-# we build blas from conan so do not do this if we are using the full conan stack
-#if(MACOSX AND NOT BUILD_WITH_CONAN)
-#
-#    execute_process(
-#            COMMAND brew --prefix openblas
-#            RESULT_VARIABLE BREW_BLAS
-#            OUTPUT_VARIABLE BREW_BLAS_PREFIX
-#            OUTPUT_STRIP_TRAILING_WHITESPACE
-#    )
-#
-#    if(BREW_BLAS EQUAL 0)
-#        message(WARNING "Found homebrew OpenBLAS ${BREW_BLAS_PREFIX}" )
-#        set(BLAS_ROOT ${BREW_BLAS_PREFIX})
-#        set(BLA_VENDOR Generic)
-#    endif()
-#
-#endif()
+find_package(BLAS REQUIRED)
+create_target(BLAS) # cmake < 3.18
 
 
-find_package(${SPARSEHASH})
-if( ${SPARSEHASH}_FOUND )
+find_package(Sparsehash)
+if( Sparsehash_FOUND )
     add_definitions(-DUSE_SPARSEHASH)
 endif()
 
 if( ${USE_TCMALLOC})
-    find_package(${GPERFTOOLS})
+    find_package(Gperftools)
 
     #gperftools may not compile on machines w/o nano sleep so we need to optionally disable if it fails to compile
-    if(${GPERFTOOLS}_FOUND)
+    if(Gperftools_FOUND)
         message(STATUS "Found Tcmalloc, disabling builtin malloc, free")
         set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
     endif()
@@ -296,25 +283,25 @@ if( USE_JEMALLOC )
 endif()
 
 
-find_package(${FUNC} REQUIRED)
+find_package(Func REQUIRED)
 
-find_package(${GDAL} 3.0 REQUIRED )
-create_target(${GDAL})
+find_package(GDAL 3.0 REQUIRED )
+create_target(GDAL)
 
-find_package(${PROJ} REQUIRED)
-create_target(${PROJ})
+find_package(PROJ REQUIRED)
+create_target(PROJ)
 
 find_package (Threads REQUIRED)
 
-find_package(${TBB} REQUIRED)
+find_package(TBB REQUIRED)
 
-find_package(${GSL} REQUIRED)
-create_target(${GSL})
+find_package(GSL REQUIRED)
+create_target(GSL)
 
-find_package(${HDF5} COMPONENTS CXX REQUIRED)
-create_target(${HDF5})
+find_package(HDF5 COMPONENTS CXX REQUIRED)
+create_target(HDF5)
 
-find_package(${NETCDFCXX} COMPONENTS C CXX REQUIRED)
+find_package(NetCDF COMPONENTS C CXX REQUIRED)
 
 
 #To avoid issues #104, newer VTK version needs to be used.
@@ -323,7 +310,7 @@ find_package(${NETCDFCXX} COMPONENTS C CXX REQUIRED)
 #N.B: The find VTK doesn't allow for compatibility between major versions. That is, if we ask for v7, v8 won't be allowed.
 #Therefore we need to ensure this version is up-to-date with what we are building. There are likely issues with VTK6 as per issue #104
 # so for now, we will accept finding *any* VTK version, but will flag it and error if we find <=6
-find_package(${VTK}
+find_package(VTK
         9.0
             COMPONENTS
             CommonCore
@@ -336,9 +323,7 @@ find_package(${VTK}
             IOXML
 
             REQUIRED)
-if(NOT ${BUILD_WITH_CONAN})
-    message(STATUS "Found VTK: ${VTK_INCLUDE_DIRS}")
-endif()
+message(STATUS "Found VTK: ${VTK_DIR}")
 
 #create_target(${VTK})
 
@@ -355,8 +340,8 @@ else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
-find_package(${TRILINOS} REQUIRED)
-create_target(${TRILINOS})
+find_package(Trilinos 14.0 REQUIRED)
+create_target(Trilinos)
 
 #setup src dirs
 include(third_party/CMakeLists.txt)

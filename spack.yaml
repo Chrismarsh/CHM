@@ -1,0 +1,27 @@
+# This is a Spack Environment file.
+#
+# It describes a set of packages to be installed, along with
+# configuration settings.
+spack:
+  # add package specs to the `specs` list
+  specs:
+  - boost@1.83.0+system+filesystem+date_time+log+thread+regex+iostreams+program_options+mpi+serialization
+  - cgal@5.5.2+header_only
+  - vtk@9.2.6
+  - hdf5@1.14.3+cxx
+  - netcdf-cxx4@4.3.1
+  - gdal@3.8.0^proj@9.2.1+curl+tiff
+  - proj@9.2.1+curl+tiff
+  - sparsehash@2.0.4
+  - gperftools@2.13
+  - gsl@2.7.1+external-cblas
+  - armadillo@12.4.0
+  - intel-tbb@2021.9.0
+  - eigen@3.4.0
+  - meteoio@2.8.0
+  - func@2.0
+  - trilinos@14.4.0+mpi ^openmpi
+  - jemalloc@5.3.0
+  view: true
+  concretizer:
+    unify: true
