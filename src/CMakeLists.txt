@@ -184,10 +184,7 @@ if(USE_JEMALLOC)
 endif()
 
 if(MPI_FOUND AND USE_MPI)
-	list( APPEND EXT_TARGETS MPI::MPI_CXX)
-	if(NOT BUILD_WITH_CONAN)
-		list( APPEND EXT_TARGETS Boost::mpi)
-	endif()
+	list( APPEND EXT_TARGETS MPI::MPI_CXX Boost::mpi)
 endif()
 
 

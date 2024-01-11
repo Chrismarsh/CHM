@@ -31,15 +31,12 @@ option(USE_TCMALLOC "Use tcmalloc from gperftools " OFF)
 option(USE_JEMALLOC "Use jemalloc" ON)
 option(BUILD_DOCS "Builds documentation" OFF)
 
-
 message(STATUS "This is an MPI build? ${USE_MPI}")
 
-
-
-if(BUILD_WITH_CONAN AND USE_JEMALLOC)
-    message(WARNING "With a Conan build, USE_JEMALLOC will use a system jemalloc" )
+# TODO: Link to the docs describing the migration
+if(BUILD_WITH_CONAN)
+    message(FATAL_ERROR "Building CHM with conan is no longer supported in favour of using spack. Please revise build env accordingly")
 endif()
-
 
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
 if (${FORCE_COLORED_OUTPUT})
