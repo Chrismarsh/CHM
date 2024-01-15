@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.16)
+cmake_minimum_required (VERSION 3.21)
 project (CHM-project C CXX Fortran)
 
 # In CMake 3.12 and above the find_package(<PackageName>) command now searches prefixes specified by the <PackageName>_ROOT
@@ -299,6 +299,7 @@ create_target(HDF5)
 
 find_package(NetCDF COMPONENTS C CXX REQUIRED)
 
+find_package(spdlog REQUIRED)
 
 #To avoid issues #104, newer VTK version needs to be used.
 #8.1+ needs to be used so that proj4 name-collisions are resolved
