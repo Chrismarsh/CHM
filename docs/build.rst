@@ -27,43 +27,16 @@ Ubuntu   18.04
   -      22.04  Ventura  13
 =======  =====  ========  =====        
 
-Only gcc is currently support:
-gcc (libc 2.27+): 9.3.0+
-
-
-.. warning::
-   Below, references to building with the Intel compiler are made. Unfortunately the Intel compiler doesn't currently work with applications that also
-   link against GSL. This is being investigated. For now, please do no build CHM with Intel Compilers.
-
-If using conan to build the dependencies, the only requirements are:
-
-   - conan (via Python pip)
+Build env requirements:
    - cmake >=3.21  (via apt-get/brew)
    - C++14 compiler (gcc 9.3.0+) (via apt-get/brew)
    - Fortran 90+ compiler (gfortran) (via apt-get/brew)
 
-
-
-
-
-
-On MacOS, `homebrew <https://brew.sh/>`__ should be used to install
-cmake. Macport based installs likely work, but have not been
-tested.
-
-Intel compiler
----------------
-
 .. warning::
-   As noted above, Intel compiler builds are currently not supported and do not work. Please use gcc at this time.
+   Unfortunately the Intel compiler doesn't currently work with applications that also
+   link against GSL. This is being investigated. For now, please do no build CHM with Intel Compilers.
 
-If the Intel compiler is being used (this is optional), ensure the Intel compilervars is sourced, e.g.,
 
-::
-
-   source /opt/intel/bin/compilervars.sh intel64
-
-prior to running the conan. Use the gcc settings for conan.
 
 Build dependencies
 *********************
@@ -71,7 +44,7 @@ Build dependencies
 OpenMP
 ~~~~~~~~
 
-On MacOS, the openmp library should be installed via homebrew:
+On Macos, the ``openmp`` library should be installed via homebrew:
 
 ::
 
@@ -82,7 +55,7 @@ OpenMPI
 ~~~~~~~~~
 .. note::
 
-   No MPI support is now deprecated. MPI is now required.
+   Building CHM without MPI support is now deprecated. MPI is now required.
 
 
 Other MPI versions probably work, but only OpenMPI has been tested.
@@ -104,7 +77,7 @@ Clone the CHM spac-repo
    git clone https://github.com/Chrismarsh/spack-repo.git /some/path/here/
 
 
-then create `repos.yml` in `~/.spack` and add the path to the above cloned `spack-repo`.
+then create ``repos.yml`` in ``~/.spack`` and add the path to the above cloned ``spack-repo``.
 It will look like this
 
 ::
@@ -231,10 +204,10 @@ To build the documentation requires `Doxygen <https://www.doxygen.nl/download.ht
 
    pip install sphinx
    pip install sphinx-rtd-theme
-   pip install breathe<4.13.0
-   pip install exhale
+   pip install breathe
+   pip install exhale@git+https://github.com/svenevs/exhale.git@refs/pull/205/merge
 
-The Breathe version requirement is for Read the Docs compatibility. See `issue#89 <https://github.com/svenevs/exhale/issues/89>`__.
+The exhale version requirement: see `issue#200 <https://github.com/svenevs/exhale/pull/200>`__.
 
 The documentation can be built with:
 
