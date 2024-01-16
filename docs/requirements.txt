@@ -1,4 +1,3 @@
+exhale @ git+https://github.com/svenevs/exhale.git@refs/pull/205/merge
 breathe
-exhale
-sphinx_rtd_theme==2.0
-sphinx>=7.0
+sphinx_rtd_theme>=2.0
