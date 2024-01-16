@@ -36,7 +36,8 @@ author = 'Chris Marsh'
 extensions = [ "breathe", "exhale",
                "sphinx_rtd_theme",
                'sphinx.ext.autosectionlabel',
-               'jsonlexer','groups'
+               # 'jsonlexer',
+               'groups'
 ]
 
 autosectionlabel_prefix_document = True
