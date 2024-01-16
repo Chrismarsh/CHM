@@ -75,5 +75,4 @@ private:
     double weight;
     bool uninit_lu_decomp;
     size_t size;
-
 };

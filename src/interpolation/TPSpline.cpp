@@ -24,10 +24,31 @@
 
 #include "TPSpline.hpp"
 
+//#include <iostream>
+//#define FUNC_DEBUG
+#include <func/func.hpp>
+#include "TPSBasis.hpp"
+
+// Build FunC lookup table for -(log(x)+gamma+gsl_sf_expint_E1(x))
+
+// hardcoded error of 1e-8
+//static func::FailureProofTable<func::UniformEqSpaceInterpTable<3,double>,double> TPSBasis_LUT({TPSBasis<double>}, {1e-5, 32, 0.11111});
+static func::FailureProofTable<func::NonUniformEqSpaceInterpTable<3,double>,double> TPSBasis_LUT({FUNC_SET_F(TPSBasis,double)}, {1e-5, 32, 0.154207});
+//static func::DirectEvaluation<double> TPSBasis_LUT({OLD_TPSBasis<double>}, 1e-8, 6500);
+
+
+/* Each MPI process will print that text from the destructor after it finishes */
+//static struct Counter{
+//  double total = 0.0;
+//  ~Counter(){ std::cerr << "Spent " << total << " seconds in spline::operator()" << std::endl; }
+//} counter;
+
+
 double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point)
 {
+    //func::Timer t;
     //see if we can reuse our
-    if(sample_points.size() +1 != size)
+    if(sample_points.size() + 1 != size)
     {
         size = sample_points.size();
         size++; // need to make room for the physics
@@ -78,8 +99,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
                     //And Hengl and Evans in geomorphometry p.52 do not, but have some undefined omega_0/omega_1 weights
                     //it is all rather confusing. But this follows Mitášová exactly, and produces essentially the same answer
                     //as the worked example in box 16.2 in Chang
-                    Rd = -(log(dij) + c + gsl_sf_expint_E1(dij));
-
+                    // set Rd = -(log(dij) + c + gsl_sf_expint_E1(dij))
+                    Rd = TPSBasis_LUT(dij);
                 }
 
                 A(i, j + 1) = Rd;
@@ -132,18 +153,21 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         double ydiff = (sy  - ey);
         double dij = sqrt(xdiff*xdiff + ydiff*ydiff);
         dij = (dij * weight/2.0) * (dij * weight/2.0);
-        double Rd = -(log(dij) + c + gsl_sf_expint_E1(dij));
+        // set Rd equal to -(log(dij) + c + gsl_sf_expint_E1(dij))
+         
+        double Rd = TPSBasis_LUT(dij);
 
         z0 = z0 + x(i)*Rd;
     }
 
+    //t.stop();
+    //counter.total += t.duration();
     return z0;
 }
 
 thin_plate_spline::thin_plate_spline(size_t sz, std::map<std::string,std::string> config )
 : thin_plate_spline()
 {
-
     size = sz;
     size++; // need to make room for the physics
 
@@ -157,10 +181,9 @@ thin_plate_spline::thin_plate_spline(size_t sz, std::map<std::string,std::string
         if(config["reuse_LU"] == "true")
             reuse_LU = true;
     }
-
     reuse_LU = false;
-
 }
+
 thin_plate_spline::thin_plate_spline()
 {
     pi          = 3.14159;
@@ -170,10 +193,6 @@ thin_plate_spline::thin_plate_spline()
 
     reuse_LU    = false;
     uninit_lu_decomp = true;
-
-
 }
-thin_plate_spline::~thin_plate_spline()
-{
 
-}
+thin_plate_spline::~thin_plate_spline(){}
