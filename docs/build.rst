@@ -1,40 +1,35 @@
 Compilation
 ============
 
-CHM uses `conan <https://conan.io/>`__ to manage and build all
+.. warning::
+    Conan is no longer used to build CHM. Spack is now used
+
+
+
+CHM uses `spack <https://spack.readthedocs.io/>`__ to manage and build all
 dependencies. Because of the various requirements on build
-configuration, versions, and interdependencies, using system libraries
+configuration, versions, and inter-dependencies, using system libraries
 it not supported.
-
-All of the CHM dependencies are built on Travis-CI and uploaded to the an Artifactory repository to serve
-prebuilt binaries and build scripts. This means that *if* the CHM build is done with
-supported compilers and operating system (described later), the
-dependencies do not need to be built by the end user. However it is generally recommended to build all dependencies
-from source and this is especially the case for high-performance environments and MPI.
-
-Given CHM may optionally use  conan (which requires Python + pip install) and requires the mesher and windmapper python
-packages, it is best to create a python virtual environment to install these packages into.
-
 
 
 Build requirements
 *******************
 
-Linux and MacOS are the only supported environments. The following have been tested
+Linux (x86_64) and Macos (arm64) are the only supported environments.
+
+The following have been tested
 
 =======  =====  ========  =====
-   Linux          MacOS
+   Linux          Macos
 --------------  ---------------
-Ubuntu   18.04  Moajave   10.x
-  -      20.04  Catalina  15.15
+Ubuntu   18.04
+  -      20.04
+  -      22.04  Ventura  13
 =======  =====  ========  =====        
 
 Only gcc is currently support:
-gcc (libc 2.27+): 7.x, 8.x, 9.x, 10.x
+gcc (libc 2.27+): 9.3.0+
 
-.. warning::
-   It is best to use gcc/7.x + as earlier gcc versions do not evaluate the constexpr hashes at compile time, leading to lower performance.
-   Example is here https://www.godbolt.org/z/PHZ4P4
 
 .. warning::
    Below, references to building with the Intel compiler are made. Unfortunately the Intel compiler doesn't currently work with applications that also
@@ -43,33 +38,17 @@ gcc (libc 2.27+): 7.x, 8.x, 9.x, 10.x
 If using conan to build the dependencies, the only requirements are:
 
    - conan (via Python pip)
-   - cmake >=3.17  (via apt-get/brew)
-   - C++14 compiler (gcc 7.2+) (via apt-get/brew)
+   - cmake >=3.21  (via apt-get/brew)
+   - C++14 compiler (gcc 9.3.0+) (via apt-get/brew)
    - Fortran 90+ compiler (gfortran) (via apt-get/brew)
-   - m4 (via apt-get/brew)
-   - autotools (although this is generally installed in most environments) (via apt-get; not needed on brew)
-   - BLAS library (via apt-get/brew) e.g., ``libopenblas-dev`` / ``brew install openblas``
 
 
-On Ubuntu 20.04 these can be installed as:
 
-::
-
-   libopenblas-dev
-   libtiff-dev
-   libcurl4-gnutls-dev
-   libsqlite3-dev
-   sqlite3
-
-.. note::
-
-   For distributed MPI support, optionally ensure MPI is installed on linux:
-   ``libopenmpi-dev`` and ``openmpi-bin``
 
 
 
 On MacOS, `homebrew <https://brew.sh/>`__ should be used to install
-cmake and optionally conan. Macport based installs likely work, but have not been
+cmake. Macport based installs likely work, but have not been
 tested.
 
 Intel compiler
@@ -89,86 +68,51 @@ prior to running the conan. Use the gcc settings for conan.
 Build dependencies
 *********************
 
-The required 3rd party libraries needed for CHM can be built using conan.
+OpenMP
+~~~~~~~~
 
-Throughout, this section assumes a working development environment, but
-a blank conan environment.
-
-Install `Conan <https://docs.conan.io/en/latest/installation.html>`__.
+On MacOS, the openmp library should be installed via homebrew:
 
 ::
 
-    pip install conan
+   brew install libomp
 
 
-Setup conan
--------------
-
-::
-
-   conan profile new default --detect
-   conan profile update settings.compiler.cppstd=14 default
-
-conan needs to be told to use new C++11 ABI. If using clang (e.g.,
-Macos), do
-
-::
-
-   conan profile update settings.compiler.libcxx=libc++ default  #with clang
-
-and if using gcc, do
-
-::
-
-   conan profile update settings.compiler.libcxx=libstdc++11 default  #with gcc
-
-If you change compilers, such as on a cluster with a modules system, you
-can rerun
-
-::
-
-   conan profile new default --detect --force
-
-to detect the new compiler settings. The ``cppstd`` and ``libcxx``
-settings need to be reapplied once this is done.
-
-The next few steps can be avoided by installing the following config,
-
-::
-
-   conan config install https://github.com/Chrismarsh/conan-config.git
-
-This adds the CHM remote, enables revisions, and applies a ``settings.yml`` file that allows for distinguishing between the libc
-versions of ubuntu 18.04 and 20.04.
-
-Add Conan remote
------------------
-
-Add the CHM artifactory repository as a conan remote -- this is where the conan scripts to build the dependencies reside.
-
-::
-
-   conan remote add chm http://conan.snowcast.ca/artifactory/api/conan/chm
-
-
+OpenMPI
+~~~~~~~~~
 .. note::
 
-   If the above Conan remote is not working, you can use the ``conan-`` submodules to initialize the local conan build.
-
-   Initialize the submodules that contain the conan recipes
-
-   ::
-
-      cd CHM && git submodule update --init --recursive  # get recipes for dependency builds
-      ./conan_export_deps.sh  # tell conan which versions are needed
+   No MPI support is now deprecated. MPI is now required.
 
 
-Enable revisions
------------------
-Enable conan `revisions <https://docs.conan.io/en/latest/versioning/revisions.html#how-to-activate-the-revisions>`__ by
-adding ``revisions_enabled=1`` in the ``[general]`` section of your conan.conf file. The conf file is in the ``~/.conan``
-directory.
+Other MPI versions probably work, but only OpenMPI has been tested.
+      Ensure MPI is installed on linux:
+      ``libopenmpi-dev`` and ``openmpi-bin``
 
+
+
+
+Install spack
+-------------
+
+Install `spack <https://spack-tutorial.readthedocs.io/en/latest/tutorial_basics.html>`__.
+
+Clone the CHM spac-repo
+
+::
+
+   git clone https://github.com/Chrismarsh/spack-repo.git /some/path/here/
+
+
+then create `repos.yml` in `~/.spack` and add the path to the above cloned `spack-repo`.
+It will look like this
+
+::
+
+    $ cat ~/.spack/repos.yaml
+    	repos:
+    	  - /some/path/here//spack-repo
+    	  - $spack/var/spack/repos/builtin
 
 
 Setup CHM source folders
@@ -184,54 +128,16 @@ and start from scratch. An example is given below:
 
    mkdir ~/build-CHM
 
-.. note::
-   The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
-
 Build dependencies
 ---------------------
 
-This step will install the dependencies into your local conan cache (``~/.conan/data``).
-Further, this command will produce the ``FindXXX.cmake`` files required for the
-CHM build.
-
-.. note::
-
-   If something goes wrong, you can remove this directory (``~/.conan/data``) or a specific package (``~/.conan/data/package``) to "start fresh".
-
-
-
-Without MPI
-~~~~~~~~~~~~~~
-
-To build without MPI support:
+This step will build and install the dependencies via spack.
 
 ::
 
-   cd ~/build-CHM
-   conan install ~/CHM -if=. --build missing
-
-
-With MPI support
-~~~~~~~~~~~~~~~~~~
-
-If MPI is to be used, then include the following ``-o`` switches:
-
-::
-
-   conan install ~/CHM -if=. -o boost:without_mpi=False -o trilinos:with_mpi=True --build missing
-
-During the CHM cmake configure step, ensure you enable MPI!
-
-Various gotchas
------------------
-
-Note that custom options can be specified for any of the dependencies using ``-o package:option=value`` at the ``conan install`` stage.
-
-Trilinos
-~~~~~~~~~
-
-Trilinos is the only dependency that is not obvious to setup. Because of the tuned nature of BLAS and LAPACK libraries,
-only system BLAS and LAPACK are used in compilation.
+    spack env create chm path/to/CHM/spack.yml
+    spack concretize
+    spack install -j 8 # number of parallel builds, adjust accordingly
 
 
 Intel MKL
@@ -241,49 +147,12 @@ Intel MKL
    Using MKL with Trilinos is not supported as the final CHM link will conflict with the internal BLAS in GSL.
 
 
-OpenBLAS
-~~~~~~~~~
-
-Linking Trilinos against OpenBLAS is the best option as it has the LAPACK API.
-
-Set the conan option ```-o trilinos:with_openblas=True`` to change the link library name to ``openblas``.
-This may only be useful on some systems. E.g., homebrew openblas has a ``lblas`` symlink.
-
-Custom BLAS location
-~~~~~~~~~~~~~~~~~~~~~~
-
-The Trilinos dependencies look for the BLAS libraries in a standard location.
-On HPC machines this will almost certainly fail, so the location of the library direction may be set via the env var
-``$BLASROOT``. LAPACK search will be set to the same path.
-
-If a custom BLAS location is specified to build Trilinos, this will be automatically detected for the final CHM link.
-
-MacOS
-~~~~~~
-
-Homebrew should be used to install -- ``brew install openblas``. A homebrew installed ``openblas`` will be automatically detected and used.
-This is prefered over the system default Accelerate framework.
-
-
-OpenMP
-~~~~~~
-
-On MacOS, the openmp library should be installed via homebrew:
-
-::
-
-   brew install libomp
-
-
-.. warning::
-   The Trilinos openmp implementation is not compatible with homebrew omp. It is automatically disabled. It can be explicitly disabled via
-   ``-o trilinos:with_openmp=False``
-
-
 Build CHM
 ***********
 
-Ensure you are in the ``build-CHM`` folder.
+.. note::
+   The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
+
 
 Run cmake
 ---------
@@ -308,11 +177,6 @@ The default build option creates an optimizted “release” build. To build
 a debug build, use ``-DCMAKE_BUILD_TYPE=Debug``.
 
 
-To use MPI, pass the following to cmake
-
-::
-
-   cmake ~/CHM <other args here> -DUSE_MPI=TRUE
 
 
 Intel compiler
@@ -327,7 +191,8 @@ If the Intel compiler is used, add the following cmake flags:
 High performance allocators
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default tcmalloc is used. Optionally, if system `jemalloc` is available it can be enabled with
+By default jemalloc is used.
+
 ``-DUSE_TCMALLOC=FALSE -DUSE_JECMALLOC=TRUE``.
 
 Building
@@ -385,35 +250,11 @@ The env var is required to ensure the correct directories are searched for in-so
 Troubleshooting
 ***************
 
-TCMALLOC
---------
+Disable allocators
+--------------------
 
-TCmalloc may need to be disabled and can be done via
-``-DUSE_TCMALLOC=FALSE``
-
-gepertool heap profiler & libunwnd
-----------------------------------
-
-Some machines do not build gperftools with the heap profiling correctly.
-This can be disabled when building gperftools
-
-::
-
-   conan install ~/code/CHM/ -if=. --build missing -o gperftools:heapprof=False
-
-Full build including dependencies (summary)
-***********************************************
-
-In summary a full MPI Release build of CHM (this assumes conan is setup correctly)
-
-::
-
-   cd ~/
-   git clone https://github.com/Chrismarsh/CHM  # get CHM source code
-   mkdir ~/build-CHM && cd ~/build-CHM  # create a build directory
-   conan install ~/CHM -if=. -o boost:without_mpi=False -o trilinos:with_mpi=True --build missing  # build dependencies that haven't been built, produce custom FindXXX.cmake for all dependencies
-   cmake ~/CHM -DUSE_MPI=ON # run cmake configuration
-   make -j   # build the CHM executable using all build threads
+The high performance allocators may need to be disabled and can be done via
+``-DUSE_TCMALLOC=FALSE -DUSE_JEMALLOC=FALSE``
 
 
 
@@ -478,7 +319,7 @@ Then build CHM
 
    git clone https://github.com/Chrismarsh/CHM  # get CHM source code
    mkdir ~/chm-build && cd ~/chm-build # make build directory
-   cmake ../CHM -DBUILD_WITH_CONAN=FALSE -DUSE_MPI=TRUE -DENABLE_SAFE_CHECKS=ON -DBoost_NO_BOOST_CMAKE=ON -DUSE_TCMALLOC=FALSE -DUSE_JEMALLOC=TRUE -DCMAKE_BUILD_TYPE=Release
+   cmake ../CHM -DENABLE_SAFE_CHECKS=ON -DBoost_NO_BOOST_CMAKE=ON -DUSE_TCMALLOC=FALSE -DUSE_JEMALLOC=TRUE -DCMAKE_BUILD_TYPE=Release
    make -j10
 
 

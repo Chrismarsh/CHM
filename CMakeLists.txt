@@ -21,7 +21,7 @@ endif()
 
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
-option(USE_MPI "Enable MPI"  OFF )
+option(USE_MPI "Enable MPI"  ON )
 option(USE_OMP "Enable OpenMP"  ON )
 option(OMP_SAFE_EXCEPTION "Enables safe exception handling from within OMP regions." ON)
 option(ENABLE_SAFE_CHECKS "Enable variable map checking. Runtime perf cost. Allows for ensuring a variable is indeed available to be lookedup." ON)
@@ -36,6 +36,10 @@ message(STATUS "This is an MPI build? ${USE_MPI}")
 # TODO: Link to the docs describing the migration
 if(BUILD_WITH_CONAN)
     message(FATAL_ERROR "Building CHM with conan is no longer supported in favour of using spack. Please revise build env accordingly")
+endif()
+
+if(NOT USE_MPI)
+    message(FATAL_ERROR "Building CHM wihtout MPI support is no longer supported")
 endif()
 
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
