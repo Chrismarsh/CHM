@@ -84,7 +84,7 @@ It will look like this
 
     $ cat ~/.spack/repos.yaml
     	repos:
-    	  - /some/path/here//spack-repo
+    	  - /some/path/here/spack-repo
     	  - $spack/var/spack/repos/builtin
 
 
@@ -111,13 +111,6 @@ This step will build and install the dependencies via spack.
     spack env create chm path/to/CHM/spack.yml
     spack concretize
     spack install -j 8 # number of parallel builds, adjust accordingly
-
-
-Intel MKL
-~~~~~~~~~
-
-.. warning::
-   Using MKL with Trilinos is not supported as the final CHM link will conflict with the internal BLAS in GSL.
 
 
 Build CHM
