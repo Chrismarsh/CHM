@@ -14,6 +14,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(Boost_NO_WARN_NEW_VERSIONS ON)
+
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(MACOSX TRUE)
     set(CMAKE_FIND_FRAMEWORK LAST) # framework gdal, etc can end up superceeding other search paths
