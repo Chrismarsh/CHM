@@ -1,6 +1,6 @@
 err.xml
 .DS_Store
-
+third_party/snowpack/plugins/SnowpackIO.cc
 .ipynb_checkpoints
 
 *.pyc
