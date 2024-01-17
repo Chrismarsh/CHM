@@ -163,6 +163,8 @@ set(EXT_TARGETS
 		Boost::iostreams
 		Boost::program_options
 
+		spdlog::spdlog
+
 		CACHE INTERNAL "" FORCE)
 
 
