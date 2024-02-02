@@ -46,7 +46,7 @@ void interpolation::init(interp_alg ia, size_t size,std::map<std::string,std::st
     }
     else
     {
-        BOOST_THROW_EXCEPTION(interp_unknown_type() << errstr_info("Unknown interpolation type"));
+        CHM_THROW_EXCEPTION(interp_unknown_type, "Unknown interpolation type");
     }
 
 
@@ -67,12 +67,12 @@ double interpolation::operator()(std::vector< boost::tuple<double,double,double>
 {
     if (sample_points.size() == 0)
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Interpolation sample point length = 0."));
+        CHM_THROW_EXCEPTION(config_error, "Interpolation sample point length = 0.");
     }
 
     if (sample_points.size() > 15 && ia == interp_alg::tpspline)
     {
-        LOG_WARNING << "More than 15 sample points is likely to cause slow downs";
+        SPDLOG_WARN("More than 15 sample points is likely to cause slow downs");
     }
 
 //    if(sample_points.size() != this->size || this->size == 0)

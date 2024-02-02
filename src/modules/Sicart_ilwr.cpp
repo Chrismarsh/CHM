@@ -35,7 +35,7 @@ Sicart_ilwr::Sicart_ilwr(config_file cfg)
     depends("cloud_frac");
     provides("ilwr");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 void Sicart_ilwr::init(mesh& domain)

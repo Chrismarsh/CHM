@@ -34,12 +34,13 @@ Walcek_cloud::Walcek_cloud(config_file cfg)
  //   depends("Td_lapse_rate");
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 Walcek_cloud::~Walcek_cloud()
 {
 
 };
+
 void Walcek_cloud::run(mesh_elem& face)
 {
     //Kunkel RH lapse rates

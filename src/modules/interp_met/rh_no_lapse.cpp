@@ -31,7 +31,7 @@ rh_no_lapse::rh_no_lapse(config_file cfg)
     depends_from_met("rh");
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 rh_no_lapse::~rh_no_lapse()

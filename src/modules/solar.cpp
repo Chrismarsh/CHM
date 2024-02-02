@@ -195,7 +195,8 @@ void solar::init(mesh& domain)
                 // do the transform with the enforce x/y ordering
                 if(!coordTrans->Transform(1, &x, &y))
                 {
-                    CHM_THROW_EXCEPTION(module_error,"Unable to covert face coordinates to lat long for solar rad calcuation.");
+
+                    CHM_THROW_EXCEPTION(module_error, "Unable to covert face coordinates to lat long for solar rad calcuation.");
                 }
 
                 auto& d = face->make_module_data<solar::data>(ID);

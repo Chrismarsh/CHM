@@ -48,7 +48,7 @@ Liston_wind::Liston_wind(config_file cfg)
     distance = cfg.get<double>("distance",300);
     Ww_coeff = cfg.get<double>("Ww_coeff",1.0);
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 //Calculates the curvature required
@@ -155,7 +155,7 @@ void Liston_wind::init(mesh& domain)
 
 //    if ( cfg.get("serialize",false) )
 //    {
-//        LOG_DEBUG << "Serializing liston curvature";
+//        SPDLOG_DEBUG("Serializing liston curvature");
 //        domain->serialize_parameter(cfg.get("serialize_output", "liston_curvature.mesh"),
 //                                    "Liston curvature");
 //    }

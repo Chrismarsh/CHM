@@ -48,7 +48,7 @@ MS_wind::MS_wind(config_file cfg)
 
     speedup_height = cfg.get("speedup_height",2.0);
     use_ryan_dir = cfg.get("use_ryan_dir",false);
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 //Calculates the curvature required
@@ -184,22 +184,22 @@ void MS_wind::run(mesh& domain)
                 }
                 catch (...)
                 {
-                    LOG_DEBUG << "face global id " << face->cell_global_id;
-                    LOG_DEBUG << "face is ghost? " << face->is_ghost;
-                    LOG_DEBUG << "neigh that caused problem has global id " << neigh->cell_global_id;
-                    LOG_DEBUG << "face neighbors are " << face->is_ghost;
+                    SPDLOG_DEBUG("face global id {}",face->cell_global_id);
+                    SPDLOG_DEBUG("face is ghost? {}",face->is_ghost);
+                    SPDLOG_DEBUG("neigh that caused problem has global id {}",neigh->cell_global_id);
+                    SPDLOG_DEBUG("face neighbors are {}",face->is_ghost);
                     for(int i = 0; i < 3; i++)
                     {
                         auto neigh = face->neighbor(i);
                         if (neigh != nullptr)
                         {
-                            LOG_DEBUG << "\tneigh " << i << " global id " << neigh->cell_global_id;
-                            LOG_DEBUG << "\tneigh " << i << " local id " << neigh->cell_local_id;
-                            LOG_DEBUG << "\tneigh " << i << " is ghost? " << neigh->is_ghost;
+                            SPDLOG_DEBUG("\tneigh {} global id {}", i, neigh->cell_global_id);
+                            SPDLOG_DEBUG("\tneigh {} local id {}", i, neigh->cell_local_id);
+                            SPDLOG_DEBUG("\tneigh {} is ghost? {}",i, neigh->is_ghost);
                         }
                         else
                         {
-                            LOG_DEBUG << "\tneigh " << i << " is nullptr";
+                            SPDLOG_DEBUG("\tneigh {} is nullptr", i);
                         }
                     }
 

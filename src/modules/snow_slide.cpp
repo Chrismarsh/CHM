@@ -321,9 +321,9 @@ void snow_slide::run(mesh& domain)
                 // Check mass transport balances for current avalanche cell
                 if (std::abs(orig_mass - out_mass) > 0.0001)
                 {
-                    LOG_ERROR << "Moved mass total is " << out_mass;
-                    LOG_ERROR << "diff = " << orig_mass - out_mass;
-                    LOG_ERROR << "Mass balance of avalanche times step was not conserved.";
+                    SPDLOG_ERROR("Moved mass total is {}", out_mass);
+                    SPDLOG_ERROR("diff = {}", orig_mass - out_mass);
+                    SPDLOG_ERROR("Mass balance of avalanche times step was not conserved");
                     CHM_THROW_EXCEPTION(module_error, "Snowslide did not conserve mass");
                 }
             } // end if snowdepth > maxdepth
@@ -393,7 +393,7 @@ void snow_slide::run(mesh& domain)
         {
             //bail
             done = 1;
-            LOG_ERROR << "SnowSlide did not converge after 500 iterations";
+            SPDLOG_ERROR("SnowSlide did not converge after 500 iterations");
         }
 
 #ifdef USE_MPI
@@ -405,7 +405,7 @@ void snow_slide::run(mesh& domain)
 
     }while(!done);
 
-    LOG_DEBUG << "[SnowSlide] needed " << iterations << " iterations";
+    SPDLOG_DEBUG("[SnowSlide] needed {} iterations", iterations);
 
 }
 

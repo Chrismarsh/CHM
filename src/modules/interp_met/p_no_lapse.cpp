@@ -35,7 +35,7 @@ p_no_lapse::p_no_lapse(config_file cfg)
     apply_cosine_correction = cfg.get("apply_cosine_correction",false);
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 void p_no_lapse::init(mesh& domain)
 {

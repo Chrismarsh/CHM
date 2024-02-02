@@ -43,7 +43,7 @@ iswr::iswr(config_file cfg)
 
     optional("shadow");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 
     assume_no_slope = cfg.get("no_slope",false);
     already_cosine_corrected = cfg.get("already_cosine_corrected",false);
@@ -55,8 +55,8 @@ void iswr::run(mesh_elem& face)
 
     if(global_param->is_point_mode() && !already_cosine_corrected)
     {
-        LOG_ERROR << "Most observations implicitly have a cosine-correction built in by virtu of the flat-plane observation. "
-                     "When using point-mode, you probably want to set -c config.iswr.already_cosine_corrected:true";
+        SPDLOG_ERROR("Most observations implicitly have a cosine-correction built in by virtu of the flat-plane observation. "
+                     "When using point-mode, you probably want to set -c config.iswr.already_cosine_corrected:true");
     }
 
     double A = (*face)["solar_az"_s] * mio::Cst::to_rad;

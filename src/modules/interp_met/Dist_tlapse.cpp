@@ -34,7 +34,7 @@ Dist_tlapse::Dist_tlapse(config_file cfg)
     depends_from_met("t");
     depends_from_met("t_lapse_rate");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 Dist_tlapse::~Dist_tlapse()

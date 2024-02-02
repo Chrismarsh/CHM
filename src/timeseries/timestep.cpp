@@ -117,7 +117,9 @@ double timestep::get(const std::string &variable)
 #ifdef SAFE_CHECKS
     auto res = _itrs.find(variable);
     if(res == _itrs.end())
-        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
+    {
+        CHM_THROW_EXCEPTION(forcing_lookup_error, "Variable " + variable + " does not exist.");
+    }
 #endif
 
     return _itrs[variable][0];
@@ -131,7 +133,9 @@ void timestep::set(const std::string &variable, const double &value)
 #ifdef SAFE_CHECKS
     auto res = _itrs.find(variable);
     if(res == _itrs.end())
-        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + variable + " does not exist."));
+    {
+        CHM_THROW_EXCEPTION(forcing_lookup_error, "Variable " + variable + " does not exist.");
+    }
 #endif
 
     _itrs[variable][0] = value;
@@ -142,7 +146,9 @@ timestep::variable_vec::iterator timestep::get_itr(const std::string &varName)
 {
     auto res = _itrs.find(varName);
     if(res == _itrs.end())
-        BOOST_THROW_EXCEPTION( forcing_lookup_error() << errstr_info("Variable " + varName + " does not exist."));
+    {
+        CHM_THROW_EXCEPTION(forcing_lookup_error, "Variable " + varName + " does not exist.");
+    }
 
     return res->second;
 

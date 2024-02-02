@@ -281,8 +281,8 @@ class preprocessingTriangulation : public triangulation
             _local_faces.at(local_ind) = _faces.at(_global_IDs.at(offset_idx));
         }
 
-        LOG_DEBUG << "MPI Process " << mpi_rank << ": start " << face_start_idx << ", end " << face_end_idx
-                  << ", number " << _local_faces.size();
+        SPDLOG_DEBUG("MPI Process {} : start {}, end {}, number {}",
+                        mpi_rank, face_start_id, face_end_idx, _local_faces.size());
     }
     void read_h5(const std::string& mesh_filename)
     {
@@ -315,8 +315,10 @@ class preprocessingTriangulation : public triangulation
 
                 // check it like this as the triangulation is more interested in knowing what it can /load/
                 if (_version.MAJOR < 2 )
+                {
                     CHM_THROW_EXCEPTION(mesh_error, "h5 mesh doesn't meet criteria to partition -- version to too old "
                                                     "or was not permuted with -t metis?");
+                }
             }
 
             std::vector<std::array<double, 3>> vertex;
@@ -397,7 +399,7 @@ class preprocessingTriangulation : public triangulation
                 }
 
                 _num_vertex = _vertexes.size();
-                LOG_DEBUG << "# nodes created = " << _num_vertex;
+                SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
             }
 
             {
@@ -446,7 +448,7 @@ class preprocessingTriangulation : public triangulation
                     CHM_THROW_EXCEPTION(mesh_error, "Created a mesh with 0 elements!");
                 }
 
-                LOG_DEBUG << "Created a mesh with " << size_faces() << " triangles";
+                SPDLOG_DEBUG("Created a mesh with {} triangles", size_faces())
 
             }
 
@@ -460,9 +462,8 @@ class preprocessingTriangulation : public triangulation
 
                 if (elem.size() != nelem)
                 {
-                    BOOST_THROW_EXCEPTION(config_error()
-                                          << errstr_info("Expected: " + std::to_string(elem.size()) +
-                                                         " neighborlists, got: " + std::to_string(nelem)));
+                    CHM_THROW_EXCEPTION(config_error,"Expected: " + std::to_string(elem.size()) +
+                                                         " neighborlists, got: " + std::to_string(nelem));
                 }
 
                 // Ensure enough space in the vector
@@ -470,7 +471,7 @@ class preprocessingTriangulation : public triangulation
                 // Default args read all of the dataspace
                 dataset.read(neigh.data(), neighbor_t);
 
-                LOG_DEBUG << "Building face neighbors";
+                SPDLOG_DEBUG("Building face neighbors");
                 for (size_t i = 0; i < nelem; i++)
                 {
                     auto face = _faces.at(i);
@@ -478,8 +479,8 @@ class preprocessingTriangulation : public triangulation
                     if (neigh[i][0] > static_cast<int>(nelem) || neigh[i][1] > static_cast<int>(nelem) ||
                         neigh[i][2] > static_cast<int>(nelem))
                     {
-                        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Face " + std::to_string(i) +
-                                                                            " has out of bound neighbors."));
+                        CHM_THROW_EXCEPTION(config_error,"Face " + std::to_string(i) +
+                                                                            " has out of bound neighbors.");
                     }
 
                     //-1 is now the no neighbor value
@@ -520,7 +521,7 @@ class preprocessingTriangulation : public triangulation
         assert(_boundary_faces.size() != 0);
         assert(_ghost_neighbors.size() == 0);
 
-        LOG_DEBUG << "Determining ghost region info";
+        SPDLOG_DEBUG("Determining ghost region info");
 
         // Vector for append speed
         std::vector<mesh_elem> ghosted_boundary_nearest_neighbors;
@@ -554,8 +555,8 @@ class preprocessingTriangulation : public triangulation
         std::sort(_ghost_neighbors.begin(), _ghost_neighbors.end(),
                   [&](const auto& a, const auto& b) { return a->cell_global_id < b->cell_global_id; });
 
-        LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbors.size()
-                  << " ghosted nearest neighbors.";
+        SPDLOG_DEBUG("MPI Process {} has {} ghosted nearest neighbors.",_comm_world.rank(), _ghost_neighbors.size());
+
     }
 
     void from_file_and_partition(const std::string& mesh_filename, const std::vector<std::string>& param_filenames,
@@ -593,7 +594,7 @@ class preprocessingTriangulation : public triangulation
 
         if (mesh_file_extension == ".h5")
         {
-            LOG_DEBUG << "Partitioning mesh " << mesh_filename << " with #ranks=" << MPI_ranks;
+            SPDLOG_DEBUG( "Partitioning mesh {} with #ranks={}", mesh_filename, MPI_ranks);
             read_h5(mesh_filename);
         }
         else
@@ -617,14 +618,14 @@ class preprocessingTriangulation : public triangulation
                     if (key == "area")
                         triarea_found = true;
 
-                    LOG_DEBUG << "Inserted parameter " << ktr.first.data() << " into the config tree.";
+                    SPDLOG_DEBUG("Inserted parameter {} into the config tree.", ktr.first.data());
                 }
             }
 
             if (_is_geographic && !triarea_found)
             {
-                BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be "
-                                                                  "present in a .param file. Please include this."));
+                CHM_THROW_EXCEPTION(mesh_error, "Geographic meshes require the triangle area be "
+                                                                  "present in a .param file. Please include this.");
             }
 
             // Initial condition files
@@ -650,16 +651,15 @@ class preprocessingTriangulation : public triangulation
             catch (pt::ptree_bad_path& e)
             {
 
-                LOG_WARNING
-                    << "No face permutation was found in the mesh file. This will result in poor MPI performance"
+                SPDLOG_WARN("No face permutation was found in the mesh file. This will result in poor MPI performance"
                        " due to increased communications. \nPlease see the mesh permutation documentation for more "
                        "details\n"
-                       "https://mesher-hydro.readthedocs.io/en/latest/tools.html#mesherpermuation-py";
+                       "https://mesher-hydro.readthedocs.io/en/latest/tools.html#mesherpermuation-py");
             }
             from_json(mesh);
 
 
-            LOG_DEBUG << "Converting mesh to hdf5...";
+            SPDLOG_DEBUG("Converting mesh to hdf5...");
             auto base_name = boost::filesystem::path(mesh_filename).stem().string();
 
             // make sure these setup when in MPI mode for partition
@@ -667,7 +667,7 @@ class preprocessingTriangulation : public triangulation
             _num_global_faces = _faces.size();
             _local_faces = _faces;
             triangulation::to_hdf5(base_name);
-            LOG_DEBUG << "HDF5 written, terminating";
+            SPDLOG_DEBUG("HDF5 written, terminating");
             return;
         }
 
@@ -745,11 +745,11 @@ class preprocessingTriangulation : public triangulation
             {
                 CHM_THROW_EXCEPTION(mesh_error, "Cannot create subset mesh with MPI run");
             }
-            LOG_WARNING << "Processing will produce only subset output because tool was invoked with -v flag(s)";
+            SPDLOG_WARN("Processing will produce only subset output because tool was invoked with -v flag(s)");
         }
 
         // set all our owners first
-        LOG_DEBUG << "Determining partition owners";
+        SPDLOG_DEBUG("Determining partition owners");
 
         std::map<size_t,size_t> _mpirank_proxy_to_mpirank_map;
         std::map<size_t,size_t> _mpirank_to_proxy_mpirank_map;
@@ -767,7 +767,7 @@ class preprocessingTriangulation : public triangulation
 
                 if( mpirank != _mpirank_to_proxy_mpirank_map[mpirank])
                 {
-                    LOG_DEBUG<< "MPI rank = " << mpirank << " will be remapped to  " << _mpirank_to_proxy_mpirank_map[mpirank];
+                    SPDLOG_DEBUG("MPI rank = {} will be remapped to {}", mpirank, _mpirank_to_proxy_mpirank_map[mpirank]);
                 }
 
 
@@ -779,7 +779,7 @@ class preprocessingTriangulation : public triangulation
         {
             if(real_comm_world.rank() == 0)
             {
-                LOG_DEBUG << "Writting partition.vtu";
+                SPDLOG_DEBUG("Writting partition.vtu");
                 // init the datastructs to hold information for outputting to VTU
                 std::set< std::string > vtu_outputs = { "owner", "is_ghost", "ghost_type", "global_id","local_id"};
 #pragma omp parallel for
@@ -800,7 +800,7 @@ class preprocessingTriangulation : public triangulation
 
         if( split.size() != real_comm_world.size())
         {
-            LOG_ERROR << "rank=" << real_comm_world.rank()<< ":\tsplit=" << split.size();
+            SPDLOG_ERROR("rank={}:\tsplit={}", real_comm_world.rank(), split.size());
 
             CHM_THROW_EXCEPTION(mesh_error, "Didn't split to correct number of ranks");
         }
@@ -815,7 +815,7 @@ class preprocessingTriangulation : public triangulation
         // back() gives 4, but the for loop uses < on the last so the +1 is needed to ensure we use the last elem
         end_rank = split.at(real_comm_world.rank()).back() + 1 ;
 
-        LOG_DEBUG << "Rank " << real_comm_world.rank() << "\tstart="<<start_rank << "\tend=" << end_rank;
+        SPDLOG_DEBUG("Rank {} \tstart={} \tend={}", real_comm_world.rank(), start_rank, end_rank);
         // iterate over all the ranks but since we might be only doing a subset, we need to maintain a proxy rank
         for (int mpirank = start_rank; mpirank < end_rank; mpirank++)
         {
@@ -870,7 +870,7 @@ class preprocessingTriangulation : public triangulation
 
             if( _num_faces != _local_sizes.at(mpirank))
             {
-                LOG_ERROR<< "Read in #faces=" << _num_faces <<" faces but the partition defined #faces=" << _local_sizes.at(mpirank);
+                SPDLOG_ERROR("Read in #faces={} faces but the partition defined #faces={}",_num_faces, _local_sizes.at(mpirank));
                 CHM_THROW_EXCEPTION(mesh_error, "Number of local faces does not match the expected number of faces defined in the partition");
             }
 
@@ -1021,7 +1021,7 @@ class preprocessingTriangulation : public triangulation
 
         if(real_comm_world.rank() == 0)
         {
-            LOG_DEBUG << "Writting partition file";
+            SPDLOG_DEBUG("Writting partition file");
             for (int mpirank = 0; mpirank < MPI_ranks; mpirank++)
             {
                 bool valid_rank = (std::find(ranks_to_keep.begin(), ranks_to_keep.end(),mpirank) != ranks_to_keep.end());
@@ -1167,7 +1167,7 @@ class preprocessingTriangulation : public triangulation
             hsize_t ntri = _local_faces.size();
 
             { // Local sizes
-                LOG_DEBUG << "Writing Local Sizes.";
+                SPDLOG_DEBUG("Writing Local Sizes.");
                 hsize_t npart = _comm_world.size();
                 H5::DataSpace dataspace(1, &npart);
 
@@ -1176,7 +1176,7 @@ class preprocessingTriangulation : public triangulation
             }
 
             { // global elem id
-                LOG_DEBUG << "Writting owners";
+                SPDLOG_DEBUG("Writting owners");
                 H5::DataSpace dataspace(1, &ntri);
                 auto owners = std::vector<int>(ntri);
 
@@ -1190,7 +1190,7 @@ class preprocessingTriangulation : public triangulation
             }
 
             { // global elem id
-                LOG_DEBUG << "Writting Global IDs";
+                SPDLOG_DEBUG("Writting Global IDs");
                 H5::DataSpace dataspace(1, &ntri);
                 auto globalIDs = std::vector<int>(ntri);
 
@@ -1215,7 +1215,7 @@ class preprocessingTriangulation : public triangulation
                 }
             }
 
-            LOG_DEBUG << "This mesh partition has " << vertex_global_id.size() << " unique vertexes";
+            SPDLOG_DEBUG("This mesh partition has {} unique vertexes", vertex_global_id.size())
             // build a list of all the above identified vertexes and set their local id
             std::vector<Delaunay::Vertex_handle> local_vertexes; // vertexes that this part of the mesh needs
             local_vertexes.resize(vertex_global_id.size());
@@ -1313,8 +1313,8 @@ class preprocessingTriangulation : public triangulation
             // Ensure the proj4 string can fit in the HDF5 data type
             if (_srs_wkt.length() >= 256)
             {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info("Proj4 string needs to be < 256. Length: " +
-                                                                    std::to_string(_srs_wkt.length())));
+                CHM_THROW_EXCEPTION(config_error,"Proj4 string needs to be < 256. Length: " +
+                                                                    std::to_string(_srs_wkt.length()));
             }
             { // Write the proj4
                 H5::DataSpace dataspace(1, &proj4_dims);
@@ -1445,8 +1445,6 @@ class preprocessingTriangulation : public triangulation
 
 int main(int argc, char* argv[])
 {
-    BOOST_LOG_FUNCTION()
-
     std::string mesh_filename;
     size_t MPI_ranks = 1;
     double max_ghost_distance = 100;
@@ -1473,41 +1471,41 @@ int main(int argc, char* argv[])
 
     if (is_json_mesh)
     {
-        LOG_WARNING << "The input mesh is in json format. It MUST be converted to hdf5 before it can be partitioned.\n"
+        SPDLOG_WARN("The input mesh is in json format. It MUST be converted to hdf5 before it can be partitioned.\n"
                        " Once the hdf5 conversion is done, this tool will re-run with the h5 mesh as input to fully "
-                       "partition the mesh.";
+                       "partition the mesh.");
     }
 
     if (!vm.count("mesh-file"))
     {
-        LOG_ERROR << "Mesh file required";
+        SPDLOG_ERROR("Mesh file required");
         exit(-1);
     }
     if (!vm.count("param-file"))
     {
-        LOG_ERROR << "Param file required";
+        SPDLOG_ERROR("Param file required");
         exit(-1);
     }
     if (!vm.count("mpi-ranks") && !is_json_mesh)
     {
-        LOG_ERROR << "MPI ranks required";
+        SPDLOG_ERROR("MPI ranks required");
         exit(-1);
     }
 
     if (vm.count("mpi-ranks") && MPI_ranks < 2)
     {
-        LOG_ERROR << "Requires ranks >1";
+        SPDLOG_ERROR("Requires ranks >1");
         exit(-1);
     }
 
     if (vm.count("mpi-ranks") && is_json_mesh)
     {
-        LOG_WARNING << "MPI ranks will be ignored for the json -> h5 conversion. ";
+        SPDLOG_WARN("MPI ranks will be ignored for the json -> h5 conversion. ");
     }
 
     if (!vm.count("max-ghost-distance"))
     {
-        LOG_WARNING << "Using default max ghost distance of 100 m";
+        SPDLOG_WARN("Using default max ghost distance of 100 m");
     }
 
     std::vector<int> valid_ranks;
@@ -1533,8 +1531,8 @@ int main(int argc, char* argv[])
 
     if (vm.count("standalone"))
     {
-        LOG_WARNING << "Standalone option enabled. This will not write ghost faces and is intended to write a specific "
-                       "rank as a standalone mesh for debugging.";
+        SPDLOG_WARN( << "Standalone option enabled. This will not write ghost faces and is intended to write a specific "
+                       "rank as a standalone mesh for debugging.");
     }
 
 
@@ -1549,7 +1547,7 @@ int main(int argc, char* argv[])
             {
                 if (real_comm_world.rank() == 0)
                 {
-                    LOG_DEBUG << "Rank 0 doing json -> h5 conversation";
+                    SPDLOG_DEBUG("Rank 0 doing json -> h5 conversation");
                     tri->from_file_and_partition(mesh_filename, param_filenames, MPI_ranks, max_ghost_distance,
                                                  standalone_rank, valid_ranks, output_vtu);
                 }
@@ -1569,7 +1567,7 @@ int main(int argc, char* argv[])
         // Previous from_file_and_partition will have terminated early after the json -> h5 conversion
         if (is_json_mesh && vm.count("mpi-ranks"))
         {
-            LOG_DEBUG << "Partitioning h5 mesh";
+            SPDLOG_DEBUG("Partitioning h5 mesh");
 
             auto h5_mesh_name = boost::filesystem::path(mesh_filename).stem().string() + "_mesh.h5";
             std::vector<std::string> h5_param_name = {boost::filesystem::path(mesh_filename).stem().string() +
@@ -1582,10 +1580,10 @@ int main(int argc, char* argv[])
     }
     catch (const exception_base& e)
     {
-        LOG_ERROR << boost::diagnostic_information(e);
+        SPDLOG_ERROR(boost::diagnostic_information(e));
         real_mpi_env.abort(-1);
 
     }
 
-    LOG_DEBUG << "Done";
+    SPDLOG_DEBUG("Done");
 }

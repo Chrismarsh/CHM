@@ -84,7 +84,7 @@ void netcdf::put_var1D(const std::string& var, size_t index, double value)
     }
     catch(netCDF::exceptions::NcBadId& e)
     {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Variable not initialized: " + var));
+        CHM_THROW_EXCEPTION(forcing_error, "Variable not initialized: " + var);
     }
 
 
@@ -111,12 +111,12 @@ void netcdf::open_GEM(const std::string &file)
 //        LOG_DEBUG << itr.first;
 //    }
 //
-//    LOG_DEBUG << "-----";
+//    SPDLOG_DEBUG("-----");
 //    for (auto& itr : _data.getCoordVars())
 //    {
 //        LOG_DEBUG << itr.first;
 //    }
-//    LOG_DEBUG << "-----";
+//    SPDLOG_DEBUG("-----");
 //    for (auto& itr : _data.getDims())
 //    {
 //        LOG_DEBUG << itr.first;
@@ -142,7 +142,7 @@ void netcdf::open_GEM(const std::string &file)
         }
         catch (netCDF::exceptions::NcNullGrp& e)
         {
-            LOG_ERROR << "Tried datetime and time, coord not found";
+            SPDLOG_ERROR("Tried datetime and time, coord not found");
             throw e;
         }
 
@@ -152,12 +152,12 @@ void netcdf::open_GEM(const std::string &file)
     // if we don't have at least two timesteps, we can't figure out the model internal timestep length (dt)
     if(_datetime_length == 1)
     {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("There needs to be at least 2 timesteps in order to determine model dt."));
+        CHM_THROW_EXCEPTION(forcing_error,"There needs to be at least 2 timesteps in order to determine model dt.");
     }
 //
 //    if(coord_vars.size() > 1)
 //    {
-//        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Too many coordinate variables."));
+//        CHM_THROW_EXCEPTION(forcing_error, "Too many coordinate variables.");
 //    }
 //
 //    for(auto itr: _data.getCoordVars())
@@ -170,7 +170,7 @@ void netcdf::open_GEM(const std::string &file)
 
     if(times.getType().getName() != "int64")
     {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Datetime dimension not in int64 format"));
+        CHM_THROW_EXCEPTION(forcing_error,"Datetime dimension not in int64 format");
     }
 
 
@@ -188,25 +188,25 @@ void netcdf::open_GEM(const std::string &file)
 
     if( epoch.find("hours") != std::string::npos )
     {
-        LOG_DEBUG << "Found epoch offset = hours";
+        SPDLOG_DEBUG("Found epoch offset = hours");
         _timestep = boost::posix_time::hours(1);
         dt_unit = "hours";
     }
     else if( epoch.find("minutes") != std::string::npos )
     {
-        LOG_DEBUG << "Found epoch offset = minutes";
+        SPDLOG_DEBUG("Found epoch offset = minutes");
         _timestep = boost::posix_time::minutes(1);
         dt_unit = "minutes";
     }
     else if(( epoch.find("seconds") != std::string::npos ))
     {
-        LOG_DEBUG << "Found epoch offset = seconds";
+        SPDLOG_DEBUG("Found epoch offset = seconds");
         _timestep = boost::posix_time::seconds(1);
         dt_unit = "seconds";
 
     } else
     {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Unknown datetime epoch offset unit."));
+        CHM_THROW_EXCEPTION(forcing_error, "Unknown datetime epoch offset unit.");
     }
 
     std::vector<std::string> strs;
@@ -218,7 +218,7 @@ void netcdf::open_GEM(const std::string &file)
         //might be in iso format (2017-08-13T01:00:00)
         if(strs.size() != 3)
         {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Epoch did not split properly, unknown units/ Epoch as read was: " + epoch));
+            CHM_THROW_EXCEPTION(forcing_error, "Epoch did not split properly, unknown units/ Epoch as read was: " + epoch);
         }
 
         //If it's 3, means there is a T b/w date and time, remove it.
@@ -289,10 +289,10 @@ void netcdf::open_GEM(const std::string &file)
         }
     }
 
-    LOG_DEBUG << "NetCDF epoch is " << _epoch;
-    LOG_DEBUG << "NetCDF start is " << _start;
-    LOG_DEBUG << "NetCDF end is " << _end;
-    LOG_DEBUG << "NetCDF timestep is " << _timestep;
+    SPDLOG_DEBUG("NetCDF epoch is {}", boost::posix_time::to_simple_string(_epoch));
+    SPDLOG_DEBUG("NetCDF start is {}", boost::posix_time::to_simple_string(_start));
+    SPDLOG_DEBUG("NetCDF end is {}",boost::posix_time::to_simple_string(_end));
+    SPDLOG_DEBUG("NetCDF timestep is {}", boost::posix_time::to_simple_string(_timestep));
 
     auto dims = _data.getDims();
     for(auto itr : dims)
@@ -303,7 +303,7 @@ void netcdf::open_GEM(const std::string &file)
             ygrid = itr.second.getSize();
     }
 
-    LOG_DEBUG << "NetCDF grid is " << xgrid << " (x) by " << ygrid << " (y)";
+    SPDLOG_DEBUG("NetCDF grid is {} (x) by {} (y) {}", xgrid, ygrid);
 
 
 }

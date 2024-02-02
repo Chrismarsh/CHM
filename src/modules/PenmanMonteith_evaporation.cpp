@@ -38,7 +38,7 @@ PenmanMonteith_evaporation::PenmanMonteith_evaporation(config_file cfg)
     provides("ET");
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
  void PenmanMonteith_evaporation::run(mesh_elem& face)

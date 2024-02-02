@@ -30,7 +30,6 @@
 #include <vtkVersion.h>
 #include <vtkStringArray.h>
 
-
 //std includes
 #include <string>
 #include <sstream>
@@ -47,6 +46,9 @@
 #include <algorithm>
 #include <memory> //unique ptr
 #include <cstdlib>
+
+//for getpid
+#include <unistd.h>
 
 //boost includes
 #include <boost/graph/graph_traits.hpp>
@@ -72,7 +74,6 @@ namespace po = boost::program_options;
 #include <tbb/concurrent_vector.h>
 
 #include <ogr_spatialref.h>
-
 
 //includes from CHM
 #include "logger.hpp"
@@ -269,10 +270,6 @@ protected:
     //this is called via system call when the model is done to notify the user
     std::string _notification_script;
 
-    //a text file log
-    boost::shared_ptr< text_sink > _log_sink;
-    boost::shared_ptr< text_sink > _cout_log_sink;
-
     //main mesh object
     boost::shared_ptr< triangulation > _mesh;
 
@@ -445,5 +442,5 @@ protected:
 // TODO: Decide what to do if system call error has occurred
 #define CHK_SYSTEM_ERR(ierr)					\
   if (ierr < 0) {						\
-    LOG_ERROR << strerror(errno);				\
+    SPDLOG_ERROR(strerror(errno));				\
   };

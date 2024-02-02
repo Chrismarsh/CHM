@@ -602,8 +602,9 @@ void Simple_Canopy::init(mesh& domain)
 		   d.cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
 		   d.cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
 
-	       } else {
-		 BOOST_THROW_EXCEPTION(missing_value_error() << errstr_info("landcover not defined, but is required for simple_canopy module, please check the configuration file"));
+	       } else
+               {
+		 CHM_THROW_EXCEPTION(missing_value_error, "landcover not defined, but is required for simple_canopy module, please check the configuration file");
 	       }
 
     }

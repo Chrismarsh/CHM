@@ -34,9 +34,7 @@ void regex_tokenizer::set_regex( std::string exp, bool case_sensitive )
         }
         catch ( ... )
         {
-                BOOST_THROW_EXCEPTION(module_not_found() 
-                                  << errstr_info( std::string("Invalid regular expression ") + exp)
-                                    );
+                CHM_THROW_EXCEPTION(module_not_found, std::string("Invalid regular expression ") + exp);
         }
 
 }

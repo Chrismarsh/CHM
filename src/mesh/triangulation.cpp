@@ -209,10 +209,12 @@ void triangulation::from_json(pt::ptree &mesh)
     _version.from_string(mesh.get<std::string>("mesh.version",""));
 
     if(!_version.mesh_ver_meets_min_json())
+    {
         CHM_THROW_EXCEPTION(mesh_error, "JSON mesh version to too old");
+    }
 
     size_t nvertex_toread = mesh.get<size_t>("mesh.nvertex");
-    LOG_DEBUG << "Reading in #vertex=" << nvertex_toread;
+    SPDLOG_DEBUG("Reading in #vertex={}",nvertex_toread);
     size_t i=0;
 
     //paraview struggles with lat/long as it doesn't seem to have the accuracy. So we need to scale up lat-long.
@@ -227,7 +229,7 @@ void triangulation::from_json(pt::ptree &mesh)
 
     if(_srs_wkt == "")
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info("proj4 field in .mesh file is empty!"));
+        CHM_THROW_EXCEPTION(config_error, "proj4 field in .mesh file is empty!");
     }
 
     for (auto &itr : mesh.get_child("mesh.vertex"))
@@ -257,17 +259,17 @@ void triangulation::from_json(pt::ptree &mesh)
         i++;
     }
     _num_vertex = this->number_of_vertices();
-    LOG_DEBUG << "# nodes created = " << _num_vertex;
+    SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
 
     if( this->number_of_vertices() != nvertex_toread)
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Expected: " + std::to_string(nvertex_toread) + " vertex, got: " + std::to_string(this->number_of_vertices())));
+        CHM_THROW_EXCEPTION(config_error,
+                    "Expected: " + std::to_string(nvertex_toread) + " vertex, got: " + std::to_string(this->number_of_vertices()));
     }
 
     //read in faces
     size_t num_elem = mesh.get<int>("mesh.nelem");
-    LOG_DEBUG << "Reading in #elem = " << num_elem;
+    SPDLOG_DEBUG("Reading in #elem = {}",num_elem);
     //set our mesh dimensions
     this->set_dimension(2);
 
@@ -315,15 +317,15 @@ void triangulation::from_json(pt::ptree &mesh)
 
     _num_faces = this->number_of_faces();
 
-    LOG_DEBUG << "Created a mesh with " << this->size_faces() << " triangles";
+    SPDLOG_DEBUG("Created a mesh with {} triangles", this->size_faces());
 
     if( this->number_of_faces() != num_elem)
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Expected: " + std::to_string(num_elem) + " elems, got: " + std::to_string(this->size_faces())));
+        CHM_THROW_EXCEPTION(config_error,
+                "Expected: " + std::to_string(num_elem) + " elems, got: " + std::to_string(this->size_faces()));
     }
 
-    LOG_DEBUG << "Building face neighbors";
+    SPDLOG_DEBUG("Building face neighbors");
     i=0;
     int nelem = mesh.get<int>("mesh.nelem"); // what we are expecting to see, 0 indexed
     for (auto &itr : mesh.get_child("mesh.neigh"))
@@ -341,8 +343,7 @@ void triangulation::from_json(pt::ptree &mesh)
             || items[1] > nelem
             || items[2] > nelem)
         {
-            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                    "Face " + std::to_string(i) + " has out of bound neighbors."));
+            CHM_THROW_EXCEPTION(config_error, "Face " + std::to_string(i) + " has out of bound neighbors.");
         }
         //-1 is now the no neighbor value
         Face_handle face0 =  items[0] != -1 ?_faces.at( items[0] ) : nullptr; //Face_handle()
@@ -380,7 +381,7 @@ void triangulation::from_json(pt::ptree &mesh)
             if(i == 0)
             {
                 blacklist.insert(name);
-                LOG_WARNING << "Parameter " + name + " is zero length and will be ignored.";
+                SPDLOG_WARN("Parameter " + name + " is zero length and will be ignored.");
             } else {
                 _parameters.insert(name);
             }
@@ -403,7 +404,7 @@ void triangulation::from_json(pt::ptree &mesh)
             if(blacklist.find(name) != blacklist.end())
                 continue; // skip blacklisted ones, as we don't want to use these
 
-            LOG_DEBUG << "Applying parameter: " << name;
+            SPDLOG_DEBUG("Applying parameter: {}",name);
 
             for (auto &jtr : itr.second)
             {
@@ -415,7 +416,7 @@ void triangulation::from_json(pt::ptree &mesh)
                     i++;
                 }catch(std::out_of_range& e)
                 {
-                    LOG_ERROR << "Something is wrong with the parameter file. There are more parameter elements than triangulation elements";
+                    SPDLOG_ERROR("Something is wrong with the parameter file. There are more parameter elements than triangulation elements" );
                     CHM_THROW_EXCEPTION(mesh_error, "Something is wrong with the parameter file. There are more parameter elements than triangulation elements");
                 }
 
@@ -441,7 +442,7 @@ void triangulation::from_json(pt::ptree &mesh)
         {
             i=0; // reset evertime we get a new parameter set
             auto name = itr.first.data();
-            LOG_DEBUG << "Applying IC: " << name;
+            SPDLOG_DEBUG("Applying IC: {}",name);
             for (auto &jtr : itr.second)
             {
                 auto face = _faces.at(i);
@@ -470,7 +471,7 @@ void triangulation::from_json(pt::ptree &mesh)
     }catch(pt::ptree_bad_path& e)
     {
         // If not, just ignore the exception
-        LOG_DEBUG << "No face local sizes.";
+        SPDLOG_DEBUG("No face local sizes.");
     }
 
     // Permute the faces if they have explicit IDs set in the mesh file
@@ -486,7 +487,7 @@ void triangulation::from_json(pt::ptree &mesh)
     }catch(pt::ptree_bad_path& e)
     {
         // If not, just ignore the exception
-        LOG_DEBUG << "No face permutation.";
+        SPDLOG_DEBUG("No face permutation.");
     }
 
     // Don't actually want to partition the mesh. Use the non-MPI one
@@ -526,7 +527,7 @@ void triangulation::to_hdf5(std::string filename_base)
     hsize_t nvert= size_vertex();
 
     { // Local sizes
-      LOG_DEBUG << "Writing Local Sizes.";
+      SPDLOG_DEBUG("Writing Local Sizes.");
       hsize_t npart = _local_sizes.size();
       H5::DataSpace dataspace(1, &npart);
 
@@ -599,8 +600,8 @@ void triangulation::to_hdf5(std::string filename_base)
     // Ensure the proj4 string can fit in the HDF5 data type
     if( _srs_wkt.length() >= 256)
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Proj4 string needs to be < 256. Length: " + std::to_string(_srs_wkt.length())));
+        CHM_THROW_EXCEPTION(config_error,
+                "Proj4 string needs to be < 256. Length: " + std::to_string(_srs_wkt.length()));
     }
     {  // Write the proj4
       H5::DataSpace dataspace(1, &proj4_dims);
@@ -780,14 +781,18 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             _mesh_is_from_partition = false;
         }
 
-        LOG_DEBUG << "Loaded mesh is partitioned = " <<_mesh_is_from_partition;
+        SPDLOG_DEBUG("Loaded mesh is partitioned = {}",_mesh_is_from_partition);
     }
 
     if(!_mesh_is_from_partition && !_version.mesh_ver_meets_min_h5())
+    {
         CHM_THROW_EXCEPTION(mesh_error, "h5 mesh version too old");
+    }
 
     if(_mesh_is_from_partition && !_version.mesh_ver_meets_min_partition())
+    {
         CHM_THROW_EXCEPTION(mesh_error, "partitioned mesh version too old");
+    }
 
     try
     {
@@ -893,7 +898,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         }
 
         _num_vertex = _vertexes.size();
-        LOG_DEBUG << "# nodes created = " << _num_vertex;
+        SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
     }
 
     {
@@ -949,7 +954,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
         }
         _num_faces = _faces.size();
-        LOG_DEBUG << "Created a mesh with " << this->size_faces() << " triangles";
+        SPDLOG_DEBUG("Created a mesh with {} triangles", this->size_faces());
     }
 
     {
@@ -962,8 +967,8 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
         if( elem.size() != nelem)
         {
-            BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Expected: " + std::to_string(elem.size()) + " neighborlists, got: " + std::to_string(nelem)));
+            CHM_THROW_EXCEPTION(config_error,
+                "Expected: " + std::to_string(elem.size()) + " neighborlists, got: " + std::to_string(nelem));
         }
 
         // Ensure enough space in the vector
@@ -971,7 +976,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         // Default args read all of the dataspace
         dataset.read(neigh.data(), neighbor_t);
 
-        LOG_DEBUG << "Building face neighbors";
+        SPDLOG_DEBUG("Building face neighbors");
 
         for (size_t i=0;i<nelem;i++)
         {
@@ -998,8 +1003,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
                    || neigh_i_1_idx > static_cast<int>(nelem)
                    || neigh_i_2_idx > static_cast<int>(nelem))
             {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                    "Face " + std::to_string(i) + " has out of bound neighbors."));
+                CHM_THROW_EXCEPTION(config_error, "Face " + std::to_string(i) + " has out of bound neighbors.");
             }
 
             //-1 is now the no neighbor value
@@ -1009,19 +1013,19 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
             if( face0 != nullptr && face0->cell_global_id == face->cell_global_id)
             {
-                LOG_ERROR << "At idx="<<i<<" Face0 is trying to set itself as neighbour!";
+                SPDLOG_ERROR("At idx={} Face0 is trying to set itself as neighbour!", i);
                 CHM_THROW_EXCEPTION(config_error, "Face0 is face!");
             }
 
             if( face1 != nullptr && face1->cell_global_id == face->cell_global_id)
             {
-                LOG_ERROR << "At idx="<<i<<" Face1 is trying to set itself as neighbour!";
+                SPDLOG_ERROR("At idx={} Face1 is trying to set itself as neighbour!", i);
                 CHM_THROW_EXCEPTION(config_error, "Face1 is face!");
             }
 
             if( face2 != nullptr && face2->cell_global_id == face->cell_global_id)
             {
-                LOG_ERROR << "At idx="<<i<<" Face2 is trying to set itself as neighbour!";
+                SPDLOG_ERROR("At idx={} Face2 is trying to set itself as neighbour!", i);
                 CHM_THROW_EXCEPTION(config_error, "Face2 is face!");
             }
 
@@ -1032,7 +1036,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 }
 void triangulation::_build_dDtree()
 {
-    LOG_DEBUG << "Building dD tree";
+    SPDLOG_DEBUG("Building dD tree");
 
     size_t nfaces =   _faces.size();
 
@@ -1132,7 +1136,7 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
     }
     catch(pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "No addtional parameters found in mesh section.";
+        SPDLOG_DEBUG("No addtional parameters found in mesh section.");
     }
 
     // Paths for initial condition files
@@ -1142,13 +1146,13 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
         for(auto &itr : partition.get_child("initial_conditions"))
         {
             auto ic_file = itr.second.data();
-            LOG_DEBUG << "Found initial condition file: " << ic_file;
+            SPDLOG_DEBUG("Found initial condition file: {}",ic_file);
             CHM_THROW_EXCEPTION(config_error,"Initial conditions not currently supported with partition tool.");
         }
     }
     catch(pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "No addtional initial conditions found in mesh section.";
+        SPDLOG_DEBUG("No addtional initial conditions found in mesh section.");
     }
 
     // keep just our rank's. The hdf5 loader expects a vector of potential files so make a vector of 1
@@ -1291,7 +1295,7 @@ void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_
             for (auto const& name : pars->names)
             {
 
-                LOG_DEBUG << "Applying parameter: " << name;
+                SPDLOG_DEBUG("Applying parameter: {}",name);
 
                 // _num_faces will have been set to the local face size in MPI mode
                 // however, if we are reading from a partitioned mesh file, we can actually load the entire set of
@@ -1335,8 +1339,8 @@ void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_
                         face(i)->parameter(name) = data[i];
                     }
 
-                    LOG_DEBUG << " Applying " << name << " for ghost regions (" << _ghost_faces.size()
-                              << " elements): " << name;
+                    SPDLOG_DEBUG(" Applying {} for ghost regions {} elements):",
+                                  name,  _ghost_faces.size(), name);
 
                     // Read parameters for each ghost face individually
                     hsize_t one = 1;
@@ -1385,7 +1389,7 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   // vector) before the new ordering is consistent.
 
   assert( permutation.size() == size_faces() );
-  LOG_DEBUG << "Reordering faces";
+  SPDLOG_DEBUG("Reordering faces");
 
   // Update the IDs on all faces
   #pragma omp parallel for
@@ -1419,7 +1423,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 #ifdef USE_MPI
     int my_rank = _comm_world.rank();
 
-    LOG_DEBUG << "Loading partition";
+    SPDLOG_DEBUG("Loading partition");
 
     // Turn off the auto-printing when failure occurs so that we can
     // handle the errors appropriately
@@ -1435,7 +1439,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
     dataset.read(ghost_info.data(), PredType::NATIVE_INT);
     file.close();
 
-    LOG_DEBUG << mesh_filename;
+    SPDLOG_DEBUG(mesh_filename);
 
     // when we get to here, we have a mix of ghosts and not ghosts in _local_faces and don't have the sizes
     // we need to pick this apart
@@ -1484,8 +1488,8 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 
     if( _local_faces.size() != _num_faces_in_partition.at(_comm_world.rank()) )
     {
-        LOG_ERROR <<"Expected to see #faces= " << _num_faces_in_partition.at(_comm_world.rank()) << "\n"
-            << "but got #faces="<<_local_faces.size();
+        SPDLOG_ERROR("Expected to see #faces= {}\nbut got #faces={}",
+                      _num_faces_in_partition.at(_comm_world.rank()), _local_faces.size());
         CHM_THROW_EXCEPTION(mesh_error, "local_size and partition size mismatch" );
     }
 
@@ -1527,8 +1531,8 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
     }
 
 
-    LOG_DEBUG << "MPI Process " << my_rank << ": start " << global_cell_start_idx << ", end " << global_cell_end_idx << ", number "
-              << _local_faces.size();
+    SPDLOG_DEBUG( "MPI Process {}: start {}, end {} , number {}",
+                  my_rank, global_cell_start_idx, global_cell_end_idx, _local_faces.size());
 
 #endif
 }
@@ -1555,7 +1559,7 @@ void triangulation::partition_mesh_nonMPI(size_t _num_global_faces)
     _num_global_faces = _faces.size();
     _local_faces = _faces;
 
-    LOG_DEBUG << "Face numbering : start 0, end " << (_num_global_faces - 1) << ", number " << _local_faces.size();
+    SPDLOG_DEBUG("Face numbering : start 0, end {}, number {}",(_num_global_faces - 1), _local_faces.size());
 }
 
 void triangulation::partition_mesh()
@@ -1571,7 +1575,7 @@ void triangulation::partition_mesh()
 
 #ifdef USE_MPI
 
-    LOG_DEBUG << "Partitioning mesh";
+    SPDLOG_DEBUG("Partitioning mesh");
 
     int my_rank = _comm_world.rank();
 
@@ -1622,8 +1626,8 @@ void triangulation::partition_mesh()
     }
 
     _num_faces = _local_faces.size();
-    LOG_DEBUG << "MPI Process " << my_rank << ": start " << global_cell_start_idx << ", end " << global_cell_end_idx << ", number "
-              << _local_faces.size();
+    SPDLOG_DEBUG( "MPI Process {}: start {}, end  {} , number {}",
+                  my_rank, global_cell_start_idx,  global_cell_end_idx, _local_faces.size());
 
 #else // do not USE_MPI
 
@@ -1645,7 +1649,7 @@ void triangulation::determine_local_boundary_faces()
   // Need to ensure we're starting from nothing?
   assert( _boundary_faces.size() == 0 );
 
-  LOG_DEBUG << "Determining local boundary faces";
+  SPDLOG_DEBUG("Determining local boundary faces");
 
   std::unique_ptr< th_safe_multicontainer_type > th_local_boundary_faces;
 
@@ -1704,9 +1708,9 @@ void triangulation::determine_local_boundary_faces()
   }
 
   // Some log debug output to see how many boundary faces on each
-  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _boundary_faces.size() << " boundary faces.";
+  SPDLOG_DEBUG("MPI Process {}  has {} boundary faces.", _comm_world.rank(), _boundary_faces.size());
 
-  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " _faces.size(): " << _faces.size() << " _local_faces.size(): " << _local_faces.size();
+  SPDLOG_DEBUG("MPI Process {}  _faces.size():{} _local_faces.size():{}", _comm_world.rank(), _faces.size(), _local_faces.size());
 
   // _comm_world.barrier();
   // exit(0);
@@ -1724,7 +1728,7 @@ void triangulation::determine_process_ghost_faces_nearest_neighbors()
   assert( _boundary_faces.size() != 0 );
   assert( _ghost_neighbors.size() == 0 );
 
-  LOG_DEBUG << "Determining ghost region info";
+  SPDLOG_DEBUG("Determining ghost region info");
 
   // Vector for append speed
   std::vector< mesh_elem > ghosted_boundary_nearest_neighbors;
@@ -1758,7 +1762,7 @@ void triangulation::determine_process_ghost_faces_nearest_neighbors()
 	    });
 
 #ifdef USE_MPI
-  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_neighbors.size() << " ghosted nearest neighbors.";
+  SPDLOG_DEBUG("MPI Process {} has {} ghosted nearest neighbors.", _comm_world.rank(), _ghost_neighbors.size());
 #endif
 
 
@@ -1792,7 +1796,7 @@ void triangulation::determine_ghost_owners()
         int global_ind = static_cast<int>(_ghost_neighbors[i]->cell_global_id);
         _ghost_neighbor_owners[i] = _ghost_neighbors.at(i)->owner;
 
-//        LOG_DEBUG << "Inc global ind " << global_ind;
+//        SPDLOG_DEBUG("Inc global ind {}",global_ind);
 //        _ghost_neighbor_owners[i] = determine_owner_of_global_index(global_ind,
 //                                                                    _num_faces_in_partition);
         // local faces are set to current mpirank, so set the ghosts to be ID"d who owns them
@@ -1830,10 +1834,10 @@ void triangulation::determine_ghost_owners()
     }
 
 #ifdef USE_MPI
-    LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _comm_partner_ownership.size() << " communication partners:";
+    SPDLOG_DEBUG("MPI Process {}  has {} communication partners:", _comm_world.rank(), _comm_partner_ownership.size());
     for (auto it : _comm_partner_ownership)
     {
-        LOG_DEBUG << "  # Process " << _comm_world.rank() << " partner " << it.first << " owns local ghost indices " << it.second.first << " to " << it.second.first+it.second.second-1;
+        SPDLOG_DEBUG("  # Process {} partner {} owns local ghost indices {} to {}",  _comm_world.rank(), it.first, it.second.first, it.second.first+it.second.second-1);
     }
 
 #endif
@@ -1949,7 +1953,7 @@ void triangulation::print_ghost_neighbor_info()
 
   std::ofstream outfile(filename);
 
-  LOG_DEBUG << "Rank " << myrank << " writing ghost neighbor info to file.";
+  SPDLOG_DEBUG("Rank {} writing ghost neighbor info to file.", myrank);
 
   outfile << "#(position in ghost array) (cell_global_id) (owner)\n";
   for (int ii=0; ii < _ghost_neighbors.size(); ++ii) {
@@ -1995,14 +1999,14 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
       double val = send_buffer[i];
       if( isnan(val) )	{
 	  auto f = local_faces_to_send[partner_id][i];
-	  LOG_DEBUG << "-------------------------------------------------";
-	  LOG_DEBUG << "Detected SEND variable is NaN:";
-	  LOG_DEBUG << "\tmy rank:            " << f->owner;
-	  LOG_DEBUG << "\tdestination rank:  " << partner_id;
-	  LOG_DEBUG << "\tsend_buffer entry: " << i;
-	  LOG_DEBUG << "\tcell_global_id:    " << f->cell_global_id;
-	  LOG_DEBUG << "\tcell_local_id:      " << f->cell_local_id;
-          LOG_DEBUG << "\tvalue:       " << val;
+	  SPDLOG_DEBUG("-------------------------------------------------");
+	  SPDLOG_DEBUG("Detected SEND variable is NaN:");
+	  SPDLOG_DEBUG("\tmy rank:            {}",f->owner);
+	  SPDLOG_DEBUG("\tdestination rank:  {}",partner_id);
+	  SPDLOG_DEBUG("\tsend_buffer entry: {}",i);
+	  SPDLOG_DEBUG("\tcell_global_id:    {}",f->cell_global_id);
+	  SPDLOG_DEBUG("\tcell_local_id:      {}",f->cell_local_id);
+          SPDLOG_DEBUG("\tvalue:       {}",val);
 //	  _mpi_env.abort(-1);
 	}
     }
@@ -2041,14 +2045,14 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
       double val = values[i];
       if( isnan(val) )	{
 	auto f = ghost_faces_to_recv[partner_id][i];
-	  LOG_DEBUG << "-------------------------------------------------";
-	  LOG_DEBUG << "Detected RECV variable is NaN:";
-	  LOG_DEBUG << "\tmy rank:            " << f->owner;
-	  LOG_DEBUG << "\tsent from rank:     " << partner_id;
-	  LOG_DEBUG << "\trecv_buffer entry:  " << i;
-	  LOG_DEBUG << "\tcell_global_id:     " << f->cell_global_id;
-	  LOG_DEBUG << "\tcell_local_id:       " << f->cell_local_id;
-          LOG_DEBUG << "\tvalue:       " << val;
+	  SPDLOG_DEBUG("-------------------------------------------------");
+	  SPDLOG_DEBUG("Detected RECV variable is NaN:");
+	  SPDLOG_DEBUG("\tmy rank:            {}",f->owner);
+	  SPDLOG_DEBUG("\tsent from rank:     {}",partner_id);
+	  SPDLOG_DEBUG("\trecv_buffer entry:  {}",i);
+	  SPDLOG_DEBUG("\tcell_global_id:     {}",f->cell_global_id);
+	  SPDLOG_DEBUG("\tcell_local_id:       {}",f->cell_local_id);
+          SPDLOG_DEBUG("\tvalue:       {}",val);
 //	  _mpi_env.abort(-1);
 	}
     }
@@ -2107,13 +2111,13 @@ void triangulation::ghost_to_neighbors_communicate_variable(const uint64_t& var)
             double val = send_buffer[i];
             if( isnan(val) )	{
                 auto f = ghost_faces_to_recv[partner_id][i];
-                LOG_DEBUG << "-------------------------------------------------";
-                LOG_DEBUG << "Detected SEND variable is NaN:";
-                LOG_DEBUG << "\tmy rank:            " << f->owner;
-                LOG_DEBUG << "\tdestination rank:  " << partner_id;
-                LOG_DEBUG << "\tsend_buffer entry: " << i;
-                LOG_DEBUG << "\tcell_global_id:    " << f->cell_global_id;
-                LOG_DEBUG << "\tcell_local_id:      " << f->cell_local_id;
+                SPDLOG_DEBUG("-------------------------------------------------");
+                SPDLOG_DEBUG("Detected SEND variable is NaN:");
+                SPDLOG_DEBUG("\tmy rank:            {}",f->owner);
+                SPDLOG_DEBUG("\tdestination rank:  {}",partner_id);
+                SPDLOG_DEBUG("\tsend_buffer entry: {}",i);
+                SPDLOG_DEBUG("\tcell_global_id:    {}",f->cell_global_id);
+                SPDLOG_DEBUG("\tcell_local_id:      {}",f->cell_local_id);
                 //	  _mpi_env.abort(-1);
             }
         }
@@ -2152,13 +2156,13 @@ void triangulation::ghost_to_neighbors_communicate_variable(const uint64_t& var)
             double val = values[i];
             if( isnan(val) )	{
                 auto f = local_faces_to_send[partner_id][i];
-                LOG_DEBUG << "-------------------------------------------------";
-                LOG_DEBUG << "Detected RECV variable is NaN:";
-                LOG_DEBUG << "\tmy rank:            " << f->owner;
-                LOG_DEBUG << "\tsent from rank:     " << partner_id;
-                LOG_DEBUG << "\trecv_buffer entry:  " << i;
-                LOG_DEBUG << "\tcell_global_id:     " << f->cell_global_id;
-                LOG_DEBUG << "\tcell_local_id:       " << f->cell_local_id;
+                SPDLOG_DEBUG("-------------------------------------------------");
+                SPDLOG_DEBUG("Detected RECV variable is NaN:");
+                SPDLOG_DEBUG("\tmy rank:            {}",f->owner);
+                SPDLOG_DEBUG("\tsent from rank:     {}",partner_id);
+                SPDLOG_DEBUG("\trecv_buffer entry:  {}",i);
+                SPDLOG_DEBUG("\tcell_global_id:     {}",f->cell_global_id);
+                SPDLOG_DEBUG("\tcell_local_id:       {}",f->cell_local_id);
                 //	  _mpi_env.abort(-1);
             }
         }
@@ -2257,7 +2261,7 @@ void triangulation::determine_process_ghost_faces_by_distance(double max_distanc
   			   std::begin(tmp_set),std::end(tmp_set));
 
 #ifdef USE_MPI
-  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _ghost_faces.size() << " ghosted faces.";
+  SPDLOG_DEBUG("MPI Process {} has {} ghosted faces.",_comm_world.rank(), _ghost_faces.size());
 #endif
 }
 
@@ -2265,7 +2269,7 @@ void triangulation::shrink_local_mesh_to_owned_and_distance_neighbors()
 {
   // Reset _faces to contain ONLY _local_faces and _ghost_faces.
 
-  LOG_DEBUG << "Shrinking local meshes";
+  SPDLOG_DEBUG("Shrinking local meshes");
 
   // Ensure that the localized face containers have been set
   assert( _local_faces.size() != 0 );
@@ -2281,7 +2285,7 @@ void triangulation::shrink_local_mesh_to_owned_and_distance_neighbors()
   _faces.insert( _faces.end(), _ghost_faces.begin(), _ghost_faces.end() );
 
 #ifdef USE_MPI
-  LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _faces.size() << " faces after shrinking";
+  SPDLOG_DEBUG("MPI Process {} has {} faces after shrinking", _comm_world.rank(), _faces.size());
 #endif
 }
 
@@ -2315,7 +2319,9 @@ void triangulation::timeseries_to_file(double x, double y, std::string fname)
 void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 {
     if (m == NULL)
-        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Couldn't find triangle at (x,y)"));
+    {
+        CHM_THROW_EXCEPTION(mesh_error, "Couldn't find triangle at (x,y)");
+    }
 
     m->to_file(fname);
 }
@@ -2542,7 +2548,7 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
 	// Init data in ghost neighbors as well
 	// - so they can be treated just like normal neighbors (after vars communicated)
 	// - timeseries not needed here
-	LOG_DEBUG << "######### Current _ghost_neighbors.size(): " << _ghost_neighbors.size();
+	SPDLOG_DEBUG("######### Current _ghost_neighbors.size(): {}",_ghost_neighbors.size());
     #pragma omp parallel for
         for (size_t it = 0; it < _ghost_faces.size(); it++)
         {

@@ -65,7 +65,7 @@ Winstral_parameters::Winstral_parameters(config_file cfg)
     use_subgridz = cfg.get("use_subgridz",true);
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 void Winstral_parameters::run(mesh& domain)

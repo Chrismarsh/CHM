@@ -10,7 +10,7 @@ cmake_policy(SET CMP0074 NEW)
 # set RPATH ON
 cmake_policy(SET CMP0042 NEW)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -34,6 +34,9 @@ option(USE_JEMALLOC "Use jemalloc" ON)
 option(BUILD_DOCS "Builds documentation" OFF)
 
 message(STATUS "This is an MPI build? ${USE_MPI}")
+
+
+
 
 # TODO: Link to the docs describing the migration
 if(BUILD_WITH_CONAN)
@@ -144,7 +147,6 @@ if(USE_MPI AND MPI_FOUND)
             system
             filesystem
             date_time
-            log
             thread
             regex
             iostreams

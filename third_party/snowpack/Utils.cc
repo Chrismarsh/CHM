@@ -94,23 +94,23 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 	//print message
 	//printf("¬"); //if we need multiline output, use a special char as bloc delimiter
 	if (strcmp(msg_type, "err") == 0) {
-		LOG_ERROR << boost::str(boost::format("[E] [%s] [%s:%d] ") % currentdate.c_str() % theFile % theLine) << "\n" << orig_msg;
+		spdlog::error(orig_msg);
 		msg_ok=1;
 	}
 	if (strcmp(msg_type, "wrn") == 0) {
-		LOG_WARNING << boost::str(boost::format("[W] [%s] [%s:%d] ") % currentdate.c_str() % theFile % theLine)<< "\n" << orig_msg;
+		spdlog::warn(orig_msg);
 		msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg+") == 0) {
-		LOG_DEBUG << boost::str(boost::format("[I] [%s] [%s:%d] ") % currentdate.c_str() % theFile % theLine)<< "\n" << orig_msg;
+                spdlog::debug(orig_msg);
 		msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg-") == 0) {
-		LOG_DEBUG << "[i] []                 "<< "\n" << orig_msg;
+                spdlog::debug(orig_msg);
 		msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg") == 0) {
-		LOG_DEBUG << boost::str(boost::format("[i] [%s] ---> ") % currentdate.c_str())<< "\n" << orig_msg;
+                spdlog::debug(orig_msg);
 		msg_ok=1;
 	}
 

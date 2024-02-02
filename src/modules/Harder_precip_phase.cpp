@@ -51,7 +51,7 @@ Harder_precip_phase::Harder_precip_phase(config_file cfg)
 
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 
 
 }

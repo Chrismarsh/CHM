@@ -38,8 +38,7 @@ double nearest::operator()(std::vector< boost::tuple<double,double,double> >& sa
     double z0 = 0;
     if (sample_points.size() > 1)
     {
-        BOOST_THROW_EXCEPTION( interpolation_error()
-                                << errstr_info("nearest requires exactly 1 station"));
+        CHM_THROW_EXCEPTION( interpolation_error, "nearest requires exactly 1 station");
     }
 
     z0 = sample_points.at(0).get<2>();

@@ -45,7 +45,7 @@ pt::ptree read_json(const std::string& path)
     }
     else
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Unable to open " + path));
+        CHM_THROW_EXCEPTION(config_error, "Unable to open " + path);
 
     }
 
@@ -62,9 +62,7 @@ pt::ptree read_json(const std::string& path)
     }
     catch (pt::json_parser_error &e)
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Error reading file: " + path + " on line: " + std::to_string(e.line()) + " with error: " +
-                e.message()));
+        CHM_THROW_EXCEPTION(config_error, "Error reading file: " + path + " on line: " + std::to_string(e.line()) + " with error: " + e.message());
     }
 
     return config;

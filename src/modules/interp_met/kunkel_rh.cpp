@@ -31,7 +31,7 @@ kunkel_rh::kunkel_rh(config_file cfg)
     depends_from_met("rh");
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 kunkel_rh::~kunkel_rh()

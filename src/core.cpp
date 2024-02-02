@@ -26,7 +26,6 @@
 
 core::core()
 {
-    BOOST_LOG_FUNCTION();
 
     _start_ts = nullptr;
     _end_ts = nullptr;
@@ -62,7 +61,7 @@ core::~core()
 
 void core::config_options( pt::ptree &value)
 {
-    LOG_DEBUG << "Found options section";
+    SPDLOG_DEBUG("Found options section");
 
     _find_and_insert_subjson(value);
 
@@ -78,15 +77,15 @@ void core::config_options( pt::ptree &value)
     else if (s == "verbose")
         _log_level = verbose;
 
-    LOG_DEBUG << "Setting log severity to " << _log_level;
-
-    _log_sink->set_filter(
-            severity >= _log_level
-    );
-
-    _cout_log_sink->set_filter(
-            severity >= _log_level
-    );
+    SPDLOG_DEBUG("Setting log severity to {}", _log_level);
+//
+//    _log_sink->set_filter(
+//            severity >= _log_level
+//    );
+//
+//    _cout_log_sink->set_filter(
+//            severity >= _log_level
+//    );
 
 
     std::string ia = value.get<std::string>("interpolant","spline");
@@ -105,7 +104,7 @@ void core::config_options( pt::ptree &value)
     }
     else
     {
-        LOG_WARNING << "Unknown interpolant selected, defaulting to spline";
+        SPDLOG_WARN("Unknown interpolant selected, defaulting to spline");
     }
 
     // custom start time
@@ -113,7 +112,7 @@ void core::config_options( pt::ptree &value)
     if (start)
     {
         _start_ts = new boost::posix_time::ptime(boost::posix_time::from_iso_string(*start));
-        LOG_DEBUG << "User-specified startdate: " << *_start_ts;
+        SPDLOG_DEBUG("User-specified startdate: {}", boost::posix_time::to_simple_string(*_start_ts));
     }
 
     // custom start time
@@ -121,7 +120,7 @@ void core::config_options( pt::ptree &value)
     if (end)
     {
         _end_ts = new boost::posix_time::ptime(boost::posix_time::from_iso_string(*end));
-        LOG_DEBUG << "User-specified endate: " << *_end_ts;
+        SPDLOG_DEBUG("User-specified endate: {}",  boost::posix_time::to_simple_string(*_end_ts));
     }
 
 
@@ -142,7 +141,7 @@ void core::config_options( pt::ptree &value)
             if (ia != "nearest")
             {
                 _interpolation_method = interp_alg::nearest_sta;
-                LOG_WARNING << "Station select has been changed to nearest station because a single point mode station was requested";
+                SPDLOG_WARN( "Station select has been changed to nearest station because a single point mode station was requested");
             }
         }
         catch (pt::ptree_bad_path& e)
@@ -169,7 +168,7 @@ void core::config_options( pt::ptree &value)
 
     if(radius && N)
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Cannot have both station_search_radius and station_N_nearest set."));
+        CHM_THROW_EXCEPTION(config_error, "Cannot have both station_search_radius and station_N_nearest set.");
     }
 
     if(radius)
@@ -188,17 +187,17 @@ void core::config_options( pt::ptree &value)
             if (ia == "nearest")
             {
                 n = 1;
-                LOG_WARNING << "Using N=1 nearest stations as default.";
+                SPDLOG_DEBUG("Using N=1 nearest stations as default.");
             } else
             {
                 n = 5;
-                LOG_WARNING << "Using N=5 nearest stations as default.";
+                SPDLOG_DEBUG("Using N=5 nearest stations as default.");
             }
         }
 
         if( (n < 2) && (ia != "nearest")) // Required more than 1 station if using spline or idw
         {
-            BOOST_THROW_EXCEPTION(config_error() << errstr_info("station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n)));
+            CHM_THROW_EXCEPTION(config_error, "station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n));
         }
 
         _metdata->get_stations = boost::bind( &metdata::nearest_station,_metdata,boost::placeholders::_1,boost::placeholders::_2, n);
@@ -210,13 +209,13 @@ void core::config_options( pt::ptree &value)
 void core::config_module_overrides( pt::ptree &value)
 {
     _find_and_insert_subjson(value);
-    LOG_DEBUG << "Found dependency override section";
+    SPDLOG_DEBUG("Found dependency override section");
     for (auto &itr : value)
     {
         std::string A = itr.first.data();
         std::string B = itr.second.data();
 
-        LOG_WARNING << "Removing depency of " << B << " from " << A;
+        SPDLOG_WARN("Removing depency of {} from {}", B, A);
         _overrides.push_back(std::make_pair(A, B));
 
     }
@@ -225,7 +224,7 @@ void core::config_module_overrides( pt::ptree &value)
 void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector<std::string> remove,
                           std::vector<std::string> add)
 {
-    LOG_DEBUG << "Found modules section";
+    SPDLOG_DEBUG("Found modules section");
     int modnum = 0;
     //loop over the list of requested modules
     // these are in the format "type":"ID"
@@ -244,7 +243,7 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
         }
         else
         {
-            LOG_DEBUG << "Removed module " << module;
+            SPDLOG_DEBUG("Removed module {}", module);
         }
 
     }
@@ -253,7 +252,7 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
     for (auto &itr : add)
     {
         modules.insert(itr);
-        LOG_DEBUG << "Inserted module " << itr << " from cmdl";
+        SPDLOG_DEBUG("Inserted module {} from cmdl", itr);
     }
 
 
@@ -261,7 +260,7 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
     {
 
         std::string module_name = itr;
-        LOG_DEBUG << "Module ID=" << module_name;
+        SPDLOG_DEBUG("Module ID={}", module_name);
 
 
         //try grabbing a config for this module, empty string default
@@ -271,7 +270,7 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
             cfg = config.get_child(module_name);
         } catch (pt::ptree_bad_path &e)
         {
-            LOG_DEBUG << "No config for " << module_name;
+            SPDLOG_DEBUG("No config for {}", module_name);
         }
 
         boost::shared_ptr<module_base> module = module_factory::create(module_name,cfg);
@@ -300,13 +299,13 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
 
     if (modnum == 0)
     {
-        BOOST_THROW_EXCEPTION(no_modules_defined() << errstr_info("No modules defined. Aborting"));
+        CHM_THROW_EXCEPTION(no_modules_defined, "No modules defined. Aborting");
     }
 }
 
 void core::config_checkpoint( pt::ptree& value)
 {
-    LOG_DEBUG << "Found checkpoint section";
+    SPDLOG_DEBUG("Found checkpoint section");
 
     _checkpoint_opts.do_checkpoint = value.get("save_checkpoint",false);
 
@@ -323,13 +322,13 @@ void core::config_checkpoint( pt::ptree& value)
         _checkpoint_opts.frequency = value.get_optional<size_t>("frequency");
         if (_checkpoint_opts.frequency)
         {
-            LOG_DEBUG << "Checkpointing every " << *(_checkpoint_opts.frequency) << " timesteps.";
+            SPDLOG_DEBUG("Checkpointing every {} timesteps" , *(_checkpoint_opts.frequency));
         }
 
         _checkpoint_opts.on_last = value.get_optional<bool>("on_last");
         if (_checkpoint_opts.on_last && *(_checkpoint_opts.on_last))
         {
-            LOG_DEBUG << "Checkpointing on last timestep";
+            SPDLOG_DEBUG("Checkpointing on last timestep");
         }
 
         if(!_checkpoint_opts.on_last && !_checkpoint_opts.frequency)
@@ -359,7 +358,9 @@ void core::config_checkpoint( pt::ptree& value)
         #endif
 
         if( csz != chkp.get<size_t>("ranks") )
-          CHM_THROW_EXCEPTION(config_error, "Checkpoint file was saved with a different number of ranks");
+        {
+            CHM_THROW_EXCEPTION(config_error, "Checkpoint file was saved with a different number of ranks");
+        }
 
         boost::filesystem::path ckpt_nc_path;
         try
@@ -383,7 +384,7 @@ void core::config_checkpoint( pt::ptree& value)
         }
 
         ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
-        LOG_DEBUG<< "Rank " << rank << " using checkpoint restore file " << ckpt_nc_path;
+        SPDLOG_DEBUG("Rank {} using checkpoint restore file {}", rank, ckpt_nc_path.string());
         _checkpoint_opts.in_savestate.open(ckpt_nc_path.string());
     }
 
@@ -392,12 +393,12 @@ void core::config_checkpoint( pt::ptree& value)
 }
 void core::config_forcing(pt::ptree &value)
 {
-    LOG_DEBUG << "Found forcing section";
-    LOG_DEBUG << "Reading meta data from config";
+    SPDLOG_DEBUG("Found forcing section");
+    SPDLOG_DEBUG("Reading meta data from config");
 
     //positive offset going west. So the normal UTC-6 would be UTC_offset:6
     _global->_utc_offset = value.get("UTC_offset",0);
-    LOG_DEBUG << "Applying UTC offset to ALL forcing files. UTC+" << std::to_string(_global->_utc_offset);
+    SPDLOG_DEBUG("Applying UTC offset to ALL forcing files. UTC+{}", std::to_string(_global->_utc_offset));
 
     _find_and_insert_subjson(value);
 
@@ -497,24 +498,26 @@ void core::config_forcing(pt::ptree &value)
         nstations = _metdata->nstations();
     }
 
-    LOG_DEBUG << "Found # stations = " <<  nstations;
+    SPDLOG_DEBUG("Found # stations = {}", nstations);
     if(nstations == 0)
     {
-        CHM_THROW_EXCEPTION(forcing_error,"No input forcing files found!");
+        CHM_THROW_EXCEPTION(forcing_error, "No input forcing files found!");
     }
 
 
     auto f = o_path / "stations.vtp";
     _metdata->write_stations_to_ptv(f.string());
 
-    LOG_DEBUG << "Finished reading stations. Took " << c.toc<s>() << "s";
+    SPDLOG_DEBUG("Finished reading stations. Took {} s", c.toc<s>());
 
 }
 void core::determine_startend_ts_forcing()
 {
 
     if (_metdata->nstations() == 0)
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("no stations"));
+    {
+        CHM_THROW_EXCEPTION(forcing_error, "no stations");
+    }
 
     auto start_time = _metdata->start_time();
     auto end_time = _metdata->end_time();
@@ -535,7 +538,7 @@ void core::determine_startend_ts_forcing()
         _checkpoint_opts.in_savestate.get_ncfile().getAtt("restart_time_sec").getValues(&t);
         _start_ts = new boost::posix_time::ptime(boost::posix_time::from_time_t(t));
 
-        LOG_WARNING << "Loading from checkpoint. Overriding start time to match. New start time = " << *_start_ts;
+        SPDLOG_WARN("Loading from checkpoint. Overriding start time to match. New start time = {}", boost::posix_time::to_simple_string(*_start_ts));
     }
 
     if (!_start_ts)
@@ -548,7 +551,7 @@ void core::determine_startend_ts_forcing()
         ss << "User specified start time starts before the most continuous start time of all input forcing files . ";
         ss << " User start date: " << *_start_ts;
         ss << " Continous start date: " << start_time;
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+        CHM_THROW_EXCEPTION(model_init_error,ss.str());
     }
     if (!_end_ts)
     {
@@ -560,7 +563,7 @@ void core::determine_startend_ts_forcing()
         ss << "User specified end time ends after the most continuous end time of all input forcing files . ";
         ss << " User end date: " << *_end_ts;
         ss << " Continous end date: " << end_time;
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+        CHM_THROW_EXCEPTION(model_init_error, ss.str());
     }
 
 
@@ -570,16 +573,16 @@ void core::determine_startend_ts_forcing()
         ss << "Start time is after endtime. ";
         ss << " Start date: " << *_start_ts;
         ss << " End date: " << *_end_ts;
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info(ss.str()));
+        CHM_THROW_EXCEPTION(model_init_error,ss.str());
     }
 
 
     //figure out what our timestepping is. Needs to happen before we subset as we may end up with only 1 timestep
     _global->_dt = _metdata->dt_seconds();
-    LOG_DEBUG << "model dt = " << _global->dt() << " (s)";
+    SPDLOG_DEBUG("model dt = {}s", _global->dt());
 
 
-    LOG_DEBUG << "Subsetting station timeseries";
+    SPDLOG_DEBUG("Subsetting station timeseries");
     _metdata->subset(*_start_ts, *_end_ts);
 
 
@@ -589,7 +592,7 @@ void core::determine_startend_ts_forcing()
 }
 void core::config_parameters(pt::ptree &value)
 {
-    LOG_DEBUG << "Found parameter mapping section";
+    SPDLOG_DEBUG("Found parameter mapping section");
 
     //replace any references to external files with the file contents
     //we can't use _find_and_insert_subjson(value); as this needs to be handled slightly differently
@@ -612,7 +615,7 @@ void core::config_parameters(pt::ptree &value)
 
 bool core::config_meshes( pt::ptree &value)
 {
-    LOG_DEBUG << "Found meshes sections.";
+    SPDLOG_DEBUG("Found meshes sections");
 
     _mesh = boost::make_shared<triangulation>();
 
@@ -621,7 +624,7 @@ bool core::config_meshes( pt::ptree &value)
     _find_and_insert_subjson(value);
 
     _mesh_path = value.get<std::string>("mesh");
-    LOG_DEBUG << "Found mesh:" << _mesh_path;
+    SPDLOG_DEBUG("Found mesh:{}",_mesh_path);
     _mesh_path = (cwd_dir / _mesh_path).string();
 
     auto mesh_file_extension = boost::filesystem::path(_mesh_path).extension().string();
@@ -639,13 +642,13 @@ bool core::config_meshes( pt::ptree &value)
             for(auto &itr : value.get_child("parameters"))
             {
                 auto param_file = itr.second.data();
-                LOG_DEBUG << "Found parameter file: " << param_file;
+                SPDLOG_DEBUG("Found parameter file: {}",param_file);
                 param_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
             }
         }
         catch(pt::ptree_bad_path &e)
         {
-            LOG_DEBUG << "No addtional parameters found in mesh section.";
+            SPDLOG_DEBUG("No addtional parameters found in mesh section.");
         }
 
         // Paths for initial condition files
@@ -654,13 +657,13 @@ bool core::config_meshes( pt::ptree &value)
             for(auto &itr : value.get_child("initial_conditions"))
             {
                 auto ic_file = itr.second.data();
-                LOG_DEBUG << "Found initial condition file: " << ic_file;
+                SPDLOG_DEBUG("Found initial condition file: {}",ic_file);
                 initial_condition_file_paths.push_back( (cwd_dir / itr.second.data()).string() );
             }
         }
         catch(pt::ptree_bad_path &e)
         {
-            LOG_DEBUG << "No addtional initial conditions found in mesh section.";
+            SPDLOG_DEBUG("No addtional initial conditions found in mesh section.");
         }
     }
 
@@ -672,7 +675,7 @@ bool core::config_meshes( pt::ptree &value)
         bool h5_or_part = mesh_file_extension != ".h5" || mesh_file_extension != ".partition";
         if(!h5_or_part)
         {
-            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool\n\n"));
+            CHM_THROW_EXCEPTION(mesh_error, "MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool\n\n");
         }
 
         // only check the params and ics if we aren't using a parition file
@@ -684,7 +687,7 @@ bool core::config_meshes( pt::ptree &value)
                 auto extension = boost::filesystem::path(it).extension();
                 if(extension != ".h5")
                 {
-                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 parameter files: " + it + "\n\n    Run the serial hdf5 conversion tool\n\n"));
+                    CHM_THROW_EXCEPTION(mesh_error, "MPI multiprocess run requires hdf5 parameter files: " + it + "\n\n    Run the serial hdf5 conversion tool\n\n");
                 }
             }
             for(const auto& it : initial_condition_file_paths)
@@ -692,7 +695,7 @@ bool core::config_meshes( pt::ptree &value)
                 auto extension = boost::filesystem::path(it).extension();
                 if(extension != ".h5")
                 {
-                    BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("MPI multiprocess run requires hdf5 initial condition files: " + it + "\n\n    Run the serial hdf5 conversion tool\n\n"));
+                    CHM_THROW_EXCEPTION(mesh_error, "MPI multiprocess run requires hdf5 initial condition files: " + it + "\n\n    Run the serial hdf5 conversion tool\n\n");
                 }
             }
         }
@@ -762,13 +765,13 @@ bool core::config_meshes( pt::ptree &value)
                 if( key == "area")
                     triarea_found = true;
 
-                LOG_DEBUG << "Inserted parameter " << ktr.first.data() << " into the config tree.";
+                SPDLOG_DEBUG("Inserted parameter {} into the config tree.", ktr.first.data());
 	    }
       }
 
         if(is_geographic && !triarea_found)
         {
-            BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Geographic meshes require the triangle area be present in a .param file. Please include this."));
+            CHM_THROW_EXCEPTION(mesh_error, "Geographic meshes require the triangle area be present in a .param file. Please include this.");
         }
 
       // Initial condition files
@@ -781,7 +784,7 @@ bool core::config_meshes( pt::ptree &value)
                 //use put to ensure there are no duplciate parameters...
                 std::string key = ktr.first.data();
                 mesh.put_child( "initial_conditions." + key ,ktr.second);
-                LOG_DEBUG << "Inserted initial condition " << ktr.first.data() << " into the config tree.";
+                SPDLOG_DEBUG("Inserted initial condition {} into the config tree.",  ktr.first.data());
             }
       }
 
@@ -790,14 +793,16 @@ bool core::config_meshes( pt::ptree &value)
     }
 
     if (_mesh->size_faces() == 0)
-        BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Mesh size = 0!"));
+    {
+      CHM_THROW_EXCEPTION(mesh_error, "Mesh size = 0!");
+    }
 
     return is_partition;
 }
 
 void core::config_output(pt::ptree &value)
 {
-    LOG_DEBUG << "Found output section";
+    SPDLOG_DEBUG("Found output section");
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     vtkSmartPointer<vtkStringArray> labels = vtkSmartPointer<vtkStringArray>::New();
     labels->SetName("Point output name");
@@ -843,7 +848,7 @@ void core::config_output(pt::ptree &value)
             }
             catch(const pt::ptree_error &e)
             {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Missing output filename for " + out.name));
+                CHM_THROW_EXCEPTION(forcing_error,"Missing output filename for " + out.name);
             }
             auto f = pts_path / fname;
             out.fname = f.string();
@@ -855,14 +860,14 @@ void core::config_output(pt::ptree &value)
             }
             catch(const pt::ptree_error &e)
             {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output point " + out.name + " is missing latitude and/or longitude."));
+                CHM_THROW_EXCEPTION(forcing_error, "Output point " + out.name + " is missing latitude and/or longitude.");
             }
 
 
             if( (out.latitude > 90 || out.latitude < -90) ||
                 (out.longitude > 180 || out.longitude < -180) )
             {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output " + out.name + " coordinate is invalid."));
+                CHM_THROW_EXCEPTION(forcing_error, "Output " + out.name + " coordinate is invalid.");
             }
 
             //project mesh, need to convert the input lat/long into the coordinate system our mesh is in
@@ -885,7 +890,7 @@ void core::config_output(pt::ptree &value)
                 //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
                 if(!coordTrans->Transform(1, &out.x, &out.y))
                 {
-                    BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Output=" + out.name + ": unable to convert coordinates to mesh format."));
+                    CHM_THROW_EXCEPTION(forcing_error, "Output=" + out.name + ": unable to convert coordinates to mesh format.");
                 }
 
                 OGRCoordinateTransformation::DestroyCT(coordTrans);
@@ -906,8 +911,8 @@ void core::config_output(pt::ptree &value)
                 points->InsertNextPoint(out.face->get_x(), out.face->get_y(), out.face->get_z());
                 labels->InsertNextValue(out.name);
 
-                LOG_DEBUG << "Triangle geometry for output triangle = " << out_type << " slope: "
-                          << out.face->slope() * 180. / M_PI << " aspect:" << out.face->aspect() * 180. / M_PI;
+                SPDLOG_DEBUG("Triangle geometry for output triangle = {} slope: {} aspect:{}",
+                              out_type, out.face->slope() * 180. / M_PI, out.face->aspect() * 180. / M_PI);
 
                 out.face->_debug_name = out.name; //out_type holds the station name
                 out.face->_debug_ID = ID;
@@ -937,25 +942,25 @@ void core::config_output(pt::ptree &value)
             }
             catch (pt::ptree_bad_path &e)
             {
-                LOG_DEBUG << "Writing all variables to output mesh";
+                SPDLOG_DEBUG("Writing all variables to output mesh");
             }
 
             out.frequency = itr.second.get("frequency",1); //defaults to every timestep
-            LOG_DEBUG << "Output every " << out.frequency <<" timesteps.";
+            SPDLOG_DEBUG("Output every {} timesteps.", out.frequency);
 
             out.only_last_n = itr.second.get("only_last_n",-1); //defaults to keep everything
-            LOG_DEBUG << "Output only on last n =  " << out.only_last_n <<" timesteps.";
+            SPDLOG_DEBUG("Output only on last n =  {} timesteps", out.only_last_n);
 
             if(out.frequency > 1 && out.only_last_n != -1)
             {
-                LOG_WARNING << "Only only_last_n output option will be used";
+                SPDLOG_WARN("Only only_last_n output option will be used");
             }
 
             out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
 
         } else
         {
-            LOG_WARNING << "Unknown output type: " << itr.second.data();
+            SPDLOG_WARN("Unknown output type: {}",itr.second.data());
         }
 
         //ensure we aren't adding timeseries outputs with invalid faces bc of MPI
@@ -965,14 +970,12 @@ void core::config_output(pt::ptree &value)
             // we will pass for now, but ultimiately we should have done an MPI comms and
             // check if we are missing an output
 #ifndef USE_MPI
-            BOOST_THROW_EXCEPTION(config_error() <<
-                                                     errstr_info(
-                                                             "Requested an output point that is not in the triangulation domain. Pt:"
+            CHM_THROW_EXCEPTION(config_error(), "Requested an output point that is not in the triangulation domain. Pt:"
                                                              + std::to_string(out.longitude) + "," +
                                                              std::to_string(out.latitude) + " name: " + out.name));
 #else
-            LOG_WARNING << "In MPI mode there is currently no check if all the nodes correctly find the output triangle. "
-                           "If you are missing output, ensure that all the output points are within the domain.";
+            SPDLOG_WARN("In MPI mode there is currently no check if all the nodes correctly find the output triangle. "
+                           "If you are missing output, ensure that all the output points are within the domain.");
 #endif
 
         }else
@@ -981,7 +984,7 @@ void core::config_output(pt::ptree &value)
         }
     }
 #ifdef USE_MPI
-    LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has #ouput points = " << _outputs.size();
+    SPDLOG_DEBUG("MPI Process {} has #ouput points = {}", _comm_world.rank(), _outputs.size());
 #endif
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
@@ -1008,7 +1011,7 @@ void core::config_output(pt::ptree &value)
 
 void core::config_global( pt::ptree &value)
 {
-    BOOST_THROW_EXCEPTION(no_modules_defined() << errstr_info("Global section is now deprecated. This does nothing, please remove from config file."));
+    CHM_THROW_EXCEPTION(no_modules_defined,"Global section is now deprecated. This does nothing, please remove from config file.");
 }
 
 core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
@@ -1076,7 +1079,9 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
                 v.push_back(jtr);
 
             if (v.size() != 2)
-                BOOST_THROW_EXCEPTION(io_error() << errstr_info("Config value of " + itr + " is invalid."));
+            {
+                CHM_THROW_EXCEPTION(io_error, "Config value of " + itr + " is invalid.");
+            }
 
             std::pair<std::string, std::string> override;
             override.first = v[0];
@@ -1099,7 +1104,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
 
     if (!vm.count("config-file"))
     {
-        LOG_ERROR << "Configuration file required.";
+        SPDLOG_ERROR("Configuration file required.");
         cout << desc << std::endl;
         exit(1);
     }
@@ -1115,36 +1120,8 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
 
 void core::init(int argc, char **argv)
 {
-    BOOST_LOG_FUNCTION();
-
-
     //default logging level
     _log_level = debug;
-
-
-    _cout_log_sink = boost::make_shared<text_sink>();
-
-    text_sink::locked_backend_ptr pBackend_cout = _cout_log_sink->locked_backend();
-
-#if (BOOST_VERSION / 100 % 1000) < 56
-    boost::shared_ptr< std::ostream > pStream(&std::clog,  logging::empty_deleter());
-#else
-    boost::shared_ptr<std::ostream> pStream(&std::cout, boost::null_deleter()); //clog
-#endif
-    pBackend_cout->add_stream(pStream);
-
-    _cout_log_sink->set_formatter
-            (
-                    expr::format("[%1%]: %2%")
-                    % expr::attr<log_level>("Severity")
-                    % expr::smessage
-            );
-    _cout_log_sink->set_filter(
-            severity >= _log_level
-    );
-    logging::core::get()->add_sink(_cout_log_sink);
-
-
 
     auto log_start_time = boost::posix_time::to_iso_string(boost::posix_time::second_clock::local_time());
 
@@ -1158,7 +1135,7 @@ void core::init(int argc, char **argv)
     boost::filesystem::path path(cmdl_options.get<0>());
     cwd_dir = boost::filesystem::current_path();
 
-    LOG_DEBUG << "Current working directory: " << cwd_dir.string();
+    SPDLOG_DEBUG("Current working directory: {}",cwd_dir.string());
 
 
     std::string log_dir = "log";
@@ -1175,58 +1152,29 @@ void core::init(int argc, char **argv)
 
     boost::filesystem::create_directories(log_path);
 
-    //fully qualified path + fname to use in the ofstream calls
-    if(cmdl_options.get<5 >()) //-legacy-log true option
-    {
-
-        log_name =  "CHM.log";
-        log_file_path = cwd_dir / log_name;
-    }
-    else {
-        log_file_path = log_path / log_name;
-        log_name =  log_file_path.string();
-    }
 
 
-    _log_sink = boost::make_shared<text_sink>();
-    text_sink::locked_backend_ptr pBackend_file = _log_sink->locked_backend();
-    boost::shared_ptr<std::ofstream> pStream2(new std::ofstream(log_name));
+    log_file_path = log_path / log_name;
+    log_name =  log_file_path.string();
 
-    if (!pStream2->is_open())
-    {
-        BOOST_THROW_EXCEPTION(file_write_error()
-                              << boost::errinfo_errno(errno)
-                              << boost::errinfo_file_name(log_name)
-        );
-    }
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console_sink->set_level(spdlog::level::debug);
+    console_sink->set_pattern("[%n] [%^%l%$] %v");;
 
-    pBackend_file->add_stream(pStream2);
-    pBackend_file->auto_flush (true);
+    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_name, true);
+    file_sink->set_pattern("[%n] [%s:%!:%#] [%^%l%$] %v");;
+    file_sink->set_level(spdlog::level::debug);
 
-    _log_sink->set_formatter
-            (
-                    expr::format("%1% [%2%]: %3%")
-//                    % expr::attr<boost::posix_time::ptime>("TimeStamp")
-                    % expr::format_named_scope("Scope",
-                                               keywords::format = "%n:%l",
-                                               keywords::iteration = expr::reverse,
-                                               keywords::depth = 2)
-                    % expr::attr<log_level>("Severity")
-                    % expr::smessage
-            );
-    _log_sink->set_filter(
-            severity >= verbose
-    );
+    spdlog::sinks_init_list sink_list = { file_sink, console_sink };
 
-//    logging::core::get()->add_global_attribute("TimeStamp", attrs::local_clock());
-    logging::core::get()->add_global_attribute("Scope", attrs::named_scope());
+    // make default logger
+    // logger name is the current MPI rank
+    spdlog::set_default_logger(std::make_shared<spdlog::logger>("rank " + std::to_string(_comm_world.rank()), spdlog::sinks_init_list({console_sink, file_sink})));
+//    spdlog::set_pattern("[%P] [%s:%!:%#] [%^%l%$] %v");
+    spdlog::set_level(spdlog::level::debug); // this is needed as well as the above levels
 
-
-
-    logging::core::get()->add_sink(_log_sink);
-
-    LOG_DEBUG << "Logger initialized. Writing to cout and " + log_name;
-    LOG_DEBUG << version;
+    SPDLOG_DEBUG("Logger initialized. Writing to cout and {}",  log_name);
+    SPDLOG_DEBUG("version");
 
 
     _global = boost::make_shared<global>();
@@ -1239,12 +1187,14 @@ void core::init(int argc, char **argv)
     gsl_set_error_handler_off();
 
 #ifdef USE_MPI
-    LOG_DEBUG << "Built with MPI support,    #processes = " << _comm_world.size();
+    SPDLOG_DEBUG( "Built with MPI support,    #processes = {}", _comm_world.size());
 #endif
 
 #ifdef _OPENMP
-    LOG_DEBUG << "Built with OpenMP support, #threads   = " << omp_get_max_threads();
+    SPDLOG_DEBUG( "Built with OpenMP support, #threads   = {}", omp_get_max_threads());
 #endif
+
+    SPDLOG_DEBUG("PID={}",getpid());
 
     // Check if we are running under slurm
     const char* SLURM_JOB_ID = std::getenv("SLURM_JOB_ID");
@@ -1253,9 +1203,9 @@ void core::init(int argc, char **argv)
         const char* SLURM_TASK_PID = std::getenv("SLURM_TASK_PID"); //The process ID of the task being started.
         const char* SLURM_PROCID = std::getenv("SLURM_PROCID"); // The MPI rank (or relative process ID) of the current process
 
-        LOG_DEBUG << "Detected running under SLURM as jobid " << SLURM_JOB_ID;
-        LOG_DEBUG << "SLURM_TASK_PID = " << SLURM_TASK_PID;
-        LOG_DEBUG << "SLURM_PROCID = " << SLURM_PROCID;
+        SPDLOG_DEBUG("Detected running under SLURM as jobid {}", SLURM_JOB_ID);
+        SPDLOG_DEBUG( "SLURM_TASK_PID = {}", SLURM_TASK_PID);
+        SPDLOG_DEBUG( "SLURM_PROCID = {} ", SLURM_PROCID);
     }
 
 
@@ -1263,7 +1213,7 @@ void core::init(int argc, char **argv)
     pt::ptree cfg;
     try
     {
-        LOG_DEBUG << "Reading configuration file " << cmdl_options.get<0>();
+        SPDLOG_DEBUG("Reading configuration file {}", cmdl_options.get<0>());
         cfg = read_json(cmdl_options.get<0>());
 
         /*
@@ -1293,13 +1243,12 @@ void core::init(int argc, char **argv)
     }
     catch (pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "Optional section Module config not found";
+        SPDLOG_DEBUG( "Optional section Module config not found" );
     }
     catch (pt::json_parser_error &e)
     {
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info(
-                "Error reading file: " + cmdl_options.get<0>() + " on line: " + std::to_string(e.line()) + " with error: " +
-                e.message()));
+        CHM_THROW_EXCEPTION(config_error, "Error reading file: " + cmdl_options.get<0>() + " on line: " + std::to_string(e.line()) + " with error: " +
+                e.message());
     }
 
 
@@ -1311,12 +1260,11 @@ void core::init(int argc, char **argv)
         try
         {
             auto value = cfg.get<std::string>(itr.first);
-            LOG_WARNING << "Overwriting " << itr.first << "=" << value << " with " << itr.first << "=" <<
-                        itr.second;
+            SPDLOG_WARN( "Overwriting {} = {} with {} = {}  ", itr.first, value, itr.first, itr.second );
 
         } catch (pt::ptree_bad_path &e)
         {
-            LOG_DEBUG << "Inserting new config " << itr.first << "=" << itr.second;
+            SPDLOG_DEBUG("Inserting new config {} = {}", itr.first, itr.second);
         }
 
         cfg.put(itr.first, itr.second);
@@ -1348,11 +1296,11 @@ void core::init(int argc, char **argv)
             }
 
 
-            LOG_DEBUG << "Removing " << itr;
+            SPDLOG_DEBUG( "Removing {}", itr);
 
         } catch (pt::ptree_bad_path &e)
         {
-            LOG_DEBUG << "No value " << itr << " to remove";
+            SPDLOG_DEBUG("No value {} to remove", itr);
         }
 
     }
@@ -1391,7 +1339,7 @@ void core::init(int argc, char **argv)
     } catch (pt::ptree_bad_path &e)
     {
         _output_station_ptv = false;
-        LOG_DEBUG << "Optional section Output not found";
+        SPDLOG_DEBUG( "Optional section Output not found");
     }
 
     config_forcing(cfg.get_child("forcing"));
@@ -1423,7 +1371,7 @@ void core::init(int argc, char **argv)
         config_global(cfg.get_child("global"));
     } catch (pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "Optional section Global not found";
+        SPDLOG_DEBUG("Optional section Global not found");
     }
 
     try
@@ -1431,7 +1379,7 @@ void core::init(int argc, char **argv)
         config_module_overrides(cfg.get_child("remove_depency"));
     } catch (pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "Optional section remove_depency not found";
+        SPDLOG_DEBUG( "Optional section remove_depency not found");
     }
 
     try
@@ -1439,7 +1387,7 @@ void core::init(int argc, char **argv)
         config_parameters(cfg.get_child("parameter_mapping"));
     } catch (pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "Optional section parameter mapping not found";
+        SPDLOG_DEBUG("Optional section parameter mapping not found");
     }
 
     try
@@ -1447,7 +1395,7 @@ void core::init(int argc, char **argv)
         config_checkpoint(cfg.get_child("checkpoint"));
     } catch (pt::ptree_bad_path &e)
     {
-        LOG_DEBUG << "Optional section checkpoint not found";
+        SPDLOG_DEBUG("Optional section checkpoint not found");
     }
 
     //if we are to run in point mode, we need to remove all the input and outputs that aren't associated with point mode
@@ -1455,7 +1403,7 @@ void core::init(int argc, char **argv)
 
     if(point_mode.enable)
     {
-        LOG_INFO << "Running in point mode";
+        SPDLOG_DEBUG("Running in point mode");
         //Each face knows which stations are closest to it and what it should use
 
         if(point_mode.use_specific_station && _metdata->is_netcdf())
@@ -1487,10 +1435,10 @@ void core::init(int argc, char **argv)
 
         if(_metdata->is_netcdf())
         {
-            LOG_DEBUG<< "Using the following input nc grid cells as forcing:";
+            SPDLOG_DEBUG("Using the following input nc grid cells as forcing:");
             for(auto& s:_outputs.at(0).face->stations())
             {
-               LOG_DEBUG << "\t" << "x="<<s->_nc_x << " y="<< s->_nc_y << " lat=" << s->y() << " lon=" <<s->x();
+                SPDLOG_DEBUG( "\tx={} y={} lat={} lon={}", s->_nc_x, s->_nc_y, s->y(),s->x());
             }
         }
     }
@@ -1499,9 +1447,9 @@ void core::init(int argc, char **argv)
     pt::json_parser::write_json((o_path  / "config.json" ).string(),cfg); // output a full dump of the cfg, after all modifications, to the output directory
     _cfg = cfg;
 
-    LOG_DEBUG << "Finished initialization";
+    SPDLOG_DEBUG("Finished initialization");
 
-    LOG_DEBUG << "Determining module dependencies";
+    SPDLOG_DEBUG("Determining module dependencies");
     _determine_module_dep();
 
     //now we know what outputs we have, and have ensure that's valid, we need to ensure the user hasn't asked to output
@@ -1517,7 +1465,7 @@ void core::init(int argc, char **argv)
             //check every output we requested against the global full list of provided outputs, bail if we don't find it
             if(!boost::algorithm::any_of_equal(_provided_var_module,var))
             {
-                BOOST_THROW_EXCEPTION(config_error() << errstr_info("Requested output " + var + " is not provided by any module."));
+                CHM_THROW_EXCEPTION(config_error, "Requested output " + var + " is not provided by any module.");
             }
         }
     }
@@ -1546,13 +1494,13 @@ void core::init(int argc, char **argv)
             {
                 if(jtr->parallel_type() == module_base::parallel::domain)
                 {
-                    BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Domain parallel module are being run in point-mode."));
+                    CHM_THROW_EXCEPTION(model_init_error, "Domain parallel module are being run in point-mode.");
                 }
             }
         }
     }
 
-    LOG_DEBUG << "Allocating face variable storage";
+    SPDLOG_DEBUG( "Allocating face variable storage");
 
     //we are going to make the assumption that every module can store face data.
     // However if this is onerous we can add a flag to the modules later
@@ -1567,7 +1515,7 @@ void core::init(int argc, char **argv)
     // todo: revisit only init on parts of the mesh
     if(point_mode.enable)
     {
-        LOG_DEBUG<< "Initialzing faces for point_mode only";
+        SPDLOG_DEBUG("Initialzing faces for point_mode only");
         std::vector<mesh_elem> faces_to_init;
 
         for (auto &itr : _outputs)
@@ -1578,21 +1526,25 @@ void core::init(int argc, char **argv)
             }
         }
         _mesh->prune_faces(faces_to_init);
-        LOG_DEBUG << "Mesh now has #faces=" << _mesh->size_faces();
+        SPDLOG_DEBUG("Mesh now has #faces = {}",_mesh->size_faces());
     }
 
     _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
 
     timer c;
-    LOG_DEBUG << "Running init() for each module";
+    SPDLOG_DEBUG("Running init() for each module");
     c.tic();
+
 
     for (auto& itr : _modules)
     {
-        LOG_VERBOSE << itr.first->ID;
-        itr.first->init(_mesh);
+      spdlog::debug("\t{}", itr.first->ID);
+      itr.first->init(_mesh);
     }
-    LOG_DEBUG << "Took " << c.toc<ms>() << "ms";
+
+
+
+    SPDLOG_DEBUG("Took {}ms", c.toc<ms>());
 
     //we do this here now because init is allowing a module to chance its mind and declare itself
     // data parallel or domain parallel after the fact.
@@ -1602,7 +1554,7 @@ void core::init(int argc, char **argv)
     if(_checkpoint_opts.load_from_checkpoint  )
     {
         _global->_from_checkpoint = true;
-        LOG_DEBUG << "Loading from checkpoint";
+        SPDLOG_DEBUG("Loading from checkpoint");
         c.tic();
         for (auto &itr : _chunked_modules)
         {
@@ -1613,7 +1565,7 @@ void core::init(int argc, char **argv)
             }
         }
 
-        LOG_DEBUG << "Done loading snapshot [ " << c.toc<s>() << "s]";
+        SPDLOG_DEBUG("Done loading snapshot [ {}s ]", c.toc<s>());
     }
 }
 
@@ -1636,8 +1588,7 @@ void core::_find_and_insert_subjson(pt::ptree& value)
                 //If an external file is provided, don't allow further sub json files. That is a rabbit hole that isn't worth dealing with.
                 if (jtr.second.data().find(".json") != std::string::npos)
                 {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
-                        "An included json file cannot contain json sub-files."));
+                    CHM_THROW_EXCEPTION(forcing_error, "An included json file cannot contain json sub-files.");
                 }
 
                 std::string point_name = jtr.first.data();
@@ -1685,7 +1636,7 @@ void core::_determine_module_dep()
                    m1->conflicts()->end(),
                    m2->ID) != m1->conflicts()->end())
            {
-               BOOST_THROW_EXCEPTION(module_error() << errstr_info("Module " + m1->ID + " explicitly conflicts with " + m2->ID));
+               CHM_THROW_EXCEPTION(module_error,  "Module " + m1->ID + " explicitly conflicts with " + m2->ID);
            }
 
 
@@ -1694,13 +1645,16 @@ void core::_determine_module_dep()
             if( itr != m1_provides_var_names.end() )
             {
                 overwrite_found=true;
-                LOG_ERROR << "Module " << m1->ID << " and " << m2->ID << " both provide variable " << *itr;
+                SPDLOG_ERROR("Module {} and {} both provide variable {} ", m1->ID, m2->ID, *itr);
             }
         }
     }
 
     if(overwrite_found)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("A module's provides overwrites another module's provides. This is not allowed."));
+    {
+        CHM_THROW_EXCEPTION(module_error,
+                            "A module's provides overwrites another module's provides. This is not allowed.");
+    }
 
     //build a list of variables provided by the met files, culling duplicate variables from multiple stations.
 
@@ -1730,10 +1684,10 @@ void core::_determine_module_dep()
         //check intermodule depends
         if (module->depends()->size() == 0)  //check if this module requires dependencies
         {
-            LOG_DEBUG << "Module [" << module->ID << "], no inter-module dependenices";
+            SPDLOG_DEBUG("Module [{}], no inter-module dependenices", module->ID);
         } else
         {
-            LOG_DEBUG << "Module [" << module->ID << "] checking against...";
+            SPDLOG_DEBUG("Module [{}], checking against...", module->ID);
         }
 
 
@@ -1766,9 +1720,8 @@ void core::_determine_module_dep()
                     auto i = std::find(itr_mod_provides_var_names.begin(), itr_mod_provides_var_names.end(), depend_var.name);
                     if (i != itr_mod_provides_var_names.end()) //itr provides the variable we are looking for
                     {
-                        LOG_DEBUG << "\t\tAdding edge between " << module->ID << "[" << module->IDnum <<
-                                  "] -> " << itr_module->ID << "[" << itr_module->IDnum << "] for var=" << *i <<
-                                  std::endl;
+                        SPDLOG_DEBUG("\t\tAdding edge between {} [{}] -> {} [{}] for var={}", module->ID, module->IDnum, itr_module->ID,itr_module->IDnum, *i);
+
 
                         //add the dependency from module -> itr, such that itr will come before module
                         edge e;
@@ -1783,8 +1736,8 @@ void core::_determine_module_dep()
                                 o.second == itr_module->ID)
                             {
                                 ignore = true;
-                                LOG_WARNING << "Skipped adding edge between " << o.first << " and " << o.second <<
-                                            " for var=" << *i << " because of user override" << std::endl;
+                                SPDLOG_DEBUG("Skipped adding edge betweenn {} and {} for var={}  because of user override", o.first, o.second,*i);
+
                             }
                         }
 
@@ -1812,9 +1765,8 @@ void core::_determine_module_dep()
                     auto i = std::find(itr_mod_provides_var_names.begin(), itr_mod_provides_var_names.end(), optional_var);
                     if (i != itr_mod_provides_var_names.end()) //itr provides the variable we are looking for
                     {
-                        LOG_DEBUG << "\t\tAdding optional edge between " << module->ID << "[" <<
-                                  module->IDnum << "] -> " << itr_module->ID << "[" << itr_module->IDnum <<
-                                  "] for var=" << *i << std::endl;
+                        SPDLOG_DEBUG("\t\tAdding edge between {} [{}] -> {} [{}] for var={}", module->ID, module->IDnum, itr_module->ID,itr_module->IDnum, *i);
+
 
                         //add the dependency from module -> itr, such that itr will come before module
                         edge e;
@@ -1829,8 +1781,7 @@ void core::_determine_module_dep()
                                 o.second == itr_module->ID)
                             {
                                 ignore = true;
-                                LOG_WARNING << "Skipped adding edge between " << o.first << " and " << o.second <<
-                                            " for var=" << *i << " because of user override" << std::endl;
+                                SPDLOG_DEBUG("Skipped adding edge betweenn {} and {} for var={}  because of user override", o.first, o.second,*i);
                             }
                         }
 
@@ -1864,17 +1815,17 @@ void core::_determine_module_dep()
         }
         if (missing_depends)
         {
-            LOG_ERROR << ss.str();
-            BOOST_THROW_EXCEPTION(module_error() << errstr_info(ss.str()));
+            SPDLOG_ERROR((ss.str()));
+            CHM_THROW_EXCEPTION(module_error,   ss.str());
         }
 
         //check if our module has any met file dependenices
         if (module->depends_from_met()->size() == 0)
         {
-            LOG_DEBUG << "Module [" << module->ID << "], no met file dependenices";
+            SPDLOG_DEBUG("Module [{}], no met file dependencies", module->ID);
         } else
         {
-            LOG_DEBUG << "Module [" << module->ID << "] has met file dependencies";
+            SPDLOG_DEBUG("Module [{}] has met file dependencies",module->ID);
         }
 
 
@@ -1886,10 +1837,10 @@ void core::_determine_module_dep()
             auto i = std::find(_provided_var_met_files.begin(), _provided_var_met_files.end(), depend_met_var);
             if (i == _provided_var_met_files.end())
             {
-                LOG_ERROR << "\t\t" << depend_met_var << "...[missing]";
-                BOOST_THROW_EXCEPTION(module_error() << errstr_info("Missing dependency for " + depend_met_var));
+                SPDLOG_ERROR("\t\t[]...[missing]",depend_met_var);
+                CHM_THROW_EXCEPTION(module_error,  "Missing dependency for " + depend_met_var);
             }
-            LOG_DEBUG << "\t\t" << depend_met_var << "...[ok]";
+            SPDLOG_DEBUG("\t\t{}...[ok]", depend_met_var);
         }
 
     }
@@ -1912,50 +1863,15 @@ void core::_determine_module_dep()
     gvpr.close();
 
     std::deque<int> topo_order;
+    bool failed_toposort_call = false; // we need to still write the graph out if our topo sort fails
     try
     {
         boost::topological_sort(g, std::front_inserter(topo_order));
     }
     catch(...)
     {
-
-        std::ostringstream ssdot;
-        boost::write_graphviz(ssdot, g, boost::make_label_writer(boost::get(&vertex::name, g)),
-                              make_edge_writer(boost::get(&edge::variable, g)));
-        std::string dot(ssdot.str());
-        size_t pos = dot.find("\n");
-
-        if (pos == std::string::npos)
-            BOOST_THROW_EXCEPTION(config_error() << errstr_info("Unable to generate dot file"));
-        pos++;
-
-//    Insert the following to make the chart go right to left, landscape
-//    rankdir=LR;
-//    {
-//        node [shape=plaintext, fontsize=16];
-//        "Module execution order"->"";
-//    }
-        dot.insert(pos,
-                   "rankdir=LR;\n{\n\tnode [shape=plaintext, fontsize=16];\n\t\"Module execution order\"->\"\";\n}\nsplines=polyline;\n");
-
-        std::ofstream file;
-        file.open("modules.dot.tmp");
-        file << dot;
-        file.close();
-
-        //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
-        int ierr = std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp > /dev/null 2>&1"); CHK_SYSTEM_ERR(ierr);
-        ierr = std::system("dot -Tpdf modules.dot -o modules.pdf > /dev/null 2>&1"); CHK_SYSTEM_ERR(ierr);
-        ierr = std::remove("modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
-        ierr = std::remove("filter.gvpr"); CHK_SYSTEM_ERR(ierr);
-        ierr = std::remove("modules.dot"); CHK_SYSTEM_ERR(ierr);
-
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Module graph must be a DAG. Please review modules.pdf to determine where the cycle occured."));
-
+        failed_toposort_call = true; // get ready to bail after write out the topo call
     }
-
-
-
 
     std::ostringstream ssdot;
     boost::write_graphviz(ssdot, g, boost::make_label_writer(boost::get(&vertex::name, g)),
@@ -1964,7 +1880,9 @@ void core::_determine_module_dep()
     size_t pos = dot.find("\n");
 
     if (pos == std::string::npos)
-        BOOST_THROW_EXCEPTION(config_error() << errstr_info("Unable to generate dot file"));
+    {
+        CHM_THROW_EXCEPTION(config_error, "Unable to generate dot file");
+    }
 
     //skip past the newline
     pos++;
@@ -1984,10 +1902,16 @@ void core::_determine_module_dep()
     file.close();
 
     //http://stackoverflow.com/questions/8195642/graphviz-defining-more-defaults
-    int ierr = std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
-    ierr = std::system("dot -Tpdf modules.dot -o modules.pdf"); CHK_SYSTEM_ERR(ierr);
+    int ierr = std::system("gvpr -c -f filter.gvpr -o modules.dot modules.dot.tmp > /dev/null 2>&1"); CHK_SYSTEM_ERR(ierr);
+    ierr = std::system("dot -Tpdf modules.dot -o modules.pdf > /dev/null 2>&1"); CHK_SYSTEM_ERR(ierr);
     ierr = std::remove("modules.dot.tmp"); CHK_SYSTEM_ERR(ierr);
     ierr = std::remove("filter.gvpr"); CHK_SYSTEM_ERR(ierr);
+
+    // if we failed to do the topological sort above, now we can safety bail as we've written out the module.pdf
+    if(failed_toposort_call)
+    {
+        CHM_THROW_EXCEPTION(config_error,  "Module graph must be a DAG. Please review modules.pdf to determine where the cycle occurred.");
+    }
 
     std::stringstream ss;
     size_t order = 0;
@@ -1999,7 +1923,7 @@ void core::_determine_module_dep()
     }
 
     std::string s = ss.str();
-    LOG_DEBUG << "Build order: " << s.substr(0, s.length() - 2);
+    SPDLOG_DEBUG("Build order: {}",s.substr(0, s.length() - 2));
 
 
     //sort ascending based on make order number
@@ -2017,7 +1941,7 @@ void core::_determine_module_dep()
         ss << itr.first->ID << "->";
     }
     s = ss.str();
-    LOG_DEBUG << "_modules order after sort: " << s.substr(0, s.length() - 2);
+    SPDLOG_DEBUG("_modules order after sort: {}", s.substr(0, s.length() - 2));
 
     // Parallel compilation ordering
 //    std::vector<int> time(size, 0);
@@ -2052,7 +1976,7 @@ void core::_schedule_modules()
     size_t chunk_itr = 0;
     for (auto &itr : _modules)
     {
-        LOG_DEBUG << "Chunking module: " << itr.first->ID;
+        SPDLOG_DEBUG( "Chunking module: {}", itr.first->ID);
         //first case, empty list
         if (_chunked_modules.size() == 0)
         {
@@ -2076,11 +2000,10 @@ void core::_schedule_modules()
     chunks = 0;
     for (auto &itr : _chunked_modules)
     {
-        LOG_DEBUG << "Chunk " << (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain") <<
-                  " " << chunks << ": ";
+        SPDLOG_DEBUG("Chunk {} {}: ", (itr.at(0)->parallel_type() == module_base::parallel::data ? "data" : "domain"),  chunks);
         for (auto &jtr : itr)
         {
-            LOG_DEBUG << jtr->ID;
+            SPDLOG_DEBUG(jtr->ID);
         }
         chunks++;
     }
@@ -2100,12 +2023,12 @@ void core::run()
     pvd.add("VTKFile.<xmlattr>.version", "0.1");
 
 
-    LOG_DEBUG << "Loading first timestep's met data";
+    SPDLOG_DEBUG("Loading first timestep's met data");
     // Populate the stations with the first timestep's data.
     // We can do this _once_ without incrementing the internal iterators
     _metdata->next();
 
-    LOG_DEBUG << "Starting model run";
+    SPDLOG_DEBUG("Starting model run");
 
     c.tic();
 
@@ -2121,7 +2044,7 @@ void core::run()
 
             _global->_current_date = _metdata->current_time();
 
-            LOG_DEBUG << "Timestep: " << _global->posix_time() << "\tstep#"<<current_ts;
+            SPDLOG_DEBUG("Timestep: {}\tstep#{}", boost::posix_time::to_simple_string(_global->posix_time()), current_ts);
 
             std::stringstream ss;
             ss << _global->posix_time();
@@ -2178,21 +2101,21 @@ void core::run()
             }
             catch (exception_base &e)
             {
-                LOG_ERROR << "Exception at timestep: " << _global->posix_time();
+                SPDLOG_ERROR("Exception at timestep: {}", boost::posix_time::to_simple_string(_global->posix_time()));
                 //if we die in a module, try to dump our time series out so we can figure out wtf went wrong
-                LOG_ERROR << "Exception has occured. Timeseries and meshes WILL BE INCOMPLETE!";
+                SPDLOG_ERROR("Exception has occured. Timeseries and meshes WILL BE INCOMPLETE!");
                 *_end_ts = _global->posix_time();
                 done = true;
-                LOG_ERROR << boost::diagnostic_information(e);
+                SPDLOG_ERROR(boost::diagnostic_information(e));
 
             }
             catch(std::exception& e)
             {
-                LOG_ERROR << "Exception at timestep: " << _global->posix_time();
-                LOG_ERROR << "Unknown exception:";
-                LOG_ERROR << e.what();
+                SPDLOG_ERROR("Exception at timestep: {}", boost::posix_time::to_simple_string(_global->posix_time()));
+                SPDLOG_ERROR(e.what());
                 *_end_ts = _global->posix_time();
                 done = true;
+                SPDLOG_ERROR(e.what());
             }
 
             //check that we actually need a mesh output.
@@ -2211,7 +2134,7 @@ void core::run()
             // save the current state
             if(_checkpoint_opts.should_checkpoint(current_ts, (max_ts-1) == current_ts)) // -1 because current_ts is 0 indexed
             {
-                LOG_DEBUG << "Checkpointing...";
+                SPDLOG_DEBUG("Checkpointing...");
 
                 netcdf savestate; //file to save to when checkpointing.
 
@@ -2289,7 +2212,7 @@ void core::run()
 
 
 
-                LOG_DEBUG << "Done checkpoint [ " << c.toc<s>() << "s]";
+                SPDLOG_DEBUG("Done checkpoint [ {} s]", c.toc<s>());
             }
 
             for (auto &itr : _outputs)
@@ -2411,13 +2334,13 @@ void core::run()
             boost::posix_time::ptime pt(boost::posix_time::second_clock::local_time());
             pt = pt + boost::posix_time::seconds(size_t(mt) * (max_ts - current_ts));
 
-            LOG_DEBUG << "Avg timestep duration " << s << "\tEstimated completion: " << boost::posix_time::to_simple_string(pt);
+            SPDLOG_DEBUG("Avg timestep duration {} \tEstimated completion: {}", s, boost::posix_time::to_simple_string(pt));
             _global->first_time_step = false;
 
 
         }
         double elapsed = c.toc<s>();
-        LOG_DEBUG << "Total runtime was " << elapsed << "s";
+        SPDLOG_DEBUG("Total runtime was {}s", elapsed);
 
 
 
@@ -2459,7 +2382,7 @@ void core::run()
 
     if(_notification_script != "")
     {
-        LOG_DEBUG << "Calling notification script";
+        SPDLOG_DEBUG("Calling notification script");
         int ierr = std::system(_notification_script.c_str()); CHK_SYSTEM_ERR(ierr);
     }
 }
@@ -2469,12 +2392,12 @@ void core::end(const bool abort)
 #ifdef USE_MPI
     if(abort)
     {
-        LOG_ERROR << "An exception has occurred, requesting MPI Abort!";
+        SPDLOG_ERROR("An exception has occurred, requesting MPI Abort!");
         _mpi_env.abort(-1);
     }
 #endif
 
-    LOG_DEBUG << "Cleaning up";
+    SPDLOG_DEBUG("Cleaning up");
 }
 
 bool core::check_is_geographic(const std::string& path)
@@ -2536,7 +2459,7 @@ bool core::check_is_geographic(const std::string& path)
 void core::populate_face_station_lists()
 {
 
-    LOG_DEBUG << "Populating each face's station list";
+    SPDLOG_DEBUG("Populating each face's station list");
 
     for (size_t i = 0; i < _mesh->size_faces(); i++)
     {
@@ -2551,7 +2474,7 @@ void core::populate_face_station_lists()
 
         }  else
         {
-            CHM_THROW_EXCEPTION(mesh_error,"Face station list already populated.");
+            CHM_THROW_EXCEPTION(mesh_error, "Face station list already populated.");
         }
     }
 
@@ -2565,7 +2488,7 @@ void core::populate_distributed_station_lists()
     std::unique_ptr< th_safe_multicontainer_type > th_local_stations;
     std::vector< std::shared_ptr<station> > mpi_local_stations;
 
-    LOG_DEBUG << "Populating each MPI process's station list";
+    SPDLOG_DEBUG("Populating each MPI process's station list");
 
 #pragma omp parallel
     {
@@ -2582,7 +2505,7 @@ void core::populate_distributed_station_lists()
             auto face = _mesh->face(face_index);
             if ( face->stations().empty() )
             { // only perform if faces' stationlists are set
-                BOOST_THROW_EXCEPTION(mesh_error() << errstr_info("Face station lists must be populated before populating distributed MPI station lists."));
+                CHM_THROW_EXCEPTION(mesh_error,   "Face station lists must be populated before populating distributed MPI station lists.");
             }
             for (auto &p : face->stations())
             {
@@ -2619,7 +2542,7 @@ void core::populate_distributed_station_lists()
     _metdata->prune_stations(remove_set);
 
 #ifdef USE_MPI
-    LOG_DEBUG << "MPI Process " << _comm_world.rank() << " has " << _metdata->nstations() << " locally owned stations.";
+    SPDLOG_DEBUG("MPI Process {} has {} locally owned stations.", _comm_world.rank() , _metdata->nstations());
 #endif
 }
 

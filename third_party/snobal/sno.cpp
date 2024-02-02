@@ -57,7 +57,7 @@ double sno::satw(double tk)        /* air temperature (K)		*/
 
     if (tk <= 0.)
     {
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("tk < 0"));
+        CHM_THROW_EXCEPTION(module_error, "tk < 0");
     }
 
     return (satw_lut)(tk);
@@ -70,7 +70,7 @@ double sno::sati(double tk)        /* air temperature (K)	*/
 
     if (tk <= 0.)
     {
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("tk<0"));
+        CHM_THROW_EXCEPTION(module_error, "tk<0");
     }
 
     if (tk > FREEZE)
@@ -276,7 +276,7 @@ double sno::psi(
                 break;
 
             default: /* shouldn't reach */
-                BOOST_THROW_EXCEPTION(module_error() << errstr_info ("psi-function code not of these: SM, SH, SV"));
+                CHM_THROW_EXCEPTION(module_error, "psi-function code not of these: SM, SH, SV");
                 break;
 //			bug("psi-function code not of these: SM, SH, SV");
         }
@@ -339,11 +339,9 @@ int sno::hle1(
     if (z0 <= 0 || zq <= z0 || zu <= z0 || za <= z0)
     {
 
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("height not postive z0=" + std::to_string(z0)
+        CHM_THROW_EXCEPTION(module_error, "height not postive z0=" + std::to_string(z0)
                                                             +" zq="+std::to_string(zq)
-                                                             +" zu="+std::to_string(za)
-
-                              ));
+                                                             +" zu="+std::to_string(za));
 //		usrerr ("height not positive; z0=%f\tzq=%f\tzu=%\tza=%f",
 //		       z0, zq, zu, za);
         ier = -2;
@@ -353,7 +351,7 @@ int sno::hle1(
     /* temperatures are Kelvin */
     if (ta <= 0 || ts <= 0)
     {
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Temps not K"));
+        CHM_THROW_EXCEPTION(module_error,"Temps not K");
 //		usrerr ("temps not K; ta=%f\tts=%f", ta, ts);
         ier = -2;
         return (ier);
@@ -362,7 +360,7 @@ int sno::hle1(
     /* pressures must be positive */
     if (ea <= 0 || es <= 0 || press <= 0 || ea >= press || es >= press)
     {
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("Press <0"));
+        CHM_THROW_EXCEPTION(module_error, "Press <0");
 //		usrerr ("press < 0; ea=%f\tes=%f\tpress=%f", ea, es, press);
         ier = -2;
         return (ier);
@@ -372,7 +370,7 @@ int sno::hle1(
     /* if way off stop */
     if ((es - 25.0) > sati(ts) || (ea - 25.0) > satw(ta))
     {
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info ("vp > sat"));
+        CHM_THROW_EXCEPTION(module_error, "vp > sat");
 //		usrerr ("vp > sat; es=%f\tessat=%f\tea=%f\teasat=%f",
 //			es, sati(ts), ea, sati(ta));
         ier = -2;
@@ -754,7 +752,7 @@ double sno::efcon(
                     pp_info->z_snow = pp_info->m_snow / rho_snow;
                 else
                 {
-                    LOG_ERROR <<  "rho_snow is <= 0.0 with %_snow > 0.0";
+                    spdlog::error("rho_snow is <= 0.0 with %_snow > 0.0");
                     return 0;
                 }
             }
@@ -1636,7 +1634,7 @@ int sno::_h_le(void)
     if (hle1(P_a, T_a, T_s_0, rel_z_T, e_a, e_s, rel_z_T, u,
              rel_z_u, z_0, &H, &L_v_E, &E) != 0)
     {
-        LOG_DEBUG << "hle1 did not converge";// sprintf("hle1 did not converge\nP_a %f, T_a %f, T_s_0 %f\nrelative z_T %f, e_a %f, e_s %f\nu %f, relative z_u %f, z_0 %f\n", P_a, T_a, T_s_0, rel_z_T, e_a, e_s, u, rel_z_u, z_0);
+        spdlog::debug("hle1 did not converge");// sprintf("hle1 did not converge\nP_a %f, T_a %f, T_s_0 %f\nrelative z_T %f, e_a %f, e_s %f\nu %f, relative z_u %f, z_0 %f\n", P_a, T_a, T_s_0, rel_z_T, e_a, e_s, u, rel_z_u, z_0);
         return 0;
     }
 

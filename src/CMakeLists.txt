@@ -157,7 +157,6 @@ set(EXT_TARGETS
 		Boost::system
 		Boost::filesystem
 		Boost::date_time
-		Boost::log
 		Boost::thread
 		Boost::regex
 		Boost::iostreams

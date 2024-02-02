@@ -33,7 +33,7 @@ lw_no_lapse::lw_no_lapse(config_file cfg)
 
     depends_from_met("Qli");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 lw_no_lapse::~lw_no_lapse()

@@ -36,7 +36,7 @@ Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
 
     x_AABB = cfg.get<int>("x_AABB",10);
     y_AABB = cfg.get<int>("y_AABB",10);
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 
 }
 

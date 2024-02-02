@@ -35,7 +35,7 @@ Kunkel_monthlyTd_rh::Kunkel_monthlyTd_rh(config_file cfg)
     depends_from_met("rh");
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 Kunkel_monthlyTd_rh::~Kunkel_monthlyTd_rh()

@@ -36,8 +36,7 @@ void timeseries::init_new_variable(std::string variable)
     size_t size = _date_vec.size();
     if (size == 0)
     {
-        BOOST_THROW_EXCEPTION(forcing_error()
-                                      << errstr_info("Adding variable to uninitialized timeseries"));
+        CHM_THROW_EXCEPTION(forcing_error, "Adding variable to uninitialized timeseries");
     }
 
     _variables[variable].assign(size,-9999.0);
@@ -107,8 +106,7 @@ double& timeseries::at(std::string variable, size_t idx)
     auto res = _variables.find(variable);
     if(res == _variables.end())
     {
-        BOOST_THROW_EXCEPTION(forcing_error()
-                              << errstr_info("Unable to find " + variable));
+        CHM_THROW_EXCEPTION(forcing_error, "Unable to find " + variable);
     }
     return const_cast<double&>(res->second.at(idx));
 }
@@ -118,8 +116,7 @@ timeseries::variable_vec timeseries::get_time_series(std::string variable)
     auto res = _variables.find(variable);
     if(res == _variables.end())
     {
-        BOOST_THROW_EXCEPTION(forcing_error()
-                                << errstr_info("Unable to find " + variable));
+        CHM_THROW_EXCEPTION(forcing_error, "Unable to find " + variable);
     }   
     return res->second;
 }
@@ -130,8 +127,7 @@ void timeseries::subset(boost::posix_time::ptime start,boost::posix_time::ptime 
     auto itrstart = std::find(_date_vec.begin(),_date_vec.end(),start);
     if ( itrstart == _date_vec.end())
     {
-        BOOST_THROW_EXCEPTION(forcing_timestep_notfound()
-                              << errstr_info("Start timestep not found"));
+        CHM_THROW_EXCEPTION(forcing_timestep_notfound, "Start timestep not found");
     }
 
     //Find the first one
@@ -141,7 +137,7 @@ void timeseries::subset(boost::posix_time::ptime start,boost::posix_time::ptime 
 
     if(itrend == _date_vec.end())
     {
-        LOG_WARNING << "Requested end date is past last date. Setting date end = time series end.";
+        SPDLOG_WARN("Requested end date is past last date. Setting date end = time series end.");
         itrend = std::next(_date_vec.begin(),  _date_vec.size() - 1); //skip to last item
     }
     else{
@@ -174,8 +170,7 @@ boost::tuple<timeseries::iterator, timeseries::iterator> timeseries::range(boost
     auto itr_find = std::find(_date_vec.begin(),_date_vec.end(),start_time);
     if ( itr_find == _date_vec.end())
     {
-        BOOST_THROW_EXCEPTION(forcing_timestep_notfound()
-                                << errstr_info("Timestep not found"));
+        CHM_THROW_EXCEPTION(forcing_timestep_notfound, "Timestep not found");
     }
     
     //Find the first one
@@ -248,8 +243,7 @@ timeseries::iterator timeseries::find(boost::posix_time::ptime time)
     auto itr = std::find(_date_vec.begin(),_date_vec.end(),time);
     if ( itr == _date_vec.end())
     {
-        BOOST_THROW_EXCEPTION(forcing_timestep_notfound()
-                                << errstr_info("Timestep not found"));
+        CHM_THROW_EXCEPTION(forcing_timestep_notfound, "Timestep not found");
     }
     
     //get offset from iterator
@@ -290,11 +284,13 @@ void timeseries::open(std::string path)
     std::vector<std::string> header;
 
     if (!file.is_open())
-        BOOST_THROW_EXCEPTION(file_read_error()
-            << boost::errinfo_errno(errno)
-            << boost::errinfo_file_name(path));
+    {
+//        std::stringstream ss;
+//        ss << "" << boost::errinfo_errno(errno) << boost::errinfo_file_name(path);
+        CHM_THROW_EXCEPTION(file_read_error, boost::to_string(boost::errinfo_errno(errno)));
+    };
 
-    LOG_VERBOSE << "Parsing file " + path;
+    SPDLOG_DEBUG("Parsing file {}", path);
     bool done = false;
     token.set_regex("[^,\\r\\n\\s]+"); //anything but whitespace or ,
     //read in the file, skip any blank lines at the top of the file
@@ -380,10 +376,7 @@ void timeseries::open(std::string path)
                         _variables[*headerItr].push_back(boost::lexical_cast<double>(doubles[0]));
                     } catch (...)
                     {
-                        BOOST_THROW_EXCEPTION(forcing_badcast()
-                                << errstr_info("Failed to cast " + doubles[0] + " to a double.")
-                                << boost::errinfo_file_name(path)
-                                );
+                        CHM_THROW_EXCEPTION(forcing_badcast, "Failed to cast " + doubles[0] + " to a double. " + path);
                     }
                 } else if ((dates = dateTime.tokenize<std::string>(*itr)).size() == 1)
                 {
@@ -398,10 +391,8 @@ void timeseries::open(std::string path)
                 else
                 {
                     //something has gone horribly wrong
-                    BOOST_THROW_EXCEPTION(forcing_no_regexmatch()
-                            << errstr_info("Unable to match any regex for " + *itr + ". Line: " + std::to_string(lines))
-                            << boost::errinfo_file_name(path)
-                            );
+                    CHM_THROW_EXCEPTION(forcing_no_regexmatch,"Unable to match any regex for " + *itr + ". Line: " + std::to_string(lines) + path);
+
                 }
 
                 //next header
@@ -411,10 +402,7 @@ void timeseries::open(std::string path)
             }
             if (cols_so_far != _cols)
             {
-                BOOST_THROW_EXCEPTION(forcing_badcast()
-                        << errstr_info("Expected " + std::to_string(_cols) + " columns on line " + std::to_string(_rows) )
-                        << boost::errinfo_file_name(path)
-                        );
+                CHM_THROW_EXCEPTION(forcing_badcast,"Expected " + std::to_string(_cols) + " columns on line " + std::to_string(_rows) + path);
             }
             _rows++;
         }
@@ -431,7 +419,7 @@ void timeseries::open(std::string path)
     //	- Time steps are equal
 
     //get iters for each variables
-    LOG_VERBOSE << "Read in " << _variables.size() << " variables";
+    SPDLOG_DEBUG("Read in {} variables", _variables.size());
     std::string* headerItems = new std::string[_variables.size()];
 
     int i = 0;
@@ -452,19 +440,16 @@ void timeseries::open(std::string path)
         //compare all columns to date length
         auto res = _variables.find( headerItems[l]);
         if (res == _variables.end())
-            BOOST_THROW_EXCEPTION(forcing_lookup_error()
-                << errstr_info(std::string("Failed to find ") + headerItems[l])
-                << boost::errinfo_file_name(path)
-                );
+        {
+            CHM_THROW_EXCEPTION(forcing_lookup_error, std::string("Failed to find ") + headerItems[l] + path);
+        }
 
         //check all cols are the same size as the first col
-        LOG_VERBOSE << "Column " + headerItems[l] + " length=" + boost::lexical_cast<std::string>( res->second.size()), + "expected=" + boost::lexical_cast<std::string>(d_length);
         if (d_length != res->second.size())
         {
-            LOG_ERROR << "Col " + headerItems[l] + " is a different size. Expected size="+boost::lexical_cast<std::string>(d_length);
-            BOOST_THROW_EXCEPTION(forcing_lookup_error()
-                << errstr_info("Col " + headerItems[l] + " is a different size. Expected size="+boost::lexical_cast<std::string>(d_length))
-                << boost::errinfo_file_name(path));
+            SPDLOG_ERROR("Col {} is a different size. Expected size={}", headerItems[l], boost::lexical_cast<std::string>(d_length));
+            CHM_THROW_EXCEPTION(forcing_lookup_error, "Col " + headerItems[l] + " is a different size. Expected size="+boost::lexical_cast<std::string>(d_length)+path);
+
         }
         
     }
@@ -489,11 +474,9 @@ void timeseries::open(std::string path)
                 std::stringstream act_ts;
                 act_ts << actual_ts;
 
-                BOOST_THROW_EXCEPTION(forcing_lookup_error()
-                                              << errstr_info("On line " + std::to_string(i + 1) +
+                CHM_THROW_EXCEPTION(forcing_lookup_error,"On line " + std::to_string(i + 1) +
                                                              " the timestep is inconsistent with dt. Expected "
-                                                             + expected_ts.str() + " got " + act_ts.str())
-                                              << boost::errinfo_file_name(path));
+                                                             + expected_ts.str() + " got " + act_ts.str() + path);
             }
         }
     }
@@ -532,9 +515,9 @@ void timeseries::to_file(std::string file)
     out.open(file.c_str());
 //    out << std::fixed << std::setprecision(8);
     if (!out.is_open())
-        BOOST_THROW_EXCEPTION(file_read_error()
-            << boost::errinfo_errno(errno)
-            << boost::errinfo_file_name(file));
+    {
+        CHM_THROW_EXCEPTION(file_read_error, boost::to_string(boost::errinfo_errno(errno)) + file);
+    }
 
     
     std::string* headerItems = new std::string[_variables.size()];

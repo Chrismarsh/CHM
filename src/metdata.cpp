@@ -44,9 +44,11 @@ metdata::~metdata()
 void metdata::load_from_netcdf(const std::string& path, const triangulation::bounding_box* box, std::map<std::string, boost::shared_ptr<filter_base> > filters)
 {
     if(_mesh_proj4 == "")
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Met loader not initialized with proj4 string" ));
+    {
+        CHM_THROW_EXCEPTION(forcing_error, "Met loader not initialized with proj4 string");
+    }
 
-    LOG_DEBUG << "Found NetCDF file";
+    SPDLOG_DEBUG("Found NetCDF file");
 
     _use_netcdf = true;
     _nc = std::make_unique<netcdf>();
@@ -73,7 +75,7 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
 
     if(err)
     {
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
+        CHM_THROW_EXCEPTION(forcing_error, "Failure importing mesh proj4 string");
     }
     OGRCoordinateTransformation* coordTrans =  nullptr;
     if(!_is_geographic)
@@ -101,15 +103,15 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
         _nstations = _nc->get_xsize() * _nc->get_ysize();
         _stations.resize(_nstations);
 
-        LOG_DEBUG << "Grid is (y)" << _nc->get_ysize() << " by (x)" << _nc->get_xsize();
+        SPDLOG_DEBUG( "Grid is (y) {} by (x) {}", _nc->get_ysize(),  _nc->get_xsize());
 
-        LOG_DEBUG << "Loading lat/long grid...";
+        SPDLOG_DEBUG("Loading lat/long grid...");
 
         auto lat = _nc->get_lat();
         auto lon = _nc->get_lon();
         auto e = _nc->get_z();
 
-        LOG_DEBUG << "Initializing datastructure";
+        SPDLOG_DEBUG("Initializing datastructure");
 
         // #pragma omp parallel for
         // hangs, unclear why, critical sections around the json and gdal calls
@@ -150,8 +152,7 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
                     //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
                     if (!coordTrans->Transform(1, &longitude, &latitude))
                     {
-                        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
-                            "Station=" + station_name + ": unable to convert coordinates to mesh format."));
+                        CHM_THROW_EXCEPTION(forcing_error, "Station=" + station_name + ": unable to convert coordinates to mesh format.");
                     }
                 }
 
@@ -194,7 +195,7 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
     } catch(netCDF::exceptions::NcException& e)
     {
         OGRCoordinateTransformation::DestroyCT(coordTrans);
-        BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(e.what()));
+        CHM_THROW_EXCEPTION(forcing_error, e.what());
     }
 
     OGRCoordinateTransformation::DestroyCT(coordTrans);
@@ -207,7 +208,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
 {
     if(_mesh_proj4 == "")
     {
-        CHM_THROW_EXCEPTION(config_error,"Metdata has not been initialized with the mesh and has no CRS.");
+        CHM_THROW_EXCEPTION(config_error, "Metdata has not been initialized with the mesh and has no CRS.");
     }
 
     // a set of the ids we've loaded, ensure there are no duplicated IDs as there is some assumption we are not loading the same thing twic
@@ -218,7 +219,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         if( (itr.latitude > 90 || itr.latitude < -90) ||
             (itr.longitude > 180 || itr.longitude < -180) )
         {
-            BOOST_THROW_EXCEPTION(forcing_error() << errstr_info("Station " + itr.id + " coordinate is invalid."));
+            CHM_THROW_EXCEPTION(forcing_error, "Station " + itr.id + " coordinate is invalid.");
         }
 
 
@@ -233,15 +234,14 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
             bool err = outsrs.importFromProj4(_mesh_proj4.c_str());
             if(err)
             {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info( "Failure importing mesh proj4 string" ));
+                CHM_THROW_EXCEPTION(forcing_error, "Failure importing mesh proj4 string");
             }
 
             OGRCoordinateTransformation* coordTrans =  OGRCreateCoordinateTransformation(&insrs, &outsrs);
             //CRS created with the “EPSG:4326” use the latitude first, longitude second axis order.
             if (!coordTrans->Transform(1, &itr.longitude, &itr.latitude))
             {
-                BOOST_THROW_EXCEPTION(forcing_error() << errstr_info(
-                    "Station=" + itr.id + ": unable to convert coordinates to mesh format."));
+                CHM_THROW_EXCEPTION(forcing_error, "Station=" + itr.id + ": unable to convert coordinates to mesh format.");
             }
             // ensure we clean this up correctly
             OGRCoordinateTransformation::DestroyCT(coordTrans);
@@ -254,9 +254,13 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
         s->z(itr.elevation);
 
         if(loaded_ids.find(s->ID()) == loaded_ids.end())
+        {
             loaded_ids.insert(s->ID());
+        }
         else
+        {
             CHM_THROW_EXCEPTION(forcing_error, "Stations with duplicated ID (" + s->ID() + ") inserted.");
+        }
 
         // load the ascii data into the timeseries object
         _ascii_stations.insert( std::make_pair(s->ID(), std::make_unique<ascii_data>()));
@@ -305,7 +309,7 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
     if(dts.empty() || !std::all_of(dts.begin(),dts.end(),
                      [&](const auto& r) {return r==dts.front();}) )
     {
-        BOOST_THROW_EXCEPTION(model_init_error() << errstr_info("Input forcing file timesteps are not consistent"));
+        CHM_THROW_EXCEPTION(model_init_error, "Input forcing file timesteps are not consistent");
     }
 
     _dt = dts.front();
@@ -374,9 +378,8 @@ void metdata::check_ts_consistency()
         if (itr.second->_obs.get_date_timeseries().at(0) != _start_time ||
             itr.second->_obs.get_date_timeseries().back() != _end_time)
         {
-            BOOST_THROW_EXCEPTION(forcing_timestep_mismatch()
-                                      <<
-                                      errstr_info("Timestep mismatch at station: " + itr.second->id));
+            CHM_THROW_EXCEPTION(forcing_timestep_mismatch,
+                                     "Timestep mismatch at station: " + itr.second->id);
         }
     }
 }
@@ -388,7 +391,7 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
 {
     if( _dt.total_seconds() == 0)
     {
-        CHM_THROW_EXCEPTION(forcing_error,"dt = 0");
+        CHM_THROW_EXCEPTION(forcing_error, "dt = 0");
     }
     // the netcdf files are simple and don't need this subsetting
     if(!_use_netcdf)

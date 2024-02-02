@@ -33,7 +33,7 @@ Liston_monthly_llra_ta::Liston_monthly_llra_ta(config_file cfg)
 
     depends_from_met("t");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 Liston_monthly_llra_ta::~Liston_monthly_llra_ta()

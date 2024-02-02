@@ -41,7 +41,7 @@ scale_wind_vert::scale_wind_vert(config_file cfg)
     //provides("U_CanMid");
     provides("U_2m_above_srf");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 scale_wind_vert::~scale_wind_vert()

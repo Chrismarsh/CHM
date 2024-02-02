@@ -37,7 +37,7 @@ uniform_wind::uniform_wind(config_file cfg)
 
     provides_vector("wind_direction");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 //Calculates the curvature required

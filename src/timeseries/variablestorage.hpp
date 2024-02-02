@@ -140,7 +140,7 @@ T& variablestorage<T>::operator[](const uint64_t& hash)
 {
     if(!_variable_bphf)
     {
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
+        CHM_THROW_EXCEPTION(module_error, "Variable " + std::to_string(hash) + " does not exist.");
     }
     uint64_t  idx = _variable_bphf->lookup(hash);
 
@@ -148,7 +148,9 @@ T& variablestorage<T>::operator[](const uint64_t& hash)
     //mphf might return an index, but it isn't actually what we want. double check the hash
     if (idx >=  _size ||
         _variables[idx].xxhash != hash )
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + std::to_string(hash) + " does not exist."));
+    {
+        CHM_THROW_EXCEPTION(module_error, "Variable " + std::to_string(hash) + " does not exist.");
+    }
 
     return _variables[idx].value;
 }
@@ -158,7 +160,7 @@ T& variablestorage<T>::operator[](const std::string& variable)
 {
     if(!_variable_bphf)
     {
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
+        CHM_THROW_EXCEPTION(module_error, "Variable " + variable + " does not exist.");
     }
 
     uint64_t hash = xxh64::hash (variable.c_str(), variable.length());
@@ -168,7 +170,9 @@ T& variablestorage<T>::operator[](const std::string& variable)
     //mphf might return an index, but it isn't actually what we want. double check the hash
     if( idx >=  _size ||
         _variables[idx].xxhash != hash)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("Variable " + variable + " does not exist."));
+    {
+        CHM_THROW_EXCEPTION(module_error, "Variable " + variable + " does not exist.");
+    }
 
     return _variables[idx].value;
 }

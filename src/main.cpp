@@ -46,19 +46,24 @@ int main (int argc, char *argv[])
     {
         kernel.end();
     }
-    catch( boost::exception& e)
+    catch(const module_error& e)
     {
         ret = -1;
-        LOG_ERROR << boost::diagnostic_information(e);
+        SPDLOG_ERROR(boost::diagnostic_information(e));
     }
-    catch(std::exception& e)
+    catch(const exception_base& e)
     {
         ret = -1;
-        LOG_ERROR << boost::diagnostic_information(e);
+        SPDLOG_ERROR(boost::diagnostic_information(e));
     }
-    catch( ...)
+    catch(const std::exception& e)
     {
-       LOG_ERROR << "Unknown exception";
+        ret = -1;
+        SPDLOG_ERROR(boost::diagnostic_information(e));
+    }
+    catch(...)
+    {
+       SPDLOG_ERROR("Unknown exception");
        ret = -1;
     }
 

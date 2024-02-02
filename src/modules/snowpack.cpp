@@ -236,7 +236,7 @@ void Lehning_snowpack::run(mesh_elem &face)
                            "," + std::to_string(face->center().y()) +
                            "," + std::to_string(face->center().z())
                            + ") ID = " + std::to_string(face->cell_local_id);
-            BOOST_THROW_EXCEPTION(module_error() << errstr_info("Snowpack died. Triangle center = " + details));
+            CHM_THROW_EXCEPTION(module_error, "Snowpack died. Triangle center = " + details);
         }
     }
 
@@ -376,7 +376,7 @@ void Lehning_snowpack::init(mesh& domain)
         SSdata.BareSoil_z0 = cfg.get<double>("sno.BareSoil_z0",0.2);
         if (SSdata.BareSoil_z0 == 0.)
         {
-            LOG_WARNING << "[snowpack] BareSoil_z0 == 0, set to 0.2";
+            SPDLOG_WARN("[snowpack] BareSoil_z0 == 0, set to 0.2");
             SSdata.BareSoil_z0 = 0.2;
         }
 

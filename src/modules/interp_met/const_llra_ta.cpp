@@ -32,7 +32,7 @@ const_llra_ta::const_llra_ta(config_file cfg)
 
     depends_from_met("t");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 const_llra_ta::~const_llra_ta()
@@ -50,7 +50,7 @@ void const_llra_ta::init(mesh& domain)
         auto& d = face->make_module_data<const_llra_ta::data>(ID);
         d.interp.init(global_param->interp_algorithm,face->stations().size() );
     }
-    LOG_DEBUG << "Successfully init module " << this->ID;
+    SPDLOG_DEBUG("Successfully init module {}",this->ID);
 
 }
 void const_llra_ta::run(mesh_elem& face)

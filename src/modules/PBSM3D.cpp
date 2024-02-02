@@ -130,7 +130,9 @@ PBSM3D::PBSM3D(config_file cfg) : module_base("PBSM3D", parallel::domain, cfg)
     use_subgrid_topo_V2 = cfg.get("use_subgrid_topo_V2", false);
 
     if (use_exp_fetch && use_tanh_fetch)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3d: Cannot specify both exp_fetch and tanh_fetch"));
+    {
+        CHM_THROW_EXCEPTION(module_error, "PBSM3d: Cannot specify both exp_fetch and tanh_fetch");
+    };
 
     if (use_exp_fetch || use_tanh_fetch)
         depends("fetch");
@@ -235,7 +237,9 @@ void PBSM3D::init(mesh& domain)
     // 1–19, doi:10.1029/2007WR006545.
 
     if (settling_velocity < 0)
-        BOOST_THROW_EXCEPTION(module_error() << errstr_info("PBSM3D settling velocity must be positive"));
+    {
+        CHM_THROW_EXCEPTION(module_error, "PBSM3D settling velocity must be positive");
+    };
 
     do_sublimation = cfg.get("do_sublimation", true);
     do_lateral_diff = cfg.get("do_lateral_diff", true);
@@ -255,8 +259,7 @@ void PBSM3D::init(mesh& domain)
 
     if (rouault_diffusion_coeff)
     {
-        LOG_WARNING << "rouault_diffusion_coef overrides const "
-            "snow_diffusion_const values.";
+        SPDLOG_WARN( "rouault_diffusion_coef overrides const snow_diffusion_const values.");
     }
 
     n_non_edge_tri = 0;
@@ -264,7 +267,7 @@ void PBSM3D::init(mesh& domain)
     // Size of the domain
     size_t ntri = domain->size_faces();
 
-    LOG_DEBUG << "#face=" << ntri;
+    SPDLOG_DEBUG("#face={}",ntri);
 
     // **************************************************************
     // **************************************************************
@@ -280,7 +283,7 @@ void PBSM3D::init(mesh& domain)
 
         if (!face->has_vegetation() && enable_veg)
         {
-            LOG_ERROR << "Vegetation is enabled, but no vegetation parameter was found.";
+            SPDLOG_ERROR("Vegetation is enabled, but no vegetation parameter was found.");
         }
         if (face->has_vegetation() && enable_veg)
         {
@@ -397,7 +400,7 @@ void PBSM3D::init(mesh& domain)
 void PBSM3D::run(mesh& domain)
 {
 
-    LOG_DEBUG << "PBSM: ";
+    SPDLOG_DEBUG("PBSM: ");
 
     // needed for linear system offsets
     size_t ntri = domain->size_faces();
@@ -1429,19 +1432,19 @@ void PBSM3D::run(mesh& domain)
         try
         {
             auto suspension_results = suspension_NNP->Solve();
-            LOG_DEBUG << "  suspension (isolated) iterations: " << suspension_results.numIters << " residual: " << suspension_results.residual;
+            SPDLOG_DEBUG("  suspension (isolated) iterations: {} residual: {} ", suspension_results.numIters, suspension_results.residual);
         } catch(const Belos::StatusTestError& e)
         {
             int rank = 0;
 #ifdef USE_MPI
             rank = domain->_comm_world.rank();
 #endif
-            LOG_ERROR << "Rank " << rank << " suspension_rhs_max=" << suspension_rhs_max << " and suspension_present_threshold=" << suspension_present_threshold;
-            std::string prefix = "suspension.rank" + std::to_string(rank);
+            SPDLOG_ERROR( "Rank {} suspension_rhs_max={} and suspension_present_threshold={}", rank, suspension_rhs_max, suspension_present_threshold);
+//            std::string prefix = "suspension.rank" + std::to_string(rank);
 //            suspension_NNP->writeSystemMatrixMarket(prefix);
-            LOG_ERROR << e.what();
+            SPDLOG_ERROR(e.what());
             suspension_present = false;
-//            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
+            CHM_THROW_EXCEPTION(module_error, e.what());
         }
 
 
@@ -1452,7 +1455,7 @@ void PBSM3D::run(mesh& domain)
 
     } // if suspension_present fails
     else {
-        LOG_DEBUG << "  No suspended snow.";
+        SPDLOG_DEBUG("  No suspended snow.");
     }
 
     // Note we still have to do the following if there is no suspended snow.
@@ -1537,7 +1540,7 @@ void PBSM3D::run(mesh& domain)
 
         if(is_nan(V))
         {
-            LOG_DEBUG << "Triangle " << face->cell_global_id << " area is nan";
+            SPDLOG_DEBUG("Triangle {} area is nan", face->cell_global_id);
         }
         // Diagonal element
         deposition_NNP->matrixReplaceGlobalValues(global_row, global_row, V);
@@ -1560,11 +1563,11 @@ void PBSM3D::run(mesh& domain)
 
                 if(is_nan(Qtj))
                 {
-                    LOG_DEBUG << "udotm >0 Qtj is nan";
+                    SPDLOG_DEBUG("udotm >0 Qtj is nan");
                 }
                 if(is_nan(Qsj))
                 {
-                    LOG_DEBUG << "udotm >0 Qsj is nan";
+                    SPDLOG_DEBUG("udotm >0 Qsj is nan");
                 }
             }
             else // pointing into the wind, use upwind as donor
@@ -1585,7 +1588,7 @@ void PBSM3D::run(mesh& domain)
                     {
                         //todo: remove this
                         Qsj = 0;
-                        LOG_DEBUG <<"udotm <0 neigh Qsj is nan";
+                        SPDLOG_DEBUG("udotm <0 neigh Qsj is nan");
                     }
                 }
                 else
@@ -1596,7 +1599,7 @@ void PBSM3D::run(mesh& domain)
 
                     if(is_nan(Qsj))
                     {
-                        LOG_DEBUG << "udotm <0 non neigh Qsj is nan" ;
+                        SPDLOG_DEBUG("udotm <0 non neigh Qsj is nan");
                     }
                 }
             }
@@ -1611,11 +1614,11 @@ void PBSM3D::run(mesh& domain)
 
                 if(is_nan(eps))
                 {
-                    LOG_DEBUG << "eps is nan!";
+                    SPDLOG_DEBUG("eps is nan!");
                 }
                 if(is_nan(dx[j]))
                 {
-                    LOG_DEBUG << "dx is nan!";
+                    SPDLOG_DEBUG("dx is nan!");
                 }
                 // diagonal entry
                 deposition_NNP->matrixSumIntoGlobalValues(global_row, global_row, eps * E[j] / dx[j]);
@@ -1628,27 +1631,27 @@ void PBSM3D::run(mesh& domain)
             double val = -E[j] * (Qtj + Qsj) * udotm[j];
             if( is_nan(val) )
             {
-                LOG_DEBUG << "Detected val is nan:";
+                SPDLOG_DEBUG("Detected val is nan:");
 		domain->print_ghost_neighbor_info();
 
-                LOG_DEBUG << "\tSusp: " << Qtj << " salt: "<< Qsj;
+                SPDLOG_DEBUG("\tSusp: {} salt: {}", Qtj, Qsj);
 
-                LOG_DEBUG << "\ttri global id: " << face->cell_global_id;
+                SPDLOG_DEBUG("\ttri global id: {}",face->cell_global_id);
                 (*face)["global_cell_id"_s] = face->cell_global_id;
-                LOG_DEBUG << "\tlocal_cell_id: " << face->cell_local_id;
-                LOG_DEBUG << "\tis_ghost: " << face->is_ghost;	
-                LOG_DEBUG << "\towner: " << face->owner;
+                SPDLOG_DEBUG("\tlocal_cell_id: {}",face->cell_local_id);
+                SPDLOG_DEBUG("\tis_ghost: {}",face->is_ghost);
+                SPDLOG_DEBUG("\towner: {}",face->owner);
                 for(int i =0; i < 3; i++)
                 {
 
-                    LOG_DEBUG << "\t Neigh " << i << " information:";
-                    LOG_DEBUG << "\t\tcell_global_id: " << face->neighbor(i)->cell_global_id;
+                    SPDLOG_DEBUG("\t Neigh {} information:", i);
+                    SPDLOG_DEBUG("\t\tcell_global_id: {}",face->neighbor(i)->cell_global_id);
 
-                    LOG_DEBUG << "\t\tqsalt: " << face->neighbor(i)->operator[]("Qsalt"_s);
-                    LOG_DEBUG << "\t\tis_ghost: "<<face->neighbor(i)->is_ghost;
-                    LOG_DEBUG << "\t\towner: "<<face->neighbor(i)->owner;
+                    SPDLOG_DEBUG("\t\tqsalt: {}",face->neighbor(i)->operator[]("Qsalt"_s));
+                    SPDLOG_DEBUG("\t\tis_ghost: {}", face->neighbor(i)->is_ghost);
+                    SPDLOG_DEBUG("\t\towner: {}", face->neighbor(i)->owner);
                 }
-                LOG_DEBUG << "-------------------------------------------------";
+                SPDLOG_DEBUG("-------------------------------------------------");
             }
             deposition_NNP->rhsSumIntoGlobalValue(global_row,val);
         }
@@ -1683,23 +1686,23 @@ void PBSM3D::run(mesh& domain)
         try
         {
             auto deposition_results = deposition_NNP->Solve();
-            LOG_DEBUG << "  deposition (isolated) iterations: " << deposition_results.numIters << " residual: " << deposition_results.residual;
+            SPDLOG_DEBUG("  deposition (isolated) iterations: {} residual: {}", deposition_results.numIters, deposition_results.residual);
         } catch(Belos::StatusTestError& e)
         {
             int rank = 0;
 #ifdef USE_MPI
             rank = domain->_comm_world.rank();
 #endif
-            LOG_ERROR << "Rank " << rank << " deposition_rhs_max=" << deposition_rhs_max << " and deposition_present_threshold="<<deposition_present_threshold;
-            LOG_ERROR << "Rank " << rank << " suspension_rhs_max=" << suspension_rhs_max << " and suspension_present_threshold="<<suspension_present_threshold;
-            std::string prefix = "deposition.rank" + std::to_string(rank);
+            SPDLOG_ERROR("Rank {} deposition_rhs_max={} and deposition_present_threshold={}", rank, deposition_rhs_max, deposition_present_threshold);
+            SPDLOG_ERROR("Rank {} suspension_rhs_max={} and suspension_present_threshold={}", rank, suspension_rhs_max, suspension_present_threshold);
+
+//            std::string prefix = "deposition.rank" + std::to_string(rank);
 //            deposition_NNP->writeSystemMatrixMarket(prefix);
-            LOG_ERROR << e.what();
-            return;
-//            BOOST_THROW_EXCEPTION(module_error() << errstr_info(e.what()));
+            SPDLOG_ERROR(e.what());
+
+//            return;
+            CHM_THROW_EXCEPTION(module_error, e.what());
         }
-
-
 
         // auto deposition_sol_array = deposition_solution->get1dView();
         auto deposition_sol_array = deposition_NNP->getSolutionView();
@@ -1738,7 +1741,7 @@ void PBSM3D::run(mesh& domain)
 
     } // if deposition_present fails
     else {
-        LOG_DEBUG << "  No deposited snow.";
+        SPDLOG_DEBUG("  No deposited snow.");
     }
 
 

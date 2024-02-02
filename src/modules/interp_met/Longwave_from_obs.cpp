@@ -31,7 +31,7 @@ Longwave_from_obs::Longwave_from_obs(config_file cfg)
     provides("ilwr");
     depends_from_met("Qli");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 Longwave_from_obs::~Longwave_from_obs()

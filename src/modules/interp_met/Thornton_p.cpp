@@ -37,7 +37,7 @@ Thornton_p::Thornton_p(config_file cfg)
     apply_cosine_correction = cfg.get("apply_cosine_correction",false);
 
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 void Thornton_p::init(mesh& domain)
 {

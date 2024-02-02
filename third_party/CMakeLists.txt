@@ -22,7 +22,6 @@ target_link_libraries(SNOWPACK PUBLIC
     Boost::system
     Boost::filesystem
     Boost::date_time
-    Boost::log
     Boost::thread
     Boost::regex
     Boost::iostreams
@@ -41,7 +40,6 @@ add_library(SNOBAL OBJECT
 target_link_libraries(SNOBAL PUBLIC
     Func::Func
     Boost::headers
-    Boost::log
 )
 if(OpenMP_FOUND)
     target_link_libraries(SNOBAL PUBLIC OpenMP::OpenMP_CXX)

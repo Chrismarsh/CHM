@@ -32,7 +32,7 @@ sub_grid::sub_grid(config_file cfg)
 
     provides("snowcoverfraction");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 sub_grid::~sub_grid()

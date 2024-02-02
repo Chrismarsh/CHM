@@ -41,7 +41,7 @@ slope_iswr::slope_iswr(config_file cfg)
 
     optional("shadow");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 
     assume_no_slope = cfg.get("no_slope",false);
 }

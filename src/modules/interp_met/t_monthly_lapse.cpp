@@ -33,7 +33,7 @@ t_monthly_lapse::t_monthly_lapse(config_file cfg)
 
     depends_from_met("t");
 
-    LOG_DEBUG << "Successfully instantiated module " << this->ID;
+    SPDLOG_DEBUG("Successfully instantiated module {}",this->ID);
 }
 
 t_monthly_lapse::~t_monthly_lapse()
