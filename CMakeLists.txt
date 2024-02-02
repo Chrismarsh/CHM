@@ -38,9 +38,9 @@ message(STATUS "This is an MPI build? ${USE_MPI}")
 
 
 
-# TODO: Link to the docs describing the migration
+
 if(BUILD_WITH_CONAN)
-    message(FATAL_ERROR "Building CHM with conan is no longer supported in favour of using spack. Please revise build env accordingly")
+    message(FATAL_ERROR "Building CHM with conan is no longer supported in favour of using spack. Please revise build env accordingly.\n https://chm.readthedocs.io/en/dev/build.html")
 endif()
 
 if(NOT USE_MPI)
