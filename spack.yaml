@@ -10,7 +10,7 @@ spack:
 #  - vtk: [ vtk@9.2.6 ^mesa~llvm ]
 #    when: '"ubuntu" in os'
   specs:
-  - boost@1.83.0+system+filesystem+date_time+log+thread+regex+iostreams+program_options+mpi+serialization
+  - boost@1.83.0+system+filesystem+date_time+thread+regex+iostreams+program_options+mpi+serialization
   - cgal@5.5.2+header_only
   - hdf5@1.14.3+cxx
   - netcdf-cxx4@4.3.1
