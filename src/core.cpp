@@ -918,6 +918,10 @@ void core::config_output(pt::ptree &value)
                 out.face->_debug_ID = ID;
                 ++ID;
             }
+            else
+            {
+                SPDLOG_WARN("Output point {} was not found in this rank's mesh", out.name);
+            }
         }
         else if (out_type == "mesh")
         {
