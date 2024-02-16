@@ -282,7 +282,7 @@ class preprocessingTriangulation : public triangulation
         }
 
         SPDLOG_DEBUG("MPI Process {} : start {}, end {}, number {}",
-                        mpi_rank, face_start_id, face_end_idx, _local_faces.size());
+                        mpi_rank, face_start_idx, face_end_idx, _local_faces.size());
     }
     void read_h5(const std::string& mesh_filename)
     {
@@ -448,7 +448,7 @@ class preprocessingTriangulation : public triangulation
                     CHM_THROW_EXCEPTION(mesh_error, "Created a mesh with 0 elements!");
                 }
 
-                SPDLOG_DEBUG("Created a mesh with {} triangles", size_faces())
+                SPDLOG_DEBUG("Created a mesh with {} triangles", size_faces());
 
             }
 
@@ -1215,7 +1215,7 @@ class preprocessingTriangulation : public triangulation
                 }
             }
 
-            SPDLOG_DEBUG("This mesh partition has {} unique vertexes", vertex_global_id.size())
+            SPDLOG_DEBUG("This mesh partition has {} unique vertexes", vertex_global_id.size());
             // build a list of all the above identified vertexes and set their local id
             std::vector<Delaunay::Vertex_handle> local_vertexes; // vertexes that this part of the mesh needs
             local_vertexes.resize(vertex_global_id.size());
@@ -1531,7 +1531,7 @@ int main(int argc, char* argv[])
 
     if (vm.count("standalone"))
     {
-        SPDLOG_WARN( << "Standalone option enabled. This will not write ghost faces and is intended to write a specific "
+        SPDLOG_WARN( "Standalone option enabled. This will not write ghost faces and is intended to write a specific "
                        "rank as a standalone mesh for debugging.");
     }
 
