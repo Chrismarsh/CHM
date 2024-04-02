@@ -35,6 +35,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 
 #include <boost/variant.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/utility.hpp>
