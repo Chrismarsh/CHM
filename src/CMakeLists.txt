@@ -203,7 +203,6 @@ if(BUILD_WITH_CONAN)
 endif()
 
 
-add_compile_definitions(SPDLOG_FMT_EXTERNAL)
 message("-- Final compile: ${CHM_BUILD_FLAGS}")
 
 add_library(CHMmath OBJECT
