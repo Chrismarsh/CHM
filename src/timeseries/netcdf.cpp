@@ -303,7 +303,7 @@ void netcdf::open_GEM(const std::string &file)
             ygrid = itr.second.getSize();
     }
 
-    SPDLOG_DEBUG("NetCDF grid is {} (x) by {} (y) {}", xgrid, ygrid);
+    SPDLOG_DEBUG("NetCDF grid is {} (x) by {} (y)", xgrid, ygrid);
 
 
 }

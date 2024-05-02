@@ -10,6 +10,9 @@ cmake_policy(SET CMP0074 NEW)
 # set RPATH ON
 cmake_policy(SET CMP0042 NEW)
 
+# Use _ROOT
+cmake_policy(SET CMP0144 NEW)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -36,15 +39,12 @@ option(BUILD_DOCS "Builds documentation" OFF)
 message(STATUS "This is an MPI build? ${USE_MPI}")
 
 
-
-
-
 if(BUILD_WITH_CONAN)
     message(FATAL_ERROR "Building CHM with conan is no longer supported in favour of using spack. Please revise build env accordingly.\n https://chm.readthedocs.io/en/dev/build.html")
 endif()
 
 if(NOT USE_MPI)
-    message(FATAL_ERROR "Building CHM wihtout MPI support is no longer supported")
+    message(FATAL_ERROR "Building CHM without MPI support is no longer supported")
 endif()
 
 option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
@@ -128,47 +128,27 @@ endmacro()
 
 # Need to check for MPI before building external libraries
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran) # MPI_C is needed for the mpi that HDF can bring in
-if(MPI_FOUND AND USE_MPI)
-    message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
-    add_definitions(-DUSE_MPI)
-else()
-  message(WARNING "MPI not enabled. Building for single process.")
-endif()
 
-if(USE_MPI AND NOT MPI_FOUND)
-    message(FATAL_ERROR "MPI was asked for, but not found")
-endif()
+message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
+add_definitions(-DUSE_MPI)
+
 
 set(Boost_USE_MULTITHREADED ON) #https://stackoverflow.com/a/58085634/410074
-if(USE_MPI AND MPI_FOUND)
-    find_package(Boost
-            1.71.0
-            COMPONENTS
-            system
-            filesystem
-            date_time
-            thread
-            regex
-            iostreams
-            program_options
-            mpi
-            serialization
-            REQUIRED)
-else()
-    find_package(Boost
-            1.71.0
-            COMPONENTS
-            system
-            filesystem
-            date_time
-            log
-            thread
-            regex
-            iostreams
-            program_options
-            REQUIRED
-            )
-endif()
+
+find_package(Boost
+        1.83.0
+        COMPONENTS
+        system
+        filesystem
+        date_time
+        thread
+        regex
+        iostreams
+        program_options
+        mpi
+        serialization
+        REQUIRED)
+
 
 #need this for calling the logger from multiple modules
 add_definitions(-DBOOST_LOG_DYN_LINK)
@@ -178,7 +158,7 @@ add_definitions(-DBOOST_LOG_DYN_LINK)
 #   ‘#pragma message: The practice of declaring the Bind placeholders (_1, _2, ...) in the global namespace is deprecated. Please use <boost/bind/bind.hpp> + using namespace boost::placeholders, or define BOOST_BIND_GLOBAL_PLACEHOLDERS to retain the current behavior.’
 add_definitions(-DBOOST_BIND_GLOBAL_PLACEHOLDERS)
 
-
+find_package(TBB REQUIRED CONFIG)
 find_package(CGAL 5.0 REQUIRED)
 
 # There is a bug in clang <11 (so far), that has a compiler parse error w/ boost 1.71
@@ -261,8 +241,9 @@ create_target(ARMADILLO)
 
 find_package(Eigen3 REQUIRED NO_MODULE)
 
+set(BLA_VENDOR OpenBLAS)
 find_package(BLAS REQUIRED)
-create_target(BLAS) # cmake < 3.18
+
 
 
 find_package(Sparsehash)
@@ -297,7 +278,7 @@ create_target(PROJ)
 
 find_package (Threads REQUIRED)
 
-find_package(TBB REQUIRED)
+
 
 find_package(GSL REQUIRED)
 create_target(GSL)
@@ -307,7 +288,8 @@ create_target(HDF5)
 
 find_package(NetCDF COMPONENTS C CXX REQUIRED)
 
-find_package(spdlog REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+add_compile_definitions(SPDLOG_FMT_EXTERNAL)
 
 #To avoid issues #104, newer VTK version needs to be used.
 #8.1+ needs to be used so that proj4 name-collisions are resolved
@@ -345,7 +327,7 @@ else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
-find_package(Trilinos 14.0 REQUIRED)
+find_package(Trilinos 15.0 REQUIRED)
 create_target(Trilinos)
 
 #setup src dirs

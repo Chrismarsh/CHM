@@ -202,6 +202,10 @@ if(BUILD_WITH_CONAN)
 	endif()
 endif()
 
+
+add_compile_definitions(SPDLOG_FMT_EXTERNAL)
+message("-- Final compile: ${CHM_BUILD_FLAGS}")
+
 add_library(CHMmath OBJECT
   math/LinearAlgebra.cpp
   )
@@ -237,11 +241,13 @@ if(MPI_FOUND AND USE_MPI)
 endif()
 
 
+
 target_compile_features(CHM PRIVATE cxx_std_14)
 target_link_libraries(
 		CHM
 		CHMmath
 		${EXT_TARGETS}
+		${THIRD_PARTY_TARGETS}
 		${THIRD_PARTY_TARGETS}
 )
 set_target_properties(CHM

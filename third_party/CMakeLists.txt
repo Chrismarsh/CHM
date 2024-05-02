@@ -48,7 +48,6 @@ target_include_directories(SNOBAL PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/    # needed for logger.hpp... that's a funny dependence
 )
 
-message(FATAL "${CHM_BUILD_FLAGS}")
 
 set_target_properties( SNOBAL
         PROPERTIES
