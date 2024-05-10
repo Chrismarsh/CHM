@@ -50,13 +50,22 @@ FSM::FSM(config_file cfg)
     optional("delta_avalanche_snowdepth");
     optional("delta_avalanche_mass");
 
-    provides("swe");
-    provides("snowdepthavg");
-    provides("snowdepthavg_vert");
-    provides("E");
-    provides("H");
+    //diags
+    provides("H"); // Sensible heat flux to the atmosphere (W/m^2)
+    provides("E"); // Latent heat flux to the atmosphere (W/m^2)
+    provides("ilwr_out"); // Outgoing LW radiation (W/m^2)
+    provides("melt_rate"); // Surface melt rate (kg/m^2/s)
+    provides("roff"); // Runoff from snow (kg/m^2/s)
+
+    provides("snowdepthavg"); // Snow depth (m)
+    provides("snowdepthavg_vert"); // Snow depth, slope corrected
+    provides("swe"); // Total snow mass on ground (kg/m^2)
+    provides("subl"); // Sublimation rate (kg/m^2/s)
+
+
+
     provides("sum_snowpack_subl");
-    provides("subl");
+
     provides("snow_albedo");
 
     provides("Nsnow");
@@ -282,13 +291,20 @@ void FSM::run(mesh_elem& face)
         &d.diag.SWout, &d.diag.SWsub, &d.diag.Usub,  d.diag.Wflx
         );
 
-    (*face)["swe"_s] = d.diag.snw;
-    (*face)["snowdepthavg"_s] = d.diag.snd;
-    (*face)["snowdepthavg_vert"_s] = d.diag.snd/std::max(0.001,cos(face->slope()));
-
     (*face)["H"_s] = d.diag.H;
     (*face)["E"_s] = d.diag.LE;
+    (*face)["ilwr_out"_s] = d.diag.LWout;
+    (*face)["LWout"_s] = d.diag.LWout;
+    //LWsub not used
+    (*face)["melt_rate"_s] = d.diag.Melt;
+    (*face)["roff"_s] = d.diag.Roff;
+    (*face)["snowdepthavg"_s] = d.diag.snd;
+    (*face)["swe"_s] = d.diag.snw;
+
+    (*face)["snowdepthavg_vert"_s] = d.diag.snd/std::max(0.001,cos(face->slope()));
+
     (*face)["subl"_s] = d.diag.subl;
+    // svg not used
 
     d.diag.sum_snowpack_subl += d.diag.subl * global_param->dt();
 
@@ -302,7 +318,7 @@ void FSM::run(mesh_elem& face)
 
     (*face)["Nsnow"_s] = d.state.Nsnow;
 
-    (*face)["LWout"_s] = d.diag.LWout;
+
     (*face)["Sliq[0]"_s] = d.state.Sliq[0];
     (*face)["Sliq[1]"_s] = d.state.Sliq[1];
     (*face)["Sliq[2]"_s] = d.state.Sliq[2];
