@@ -13,9 +13,9 @@ cmake_policy(SET CMP0042 NEW)
 # Use _ROOT
 cmake_policy(SET CMP0144 NEW)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+#set(CMAKE_CXX_STANDARD 20)
+#set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(Boost_NO_WARN_NEW_VERSIONS ON)
 
@@ -27,8 +27,8 @@ endif()
 
 # Options. Turn on with 'cmake -Dmyvarname=ON'.
 option(USE_MPI "Enable MPI"  ON )
-option(USE_OMP "Enable OpenMP"  ON )
-option(OMP_SAFE_EXCEPTION "Enables safe exception handling from within OMP regions." ON)
+option(USE_OMP "Enable OpenMP. Use MPI for better parallelism"  OFF )
+option(OMP_SAFE_EXCEPTION "Enables safe exception handling from within OMP regions." OFF)
 option(ENABLE_SAFE_CHECKS "Enable variable map checking. Runtime perf cost. Allows for ensuring a variable is indeed available to be lookedup." ON)
 option(BUILD_TESTS "Build all tests."  OFF ) # Makes boolean 'test' available.
 option(STATIC_ANLAYSIS "Enable PVS static anlaysis" OFF)

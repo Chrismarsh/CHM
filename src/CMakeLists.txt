@@ -241,7 +241,7 @@ endif()
 
 
 
-target_compile_features(CHM PRIVATE cxx_std_14)
+target_compile_features(CHM PRIVATE cxx_std_20)
 target_link_libraries(
 		CHM
 		CHMmath
@@ -327,7 +327,7 @@ add_executable(
 		preprocessing/partition/main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
 		${CHM_SRCS}
 )
-target_compile_features(partition PRIVATE cxx_std_14)
+target_compile_features(partition PRIVATE cxx_std_20)
 
 
 target_link_libraries(
