@@ -131,5 +131,6 @@ public:
 
 // Convenience macro for exception throwing
 #define CHM_THROW_EXCEPTION(exception_type,message) \
-  spdlog::error("[{}:{}:{}] {}", __FILE__, __func__, __LINE__, message); \
-  BOOST_THROW_EXCEPTION( exception_type() << errstr_info( message ) )
+    BOOST_THROW_EXCEPTION( exception_type() << errstr_info( message ) )                                                    \
+//  spdlog::error("[{}:{}:{}] {}", __FILE__, __func__, __LINE__, message); \
+
