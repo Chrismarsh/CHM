@@ -74,8 +74,14 @@ int main (int argc, char *argv[])
         kernel.end();
     try
     {
+
+#if BOOST_VERSION < 107400
+        boost::filesystem::copy_file(kernel.log_file_path,kernel.o_path / "CHM.log", boost::filesystem::copy_option::overwrite_if_exists);
+#else
         boost::filesystem::copy_file(kernel.log_file_path,kernel.o_path / "CHM.log", boost::filesystem::copy_options::overwrite_existing);
-    }
+#endif
+}
+
     catch(...)
     {
 
