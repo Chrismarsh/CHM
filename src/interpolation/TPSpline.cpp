@@ -28,12 +28,21 @@
 //#define FUNC_DEBUG
 #include <func/func.hpp>
 #include "TPSBasis.hpp"
+#include <boost/predef.h>
 
 // Build FunC lookup table for -(log(x)+gamma+gsl_sf_expint_E1(x))
 
 // hardcoded error of 1e-8
-//static func::FailureProofTable<func::UniformEqSpaceInterpTable<3,double>,double> TPSBasis_LUT({TPSBasis<double>}, {1e-5, 32, 0.11111});
+// There is a compiler bug fixed in gcc that interfers with boost 1.85.0 math and frounding-math (needed for cgal)
+// so use the uniform spaced LUT to avoid the proplematic call
+// bug is fixed in  12.4/13.3/14.0
+// see https://github.com/boostorg/math/issues/1133 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=109359
+#if BOOST_COMP_GNUC && BOOST_COMP_GNUC < BOOST_VERSION_NUMBER(13,3,0)
+static func::FailureProofTable<func::UniformEqSpaceInterpTable<3,double>,double> TPSBasis_LUT({TPSBasis<double>}, {1e-5, 32, 0.11111});
+#else
 static func::FailureProofTable<func::NonUniformEqSpaceInterpTable<3,double>,double> TPSBasis_LUT({FUNC_SET_F(TPSBasis,double)}, {1e-5, 32, 0.154207});
+#endif
+
 //static func::DirectEvaluation<double> TPSBasis_LUT({OLD_TPSBasis<double>}, 1e-8, 6500);
 
 
