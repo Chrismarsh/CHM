@@ -10,7 +10,7 @@ spack:
 #  - vtk: [ vtk@9.2.6 ^mesa~llvm ]
 #    when: '"ubuntu" in os'
   specs:
-  - "boost@1.83.0: +system+filesystem+date_time+thread+regex+iostreams+program_options+mpi+serialization"
+  - "boost@1.85.0: +system+filesystem+date_time+thread+regex+iostreams+program_options+mpi+serialization"
   - cgal +header_only
   - hdf5 +cxx
   - netcdf-cxx4
@@ -24,7 +24,7 @@ spack:
   - eigen
   - meteoio
   - func
-  - "trilinos@15.0.0 +mpi +threadsafe +openmp"
+  - "trilinos@15.0.0 +mpi"
   - jemalloc
   - "vtk@9:"
   - spdlog
