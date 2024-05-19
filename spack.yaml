@@ -3,32 +3,38 @@
 # It describes a set of packages to be installed, along with
 # configuration settings.
 spack:
-#  definitions:
+  definitions:
 #  - vtk: [ vtk@9.2.6 ]
 #    when: '"ubuntu" not in os'
 ## has a compilation error in llvm when enabled
 #  - vtk: [ vtk@9.2.6 ^mesa~llvm ]
 #    when: '"ubuntu" in os'
+    - tbb: [intel-tbb]
+      when: '"darwin" in platform'
+    - tbb: [ intel-oneapi-tbb ]
+      when: '"linux" in platform'
   specs:
   - "boost@1.85.0: +system+filesystem+date_time+thread+regex+iostreams+program_options+mpi+serialization"
   - cgal +header_only
   - hdf5 +cxx
-  - netcdf-cxx4
-  - "gdal@3.8: +hdf5 +netcdf"
-  - "proj@9.2.1+curl+tiff"
+  - "netcdf-cxx4@4.3:"
+  - "gdal@3.8 +hdf5 +netcdf"
+  - "proj@9: +curl+tiff"
   - sparsehash
-  - gperftools
+  - "gperftools build_system=autotools"
   - gsl +external-cblas
   - armadillo
-  - intel-oneapi-tbb
+  - [$tbb]
+#  - intel-tbb
   - eigen
   - meteoio
   - func
   - "trilinos@15.0.0 +mpi"
   - jemalloc
-  - "vtk@9:"
+  - "vtk@9.2:"
   - spdlog
   - openblas
+  - "cmake@3.2:"
   view: true
   concretizer:
     unify: true
