@@ -122,6 +122,17 @@ the easy_build scripts needed for missing libraries. They can be installed in a 
 Digitial Alliance Canada
 -----------------------------
 
+To build on Compute Canada stack machines, such as Graham, all dependencies must be built
+from source to ensure the correct optimizations are used.
+
+Only the ``gcc/9.3.0`` compiler in ``StdEnv/2020`` is tested. This can be enabled with
+
+::
+
+   module load gcc/9.3.0
+
+
+
 Ensure the environment is correctly setup
 
 ::
@@ -292,18 +303,6 @@ The high performance allocators may need to be disabled and can be done via
 ``-DUSE_TCMALLOC=FALSE -DUSE_JEMALLOC=FALSE``
 
 
-
-Building on Compute Canada (WestGrid)
-******************************************
-
-To build on Compute Canada stack machines, such as Graham, all dependencies must be built
-from source to ensure the correct optimizations are used. This should be done with the Compute Canada easybuild system.
-
-Only the ``gcc/9.3.0`` compiler in ``StdEnv/2020`` is supported. This can be enabled with
-
-::
-
-   module load gcc/9.3.0
 
 
 
