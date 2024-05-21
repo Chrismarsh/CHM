@@ -24,7 +24,7 @@ spack:
   - "gperftools build_system=autotools"
   - gsl +external-cblas
   - armadillo
-  - [$tbb]
+  - tbb
 #  - intel-tbb
   - eigen
   - meteoio
