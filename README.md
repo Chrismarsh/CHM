@@ -31,7 +31,7 @@ The Canadian Hydrological Model (CHM) is a novel modular unstructured mesh based
 <!-- /MarkdownTOC -->
 
 # Usage
-Details on how to use CHM, as well as more implimentation details, can be found in the [documentation](https://chm.readthedocs.io/en/dev/).
+Details on how to use CHM, as well as more implimentation details, can be found in the [documentation](https://chm.readthedocs.io/).
 
 
 # Motivation
