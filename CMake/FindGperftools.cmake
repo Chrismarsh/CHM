@@ -5,6 +5,7 @@
 #  Gperftools_LIBRARIES   - List of libraries when using Gperftools.
 #  Gperftools_FOUND       - True if Gperftools found.
 
+include (FindPackageHandleStandardArgs)
 
 IF( DEFINED ENV{GperftoolsF_DIR} )
     SET( GperftoolsF_DIR "$ENV{GperftoolsF_DIR}" )
