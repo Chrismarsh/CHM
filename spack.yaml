@@ -13,7 +13,6 @@ spack:
       when: '"darwin" in platform'
     - tbb: [ intel-oneapi-tbb ]
       when: '"linux" in platform'
-
   specs:
   - "boost@1.85.0: +system+filesystem+date_time+thread+regex+iostreams+program_options+mpi+serialization"
   - cgal +header_only
@@ -26,7 +25,6 @@ spack:
   - gsl +external-cblas
   - armadillo
   - tbb
-#  - intel-tbb
   - eigen
   - meteoio
   - "func@master ~openmp"
