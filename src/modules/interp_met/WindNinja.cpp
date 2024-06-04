@@ -284,7 +284,8 @@ void WindNinja::run(mesh& domain)
 
                 if ((*s)["vw_dir"_s] >= 360.0)
                 {
-                    CHM_THROW_EXCEPTION(module_error, "Wind direction >=360, must be on interval [0,360)");
+                    // enforce the criteria that direction must be on interval [0,360)
+                    (*s)["vw_dir"_s] = (*s)["vw_dir"_s] - 360.0;
                 }
 
                 double theta = (*s)["vw_dir"_s] * M_PI / 180.;
