@@ -27,7 +27,7 @@ spack:
   - tbb
   - eigen
   - meteoio
-  - "func@master ~openmp"
+  - "func@2.1: ~openmp"
   - "trilinos@15.0.0 +mpi"
   - jemalloc
   - "vtk@9.2:"
