@@ -186,8 +186,11 @@ bool variablestorage<T>::has(const uint64_t& hash)
 
     // did the table return garbage?
     //mphf might return an index, but it isn't actually what we want. double check the hash
-    if(_variables[idx].xxhash != hash)
+    if(idx > _variables.size() ||
+        _variables[idx].xxhash != hash)
+    {
         return false;
+    }
 
     return true;
 }
