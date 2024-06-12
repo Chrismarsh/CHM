@@ -1163,10 +1163,10 @@ void core::init(int argc, char **argv)
 
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     console_sink->set_level(spdlog::level::debug);
-    console_sink->set_pattern("[%n] [%^%l%$] %v");;
+    console_sink->set_pattern("[%n] [%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
 
     auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_name, true);
-    file_sink->set_pattern("[%n] [%s:%!:%#] [%^%l%$] %v");;
+    file_sink->set_pattern("[%n] [%Y-%m-%d %H:%M:%S.%e] [%s:%!:%#] [%^%l%$] %v");;
     file_sink->set_level(spdlog::level::debug);
 
     spdlog::sinks_init_list sink_list = { file_sink, console_sink };
@@ -1176,9 +1176,9 @@ void core::init(int argc, char **argv)
     spdlog::set_default_logger(std::make_shared<spdlog::logger>("rank " + std::to_string(_comm_world.rank()), spdlog::sinks_init_list({console_sink, file_sink})));
 //    spdlog::set_pattern("[%P] [%s:%!:%#] [%^%l%$] %v");
     spdlog::set_level(spdlog::level::debug); // this is needed as well as the above levels
+    spdlog::flush_on(spdlog::level::debug);
 
     SPDLOG_DEBUG("Logger initialized. Writing to cout and {}",  log_name);
-    SPDLOG_DEBUG("version");
 
 
     _global = boost::make_shared<global>();
@@ -1212,6 +1212,12 @@ void core::init(int argc, char **argv)
         SPDLOG_DEBUG( "SLURM_PROCID = {} ", SLURM_PROCID);
     }
 
+    // check if we are running under PBS
+    const char* PBS_JOB_ID = std::getenv("PBS_JOBID");
+    if(PBS_JOB_ID)
+    {
+        SPDLOG_DEBUG("Detected running under PBS as jobid {}", PBS_JOB_ID);
+    }
 
 
     pt::ptree cfg;
@@ -2329,6 +2335,7 @@ void core::run()
 
             std::string s = std::to_string(std::lround(mt)) + (ms == true ? " ms" : "s");
 
+
             //we need it in seconds now
             if (ms)
             {
@@ -2338,7 +2345,7 @@ void core::run()
             boost::posix_time::ptime pt(boost::posix_time::second_clock::local_time());
             pt = pt + boost::posix_time::seconds(size_t(mt) * (max_ts - current_ts));
 
-            SPDLOG_DEBUG("Avg timestep duration {} \tEstimated completion: {}", s, boost::posix_time::to_simple_string(pt));
+            SPDLOG_DEBUG("Took {}s. Avg duration {} \tEstimated completion: {}", std::lround(timestep/1000), s, boost::posix_time::to_simple_string(pt));
             _global->first_time_step = false;
 
 
