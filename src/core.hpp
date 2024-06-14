@@ -382,6 +382,70 @@ protected:
 
     std::vector<output_info> _outputs;
 
+    // Detects various information about the HPC scheduler we might be run der
+    class hpc_scheduler_info
+    {
+    public:
+
+      boost::posix_time::time_duration max_wallclock; // maximum wallclock in seconds
+      boost::posix_time::ptime wallclock_start; // time we started the simulation at
+      bool has_wallclock_limit;
+
+        hpc_scheduler_info()
+        {
+            max_wallclock = boost::posix_time::seconds(0);
+            has_wallclock_limit = false;
+        }
+
+        /**
+         * If we have a wallclock limit, how much time left?
+         * Only produces a useful delta if has_wallclock_limit = true;
+         * @return
+         */
+        boost::posix_time::time_duration wallclock_remaining()
+        {
+            return max_wallclock - (boost::posix_time::second_clock::local_time()-wallclock_start);
+        }
+
+        void detect()
+        {
+            // Check if we are running under slurm
+            const char* SLURM_JOB_ID = std::getenv("SLURM_JOB_ID");
+            if (SLURM_JOB_ID)
+            {
+                const char* SLURM_TASK_PID = std::getenv("SLURM_TASK_PID"); // The process ID of the task being started.
+                const char* SLURM_PROCID =
+                    std::getenv("SLURM_PROCID"); // The MPI rank (or relative process ID) of the current process
+
+                SPDLOG_DEBUG("Detected running under SLURM as jobid {}", SLURM_JOB_ID);
+                SPDLOG_DEBUG("SLURM_TASK_PID = {}", SLURM_TASK_PID);
+                SPDLOG_DEBUG("SLURM_PROCID = {} ", SLURM_PROCID);
+            }
+
+
+            // check if we are running under PBS
+            const char* PBS_JOB_ID = std::getenv("PBS_JOBID");
+            if(PBS_JOB_ID)
+            {
+                SPDLOG_DEBUG("Detected running under PBS as jobid {}", PBS_JOB_ID);
+            }
+
+            const char* CHM_WALLCLOCK = std::getenv("CHM_WALLCLOCK");
+            if(CHM_WALLCLOCK)
+            {
+                try {
+                    max_wallclock = boost::posix_time::duration_from_string(CHM_WALLCLOCK);
+                    has_wallclock_limit = true;
+                    wallclock_start = boost::posix_time::second_clock::local_time();
+                    SPDLOG_DEBUG("Detected a max wallclock of {}", boost::posix_time::to_simple_string(max_wallclock));
+                } catch (...) {
+                    CHM_THROW_EXCEPTION(chm_error, "The value given for environment variable CHM_WALLCLOCK is invalid");
+                }
+            }
+
+        }
+    } _hpc_scheduler_info;
+
     // Checkpointing options
     class chkptOp
     {
@@ -389,15 +453,25 @@ protected:
         chkptOp():
                     do_checkpoint{false},
                     load_from_checkpoint{false},
-                    on_last{false}{  }
+                    on_last{false},
+                    checkpoint_request_terminate{false}
+        {
+            abort_when_wallclock_left = boost::posix_time::minutes(5);
+        }
 
         boost::filesystem::path ckpt_path; // root path to chckpoint folder
         netcdf in_savestate; // if we are loading from checkpoint
         bool do_checkpoint; // should we check point?
         bool load_from_checkpoint; // are we loading from a checkpoint?
+        // amount of time to give ourselves to bail and checkpoint if we have a wall clock limit
+        boost::posix_time::time_duration abort_when_wallclock_left;
 
+        boost::optional<bool> on_outta_time; // bail when we are out of time
         boost::optional<bool> on_last; //only checkpoint on the last timestep
         boost::optional<size_t> frequency; // frequency of checkpoints
+
+        // used to stop the simulation when we checkpoint when we are outta time
+        bool checkpoint_request_terminate;
 
         /**
          * Should checkpointing occur
@@ -405,7 +479,7 @@ protected:
          * @param is_last_ts
          * @return
          */
-        bool should_checkpoint(size_t current_ts, bool is_last_ts)
+        bool should_checkpoint(size_t current_ts, bool is_last_ts, hpc_scheduler_info& scheduler_info)
         {
             if(!do_checkpoint)
                 return false;
@@ -416,6 +490,18 @@ protected:
             // don't checkpoint on the first ts if we are doing frequency checkpoints
             if( frequency && current_ts !=0 && (current_ts % *frequency ==0) )
                 return true;
+
+            // check if we are running out of time
+            if(on_outta_time && *on_outta_time &&
+                scheduler_info.has_wallclock_limit &&
+                scheduler_info.wallclock_remaining() <= abort_when_wallclock_left
+                )
+            {
+                SPDLOG_DEBUG("Detected wallclock of {} remaining. Triggering checkpoint.",
+                             boost::posix_time::to_simple_string(scheduler_info.wallclock_remaining()));
+                checkpoint_request_terminate = true;
+                return true;
+            }
 
             return false;
         }

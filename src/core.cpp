@@ -331,10 +331,14 @@ void core::config_checkpoint( pt::ptree& value)
             SPDLOG_DEBUG("Checkpointing on last timestep");
         }
 
-        if(!_checkpoint_opts.on_last && !_checkpoint_opts.frequency)
+        _checkpoint_opts.on_outta_time = value.get_optional<bool>("on_wallclock_limit");
+
+        if(!_checkpoint_opts.on_last &&
+            !_checkpoint_opts.frequency)
         {
             CHM_THROW_EXCEPTION(config_error, "Checkpointing is enabled but checkpoint.frequency or checkpoint.on_last are not specified.");
         }
+
 
     }
 
@@ -1200,25 +1204,7 @@ void core::init(int argc, char **argv)
 
     SPDLOG_DEBUG("PID={}",getpid());
 
-    // Check if we are running under slurm
-    const char* SLURM_JOB_ID = std::getenv("SLURM_JOB_ID");
-    if(SLURM_JOB_ID)
-    {
-        const char* SLURM_TASK_PID = std::getenv("SLURM_TASK_PID"); //The process ID of the task being started.
-        const char* SLURM_PROCID = std::getenv("SLURM_PROCID"); // The MPI rank (or relative process ID) of the current process
-
-        SPDLOG_DEBUG("Detected running under SLURM as jobid {}", SLURM_JOB_ID);
-        SPDLOG_DEBUG( "SLURM_TASK_PID = {}", SLURM_TASK_PID);
-        SPDLOG_DEBUG( "SLURM_PROCID = {} ", SLURM_PROCID);
-    }
-
-    // check if we are running under PBS
-    const char* PBS_JOB_ID = std::getenv("PBS_JOBID");
-    if(PBS_JOB_ID)
-    {
-        SPDLOG_DEBUG("Detected running under PBS as jobid {}", PBS_JOB_ID);
-    }
-
+    _hpc_scheduler_info.detect();
 
     pt::ptree cfg;
     try
@@ -2142,7 +2128,10 @@ void core::run()
             }
 
             // save the current state
-            if(_checkpoint_opts.should_checkpoint(current_ts, (max_ts-1) == current_ts)) // -1 because current_ts is 0 indexed
+            if(_checkpoint_opts.should_checkpoint(current_ts,
+                                                   (max_ts-1) == current_ts,
+                                                   _hpc_scheduler_info
+                                                   )) // -1 because current_ts is 0 indexed
             {
                 SPDLOG_DEBUG("Checkpointing...");
 
@@ -2220,9 +2209,13 @@ void core::run()
                         tree);
                 }
 
-
-
                 SPDLOG_DEBUG("Done checkpoint [ {} s]", c.toc<s>());
+
+                // if we checkpointed because we are out of time, we need to stop the simulation
+                if(_checkpoint_opts.checkpoint_request_terminate)
+                {
+                    done = true;
+                }
             }
 
             for (auto &itr : _outputs)
