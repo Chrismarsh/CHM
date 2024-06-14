@@ -430,7 +430,7 @@ protected:
                 SPDLOG_DEBUG("Detected running under PBS as jobid {}", PBS_JOB_ID);
             }
 
-            const char* CHM_WALLCLOCK = std::getenv("CHM_WALLCLOCK");
+            const char* CHM_WALLCLOCK = std::getenv("CHM_WALLCLOCK_LIMIT");
             if(CHM_WALLCLOCK)
             {
                 try {
@@ -456,7 +456,7 @@ protected:
                     on_last{false},
                     checkpoint_request_terminate{false}
         {
-            abort_when_wallclock_left = boost::posix_time::minutes(5);
+            abort_when_wallclock_left = boost::posix_time::minutes(2);
         }
 
         boost::filesystem::path ckpt_path; // root path to chckpoint folder
@@ -465,10 +465,10 @@ protected:
         bool load_from_checkpoint; // are we loading from a checkpoint?
         // amount of time to give ourselves to bail and checkpoint if we have a wall clock limit
         boost::posix_time::time_duration abort_when_wallclock_left;
-
         boost::optional<bool> on_outta_time; // bail when we are out of time
         boost::optional<bool> on_last; //only checkpoint on the last timestep
         boost::optional<size_t> frequency; // frequency of checkpoints
+
 
         // used to stop the simulation when we checkpoint when we are outta time
         bool checkpoint_request_terminate;

@@ -319,7 +319,14 @@ void core::config_checkpoint( pt::ptree& value)
         _checkpoint_opts.ckpt_path = o_path / dir;
         boost::filesystem::create_directories(_checkpoint_opts.ckpt_path);
 
-        _checkpoint_opts.frequency = value.get_optional<size_t>("frequency");
+        // check for the old naming and bail
+        auto tmp = value.get_optional<size_t>("frequency");
+        if(tmp)
+        {
+            CHM_THROW_EXCEPTION(chm_error, "checkpointing.frequency has been renamed to checkpointing.on_frequency");
+        }
+
+        _checkpoint_opts.frequency = value.get_optional<size_t>("on_frequency");
         if (_checkpoint_opts.frequency)
         {
             SPDLOG_DEBUG("Checkpointing every {} timesteps" , *(_checkpoint_opts.frequency));
@@ -331,12 +338,35 @@ void core::config_checkpoint( pt::ptree& value)
             SPDLOG_DEBUG("Checkpointing on last timestep");
         }
 
+        // checkpoint before we reach a wall clock limit
         _checkpoint_opts.on_outta_time = value.get_optional<bool>("on_wallclock_limit");
+        if(_checkpoint_opts.on_outta_time && *(_checkpoint_opts.on_outta_time))
+        {
+            auto tmp = value.get_optional<size_t>("minutes_of_wallclock");
+
+            if(tmp)
+            {
+                _checkpoint_opts.abort_when_wallclock_left = boost::posix_time::minutes(*tmp);
+            }
+
+            SPDLOG_DEBUG("Checkpointing if < {} of wallclock left",
+                         boost::posix_time::to_simple_string(_checkpoint_opts.abort_when_wallclock_left));
+
+            if(!_hpc_scheduler_info.has_wallclock_limit)
+            {
+                SPDLOG_ERROR("Wallclock limit checkpointing is enabled, but no CHM_WALLCLOCK_LIMIT "
+                             "environment variable has been detected.");
+                CHM_THROW_EXCEPTION(chm_error, "Missing wallclock envar required for checkpoint");
+            }
+        }
 
         if(!_checkpoint_opts.on_last &&
-            !_checkpoint_opts.frequency)
+            !_checkpoint_opts.frequency &&
+            !_checkpoint_opts.on_outta_time)
         {
-            CHM_THROW_EXCEPTION(config_error, "Checkpointing is enabled but checkpoint.frequency or checkpoint.on_last are not specified.");
+            SPDLOG_ERROR("Checkpointing is enabled but no `on_*` selection has been specified.\n"
+                         "Please see https://chm.readthedocs.io/en/develop/configuration.html#checkpoint\n");
+            CHM_THROW_EXCEPTION(config_error, "Missing checkpoint options");
         }
 
 
