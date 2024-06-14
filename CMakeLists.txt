@@ -145,6 +145,7 @@ find_package(Boost
         filesystem
         date_time
         thread
+        chrono
         regex
         iostreams
         program_options

@@ -6,15 +6,15 @@ spack:
   definitions:
 #  - vtk: [ vtk@9.2.6 ]
 #    when: '"ubuntu" not in os'
-## has a compilation error in llvm when enabled
-#  - vtk: [ vtk@9.2.6 ^mesa~llvm ]
-#    when: '"ubuntu" in os'
+# has a compilation error in llvm when enabled
+    - vtk: [ vtk@9.2.6 ^mesa~llvm ]
+      when: '"linux" in platform'
     - tbb: [intel-tbb]
       when: '"darwin" in platform'
     - tbb: [ intel-oneapi-tbb ]
       when: '"linux" in platform'
   specs:
-  - "boost@1.85.0: +system+filesystem+date_time+thread+regex+iostreams+program_options+mpi+serialization"
+  - "boost@1.85.0: +system+filesystem+date_time+thread+chrono+regex+iostreams+program_options+mpi+serialization"
   - cgal +header_only
   - hdf5 +cxx
   - "netcdf-cxx4@4.3:"
