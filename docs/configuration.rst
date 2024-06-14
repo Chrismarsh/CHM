@@ -800,7 +800,7 @@ checkpoint
 *************
 
 CHM can save its state after a timestep, allowing CHM to resume from this timestep.
-Further details on the output format can be found in the :ref:Checkpointing section.
+Further details on the output format can be found in the :ref:`checkpointing` section.
 
 To enable checkpoints, ``save_checkpoint`` must be enabled and one of the ``on_*`` options must be supplied. Multiple
 ``on_*`` can be combined. For example, ``on_frequency`` and ``on_last`` can be combined to produce

@@ -2,7 +2,7 @@ Checkpointing
 ==================
 
 CHM can save the current state of all modules to disk and then later resume from this point. The provides a form of
-checkpointing. How to configure this for a simulation is detailed in the :ref:'configuration section <target to checkpoint>'.
+checkpointing. How to configure this for a simulation is detailed in the :ref:`configuration section <target to checkpoint>`.
 
 The states are stored as json metadata and netcdf files located in ``output_dir/checkpoint/``. Within this folder are json meta file named in the form
 ``checkpoint_YYYYMMddTHHMMSS.npRANKS.json``. This file provides the list of the netcdf files that need to be loaded for each MPI rank,
