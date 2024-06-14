@@ -64,6 +64,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
+#include <boost/regex.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/tuple/tuple.hpp>
@@ -253,7 +254,7 @@ public:
     std::vector< std::pair<module,size_t> >& get_active_module_list();
 
     pt::ptree _cfg;
-    boost::filesystem::path o_path; //path to output folder
+    boost::filesystem::path output_folder_path; //path to output folder
     boost::filesystem::path log_file_path; // fully qualified path to the log file
 protected:
 
@@ -262,7 +263,7 @@ protected:
     //current level of the logger. Defaults to debug, but can be changed via configuration settings
     log_level _log_level;
 
-    // if the users passes in a config file path that isn't the currently directory
+    // if the users passes in a config file path that isn't the current directory
     // e.g. CHM -f /some/other/path/CHM.json
     // then we need to affix every file IO (excep the log ?) with this path.
     boost::filesystem::path cwd_dir;
@@ -328,21 +329,14 @@ protected:
     class output_info
     {
     public:
-        output_info()
+        output_info():
+                      frequency{1}, fname{""},
+                      latitude{0}, longitude{0},
+                      name{""},
+                      x{0}, y{0},
+                      only_last_n{SIZE_MAX}
         {
-            frequency=1;
-            fname = "";
-            latitude = 0;
-            longitude = 0;
-
-
-            x = 0;
-            y = 0;
-
-
             face = nullptr;
-            name = "";
-            only_last_n = -1;
         }
         enum output_type
         {
@@ -356,7 +350,7 @@ protected:
             ascii
         };
 
-        output_type type;
+        output_type type; // the type of output
         std::string name;
         std::vector<mesh_outputs> mesh_output_formats;
         std::string fname;
@@ -381,6 +375,7 @@ protected:
     };
 
     std::vector<output_info> _outputs;
+
 
     // Detects various information about the HPC scheduler we might be run der
     class hpc_scheduler_info

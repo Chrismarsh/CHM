@@ -836,7 +836,14 @@ checkpoints every ``on_frequency`` timesteps as well as on the last timestep.
    :default: false
 
    If the environment variable ``CHM_WALLCLOCK_LIMIT`` is detected at simulation start, then CHM will track how long
-   it has left. When it only has ``minutes_of_wallclock`` minutes left (default = 2 min).
+   it has left. When it only has ``minutes_of_wallclock`` minutes left (default = 2 min). ``CHM_WALLCLOCK_LIMIT`` needs
+   to be created from the scheduler environment. How to do so for PBS Pro and a SLURM is given below:
+
+.. code:: shell
+
+    CHM_WALLCLOCK_LIMIT=$(squeue -j $SLURM_JOB_ID -h --Format TimeLimit)
+    CHM_WALLCLOCK_LIMIT=$(qstat -f $PBS_JOBID | sed -rn 's/.*Resource_List.walltime = (.*)/\1/p')
+
 
 .. confval:: minutes_of_wallclock
 
@@ -853,6 +860,14 @@ checkpoints every ``on_frequency`` timesteps as well as on the last timestep.
    :default: empty
 
    Path to checkpoint file to load from (specifically, the json file). Can be used with the other checkpointing options.
+
+.. confval:: auto_resume
+
+    :type: bool
+    :default: false
+
+    Set to ``true`` to auto-resume from the most recent checkpoint that exists in ``output_folder/checkpoint``.
+    Doing so allows for easily and repeatedly resuming from a checkpoint file.
 
 .. code:: json
 

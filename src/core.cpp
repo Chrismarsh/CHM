@@ -316,7 +316,7 @@ void core::config_checkpoint( pt::ptree& value)
         auto dir = "checkpoint";
 
         // Create empty folder
-        _checkpoint_opts.ckpt_path = o_path / dir;
+        _checkpoint_opts.ckpt_path = output_folder_path / dir;
         boost::filesystem::create_directories(_checkpoint_opts.ckpt_path);
 
         // check for the old naming and bail
@@ -372,7 +372,62 @@ void core::config_checkpoint( pt::ptree& value)
 
     }
 
+    // automatically resume from the most-recent (simulation time) checkpoint file that exists in the output directory
+    auto auto_resume = value.get_optional<bool>("auto_resume");
+
+    // file to resume off of
     auto file = value.get_optional<std::string>("load_checkpoint_path");
+
+    //before spending any effort on this make sure we don't have contradictory options
+    if(auto_resume && *auto_resume && file)
+    {
+        SPDLOG_ERROR("Checkpoint options auto_resume and file cannot both be specified.");
+        CHM_THROW_EXCEPTION(config_error, "Error in checkpoint config");
+    }
+
+    if(*auto_resume)
+    {
+
+        // match the filename of checkpoint_20170901T070000.np1.json
+        // with the iso date as the single capture
+        boost::regex file_pattern("checkpoint_(\\d{8}T\\d{6})\\.np\\d+\\.json");
+
+        boost::posix_time::ptime newest_time;
+        boost::filesystem::path newest_file; // will end up with the most recent chkpt to resume from
+        boost::filesystem::path const dir(output_folder_path  / "checkpoint" );
+
+        for(const auto& entry : boost::filesystem::directory_iterator(dir))
+        {
+            if (boost::filesystem::is_regular_file(entry.status()))
+            {
+                auto filename = entry.path().filename().string();
+                boost::smatch match;
+
+                if (boost::regex_match(filename, match, file_pattern))
+                {
+                    std::string datetime_str = match[1];
+                    auto file_time = boost::posix_time::from_iso_string(datetime_str);
+
+                    // keep looking until we find the most recent date
+                    if (newest_file.empty() || file_time > newest_time)
+                    {
+                        newest_time = file_time;
+                        newest_file = entry.path();
+                    }
+                }
+            }
+        }
+
+        if(newest_file.empty())
+        {
+            SPDLOG_WARN("Could not find a checkpoint to resume from.");
+        }
+
+        file = newest_file.string();
+
+    }
+
+
 
     if (file)
     {
@@ -421,6 +476,8 @@ void core::config_checkpoint( pt::ptree& value)
         SPDLOG_DEBUG("Rank {} using checkpoint restore file {}", rank, ckpt_nc_path.string());
         _checkpoint_opts.in_savestate.open(ckpt_nc_path.string());
     }
+
+
 
 
 
@@ -539,7 +596,7 @@ void core::config_forcing(pt::ptree &value)
     }
 
 
-    auto f = o_path / "stations.vtp";
+    auto f = output_folder_path / "stations.vtp";
     _metdata->write_stations_to_ptv(f.string());
 
     SPDLOG_DEBUG("Finished reading stations. Took {} s", c.toc<s>());
@@ -850,12 +907,12 @@ void core::config_output(pt::ptree &value)
 
 
     auto output_dir = value.get<std::string>("output_dir","output");
-    o_path = cwd_dir / output_dir;
-    boost::filesystem::create_directories(o_path);
+    output_folder_path = cwd_dir / output_dir;
+    boost::filesystem::create_directories(output_folder_path);
 
     // Create empty folders /points/ and /meshes/
-    pts_path = o_path / pts_dir;
-    msh_path = o_path / msh_dir;
+    pts_path = output_folder_path / pts_dir;
+    msh_path = output_folder_path / msh_dir;
     boost::filesystem::create_directories(pts_path);
     boost::filesystem::create_directories(msh_path);
 
@@ -1470,7 +1527,7 @@ void core::init(int argc, char **argv)
     }
 
 
-    pt::json_parser::write_json((o_path  / "config.json" ).string(),cfg); // output a full dump of the cfg, after all modifications, to the output directory
+    pt::json_parser::write_json((output_folder_path / "config.json" ).string(),cfg); // output a full dump of the cfg, after all modifications, to the output directory
     _cfg = cfg;
 
     SPDLOG_DEBUG("Finished initialization");
