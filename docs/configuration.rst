@@ -798,23 +798,29 @@ Example
 checkpoint
 *************
 
-CHM can save its state after a timestep, allowing CHM to resume from this timestep. Further details on can be found in the Checkpointing section.
+CHM can save its state after a timestep, allowing CHM to resume from this timestep.
+Further details on the output format can be found in the Checkpointing section.
+
+To enable checkpoints, ``save_checkpoint`` must be enabled and one of the ``on_*`` options must be supplied. Multiple
+``on_*`` can be combined. For example, ``on_frequency`` and ``on_last`` can be combined to produce
+checkpoints every ``on_frequency`` timesteps as well as on the last timestep.
+
 
 .. confval:: save_checkpoint
 
    :type: boolean
    :default: false
 
-   Enable checkpointing. One of ``frequency`` or ``on_last`` must be set. Must be set true to enable the checkpointing.
+   Enable checkpointing. Must be set true to enable the checkpointing. One of the options for when to checkpoint
+   must also be sent.
 
 
-.. confval:: frequency
+.. confval:: on_frequency
 
    :type: int64
    :default: empty
 
-   The frequency of checkpointing. Checkpoints every ``frequency`` timesteps. Can be used with ``on_last`` to produce
-   checkpoints every ``frequency`` timesteps as well as on the last timestep.
+   The frequency of checkpointing. Checkpoints every ``on_frequency`` timesteps.
 
 .. confval:: on_last
 
@@ -822,6 +828,23 @@ CHM can save its state after a timestep, allowing CHM to resume from this timest
    :default: false
 
    Check point only on the last timestep. Can be used with ``frequency``, but does not require ``frequency`` to be set.
+
+.. confval:: on_wallclock_limit
+
+   :type: bool
+   :default: false
+
+   If the environment variable ``CHM_WALLCLOCK_LIMIT`` is detected at simulation start, then CHM will track how long
+   it has left. When it only has ``minutes_of_wallclock`` minutes left (default = 2 min).
+
+.. confval:: minutes_of_wallclock
+
+    :type: int64
+    :default: 2
+
+    Number of minutes before the wallclock expires to begin checkpointing. Only has an effect if
+    ``on_wallclock_limit=true``.
+
 
 .. confval:: load_checkpoint_path
 
