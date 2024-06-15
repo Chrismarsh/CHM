@@ -44,34 +44,36 @@ int main (int argc, char *argv[])
     }
     catch(chm_done& e)
     {
+        // This catches the chm_done exception which we use to handle the version and help commands
         kernel.end();
     }
     catch(const module_error& e)
     {
-        ret = -1;
+        ret = 1;
         SPDLOG_ERROR(boost::diagnostic_information(e));
     }
     catch(const exception_base& e)
     {
-        ret = -1;
+        ret = 1;
         SPDLOG_ERROR(boost::diagnostic_information(e));
     }
     catch(const std::exception& e)
     {
-        ret = -1;
+        ret = 1;
         SPDLOG_ERROR(boost::diagnostic_information(e));
     }
     catch(...)
     {
        SPDLOG_ERROR("Unknown exception");
-       ret = -1;
+       ret = 1;
     }
 
     // if we have an exception, ensure we tear down all of the MPI. In Non MPI mode this won't do anything
-    if(ret == -1)
-        kernel.end(true);
+    if(ret == 1)
+       kernel.end(true);
     else
-        kernel.end();
+       kernel.end();
+
     try
     {
 
@@ -86,6 +88,8 @@ int main (int argc, char *argv[])
     {
 
     }
+
+
 
     return ret;
 }
