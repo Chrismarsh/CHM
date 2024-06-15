@@ -256,6 +256,9 @@ public:
     pt::ptree _cfg;
     boost::filesystem::path output_folder_path; //path to output folder
     boost::filesystem::path log_file_path; // fully qualified path to the log file
+
+    // On a clean exit, a sentinel file will be written
+    bool clean_exit;
 protected:
 
     std::string version = "CHM " GIT_BRANCH "/" GIT_COMMIT_HASH;

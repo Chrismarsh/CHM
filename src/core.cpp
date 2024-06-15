@@ -40,6 +40,8 @@ core::core()
 
     _metdata= nullptr;
 
+    clean_exit = true;
+
 }
 
 core::~core()
@@ -422,8 +424,10 @@ void core::config_checkpoint( pt::ptree& value)
         {
             SPDLOG_WARN("Could not find a checkpoint to resume from.");
         }
-
-        file = newest_file.string();
+        else
+        {
+            file = newest_file.string();
+        }
 
     }
 
@@ -2121,6 +2125,8 @@ void core::run()
     size_t max_ts = _metdata->n_timestep();
     bool done = false;
 
+
+
         while (!done)
         {
             boost::posix_time::ptime t;
@@ -2302,6 +2308,9 @@ void core::run()
                 if(_checkpoint_opts.checkpoint_request_terminate)
                 {
                     done = true;
+
+                    // we bailed early because of wall clock, so this is not a clean exit
+                    clean_exit = false;
                 }
             }
 
@@ -2488,7 +2497,21 @@ void core::end(const bool abort)
     }
 #endif
 
-    SPDLOG_DEBUG("Cleaning up");
+    // Write the sentinel file IFF there is a clean exit
+    // recall that if the checkpointing system detects an about-to-expire wallclock and terminates early,
+    // this doesn't count as a clean exit.
+    if(!abort && clean_exit)
+    {
+        int rank = 0;
+#ifdef USE_MPI
+        rank = _comm_world.rank();
+#endif
+        if(rank == 0)
+        {
+            std::ofstream((output_folder_path / "clean_exit").string()).close();
+        }
+    }
+    SPDLOG_DEBUG("Finished cleaning up");
 }
 
 bool core::check_is_geographic(const std::string& path)
