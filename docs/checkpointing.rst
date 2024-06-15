@@ -1,3 +1,5 @@
+.. _target to checkpoint page:
+
 Checkpointing
 ==================
 
