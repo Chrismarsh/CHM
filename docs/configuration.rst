@@ -887,8 +887,8 @@ checkpoints every ``on_frequency`` timesteps as well as on the last timestep.
 
     Upon a successful completion of a simulation of CHM, a sentinel file is written to the output folder
     "<output_folder>/clean_exit". This will not be written if CHM suspends due to a wall lock limit. Therefor, the
-    intent of this file is to be used to allow repeated automatic requeing of a job on HPC that have short
-    wallclock limits.
+    intent of this file is to be used to allow repeated automatic requeuing of a job on HPC that have short
+    wallclock limits, i.e., keep requeuing until that file is found.
 
 
 Basic checkpoint example
