@@ -1469,11 +1469,15 @@ int main(int argc, char* argv[])
 
     auto is_json_mesh = boost::filesystem::path(mesh_filename).extension().string() == ".mesh";
 
-    if (is_json_mesh)
+    if (vm.count("mpi-ranks") && is_json_mesh)
     {
         SPDLOG_WARN("The input mesh is in json format. It MUST be converted to hdf5 before it can be partitioned.\n"
                        " Once the hdf5 conversion is done, this tool will re-run with the h5 mesh as input to fully "
                        "partition the mesh.");
+    }
+    else if(is_json_mesh)
+    {
+        SPDLOG_DEBUG("Converting mesh from json to h5.");
     }
 
     if (!vm.count("mesh-file"))
@@ -1503,7 +1507,7 @@ int main(int argc, char* argv[])
         SPDLOG_WARN("MPI ranks will be ignored for the json -> h5 conversion. ");
     }
 
-    if (!vm.count("max-ghost-distance"))
+    if (!vm.count("max-ghost-distance") && vm.count("mpi-ranks"))
     {
         SPDLOG_WARN("Using default max ghost distance of 100 m");
     }

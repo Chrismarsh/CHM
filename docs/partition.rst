@@ -16,8 +16,7 @@ Therefore only the mesh elements for this rank are loaded, dramatically reducing
 
 .. warning::
 
-   The mesh should be have been permuted prior to hdf5 conversion for maximum MPI performance.
-   Failure to do so will result in significantly degraded runtime performance!
+   The mesh must be permuted using the metis partitioning method prior to hdf5 conversion for maximum MPI performance.
 
    Please see  :ref:`Mesh permutation <target mesh-permutation>`  for more details.
 
@@ -119,6 +118,7 @@ Output
 
 json to hdf5
 *************
+If you do not specify any mpi configuration options, then only the ``.json`` to ``.h5`` conversion will be done.
 Output will be two ``.h5`` files called ``basename_mesh.h5`` and ``basename_param.h5``.
 For example if the input mesh is ``granger1m.mesh`` then basename is ``granger1m`` resulting in the files
 
