@@ -587,20 +587,34 @@ void Simple_Canopy::init(mesh& domain)
 
 	       auto& d = face->make_module_data<Simple_Canopy::data>(ID);
 
-	       // Check if Canopy exists at this face/triangle
+	       // Check if there is some vegetation spec  at this face
 	       if(face->has_vegetation() )
 	       {
+                    d.CanopyHeight     = face->veg_attribute("CanopyHeight");
+                    d.LAI              = face->veg_attribute("LAI");
 		   // Get Canopy type (CRHM canop classifcation: Canopy, Clearing, or Gap)
-		   d.canopyType       = face->veg_attribute("canopyType");
-		   d.CanopyHeight     = face->veg_attribute("CanopyHeight");
-		   d.LAI              = face->veg_attribute("LAI");
-		   d.rain_load        = 0.0;
-		   d.Snow_load        = 0.0;
-		   d.cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
-		   d.cum_net_rain     = 0.0; // " direct_rain + drip", "(mm)"
-		   d.cum_Subl_Cpy     = 0.0; //  "canopy snow sublimation", "(mm)"
-		   d.cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
-		   d.cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
+                    // This might not exist if we are using distributed canopy heights
+                    if(face->has_parameter("canopyType"))
+                    {
+                        d.canopyType       = face->veg_attribute("canopyType");
+                    }
+                    else
+                    {
+                        if(d.CanopyHeight < 0.3)
+                            d.canopyType = 1; // clearing
+                        else
+                            d.canopyType = 0; // canopy
+
+                    }
+
+		   
+                   d.rain_load        = 0.0;
+                   d.Snow_load        = 0.0;
+                   d.cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"
+                   d.cum_net_rain     = 0.0; // " direct_rain + drip", "(mm)"
+                   d.cum_Subl_Cpy     = 0.0; //  "canopy snow sublimation", "(mm)"
+                   d.cum_intcp_evap   = 0.0; // "HRU Evaporation from interception", "(mm)"
+                   d.cum_SUnload_H2O  = 0.0; // "Cumulative unloaded canopy snow as water", "(mm)"
 
 	       } else
                {
