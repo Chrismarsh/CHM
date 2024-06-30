@@ -193,7 +193,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
         # new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
         set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -Og -fno-inline -ggdb")
     else("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
-        set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -O0 -ggdb")
+        set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -O1 -ggdb")
     endif()
 
     set(CGAL_DO_NOT_WARN_ABOUT_CMAKE_BUILD_TYPE TRUE)
