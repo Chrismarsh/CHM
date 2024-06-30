@@ -108,8 +108,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
                     //And Hengl and Evans in geomorphometry p.52 do not, but have some undefined omega_0/omega_1 weights
                     //it is all rather confusing. But this follows Mitášová exactly, and produces essentially the same answer
                     //as the worked example in box 16.2 in Chang
-                    // set Rd = -(log(dij) + c + gsl_sf_expint_E1(dij))
-                    Rd = TPSBasis_LUT(dij);
+                      Rd = -(log(dij) + c + gsl_sf_expint_E1(dij));
+//                    Rd = TPSBasis_LUT(dij);
                 }
 
                 A(i, j + 1) = Rd;
@@ -164,8 +164,8 @@ double thin_plate_spline::operator()(std::vector< boost::tuple<double,double,dou
         dij = (dij * weight/2.0) * (dij * weight/2.0);
         // set Rd equal to -(log(dij) + c + gsl_sf_expint_E1(dij))
          
-        double Rd = TPSBasis_LUT(dij);
-
+//        double Rd = TPSBasis_LUT(dij);
+        double Rd = -(log(dij) + c + gsl_sf_expint_E1(dij));
         z0 = z0 + x(i)*Rd;
     }
 
