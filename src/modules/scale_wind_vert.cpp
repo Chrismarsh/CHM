@@ -191,22 +191,26 @@ void scale_wind_vert::run(mesh& domain)
         std::vector<boost::tuple<double, double, double> > u;
         for (size_t j = 0; j < 3; j++)
         {
-         auto neigh = face->neighbor(j);
+            auto neigh = face->neighbor(j);
 
-         if (neigh != nullptr)
-           u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_2m_above_srf"_s]));
+             if (neigh != nullptr)
+             {
+                 u.push_back(boost::make_tuple(neigh->get_x(), neigh->get_y(), (*neigh)["U_2m_above_srf"_s]));
+             }
+
         }
 
         auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
 
-        if(u.size()>0)
+        if(!u.empty())
         {
-         double new_u =  face->get_module_data<d>(ID).interp(u, query);
-         face->get_module_data<d>(ID).temp_u = std::max(0.1,new_u);
+            double new_u =  face->get_module_data<d>(ID).interp(u, query);
+
+            face->get_module_data<d>(ID).temp_u = std::max(0.1,new_u);
         }
         else
         {
-         face->get_module_data<d>(ID).temp_u = std::max(0.1,(*face)["U_2m_above_srf"_s]);
+            face->get_module_data<d>(ID).temp_u = std::max(0.1,(*face)["U_2m_above_srf"_s]);
         }
 
     }
@@ -215,10 +219,9 @@ void scale_wind_vert::run(mesh& domain)
 #pragma omp parallel for
     for (size_t i = 0; i < domain->size_faces(); i++)
     {
-      auto face = domain->face(i);
-      // Exception throwing from OpenMP needs to be here
-
-	       (*face)["U_2m_above_srf"_s]=face->get_module_data<d>(ID).temp_u ;
+        auto face = domain->face(i);
+        // Exception throwing from OpenMP needs to be here
+        (*face)["U_2m_above_srf"_s]=face->get_module_data<d>(ID).temp_u ;
 
     }
 

@@ -607,7 +607,7 @@ void Simple_Canopy::init(mesh& domain)
 
                     }
 
-		   
+
                    d.rain_load        = 0.0;
                    d.Snow_load        = 0.0;
                    d.cum_net_snow     = 0.0; // "Cumulative Canopy unload ", "(mm)"

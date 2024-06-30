@@ -453,9 +453,9 @@ void PBSM3D::run(mesh& domain)
             double u10;
             if (z10 < Atmosphere::Z_U_R)
             {
+                // u10 is used by the pom probability forumuation, so don't hide behide debug output
                 u10 = Atmosphere::log_scale_wind(uref, Atmosphere::Z_U_R, z10,
-                        snow_depth); // used by the pom probability forumuation, so don't
-                // hide behide debug output
+                        snow_depth);
             }
             else
             {
