@@ -939,11 +939,14 @@ public:
     boost::mpi::communicator _comm_world;
 #endif
 
+    // some of the coordinates might be negative, so by init with a nan
+    // when this is filled using std::min and std::max, the nan willbe ignored on the first
+    // comparison
     struct bounding_box{
-        double x_min {0};
-        double x_max {0};
-        double y_min {0};
-        double y_max {0};
+        double x_min {std::nan("")};
+        double x_max {std::nan("")};
+        double y_min {std::nan("")};
+        double y_max {std::nan("")};
     } _bounding_box;
 
 protected:
@@ -1052,7 +1055,7 @@ protected:
 #else
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
 	std::map<std::string, vtkSmartPointer<vtkFloatArray> > vectors;
-        std::map<std::string, vtkSmartPointer<vtkFloatArray> > vertex_data;
+    std::map<std::string, vtkSmartPointer<vtkFloatArray> > vertex_data;
 #endif
 
     //should we write parameters to the vtu file?
