@@ -34,6 +34,7 @@ spack:
   - spdlog
   - openblas
   - "cmake@3.2:"
+  - "openmpi"
   view: true
   concretizer:
     unify: true
