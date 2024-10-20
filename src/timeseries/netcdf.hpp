@@ -28,6 +28,8 @@
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 #include <netcdf>
 #include <string>
+#include <algorithm>
+#include <array>
 
 #include "logger.hpp"
 #include "exception.hpp"
@@ -38,85 +40,99 @@ class netcdf
 {
 
 public:
-    typedef boost::multi_array<double,2> data;
-    typedef boost::multi_array<double,1> vec;
-    typedef std::vector< boost::posix_time::ptime > date_vec;
+  typedef boost::multi_array<double,2> data;
+  typedef boost::multi_array<double,1> vec;
+  typedef std::vector< boost::posix_time::ptime > date_vec;
 
-    netcdf();
-    ~netcdf();
+  netcdf();
+  ~netcdf();
 
-    boost::posix_time::time_duration get_dt(); //get timestep
-    boost::posix_time::ptime get_start();
-    boost::posix_time::ptime get_end();
+  boost::posix_time::time_duration get_dt(); //get timestep
+  boost::posix_time::ptime get_start();
+  boost::posix_time::ptime get_end();
 
-    std::set<std::string> get_variable_names();
-    std::set<std::string> get_coordinate_names();
-    void open_GEM(const std::string &file);
-    void open(const std::string &file);
+  std::set<std::string> get_variable_names();
+  std::set<std::string> get_coordinate_names();
+  void open_GEM(const std::string &file);
+  void open(const std::string &file);
 
-    void create(const std::string& file);
-    size_t get_xsize();
-    size_t get_ysize();
-    size_t get_ntimesteps();
-    //returns the lat grid
-    data get_lat();
-    double get_lat(size_t x, size_t y);
+  void create(const std::string& file);
+  size_t get_xsize();
+  size_t get_ysize();
+  size_t get_ntimesteps();
+  //returns the lat grid
+  data get_lat();
+  double get_lat(size_t x, size_t y);
 
-    //returns the long grid
-    data get_lon();
-    double get_lon(size_t x, size_t y);
+  //returns the long grid
+  data get_lon();
+  double get_lon(size_t x, size_t y);
 
-    //gets z information
-    data get_z();
-    double get_z(size_t x, size_t y);
+  //gets z information
+  data get_z();
+  double get_z(size_t x, size_t y);
 
-    /**
-     * Get the CF _FillValue if present, defaults to -9999.0 if that attribute is not present.
-     * Currently assumes double!
-     * @param var
-     * @return
-     */
-    double get_fillvalue(const netCDF::NcVar& var);
+  /**
+  * Get the CF _FillValue if present, defaults to -9999.0 if that attribute is not present.
+  * Currently assumes double!
+  * @param var
+  * @return
+  */
+  double get_fillvalue(const netCDF::NcVar& var);
 
-    data get_var(std::string var, size_t timestep);
-    data get_var(std::string var, boost::posix_time::ptime timestep);
-    double get_var(std::string var, size_t timestep, size_t x, size_t y);
-    double get_var(std::string var, boost::posix_time::ptime timestep, size_t x, size_t y);
+  data get_var(std::string var, size_t timestep);
+  data get_var(std::string var, boost::posix_time::ptime timestep);
+  double get_var(std::string var, size_t timestep, size_t x, size_t y);
+  double get_var(std::string var, boost::posix_time::ptime timestep, size_t x, size_t y);
 
-    void add_dim1D(const std::string& var, size_t length);
-    void create_variable1D(const std::string& var,  size_t length);
-    void put_var1D(const std::string& var, size_t index, double value);
-    /**
-     * Some data, such as lat/long do not have a time component are only 2 data. This allows loading those data.
-     * @param var
-     * @return
-     */
-    data get_var2D(std::string var);
-    double get_var1D(std::string var, size_t index);
+  /**
+   * Finds a coordinate by a standard_name, e.g., "time"
+   * @param standard_name The standar_name attr to search for
+   * @return
+   */
+  std::string find_coord_by_standard_name(const std::string& standard_name) const;
 
-    double get_var2D(std::string var, size_t x, size_t y);
+  /**
+ * Finds a dimension by a standard_name, e.g., "latitude"
+ * @param standard_name The standar_name attr to search for
+ * @return
+ */
+  std::string find_dim_by_standard_name(const std::string& standard_name) const;
 
-    netCDF::NcFile& get_ncfile();
+  void add_dim1D(const std::string& var, size_t length);
+  void create_variable1D(const std::string& var,  size_t length);
+  void put_var1D(const std::string& var, size_t index, double value);
+  /**
+   * Some data, such as lat/long do not have a time component are only 2 data. This allows loading those data.
+   * @param var
+   * @return
+   */
+  data get_var2D(std::string var);
+  double get_var1D(std::string var, size_t index);
+
+  double get_var2D(std::string var, size_t x, size_t y);
+
+  netCDF::NcFile& get_ncfile();
 private:
 
-    netCDF::NcFile _data; // main netcdf file
-    std::string _datetime_field; // name of the datetime field, the unlimited dimension
-    std::string _lat, _lon; //name of lat and long fields
-    size_t xgrid, ygrid;
+  netCDF::NcFile _data; // main netcdf file
+  std::string _datetime_field; // name of the datetime field, the unlimited dimension
+  std::string _lat_field, _lon_field; //name of lat and long fields
+  size_t xgrid, ygrid;
 
-    std::set<std::string> _variable_names; //set of variables this nc file provides
+  std::set<std::string> _variable_names; //set of variables this nc file provides
 
-    size_t _datetime_length; //number of records
+  size_t _datetime_length; //number of records
 
-    boost::posix_time::ptime _start, _epoch, _end;
-    std::string dt_unit;
+  boost::posix_time::ptime _start, _epoch, _end;
+  std::string dt_unit;
 
-    boost::posix_time::time_duration _timestep; // we will multiply this later to get proper offset
+  boost::posix_time::time_duration _timestep; // we will multiply this later to get proper offset
 
-    bool _is_open;
+  bool _is_open;
 
 
-    //if we are creating variables
-    std::vector<netCDF::NcDim> _dimVector; //we need this dimension var to create new variables
+  //if we are creating variables
+  std::vector<netCDF::NcDim> _dimVector; //we need this dimension var to create new variables
 
 };
