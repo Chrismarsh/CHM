@@ -61,11 +61,11 @@ public:
   size_t get_ysize();
   size_t get_ntimesteps();
   //returns the lat grid
-  data get_lat();
+  vec get_lat();
   double get_lat(size_t x, size_t y);
 
   //returns the long grid
-  data get_lon();
+  vec get_lon();
   double get_lon(size_t x, size_t y);
 
   //gets z information
@@ -103,13 +103,12 @@ public:
   void create_variable1D(const std::string& var,  size_t length);
   void put_var1D(const std::string& var, size_t index, double value);
   /**
-   * Some data, such as lat/long do not have a time component are only 2 data. This allows loading those data.
+   * Some data, such as lat/long do not have a time component are only 2D data. This allows loading those data.
    * @param var
    * @return
    */
   data get_var2D(std::string var);
   double get_var1D(std::string var, size_t index);
-
   double get_var2D(std::string var, size_t x, size_t y);
 
   netCDF::NcFile& get_ncfile();
@@ -119,6 +118,8 @@ private:
   std::string _datetime_field; // name of the datetime field, the unlimited dimension
   std::string _lat_field, _lon_field; //name of lat and long fields
   size_t xgrid, ygrid;
+
+
 
   std::set<std::string> _variable_names; //set of variables this nc file provides
 

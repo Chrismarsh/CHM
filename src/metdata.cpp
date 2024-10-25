@@ -113,6 +113,8 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
 
         SPDLOG_DEBUG("Initializing datastructure");
 
+        std::vector<std::tuple<float, float>> xy;
+
         // #pragma omp parallel for
         // hangs, unclear why, critical sections around the json and gdal calls
         // don't seem to help. Probably _dD_tree is not thread safe
@@ -128,8 +130,8 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
                 double longitude = 0 ;
                 double z = 0;
 
-                latitude = lat[y][x];
-                longitude = lon[y][x];
+                latitude = lat[y];
+                longitude = lon[x];
                 z = e[y][x];
 
                 // Some Netcdf files have NaN grid squares, For these cases we will just insert a nullptr station and
@@ -165,6 +167,10 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
                         ++skipped;
                         continue;
                     }
+                    else
+                    {
+                        xy.emplace_back(longitude, latitude);
+                    }
                 }
 
 
@@ -183,7 +189,8 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
                 _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
             }
         }
-
+        gis::xy2shp(xy, "output.shp", _mesh_proj4);
+        SPDLOG_DEBUG("This rank is using # grid cells = " + _stations.size());
         if( skipped == _nstations)
         {
             CHM_THROW_EXCEPTION(forcing_error,

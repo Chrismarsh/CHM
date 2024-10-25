@@ -62,6 +62,7 @@
 #include "timeseries.hpp"
 #include "triangulation.hpp"
 #include "filter_base.hpp"
+#include "utility/gis.hpp"
 /**
  * Main meteorological data coordinator. Opens from a variety of sources and ensures that each virtual station has this timestep's information
  * regardless of the source data type.

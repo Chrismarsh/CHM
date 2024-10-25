@@ -388,7 +388,8 @@ boost::posix_time::ptime netcdf::get_end()
 
 netcdf::data netcdf::get_z()
 {
-    return get_var("HGT_P0_L1_GST",0);
+   return  get_var("HGT_P0_L1_GST",0);
+
 }
 
 std::set<std::string> netcdf::get_variable_names()
@@ -521,13 +522,41 @@ double netcdf::get_var2D(std::string var, size_t x, size_t y)
     return val;
 }
 
-netcdf::data netcdf::get_lat()
+netcdf::vec netcdf::get_lat()
 {
-    return get_var2D(_lat_field);
+    auto vars = _data.getVars();
+    auto itr = vars.find(_lat_field);
+    netcdf::vec array(boost::extents[ygrid]);
+    itr->second.getVar({0},{ygrid}, array.data());
+
+    double fill_value = get_fillvalue(itr->second);
+
+    std::transform(array.begin(), array.end(), array.begin(),
+                   [fill_value](double val)
+                   {
+                       return (val == fill_value) ? std::nan("") : val;
+                   });
+
+
+    return array;
 }
-netcdf::data netcdf::get_lon()
+netcdf::vec netcdf::get_lon()
 {
-    return get_var2D(_lon_field);
+    auto vars = _data.getVars();
+    auto itr = vars.find(_lon_field);
+    netcdf::vec array(boost::extents[xgrid]);
+    itr->second.getVar({0},{xgrid}, array.data());
+
+    double fill_value = get_fillvalue(itr->second);
+
+    std::transform(array.begin(), array.end(), array.begin(),
+                   [fill_value](double val)
+                   {
+                       return (val == fill_value) ? std::nan("") : val;
+                   });
+
+
+    return array;
 }
 
 size_t netcdf::get_xsize()
