@@ -8,8 +8,6 @@ set(FILTER_SRCS
 		CACHE INTERNAL "" FORCE
 		)
 
-
-
 set(MODULE_SRCS
 
 		modules/interp_met/const_llra_ta.cpp
@@ -95,6 +93,7 @@ set(CHM_SRCS
 		utility/timer.cpp
 		utility/jsonstrip.cpp
 		utility/readjson.cpp
+		utility/gis.cpp
 
 		interpolation/interpolation.cpp
         math/coordinates.cpp
