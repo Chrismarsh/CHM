@@ -38,6 +38,9 @@
 #include <set>
 #include <unordered_set>
 #include <vector>
+#include <queue>
+#include <format>
+#include <any>
 
 //boost includes
 #include <boost/function.hpp>
@@ -63,6 +66,8 @@
 #include "triangulation.hpp"
 #include "filter_base.hpp"
 #include "utility/gis.hpp"
+#include "CF_names.hpp"
+
 /**
  * Main meteorological data coordinator. Opens from a variety of sources and ensures that each virtual station has this timestep's information
  * regardless of the source data type.
@@ -105,6 +110,14 @@ class metdata
     /// @param path
     /// @param filters
     void load_from_netcdf(const std::string& path,  const triangulation::bounding_box* box = nullptr, std::map<std::string, boost::shared_ptr<filter_base> > filters = {});
+
+    /**
+     * Loads from a list of netcdf files. Expects the list to be ordered
+     * @param path
+     * @param box
+     * @param filters
+     */
+    void load_from_listof_netcdf(const std::string& path,  const triangulation::bounding_box* box = nullptr, std::map<std::string, boost::shared_ptr<filter_base> > filters = {});
 
     /// Loads the standard ascii timeseries. Needs to be in UTC+0
     /// @param path
@@ -152,6 +165,8 @@ class metdata
     std::string current_time_str();
     std::string start_time_str();
     std::string end_time_str();
+
+    bool is_multipart_nc();
 
     /**
      * True if a netcdf was loaded
@@ -235,6 +250,13 @@ class metdata
         // if false, we are using ascii files
         bool _use_netcdf;
 
+        // variables that we ignored during the load because they
+        // a) don't map to CHM var ors b) don't have standard_name
+        std::set<std::string> _nc_ignored_variables;
+
+        // holds the mapping from netcdf to CHM variable name mapping
+        std::map<std::string, std::string> nc_to_CHM_var_mapping;
+
     // -----------------------------------
     // ASCII met data specific variables
 
@@ -259,12 +281,24 @@ class metdata
     //number of timesteps
     size_t _n_timesteps;
 
+    bool _is_multipart_nc;
+
+    // These two are the start and end time of the simulation. If we have loaded from a single file
+    // these will be equal to file_*. However, if we are loading from a multi-part file then the file_*
+    // tracks each file's start/end times
     boost::posix_time::ptime _start_time, _end_time;
+    boost::posix_time::ptime _file_start_time, _file_end_time;
     boost::posix_time::ptime _current_ts;
     boost::posix_time::time_duration _dt;
 
+    // holds a reference to the bounding box of the mesh, if it was passed in
+    // we need this to repeatedly standup new netcdf files being loaded
+    std::shared_ptr<triangulation::bounding_box> _bounding_box;
+
+    std::queue<std::tuple<boost::posix_time::ptime, boost::posix_time::ptime, std::string>> _nc_list;
+
     // computes the dt
-    void compute_dt();
+    // void compute_dt();
 
     //all variables provided by met + filter
     std::set<std::string> _variables;

@@ -34,20 +34,29 @@
 #include "logger.hpp"
 #include "exception.hpp"
 
-
 // handles loading in a netcdf file and loading on the fly nc data into the timeseries class
 class netcdf
 {
 
 public:
-  typedef boost::multi_array<double,2> data;
-  typedef boost::multi_array<double,1> vec;
+  typedef boost::multi_array<double,2> _ma_data;
+  typedef boost::multi_array<double,1> _ma_vec;
+  typedef std::shared_ptr<_ma_data> data;
+  typedef std::shared_ptr<_ma_vec> vec;
   typedef std::vector< boost::posix_time::ptime > date_vec;
 
   netcdf();
   ~netcdf();
 
-  boost::posix_time::time_duration get_dt(); //get timestep
+  /**
+   * Returns the model integration timestep
+   * @return
+   */
+boost::posix_time::time_duration get_dt();
+  /**
+   * Global start time
+   * @return
+   */
   boost::posix_time::ptime get_start();
   boost::posix_time::ptime get_end();
 
@@ -57,15 +66,25 @@ public:
   void open(const std::string &file);
 
   void create(const std::string& file);
-  size_t get_xsize();
-  size_t get_ysize();
+  size_t get_xsize() const;
+  size_t get_ysize() const;
   size_t get_ntimesteps();
   //returns the lat grid
   vec get_lat();
   double get_lat(size_t x, size_t y);
 
-  //returns the long grid
+  /**
+   * 2D lat grid, such as the rotated HRPS grids
+   * @return
+   */
+  data get_lat2D();
+  //returns the 1D lon grid
   vec get_lon();
+ /**
+ * 2D lat grid, such as the rotated HRPS grids
+ * @return
+ */
+  data get_lon2D();
   double get_lon(size_t x, size_t y);
 
   //gets z information
@@ -99,6 +118,14 @@ public:
  */
   std::string find_dim_by_standard_name(const std::string& standard_name) const;
 
+  /**
+   * Finds a variable by looking in various attributes. Defaults to {"standard_name", "long_name"}
+   * @param search String to search for. Exact match
+   * @param attrs_to_search Vector of attributes to search
+   * @return
+   */
+ std::string find_var_by_attr(const std::string& search, const std::vector<std::string>& attrs_to_search={"standard_name", "long_name"}) const;
+
   void add_dim1D(const std::string& var, size_t length);
   void create_variable1D(const std::string& var,  size_t length);
   void put_var1D(const std::string& var, size_t index, double value);
@@ -110,26 +137,33 @@ public:
   data get_var2D(std::string var);
   double get_var1D(std::string var, size_t index);
   double get_var2D(std::string var, size_t x, size_t y);
+  std::string get_var_standard_name(const std::string& variable) const;
 
+  /**
+   * Returns the dimensionality of the spatial coordinates. 1D or 2D
+   * @return
+   */
+int get_coord_dimensionality() const;
   netCDF::NcFile& get_ncfile();
 private:
 
   netCDF::NcFile _data; // main netcdf file
   std::string _datetime_field; // name of the datetime field, the unlimited dimension
   std::string _lat_field, _lon_field; //name of lat and long fields
+  std::string _elevation_field; // name of elevation field
   size_t xgrid, ygrid;
 
-
+ //dimension of the spatial coordinate. 1 or 2 is currently supported
+  int _spatial_coord_dim;
 
   std::set<std::string> _variable_names; //set of variables this nc file provides
 
   size_t _datetime_length; //number of records
 
   boost::posix_time::ptime _start, _epoch, _end;
-  std::string dt_unit;
 
-  boost::posix_time::time_duration _timestep; // we will multiply this later to get proper offset
-
+  boost::posix_time::time_duration _epoch_offset_unit; // we will multiply this later to get proper offset
+  boost::posix_time::time_duration _delta_t;  // model timestep size. whole integer values, in seconds. e.g, 3600s
   bool _is_open;
 
 

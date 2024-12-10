@@ -495,7 +495,7 @@ void core::config_forcing(pt::ptree &value)
     _global->_utc_offset = value.get("UTC_offset",0);
     SPDLOG_DEBUG("Applying UTC offset to ALL forcing files. UTC+{}", std::to_string(_global->_utc_offset));
 
-    _find_and_insert_subjson(value);
+    // _find_and_insert_subjson(value);
 
     //need to determine if we have been given a netcdf file
     _use_netcdf = value.get("use_netcdf",false);
@@ -528,8 +528,17 @@ void core::config_forcing(pt::ptree &value)
             //ignore bad path, means we don't have a filter
         }
 
-        // this delegates all filter responsibility to metdata from now on
-        _metdata->load_from_netcdf(file, &_mesh->_bounding_box,netcdf_filters);
+        // Check if we are loading a list from a json file of netcdffiles
+        if(file.find(".json") != std::string::npos)
+        {
+            _metdata->load_from_listof_netcdf(file, &_mesh->_bounding_box,netcdf_filters);
+        }
+        else
+        {
+            // this delegates all filter responsibility to metdata from now on
+            _metdata->load_from_netcdf(file, &_mesh->_bounding_box,netcdf_filters);
+        }
+
         nstations = _metdata->nstations();
     } else
     {
@@ -1461,7 +1470,9 @@ void core::init(int argc, char **argv)
 
     // INSERT STATION TRIMMING HERE (after options for interpolation stuff has occurred)
     populate_face_station_lists();
-    populate_distributed_station_lists();
+    // TODO: double check this but we now prune the station list on load to the mesh extent which is MPI aware
+    // so we should be fine to fully remove this
+    // populate_distributed_station_lists();
 
     //load the parameters now that the station list has been pruned and we have a partitioned mesh
     if( ispart)
@@ -2408,7 +2419,16 @@ void core::run()
             }
 
             if(!_metdata->next())
+            {
                 done = true;
+            }
+            else
+            {
+                // loading a new netcdf will invalidate all our stations, so we need to rebuild the list of stations
+                if(_metdata->is_multipart_nc())
+                    populate_face_station_lists();
+            }
+
 
             auto timestep = c.toc<ms>();
             meantime += timestep;
@@ -2440,7 +2460,7 @@ void core::run()
             _global->first_time_step = false;
 
 
-        }
+    }
         double elapsed = c.toc<s>();
         SPDLOG_DEBUG("Total runtime was {}s", elapsed);
 
@@ -2580,18 +2600,12 @@ void core::populate_face_station_lists()
     for (size_t i = 0; i < _mesh->size_faces(); i++)
     {
         auto f = _mesh->face(i);
+        f->stations().clear();
 
-        if ( f->stations().size() == 0 )
-        {
-            auto stations = _metdata->get_stations(f->get_x(), f->get_y());
-            f->stations().insert(std::end(f->stations()), std::begin(stations), std::end(stations));
+        auto stations = _metdata->get_stations(f->get_x(), f->get_y());
+        f->stations().insert(std::end(f->stations()), std::begin(stations), std::end(stations));
 
-            f->nearest_station() = _metdata->nearest_station(f->get_x(), f->get_y()).at(0);
-
-        }  else
-        {
-            CHM_THROW_EXCEPTION(mesh_error, "Face station list already populated.");
-        }
+        f->nearest_station() = _metdata->nearest_station(f->get_x(), f->get_y()).at(0);
     }
 
 }

@@ -129,9 +129,19 @@ std::string netcdf::find_dim_by_standard_name(const std::string& standard_name) 
     for (auto& itr : _data.getDims())
     {
         auto var = _data.getVar(itr.first);
-        auto standardNameAtt = var.getAtt("standard_name");
-        if(standardNameAtt.isNull())
+        netCDF::NcVarAtt standardNameAtt;
+        try
+        {
+            standardNameAtt = var.getAtt("standard_name");
+
+            if(standardNameAtt.isNull())
+                continue;
+        }
+        catch(netCDF::exceptions::NcException& e)
+        {
+            // this doesn't even have a standard_name attr
             continue;
+        }
 
         std::string std_name;
         standardNameAtt.getValues(std_name);
@@ -190,11 +200,6 @@ void netcdf::open_GEM(const std::string &file)
         throw;
     }
 
-    // if we don't have at least two timesteps, we can't figure out the model internal timestep length (dt)
-    if(_datetime_length == 1)
-    {
-        CHM_THROW_EXCEPTION(forcing_error,"There needs to be at least 2 timesteps in order to determine model dt.");
-    }
 //
 //    if(coord_vars.size() > 1)
 //    {
@@ -255,20 +260,22 @@ void netcdf::open_GEM(const std::string &file)
     if( epoch.find("hours") != std::string::npos )
     {
         SPDLOG_DEBUG("Found epoch offset = hours");
-        _timestep = boost::posix_time::hours(1);
-        dt_unit = "hours";
+        _epoch_offset_unit = boost::posix_time::hours(1);
+    }
+    if( epoch.find("days") != std::string::npos )
+    {
+        SPDLOG_DEBUG("Found epoch offset = days");
+        _epoch_offset_unit = boost::posix_time::hours(24);
     }
     else if( epoch.find("minutes") != std::string::npos )
     {
         SPDLOG_DEBUG("Found epoch offset = minutes");
-        _timestep = boost::posix_time::minutes(1);
-        dt_unit = "minutes";
+        _epoch_offset_unit = boost::posix_time::minutes(1);
     }
     else if(( epoch.find("seconds") != std::string::npos ))
     {
         SPDLOG_DEBUG("Found epoch offset = seconds");
-        _timestep = boost::posix_time::seconds(1);
-        dt_unit = "seconds";
+        _epoch_offset_unit = boost::posix_time::seconds(1);
 
     } else
     {
@@ -316,32 +323,66 @@ void netcdf::open_GEM(const std::string &file)
         _epoch = boost::posix_time::time_from_string(strs[2]+" "+strs[3]);
     }
 
+    //get our dt, expectation is that it is a constant dt throughout the nc file
+    try
+    {
+        auto attr = coord_vars[_datetime_field];
+
+        size_t dt = 0;
+        // has to be from the variable not the coord to get access to the attr
+        _data.getVar(_datetime_field).getAtt("delta_t").getValues(&dt);
+
+        std::string dt_units;
+        // this getValues is different than the rest
+        // https://docs.unidata.ucar.edu/netcdf-cxx/current/classnetCDF_1_1NcAtt.html#a07ba5f59a1d9a1e1d0eca6adf133796c
+        _data.getVar(_datetime_field).getAtt("delta_t_units").getValues(dt_units);
+
+        if( dt_units != "s")
+        {
+            CHM_THROW_EXCEPTION(forcing_error, "time:delta_t_units must be s");
+        }
+
+        _delta_t = boost::posix_time::seconds(dt);
+
+    }
+    catch(forcing_error& e)
+    {
+        CHM_THROW_EXCEPTION(forcing_error, e.what());
+    }
+    catch(...)
+    {
+        // no attribute, try to compute it manually
+        // if we don't have at least two timesteps, we can't figure out the model internal timestep length (dt)
+        if(_datetime_length == 1)
+        {
+            CHM_THROW_EXCEPTION(forcing_error,"There needs to be at least 2 timesteps in order to determine model dt or the time coordinate needs to have the attribute 'delta_t:<step in seconds'.");
+        }
+        _delta_t = boost::posix_time::seconds(dt[1]-dt[0]);
+    }
+
     //need to handle a start that is different from our epoch
     // e.g., the epoch might be 'hours since 2021-01-01 00:00:00',
     // but timestep 1 is "5 hours" making the start 2021-01-01 05:00:00
-    _start = _epoch + _timestep * dt[0];
+    _start = _epoch + _epoch_offset_unit * dt[0];
 
     //figure out what the end of the timeseries is
-    _end = _epoch + _timestep * dt[_datetime_length-1];
+    _end = _epoch + _epoch_offset_unit * dt[_datetime_length-1];
 
-
-    //get our dt, assuming constant dt throughout the nc file
-    _timestep *= dt[1]-dt[0];
 
     // go through all the timesteps and ensure a consistent timesteping
     // best to spend the time up front for this check than to get 90% into a sim and have it die
     size_t pred_timestep = dt[0];
     for(size_t i=1;  // intentional
-         i<_datetime_length; i++)
+         i < _datetime_length; i++)
     {
-        pred_timestep += (dt[1]-dt[0]);
+        pred_timestep =  pred_timestep + _delta_t.total_seconds();
 
         if( dt[i] != pred_timestep)
         {
             std::stringstream expected;
-            expected << _epoch + _timestep * pred_timestep;
+            expected << _epoch + _epoch_offset_unit * pred_timestep;
             std::stringstream got;
-            got << _epoch + _timestep * dt[i];
+            got << _epoch + _epoch_offset_unit * dt[i];
 
 
             CHM_THROW_EXCEPTION(forcing_error, "The timesteps in the netcdf file are not constant. At timestep " +
@@ -355,15 +396,34 @@ void netcdf::open_GEM(const std::string &file)
     SPDLOG_DEBUG("NetCDF epoch is {}", boost::posix_time::to_simple_string(_epoch));
     SPDLOG_DEBUG("NetCDF start is {}", boost::posix_time::to_simple_string(_start));
     SPDLOG_DEBUG("NetCDF end is {}",boost::posix_time::to_simple_string(_end));
-    SPDLOG_DEBUG("NetCDF timestep is {}", boost::posix_time::to_simple_string(_timestep));
+    SPDLOG_DEBUG("NetCDF timestep is {}", boost::posix_time::to_simple_string(_delta_t));
 
+    // CF convention assumes that dim and coord have the same name,
     _lat_field = find_dim_by_standard_name("latitude");
     _lon_field = find_dim_by_standard_name("longitude");
+    _elevation_field = find_var_by_attr("geopotential_height");
 
     xgrid = _data.getDim(_lon_field).getSize();
     ygrid = _data.getDim(_lat_field).getSize();
 
     SPDLOG_DEBUG("NetCDF grid is {} (x) by {} (y)", xgrid, ygrid);
+
+    auto lat_dim = _data.getVar(find_coord_by_standard_name("latitude")).getDimCount();
+    auto lon_dim = _data.getVar(find_coord_by_standard_name("longitude")).getDimCount();
+
+    if(lat_dim != lon_dim)
+    {
+        CHM_THROW_EXCEPTION(forcing_error, "Latitude and longitude dimensionality do not match");
+    }
+
+    _spatial_coord_dim = lat_dim;
+    SPDLOG_DEBUG("Coord dimensionality is {}D",_spatial_coord_dim);
+
+    if(_spatial_coord_dim > 2)
+    {
+        CHM_THROW_EXCEPTION(forcing_error, "Latitude and longitude dimensionality exceeds 2D");
+    }
+
 
 }
 
@@ -374,7 +434,7 @@ size_t netcdf::get_ntimesteps()
 
 boost::posix_time::time_duration netcdf::get_dt()
 {
-    return _timestep;
+    return _delta_t;
 }
 
 boost::posix_time::ptime netcdf::get_start()
@@ -388,7 +448,63 @@ boost::posix_time::ptime netcdf::get_end()
 
 netcdf::data netcdf::get_z()
 {
-   return  get_var("HGT_P0_L1_GST",0);
+    return get_var(_elevation_field, 0);
+}
+
+
+std::string netcdf::find_var_by_attr(const std::string& search, const std::vector<std::string>& attrs_to_search) const
+{
+    // even though we only return 1 value, we need to make sure we didn't match multiple
+    std::vector<std::string> result;
+
+    if(attrs_to_search.empty())
+    {
+        CHM_THROW_EXCEPTION(forcing_error, "Empty attribute list provided");
+    }
+
+    for (auto& [fst, snd] : _data.getVars())
+    {
+        auto var = _data.getVar(fst);
+
+        // check all requested attributes
+        for(const auto& jtr:attrs_to_search)
+        {
+            netCDF::NcVarAtt search_att;
+            try
+            {
+                // no standard_name, ignore it
+                search_att = var.getAtt(jtr);
+                if(search_att.isNull())
+                    continue;
+            }
+            catch(netCDF::exceptions::NcException& e)
+            {
+                // no standard_name, ignore it
+                continue;
+            }
+
+
+            std::string std_name;
+            search_att.getValues(std_name);
+            if(std_name == search)
+            {
+                result.push_back(fst);
+            }
+        }
+    }
+
+    if (result.empty())
+    {
+        // we didn't find what we were looking for
+        CHM_THROW_EXCEPTION(forcing_error, "Could not find variable by searching attrs for " + search);
+    }
+    else if(result.size() > 1)
+    {
+        CHM_THROW_EXCEPTION(forcing_error, "Multiple variables found for attr " + search);
+    }
+
+    return result.at(0);
+
 
 }
 
@@ -398,7 +514,7 @@ std::set<std::string> netcdf::get_variable_names()
     {
         auto vars = _data.getVars();
 
-        std::vector<std::string> exclude = {"datetime","leadtime", "reftime", "HGT_P0_L1_GST", _lat_field, _lon_field, "xgrid_0", "ygrid_0"};
+        std::vector<std::string> exclude = {"datetime","leadtime", "reftime", "HGT_P0_L1_GST", _lat_field, _lon_field};
 
         for (auto itr: vars)
         {
@@ -479,18 +595,18 @@ netcdf::data netcdf::get_var2D(std::string var)
 
     auto vars = _data.getVars();
 
-    netcdf::data array(boost::extents[ygrid][xgrid]);
+    netcdf::data array = std::make_shared<_ma_data>(_ma_data(boost::extents[ygrid][xgrid]));
     auto itr = vars.find(var);
-    itr->second.getVar(startp,countp, array.data());
+    itr->second.getVar(startp,countp, array->data());
 
     double fill_value = get_fillvalue(itr->second);
 
-    for(size_t i =0; i< array.shape()[0]; i++)
+    for(size_t i =0; i< array->shape()[0]; i++)
     {
-        for(size_t j =0; j< array.shape()[1]; j++)
+        for(size_t j =0; j< array->shape()[1]; j++)
         {
-            if (array[i][j] == fill_value)
-                array[i][j] = std::nan("nan");
+            if ((*array)[i][j] == fill_value)
+                (*array)[i][j] = std::nan("nan");
         }
     }
 
@@ -522,16 +638,39 @@ double netcdf::get_var2D(std::string var, size_t x, size_t y)
     return val;
 }
 
+std::string netcdf::get_var_standard_name(const std::string& variable) const
+{
+    auto var = _data.getVar(variable);
+    auto standardNameAtt = var.getAtt("standard_name");
+    if(standardNameAtt.isNull())
+        return "";
+
+    std::string std_name;
+    standardNameAtt.getValues(std_name);
+
+    return std_name;
+}
+
+netcdf::data netcdf::get_lat2D()
+{
+    return get_var2D(_lat_field);
+}
+
+netcdf::data netcdf::get_lon2D()
+{
+    return get_var2D(_lon_field);
+}
+
 netcdf::vec netcdf::get_lat()
 {
     auto vars = _data.getVars();
     auto itr = vars.find(_lat_field);
-    netcdf::vec array(boost::extents[ygrid]);
-    itr->second.getVar({0},{ygrid}, array.data());
+    netcdf::vec array = std::make_shared<_ma_vec>(_ma_vec(boost::extents[ygrid]));
+    itr->second.getVar({0},{ygrid}, array->data());
 
     double fill_value = get_fillvalue(itr->second);
 
-    std::transform(array.begin(), array.end(), array.begin(),
+    std::transform(array->begin(), array->end(), array->begin(),
                    [fill_value](double val)
                    {
                        return (val == fill_value) ? std::nan("") : val;
@@ -544,12 +683,12 @@ netcdf::vec netcdf::get_lon()
 {
     auto vars = _data.getVars();
     auto itr = vars.find(_lon_field);
-    netcdf::vec array(boost::extents[xgrid]);
-    itr->second.getVar({0},{xgrid}, array.data());
+    netcdf::vec array = std::make_shared<_ma_vec>(_ma_vec(boost::extents[xgrid]));
+    itr->second.getVar({0},{xgrid}, array->data());
 
     double fill_value = get_fillvalue(itr->second);
 
-    std::transform(array.begin(), array.end(), array.begin(),
+    std::transform(array->begin(), array->end(), array->begin(),
                    [fill_value](double val)
                    {
                        return (val == fill_value) ? std::nan("") : val;
@@ -559,11 +698,11 @@ netcdf::vec netcdf::get_lon()
     return array;
 }
 
-size_t netcdf::get_xsize()
+size_t netcdf::get_xsize() const
 {
     return xgrid;
 }
-size_t netcdf::get_ysize()
+size_t netcdf::get_ysize() const
 {
     return ygrid;
 }
@@ -579,7 +718,12 @@ double netcdf::get_lon(size_t x, size_t y)
 
 double netcdf::get_z(size_t x, size_t y)
 {
-    return get_var("HGT_P0_L1_GST", 0, x, y);
+    return get_var(_elevation_field, 0, x, y);
+}
+
+int netcdf::get_coord_dimensionality() const
+{
+    return _spatial_coord_dim;
 }
 
 
@@ -631,20 +775,19 @@ netcdf::data netcdf::get_var(std::string var, size_t timestep)
     auto vars = _data.getVars();
 
 
-    netcdf::data array(boost::extents[ygrid][xgrid]);
+    netcdf::data array = std::make_shared<_ma_data>(boost::extents[ygrid][xgrid]);
 
     auto itr = vars.find(var);
-    itr->second.getVar(startp,countp, array.data());
+    itr->second.getVar(startp,countp, array->data());
 
     double fill_value = get_fillvalue(itr->second);
 
-
-    for(size_t i =0; i< array.shape()[0]; i++)
+    for(size_t i =0; i< array->shape()[0]; i++)
     {
-        for(size_t j =0; j< array.shape()[1]; j++)
+        for(size_t j =0; j< array->shape()[1]; j++)
         {
-            if (array[i][j] == fill_value)
-                array[i][j] = std::nan("nan");
+            if ((*array)[i][j] == fill_value)
+                (*array)[i][j] = std::nan("nan");
         }
     }
 
@@ -656,7 +799,7 @@ double netcdf::get_var(std::string var, boost::posix_time::ptime timestep, size_
 {
     auto diff = timestep - _start; // a duration
 
-    auto offset = diff.total_seconds() / _timestep.total_seconds();
+    auto offset = diff.total_seconds() / _epoch_offset_unit.total_seconds();
 
     return get_var(var, offset,x,y);
 }
@@ -664,7 +807,7 @@ netcdf::data netcdf::get_var(std::string var, boost::posix_time::ptime timestep)
 {
     auto diff = timestep - _start; // a duration
 
-    auto offset = diff.total_seconds() / _timestep.total_seconds();
+    auto offset = diff.total_seconds() / _epoch_offset_unit.total_seconds();
 
     return get_var(var, offset);
 }
