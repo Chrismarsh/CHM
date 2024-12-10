@@ -609,8 +609,9 @@ void core::config_forcing(pt::ptree &value)
     }
 
 
-    auto f = output_folder_path / "stations.vtp";
+    auto f = output_folder_path / std::format("stations_{}.vtp", _comm_world.rank());
     _metdata->write_stations_to_ptv(f.string());
+    _metdata->write_stations_to_shp((output_folder_path / std::format("stations_{}.shp",_comm_world.rank())).string());
 
     SPDLOG_DEBUG("Finished reading stations. Took {} s", c.toc<s>());
 

@@ -241,7 +241,7 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
 
         SPDLOG_DEBUG("Initializing datastructure");
 
-        std::vector<std::tuple<float, float>> xy;
+
         auto e = _nc->get_z();
 
         // #pragma omp parallel for
@@ -321,12 +321,12 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
 
                 _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
 
-                xy.emplace_back(longitude, latitude);
+
             }
         }
         SPDLOG_DEBUG("Done initializing datastructure");
-        gis::xy2shp(xy, "forcing_points.shp", _mesh_proj4);
-        SPDLOG_DEBUG("This rank is using # grid cells = {}", xy.size());
+
+        SPDLOG_DEBUG("This rank is using # grid cells = {}", _stations.size());
         if( skipped == _nstations)
         {
             CHM_THROW_EXCEPTION(forcing_error,
@@ -825,4 +825,15 @@ std::vector< std::shared_ptr<station>>& metdata::stations()
 bool metdata::is_multipart_nc()
 {
     return _is_multipart_nc;
+}
+
+void metdata::write_stations_to_shp(const std::string& fname)
+{
+    std::vector<std::tuple<float, float>> xy;
+    for(auto itr: _stations)
+    {
+        if(itr)
+            xy.emplace_back(itr->x(), itr->y());
+    }
+    gis::xy2shp(xy, fname, _mesh_proj4);
 }

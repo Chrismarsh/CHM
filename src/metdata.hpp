@@ -182,6 +182,12 @@ class metdata
      */
     bool is_netcdf();
 
+    /**
+     * Writes the lat and lon of the subsetted forcing poitns to shape file
+     */
+    void write_stations_to_shp(const std::string& fname);
+
+
     /// Subsets all timeseries to begin at [start, end]. For ascii, the underlying timeseries is modified.
     /// For nc, internal offsets are computed to start, end.
     /// This updates the internal start and end times, as well as resets the current time to be = start
