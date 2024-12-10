@@ -598,6 +598,11 @@ forcing
 
 Input forcing can be either a ASCII timeseries or a NetCDF. Please see :ref:`forcing` for more details.
 
+.. warning::
+
+    Including json sub-config files in this section is not supported
+
+
 Input forcing stations do not need to be located within the simulation
 domain. Therefore they can act as ‘virtual stations’ so-as to use
 reanalysis data, or met stations located outside of the basin.
@@ -776,15 +781,33 @@ Example
 NetCDF
 ~~~~~~~
 
-The use NetCDF as input creates virtual stations at the cell-centres. The NetCDF file is lazy loaded as required for each triangle, so only the values required are loaded.
-The variable names, like for ASCII inputs, needs to correspond to the values expected by the filters.
+The use a netCDF file, set ``forcing:use_netcdf=true`, and choose the netcdf file.
 
+.. code::
+
+    "forcing":
+        {
+
+            "use_netcdf": true,
+            "file":"forcing_file.nc",
+        }
+
+If a multipart file is to be used, simply replace the netcdf with the json list.
+
+.. code::
+
+    "forcing":
+        {
+
+            "use_netcdf": true,
+            "file":"metadata.json",
+        }
+
+Please see the NetCDF :ref:`forcing` section for more details.
 
 .. warning::
    
    NetCDF and ``point_mode`` are not supported.
-
-
 
 
 Filters
