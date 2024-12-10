@@ -942,12 +942,13 @@ public:
     // some of the coordinates might be negative, so by init with a nan
     // when this is filled using std::min and std::max, the nan willbe ignored on the first
     // comparison
-    struct bounding_box{
+    struct bounding_box
+    {
         double x_min {std::nan("")};
         double x_max {std::nan("")};
         double y_min {std::nan("")};
         double y_max {std::nan("")};
-    } _bounding_box;
+    } __attribute__((aligned(32))) _bounding_box;
 
 protected:
 
