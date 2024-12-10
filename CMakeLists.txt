@@ -6,6 +6,8 @@ project (CHM-project C CXX Fortran)
 #https://cmake.org/cmake/help/latest/policy/CMP0074.html
 cmake_policy(SET CMP0074 NEW)
 
+cmake_policy(SET CMP0167 NEW)
+
 #https://cmake.org/cmake/help/latest/policy/CMP0042.html#policy:CMP0042
 # set RPATH ON
 cmake_policy(SET CMP0042 NEW)
@@ -151,7 +153,8 @@ find_package(Boost
         program_options
         mpi
         serialization
-        REQUIRED)
+        REQUIRED
+        CONFIG)
 
 
 #need this for calling the logger from multiple modules
