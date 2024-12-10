@@ -31,6 +31,7 @@ metdata::metdata(std::string mesh_proj4)
     _mesh_proj4 = mesh_proj4;
     is_first_timestep = true;
     _is_multipart_nc = false;
+    _just_loaded_nc = false;
 
     OGRSpatialReference srs;
     srs.importFromProj4(_mesh_proj4.c_str());
@@ -96,6 +97,7 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
     SPDLOG_DEBUG("Found NetCDF file {}", path);
 
     _use_netcdf = true;
+    _just_loaded_nc = true;
     _nc = std::make_unique<netcdf>();
 
     // only do this once, don't repeat if we have them cached
@@ -690,8 +692,17 @@ bool metdata::next_ascii()
 
     return true;
 }
+
+bool metdata::nc_just_loaded()
+{
+    return _just_loaded_nc;
+}
+
 bool metdata::next_nc()
 {
+
+    // assume we won't have to load a netcdf
+    _just_loaded_nc = false;
 
     //_current_ts is already ++ from the next() call
     if(!_is_multipart_nc && (_current_ts > _end_time))

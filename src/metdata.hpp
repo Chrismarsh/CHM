@@ -166,6 +166,14 @@ class metdata
     std::string start_time_str();
     std::string end_time_str();
 
+    /**
+     * Returns true if a netcdf was just loaded.
+     * Calling next() without having to load a multipart will cause this to begin to return false
+     **/
+    bool nc_just_loaded();
+
+    ///
+    /// @return
     bool is_multipart_nc();
 
     /**
@@ -265,6 +273,7 @@ class metdata
         // Mapped w/ stations ID -> metdata
         std::map<std::string, std::unique_ptr<ascii_data>> _ascii_stations;
 
+
     // -----------------------------------
 
     // This is a different approach than how stations used to work
@@ -282,6 +291,7 @@ class metdata
     size_t _n_timesteps;
 
     bool _is_multipart_nc;
+    bool _just_loaded_nc; // if a nc file was just loaded
 
     // These two are the start and end time of the simulation. If we have loaded from a single file
     // these will be equal to file_*. However, if we are loading from a multi-part file then the file_*

@@ -2425,7 +2425,7 @@ void core::run()
             else
             {
                 // loading a new netcdf will invalidate all our stations, so we need to rebuild the list of stations
-                if(_metdata->is_multipart_nc())
+                if(_metdata->is_multipart_nc() && _metdata->nc_just_loaded())
                     populate_face_station_lists();
             }
 
