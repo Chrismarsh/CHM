@@ -262,7 +262,7 @@ void netcdf::open_GEM(const std::string &file)
         SPDLOG_DEBUG("Found epoch offset = hours");
         _epoch_offset_unit = boost::posix_time::hours(1);
     }
-    if( epoch.find("days") != std::string::npos )
+    else if( epoch.find("days") != std::string::npos )
     {
         SPDLOG_DEBUG("Found epoch offset = days");
         _epoch_offset_unit = boost::posix_time::hours(24);
