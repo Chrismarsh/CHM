@@ -371,27 +371,27 @@ void netcdf::open_GEM(const std::string &file)
 
     // go through all the timesteps and ensure a consistent timesteping
     // best to spend the time up front for this check than to get 90% into a sim and have it die
-    size_t pred_timestep = dt[0];
-    for(size_t i=1;  // intentional
-         i < _datetime_length; i++)
+    if(_datetime_length > 2)
     {
-        pred_timestep =  pred_timestep + _delta_t.total_seconds();
+        auto timestep_dtdiff = dt[1] - dt[0];
 
-        if( dt[i] != pred_timestep)
+        for(size_t i=2;  // intentional
+             i < _datetime_length; i++)
         {
-            std::stringstream expected;
-            expected << _epoch + _epoch_offset_unit * pred_timestep;
-            std::stringstream got;
-            got << _epoch + _epoch_offset_unit * dt[i];
+            auto cur_diff =  dt[i] - dt[i-1];
 
+            if( cur_diff != timestep_dtdiff)
+            {
 
-            CHM_THROW_EXCEPTION(forcing_error, "The timesteps in the netcdf file are not constant. At timestep " +
-                                                   std::to_string(i) + " offset " + std::to_string(pred_timestep) + " was expected but found " +
-                                std::to_string(dt[i]) + ".\n Expected=" + expected.str() + "\n Got=" + got .str()
-                                );
+                CHM_THROW_EXCEPTION(forcing_error, "The timesteps in the netcdf file are not constant. At timestep " +
+                                                       std::to_string(i) + " dt " + std::to_string(timestep_dtdiff) + " was expected but found " +
+                                    std::to_string(cur_diff)
+                                    );
 
+            }
         }
     }
+
 
     SPDLOG_DEBUG("NetCDF epoch is {}", boost::posix_time::to_simple_string(_epoch));
     SPDLOG_DEBUG("NetCDF start is {}", boost::posix_time::to_simple_string(_start));
