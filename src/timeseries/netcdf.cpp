@@ -296,17 +296,26 @@ void netcdf::open_GEM(const std::string &file)
         //If it's 3, means there is a T b/w date and time, remove it.
         std::string s = strs[2];
         auto tpos = s.find("T");
+        bool removed_a_t = false; // keep track if we remove a T
         if (tpos != std::string::npos)
         {
             s.replace(s.find("T"),1," ");
+            removed_a_t = true;
         }
 
-        // midnight times can be reported without the 00:00 suffix. If we get this far and don't have : in the epoch
-        // then we need to add it
+
         tpos = s.find(":");
         if (tpos == std::string::npos)
         {
-            s = s + " 00:00:00";
+            // if we removed a T above, BUT there is no :, it is probably something funny like
+            // 1950-01-01T01
+            // which is then 1950-01-01 01
+            if(removed_a_t)
+                s = s + ":00:00";
+            else
+                // midnight times can be reported without the 00:00 suffix. If we get this far and don't have : in the epoch
+                // then we need to add it
+                s = s + " 00:00:00";
         }
 
         try
@@ -357,7 +366,9 @@ void netcdf::open_GEM(const std::string &file)
         {
             CHM_THROW_EXCEPTION(forcing_error,"There needs to be at least 2 timesteps in order to determine model dt or the time coordinate needs to have the attribute 'delta_t:<step in seconds'.");
         }
-        _delta_t = boost::posix_time::seconds(dt[1]-dt[0]);
+        // e.g., dt = [0 1 2] hours since epoch
+        // 1-0 * hour(1) -> total_seconds
+        _delta_t = boost::posix_time::seconds( (_epoch_offset_unit*(dt[1]-dt[0])).total_seconds());
     }
 
     //need to handle a start that is different from our epoch
