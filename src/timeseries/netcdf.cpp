@@ -29,6 +29,7 @@ netcdf::netcdf()
 {
     _is_open = false;
     _datetime_field="";
+    _missing_z = false;
 }
 netcdf::~netcdf()
 {
@@ -412,7 +413,18 @@ void netcdf::open_GEM(const std::string &file)
     // CF convention assumes that dim and coord have the same name,
     _lat_field = find_dim_by_standard_name("latitude");
     _lon_field = find_dim_by_standard_name("longitude");
-    _elevation_field = find_var_by_attr("geopotential_height");
+
+    try
+    {
+        _elevation_field = find_var_by_attr("geopotential_height");
+        _missing_z = false;
+    }catch(...)
+    {
+        SPDLOG_WARN("No geopotential height field found. Using the height of nearest triangle. This is almost certainly NOT what you want");
+        _elevation_field="";
+        _missing_z = true;
+    }
+
 
     xgrid = _data.getDim(_lon_field).getSize();
     ygrid = _data.getDim(_lat_field).getSize();
@@ -436,6 +448,11 @@ void netcdf::open_GEM(const std::string &file)
     }
 
 
+}
+
+bool netcdf::missing_z()
+{
+    return _missing_z;
 }
 
 size_t netcdf::get_ntimesteps()

@@ -224,6 +224,12 @@ class metdata
 
     std::vector< std::shared_ptr<station>>& stations();
 
+    /**
+     * Netcdf was missing a geopotential height and we need to estimate it
+     * @return
+     */
+  bool missing_z();
+
   private:
 
     struct ascii_data
@@ -322,6 +328,8 @@ class metdata
     //holds the proj4 string of the mesh. we need this to be able to reproject input data to the mesh
     std::string _mesh_proj4;
     bool _is_geographic; // geographic mesh that requires further reprojection?
+
+    bool _missing_z; // missing a geopotential and need to estimate it from the triangles
 
     // spatial searching data structure
     typedef CGAL::Simple_cartesian<double> Kernel;

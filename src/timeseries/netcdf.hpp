@@ -139,6 +139,9 @@ boost::posix_time::time_duration get_dt();
   double get_var2D(std::string var, size_t x, size_t y);
   std::string get_var_standard_name(const std::string& variable) const;
 
+ // do we have a z data variable?
+ bool missing_z();
+
   /**
    * Returns the dimensionality of the spatial coordinates. 1D or 2D
    * @return
@@ -165,6 +168,9 @@ private:
   boost::posix_time::time_duration _epoch_offset_unit; // we will multiply this later to get proper offset
   boost::posix_time::time_duration _delta_t;  // model timestep size. whole integer values, in seconds. e.g, 3600s
   bool _is_open;
+
+  // if we are missing z coords that need to be estimated later
+  bool _missing_z;
 
 
   //if we are creating variables

@@ -540,6 +540,24 @@ void core::config_forcing(pt::ptree &value)
         }
 
         nstations = _metdata->nstations();
+
+        // we need to estimate some
+        if(_metdata->missing_z())
+        {
+            SPDLOG_WARN("No geopotential height field found in the netcdf file. Using the height of nearest triangle to estimate. This is almost certainly NOT what you want");
+
+            for(size_t i = 0; i < _mesh->size_faces(); i++)
+            {
+                for (auto face = _mesh->face(i); auto& s : face->stations())
+                {
+                    if(s->z() == -9999)
+                    {
+                        s->z(face->get_z());
+                    }
+                }
+
+            }
+        }
     } else
     {
         std::vector<metdata::ascii_metdata> ascii_data;

@@ -32,6 +32,7 @@ metdata::metdata(std::string mesh_proj4)
     is_first_timestep = true;
     _is_multipart_nc = false;
     _just_loaded_nc = false;
+    _missing_z = false;
 
     OGRSpatialReference srs;
     srs.importFromProj4(_mesh_proj4.c_str());
@@ -147,6 +148,8 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
         _nc_ignored_variables.clear();
 
         _nc->open_GEM(path);
+
+        _missing_z = _nc->missing_z();
     } catch(netCDF::exceptions::NcException& e)
     {
         OGRCoordinateTransformation::DestroyCT(coordTrans);
@@ -213,8 +216,8 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
         }
         else
         {
-            _start_time = _nc->get_start();
-            _end_time = _nc->get_end();
+            _file_start_time = _start_time = _nc->get_start();
+            _file_end_time = _end_time = _nc->get_end();
             _n_timesteps = _nc->get_ntimesteps();
         }
 
@@ -242,7 +245,9 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
         SPDLOG_DEBUG("Initializing datastructure");
 
 
-        auto e = _nc->get_z();
+        netcdf::data e;
+        if(!missing_z())
+            e = _nc->get_z();
 
         // #pragma omp parallel for
         // hangs, unclear why, critical sections around the json and gdal calls
@@ -270,8 +275,6 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
                     latitude = (*std::get<netcdf::vec>(lat))[y];
                     longitude = (*std::get<netcdf::vec>(lon))[x];
                 }
-
-                z = (*e)[y][x];
 
                 // Some Netcdf files have NaN grid squares, For these cases we will just insert a nullptr station and
                 // don't add the station to the dD list which is the only way it ever gets to modules
@@ -309,9 +312,17 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
                     }
                 }
 
+
+                if(missing_z())
+                    z = -9999; // estimate this later
+                else
+                    z = (*e)[y][x];
+
+
                 std::shared_ptr<station> s = std::make_shared<station>(station_name,
                     longitude, latitude, z, _variables);
 
+                //holds the corresponding x,y grid cell of the netcdf file
                 s->_nc_x = x;
                 s->_nc_y = y;
 
@@ -836,4 +847,9 @@ void metdata::write_stations_to_shp(const std::string& fname)
             xy.emplace_back(itr->x(), itr->y());
     }
     gis::xy2shp(xy, fname, _mesh_proj4);
+}
+
+bool metdata::missing_z()
+{
+    return _missing_z;
 }
