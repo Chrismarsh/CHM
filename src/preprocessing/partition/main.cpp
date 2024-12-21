@@ -1453,6 +1453,8 @@ int main(int argc, char* argv[])
     int standalone_rank = -1;
     bool output_vtu=false;
 
+    spdlog::set_level(spdlog::level::debug); 
+
     po::options_description desc("Allowed options.");
     desc.add_options()("help", "This message")
         ("mesh-file,m", po::value<std::string>(&mesh_filename), "Mesh file")(
