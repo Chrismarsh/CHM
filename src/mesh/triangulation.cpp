@@ -1236,6 +1236,43 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 
 void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_filenames)
 {
+
+    // we might have modules params but we aren't loading file params, so do the init here
+    // this is a copy paste as the logic in the main loop below has to handle loading multiple param files
+
+    if (param_filenames.empty())
+    {
+        if(_mesh_is_from_partition)
+        {
+            // init the parameter storage on each face
+            // as we are using a pre-partitioned mesh, _faces holds local+ghosts, so can do it in one go which is
+            // faster
+#pragma omp parallel for
+            for (size_t i = 0; i < _faces.size(); i++)
+            {
+                _faces.at(i)->init_parameters(_parameters);
+            }
+        }
+        else
+        {
+            // if we are not reading from a partitioned file, we need to ensure we do the local faces + ghosts
+            // separetely
+            // init the parameter storage on each face
+#pragma omp parallel for
+            for (size_t i = 0; i < _num_faces; i++)
+            {
+                face(i)->init_parameters(_parameters);
+            }
+
+            // init the parameter storage for the ghost regions
+#pragma omp parallel for
+            for (size_t i = 0; i < _ghost_faces.size(); i++)
+            {
+                _ghost_faces.at(i)->init_parameters(_parameters);
+            }
+        }
+    }
+
     for (auto param_filename : param_filenames)
     {
         try

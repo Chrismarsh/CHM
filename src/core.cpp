@@ -1662,6 +1662,7 @@ void core::init(int argc, char **argv)
         SPDLOG_DEBUG("Mesh now has #faces = {}",_mesh->size_faces());
     }
 
+    // module provided params are initialized when the mesh loads as we also have to handle the mesh params at the same time
     _mesh->init_face_data(_provided_var_module, _provided_var_vector, module_list);
 
     timer c;
