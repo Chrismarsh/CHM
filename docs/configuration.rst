@@ -524,7 +524,8 @@ For more details on the output files, please see the :ref:`output` section.
                 "iswr"
             ],
 
-.. confval frequency::
+
+.. confval:: frequency
 
    :type: int
    :default: 1
@@ -534,21 +535,21 @@ For more details on the output files, please see the :ref:`output` section.
    (``frequency:24``) as the model simulation starts at 00:00. However, the auto-checkpoint suspends at the 8am
    timestep, the next output will be at 8am instead of midnight.
 
-.. confval write_parameters::
+.. confval:: write_parameters
 
    :type: boolean
    :default: true
 
    Disables/enables writing parameters to the output.
 
-.. confval write_ghost_neighbors::
+.. confval:: write_ghost_neighbors
 
    :type: boolean
    :default: false
 
    Write each MPI rank's ghost face data to vtu output
 
-.. confval specific_datetime::
+.. confval:: specific_datetime
 
     :type: string
     :default: ""
@@ -556,7 +557,7 @@ For more details on the output files, please see the :ref:`output` section.
     Output at a specific date-time, given in the iso format, e.g., ``"specific_datetime": "20191227T160000"``
 
 
-.. confval specific_time::
+.. confval:: specific_time
 
     :type: string
     :default: ""
