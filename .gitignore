@@ -9,6 +9,8 @@ CRHMr.log
 .Rhistory
 
 /.idea/
+/.spack-env/
+/build/
 
 /cmake-build-debug/*
 /cmake-build-release/*
