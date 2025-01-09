@@ -471,7 +471,12 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
     std::tie(_start_time,_end_time) = find_unified_start_end();
     subset(_start_time,_end_time); //subset assumes we have a valid dt
 
-    _current_ts = _start_time;
+    // even though multi-part ascii text files are not supported, various pieces of code assumes that both
+
+    _current_ts = _file_start_time = _start_time;
+    _file_end_time = _end_time;
+
+    SPDLOG_DEBUG(boost::posix_time::to_simple_string(_current_ts));
     _n_timesteps = _ascii_stations.begin()->second->_obs.get_date_timeseries().size(); //grab the first timeseries, they are all the same period now
     _nstations = _ascii_stations.size();
 
@@ -559,7 +564,8 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
 
     _start_time = start;
     _end_time = end;
-    _current_ts = _file_start_time;
+    _current_ts = _start_time;
+
     _n_timesteps = ( (_end_time+_dt) - _start_time).total_seconds() / _dt.total_seconds(); // need to add +dt so that we are inclusive of the last timestep
 }
 std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::start_end_time()
@@ -659,7 +665,7 @@ bool metdata::next()
 
 bool metdata::next_ascii()
 {
-
+    SPDLOG_DEBUG(boost::posix_time::to_simple_string(_current_ts));
     for(size_t i = 0; i < nstations();i++)
     {
         auto s = _stations.at(i);

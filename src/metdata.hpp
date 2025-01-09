@@ -308,6 +308,8 @@ class metdata
     // These two are the start and end time of the simulation. If we have loaded from a single file
     // these will be equal to file_*. However, if we are loading from a multi-part file then the file_*
     // tracks each file's start/end times
+    // _start_time, _end_time are what are used externally to manage the sim run, and the file_* are used to determine
+    // if another file needs to be loaded to get us to end_time, i.e., _file_end_time > _end_time
     boost::posix_time::ptime _start_time, _end_time;
     boost::posix_time::ptime _file_start_time, _file_end_time;
     boost::posix_time::ptime _current_ts;
