@@ -175,6 +175,8 @@ such as one netcdf file per day. This is specified as a ``.json`` file that has 
     ]
 
 This json can be generated as follows:
+
+
 .. code::
 
     import glob
@@ -199,6 +201,7 @@ This json can be generated as follows:
     print(metadata_list)
     with open('metdata.json', 'w') as f:
         json.dump(metadata_list, f, indent=4)
+
 
 
 Instead of a netcdf file, choose the json file.
