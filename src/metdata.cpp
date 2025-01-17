@@ -88,7 +88,7 @@ void metdata::load_from_listof_netcdf(const std::string& path,  const triangulat
 
 }
 
-void metdata::load_from_netcdf(const std::string& path, const triangulation::bounding_box* box, std::map<std::string, boost::shared_ptr<filter_base> > filters)
+void metdata::load_from_netcdf(const std::string& path, const triangulation::bounding_box* box, std::map<std::string, boost::shared_ptr<filter_base> > filters, bool preserve_current_ts)
 {
     if(_mesh_proj4 == "")
     {
@@ -355,7 +355,8 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
     OGRCoordinateTransformation::DestroyCT(coordTrans);
     _dt = _nc->get_dt();
 
-    _current_ts = _file_start_time;
+    if(!preserve_current_ts)
+        _current_ts = _file_start_time;
 }
 
 void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offset)
@@ -471,7 +472,8 @@ void metdata::load_from_ascii(std::vector<ascii_metdata> stations, int utc_offse
     std::tie(_start_time,_end_time) = find_unified_start_end();
     subset(_start_time,_end_time); //subset assumes we have a valid dt
 
-    // even though multi-part ascii text files are not supported, various pieces of code assumes that both
+    // even though multi-part ascii text files are not supported, various pieces of code assumes that both start_times
+    // are valid
 
     _current_ts = _file_start_time = _start_time;
     _file_end_time = _end_time;
@@ -568,10 +570,12 @@ void metdata::subset(boost::posix_time::ptime start, boost::posix_time::ptime en
 
     _n_timesteps = ( (_end_time+_dt) - _start_time).total_seconds() / _dt.total_seconds(); // need to add +dt so that we are inclusive of the last timestep
 }
+
 std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::start_end_time()
 {
     return std::make_pair(_start_time,_end_time);
 }
+
 std::pair<boost::posix_time::ptime,boost::posix_time::ptime> metdata::find_unified_start_end()
 {
     if(!_use_netcdf)
@@ -729,17 +733,40 @@ bool metdata::next_nc()
 
     if(_is_multipart_nc && (_current_ts > _file_end_time))
     {
+
         // we have no extra nc to process and we are at the end
         if(_nc_list.empty() )
         {
             return false; // we've run out of data, we done
         }
 
-        auto [_, __, file_name] = _nc_list.front();
-        _nc_list.pop(); // remove it
+        // we might be trying to start from a time that isn't in the first loaded netcdf file
+        // so find the right file. Otherwise, we are just loading the next file
+        std::string file_name;
+        while(!_nc_list.empty())
+        {
+            auto [start_time, end_time, mp_fname] = _nc_list.front();
+            _nc_list.pop();
+            if (_current_ts <= end_time)
+            {
+                file_name = mp_fname;
+                break;
+            }
+        }
+
+        // edge case:
+        // IF we are the first timestep AND we have a user/chkpt supplied start
+        // the nc file load will overwrite the current_ts time, which currently holds this custom time.
+        // we can't hit this on the first time step AND have (_current_ts > _file_end_time) without having to
+        // load extra files
 
         // we already have the filters cached, so don't pass it in again
-        load_from_netcdf(file_name, _bounding_box.get());
+        load_from_netcdf(file_name,
+            _bounding_box.get(),
+            {}, // these will be cached
+            is_first_timestep);
+
+
     }
 
     //The call to netCDF isn't thread safe. It is protected by a critical section, but it's costly, and not running this

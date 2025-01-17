@@ -109,7 +109,8 @@ class metdata
     /// Loads a netcdf file. Must be a 2D structured grid of stations. Expects times to be in UTC+0
     /// @param path
     /// @param filters
-    void load_from_netcdf(const std::string& path,  const triangulation::bounding_box* box = nullptr, std::map<std::string, boost::shared_ptr<filter_base> > filters = {});
+    /// @param preserve_current_ts Do not update the current time_step when we load the netcdf. This is reequired if the current timestep is a custom timestpe, from chkpoint or user
+    void load_from_netcdf(const std::string& path,  const triangulation::bounding_box* box = nullptr, std::map<std::string, boost::shared_ptr<filter_base> > filters = {}, bool preserve_current_ts = false);
 
     /**
      * Loads from a list of netcdf files. Expects the list to be ordered
@@ -319,6 +320,7 @@ class metdata
     // we need this to repeatedly standup new netcdf files being loaded
     std::shared_ptr<triangulation::bounding_box> _bounding_box;
 
+    // start_time, end_time, file_name
     std::queue<std::tuple<boost::posix_time::ptime, boost::posix_time::ptime, std::string>> _nc_list;
 
     // computes the dt
