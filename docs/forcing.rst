@@ -182,6 +182,8 @@ This json can be generated as follows:
     import glob
     import natsort
     import xarray as xr
+    from pathlib import Path
+    import json
 
     file_paths = natsort.natsorted(glob.glob('CF-2024*.nc'))
     metadata_list = []

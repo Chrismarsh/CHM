@@ -541,7 +541,7 @@ void core::config_forcing(pt::ptree &value)
 
         nstations = _metdata->nstations();
 
-        // we need to estimate some
+        // we need to estimate elevations of the forcing assuming it's surface level from the mesh
         if(_metdata->missing_z())
         {
             SPDLOG_WARN("No geopotential height field found in the netcdf file. Using the height of nearest triangle to estimate. This is almost certainly NOT what you want");
@@ -1487,7 +1487,7 @@ void core::init(int argc, char **argv)
     }
 
 
-    // INSERT STATION TRIMMING HERE (after options for interpolation stuff has occurred)
+    // Now the forcing and mesh are loaded, assign each face the station lists
     populate_face_station_lists();
     // TODO: double check this but we now prune the station list on load to the mesh extent which is MPI aware
     // so we should be fine to fully remove this
