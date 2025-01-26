@@ -805,7 +805,7 @@ bool metdata::next_nc()
             {
                 // auto ud = d * si::metre;
                 // d = ud.numerical_value_in(si::unit_symbols::mm);
-                d = d / 1000.0;
+                d = d * 1000.0;
             }
 
             if(stdname == "air_temperature" && unit == "K")
