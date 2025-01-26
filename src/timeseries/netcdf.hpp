@@ -65,6 +65,7 @@ boost::posix_time::time_duration get_dt();
   void open_GEM(const std::string &file);
   void open(const std::string &file);
 
+  std::string get_unit(const std::string& var);
   void create(const std::string& file);
   size_t get_xsize() const;
   size_t get_ysize() const;

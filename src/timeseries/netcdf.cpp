@@ -455,6 +455,17 @@ bool netcdf::missing_z()
     return _missing_z;
 }
 
+std::string netcdf::get_unit(const std::string& var)
+{
+    auto v = _data.getVar(var);
+    auto unitAtt = v.getAtt("unit");
+
+    std::string unit;
+    unitAtt.getValues(unit);
+
+    return unit;
+}
+
 size_t netcdf::get_ntimesteps()
 {
     return _datetime_length;

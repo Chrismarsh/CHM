@@ -362,9 +362,27 @@ void core::config_checkpoint( pt::ptree& value)
             }
         }
 
-        if(!_checkpoint_opts.on_last &&
+        auto specific_datetime = value.get_optional<std::string>("specific_datetime");
+        if(specific_datetime)
+        {
+            _checkpoint_opts.specific_datetime = boost::posix_time::ptime(boost::posix_time::from_iso_string(*specific_datetime));
+            SPDLOG_DEBUG("Checkpointing every {} timesteps" , *(_checkpoint_opts.specific_datetime));
+        }
+
+        auto specific_time = value.get_optional<std::string>("specific_time");
+        if(specific_time)
+        {
+            // ptime needs a real date, but we will only ever be checking the minute and hour
+            auto time = "3000-01-01 " + *specific_time + ":00";
+            _checkpoint_opts.specific_time = boost::posix_time::ptime(boost::posix_time::time_from_string(time));
+            SPDLOG_DEBUG("Checkpointing every {} timesteps" , *(_checkpoint_opts.specific_time));
+        }
+
+        if( !_checkpoint_opts.on_last &&
             !_checkpoint_opts.frequency &&
-            !_checkpoint_opts.on_outta_time)
+            !_checkpoint_opts.on_outta_time &&
+            !_checkpoint_opts.specific_datetime &&
+            !_checkpoint_opts.specific_time)
         {
             SPDLOG_ERROR("Checkpointing is enabled but no `on_*` selection has been specified.\n"
                          "Please see https://chm.readthedocs.io/en/develop/configuration.html#checkpoint\n");
@@ -2270,7 +2288,8 @@ void core::run()
         if(_checkpoint_opts.should_checkpoint(current_ts,
                                                (max_ts-1) == current_ts,
                                                _hpc_scheduler_info,
-                                               _comm_world
+                                               _comm_world,
+                                               _global->_current_date
                                                )) // -1 because current_ts is 0 indexed
         {
             SPDLOG_DEBUG("Checkpointing...");

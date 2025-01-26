@@ -798,6 +798,28 @@ bool metdata::next_nc()
 
             auto stdname = _nc->get_var_standard_name(v);
             auto chm_var = CF_name_mapping::standard_names.right.find(stdname)->second;
+
+            auto unit = _nc->get_unit(v);
+
+            if(stdname == "precipitation_amount" && unit == "m")
+            {
+                // auto ud = d * si::metre;
+                // d = ud.numerical_value_in(si::unit_symbols::mm);
+                d = d / 1000.0;
+            }
+
+            if(stdname == "air_temperature" && unit == "K")
+            {
+                //auto ud = d * si::kelvin;
+                //d = ud.numerical_value_in(si::degree_Celsius);
+                d = d + 273.15;
+            }
+
+            if(stdname == "relative_humidity" && unit == "1")
+            {
+                d = d * 100.;
+            }
+
             // SPDLOG_DEBUG("nc var:{} chm_var: {}", v, chm_var);
             (*s)[chm_var] = d;
 
