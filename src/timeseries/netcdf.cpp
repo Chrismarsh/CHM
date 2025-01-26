@@ -458,7 +458,7 @@ bool netcdf::missing_z()
 std::string netcdf::get_unit(const std::string& var)
 {
     auto v = _data.getVar(var);
-    auto unitAtt = v.getAtt("unit");
+    auto unitAtt = v.getAtt("units");
 
     std::string unit;
     unitAtt.getValues(unit);
