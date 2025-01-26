@@ -366,7 +366,7 @@ void core::config_checkpoint( pt::ptree& value)
         if(specific_datetime)
         {
             _checkpoint_opts.specific_datetime = boost::posix_time::ptime(boost::posix_time::from_iso_string(*specific_datetime));
-            SPDLOG_DEBUG("Checkpointing every {} timesteps" , *(_checkpoint_opts.specific_datetime));
+            SPDLOG_DEBUG("Checkpointing every {} timesteps" , boost::posix_time::to_simple_string(*(_checkpoint_opts.specific_datetime)));
         }
 
         auto specific_time = value.get_optional<std::string>("specific_time");
@@ -375,7 +375,7 @@ void core::config_checkpoint( pt::ptree& value)
             // ptime needs a real date, but we will only ever be checking the minute and hour
             auto time = "3000-01-01 " + *specific_time + ":00";
             _checkpoint_opts.specific_time = boost::posix_time::ptime(boost::posix_time::time_from_string(time));
-            SPDLOG_DEBUG("Checkpointing every {} timesteps" , *(_checkpoint_opts.specific_time));
+            SPDLOG_DEBUG("Checkpointing every {} timesteps" , boost::posix_time::to_simple_string(*(_checkpoint_opts.specific_time)));
         }
 
         if( !_checkpoint_opts.on_last &&
