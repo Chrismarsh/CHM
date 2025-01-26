@@ -2516,14 +2516,11 @@ void core::run()
             if(_comm_world.rank() == 0)
             {
 #endif
-#if (BOOST_VERSION / 100 % 1000) < 56
-                pt::write_xml(base_name + ".pvd",
-                              pvd, std::locale(), pt::xml_writer_make_settings<char>(' ', 4));
-#else
+
                 pt::write_xml(itr.fname + ".pvd",
                               pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
                 break;
-#endif
+
 #ifdef USE_MPI
             }
 #endif
