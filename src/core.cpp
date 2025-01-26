@@ -2414,11 +2414,13 @@ void core::run()
 #else
                                                 int rank = 0;
 #endif
+                                                // write paths that are relative to the pvd file
+                                                boost::filesystem::path vtu_path(output_folder_path.string() + "/meshes/" + p.filename().string()+"_"+std::to_string(rank) + ".vtu");
                                                 pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
                                                 dataset.add("<xmlattr>.timestep", _global->posix_time_int());
                                                 dataset.add("<xmlattr>.group", "");
                                                 dataset.add("<xmlattr>.part", rank);
-                                                dataset.add("<xmlattr>.file", p.filename().string()+"_"+std::to_string(rank) + ".vtu");
+                                                dataset.add("<xmlattr>.file", boost::filesystem::relative(vtu_path, output_folder_path).string());
 #ifdef USE_MPI
                                             }
                                         }
@@ -2517,7 +2519,9 @@ void core::run()
             {
 #endif
 
-                pt::write_xml(itr.fname + ".pvd",
+                // output the pvd one level higher in the main outdir than we have previously
+                boost::filesystem::path path(itr.fname + ".pvd");
+                pt::write_xml( (output_folder_path.string() / path.filename()).string(),
                               pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
                 break;
 
