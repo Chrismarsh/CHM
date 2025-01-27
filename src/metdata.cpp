@@ -726,7 +726,7 @@ bool metdata::next_nc()
     _just_loaded_nc = false;
 
     //_current_ts is already ++ from the next() call
-    if(!_is_multipart_nc && (_current_ts > _end_time))
+    if(_current_ts > _end_time)
     {
         return false;
     }
