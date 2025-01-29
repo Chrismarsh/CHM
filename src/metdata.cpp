@@ -212,7 +212,8 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
             _file_end_time = _nc->get_end();
 
             // we need to compute this from the globally known start / end times
-            _n_timesteps = (_end_time - _start_time).total_seconds() /  _nc->get_dt().total_seconds();
+            // +1 to be inclusive of the start time
+            _n_timesteps = (_end_time - _start_time).total_seconds() /  _nc->get_dt().total_seconds() +1 ;
         }
         else
         {

@@ -645,9 +645,11 @@ void core::config_forcing(pt::ptree &value)
     }
 
 
-    auto f = output_folder_path / std::format("stations_{}.vtp", _comm_world.rank());
-    _metdata->write_stations_to_ptv(f.string());
-    _metdata->write_stations_to_shp((output_folder_path / std::format("stations_{}.shp",_comm_world.rank())).string());
+    boost::filesystem::create_directories(output_folder_path / "forcing");
+
+    auto f = output_folder_path / "forcing" / std::format("stations_{}.", _comm_world.rank());
+    _metdata->write_stations_to_ptv(f.string() + "vtp");
+    _metdata->write_stations_to_shp(f.string() + "shp");
 
     SPDLOG_DEBUG("Finished reading stations. Took {} s", c.toc<s>());
 
@@ -1507,9 +1509,6 @@ void core::init(int argc, char **argv)
 
     // Now the forcing and mesh are loaded, assign each face the station lists
     populate_face_station_lists();
-    // TODO: double check this but we now prune the station list on load to the mesh extent which is MPI aware
-    // so we should be fine to fully remove this
-    // populate_distributed_station_lists();
 
     //load the parameters now that the station list has been pruned and we have a partitioned mesh
     if( ispart)
@@ -2179,6 +2178,14 @@ void core::run()
     // Populate the stations with the first timestep's data.
     // We can do this _once_ without incrementing the internal iterators
     _metdata->next();
+
+    // even though we have already done this once in core::init, if the calling next() above resulted in a load
+    // of a new nc on the first time step, e.g., we had to load 2 netcdf to get to the first timestep
+    // we need to re build the face-station mapping as  loading a new netcdf will invalidate all our stations
+    // TODO: this should probably be moved into metdata, and modules need to know about this to rebuild their
+    // interp structs
+    if(_metdata->is_multipart_nc() && _metdata->nc_just_loaded())
+        populate_face_station_lists();
 
     SPDLOG_DEBUG("Starting model run");
 
