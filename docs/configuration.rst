@@ -91,8 +91,6 @@ This section contains options for CHM and the simulation in general. This is a r
    {
       "option":
       {
-           "station_N_nearest": 1,
-           "interpolant": "nearest",
            "per_triangle_timeseries": false,
            "ui": false,
            "debug_level": "debug",
@@ -102,40 +100,6 @@ This section contains options for CHM and the simulation in general. This is a r
       }
    }
 
-.. confval:: station_search_radius
-
-   :type: double
-   :default: None
-
-   
-   The search radius (meters) surrounding any given triangle within which to search for a station. This is used to ensure only "close" stations are used. Cannot be used when ``station_N_nearest`` is set. Based off the center of the triangle. 
-
-
-.. confval:: station_N_nearest
-   
-   :type: int
-   :default: 5
-
-   Use the nearest N stations to include for the interpolation at a triangle. Based off the center of the triangle. 
-
-   Both ``station_search_radius`` and ``station_N_nearest`` cannot be
-   simultaneously specified. If neither is specific, then ``station_N_nearest:5`` is used as default. If the :confval:`interpolant` mode is ``nearest``, then this is automatically set to 1.
-
-
-.. confval:: interpolant
-
-   :type: string
-   :default: "spline"
-
-   Chooses either thin plate spline with tension (spline) or inverse
-   distance weighting (idw). Nearest selects the closest
-   station and only uses that with no interpolation. 
-
-   .. code:: json 
-
-      "interpolant" : "idw"
-      "interpolant" : "spline"
-      "interpolant" : "nearest"
 
 .. confval::  point_mode
    
@@ -591,13 +555,11 @@ All of the frequency options can mixed together, allowing more complex output fr
 
 
 
-
-
-
 forcing
 *********
 
-Input forcing can be either a ASCII timeseries or a NetCDF. Please see :ref:`forcing` for more details.
+Input forcing can be either a ASCII timeseries or a NetCDF. Please see :ref:`forcing`
+for more details on the file specifications.
 
 .. warning::
 
@@ -606,7 +568,12 @@ Input forcing can be either a ASCII timeseries or a NetCDF. Please see :ref:`for
 
 Input forcing stations do not need to be located within the simulation
 domain. Therefore they can act as ‘virtual stations’ so-as to use
-reanalysis data, or met stations located outside of the basin.
+reanalysis data, or met stations located outside of the basin. However, because global datasets
+cannot generally be loaded all at once into memory without significant memory pressure, the met loader
+only loads points that are within the bounding box of the mesh. For MPI runs, it only loads within
+the ranks' meshe sub-domain bounding box. If the number of stations within the bounding box cannot
+fullfill `num_stations_to_use`, the bounding box is expanded by 25% (up to 3 times).
+
 
 An example of this is shown below, where each black point is a virtual station, representing the center for a NetCDF grid cell from a NWP product.
 
@@ -628,7 +595,46 @@ An example of this is shown below, where each black point is a virtual station, 
 
    Specify if a NetCDF (.nc) file will be used. Cannot be used along with ASCII inputs!
 
+.. confval:: station_search_radius
 
+   :type: double
+   :default: None
+
+
+   The search radius (meters) surrounding any given triangle within which to search for a station. This is used to ensure only "close" stations are used. Cannot be used when ``station_N_nearest`` is set. Based off the center of the triangle.
+
+.. confval:: num_stations_to_use
+
+    This is removed in favour of ``num_stations_to_use``.
+
+
+
+.. confval:: num_stations_to_use
+
+   :type: int
+   :default: 5
+
+   The number of forcing inputs, e.g., netcdf cell centres or station timeseries, to include for the interpolation at a triangle.
+
+   Both ``station_search_radius`` and ``num_forcing_inputs`` cannot be
+   simultaneously specified. If neither is specific, then ``num_forcing_inputs:5`` is used as default.
+    If the :confval:`interpolant` mode is ``nearest``, then this is automatically set to 1.
+
+
+.. confval:: interpolant
+
+   :type: string
+   :default: "spline"
+
+   Chooses either thin plate spline with tension (spline) or inverse
+   distance weighting (idw). Nearest selects the closest
+   station and only uses that with no interpolation.
+
+   .. code:: json
+
+      "interpolant" : "idw"
+      "interpolant" : "spline"
+      "interpolant" : "nearest"
 
 .. note::
 
@@ -673,6 +679,9 @@ does *not* require an addition ``"forcing":`` section definition.
 
    "forcing":
      {
+
+       "num_forcing_inputs": 1,
+       "interpolant": "nearest",
        "some_station":
         {
           //definition
@@ -802,6 +811,8 @@ If a multipart file is to be used, simply replace the netcdf with the json list.
 
             "use_netcdf": true,
             "file":"metadata.json",
+            "num_forcing_inputs": 1,
+            "interpolant": "nearest",
         }
 
 Please see the NetCDF :ref:`forcing` section for more details.
