@@ -35,7 +35,6 @@ core::core()
     _log_level = debug;
 
     //chkpoointing
-    _output_station_ptv = true;
     _use_netcdf=false;
 
     _metdata= nullptr;
@@ -80,34 +79,19 @@ void core::config_options( pt::ptree &value)
         _log_level = verbose;
 
     SPDLOG_DEBUG("Setting log severity to {}", _log_level);
-//
-//    _log_sink->set_filter(
-//            severity >= _log_level
-//    );
-//
-//    _cout_log_sink->set_filter(
-//            severity >= _log_level
-//    );
 
 
-    std::string ia = value.get<std::string>("interpolant","spline");
+    // guard against deprecated config files
+    boost::optional<std::string> interp = value.get_optional<std::string>("interpolant");
+    boost::optional<std::string> ssr = value.get_optional<std::string>("station_search_radius");
+    boost::optional<std::string> sNn = value.get_optional<std::string>("station_N_nearest");
+    if(interp || ssr || sNn)
+    {
+        SPDLOG_ERROR("Interpolation and N station config options have moved to the forcing section. Please update "
+                     "your configuration file.");
+        CHM_THROW_EXCEPTION(config_error, "Old style config");
+    }
 
-    if( ia == "spline")
-    {
-        _interpolation_method = interp_alg::tpspline;
-    }
-    else if (ia == "idw")
-    {
-        _interpolation_method = interp_alg::idw;
-    }
-    else if (ia == "nearest")
-    {
-        _interpolation_method = interp_alg::nearest_sta;
-    }
-    else
-    {
-        SPDLOG_WARN("Unknown interpolant selected, defaulting to spline");
-    }
 
     // custom start time
     boost::optional<std::string> start = value.get_optional<std::string>("startdate");
@@ -140,7 +124,7 @@ void core::config_options( pt::ptree &value)
             // Only works with ascii mode so we will need to check for this later
             point_mode.forcing = pm.get<std::string>("forcing");
             point_mode.use_specific_station = true;
-            if (ia != "nearest")
+            if (_interpolation_method != interp_alg::nearest_sta)
             {
                 _interpolation_method = interp_alg::nearest_sta;
                 SPDLOG_WARN( "Station select has been changed to nearest station because a single point mode station was requested");
@@ -164,47 +148,6 @@ void core::config_options( pt::ptree &value)
     {
         _notification_script = *notify_sh;
     }
-
-    auto radius = value.get_optional<double>("station_search_radius");
-    auto N = value.get_optional<double>("station_N_nearest");
-
-    if(radius && N)
-    {
-        CHM_THROW_EXCEPTION(config_error, "Cannot have both station_search_radius and station_N_nearest set.");
-    }
-
-    if(radius)
-    {
-        _metdata->get_stations = boost::bind( &metdata::get_stations_in_radius,_metdata,boost::placeholders::_1,boost::placeholders::_2, *radius);
-    }
-    else
-    {
-        int n = 0 ; // Number of stations to interp
-        if(N) // If user specified N in config
-        {
-            n = *N;
-        }
-        else
-        { // N not specified used defaults
-            if (ia == "nearest")
-            {
-                n = 1;
-                SPDLOG_DEBUG("Using N=1 nearest stations as default.");
-            } else
-            {
-                n = 5;
-                SPDLOG_DEBUG("Using N=5 nearest stations as default.");
-            }
-        }
-
-        if( (n < 2) && (ia != "nearest")) // Required more than 1 station if using spline or idw
-        {
-            CHM_THROW_EXCEPTION(config_error, "station_N_nearest must be >= 2 if spline or idw is used. N = " + std::to_string(n));
-        }
-
-        _metdata->get_stations = boost::bind( &metdata::nearest_station,_metdata,boost::placeholders::_1,boost::placeholders::_2, n);
-    }
-
 
 }
 
@@ -507,13 +450,81 @@ void core::config_checkpoint( pt::ptree& value)
 void core::config_forcing(pt::ptree &value)
 {
     SPDLOG_DEBUG("Found forcing section");
+
+    std::string ia = value.get<std::string>("interpolant","spline");
+
+    if( ia == "spline")
+    {
+        _interpolation_method = interp_alg::tpspline;
+    }
+    else if (ia == "idw")
+    {
+        _interpolation_method = interp_alg::idw;
+    }
+    else if (ia == "nearest")
+    {
+        _interpolation_method = interp_alg::nearest_sta;
+    }
+    else
+    {
+        SPDLOG_WARN("Unknown interpolant selected, defaulting to spline");
+    }
+
+    if(value.get_optional<double>("station_N_nearest"))
+    {
+        CHM_THROW_EXCEPTION(config_error, "station_N_nearest option is renamed num_forcing_inputs");
+    }
+
+    auto radius = value.get_optional<double>("station_search_radius");
+    auto N = value.get_optional<int>("num_stations_to_use");
+
+    if(radius && N)
+    {
+        CHM_THROW_EXCEPTION(config_error, "Cannot have both station_search_radius and num_stations_to_use set.");
+    }
+
+    if(!radius)
+    {
+        if(!N)
+        {
+            N = 5;
+        }
+
+        if (_interpolation_method == interp_alg::nearest_sta)
+        {
+            N = 1;
+            SPDLOG_DEBUG("Using N=1 nearest stations as default.");
+        }
+
+        if( (*N < 2) && (_interpolation_method != interp_alg::nearest_sta)) // Required more than 1 station if using spline or idw
+        {
+            CHM_THROW_EXCEPTION(config_error, "num_stations_to_use must be >= 2 if spline or idw is used. N = " + std::to_string(*N));
+        }
+
+        SPDLOG_DEBUG("Using N={} nearest stations as default.", *N);
+    }
+
+    // This needs to be initialized with the mesh prior to the forcing being loaded because
+    // metdata needs to know about the meshes' coordinate system and bounding box to only load nearby stations
+    _metdata = std::make_shared<metdata>(_mesh, output_folder_path, N);
+
+    // Set get_stations to be the correct lookup function
+    if(radius)
+    {
+        _metdata->get_stations = boost::bind( &metdata::get_stations_in_radius,_metdata,boost::placeholders::_1,boost::placeholders::_2, *radius);
+    }
+    else
+    {
+        _metdata->get_stations = boost::bind( &metdata::nearest_station,_metdata,boost::placeholders::_1,boost::placeholders::_2, *N);
+    }
+
     SPDLOG_DEBUG("Reading meta data from config");
+
+
 
     //positive offset going west. So the normal UTC-6 would be UTC_offset:6
     _global->_utc_offset = value.get("UTC_offset",0);
     SPDLOG_DEBUG("Applying UTC offset to ALL forcing files. UTC+{}", std::to_string(_global->_utc_offset));
-
-    // _find_and_insert_subjson(value);
 
     //need to determine if we have been given a netcdf file
     _use_netcdf = value.get("use_netcdf",false);
@@ -523,6 +534,7 @@ void core::config_forcing(pt::ptree &value)
     c.tic();
     size_t nstations = 0;
     //we need to treat this very differently than the txt files
+
     if(_use_netcdf)
     {
         std::string file = value.get<std::string>("file");
@@ -549,12 +561,12 @@ void core::config_forcing(pt::ptree &value)
         // Check if we are loading a list from a json file of netcdffiles
         if(file.find(".json") != std::string::npos)
         {
-            _metdata->load_from_listof_netcdf(file, &_mesh->_bounding_box,netcdf_filters);
+            _metdata->load_from_listof_netcdf(file,netcdf_filters);
         }
         else
         {
             // this delegates all filter responsibility to metdata from now on
-            _metdata->load_from_netcdf(file, &_mesh->_bounding_box,netcdf_filters);
+            _metdata->load_from_netcdf(file, netcdf_filters);
         }
 
         nstations = _metdata->nstations();
@@ -638,18 +650,12 @@ void core::config_forcing(pt::ptree &value)
         nstations = _metdata->nstations();
     }
 
+
     SPDLOG_DEBUG("Found # stations = {}", nstations);
     if(nstations == 0)
     {
         CHM_THROW_EXCEPTION(forcing_error, "No input forcing files found!");
     }
-
-
-    boost::filesystem::create_directories(output_folder_path / "forcing");
-
-    auto f = output_folder_path / "forcing" / std::format("stations_{}.", _comm_world.rank());
-    _metdata->write_stations_to_ptv(f.string() + "vtp");
-    _metdata->write_stations_to_shp(f.string() + "shp");
 
     SPDLOG_DEBUG("Finished reading stations. Took {} s", c.toc<s>());
 
@@ -940,6 +946,7 @@ bool core::config_meshes( pt::ptree &value)
       CHM_THROW_EXCEPTION(mesh_error, "Mesh size = 0!");
     }
 
+
     return is_partition;
 }
 
@@ -949,7 +956,6 @@ void core::config_output(pt::ptree &value)
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
     vtkSmartPointer<vtkStringArray> labels = vtkSmartPointer<vtkStringArray>::New();
     labels->SetName("Point output name");
-    _output_station_ptv = true;
 
     size_t ID = 0;
     auto pts_dir = "points";
@@ -1479,9 +1485,6 @@ void core::init(int argc, char **argv)
     // the params latter
      bool ispart = config_meshes(cfg.get_child("meshes")); // this must come before forcing, as meshes initializes the required distance functions based on geographic/utm meshes
 
-    // This needs to be initialized with the mesh prior to the forcing and output being dealt with.
-    // met data needs to know about the meshes' coordinate system. Probably worth pulling this apart further
-    _metdata = std::make_shared<metdata>(_mesh->proj4());
 
     //output should come before forcing, controls if we should output the vtp file of station locations
     try
@@ -1489,9 +1492,14 @@ void core::init(int argc, char **argv)
         config_output(cfg.get_child("output"));
     } catch (pt::ptree_bad_path &e)
     {
-        _output_station_ptv = false;
         SPDLOG_DEBUG( "Optional section Output not found");
     }
+
+
+    // needs both the mesh loaded and output folder setup
+    boost::filesystem::create_directories(output_folder_path / "mesh_boundingbox");
+    auto f = output_folder_path / "mesh_boundingbox" / std::format("mesh_bbox_{}.geojson", _comm_world.rank());
+    _mesh->write_bbox_geojson(f.string());
 
     config_forcing(cfg.get_child("forcing"));
 
@@ -1592,6 +1600,11 @@ void core::init(int argc, char **argv)
             }
         }
     }
+
+    // needs to go here as both mesh needs to be loaded and the output dir needs to be known
+    boost::filesystem::create_directories(output_folder_path / "mesh_boundingbox");
+    auto mesh_boundingbox_path = output_folder_path / "mesh_boundingbox" / std::format("mesh_bbox_{}.geojson", _comm_world.rank());
+    _mesh->write_bbox_geojson(mesh_boundingbox_path.string());
 
 
     pt::json_parser::write_json((output_folder_path / "config.json" ).string(),cfg); // output a full dump of the cfg, after all modifications, to the output directory
@@ -2655,72 +2668,6 @@ void core::populate_face_station_lists()
         f->nearest_station() = _metdata->nearest_station(f->get_x(), f->get_y()).at(0);
     }
 
-}
-
-void core::populate_distributed_station_lists()
-{
-    std::vector<std::shared_ptr<station>> _stations; //stations to cull
-
-    using th_safe_multicontainer_type = std::vector< std::shared_ptr<station> >[];
-    std::unique_ptr< th_safe_multicontainer_type > th_local_stations;
-    std::vector< std::shared_ptr<station> > mpi_local_stations;
-
-    SPDLOG_DEBUG("Populating each MPI process's station list");
-
-#pragma omp parallel
-    {
-        // We want an array of vectors, so that OMP threads can increment them
-        // separately, then join them afterwards
-#pragma omp single
-        {
-            th_local_stations = std::make_unique< th_safe_multicontainer_type >(omp_get_num_threads());
-        }
-#pragma omp for
-        for(size_t face_index=0; face_index< _mesh->size_faces(); ++face_index)
-        {
-            // face_index is a local index... get the face handle
-            auto face = _mesh->face(face_index);
-            if ( face->stations().empty() )
-            { // only perform if faces' stationlists are set
-                CHM_THROW_EXCEPTION(mesh_error,   "Face station lists must be populated before populating distributed MPI station lists.");
-            }
-            for (auto &p : face->stations())
-            {
-                th_local_stations[omp_get_thread_num()].push_back(p);
-            }
-        }
-        // Join the vectors via a single thread in t operations
-        //  NOTE future optimizations:
-        //   - reserve space for insertions into mpi_local_stations
-        //   - can be done recursively in log2(num_threads) operations
-#pragma omp single
-        {
-            for(int thread_idx=0;thread_idx<omp_get_num_threads();++thread_idx)
-            {
-                mpi_local_stations.insert(std::end(mpi_local_stations),
-                                          std::begin(th_local_stations[thread_idx]), std::end(th_local_stations[thread_idx]));
-            }
-        }
-
-    }
-
-    // Remove duplicates by converting to a set
-    std::unordered_set< std::shared_ptr<station>  > keep_set(std::begin(mpi_local_stations), std::end(mpi_local_stations));
-
-    std::unordered_set< std::string > remove_set;
-    for(auto& itr: _metdata->stations())
-    {
-        if( keep_set.find(itr) == keep_set.end() ) // not found in the set we want to keep, mark for removal
-            if(itr) // might be a nan point in the nc
-                remove_set.insert(itr->ID());
-    }
-
-    // Store the local stations in the triangulations mpi-local stationslist vector
-    _metdata->prune_stations(remove_set);
-
-#ifdef USE_MPI
-    SPDLOG_DEBUG("MPI Process {} has {} locally owned stations.", _comm_world.rank() , _metdata->nstations());
-#endif
 }
 
 std::vector< std::pair<module,size_t> >& core::get_active_module_list()

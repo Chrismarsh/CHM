@@ -23,20 +23,30 @@
 
 #include "metdata.hpp"
 
-metdata::metdata(std::string mesh_proj4)
+metdata::metdata(const mesh& mesh, boost::filesystem::path output_dir, boost::optional<int> num_stations_to_use)
 {
     _nc = nullptr;
     _use_netcdf = false;
     _n_timesteps = 0;
-    _mesh_proj4 = mesh_proj4;
+
     is_first_timestep = true;
     _is_multipart_nc = false;
     _just_loaded_nc = false;
     _missing_z = false;
+    _output_dir = output_dir;
 
+    _mesh_proj4 = mesh->proj4();
     OGRSpatialReference srs;
     srs.importFromProj4(_mesh_proj4.c_str());
     _is_geographic = srs.IsGeographic();
+
+    // make a copy as we might need to modify it
+    _bounding_box = mesh->_bounding_box;
+
+    _num_stations_to_use = num_stations_to_use;
+
+    // write out the geojson and vtp of this rank's stations
+    boost::filesystem::create_directories(output_dir / "forcing");
 }
 
 metdata::~metdata()
@@ -44,14 +54,12 @@ metdata::~metdata()
 
 }
 
-void metdata::load_from_listof_netcdf(const std::string& path,  const triangulation::bounding_box* box , std::map<std::string, boost::shared_ptr<filter_base> > filters)
+void metdata::load_from_listof_netcdf(const std::string& path, std::map<std::string, boost::shared_ptr<filter_base> > filters)
 {
     _is_multipart_nc = true;
     SPDLOG_DEBUG("Loading forcing from list of netcdf file");
 
     auto nclist_root = read_json(path);
-
-    _bounding_box = std::make_shared<triangulation::bounding_box>(*box);
 
     try
     {
@@ -84,11 +92,11 @@ void metdata::load_from_listof_netcdf(const std::string& path,  const triangulat
     SPDLOG_DEBUG("Global end is {}",  boost::posix_time::to_simple_string(end_time));
 
     _nc_list.pop();
-    load_from_netcdf(nc_path, box, filters);
+    load_from_netcdf(nc_path, filters);
 
 }
 
-void metdata::load_from_netcdf(const std::string& path, const triangulation::bounding_box* box, std::map<std::string, boost::shared_ptr<filter_base> > filters, bool preserve_current_ts)
+void metdata::load_from_netcdf(const std::string& path, std::map<std::string, boost::shared_ptr<filter_base> > filters, bool preserve_current_ts)
 {
     if(_mesh_proj4 == "")
     {
@@ -250,101 +258,154 @@ void metdata::load_from_netcdf(const std::string& path, const triangulation::bou
         if(!missing_z())
             e = _nc->get_z();
 
+
         // #pragma omp parallel for
         // hangs, unclear why, critical sections around the json and gdal calls
         // don't seem to help. Probably _dD_tree is not thread safe
 
+        // guarantee at least this number of stations are found, might need to expand bbox
+        int at_least = _num_stations_to_use ? *_num_stations_to_use : 0;
+        int tries = 0;
         int skipped = 0; // keep track of how many we skipped due to nans
-        for (size_t y = 0; y < _nc->get_ysize(); y++)
+
+        bool done = false;
+        do
         {
-            for (size_t x = 0; x < _nc->get_xsize(); x++)
+            skipped = 0;
+            for (size_t y = 0; y < _nc->get_ysize(); y++)
             {
-                size_t index = x + y * _nc->get_xsize();
-
-                double latitude = 0;
-                double longitude = 0 ;
-                double z = 0;
-
-                if(is_2D_coords)
+                for (size_t x = 0; x < _nc->get_xsize(); x++)
                 {
-                    latitude = (*std::get<netcdf::data>(lat))[y][x];
-                    longitude = (*std::get<netcdf::data>(lon))[y][x];
+                    size_t index = x + y * _nc->get_xsize();
 
-                }
-                else
-                {
-                    latitude = (*std::get<netcdf::vec>(lat))[y];
-                    longitude = (*std::get<netcdf::vec>(lon))[x];
-                }
+                    double latitude = 0;
+                    double longitude = 0 ;
+                    double z = 0;
 
-                // Some Netcdf files have NaN grid squares, For these cases we will just insert a nullptr station and
-                // don't add the station to the dD list which is the only way it ever gets to modules
-                if ( std::isnan(latitude) ||
-                    std::isnan(longitude) ||
-                    std::isnan(z))
-                {
-                    _stations.at(index) = nullptr;
-                    ++skipped;
-                    continue;
-                }
-
-                std::string station_name = std::to_string(index); // these don't really have names
-
-                //need to convert the input lat/long into the coordinate system our mesh is in
-                if (!_is_geographic)
-                {
-                    //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
-                    if (!coordTrans->Transform(1, &longitude, &latitude))
+                    if(is_2D_coords)
                     {
-                        CHM_THROW_EXCEPTION(forcing_error, "Station=" + station_name + ": unable to convert coordinates to mesh format.");
-                    }
-                }
+                        latitude = (*std::get<netcdf::data>(lat))[y][x];
+                        longitude = (*std::get<netcdf::data>(lon))[y][x];
 
-                // check if we have a bounding box to constain point insertion too and only insert if we have a
-                // forcing point within the box
-                if(box)
-                {
-                    if( longitude > box->x_max || longitude < box->x_min ||
-                        latitude > box->y_max || latitude < box->y_min)
+                    }
+                    else
+                    {
+                        latitude = (*std::get<netcdf::vec>(lat))[y];
+                        longitude = (*std::get<netcdf::vec>(lon))[x];
+                    }
+
+                    // Some Netcdf files have NaN grid squares, For these cases we will just insert a nullptr station and
+                    // don't add the station to the dD list which is the only way it ever gets to modules
+                    if ( std::isnan(latitude) ||
+                        std::isnan(longitude) ||
+                        std::isnan(z))
                     {
                         _stations.at(index) = nullptr;
                         ++skipped;
                         continue;
                     }
+
+                    std::string station_name = std::to_string(index); // these don't really have names
+
+                    //need to convert the input lat/long into the coordinate system our mesh is in
+                    if (!_is_geographic)
+                    {
+                        //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
+                        if (!coordTrans->Transform(1, &longitude, &latitude))
+                        {
+                            CHM_THROW_EXCEPTION(forcing_error, "Station=" + station_name + ": unable to convert coordinates to mesh format.");
+                        }
+                    }
+
+                    // constain point insertion to the mesh's bounding box
+                    if( longitude > _bounding_box.x_max || longitude < _bounding_box.x_min ||
+                            latitude > _bounding_box.y_max || latitude < _bounding_box.y_min)
+                    {
+                        _stations.at(index) = nullptr;
+                        ++skipped;
+                        continue;
+                    }
+
+
+
+                    if(missing_z())
+                        z = -9999; // estimate this later
+                    else
+                        z = (*e)[y][x];
+
+
+                    std::shared_ptr<station> s = std::make_shared<station>(station_name,
+                        longitude, latitude, z, _variables);
+
+                    //holds the corresponding x,y grid cell of the netcdf file
+                    s->_nc_x = x;
+                    s->_nc_y = y;
+
+                    //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
+                    //it will allow us to pull out the station for a specific x,y more easily.
+                    _stations.at(index) = s;
+
+                    _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
+
                 }
-
-
-                if(missing_z())
-                    z = -9999; // estimate this later
-                else
-                    z = (*e)[y][x];
-
-
-                std::shared_ptr<station> s = std::make_shared<station>(station_name,
-                    longitude, latitude, z, _variables);
-
-                //holds the corresponding x,y grid cell of the netcdf file
-                s->_nc_x = x;
-                s->_nc_y = y;
-
-                //index this linear array as if it were 2D to make the lazy load in the main run() loop easier.
-                //it will allow us to pull out the station for a specific x,y more easily.
-                _stations.at(index) = s;
-
-                _dD_tree.insert( boost::make_tuple(Kernel::Point_2(s->x(),s->y()),s) );
-
-
             }
-        }
+
+            if(_nstations-skipped >= at_least)
+                done = true;
+            else
+            {
+
+                SPDLOG_DEBUG("Expanding station search bounding box by 25\%");
+
+                double x_expansion = (_bounding_box.x_max - _bounding_box.x_min) * 0.25;
+                double y_expansion = (_bounding_box.y_max - _bounding_box.y_min) * 0.25;
+
+                // Expand in all directions
+                _bounding_box.x_min -= x_expansion;
+                _bounding_box.x_max += x_expansion;
+                _bounding_box.y_min -= y_expansion;
+                _bounding_box.y_max += y_expansion;
+
+                tries++;
+            }
+
+            // give up
+            if(tries > 3)
+                done = true;
+
+
+        }while(!done);
+
         SPDLOG_DEBUG("Done initializing datastructure");
 
-        SPDLOG_DEBUG("This rank is using # grid cells = {}", _stations.size());
+        boost::mpi::communicator local;
+        boost::filesystem::path nc_path(path);
+
+        boost::filesystem::create_directories(_output_dir / "forcing" / nc_path.stem());
+        auto forcing_point_path = _output_dir / "forcing" / nc_path.stem() / std::format("stations_{}.", local.rank());
+
+        // SPDLOG_DEBUG("Forcing points: {}", forcing_point_path.string());
+        write_stations_to_ptv(forcing_point_path.string() + "vtp");
+        write_stations_to_shp(forcing_point_path.string() + "geojson");
+
+        // Give all the ranks a chance to expand the bbox and find the stations.
+        // The output diagnostic forcing points and bbox need to be written before we bail if there were any mistakes
+        local.barrier();
+
+        SPDLOG_DEBUG("This rank is using # grid cells = {}", _stations.size() - skipped);
         if( skipped == _nstations)
         {
             CHM_THROW_EXCEPTION(forcing_error,
                                 "All forcing grid cells were skipped due to being NaN values. Elevation and lat/lon,"
                                 " regardless of the timestep the model is started from, are defined from timestep = 0 "
                                 ". Ensure it is defined then. Also, could be a bounding box issue.");
+        }
+
+        if( _nstations-skipped < at_least)
+        {
+            CHM_THROW_EXCEPTION(forcing_error,
+                    "Couldn't fullfill station number requirement after 3 25% search area expansions. "
+                    "This means that there are not enough stations within the mesh's bounding box.");
         }
 
     } catch(netCDF::exceptions::NcException& e)
@@ -763,7 +824,6 @@ bool metdata::next_nc()
 
         // we already have the filters cached, so don't pass it in again
         load_from_netcdf(file_name,
-            _bounding_box.get(),
             {}, // these will be cached
             is_first_timestep);
 
@@ -902,10 +962,15 @@ void metdata::write_stations_to_shp(const std::string& fname)
         if(itr)
             xy.emplace_back(itr->x(), itr->y());
     }
-    gis::xy2shp(xy, fname, _mesh_proj4);
+    gis::xy2geojson(xy, fname, _mesh_proj4);
 }
 
 bool metdata::missing_z()
 {
     return _missing_z;
+}
+
+void metdata::set_working_output_dir(boost::filesystem::path working_dir)
+{
+    _output_dir = working_dir;
 }

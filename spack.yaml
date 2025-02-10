@@ -4,37 +4,40 @@
 # configuration settings.
 spack:
   definitions:
-#  - vtk: [ vtk@9.2.6 ]
-#    when: '"ubuntu" not in os'
-# has a compilation error in llvm when enabled
-    - vtk: [ vtk@9.2.6 ^mesa~llvm ]
-      when: '"linux" in platform'
-    - tbb: [intel-tbb]
+#  - vtk: [ "vtk@9.2:" ]
+##    when: '"ubuntu" not in os'
+## has a compilation error in llvm when enabled
+#    - vtk: [ "vtk@9.2.6: ^mesa~llvm" ]
+#      when: '"linux" in platform'
+    - tbb: ["intel-tbb"]
       when: '"darwin" in platform'
-    - tbb: [ intel-oneapi-tbb ]
+    - tbb: [ "intel-oneapi-tbb" ]
       when: '"linux" in platform'
   specs:
-  - "boost@1.85.0: +system+filesystem+date_time+thread+chrono+regex+iostreams+program_options+mpi+serialization"
-  - cgal +header_only
-  - hdf5 +cxx
-  - "netcdf-cxx4@4.3:"
-  - "gdal@3.8: +hdf5 +netcdf"
-  - "proj@9: +curl+tiff"
-  - sparsehash
-  - "gperftools build_system=autotools"
-  - gsl +external-cblas
-  - armadillo
-  - tbb
-  - eigen
-  - meteoio
-  - "func@2.2.0: ~openmp"
-  - "trilinos@15.0.0 +mpi"
-  - jemalloc
-  - "vtk@9.2:"
-  - spdlog
-  - openblas
-  - "cmake@3.2:"
-  - "openmpi"
+    - "boost@1.85.0: +system+filesystem+date_time+thread+chrono+regex+iostreams+program_options+mpi+serialization~python"
+    - "cgal@6: +gmp"
+    - "hdf5 +cxx"
+    - "netcdf-cxx4@4.3:"
+    - "gdal@3.8: +hdf5 +netcdf"
+    - "proj@9: +curl+tiff"
+    - "sparsehash"
+    - "gperftools build_system=autotools"
+    - "gsl +external-cblas"
+    - "armadillo"
+    - "tbb"
+    - "eigen"
+    - "meteoio"
+    - "func@2.2.0: ~openmp"
+    - "trilinos@15.1.1 +mpi"
+    - "jemalloc"
+    - "vtk@9.2:"
+    - "spdlog"
+    - "openblas"
+    - "cmake@3.30:"
+    - "openmpi"
+    - "vtk@9.2:"
+    - "gcc@14"
+  #  - udunits
   view: true
   concretizer:
     unify: true

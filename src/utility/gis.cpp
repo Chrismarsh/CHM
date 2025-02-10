@@ -3,17 +3,67 @@
 namespace gis
 {
 
-    void xy2shp(std::vector<std::tuple<float, float>> xy, std::string shp_path, std::string proj4)
+    void bbox2geojson(double xmin, double ymin, double xmax, double ymax, const std::string& filepath)
     {
         GDALAllRegister();
-        const char *pszDriverName = "ESRI Shapefile";
+        const char *pszDriverName = "GeoJSON";
         GDALDriver *poDriver = GetGDALDriverManager()->GetDriverByName(pszDriverName);
         if (poDriver == nullptr)
         {
-            CHM_THROW_EXCEPTION(chm_error, "Shapefile driver not available");
+            CHM_THROW_EXCEPTION(chm_error, "GeoJSON driver not available");
         }
 
-        GDALDataset *poDS = poDriver->Create(shp_path.c_str(), 0, 0, 0, GDT_Unknown, nullptr);
+        GDALDataset *poDS = poDriver->Create(filepath.c_str(), 0, 0, 0, GDT_Unknown, nullptr);
+        if (poDS == nullptr)
+        {
+            CHM_THROW_EXCEPTION(chm_error, "Creation of output file failed");
+        }
+
+        OGRLayer *poLayer = poDS->CreateLayer("bbox", nullptr, wkbPolygon, nullptr);
+        if (poLayer == nullptr)
+        {
+            CHM_THROW_EXCEPTION(chm_error, "Layer creation failed");
+        }
+
+        // Create a polygon from the bounding box
+        OGRPolygon polygon;
+        OGRLinearRing ring;
+
+        // Add points in clockwise order
+        ring.addPoint(xmin, ymin); // bottom left
+        ring.addPoint(xmax, ymin); // bottom right
+        ring.addPoint(xmax, ymax); // top right
+        ring.addPoint(xmin, ymax); // top left
+        ring.addPoint(xmin, ymin); // close the ring
+
+        polygon.addRing(&ring);
+
+        // Create and set the feature
+        OGRFeature *poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
+        poFeature->SetGeometry(&polygon);
+
+        if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
+        {
+            OGRFeature::DestroyFeature(poFeature);
+            GDALClose(poDS);
+            CHM_THROW_EXCEPTION(chm_error, "Failed to create feature in GeoJSON");
+        }
+
+        OGRFeature::DestroyFeature(poFeature);
+        GDALClose(poDS);
+    }
+
+    void xy2geojson(std::vector<std::tuple<float, float>> xy, std::string filepath, std::string proj4)
+    {
+        GDALAllRegister();
+        const char *pszDriverName = "GeoJSON";
+        GDALDriver *poDriver = GetGDALDriverManager()->GetDriverByName(pszDriverName);
+        if (poDriver == nullptr)
+        {
+            CHM_THROW_EXCEPTION(chm_error, "GeoJSON driver not available");
+        }
+
+        GDALDataset *poDS = poDriver->Create(filepath.c_str(), 0, 0, 0, GDT_Unknown, nullptr);
         if (poDS == nullptr)
         {
             CHM_THROW_EXCEPTION(chm_error, "Creation of output file failed");
@@ -66,7 +116,7 @@ namespace gis
 
             if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
             {
-                CHM_THROW_EXCEPTION(chm_error, "Failed to create feature in shapefile");
+                CHM_THROW_EXCEPTION(chm_error, "Failed to create feature in GeoJSON");
             }
 
             OGRFeature::DestroyFeature(poFeature);

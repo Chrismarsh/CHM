@@ -271,14 +271,11 @@ protected:
     // then we need to affix every file IO (excep the log ?) with this path.
     boost::filesystem::path cwd_dir;
 
-
-    bool _output_station_ptv; //should we output the station ptv file? if we have no output section, then don't do this.
-
     //this is called via system call when the model is done to notify the user
     std::string _notification_script;
 
     //main mesh object
-    boost::shared_ptr< triangulation > _mesh;
+    mesh _mesh;
 
     // these are saved here so-as to be used elsewhere
     std::string _mesh_path;
@@ -602,10 +599,7 @@ protected:
 
     } _checkpoint_opts;
 
-
-
     //command line argument options we need to keep track of
-
     struct
     {
         bool tmp;  // empty until we use this more
@@ -613,10 +607,9 @@ protected:
     } cli_options;
 
 
-#ifdef USE_MPI
     boost::mpi::environment _mpi_env;
     boost::mpi::communicator _comm_world;
-#endif
+
 
 };
 

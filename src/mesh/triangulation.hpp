@@ -17,8 +17,7 @@
 #pragma once
 
 #include "interpolation.hpp"
-
-
+#include "gis.hpp"
 #include "station.hpp"
 #include "global.hpp"
 
@@ -874,6 +873,12 @@ public:
 	 * @param output_variables Selected variables to write out.
 	 */
     void update_vtk_data(std::vector<std::string> output_variables);
+
+    /**
+     * Writes the bounding box of the mesh to geojson
+     * @param filename
+     */
+    void write_bbox_geojson(const std::string& filename);
 
     /**
     * Saves the mesh with this timesteps values to a vtu file for visualization in Paraview
@@ -1761,6 +1766,7 @@ void face<Gt, Fb>::to_file(std::string fname)
 {
     _data->to_file(fname);
 }
+
 
 template < class Gt, class Fb>
 double face<Gt, Fb>::get_x()

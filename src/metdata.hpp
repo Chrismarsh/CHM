@@ -45,6 +45,8 @@
 //boost includes
 #include <boost/function.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
+#include <boost/filesystem.hpp>
+#include <boost/mpi.hpp>
 
 //Gdal includes
 #include <ogr_spatialref.h>
@@ -67,6 +69,9 @@
 #include "filter_base.hpp"
 #include "utility/gis.hpp"
 #include "CF_names.hpp"
+
+// #include <mp-units/systems/si.h>
+// using namespace mp_units;
 
 /**
  * Main meteorological data coordinator. Opens from a variety of sources and ensures that each virtual station has this timestep's information
@@ -99,10 +104,14 @@ class metdata
         std::vector<boost::shared_ptr<filter_base>> filters;
     };
 
-
-//    metdata() = delete;
-
-    metdata(std::string mesh_proj4);
+    /**
+     *
+     * @param mesh
+     * @param output_dir
+     * @param num_stations_to_use OPtionally the number of statons we require which might require a bbox expansion to
+     * search
+     */
+metdata(const mesh& mesh, boost::filesystem::path output_dir, boost::optional<int> num_stations_to_use);
 
     ~metdata();
 
@@ -110,7 +119,7 @@ class metdata
     /// @param path
     /// @param filters
     /// @param preserve_current_ts Do not update the current time_step when we load the netcdf. This is reequired if the current timestep is a custom timestpe, from chkpoint or user
-    void load_from_netcdf(const std::string& path,  const triangulation::bounding_box* box = nullptr, std::map<std::string, boost::shared_ptr<filter_base> > filters = {}, bool preserve_current_ts = false);
+    void load_from_netcdf(const std::string& path,  std::map<std::string, boost::shared_ptr<filter_base> > filters = {}, bool preserve_current_ts = false);
 
     /**
      * Loads from a list of netcdf files. Expects the list to be ordered
@@ -118,7 +127,7 @@ class metdata
      * @param box
      * @param filters
      */
-    void load_from_listof_netcdf(const std::string& path,  const triangulation::bounding_box* box = nullptr, std::map<std::string, boost::shared_ptr<filter_base> > filters = {});
+    void load_from_listof_netcdf(const std::string& path,  std::map<std::string, boost::shared_ptr<filter_base> > filters = {});
 
     /// Loads the standard ascii timeseries. Needs to be in UTC+0
     /// @param path
@@ -231,6 +240,12 @@ class metdata
      */
   bool missing_z();
 
+    /**
+     * Set the output dir so metdata can write its output
+     * @param working_dir
+     */
+  void set_working_output_dir(boost::filesystem::path working_dir);
+
   private:
 
     struct ascii_data
@@ -298,6 +313,8 @@ class metdata
     // Total number of stations
     size_t _nstations;
 
+    // metdata needs to know about the output working dir so it can output diagnostic files
+    boost::filesystem::path _output_dir;
     bool is_first_timestep;
 
     //number of timesteps
@@ -318,13 +335,16 @@ class metdata
 
     // holds a reference to the bounding box of the mesh, if it was passed in
     // we need this to repeatedly standup new netcdf files being loaded
-    std::shared_ptr<triangulation::bounding_box> _bounding_box;
+    // this is a copy because we might need to modify it (expand it) to fullfill the station search criteria
+    triangulation::bounding_box _bounding_box;
 
     // start_time, end_time, file_name
     std::queue<std::tuple<boost::posix_time::ptime, boost::posix_time::ptime, std::string>> _nc_list;
 
-    // computes the dt
-    // void compute_dt();
+    // The number of stations metdata needs to provide access to. In MPI mode, a ranks mesh bbox might not
+    // actually contain any points and the bbox will need to be expanded to include _num_stations_to_use forcing
+    // cells. This really only happens as a problem in MPI mode with gridded netcdf inputs
+    boost::optional<int> _num_stations_to_use;
 
     //all variables provided by met + filter
     std::set<std::string> _variables;
