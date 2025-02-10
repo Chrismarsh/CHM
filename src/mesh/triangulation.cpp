@@ -1451,7 +1451,7 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
 
 void triangulation::write_bbox_geojson(const std::string& filename)
 {
-    gis::bbox2geojson(_bounding_box.x_min, _bounding_box.y_min, _bounding_box.x_max, _bounding_box.y_max, filename);
+    gis::bbox2geojson(_bounding_box.x_min, _bounding_box.y_min, _bounding_box.x_max, _bounding_box.y_max, filename, proj4());
 }
 
 void triangulation::load_partition_from_mesh(const std::string& mesh_filename)

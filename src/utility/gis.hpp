@@ -35,7 +35,7 @@
 
 namespace gis
 {
-    void bbox2geojson(double xmin, double ymin, double xmax, double ymax, const std::string& filepath);
-    void xy2geojson(std::vector<std::tuple<float, float>> xy, std::string filepath, std::string proj4);
+    void bbox2geojson(double xmin, double ymin, double xmax, double ymax, const std::string& filepath, const std::string& proj4);
+    void xy2geojson(std::vector<std::tuple<float, float>> xy, const std::string& filepath, const std::string& proj4);
 
 }

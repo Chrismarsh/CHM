@@ -1601,11 +1601,6 @@ void core::init(int argc, char **argv)
         }
     }
 
-    // needs to go here as both mesh needs to be loaded and the output dir needs to be known
-    boost::filesystem::create_directories(output_folder_path / "mesh_boundingbox");
-    auto mesh_boundingbox_path = output_folder_path / "mesh_boundingbox" / std::format("mesh_bbox_{}.geojson", _comm_world.rank());
-    _mesh->write_bbox_geojson(mesh_boundingbox_path.string());
-
 
     pt::json_parser::write_json((output_folder_path / "config.json" ).string(),cfg); // output a full dump of the cfg, after all modifications, to the output directory
     _cfg = cfg;

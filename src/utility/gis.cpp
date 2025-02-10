@@ -3,7 +3,7 @@
 namespace gis
 {
 
-    void bbox2geojson(double xmin, double ymin, double xmax, double ymax, const std::string& filepath)
+    void bbox2geojson(double xmin, double ymin, double xmax, double ymax, const std::string& filepath, const std::string& proj4)
     {
         GDALAllRegister();
         const char *pszDriverName = "GeoJSON";
@@ -19,11 +19,21 @@ namespace gis
             CHM_THROW_EXCEPTION(chm_error, "Creation of output file failed");
         }
 
-        OGRLayer *poLayer = poDS->CreateLayer("bbox", nullptr, wkbPolygon, nullptr);
+        OGRSpatialReference oSRS;
+
+        if (oSRS.importFromProj4(proj4.c_str()) != OGRERR_NONE)
+        {
+            CHM_THROW_EXCEPTION(chm_error, "Failed to import PROJ.4 string");
+        }
+
+        char **papszOptions = nullptr;
+        papszOptions = CSLAddNameValue(papszOptions, "RFC7946", "TRUE");
+        OGRLayer *poLayer = poDS->CreateLayer("bbox", &oSRS, wkbPolygon, papszOptions);
         if (poLayer == nullptr)
         {
             CHM_THROW_EXCEPTION(chm_error, "Layer creation failed");
         }
+
 
         // Create a polygon from the bounding box
         OGRPolygon polygon;
@@ -49,11 +59,13 @@ namespace gis
             CHM_THROW_EXCEPTION(chm_error, "Failed to create feature in GeoJSON");
         }
 
+        CSLDestroy(papszOptions);
         OGRFeature::DestroyFeature(poFeature);
+
         GDALClose(poDS);
     }
 
-    void xy2geojson(std::vector<std::tuple<float, float>> xy, std::string filepath, std::string proj4)
+    void xy2geojson(std::vector<std::tuple<float, float>> xy, const std::string& filepath, const std::string& proj4)
     {
         GDALAllRegister();
         const char *pszDriverName = "GeoJSON";
@@ -69,22 +81,20 @@ namespace gis
             CHM_THROW_EXCEPTION(chm_error, "Creation of output file failed");
         }
 
-        OGRLayer *poLayer = poDS->CreateLayer("layer", nullptr, wkbPoint, nullptr);
+        OGRSpatialReference oSRS;
+
+        if (oSRS.importFromProj4(proj4.c_str()) != OGRERR_NONE)
+        {
+            CHM_THROW_EXCEPTION(chm_error, "Failed to import PROJ.4 string");
+        }
+        char **papszOptions = nullptr;
+        papszOptions = CSLAddNameValue(papszOptions, "RFC7946", "TRUE");
+
+        OGRLayer *poLayer = poDS->CreateLayer("layer", &oSRS, wkbPoint, papszOptions);
         if (poLayer == nullptr)
         {
             CHM_THROW_EXCEPTION(chm_error, "Layer creation failed");
         }
-
-//        OGRSpatialReference oSRS;
-
-//        if (oSRS.importFromProj4(proj4.c_str()) != OGRERR_NONE)
-//        {
-//            CHM_THROW_EXCEPTION(chm_error, "Failed to import PROJ.4 string");
-//        }
-//        if (poDS->SetProjection(proj4.c_str()) != CE_None)
-//        {
-//            CHM_THROW_EXCEPTION(chm_error, "Failed to set spatial reference");
-//        }
 
         OGRFieldDefn oFieldX("X", OFTReal);
         oFieldX.SetWidth(32);
@@ -121,6 +131,7 @@ namespace gis
 
             OGRFeature::DestroyFeature(poFeature);
         }
+        CSLDestroy(papszOptions);
         GDALClose(poDS);
     }
 
