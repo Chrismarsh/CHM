@@ -603,10 +603,9 @@ An example of this is shown below, where each black point is a virtual station, 
 
    The search radius (meters) surrounding any given triangle within which to search for a station. This is used to ensure only "close" stations are used. Cannot be used when ``station_N_nearest`` is set. Based off the center of the triangle.
 
-.. confval:: num_stations_to_use
+.. confval:: station_N_nearest
 
     This is removed in favour of ``num_stations_to_use``.
-
 
 
 .. confval:: num_stations_to_use
@@ -616,8 +615,8 @@ An example of this is shown below, where each black point is a virtual station, 
 
    The number of forcing inputs, e.g., netcdf cell centres or station timeseries, to include for the interpolation at a triangle.
 
-   Both ``station_search_radius`` and ``num_forcing_inputs`` cannot be
-   simultaneously specified. If neither is specific, then ``num_forcing_inputs:5`` is used as default.
+   Both ``station_search_radius`` and ``num_stations_to_use`` cannot be
+   simultaneously specified. If neither is specific, then ``num_stations_to_use:5`` is used as default.
     If the :confval:`interpolant` mode is ``nearest``, then this is automatically set to 1.
 
 
@@ -680,7 +679,7 @@ does *not* require an addition ``"forcing":`` section definition.
    "forcing":
      {
 
-       "num_forcing_inputs": 1,
+       "num_stations_to_use": 1,
        "interpolant": "nearest",
        "some_station":
         {
@@ -811,7 +810,7 @@ If a multipart file is to be used, simply replace the netcdf with the json list.
 
             "use_netcdf": true,
             "file":"metadata.json",
-            "num_forcing_inputs": 1,
+            "num_stations_to_use": 1,
             "interpolant": "nearest",
         }
 

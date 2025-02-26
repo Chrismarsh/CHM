@@ -472,7 +472,7 @@ void core::config_forcing(pt::ptree &value)
 
     if(value.get_optional<double>("station_N_nearest"))
     {
-        CHM_THROW_EXCEPTION(config_error, "station_N_nearest option is renamed num_forcing_inputs");
+        CHM_THROW_EXCEPTION(config_error, "station_N_nearest option is renamed num_stations_to_use and moved to the forcing section.");
     }
 
     auto radius = value.get_optional<double>("station_search_radius");
@@ -594,7 +594,9 @@ void core::config_forcing(pt::ptree &value)
 
         for (auto &itr : value)
         {
-            if(itr.first != "UTC_offset")
+            if(itr.first != "UTC_offset" &&
+                itr.first != "num_stations_to_use" &&
+                itr.first != "interpolant")
             {
                 metdata::ascii_metdata data;
 
