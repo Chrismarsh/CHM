@@ -370,8 +370,16 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
             }
 
             // give up
-            if(tries > 3)
+            if(tries > 10)
+            {
+                CHM_THROW_EXCEPTION(forcing_error, "Tried to expanded the domain search by 250% but this was insufficient to "
+                             "find any nearby forcing stations. This likely means that a station is too far away. If "
+                             "using a netcdf input, it means the spatial resolution of the driving meteorology is "
+                             "too coarse for a domain of this size.");
+
                 done = true;
+            }
+
 
 
         }while(!done);
@@ -400,14 +408,7 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
                                 " regardless of the timestep the model is started from, are defined from timestep = 0 "
                                 ". Ensure it is defined then. Also, could be a bounding box issue.");
         }
-
-        if( _nstations-skipped < at_least)
-        {
-            CHM_THROW_EXCEPTION(forcing_error,
-                    "Couldn't fullfill station number requirement after 3 25% search area expansions. "
-                    "This means that there are not enough stations within the mesh's bounding box.");
-        }
-
+        
     } catch(netCDF::exceptions::NcException& e)
     {
         OGRCoordinateTransformation::DestroyCT(coordTrans);

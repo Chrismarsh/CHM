@@ -493,7 +493,7 @@ void core::config_forcing(pt::ptree &value)
         if (_interpolation_method == interp_alg::nearest_sta)
         {
             N = 1;
-            SPDLOG_DEBUG("Using N=1 nearest stations as default.");
+            SPDLOG_DEBUG("Setting N=1 for nearest interpolant");
         }
 
         if( (*N < 2) && (_interpolation_method != interp_alg::nearest_sta)) // Required more than 1 station if using spline or idw
