@@ -10,7 +10,7 @@ Compilation
 CHM uses `spack <https://spack.readthedocs.io/>`__ to manage and build all
 dependencies. Because of the various requirements on build
 configuration, versions, and inter-dependencies, using system libraries (apt/yum/brew/&c)
-it not recommended. Take care when compiling against homebrew libraries. Because homebrew releases
+is not recommended. Take care when compiling against homebrew libraries. Because homebrew releases
 new versions of libraries often, it often results in having to frequently recompile CHM.
 
 However, as the build system uses cmake to locate libraries, there are no assumptions about using spack, so any
@@ -40,7 +40,7 @@ CHM source
 *************
 
 An out of source build should be used. That is, build in a separate folder outside of the CHM source.
-This makes it easier to clean up and start from scratch and to keep seperate release and debug builds.
+This makes it easier to clean up and start from scratch and to keep separate release and debug builds.
 
 An example is given below:
 
@@ -96,9 +96,9 @@ It will look like this
 ::
 
     $ cat ~/.spack/repos.yaml
-    	repos:
-    	  - /some/path/here/spack-repo
-    	  - $spack/var/spack/repos/builtin
+        repos:
+          - /some/path/here/spack-repo
+          - $spack/var/spack/repos/builtin
 
 
 Build dependencies
@@ -116,10 +116,10 @@ This step will build and install the dependencies via spack.
 
 CHM with easy_build
 **********************
-When targetting the Digital Alliance Canada stack, `this repository <https://github.com/Chrismarsh/easy_build>`__ hosts
-the easy_build scripts needed for missing libraries. They can be installed in a depdency-preserving order with ``install-all.sh``.
+When targeting the Digital Alliance Canada stack, `this repository <https://github.com/Chrismarsh/easy_build>`__ hosts
+the easy_build scripts needed for missing libraries. They can be installed in a dependency-preserving order with ``install-all.sh``.
 
-Digitial Alliance Canada
+Digital Alliance Canada
 -----------------------------
 
 To build on Compute Canada stack machines, such as Graham, all dependencies must be built
@@ -217,7 +217,7 @@ Both ``ninja`` and ``make`` (this is the default) are supported. To use ``ninja`
    cmake ~/CHM -DCMAKE_INSTALL_PREFIX=/opt/chm-install -G "Ninja"
 
 
-The default build option creates an optimizted “release” build. To build
+The default build option creates an optimized “release” build. To build
 a debug build, use ``-DCMAKE_BUILD_TYPE=Debug``.
 
 
