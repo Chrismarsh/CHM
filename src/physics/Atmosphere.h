@@ -43,6 +43,9 @@ namespace Atmosphere {
     double corr_precip_slope(double p, double slope);
 
     double saturatedVapourPressure(const double& T);
+
+    const double Cp = 1005; // (J/kg/K) volumetric heat capcity of dry air.
+    const double kappa = 0.4; // proportionality constant, used at least for the PenmanMonteith ET. 
 }
 
 
