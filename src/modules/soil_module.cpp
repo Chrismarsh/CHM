@@ -14,7 +14,7 @@ soil_module::soil_module(config_file cfg) : module_base("soil_module", parallel:
 //    depends("routing_residual");
 
     provides("condensation");
-    provides("actual_ET");
+    provides("actual_soil_ET");
     provides("soil_excess_to_runoff");
     provides("soil_excess_to_gw");
     provides("ground_water_out");
@@ -87,7 +87,7 @@ void soil_module::run(mesh_elem& face)
     if (d.swe == 0.0)
         d.ET->run();
     else
-        d.actual_ET = 0.0;
+        d.actual_soil_ET = 0.0;
 
     set_soil_outputs(face,d);
 
@@ -100,7 +100,7 @@ void soil_module::get_soil_inputs(mesh_elem& face,soil_module::data& d)
     d.thaw_front_depth = (*face)["thaw_front_depth"_s];
     d.freeze_front_depth = (*face)["freeze_front_depth"_s];
     d.freeze_thaw_first_front = (*face)["first_front_depth"_s];
-    d.potential_ET = (*face)["ET"_s];
+    d.actual_ET = (*face)["ET"_s];
     d.infil = (*face)["inf"_s];
     d.runoff = (*face)["runoff"_s];
     d.routing_residual = 0.0; //(*face)["routine_residual"_s];
@@ -109,7 +109,7 @@ void soil_module::get_soil_inputs(mesh_elem& face,soil_module::data& d)
 void soil_module::set_soil_outputs(mesh_elem& face,soil_module::data& d)
 {
     (*face)["condensation"_s] = d.condensation;
-    (*face)["actual_ET"_s] = d.actual_ET; 
+    (*face)["actual_soil_ET"_s] = d.actual_soil_ET; 
     (*face)["soil_excess_to_runoff"_s] = d.soil_excess_to_runoff; 
     (*face)["soil_excess_to_gw"_s] = d.soil_excess_to_gw; 
     (*face)["ground_water_out"_s] = d.ground_water_out; 
