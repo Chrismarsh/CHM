@@ -8,6 +8,14 @@ third_party/snowpack/plugins/SnowpackIO.cc
 CRHMr.log
 .Rhistory
 **/*.swp
+**/*.swo
+**/*.swo
+**/*.swo
+**/*.swo
+**/*.swo
+**/*.swo
+**/*.swo
+**/*.swo
 
 /.idea/
 /.spack-env/
