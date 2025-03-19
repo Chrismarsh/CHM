@@ -13,13 +13,13 @@ soil_ET::~soil_ET()
 void soil_ET::run()
 {  
     
-    DTO.actual_ET = 0.0;
+    DTO.actual_soil_ET = 0.0;
 
     if (DTO.swe > 0.0)
        return; 
 
     std::cout << "in soil ET" << std::endl;
-    double available_to_evap = DTO.potential_ET;
+    double available_to_evap = DTO.actual_ET;
     if (DTO.depression_storage + DTO.soil_storage > 0.0)
     {
         available_to_evap *= DTO.depression_storage / 
@@ -43,7 +43,7 @@ void soil_ET::run()
         available_to_evap = 0.0;
     
     std::cout << "in soil ET" << std::endl;
-    available_to_evap = DTO.potential_ET - available_to_evap;
+    available_to_evap = DTO.actual_ET - available_to_evap;
 
     if (available_to_evap > 0.0 && DTO.soil_storage > 0.0 && DTO.ground_cover_type > 0)
     {
@@ -114,12 +114,12 @@ void soil_ET::run()
             break;
         }
 
-        DTO.actual_ET += ET;
+        DTO.actual_soil_ET += ET;
         std::cout << "in soil ET" << std::endl;
         if (DTO.is_lake(DTO))
         {
             std::cout << "out" <<  std::endl;
-            DTO.actual_ET = DTO.potential_ET;
+            DTO.actual_soil_ET = DTO.actual_ET;
         }
     };
 };
