@@ -9,13 +9,13 @@ struct shared_DTO
     double soil_rechr_storage = 0.0;
     double soil_rechr_max = 0.0;
     double depression_storage = 0.0; 
-    double potential_ET = 0.0; 
+    double actual_ET = 0.0; 
 };
 
 struct soil_ET_DTO : virtual shared_DTO
 {
 
-    double actual_ET = 0.0; //out
+    double actual_soil_ET = 0.0; //out
     int ground_cover_type = 0;
     int soil_type_rechr = 0;
     int soil_type_lower = 0;
