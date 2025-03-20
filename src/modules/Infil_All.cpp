@@ -31,6 +31,7 @@ Infil_All::Infil_All(config_file cfg) : module_base("Infil_All", parallel::data,
     depends("snowmelt_int");
     depends("rainfall_int"); // NEW
     depends("soil_storage_at_freeze"); // NEW, depends on Volumetric model, equivalent to fallstat in crhm
+    depends("soil_storage");
     depends("t");
 
     provides("inf");
