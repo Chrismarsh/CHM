@@ -78,7 +78,7 @@ void core::config_options( pt::ptree &value)
     else if (s == "verbose")
         _log_level = verbose;
 
-    SPDLOG_DEBUG("Setting log severity to {}", _log_level);
+    SPDLOG_DEBUG("Setting log severity to {}", s);
 
 
     // guard against deprecated config files
