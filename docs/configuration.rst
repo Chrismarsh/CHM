@@ -475,7 +475,7 @@ For more details on the output files, please see the :ref:`output` section.
 
 .. confval:: variables
 
-   :type: ``[ "variable", ... ]``
+   :type: ``[ "variable_name", ... ]``
 
    The default behaviour to is to write every variable at each timestep. This may produce an undesirable amount of output. This takes a list of variables to output.
 
