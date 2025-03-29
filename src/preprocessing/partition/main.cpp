@@ -26,6 +26,7 @@
 #include "logger.hpp"
 #include "sort_perm.hpp"
 #include "triangulation.hpp"
+#include "ordinal_typedef.hpp"
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -122,7 +123,7 @@ class preprocessingTriangulation : public triangulation
 
         // npoints holds the total number of points
         int npoints=0;
-        for (size_t i = 0; i < _local_faces.size(); i++)
+        for (global_ordinal_type i = 0; i < _local_faces.size(); i++)
         {
             mesh_elem fit = _local_faces.at(i);
 
@@ -164,11 +165,12 @@ class preprocessingTriangulation : public triangulation
         // Global vertex ids -> only need to be set here, get written in the writer
         vertex_data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
         vertex_data["global_id"]->SetName("global_id");
-        for(int i=0;i<npoints;++i){
+        for(global_ordinal_type i=0;i<npoints;++i)
+        {
             vertex_data["global_id"]->InsertTuple1(i,global_vertex_id[i]);
         }
 
-        for (size_t i = 0; i < _local_faces.size(); i++)
+        for (global_ordinal_type i = 0; i < _local_faces.size(); i++)
         {
             mesh_elem fit = _local_faces.at(i);
 
@@ -226,9 +228,9 @@ class preprocessingTriangulation : public triangulation
         }
 
 #pragma omp parallel for
-        for (size_t local_ind = 0; local_ind < _num_faces_in_partition.at(_comm_world.rank()); ++local_ind)
+        for (global_ordinal_type local_ind = 0; local_ind < _num_faces_in_partition.at(_comm_world.rank()); ++local_ind)
         {
-            size_t offset_idx = face_start_idx + local_ind;
+            global_ordinal_type offset_idx = face_start_idx + local_ind;
             _faces.at(_global_IDs.at(offset_idx))->owner = mpi_rank;
         }
 
@@ -271,9 +273,9 @@ class preprocessingTriangulation : public triangulation
         _local_faces.resize(_num_faces_in_partition.at(_comm_world.rank()));
 
         // Loop can't be parallel due to modifying map
-        for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
+        for (global_ordinal_type local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
         {
-            size_t offset_idx = face_start_idx + local_ind;
+            global_ordinal_type offset_idx = face_start_idx + local_ind;
             _global_to_locally_owned_index_map[_global_IDs.at(offset_idx)] = local_ind;
 
             _faces.at(_global_IDs.at(offset_idx))->is_ghost = false;
@@ -385,7 +387,7 @@ class preprocessingTriangulation : public triangulation
                 // Default args read all of the dataspace
                 dataset.read(vertex.data(), vertex_t);
 
-                for (size_t i = 0; i < nvert; i++)
+                for (global_ordinal_type i = 0; i < nvert; i++)
                 {
 
                     Point_3 pt(vertex[i][0], vertex[i][1], vertex[i][2]);
@@ -414,7 +416,7 @@ class preprocessingTriangulation : public triangulation
                 // Default args read all of the dataspace
                 dataset.read(elem.data(), elem_t);
 
-                for (size_t i = 0; i < nelem; i++)
+                for (global_ordinal_type i = 0; i < nelem; i++)
                 {
 
                     auto vert1 = _vertexes.at(elem[i][0]); // 0 indexing
@@ -472,7 +474,7 @@ class preprocessingTriangulation : public triangulation
                 dataset.read(neigh.data(), neighbor_t);
 
                 SPDLOG_DEBUG("Building face neighbors");
-                for (size_t i = 0; i < nelem; i++)
+                for (global_ordinal_type i = 0; i < nelem; i++)
                 {
                     auto face = _faces.at(i);
 
@@ -526,7 +528,7 @@ class preprocessingTriangulation : public triangulation
         // Vector for append speed
         std::vector<mesh_elem> ghosted_boundary_nearest_neighbors;
 
-        for (size_t face_index = 0; face_index < _boundary_faces.size(); ++face_index)
+        for (global_ordinal_type face_index = 0; face_index < _boundary_faces.size(); ++face_index)
         {
             // face_index is a local index... get the face handle
             auto face = _boundary_faces.at(face_index).first;
@@ -842,7 +844,7 @@ class preprocessingTriangulation : public triangulation
             std::set<std::string> pt = {"partition_tool"};
 
 #pragma omp parallel for
-            for (size_t i = 0; i < _faces.size(); ++i)
+            for (global_ordinal_type i = 0; i < _faces.size(); ++i)
             {
                 auto f = _faces.at(i);
                 f->is_ghost = true; // default state, switches to false later
@@ -914,7 +916,7 @@ class preprocessingTriangulation : public triangulation
 
             // flag all the ghosts that aren't Type I (neigh) as Type II distance ghosts
 #pragma omp parallel for
-            for (size_t i = 0; i < _ghost_faces.size(); i++)
+            for (global_ordinal_type i = 0; i < _ghost_faces.size(); i++)
             {
                 auto face = _ghost_faces.at(i);
                 auto& gi = face->get_module_data<ghost_info>("partition_tool");
@@ -990,7 +992,7 @@ class preprocessingTriangulation : public triangulation
             {
                 // the default vtu write param setup isn't going to do what we want so be explicit here
 #pragma omp parallel for
-                for (int t = 0; t < _local_faces.size(); t++)
+                for (global_ordinal_type t = 0; t < _local_faces.size(); t++)
                 {
                     auto f = _local_faces.at(t);
                     (*f)["global_id"] = f->cell_global_id;
@@ -1109,7 +1111,7 @@ class preprocessingTriangulation : public triangulation
                         // Read parameters for each ghost face individually
                         hsize_t one = 1;
                         // Do NOT do this loop in parallel (internal state of HDF5)
-                        for (size_t i = 0; i < _ghost_faces.size(); i++)
+                        for (global_ordinal_type i = 0; i < _ghost_faces.size(); i++)
                         {
                             auto face = _ghost_faces.at(i);
                             hsize_t global_id = face->cell_global_id;
@@ -1182,7 +1184,7 @@ class preprocessingTriangulation : public triangulation
                 auto owners = std::vector<int>(ntri);
 
                 //                #pragma omp parallel for
-                for (size_t i = 0; i < ntri; ++i)
+                for (global_ordinal_type i = 0; i < ntri; ++i)
                 {
                     owners.at(i) = _local_faces.at(i)->owner;
                 }
@@ -1196,7 +1198,7 @@ class preprocessingTriangulation : public triangulation
                 auto globalIDs = std::vector<int>(ntri);
 
                 //                #pragma omp parallel for
-                for (size_t i = 0; i < ntri; ++i)
+                for (global_ordinal_type i = 0; i < ntri; ++i)
                 {
                     globalIDs.at(i) = _local_faces.at(i)->cell_global_id;
                     global_to_local_faces_index_map[globalIDs.at(i)] = i;
@@ -1205,12 +1207,12 @@ class preprocessingTriangulation : public triangulation
                 dataset.write(globalIDs.data(), PredType::NATIVE_INT);
             }
 
-            std::set<size_t> vertex_global_id;
+            std::set<global_ordinal_type> vertex_global_id;
             // figure out all of the unique vertexes this subset needs and save their global id
-            for (size_t i = 0; i < ntri; ++i)
+            for (global_ordinal_type i = 0; i < ntri; ++i)
             {
                 auto f = _local_faces.at(i);
-                for (size_t j = 0; j < 3; ++j)
+                for (int j = 0; j < 3; ++j)
                 {
                     vertex_global_id.insert(f->vertex(j)->get_id()); // set of the vertexes we will need
                 }
@@ -1234,10 +1236,10 @@ class preprocessingTriangulation : public triangulation
                 std::vector<std::array<int, 3>> elem(ntri);
 
 #pragma omp parallel for
-                for (size_t i = 0; i < ntri; ++i)
+                for (global_ordinal_type i = 0; i < ntri; ++i)
                 {
                     auto f = _local_faces.at(i);
-                    for (size_t j = 0; j < 3; ++j)
+                    for (int j = 0; j < 3; ++j)
                     {
                         elem[i][j] = f->vertex(j)->get_local_id(); // uses a per partition local id
                     }
@@ -1253,7 +1255,7 @@ class preprocessingTriangulation : public triangulation
                 std::vector<std::array<double, 3>> vertices(nvert);
 
 #pragma omp parallel for
-                for (size_t i = 0; i < nvert; ++i)
+                for (global_ordinal_type i = 0; i < nvert; ++i)
                 {
                     auto v = local_vertexes.at(i);
                     vertices[i][0] = v->point().x();
@@ -1270,10 +1272,10 @@ class preprocessingTriangulation : public triangulation
                 std::vector<std::array<int, 3>> neighbor(ntri);
 
 #pragma omp parallel for
-                for (size_t i = 0; i < ntri; ++i)
+                for (global_ordinal_type i = 0; i < ntri; ++i)
                 {
                     auto f = this->face(i);
-                    for (size_t j = 0; j < 3; ++j)
+                    for (int j = 0; j < 3; ++j)
                     {
                         auto neigh = f->neighbor(j);
                         if (neigh != nullptr && // we have a neighbour
@@ -1298,7 +1300,7 @@ class preprocessingTriangulation : public triangulation
                 H5::DataSpace dataspace(1, &ntri);
                 std::vector<int> is_ghost(ntri);
 #pragma omp parallel for
-                for (size_t ii = 0; ii < ntri; ++ii)
+                for (global_ordinal_type ii = 0; ii < ntri; ++ii)
                 {
                     // we need to save the following status for ghost faces:
                     // 0 = Not a ghost
