@@ -408,7 +408,7 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
                                 " regardless of the timestep the model is started from, are defined from timestep = 0 "
                                 ". Ensure it is defined then. Also, could be a bounding box issue.");
         }
-        
+
     } catch(netCDF::exceptions::NcException& e)
     {
         OGRCoordinateTransformation::DestroyCT(coordTrans);

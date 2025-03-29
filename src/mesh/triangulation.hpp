@@ -66,7 +66,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <utility>
 #include <random> // for send/recv tag generation
 
-// other libs
+
 #include <armadillo>
 #include <ogr_spatialref.h>
 
