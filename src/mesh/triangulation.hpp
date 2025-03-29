@@ -16,14 +16,10 @@
 
 #pragma once
 
-#include "interpolation.hpp"
-#include "gis.hpp"
-#include "station.hpp"
-#include "global.hpp"
+// CGAL includes
 
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
-// CGAL includes
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Kd_tree.h>
 #include <CGAL/algorithm.h>
@@ -47,6 +43,7 @@
 #include <CGAL/Euclidean_distance.h>
 #include <CGAL/property_map.h>
 
+// openmp includes
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -56,6 +53,7 @@ inline int omp_get_thread_num() { return 0;}
 inline int omp_get_max_threads() { return 1;}
 #endif
 
+// std includes
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -68,11 +66,12 @@ inline int omp_get_max_threads() { return 1;}
 #include <utility>
 #include <random> // for send/recv tag generation
 
+// other libs
 
 #include <armadillo>
-
 #include <ogr_spatialref.h>
 
+// sparsehash includes
 #ifdef USE_SPARSEHASH
 #include <sparsehash/dense_hash_map>
 #else
@@ -96,18 +95,11 @@ inline int omp_get_max_threads() { return 1;}
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/iterator/zip_iterator.hpp>
-
+namespace pt = boost::property_tree;
 
 // tbb includes
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_sort.h>
-
-
-
-namespace pt = boost::property_tree;
-
-//required for the spatial searching
-
 
 // vtk includes
 #include <vtkVersion.h>
@@ -123,25 +115,37 @@ namespace pt = boost::property_tree;
 #include <vtkUnstructuredGrid.h>
 #include <vtkPoints.h>
 
-
+// MPI incldues
 #ifdef USE_MPI
 #include <boost/mpi.hpp>
 #include <boost/serialization/vector.hpp>
 #endif
 
+// hdf5 include
+#include "H5Cpp.h"
+using namespace H5;
+
+// CHM includes
+#include "interpolation.hpp"
+#include "gis.hpp"
+#include "station.hpp"
+#include "global.hpp"
+// use this to inform what our local ordinal type should be
+// this is the type we use to index the triangulation at. It can't have more precision that what
+// the global linear algebra solver can use
+// #include "LinearAlgebra.hpp"
 #include "vertex.hpp"
 #include "timeseries.hpp"
 #include "math/coordinates.hpp"
 #include "utility/xxh64.hpp"
-
 #include "timeseries/variablestorage.hpp"
+#include "ordinal_typedef.hpp"
 
-// #include "hdf5.h"
-#include "H5Cpp.h"
-using namespace H5;
+
+
 /**
 * \struct face_info
-* A way of embedding arbirtrary data into the face. This is how modules should store their data.
+* A way of embedding arbitrary data into the face. This is how modules should store their data.
 */
 struct face_info
 {
@@ -166,6 +170,7 @@ typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on 
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
 
+// // The type used for indexes on the local rank
 
 
 
@@ -453,8 +458,8 @@ public:
 
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
-    size_t cell_global_id;
-    size_t cell_local_id;
+    global_ordinal_type cell_global_id;
+    local_ordinal_type cell_local_id;
 
 
     /**
@@ -631,9 +636,11 @@ public:
 
     /**
     * Sets a new order to the face numbering.
+    * global_ordinal_type is used as this may be called with the json -> h5 conversion step which has the entire
+    * mesh in memory
     * \param permutation desired ordering
     */
-  void reorder_faces(std::vector<size_t> permutation);
+  void reorder_faces(std::vector<global_ordinal_type> permutation);
 
     /**
     * Sets the MPI process ownership of mesh faces and nodes
@@ -726,19 +733,19 @@ public:
     * Return the number of faces in the local triangluation
     * \return Number of triangle faces
     */
-    size_t size_faces();
+    global_ordinal_type size_faces();
 
     /**
     * Return the number of faces in the global triangluation
     * \return Number of triangle faces
     */
-    size_t size_global_faces();
+    global_ordinal_type size_global_faces();
 
     /**
     * Return the number of verticies in the triangulation
     * \return Number of vertices
     */
-    size_t size_vertex();
+    global_ordinal_type size_vertex();
 
     /**
      * Locates the closest triangle (based on centers) that the point x y lies on in 2 dimensions.
@@ -800,21 +807,21 @@ public:
     * \param i Index
     * \return A face handle to the ith face
     */
-    mesh_elem face(size_t i);
+    mesh_elem face(global_ordinal_type i);
 
     /**
     * Returns the vector of locally owned global IDs
     * - "locally owned" = this rank is responsible for their data
     * \return A vector of global IDs for the locally owned elements
     */
-    const std::vector<int>& get_global_IDs() const;
+    const std::vector<global_ordinal_type>& get_global_IDs() const;
 
     /**
     * Returns the finite vertex at index i. A given index will always return the same vertex.
     * \param i Index
     * \return A vertex handle to the ith vertex
     */
-    Delaunay::Vertex_handle vertex(size_t i);
+    Delaunay::Vertex_handle vertex(global_ordinal_type i);
 
     /**
     * Saves the timeseries as a csv for the triangle that contains the point x,y to file
@@ -1031,7 +1038,7 @@ protected:
     /**
      * Inits required datastructures if we are in non-MPI mode and doesn't actually do any partitioning
      */
-    void partition_mesh_nonMPI(size_t _num_global_faces);
+    void partition_mesh_nonMPI(global_ordinal_type _num_global_faces);
 
     /**
      * Build the spatial search dD tree. Assumes _num_global_faces has been set and this needs to be called after
@@ -1039,9 +1046,9 @@ protected:
      */
     void _build_dDtree();
 
-    size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
-    size_t _num_global_faces; //number of global faces
-    size_t _num_vertex; //number of rows in the original data matrix.
+    global_ordinal_type _num_faces; //number of faces, in MPI mode this will be the local number of faces
+    global_ordinal_type _num_global_faces; //number of global faces
+    global_ordinal_type _num_vertex; //number of rows in the original data matrix.
     K::Iso_rectangle_2 _bbox;
     bool _is_geographic;
     bool _mesh_is_from_partition;
@@ -1084,22 +1091,22 @@ protected:
     // Maps a global index to a local index
     // Size of this vector is the number of locally owned elements in _faces and so incl _local_faces + ghosts
     // key=global_index, entry=local_index
-    std::map<int,int> _global_to_locally_owned_index_map;
+    std::map<global_ordinal_type, local_ordinal_type> _global_to_locally_owned_index_map;
 
     // Maps a global index to a local index FOR USE WITH _local_faces
     // Size of this vector is the number of locally owned elements in _local_faces and DOES NOT INCL ghosts
     // key=global_index, entry=local_index
-    std::map<int,int> _global_to_local_faces_index_map;
+    std::map<global_ordinal_type, local_ordinal_type> _global_to_local_faces_index_map;
 
     // All MPI process are aware of the local sizes for all other MPI processes
     // Index = MPI rank
-    std::vector<int> _num_faces_in_partition;
-    std::vector<int> _local_sizes;
+    std::vector<local_ordinal_type> _num_faces_in_partition;
+    std::vector<local_ordinal_type> _local_sizes;
     
     // If we are not using MPI, some code paths might still want to make use of these
     // This is initialized to [0, num_faces - 1]
     // In MPI mode this contains the global face index start and end
-    int  global_cell_start_idx, // in non-MPI this is 0,
+    global_ordinal_type  global_cell_start_idx, // in non-MPI this is 0,
         global_cell_end_idx; // in non-MPI this is equal to _num_faces - 1
 
     // The faces owned by this rank. In non MPI mode, this is identical to _faces
@@ -1109,14 +1116,14 @@ protected:
 
     // These are the faces that lie on the boundary of the MPI domain
     // as set by determine_local_boundary_faces
-    std::vector< std::pair<mesh_elem,bool> > _boundary_faces;
+    std::vector< std::pair<mesh_elem, bool> > _boundary_faces;
 
     // Array of pointers to the ghost neighbors for this rank
     // These are only the nearest neighbour ghosts. i.e., GHOST_TYPE::NEIGH
     std::vector< mesh_elem > _ghost_neighbors;
 
     // Array of which other rank owns each ghost neighbor
-    std::vector< int > _ghost_neighbor_owners;
+    std::vector< local_ordinal_type > _ghost_neighbor_owners;
 
     // Array of pointers to all ghost faces (in buffer region) for this rank
     // This is all the ghost faces and is the super-set of ghosts that contains
@@ -1125,21 +1132,20 @@ protected:
 
     // The communication partnership for each rank
     // Partner ID, (start_local_idx, length)
-    std::map< int, std::pair<int,int> > _comm_partner_ownership;
+    std::map< int, std::pair<local_ordinal_type, local_ordinal_type> > _comm_partner_ownership;
 
     // maps a global index to a local ghost
-    std::map<int,int> _global_index_to_local_ghost_map; // key=cell_global_id, entry=local index in _ghost_neighbors array
+    std::map<global_ordinal_type, local_ordinal_type> _global_index_to_local_ghost_map; // key=cell_global_id, entry=local index in _ghost_neighbors array
 
-    std::map< int, std::vector<int> > global_indices_to_send; // key=process to send to, entry = vector of global ids to send
+    std::map< int, std::vector<global_ordinal_type> > global_indices_to_send; // key=process to send to, entry = vector of global ids to send
 
-  std::map< int, std::vector<int>> local_indices_to_send; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
-  std::map< int, std::vector<mesh_elem> > local_faces_to_send; // key=process to send to, entry=locally owned pointer to face
+    std::map< int, std::vector<local_ordinal_type>> local_indices_to_send; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
+    std::map< int, std::vector<mesh_elem> > local_faces_to_send; // key=process to send to, entry=locally owned pointer to face
 
-  std::map< int, std::vector<int>> ghost_indices_to_recv; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
-  std::map< int, std::vector<mesh_elem> >
-      ghost_faces_to_recv; // key=process to send to, entry=locally owned pointer to face
+    std::map< int, std::vector<local_ordinal_type>> ghost_indices_to_recv; // key=process to send to, entry=locally owned index that corresponds to the global index to be sent
+    std::map< int, std::vector<mesh_elem> > ghost_faces_to_recv; // key=process to send to, entry=locally owned pointer to face
 
-    std::vector<int> _global_IDs;
+    std::vector<global_ordinal_type> _global_IDs;
 
   std::vector< std::shared_ptr<station> > _stations;
 

@@ -42,8 +42,6 @@ Marsh_shading_iswr::Marsh_shading_iswr(config_file cfg)
 
 void Marsh_shading_iswr::run(mesh& domain)
 {
-
-
     //compute the rotation of each vertex
 
     //    tbb::concurrent_vector<triangulation::Face_handle> rot_faces;
@@ -64,9 +62,11 @@ void Marsh_shading_iswr::run(mesh& domain)
         double z0 = M_PI - A * M_PI / 180.0;
         double q0 = M_PI / 2.0 - E * M_PI / 180.0;
 
-        K << cos(z0) << sin(z0) << 0 << arma::endr
-         << -cos(q0) * sin(z0) << cos(q0) * cos(z0) << sin(q0) << arma::endr
-         << sin(q0) * sin(z0) << -cos(z0) * sin(q0) << cos(q0) << arma::endr;
+        K = {
+            {cos(z0) , sin(z0) , 0},
+            {-cos(q0) * sin(z0) , cos(q0) * cos(z0) , sin(q0)},
+            {sin(q0) * sin(z0) , -cos(z0) * sin(q0) , cos(q0)}
+            };
 
 
         auto vf = vert->make_module_data<vertex_data>(ID);

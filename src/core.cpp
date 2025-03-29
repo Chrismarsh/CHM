@@ -576,7 +576,7 @@ void core::config_forcing(pt::ptree &value)
         {
             SPDLOG_WARN("No geopotential height field found in the netcdf file. Using the height of nearest triangle to estimate. This is almost certainly NOT what you want");
 
-            for(size_t i = 0; i < _mesh->size_faces(); i++)
+            for(global_ordinal_type i = 0; i < _mesh->size_faces(); i++)
             {
                 for (auto face = _mesh->face(i); auto& s : face->stations())
                 {
@@ -2231,7 +2231,7 @@ void core::run()
                     ompException e;
 #endif
                     #pragma omp parallel for
-                    for (size_t i = 0; i < _mesh->size_faces(); i++)
+                    for (local_ordinal_type i = 0; i < _mesh->size_faces(); i++)
                     {
                         auto face = _mesh->face(i);
                         if (point_mode.enable && face->_debug_name != _outputs[0].name)
@@ -2346,7 +2346,7 @@ void core::run()
             auto& ids = _mesh->get_global_IDs();
             savestate.create_variable1D("global_id",ids.size());
 
-            for (size_t i = 0; i < ids.size(); i++)
+            for (global_ordinal_type i = 0; i < ids.size(); i++)
             {
                 savestate.put_var1D("global_id", i, ids[i]);
             }
