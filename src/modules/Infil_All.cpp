@@ -70,16 +70,10 @@ void Infil_All::init(mesh& domain)
         d.total_rain_on_snow = 0.; // NEW
 
         // Triangle variables
-        d.frozen = false; // NEW, Maybe initial condition, not always necessary because of SWE check to freeze the ground
-	    d.major_melt_count = 0; // NEW, For Gray frozen soil routine, counts number of major melts
-        d.index = 0;
-        d.max_major_per_melt = 0.;
-        d.init_SWE = 0.;
-        d.daily_melt_total = 0.;
+        d.crack_model_status.init(); 
+
         d.soil_storage = face->soil_attribute<double>("soil_storage");
-        d.current_day_is_major = false;
         d.last_day = 0;
-        d.tmax = 0.0;
 
         // Model Parameters
         infDays = cfg.get("max_inf_days",6);
@@ -88,7 +82,6 @@ void Infil_All::init(mesh& domain)
         AllowPriorInf = cfg.get("AllowPriorInf",true);
         thaw_type = cfg.get("thaw_type",0); // Default is Ayers
 
-        SoilDataObj = std::make_unique<Soil::soils_na>();
         if (thaw_type == AYERS)
         {    
             d.texture = face->soil_attribute<std::string>("soil_texture","soils");
@@ -97,7 +90,7 @@ void Infil_All::init(mesh& domain)
         else if (thaw_type == GREENAMPT)
         {
             d.soil_type = face->soil_attribute<std::string>("soil_type","soils");
-            d.ksaturated = SoilDataObj->saturated_conductivity(d.soil_type);
+            d.ksaturated = SoilDataObj.saturated_conductivity(d.soil_type);
         }
         lenstemp = cfg.get("temperature_ice_lens",-10.0);
 
@@ -121,11 +114,11 @@ void Infil_All::run(mesh_elem &face)
     auto id = face->cell_local_id;
 
     // CRHM does total infil for snow and total infil separately, wonder if I should do this
-    double runoff = 0.;
-    double melt_runoff = 0.;
-    double inf = 0.;
-    double snowinf = 0.;
-    double rain_on_snow = 0.;
+    double runoff = 0.0;
+    double melt_runoff = 0.0;
+    double inf = 0.0;
+    double snowinf = 0.0;
+    double rain_on_snow = 0.0;
 
     double snowmelt = (*face)["snowmelt_int"_s];
     double rainfall = (*face)["rainfall_int"_s]; // NEW
@@ -133,120 +126,53 @@ void Infil_All::run(mesh_elem &face)
     double soil_storage_at_freeze = (*face)["soil_storage_at_freeze"_s];
     double airtemp = (*face)["t"_s];
 
-    if (swe > min_swe_to_freeze && !d.frozen)
+	
+    if (thaw_type == GREENAMPT)
+        d.soil_storage = (*face)["soil_storage"_s];
+    
+    
+
+    if (swe > min_swe_to_freeze && !d.crack_model_status.frozen)
+        d.crack_model_status.begin_freeze();
+    else if (swe <= 0.0 && d.crack_model_status.major_melt_count > 0)
+        d.crack_model_status.end_freeze();
+
+    if (d.crack_model_status.frozen) // Gray's infiltration, 1985
     {
-        d.frozen = true; // Initiate frozen soil at 25 mm depth (as in CRHM)
+        double steps_per_day = 86400.0 / global_param->dt(); 
+        Crack crack(major, min_swe_to_freeze, infDays, 
+                AllowPriorInf, lenstemp,steps_per_day,d.crack_model_status);
+        
+        crack.init_inputs(snowmelt, rainfall, swe, soil_storage_at_freeze,
+                airtemp, is_new_day(d)); 
+        d.crack_model_status.daily_melt_total = snowmelt * steps_per_day;
+        crack.run();
 
-        d.index = 0.;
-        d.max_major_per_melt = 0.;
-        d.init_SWE = 0.;
-    }
-    else if (swe <= 0.0 && d.major_melt_count > 0)
-    {
-        d.frozen = false;
-        d.major_melt_count = 0;
-    }
+        runoff = crack.get_runoff() / steps_per_day;
+        melt_runoff = crack.get_melt_runoff() / steps_per_day;
+        inf = crack.get_inf() / steps_per_day;
+        snowinf = crack.get_snow_inf() / steps_per_day;
+        rain_on_snow = crack.get_rain_on_snow() / steps_per_day;
+        
+        Increment_Totals(d,runoff,melt_runoff,inf,snowinf,rain_on_snow);
 
-    if (d.frozen) // Gray's infiltration, 1985
-    {
-        if (rainfall > 0.0)
-        {
-            rain_on_snow = rainfall;
-        }
+        if (is_new_day(d))
+            d.last_day = global_param->day();
 
-        if (snowmelt > 0.0)
-        {
-            
-            if (soil_storage_at_freeze == 0) // Unlimited
-            {
-                inf += snowmelt;
-                d.major_melt_count = 1; 
-            }
-            else if (soil_storage_at_freeze > 0 && soil_storage_at_freeze < 100) // Limited
-            {
-                
-                Check_for_ice_lens(d,airtemp);
-
-                daily_melt_increment(d,snowmelt);
-                increment_major_count(d);
-                if (is_first_major(d,snowmelt,swe))
-                {
-                    SPDLOG_DEBUG("First Major");
-                    Calc_Index(d,swe,soil_storage_at_freeze);
-                    snowinf = Calc_Actual_Inf(d,snowmelt);
-   
-                    increment_major_count(d);
-                }
-                else if (is_limited_phase(d))
-                {
-                    SPDLOG_DEBUG("Limited Phase");
-                    snowinf = Calc_Actual_Inf(d,snowmelt);
-                    
-                    increment_major_count(d);
-                }
-                else if (is_prior_first_major(d))
-                {
-                    SPDLOG_DEBUG("Prior");
-                    snowinf = snowmelt;
-                }
-
-            }
-            else if (soil_storage_at_freeze == 100) // Restricted
-            {
-                snowinf = 0.;
-                d.major_melt_count = 1;
-            }
-
-           
-            melt_runoff = snowmelt - snowinf;
-
-            // melt_runoff and snowinf only track melt related quantities
-            // total runoff and infiltrated amounts from ANY source are stored in
-            // inf and runoff
-            
-            // This is a weird function, if there is any snowinf, then the rain on the snow also infiltrates
-            // this is ported directly from CRHM module crack
-            if (snowinf > 0.0)
-            {
-                inf += rain_on_snow;
-            }
-            else
-            {
-                runoff += rain_on_snow;
-            }
-            runoff += melt_runoff;
-            inf += snowinf;
-
-
-            Increment_Totals(d,runoff,melt_runoff,inf,snowinf,rain_on_snow);
-            if (is_new_day(d))
-            {
-                d.last_day = global_param->day();
-            }      
-
-        }
     }
     else if (thaw_type == AYERS) // if not frozen, do Ayers
     {
         if (rainfall > 0.0)
-        {
-            // TODO set maxinfil at the beginning
-            double maxinfil = SoilDataObj->ayers_texture(d.texture,d.ground_cover); 
-            if (maxinfil > rainfall)
-            {
-                inf = rainfall;
-            }
-            else
-            {
-                inf = maxinfil;
-                runoff = rainfall - maxinfil;
-            }
+        { 
+            Ayers<Soil::soils_na,&Soil::soils_na::ayers_texture> ayers(rainfall, snowmelt, d.texture, d.ground_cover, SoilDataObj);
+       
+            ayers.run();
+
+            inf = ayers.get_inf();
+            runoff = ayers.get_runoff();
         }
-        
-        melt_to_infil(inf,snowinf,snowmelt);
-        
+
         // Increment totals
-        
         Increment_Totals(d,runoff,melt_runoff,inf,snowinf,rain_on_snow);
     }
     else if (thaw_type == GREENAMPT) // if not frozen, do GreenAmpt
@@ -332,8 +258,11 @@ void Infil_All::run(mesh_elem &face)
     (*face)["rain_on_snow"_s]=rain_on_snow;
     (*face)["snowinf"_s]=snowinf;
     (*face)["melt_runoff"_s]=melt_runoff;
-    (*face)["frozen"_s]=static_cast<int>(d.frozen);
-    (*face)["major_melt_count"_s]=d.major_melt_count;
+    (*face)["frozen"_s]=static_cast<int>(d.crack_model_status.frozen);
+    (*face)["major_melt_count"_s]=d.crack_model_status.major_melt_count;
+
+    if (thaw_type == GREENAMPT)
+        (*face)["soil_storage"_s]=d.soil_storage;
 }
 
 //General Functions
@@ -357,73 +286,7 @@ void Infil_All::melt_to_infil(double& inf,double& snowinf,double& snowmelt)
 };
 
 // Crack Functions
-void Infil_All::Calc_Index(Infil_All::data &d, double &swe, double &theta) {
-    d.index = 5 * (1 - theta/100.0) * std::pow(swe,0.584);
-    // d.major_major_per_melt is obtained by dividing d.index by the 
-    // total number of time steps to get to d.index
-    // This only works if 86400 / dt is a fraction which turns infDays into an integer
-    // Example: if dt is 345600 (4 days in seconds) and infDays is 6 days. 
-    // the denominator is 1.5, which then requires 2 major melts for it to stop, not 1.5
-    // this is actually OK behaviour, but difficult to understand.
-     
-    d.max_major_per_melt = d.index / (infDays * 86400.0 / global_param->dt() );
-    d.index = d.index / swe;
-    d.init_SWE = swe;
-}
 
-double Infil_All::Calc_Actual_Inf(Infil_All::data &d, double &melt) {
-    double inf = melt * d.index;
-    if (inf > d.max_major_per_melt) {
-        inf = d.max_major_per_melt;
-    }
-    return inf;
-}
-
-
-void Infil_All::Check_for_ice_lens(Infil_All::data &d, double &t) 
-{
-    d.tmax = std::max(d.tmax,t);
-
-    if (is_new_day(d))
-    {
-        if (d.major_melt_count > 0 && d.tmax < lenstemp)
-        {
-            SPDLOG_DEBUG("Ice lens found"); 
-            d.major_melt_count = infDays + 4;
-        }
-        d.tmax = 0.0;
-    }
-}
-
-bool Infil_All::is_first_major(Infil_All::data& d, double& snowmelt, double& swe)
-{
-    return ( (d.major_melt_count == 0) & (is_major_melt(d)) ) || ( (swe >= d.init_SWE) & (is_limited_phase(d)));
-};
-
-bool Infil_All::is_major_melt(Infil_All::data& d)
-{
-    return d.daily_melt_total > major;
-};
-
-void Infil_All::increment_major_count(Infil_All::data& d)
-{
-    if (is_major_melt(d) && !d.current_day_is_major)
-    {
-        d.major_melt_count++;
-        d.current_day_is_major = true;
-    }
-}; 
-
-
-bool Infil_All::is_limited_phase(Infil_All::data& d)
-{
-    return d.major_melt_count > 0 && d.major_melt_count <= infDays;
-};
-
-bool Infil_All::is_prior_first_major(Infil_All::data& d)
-{
-    return d.major_melt_count == 0 and AllowPriorInf;
-};
 
 bool Infil_All::is_new_day(Infil_All::data& d)
 {
@@ -437,17 +300,7 @@ bool Infil_All::is_new_day(Infil_All::data& d)
     }
 };
 
-void Infil_All::daily_melt_increment(Infil_All::data& d, double& snowmelt)
-{
 
-    if (!is_new_day(d))
-        d.daily_melt_total += snowmelt;
-    else
-    {
-        d.daily_melt_total = snowmelt; 
-        d.current_day_is_major = false;
-    }
-};
 // Ayers
 
 // Green-Ampt Functions
@@ -477,7 +330,7 @@ void Infil_All::Initialize_GA_Variables(Infil_All::data &d) {
     GA->initial_storage = d.soil_storage;
     GA->final_storage = GA->initial_storage;
     GA->final_rate = GA->initial_rate;
-    GA->capillary_suction = SoilDataObj->capillary_suction(d.soil_type)
+    GA->capillary_suction = SoilDataObj.capillary_suction(d.soil_type)
         * GA->soil_storage_deficit;
 }
 
