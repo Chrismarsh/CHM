@@ -71,7 +71,7 @@ namespace Soil {
         double saturated_conductivity(std::string soil_type) const override;
         double ayers_texture(std::string texture, std::string ground_cover) const override;
 
-
+        void check_map();
     private:
 
         mymap _porosity;
@@ -85,7 +85,16 @@ namespace Soil {
         
         void _make_hash() override;
 
+        void print_ayers_texture(const auto& texture_map);
 
+
+    };
+    
+    template <typename T>
+    T& get_soil_obj()
+    {
+        static const T soil_obj;
+        return soil_obj;
     };
 
 };
