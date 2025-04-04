@@ -69,6 +69,21 @@ namespace Soil
 
     }
 
+    void soils_na::check_map()
+    {
+        print_ayers_texture(_ayers_texture);
+    }
+
+    void soils_na::print_ayers_texture(const auto& texture_map) {
+        for (const auto& [texture, inner_map] : texture_map) {
+            for (const auto& [ground_cover, value] : inner_map) {
+                std::cout << texture << " -> " 
+                          << ground_cover << " = " 
+                          << value << "\n";
+            }
+        }
+    }
+
     void soils_na::_make_hash()
     {
         // illegal to not include this step for the dense_hash_map
