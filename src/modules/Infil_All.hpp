@@ -120,7 +120,7 @@ public:
 
 private:
     
-    Soil::soils_na& SoilDataObj = Soil::get_soil_obj<Soil::soils_na>();
+    const Soil::soils_na& SoilDataObj = Soil::get_soil_obj<const Soil::soils_na>();
 
     // Crack
     double major;
