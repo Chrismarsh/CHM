@@ -436,6 +436,8 @@ if (BUILD_TESTS)
             tests/main.cpp
             tests/submoduletests/test_crack.cpp
 			tests/submoduletests/test_ayers.cpp
+            tests/submoduletests/CSVreader.hpp
+            tests/submoduletests/test_CSVreader.cpp
 	)
 
 
