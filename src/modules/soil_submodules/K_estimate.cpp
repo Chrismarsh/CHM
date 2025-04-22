@@ -111,7 +111,7 @@ void Darcy_Vels::set_snow()
 
 void Darcy_Vels::set_clear()
 {
-    lateral_rechr = DTO.Ksaturated_rechr * pow( DTO.soil_rechr_storage/DTO.soil_rechr_max, exponent) * tan(DTO.local_slope);
+    lateral_rechr = DTO.Ksaturated_rechr * std::pow( DTO.soil_rechr_storage/DTO.soil_rechr_max, exponent) * std::tan(DTO.local_slope);
     lateral_lower = get_lateral_lower();
     
     vertical_depression = get_reused();
@@ -128,29 +128,29 @@ void Darcy_Vels::set_clear()
 
 double Darcy_Vels::get_lateral_lower()
 {
-    return DTO.Ksaturated_lower * pow( (DTO.soil_storage - DTO.soil_rechr_storage) / (DTO.soil_storage_max - DTO.soil_rechr_max), exponent)  *tan(DTO.local_slope);
+    return DTO.Ksaturated_lower * std::pow( (DTO.soil_storage - DTO.soil_rechr_storage) / (DTO.soil_storage_max - DTO.soil_rechr_max), exponent)  *std::tan(DTO.local_slope);
 };
 
 double Darcy_Vels::get_reused()
 {
     // This Darcy Vel is used many times, so its called repeated.
-    return DTO.Ksaturated_lower * pow( DTO.soil_storage / DTO.soil_storage_max, exponent);
+    return DTO.Ksaturated_lower * std::pow( DTO.soil_storage / DTO.soil_storage_max, exponent);
 };
 
 double Darcy_Vels::get_lateral_ground_water(void)
 {
-    return DTO.Ksaturated_ground_water * tan(DTO.local_slope);
+    return DTO.Ksaturated_ground_water * std::tan(DTO.local_slope);
 };
 
 double Darcy_Vels::get_detention_snow(void)
 {
-    double Ksaturated_snow = (0.077*pow((DTO.snow_grain_diameter/1000),2.0)*exp(-7.8*(DTO.snow_density/1000)))*factor;
+    double Ksaturated_snow = (0.077*std::pow((DTO.snow_grain_diameter/1000),2.0)*std::exp(-7.8*(DTO.snow_density/1000)))*factor;
 
 
-    return Ksaturated_snow * pow(DTO.detention_storage/DTO.detention_max,DTO.soil_index) * sin(DTO.local_slope);
+    return Ksaturated_snow * std::pow(DTO.detention_storage/DTO.detention_max,DTO.soil_index) * std::sin(DTO.local_slope);
 }
 
 double Darcy_Vels::get_detention_organic(void)
 {
-    return DTO.Ksaturated_organic * pow(DTO.detention_storage/DTO.detention_max,exponent_organic) * tan(DTO.local_slope);
+    return DTO.Ksaturated_organic * std::pow(DTO.detention_storage/DTO.detention_max,exponent_organic) * std::tan(DTO.local_slope);
 };
