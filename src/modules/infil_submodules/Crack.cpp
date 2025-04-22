@@ -18,7 +18,8 @@ void Crack::init_inputs(double _snowmelt,double _rainfall, double _swe, double _
 void Crack::run()
 {
 
-    if (d.frozen && is_newday) // Gray's infiltration, 1985
+    d.daily_rain_total += rainfall;
+    if (is_newday) // Gray's infiltration, 1985
     {
         
 
@@ -51,7 +52,7 @@ void Crack::run()
                     
                     //increment_major_count();
                 }
-                else if (is_prior_first_major())
+                else if (is_prior_first_major() && AllowPriorInf)
                 {
                     SPDLOG_DEBUG("Prior");
                     inf = d.daily_melt_total;
@@ -66,15 +67,13 @@ void Crack::run()
 
            
             runoff = d.daily_melt_total - inf;
-            melt_runoff = runoff;
-            snow_inf = inf;
             // melt_runoff and snowinf only track melt related quantities
             // total runoff and infiltrated amounts from ANY source are stored in
             // inf and runoff
             
             // This is a weird function, if there is any snowinf, then the rain on the snow also infiltrates
             // this is ported directly from CRHM module crack
-            if (snow_inf > 0.0)
+            if (inf > 0.0)
             {
                 inf += d.daily_rain_total;
             }
@@ -82,7 +81,8 @@ void Crack::run()
             {
                 runoff += d.daily_rain_total;
             }
-            rain_on_snow = d.daily_rain_total;
+            melt_runoff = runoff;
+            snow_inf = inf;
 
 
         }
@@ -92,42 +92,24 @@ void Crack::run()
         d.current_runoff = runoff;
         d.current_melt_runoff = melt_runoff;
         
+        rain_on_snow = d.daily_rain_total;
         d.daily_melt_total = 0.0;
         d.daily_rain_total = 0.0;
 
     }
-    else if (d.frozen)
+    else
     {
-
         runoff = d.current_runoff;
         melt_runoff = d.current_melt_runoff; 
         inf = d.current_inf;
         snow_inf = d.current_snow_inf;
-        if (d.current_inf > 0.0)
-        {
-            inf += d.daily_rain_total;
-        }
-        else
-        {
-            runoff += d.daily_rain_total;
-        }
-        
     }
     
-    d.increment_daily_melt(snowmelt);
-    d.increment_daily_rain(rainfall);
+    if (!is_CRHM_compare_test)    
+        d.daily_melt_total += snowmelt;
     update_t_max();
 };
 
-void Crack::info::increment_daily_melt(const double& snowmelt)
-{
-    daily_melt_total += snowmelt;
-};
-
-void Crack::info::increment_daily_rain(const double& rain)
-{
-    daily_rain_total += rain;
-};
 
 void Crack::Calc_Index() {
     d.index = 5 * (1 - soil_storage_at_freeze/100.0) * std::pow(swe,0.584);
@@ -139,13 +121,13 @@ void Crack::Calc_Index() {
     // this is actually OK behaviour, but difficult to understand.
      
     d.max_major_per_melt = d.index / infDays;
-    d.index = d.index / swe;
+    d.index = std::min(d.index / swe,1.0);
     d.init_SWE = swe;
 };
 
 void Crack::Calc_Actual_Inf() {
     inf = d.daily_melt_total * d.index;
-    if (inf > d.max_major_per_melt) {
+    if (inf > d.max_major_per_melt && is_major_melt()) {
         inf = d.max_major_per_melt;
     }
 };
@@ -172,7 +154,8 @@ void Crack::Check_for_ice_lens()
 bool Crack::is_first_major()
 {
     // TODO This isn't really `is_first_major()`, only the part to the left of OR. Shoudl split this into two functions
-    return ( (d.major_melt_count == 0) & (is_major_melt()) ) || ( (swe >= d.init_SWE) & (is_limited_phase()));
+    return (is_major_melt() && swe >= d.init_SWE && 
+            (is_prior_first_major() || is_limited_phase()));//( (d.major_melt_count == 0) & (is_major_melt()) ) || ( (swe >= d.init_SWE) & (is_limited_phase()));
 };
 
 bool Crack::is_major_melt()
@@ -196,5 +179,5 @@ bool Crack::is_limited_phase()
 
 bool Crack::is_prior_first_major()
 {
-    return d.major_melt_count == 0 and AllowPriorInf;
+    return d.major_melt_count == 0;
 };

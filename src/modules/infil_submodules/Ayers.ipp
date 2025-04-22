@@ -18,7 +18,7 @@ void Ayers<soil_data,max_infil>::run()
     
     if (rainfall > 0.0)
     {
-        double maxinfil = (soils.*max_infil)(ground_cover,texture);
+        double maxinfil = (soils.*max_infil)(texture,ground_cover);
         inf = std::min(maxinfil,rainfall);
         runoff = rainfall - inf;
         if (runoff < 1e-12)
@@ -28,6 +28,7 @@ void Ayers<soil_data,max_infil>::run()
 
     if (snowmelt > 0.0)
     {
+        inf += snowmelt;
         snow_inf = snowmelt; 
     } 
     

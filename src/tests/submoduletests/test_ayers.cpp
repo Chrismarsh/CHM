@@ -32,7 +32,7 @@ protected:
 
 	MyAyers DoAyers(double& snowmelt, double& rainfall)
 	{
-		MyAyers ayers(rainfall,snowmelt,_ground_cover,_texture, soils);
+		MyAyers ayers(rainfall,snowmelt,_texture,_ground_cover, soils);
 
         ayers.run();
 		return ayers;
@@ -85,13 +85,13 @@ TEST_F(AyersTest, NonZeroSnowMelt)
 
 	MyAyers ayers1 = DoAyers(_snowmelt,_rainfall);
 
-	DoAssert(ayers1,0.0,0.0,_snowmelt);
+	DoAssert(ayers1,_snowmelt,0.0,_snowmelt);
 
 	_snowmelt = 3.14159;
 
 	MyAyers ayers2 = DoAyers(_snowmelt,_rainfall);
 
-	DoAssert(ayers2,0.0,0.0,_snowmelt);
+	DoAssert(ayers2,_snowmelt,0.0,_snowmelt);
 
 };
 
@@ -105,6 +105,8 @@ TEST_F(AyersTest, MeltAndRain)
 
 	MyAyers ayers = DoAyers(_snowmelt,_rainfall);
 	double maxinfil = 10.2;
-	DoAssert(ayers,maxinfil,_rainfall - maxinfil,_snowmelt);
+	DoAssert(ayers,maxinfil+_snowmelt,_rainfall - maxinfil,_snowmelt);
 
 };
+
+
