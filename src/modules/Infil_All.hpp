@@ -31,7 +31,7 @@
 #include "Soil.h"
 #include "Crack.hpp"
 #include "Ayers.hpp"
-
+#include "boost/date_time/posix_time/posix_time_types.hpp"
 /**
  * \ingroup modules infil soils exp
  * @{
@@ -106,6 +106,8 @@ public:
         // Crack
         Crack::info crack_model_status;
         int last_day;
+        bool end_freeze_tomorrow = false; // Delays end of freeze by one day so that we can get the melt distributed over the day.
+
         // Ayers
         std::string texture;
         std::string ground_cover;
@@ -147,19 +149,6 @@ private:
     // General Functions
     void Increment_Totals(data &d, double &runoff, double &melt_runoff, double &inf, double &snowinf, double &rain_on_snow);
     void melt_to_infil(double& inf,double& snowinf,double& snowmelt);
-
-    // Crack Functions
-    void Calc_Index(data &d, double &swe, double &theta);
-    double Calc_Actual_Inf(data &d, double &melt);
-    void Check_for_ice_lens(data &d, double &t); 
-    void increment_major_count(Infil_All::data& d);
-    bool is_first_major(Infil_All::data& d, double& snowmelt, double& swe);
-    bool is_limited_phase(Infil_All::data& d);
-    bool is_prior_first_major(Infil_All::data& d);
-    bool is_new_day(Infil_All::data& d);
-    bool is_major_melt(Infil_All::data& d);
-    void daily_melt_increment(Infil_All::data& d, double& snowmelt);
-
 
 
     // Green-Ampt Functions

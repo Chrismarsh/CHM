@@ -11,18 +11,6 @@ public:
     ~Ayers() {};
 
     virtual void run() override;
-    //{
-    //    double maxinfil = (soils.*max_infil)(texture,ground_cover); 
-    //    if (maxinfil > rainfall)
-    //    {
-    //        inf = rainfall;
-    //    }
-    //    else
-    //    {
-    //        inf = maxinfil;
-    //        runoff = rainfall - maxinfil;
-    //    }
-    //};
    
     const double& rainfall;
     const double& snowmelt;

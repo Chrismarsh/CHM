@@ -126,17 +126,17 @@ void Infil_All::run(mesh_elem &face)
     double soil_storage_at_freeze = (*face)["soil_storage_at_freeze"_s];
     double airtemp = (*face)["t"_s];
 
-	
     if (thaw_type == GREENAMPT)
         d.soil_storage = (*face)["soil_storage"_s];
     
     
 
-    if (swe > min_swe_to_freeze && !d.crack_model_status.frozen)
+    if (swe > min_swe_to_freeze && !d.crack_model_status.frozen && is_new_day(d))
+    {
         d.crack_model_status.begin_freeze();
-    else if (swe <= 0.0 && d.crack_model_status.major_melt_count > 0)
-        d.crack_model_status.end_freeze();
-
+        d.crack_model_status.end_freeze_tomorrow = false;
+    }
+    
     if (d.crack_model_status.frozen) // Gray's infiltration, 1985
     {
         double steps_per_day = 86400.0 / global_param->dt(); 
@@ -152,25 +152,50 @@ void Infil_All::run(mesh_elem &face)
         melt_runoff = crack.get_melt_runoff() / steps_per_day;
         inf = crack.get_inf() / steps_per_day;
         snowinf = crack.get_snow_inf() / steps_per_day;
-        rain_on_snow = crack.get_rain_on_snow() / steps_per_day;
+        rain_on_snow = crack.get_rain_on_snow();
         
         Increment_Totals(d,runoff,melt_runoff,inf,snowinf,rain_on_snow);
+        
+        if (is_new_day(d) && swe <= 0.0 && 
+                d.crack_model_status.major_melt_count > 0)
+        {
+            d.crack_model_status.end_freeze();
+            d.crack_model_status.end_freeze_tomorrow = true;
+        } 
+        //if (swe <= 0.0 && d.crack_model_status.major_melt_count > 0)
+        //     d.crack_model_status.end_freeze_tomorrow = true;
 
-        if (is_new_day(d))
-            d.last_day = global_param->day();
-
+        //if (is_new_day(d))
+        //{
+        //     d.last_day = global_param->day();
+        //}
     }
     else if (thaw_type == AYERS) // if not frozen, do Ayers
     {
-        if (rainfall > 0.0)
-        { 
-            Ayers<Soil::soils_na,&Soil::soils_na::ayers_texture> ayers(rainfall, snowmelt, d.texture, d.ground_cover, SoilDataObj);
-       
-            ayers.run();
+        Ayers<Soil::soils_na,&Soil::soils_na::ayers_texture> ayers(rainfall, snowmelt, d.texture, d.ground_cover, SoilDataObj);
+   
+        ayers.run();
 
-            inf = ayers.get_inf();
-            runoff = ayers.get_runoff();
+        inf = ayers.get_inf();
+        runoff = ayers.get_runoff();
+        
+        //Below exists to match the function of CRHM
+        //snowmelt infiltration computed by crack continues for the next day after SWE = 0.0
+        if (is_new_day(d))
+            d.crack_model_status.end_freeze_tomorrow = false;
+
+        if (d.crack_model_status.end_freeze_tomorrow)
+        {
+            double steps_per_day = 86400.0 / global_param->dt();
+            snowinf = d.crack_model_status.current_snow_inf / 
+                steps_per_day;
+            melt_runoff = d.crack_model_status.current_melt_runoff /
+                steps_per_day;
+            inf += snowinf - snowmelt;
+            runoff += melt_runoff;
         }
+        else
+            snowinf = ayers.get_snow_inf();
 
         // Increment totals
         Increment_Totals(d,runoff,melt_runoff,inf,snowinf,rain_on_snow);
@@ -290,14 +315,15 @@ void Infil_All::melt_to_infil(double& inf,double& snowinf,double& snowmelt)
 
 bool Infil_All::is_new_day(Infil_All::data& d)
 {
-    int current_day = global_param->day();
-    
-    if (current_day == d.last_day)
-        return false;
-    else 
+    // TODO This has hard coded elements, Chris suggested something different here: https://godbolt.org/z/3c51T1avT:Q
+	int td = global_param->posix_time().time_of_day().total_seconds();
+    int time_to_midnight = 86400 - td;
+    if (td >= 0 && td < global_param->dt()) //(time_to_midnight >= global_param->dt())
     {
         return true;
     }
+    else
+        return false;
 };
 
 

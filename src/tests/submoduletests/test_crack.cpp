@@ -1,6 +1,6 @@
 #include "Crack.hpp"
 #include "gtest/gtest.h"
-
+#include "CSVreader.hpp"
 /*
  * CrackTest: Wrapper class for tests
  * CrackTest is effectively a mock of Infil_All module but done indirectly. Due to the complexity of the module classes, it was easier to write this.  
@@ -132,7 +132,7 @@ TEST_F(CrackTest, ComputeInfOnDailyTotal) {
 
 TEST_F(CrackTest, ConstantInfCheck)
 {
-    const double start_melt = _snowmelt * steps_per_day;
+const double start_melt = _snowmelt * steps_per_day;
     status.daily_melt_total = start_melt;
 
     double yesterday;
@@ -168,7 +168,7 @@ TEST_F(CrackTest, MultiDayInfiltration)
             //Test infiltration on every hour over several major days
             EXPECT_NEAR(inf,expected_inf(melt[j]),diff);
             //inf and snow_inf should be equal
-            EXPECT_EQ(inf,model.get_snow_inf());
+            EXPECT_EQ(inf,model.get_inf());
         }
     }
 };
@@ -297,4 +297,176 @@ TEST_F(CrackTest,IceLensTest)
     // Check that the ice-lens is set by increasing major_melt_count safely above InfDays.
     EXPECT_EQ(status.major_melt_count,infDays+4);
     
+};
+
+TEST_F(CrackTest,RainOnSnowTest)
+{
+    status.init();
+    status.begin_freeze();
+    double rain_on_snow,sum,oldsum;
+    sum = 0;
+    
+    for (int ii = 0; ii < 48; ++ii)
+    {
+        _rainfall = 2.0*ii;
+        sum += _rainfall;
+        _newday = ii % 24 == 0;
+        if (_newday) 
+        {   
+            oldsum = sum;
+            sum = 0.0;
+        }
+        Crack model = run_a_step(0.0);
+
+        rain_on_snow = model.get_rain_on_snow();
+        
+        EXPECT_EQ(sum,status.daily_rain_total) << "Step: " << ii;
+        if (_newday)
+            EXPECT_EQ(oldsum,rain_on_snow) << "Step: " << ii;
+    }
+};
+
+class CrackImplTest : public testing::Test
+{
+protected:
+
+    CrackImplTest()
+    {
+        status.init();
+    };
+    CSVReader reader;
+    Crack::info status;
+    static constexpr double seconds_per_hour = 3600.0;
+    double steps_per_day = 24;
+    double rainfall;
+    double snowfall;
+
+    double major = 5.0;
+    double min_swe_to_freeze = 25.0;
+    unsigned int infDays = 6;
+    bool AllowPriorInf = true;
+    double lenstemp = -10.0;
+
+    struct CRHM
+    {
+        double infil;
+        double snowinfil;
+        double melt_runoff;
+        double runoff;
+        double rain_on_snow;
+
+        CRHM(const int& i,CSVReader& reader)
+        {
+            infil = reader.getValue<double>("infil",i);
+            snowinfil = reader.getValue<double>("snowinfil",i) / 24;
+            melt_runoff = reader.getValue<double>("meltrunoff",i) / 24;
+            runoff = reader.getValue<double>("runoff",i);
+            rain_on_snow = reader.getValue<double>("RainOnSnow",i);
+        };
+    };
+
+    template<typename T>
+    void print(std::string text,T val)
+    {
+        std::cout << text << val << std::endl;
+    };
+     
+
+};
+
+TEST_F(CrackImplTest,FullImplementTest)
+{ 
+    status.init();
+    int start = 0;
+    int end = 140000;
+    for (int i = start; i < end; ++i)
+    { 
+        //std::cout << " " <<std::endl;
+        print("TIME STEP: ", i); 
+        double rainfall = reader.getValue<double>("net_rain",i);
+        double snowmelt = reader.getValue<double>("snowmeltD",i) / 24;
+        double swe = reader.getValue<double>("SWE",i);
+        double soil_storage_at_freeze = 50;
+        double airtemp = reader.getValue<double>("hru_t",i);
+        bool crackon = reader.getValue<bool>("crackon",i);
+        std::string datetime = reader.getValue<std::string>("datetime",i);
+        //std::cout << datetime << std::endl;
+        CRHM crhm(i,reader);
+        print("rainfall: ", rainfall);
+        print("snowmelt: ", snowmelt);
+        print("swe: ", swe);
+
+        double runoff = 0.0;
+        double melt_runoff = 0.0;
+        double inf = 0.0;
+        double snowinf = 0.0;
+        double rain_on_snow = 0.0;
+        bool is_day_over = i % 24 == 23;
+        print("Day over tracker: ", i % 24);
+
+        if ((swe > min_swe_to_freeze && !status.frozen && is_day_over) || (crackon && i == start) )
+        {
+            status.begin_freeze();
+            status.end_freeze_tomorrow = false;
+        }
+        
+        print("snowinf: ", snowinf);
+        print("inf: ", inf);
+        print("melt_runoff: ", melt_runoff);
+        print("runoff: ", runoff);
+        print("frozen: ",status.frozen);
+        print("major melt count: ",status.major_melt_count);
+        print("Total input: ", snowmelt+rainfall);
+        
+        if (status.frozen)
+        {
+            Crack crack(major, min_swe_to_freeze, infDays, 
+                    AllowPriorInf, lenstemp,steps_per_day,status);
+            
+            crack.init_inputs(snowmelt, rainfall, swe, soil_storage_at_freeze,
+                    airtemp, is_day_over); 
+            status.daily_melt_total = snowmelt * steps_per_day;
+            crack.is_CRHM_compare_test = true;
+            crack.run();
+
+            runoff = crack.get_runoff() / steps_per_day;
+            melt_runoff = crack.get_melt_runoff() / steps_per_day;
+            inf = crack.get_inf() / steps_per_day;
+            snowinf = crack.get_snow_inf() / steps_per_day;
+            rain_on_snow = crack.get_rain_on_snow();
+        
+            if (is_day_over && swe <= 0.0 && status.major_melt_count > 0)
+                status.end_freeze();
+            //if (swe <= 0.0 && status.major_melt_count > 0)
+            //    status.end_freeze_tomorrow = true;
+
+        }
+        else
+        {
+            crhm.infil = 0.0;
+            crhm.snowinfil = 0.0;
+            crhm.melt_runoff = 0.0;
+            crhm.runoff = 0.0;
+            crhm.rain_on_snow = 0.0;
+        };
+        print("Melt total: ",status.daily_melt_total);
+        print("Rain total: ",status.daily_rain_total);
+        print("index: ", status.index);
+        print("Max major per melt: ", status.max_major_per_melt);
+        print("init_SWE", status.init_SWE);
+
+        print("snowinf: ", snowinf);
+        print("inf: ", inf);
+        print("melt_runoff: ", melt_runoff);
+        print("runoff: ", runoff);
+        double diff = 1e-5;
+        EXPECT_NEAR(crhm.infil,inf - snowinf,diff) << "Step: " << i;
+        EXPECT_NEAR(crhm.snowinfil,snowinf,diff) << "Step: " << i;
+        EXPECT_NEAR(crhm.melt_runoff,melt_runoff,diff) << "Step: " << i;
+        EXPECT_NEAR(crhm.runoff,runoff - melt_runoff,diff) << "Step: " << i;
+        EXPECT_EQ(status.frozen,crackon) << "Step: " << i;
+        EXPECT_NEAR(crhm.rain_on_snow,rain_on_snow,diff) << "Step: " << i;
+
+        
+    }
 };
