@@ -432,8 +432,8 @@ if (BUILD_TESTS)
 			#    test_mesh.cpp
             #tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-			tests/main.cpp
             #tests/test_triangulation.cpp
+            tests/main.cpp
             tests/submoduletests/test_crack.cpp
 			tests/submoduletests/test_ayers.cpp
 	)
