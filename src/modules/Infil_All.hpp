@@ -124,6 +124,9 @@ private:
     
     const Soil::soils_na& SoilDataObj = Soil::get_soil_obj<const Soil::soils_na>();
 
+	// General
+	bool is_new_day(void);
+
     // Crack
     double major;
     double min_swe_to_freeze;

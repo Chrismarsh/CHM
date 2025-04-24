@@ -131,7 +131,7 @@ void Infil_All::run(mesh_elem &face)
     
     
 
-    if (swe > min_swe_to_freeze && !d.crack_model_status.frozen && is_new_day(d))
+    if (swe > min_swe_to_freeze && !d.crack_model_status.frozen && is_new_day())
     {
         d.crack_model_status.begin_freeze();
         d.crack_model_status.end_freeze_tomorrow = false;
@@ -144,7 +144,7 @@ void Infil_All::run(mesh_elem &face)
                 AllowPriorInf, lenstemp,steps_per_day,d.crack_model_status);
         
         crack.init_inputs(snowmelt, rainfall, swe, soil_storage_at_freeze,
-                airtemp, is_new_day(d)); 
+                airtemp, is_new_day()); 
         d.crack_model_status.daily_melt_total = snowmelt * steps_per_day;
         crack.run();
 
@@ -156,7 +156,7 @@ void Infil_All::run(mesh_elem &face)
         
         Increment_Totals(d,runoff,melt_runoff,inf,snowinf,rain_on_snow);
         
-        if (is_new_day(d) && swe <= 0.0 && 
+        if (is_new_day() && swe <= 0.0 && 
                 d.crack_model_status.major_melt_count > 0)
         {
             d.crack_model_status.end_freeze();
@@ -165,7 +165,7 @@ void Infil_All::run(mesh_elem &face)
         //if (swe <= 0.0 && d.crack_model_status.major_melt_count > 0)
         //     d.crack_model_status.end_freeze_tomorrow = true;
 
-        //if (is_new_day(d))
+        //if (is_new_day())
         //{
         //     d.last_day = global_param->day();
         //}
@@ -181,7 +181,7 @@ void Infil_All::run(mesh_elem &face)
         
         //Below exists to match the function of CRHM
         //snowmelt infiltration computed by crack continues for the next day after SWE = 0.0
-        if (is_new_day(d))
+        if (is_new_day())
             d.crack_model_status.end_freeze_tomorrow = false;
 
         if (d.crack_model_status.end_freeze_tomorrow)
@@ -313,7 +313,7 @@ void Infil_All::melt_to_infil(double& inf,double& snowinf,double& snowmelt)
 // Crack Functions
 
 
-bool Infil_All::is_new_day(Infil_All::data& d)
+bool Infil_All::is_new_day()
 {
     // TODO This has hard coded elements, Chris suggested something different here: https://godbolt.org/z/3c51T1avT:Q
 	int td = global_param->posix_time().time_of_day().total_seconds();
