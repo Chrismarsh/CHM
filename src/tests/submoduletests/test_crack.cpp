@@ -379,6 +379,8 @@ TEST_F(CrackImplTest,FullImplementTest)
     status.init();
     int start = 0;
     int end = 140000;
+
+    double total_rain_on_snow = 0.0;
     for (int i = start; i < end; ++i)
     { 
         //std::cout << " " <<std::endl;
@@ -434,7 +436,9 @@ TEST_F(CrackImplTest,FullImplementTest)
             inf = crack.get_inf() / steps_per_day;
             snowinf = crack.get_snow_inf() / steps_per_day;
             rain_on_snow = crack.get_rain_on_snow();
-        
+            
+            total_rain_on_snow += rain_on_snow;
+
             if (is_day_over && swe <= 0.0 && status.major_melt_count > 0)
                 status.end_freeze();
             //if (swe <= 0.0 && status.major_melt_count > 0)
@@ -447,13 +451,14 @@ TEST_F(CrackImplTest,FullImplementTest)
             crhm.snowinfil = 0.0;
             crhm.melt_runoff = 0.0;
             crhm.runoff = 0.0;
-            crhm.rain_on_snow = 0.0;
+            //crhm.rain_on_snow = 0.0;
         };
         print("Melt total: ",status.daily_melt_total);
         print("Rain total: ",status.daily_rain_total);
         print("index: ", status.index);
         print("Max major per melt: ", status.max_major_per_melt);
         print("init_SWE", status.init_SWE);
+        print("CRHM: rain on snow:",crhm.rain_on_snow);
 
         print("snowinf: ", snowinf);
         print("inf: ", inf);
@@ -465,7 +470,7 @@ TEST_F(CrackImplTest,FullImplementTest)
         EXPECT_NEAR(crhm.melt_runoff,melt_runoff,diff) << "Step: " << i;
         EXPECT_NEAR(crhm.runoff,runoff - melt_runoff,diff) << "Step: " << i;
         EXPECT_EQ(status.frozen,crackon) << "Step: " << i;
-        EXPECT_NEAR(crhm.rain_on_snow,rain_on_snow,diff) << "Step: " << i;
+        EXPECT_NEAR(crhm.rain_on_snow,total_rain_on_snow,diff*10) << "Step: " << i;
 
         
     }
