@@ -91,7 +91,7 @@ namespace Soil {
     };
     
     template <typename T>
-    T& get_soil_obj()
+    const T& get_soil_obj()
     {
         static const T soil_obj;
         return soil_obj;
