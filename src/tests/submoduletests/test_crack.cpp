@@ -368,7 +368,7 @@ protected:
     template<typename T>
     void print(std::string text,T val)
     {
-        std::cout << text << val << std::endl;
+        //std::cout << text << val << std::endl;
     };
      
 

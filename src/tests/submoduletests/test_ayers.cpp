@@ -19,7 +19,7 @@ protected:
     {
     };
 
-	typedef Soil::soils_na S;
+	typedef const Soil::soils_na S;
 
 	typedef Ayers<S,&S::ayers_texture> MyAyers;
 
