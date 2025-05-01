@@ -837,7 +837,9 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         hsize_t nelem;
         int ndims = dataspace.getSimpleExtentDims(&nelem, NULL);
         _global_IDs.resize(nelem);
-        dataset.read(_global_IDs.data(), PredType::NATIVE_INT);
+        static_assert(std::is_same<global_ordinal_type, long long>::value,
+            "Assumption is that global_ordinal_type (from trillions) must be typedef'd to long long");
+        dataset.read(_global_IDs.data(), PredType::NATIVE_LLONG);
     }
 
     std::vector<int> owner; //what MPIrank owns each triangle,
@@ -1593,8 +1595,8 @@ void triangulation::partition_mesh_nonMPI(global_ordinal_type _num_global_faces)
     {
         _global_IDs[i] = i;
         _faces.at(i)->is_ghost = false;
-        _faces.at(i)->cell_local_id =
-            i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
+        // Mesh has been (potentially) reordered before this point. Set the local_id correctly
+        _faces.at(i)->cell_local_id = i;
     }
 
     // make sure these setup when in MPI mode for partition
