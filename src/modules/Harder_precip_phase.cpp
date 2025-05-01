@@ -113,10 +113,8 @@ void Harder_precip_phase::run(mesh_elem& face)
     };
 
     double guess = T;
-    // Ensure these cover more than the range of plausible.
-    // It's just to ensure the root is bounded.
-    double min = -100;
-    double max = 100;
+    double min = -50;
+    double max = 50;
     double digits = 6;
 
     double Ti = 0;
@@ -129,6 +127,16 @@ void Harder_precip_phase::run(mesh_elem& face)
     {
         SPDLOG_ERROR("Ta={}, RH={}, ea={}, guess={}, min={}, max={}",
             Ta, RH, ea, guess, min, max);
+        try
+        {
+            // try again but instrument it this time to see what went wrong
+#define BOOST_MATH_INSTRUMENT
+            Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
+#undef BOOST_MATH_INSTRUMENT
+        }
+        catch(...)
+        {
+        }
         CHM_THROW_EXCEPTION(module_error, "Harder_precip_phase newton_raphson_iterate failed to converge");
     }
 
