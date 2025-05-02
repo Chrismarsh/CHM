@@ -1088,8 +1088,8 @@ void PBSM3D::run(mesh& domain)
                     };
 
                     double guess = T;
-                    double min = -50;
-                    double max = 0;
+                    double min = -100;
+                    double max = 10;
                     int digits = 6;
 
                     double Ti = boost::math::tools::newton_raphson_iterate(fx, guess, min, max, digits);
