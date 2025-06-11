@@ -18,7 +18,7 @@ spack:
     - "cgal@6: +gmp"
     - "hdf5 +cxx"
     - "netcdf-cxx4@4.3:"
-    - "gdal@3.8: +hdf5 +netcdf"
+    - "gdal@3.8: +hdf5 +netcdf +python"
     - "proj@9: +curl+tiff"
     - "sparsehash"
     - "gperftools build_system=autotools"
@@ -28,16 +28,19 @@ spack:
     - "eigen"
     - "meteoio"
     - "func@2.2.0: ~openmp"
-    - "trilinos@15.1.1 +mpi"
+    - "trilinos@15: +mpi"
     - "jemalloc"
-    - "vtk@9.2:"
     - "spdlog"
     - "openblas"
     - "cmake@3.30:"
     - "openmpi"
-    - "vtk@9.2:"
-    - "gcc@14"
+    - "vtk@9.3 +python"
+    # - "gcc@14"
   #  - udunits
-  view: true
+  view:
+    default:
+      root: .spack-env/view
+      projections:
+        all: '{name}/{version}-{compiler.name}'
   concretizer:
     unify: true
