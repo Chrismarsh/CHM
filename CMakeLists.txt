@@ -136,6 +136,7 @@ endmacro()
 
 # Need to check for MPI before building external libraries
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran) # MPI_C is needed for the mpi that HDF can bring in
+find_package(MPI REQUIRED COMPONENTS C CXX Fortran REQUIRED) # MPI_C is needed for the mpi that HDF can bring in
 
 message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
 add_definitions(-DUSE_MPI)
