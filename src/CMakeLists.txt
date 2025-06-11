@@ -227,7 +227,6 @@ add_executable(
 		${CHM_SRCS}
 		${FILTER_SRCS}
 		${MODULE_SRCS}
-		${LIBMAW_SRCS}
 )
 
 
@@ -423,7 +422,6 @@ if (BUILD_TESTS)
 			${CHM_SRCS}
 			${FILTER_SRCS}
 			${MODULE_SRCS}
-			${LIBMAW_SRCS}
 			${TEST_SRCS}
 	)
 	set_target_properties(runUnitTests
