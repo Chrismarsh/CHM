@@ -184,22 +184,22 @@ endif()
 
 
 #these are the flags we will use to build CHM. Used with target properties instead of modifying CXX_FLAGS
-set(CHM_BUILD_FLAGS "-Wall -Wno-unused-variable -Wno-unknown-pragmas")
+set(CHM_BUILD_FLAGS "-Wall -Wno-unused-variable -Wno-unknown-pragmas -Wno-comment")
 #reset these back
 if (CMAKE_BUILD_TYPE MATCHES Debug)
     message(WARNING "Debug mode")
     add_definitions(-DSAFE_CHECKS)
 
-    set(DEBUG_FLAGS "")
+    set(DEBUG_FLAGS "-g3 -ggdb")
 
     if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
         # A new general optimization level, -Og, has been introduced. It addresses the need for fast compilation and
         # a superior debugging experience while providing a reasonable level of run-time performance.
         # Overall experience for development should be better than the default optimization level -O0.
         # new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
-        set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -Og -fno-inline -ggdb")
+        set(DEBUG_FLAGS "${DEBUG_FLAGS}  -Og -fno-inline")
     else("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
-        set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -O0 -ggdb -fno-omit-frame-pointer -fno-inline -fno-eliminate-unused-debug-symbols")
+        set(DEBUG_FLAGS "${DEBUG_FLAGS}  -O0 -fno-omit-frame-pointer -fno-inline -fno-eliminate-unused-debug-symbols")
     endif()
 
     set(CGAL_DO_NOT_WARN_ABOUT_CMAKE_BUILD_TYPE TRUE)
