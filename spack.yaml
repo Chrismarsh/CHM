@@ -4,11 +4,6 @@
 # configuration settings.
 spack:
   definitions:
-#  - vtk: [ "vtk@9.2:" ]
-##    when: '"ubuntu" not in os'
-## has a compilation error in llvm when enabled
-#    - vtk: [ "vtk@9.2.6: ^mesa~llvm" ]
-#      when: '"linux" in platform'
     - tbb: ["intel-tbb"]
       when: '"darwin" in platform'
     - tbb: [ "intel-oneapi-tbb" ]
@@ -18,7 +13,7 @@ spack:
     - "cgal@6: +gmp"
     - "hdf5 +cxx"
     - "netcdf-cxx4@4.3:"
-    - "gdal@3.8: +hdf5 +netcdf +python"
+    - "gdal@3.8: +hdf5 +netcdf"
     - "proj@9: +curl+tiff"
     - "sparsehash"
     - "gperftools build_system=autotools"
@@ -34,7 +29,7 @@ spack:
     - "openblas"
     - "cmake@3.30:"
     - "openmpi"
-    - "vtk@9.3 +python"
+    - "vtk@9.3"
     # - "gcc@14"
   #  - udunits
   view:
