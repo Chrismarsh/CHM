@@ -135,7 +135,6 @@ endmacro()
 # ---------------------------------------------------------------
 
 # Need to check for MPI before building external libraries
-find_package(MPI REQUIRED COMPONENTS C CXX Fortran) # MPI_C is needed for the mpi that HDF can bring in
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran REQUIRED) # MPI_C is needed for the mpi that HDF can bring in
 
 message(STATUS "Found MPI at ${MPI_CXX_INCLUDE_DIRS}")
@@ -200,7 +199,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
         # new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
         set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -Og -fno-inline -ggdb")
     else("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
-        set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -O1 -ggdb")
+        set(DEBUG_FLAGS "${DEBUG_FLAGS} -g3 -O0 -ggdb -fno-omit-frame-pointer -fno-inline -fno-eliminate-unused-debug-symbols")
     endif()
 
     set(CGAL_DO_NOT_WARN_ABOUT_CMAKE_BUILD_TYPE TRUE)
@@ -338,7 +337,7 @@ else()
     message(STATUS "gvpr and dot present, module output to pdf will function.")
 endif()
 
-find_package(Trilinos 15.0 REQUIRED)
+find_package(Trilinos REQUIRED)
 create_target(Trilinos)
 
 #setup src dirs
