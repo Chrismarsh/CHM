@@ -29,7 +29,7 @@ spack:
     - "openblas"
     - "cmake@3.30:"
     - "openmpi"
-    - "vtk@9.3"
+    - "vtk@9.3:"
     # - "gcc@14"
   #  - udunits
   view:
