@@ -2368,7 +2368,7 @@ void core::run()
             pt::ptree files;
 
             pt::ptree tmp_files;
-            for (size_t i = 0; i < nranks; ++i)
+            for (int i = 0; i < nranks; ++i)
             {
                 pt::ptree s;
 
