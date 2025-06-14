@@ -264,9 +264,9 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
         // don't seem to help. Probably _dD_tree is not thread safe
 
         // guarantee at least this number of stations are found, might need to expand bbox
-        int at_least = _num_stations_to_use ? *_num_stations_to_use : 0;
-        int tries = 0;
-        int skipped = 0; // keep track of how many we skipped due to nans
+        size_t at_least = _num_stations_to_use ? *_num_stations_to_use : 0;
+        size_t tries = 0;
+        size_t skipped = 0; // keep track of how many we skipped due to nans
 
         bool done = false;
         do
