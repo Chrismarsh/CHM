@@ -436,6 +436,7 @@ int sno::hle1(
      */
 
     iter = 0;
+    diff = 0;
     if (ta != ts)
     {
 
