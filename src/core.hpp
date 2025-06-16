@@ -330,9 +330,9 @@ protected:
     {
     public:
         output_info():
+                        name{""},
                       fname{""},
                       latitude{0}, longitude{0},
-                      name{""},
                       x{0}, y{0},
                       only_last_n{SIZE_MAX}
         {

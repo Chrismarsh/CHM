@@ -78,7 +78,7 @@ void Harder_precip_phase::run(mesh_elem& face)
     double Ta = (*face)["t"_s]+273.15; //K
     double T =  (*face)["t"_s];
     double RH = (*face)["rh"_s];
-    double ea = RH/100 * 0.611*exp( (17.3*T) / (237.3+T));
+    double ea = RH/100.0 * 0.611*exp( (17.3*T) / (237.3+T));
 
     // (A.6)
     double D = 2.06 * pow(10,-5) * pow(Ta/273.15,1.75);

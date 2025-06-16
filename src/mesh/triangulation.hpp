@@ -16,14 +16,10 @@
 
 #pragma once
 
-#include "interpolation.hpp"
-#include "gis.hpp"
-#include "station.hpp"
-#include "global.hpp"
+// CGAL includes
 
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
-// CGAL includes
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Kd_tree.h>
 #include <CGAL/algorithm.h>
@@ -47,6 +43,7 @@
 #include <CGAL/Euclidean_distance.h>
 #include <CGAL/property_map.h>
 
+// openmp includes
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -56,6 +53,7 @@ inline int omp_get_thread_num() { return 0;}
 inline int omp_get_max_threads() { return 1;}
 #endif
 
+// std includes
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -68,11 +66,12 @@ inline int omp_get_max_threads() { return 1;}
 #include <utility>
 #include <random> // for send/recv tag generation
 
+// other libs
 
 #include <armadillo>
-
 #include <ogr_spatialref.h>
 
+// sparsehash includes
 #ifdef USE_SPARSEHASH
 #include <sparsehash/dense_hash_map>
 #else
@@ -96,18 +95,11 @@ inline int omp_get_max_threads() { return 1;}
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/iterator/zip_iterator.hpp>
-
+namespace pt = boost::property_tree;
 
 // tbb includes
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_sort.h>
-
-
-
-namespace pt = boost::property_tree;
-
-//required for the spatial searching
-
 
 // vtk includes
 #include <vtkVersion.h>
@@ -123,25 +115,37 @@ namespace pt = boost::property_tree;
 #include <vtkUnstructuredGrid.h>
 #include <vtkPoints.h>
 
-
+// MPI incldues
 #ifdef USE_MPI
 #include <boost/mpi.hpp>
 #include <boost/serialization/vector.hpp>
 #endif
 
+// hdf5 include
+#include "H5Cpp.h"
+using namespace H5;
+
+// CHM includes
+#include "interpolation.hpp"
+#include "gis.hpp"
+#include "station.hpp"
+#include "global.hpp"
+// use this to inform what our local ordinal type should be
+// this is the type we use to index the triangulation at. It can't have more precision that what
+// the global linear algebra solver can use
+// #include "LinearAlgebra.hpp"
 #include "vertex.hpp"
 #include "timeseries.hpp"
 #include "math/coordinates.hpp"
 #include "utility/xxh64.hpp"
-
 #include "timeseries/variablestorage.hpp"
+#include "ordinal_typedef.hpp"
 
-// #include "hdf5.h"
-#include "H5Cpp.h"
-using namespace H5;
+
+
 /**
 * \struct face_info
-* A way of embedding arbirtrary data into the face. This is how modules should store their data.
+* A way of embedding arbitrary data into the face. This is how modules should store their data.
 */
 struct face_info
 {
@@ -166,6 +170,7 @@ typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on 
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
 
+// // The type used for indexes on the local rank
 
 
 
@@ -631,6 +636,8 @@ public:
 
     /**
     * Sets a new order to the face numbering.
+    * global_ordinal_type is used as this may be called with the json -> h5 conversion step which has the entire
+    * mesh in memory
     * \param permutation desired ordering
     */
   void reorder_faces(std::vector<size_t> permutation);

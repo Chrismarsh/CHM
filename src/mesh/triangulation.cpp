@@ -362,7 +362,7 @@ void triangulation::from_json(pt::ptree &mesh)
         // build up the entire list of parameters so we can use this to init the per-face parameter
         // storage later
 
-        std::set<std::string> blacklist; // holds any parameters that have 0 length, eg "area": [],
+        std::set<std::string> excludelist; // holds any parameters that have 0 length, eg "area": [],
         for (auto &itr : mesh.get_child("parameters"))
         {
             // we could have an item like this
@@ -380,7 +380,7 @@ void triangulation::from_json(pt::ptree &mesh)
 
             if(i == 0)
             {
-                blacklist.insert(name);
+                excludelist.insert(name);
                 SPDLOG_WARN("Parameter " + name + " is zero length and will be ignored.");
             } else {
                 _parameters.insert(name);
@@ -401,7 +401,7 @@ void triangulation::from_json(pt::ptree &mesh)
             i = 0; // reset evertime we get a new parameter set
             auto name = itr.first.data();
 
-            if(blacklist.find(name) != blacklist.end())
+            if(excludelist.find(name) != excludelist.end())
                 continue; // skip blacklisted ones, as we don't want to use these
 
             SPDLOG_DEBUG("Applying parameter: {}",name);
@@ -1711,24 +1711,24 @@ void triangulation::determine_local_boundary_faces()
 
              int num_owned_neighbors = 0;
              for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
-               {
+             {
 
                  auto neigh = face->neighbor(neigh_index);
 
-                 // Test status of neighbor
-                 if (neigh == nullptr)
-                   {
-                     th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
-                     num_owned_neighbors=3; // set this to avoid triggering the post-loop if statement
-                     break;
-                   } else
-                   {
-                     if (neigh->is_ghost == false)
-                       {
-                         num_owned_neighbors++;
-                       }
-                   }
-               }
+            // Test status of neighbor
+            if (neigh == nullptr)
+            {
+                th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+                num_owned_neighbors=3; // set this to avoid triggering the post-loop if statement
+                break;
+            } else
+            {
+                if (neigh->is_ghost == false)
+                {
+                    num_owned_neighbors++;
+                }
+            }
+             }
 
              // If we don't own 3 neighbors, we are a local, but not a global boundary face
              if( num_owned_neighbors<3 ) {
@@ -2895,11 +2895,11 @@ void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
             arma::mat* t = new arma::mat(5, 2);
 
 
-            *t << h_x << h_y - v_dy << arma::endr // bottom left
-                    << h_x + h_dx << h_y - v_dy << arma::endr //bottom right
-                    << h_x + h_dx << h_y << arma::endr // top right
-                    << h_x << h_y << arma::endr //top left
-                    << h_x << h_y - v_dy << arma::endr; // bottom left
+            *t = {{ h_x, h_y - v_dy},// bottom left
+                    {h_x + h_dx, h_y - v_dy}, //bottom right
+                    {h_x + h_dx, h_y}, // top right
+                    {h_x,  h_y},//top left
+                    {h_x, h_y - v_dy}}; // bottom left
 
 
             m_grid[i][j] = new rect(t);
