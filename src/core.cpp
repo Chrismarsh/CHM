@@ -2397,6 +2397,8 @@ void core::run()
             }
         }
 
+        SPDLOG_DEBUG("testing UGRID output");
+        _mesh->write_ugrid();
         for (auto &itr : _outputs)
         {
             if (itr.type == output_info::output_type::mesh)
@@ -2420,7 +2422,6 @@ void core::run()
 
                                     if (jtr == output_info::mesh_outputs::vtu  )
                                     {
-
                                         // this really only works if we let rank0 handle the io.
                                         // If we let each process do it, they walk all over each other's output
 #ifdef USE_MPI

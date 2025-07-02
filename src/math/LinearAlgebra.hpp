@@ -34,7 +34,7 @@
 #include <Tpetra_CrsMatrix.hpp>
 
 #include "triangulation.hpp"
-#include "ordinal_typedef.hpp"
+
 
 namespace math
 {
@@ -61,7 +61,9 @@ namespace math
       typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
       typedef Belos::SolverManager<scalar_type, MV, OP> solver_type;
       typedef Tpetra::MatrixMarket::Reader<crs_matrix_type> reader_type;
-
+      // The type used for indexes on the local rank
+      typedef Tpetra::Details::DefaultTypes::global_ordinal_type global_ordinal_type;
+      typedef Tpetra::Details::DefaultTypes::local_ordinal_type local_ordinal_type;
 
 
       struct SolveConverge

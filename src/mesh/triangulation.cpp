@@ -217,7 +217,7 @@ void triangulation::from_json(pt::ptree &mesh)
     SPDLOG_DEBUG("Reading in #vertex={}",nvertex_toread);
     size_t i=0;
 
-    //paraview struggles with lat/long as it doesn't seem to have the accuracy. So we need to scale up lat-long.
+    //paraview struggles with lat/long as it doesn"t seem to have the accuracy. So we need to scale up lat-long.
     int is_geographic = mesh.get<int>("mesh.is_geographic");
     if( is_geographic == 1)
     {
@@ -367,12 +367,12 @@ void triangulation::from_json(pt::ptree &mesh)
         {
             // we could have an item like this
             // "area": [],
-            // and we need to ensure we *don't* load those
+            // and we need to ensure we *don"t* load those
             std::string name = itr.first.data();
             size_t i=0;
             for (auto &jtr : itr.second)
             {
-                //just count the first couple items, make sure it's non zero
+                //just count the first couple items, make sure it"s non zero
                 if(i > 1)
                     break;
                 ++i;
@@ -402,7 +402,7 @@ void triangulation::from_json(pt::ptree &mesh)
             auto name = itr.first.data();
 
             if(excludelist.find(name) != excludelist.end())
-                continue; // skip blacklisted ones, as we don't want to use these
+                continue; // skip blacklisted ones, as we don"t want to use these
 
             SPDLOG_DEBUG("Applying parameter: {}",name);
 
@@ -424,7 +424,7 @@ void triangulation::from_json(pt::ptree &mesh)
         }
     }catch(pt::ptree_bad_path& e)
     {
-        // we don't have this section, no worries
+        // we don"t have this section, no worries
         // but we still need to build up the face storage as we may have parameters from a module
         // init the storage, which builds the mphf
 #pragma omp parallel for
@@ -455,7 +455,7 @@ void triangulation::from_json(pt::ptree &mesh)
         }
     }catch(pt::ptree_bad_path& e)
     {
-        // we don't have this section, no worries
+        // we don"t have this section, no worries
     }
     _num_faces = this->number_of_faces();
     _num_vertex = this->number_of_vertices();
@@ -490,7 +490,7 @@ void triangulation::from_json(pt::ptree &mesh)
         SPDLOG_DEBUG("No face permutation.");
     }
 
-    // Don't actually want to partition the mesh. Use the non-MPI one
+    // Don"t actually want to partition the mesh. Use the non-MPI one
     partition_mesh_nonMPI(_faces.size());
 
     _build_dDtree();
@@ -777,7 +777,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         }
         catch (AttributeIException& e)
         {
-            // non partition meshes won't have this
+            // non partition meshes won"t have this
             _mesh_is_from_partition = false;
         }
 
@@ -806,7 +806,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         }
 
         // if we are from a partition we are loading _local_sizes from the partition file not from the h5
-        // they're almost always identical /unless/ we have created a subset debugging partition file (e.g., -v 1 -v 2)
+        // they"re almost always identical /unless/ we have created a subset debugging partition file (e.g., -v 1 -v 2)
         // in this case, the partition file will have the "real" number of partitions whereas this h5 is
         // before we subset it
         if(!_mesh_is_from_partition)
@@ -840,7 +840,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
     std::vector<int> owner; //what MPIrank owns each triangle,
     {
-        // if we have a h5 that isn't partitioned (ie mesh <v3.0.0) then we are entirely owned by rank 0
+        // if we have a h5 that isn"t partitioned (ie mesh <v3.0.0) then we are entirely owned by rank 0
         if(_version.to_string() == "1.0.0" ||
             _version.to_string() == "1.2.0" ||
             _version.to_string() == "2.0.0")
@@ -992,7 +992,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 //            // if we are loading from a partition, convert these to local ids
             if(_mesh_is_from_partition)
             {
-                // neighbours that are missing come in as -1 so they won't cleanly remap
+                // neighbours that are missing come in as -1 so they won"t cleanly remap
 
                 neigh_i_0_idx = neigh_i_0_idx != -1 ? _global_to_locally_owned_index_map[neigh_i_0_idx] : -1;
                 neigh_i_1_idx = neigh_i_1_idx != -1 ? _global_to_locally_owned_index_map[neigh_i_1_idx] : -1;
@@ -1155,7 +1155,7 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
         SPDLOG_DEBUG("No addtional initial conditions found in mesh section.");
     }
 
-    // keep just our rank's. The hdf5 loader expects a vector of potential files so make a vector of 1
+    // keep just our rank"s. The hdf5 loader expects a vector of potential files so make a vector of 1
 
     int tmp_rank = 0; // play nicely in non mpi builds
 #ifdef USE_MPI
@@ -1237,7 +1237,7 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_filenames)
 {
 
-    // we might have modules params but we aren't loading file params, so do the init here
+    // we might have modules params but we aren"t loading file params, so do the init here
     // this is a copy paste as the logic in the main loop below has to handle loading multiple param files
 
     if (param_filenames.empty())
@@ -1336,7 +1336,7 @@ void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_
 
                 // _num_faces will have been set to the local face size in MPI mode
                 // however, if we are reading from a partitioned mesh file, we can actually load the entire set of
-                // faces' data in one go
+                // faces" data in one go
                 hsize_t local_size = static_cast<hsize_t>(
                     _mesh_is_from_partition ? _faces.size() : _num_faces);
 
@@ -1420,9 +1420,9 @@ void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_
 
 void triangulation::reorder_faces(std::vector<size_t> permutation)
 {
-  // NOTE: be careful with evaluating this, the 'cell_global_id's and a
-  // cell's position in the '_faces' vec are unrelated. They must both
-  // be modified (ie. renumber the 'cell_global_id's, AND sort the '_faces'
+  // NOTE: be careful with evaluating this, the "cell_global_id"s and a
+  // cell"s position in the "_faces" vec are unrelated. They must both
+  // be modified (ie. renumber the "cell_global_id"s, AND sort the "_faces"
   // vector) before the new ordering is consistent.
 
   assert( permutation.size() == size_faces() );
@@ -1483,14 +1483,14 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 
     SPDLOG_DEBUG(mesh_filename);
 
-    // when we get to here, we have a mix of ghosts and not ghosts in _local_faces and don't have the sizes
+    // when we get to here, we have a mix of ghosts and not ghosts in _local_faces and don"t have the sizes
     // we need to pick this apart
     // since the faces are sorted coming from the partition tool, they will be sorted here. Since we grow arrays we
-    // can't do this in parallel which will preserve the sort. If this is every changed, then need to sort
+    // can"t do this in parallel which will preserve the sort. If this is every changed, then need to sort
 
 
     // here we loop through all (incl ghosts!) to figure out where everything should go.
-    // DO NOT do this in parallel (at the moment) as it's not thread safe
+    // DO NOT do this in parallel (at the moment) as it"s not thread safe
     size_t local_face_i = 0;
     for (size_t i = 0; i < _faces.size(); ++i)
     {
@@ -1510,7 +1510,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
         {
             _faces[i]->is_ghost = false;
 
-            // Although we set thsin from_h5 we need to reset it here such that it doesn't include ghosts
+            // Although we set thsin from_h5 we need to reset it here such that it doesn"t include ghosts
             _faces[i]->cell_local_id = local_face_i;
 
             _local_faces.push_back(_faces[i]);
@@ -1521,7 +1521,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
         }
     }
 
-    // Set up so that all processors know how 'big' all other processors are
+    // Set up so that all processors know how "big" all other processors are
     _num_faces_in_partition.resize(_comm_world.size());
     for (unsigned int i = 0; i < _comm_world.size(); ++i)
     {
@@ -1547,13 +1547,13 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 //    if (face_start_idx != _local_faces.front()->cell_global_id ||
 //        face_end_idx != _local_faces.back()->cell_global_id)
 //    {
-//        LOG_ERROR << "The computed and read start/end index don't match. Computed:\n"
+//        LOG_ERROR << "The computed and read start/end index don"t match. Computed:\n"
 //                  << "\tface_start_idx = " << face_start_idx << "\n"
 //                  << "\tface_end_idx = " << face_end_idx << "\n"
 //                  << "Read:\n"
 //                  << "\t_local_faces[0] = " << _local_faces.front()->cell_global_id << "\n"
 //                  << "\t_local_faces[-1] = " << _local_faces.back()->cell_global_id;
-//        CHM_THROW_EXCEPTION(mesh_error, "Computed and read global indexs don't match");
+//        CHM_THROW_EXCEPTION(mesh_error, "Computed and read global indexs don"t match");
 //    }
 
     // Store in the public members
@@ -1621,7 +1621,7 @@ void triangulation::partition_mesh()
 
     int my_rank = _comm_world.rank();
 
-    // Set up so that all processors know how 'big' all other processors are
+    // Set up so that all processors know how "big" all other processors are
     _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
     for (unsigned int i = 0; i < _num_global_faces % _comm_world.size(); ++i)
     {
@@ -1643,7 +1643,7 @@ void triangulation::partition_mesh()
     // Set size of vector containing locally owned faces
     _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
 
-    // Loop can't be parallel due to modifying map
+    // Loop can"t be parallel due to modifying map
     for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
     {
         size_t offset_idx = global_cell_start_idx + local_ind;
@@ -1688,7 +1688,7 @@ void triangulation::determine_local_boundary_faces()
   using th_safe_multicontainer_type = std::vector< std::pair<mesh_elem,bool> >[];
 
 #ifdef USE_MPI
-  // Need to ensure we're starting from nothing?
+  // Need to ensure we"re starting from nothing?
   assert( _boundary_faces.size() == 0 );
 
   SPDLOG_DEBUG("Determining local boundary faces");
@@ -1730,7 +1730,7 @@ void triangulation::determine_local_boundary_faces()
             }
              }
 
-             // If we don't own 3 neighbors, we are a local, but not a global boundary face
+             // If we don"t own 3 neighbors, we are a local, but not a global boundary face
              if( num_owned_neighbors<3 ) {
                th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
              }
@@ -1868,7 +1868,7 @@ void triangulation::determine_ghost_owners()
         // on first it, no value of prev_owner exists... set it
         if(i==0) prev_owner = _ghost_neighbor_owners[i];
 
-        // if owner different from last owner, store prev segment's ownership info
+        // if owner different from last owner, store prev segment"s ownership info
         if (prev_owner != _ghost_neighbor_owners[i])
         {
             num_partners++;
@@ -2045,7 +2045,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
   // For each communication partner:
   // - pack vectors of the variable to send
   // - send/recv it
-  // - unpack the recv'd vectors into mesh_elem->face_data (so it can be used exactly as local info)
+  // - unpack the recv"d vectors into mesh_elem->face_data (so it can be used exactly as local info)
 
   std::vector<boost::mpi::request> reqs;
 
@@ -2157,7 +2157,7 @@ void triangulation::ghost_to_neighbors_communicate_variable(const uint64_t& var)
     // For each communication partner:
     // - pack vectors of the variable to send
     // - send/recv it
-    // - unpack the recv'd vectors into mesh_elem->face_data (so it can be used exactly as local info)
+    // - unpack the recv"d vectors into mesh_elem->face_data (so it can be used exactly as local info)
 
     std::vector<boost::mpi::request> reqs;
 
@@ -2253,7 +2253,7 @@ void dfs_to_max_distance_aux(mesh_elem starting_face, double max_distance, mesh_
 {
   // DFS auxiliary function, does all of the work constructing the set of faces
 
-  // if we're outside of the distance or already visited, we're done
+  // if we"re outside of the distance or already visited, we"re done
   bool is_not_within_distance = (math::gis::distance(starting_face->center(),face->center()) > max_distance);
   bool is_visited             = (visited.find(face) != visited.end());
   if(  is_not_within_distance || is_visited  )
@@ -2388,6 +2388,149 @@ void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 
     m->to_file(fname);
 }
+void triangulation::write_ugrid()
+{
+
+    // use C api as boost doesn"t have info
+    MPI_Comm comm = _comm_world;
+    MPI_Info info_used;
+    MPI_Comm_get_info(comm, &info_used);
+
+    int ncid;
+    int status = nc_create_par("test.nc", NC_NETCDF4 | NC_CLOBBER, comm, info_used, &ncid);
+    if (status != NC_NOERR) {
+        SPDLOG_ERROR("failed");
+    }
+
+    size_t num_global_vertex;
+    boost::mpi::all_reduce(_comm_world, _num_vertex, num_global_vertex, std::plus<size_t>());
+
+    int dim_Mesh2_node, dim_Mesh2_face, dim_two, dim_three;
+    nc_def_dim(ncid, "nMesh2_node", num_global_vertex, &dim_Mesh2_node);
+    nc_def_dim(ncid, "nMesh2_face", _num_global_faces, &dim_Mesh2_face);
+    nc_def_dim(ncid, "Two", 2, &dim_two);
+    nc_def_dim(ncid, "Three", 3, &dim_three);
+
+    //time
+    // ugrid.addDim("time", num_global_vertex);
+
+    int var_Mesh2, var_Mesh2_face_nodes, var_Mesh2_node_x, var_Mesh2_node_y, var_Mesh2_node_z;
+    int dims_face_nodes[2] = {dim_Mesh2_node, dim_two};
+    int dims_node[1] = {dim_Mesh2_node};
+
+    // Mesh2 variable
+    nc_def_var(ncid, "Mesh2", NC_INT, 0, NULL, &var_Mesh2);
+    nc_put_att_text(ncid, var_Mesh2, "cf_role", strlen("mesh_topology"), "mesh_topology");
+    nc_put_att_text(ncid, var_Mesh2, "long_name", strlen("Topology data of 2D unstructured mesh"), "Topology data of 2D unstructured mesh");
+    nc_put_att_text(ncid, var_Mesh2, "topology_dimension", strlen("2"), "2");
+    nc_put_att_text(ncid, var_Mesh2, "node_coordinates", strlen("Mesh2_node_x Mesh2_node_y"), "Mesh2_node_x Mesh2_node_y");
+    nc_put_att_text(ncid, var_Mesh2, "face_node_connectivity", strlen("Mesh2_face_nodes"), "Mesh2_face_nodes");
+    nc_put_att_text(ncid, var_Mesh2, "face_dimension", strlen("nMesh2_face"), "nMesh2_face");
+    nc_put_att_text(ncid, var_Mesh2, "edge_dimension", strlen("nMesh2_edge"), "nMesh2_edge");
+    nc_put_att_text(ncid, var_Mesh2, "face_coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
+
+    // Mesh2_face_nodes variable
+    nc_def_var(ncid, "Mesh2_face_nodes", NC_INT, 2, dims_face_nodes, &var_Mesh2_face_nodes);
+    nc_put_att_text(ncid, var_Mesh2_face_nodes, "cf_role", strlen("face_node_connectivity"), "face_node_connectivity");
+    nc_put_att_text(ncid, var_Mesh2_face_nodes, "long_name", strlen("Maps every triangular face to its three corner nodes."), "Maps every triangular face to its three corner nodes.");
+
+    // Mesh2_node_x variable
+    nc_def_var(ncid, "Mesh2_node_x", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_x);
+    nc_put_att_text(ncid, var_Mesh2_node_x, "standard_name", strlen("longitude"), "longitude");
+    nc_put_att_text(ncid, var_Mesh2_node_x, "long_name", strlen("Longitude of 2D mesh nodes."), "Longitude of 2D mesh nodes.");
+    nc_put_att_text(ncid, var_Mesh2_node_x, "units", strlen("degrees_east"), "degrees_east");
+
+    // Mesh2_node_y variable
+    nc_def_var(ncid, "Mesh2_node_y", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_y);
+    nc_put_att_text(ncid, var_Mesh2_node_y, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(ncid, var_Mesh2_node_y, "long_name", strlen("Latitude of 2D mesh nodes."), "Latitude of 2D mesh nodes.");
+    nc_put_att_text(ncid, var_Mesh2_node_y, "units", strlen("degrees_north"), "degrees_north");
+
+    // nc_def_var(ncid, "Mesh2_node_z", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_z);
+    // nc_put_att_text(ncid, var_Mesh2_node_z, "standard_name", strlen("elevation"), "elevation");
+    // nc_put_att_text(ncid, var_Mesh2_node_z, "long_name", strlen("Elevation of 2D mesh nodes."), "Elevation of 2D mesh nodes.");
+    // nc_put_att_text(ncid, var_Mesh2_node_z, "units", strlen("degrees_north"), "degrees_north");
+
+    int var_global_id, var_Mesh2_face_x, var_Mesh2_face_y;
+
+    nc_def_var(ncid, "global_id", NC_INT, 1, &dim_Mesh2_face, &var_global_id);
+    nc_def_var(ncid, "Mesh2_face_x", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_x);
+    nc_def_var(ncid, "Mesh2_face_y", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_y);
+
+    // For 'global_id'
+    nc_put_att_text(ncid, var_global_id, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(ncid, var_global_id, "location", strlen("face"), "face");
+    nc_put_att_text(ncid, var_global_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
+
+    // For 'Mesh2_face_x'
+    nc_put_att_text(ncid, var_Mesh2_face_x, "standard_name", strlen("longitude"), "longitude");
+    nc_put_att_text(ncid, var_Mesh2_face_x, "long_name", strlen("Characteristics longitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics longitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(ncid, var_Mesh2_face_x, "units", strlen("degrees_east"), "degrees_east");
+
+    // For 'Mesh2_face_y'
+    nc_put_att_text(ncid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(ncid, var_Mesh2_face_y, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(ncid, var_Mesh2_face_y, "units", strlen("degrees_north"), "degrees_north");
+
+    nc_enddef(ncid); // End define mode
+
+
+    // Fill node_x, node_y, node_z, face_nodes, face_neighbors, face_gid, static_param
+    std::map<int, int> global_to_local_vertex_id;
+    std::vector<int> global_vertex_id;
+
+    int npoints=0;
+    for (size_t i = 0; i < this->size_faces(); i++)
+    {
+        mesh_elem fit = this->face(i);
+
+        // loop over vertices of a face
+        for (int j=0;j<3;++j)
+            {
+            auto vit = fit->vertex(j);
+            size_t global_id = vit->get_id();
+
+            // If point hasn't been seen yet, account for it
+            if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() )
+                {
+                global_to_local_vertex_id[global_id] = npoints;
+                npoints++;
+
+                double x = vit->point().x();
+                double y = vit->point().y();
+                double z = vit->point().z();
+
+                nc_put_var1_double(ncid, var_Mesh2_node_x, &global_id, &x);
+                nc_put_var1_double(ncid, var_Mesh2_node_y, &global_id, &y);
+                // nc_put_var1_double(ncid, var_Mesh2_node_z, &global_id, &z);
+                nc_put_var1_int(ncid, var_global_id, &global_id, &global_id);
+
+                // points->InsertNextPoint(vit->point().x()*scale, vit->point().y()*scale, vit->point().z());
+                global_vertex_id.push_back(global_id);
+            }
+            // tri->GetPointIds()->SetId(j, global_to_local_vertex_id[global_id]);
+        }
+
+        // triangles->InsertNextCell(tri);
+    }
+
+    nc_close(ncid);
+    MPI_Info_free(&info_used);
+    return;
+
+    //
+    // writer.write_mesh_topology(node_x, node_y, node_z, face_nodes, face_neighbors, face_gid, static_param);
+    //
+    // // For each time step
+    // for (int t = 0; t < nTimeSteps; ++t) {
+    //     std::vector<double> var_data(nFaces); // fill with your data
+    //     writer.write_time_step(t, var_data, "my_var");
+    // }
+    //
+    // writer.close();
+
+}
+
 
 void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {
@@ -2424,7 +2567,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 	for (int j=0;j<3;++j){
 	  auto vit = fit->vertex(j);
 	  int global_id = vit->get_id();
-	  // If point hasn't been seen yet, account for it
+	  // If point hasn"t been seen yet, account for it
 	  if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
 	    global_to_local_vertex_id[global_id] = npoints;
 	    npoints++;
@@ -2452,7 +2595,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
             for (int j=0;j<3;++j){
               auto vit = fit->vertex(j);
               int global_id = vit->get_id();
-              // If point hasn't been seen yet, account for it
+              // If point hasn"t been seen yet, account for it
               if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
                 global_to_local_vertex_id[global_id] = npoints;
                 npoints++;
@@ -2624,7 +2767,7 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
 
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 {
-    //if we haven't inited yet, do so.
+    //if we haven"t inited yet, do so.
     if(!_vtk_unstructuredGrid || _terrain_deformed)
     {
         this->init_vtkUnstructured_Grid(output_variables);

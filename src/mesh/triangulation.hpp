@@ -67,7 +67,6 @@ inline int omp_get_max_threads() { return 1;}
 #include <random> // for send/recv tag generation
 
 // other libs
-
 #include <armadillo>
 #include <ogr_spatialref.h>
 
@@ -125,6 +124,8 @@ namespace pt = boost::property_tree;
 #include "H5Cpp.h"
 using namespace H5;
 
+#include <netcdf>
+
 // CHM includes
 #include "interpolation.hpp"
 #include "gis.hpp"
@@ -139,8 +140,7 @@ using namespace H5;
 #include "math/coordinates.hpp"
 #include "utility/xxh64.hpp"
 #include "timeseries/variablestorage.hpp"
-#include "ordinal_typedef.hpp"
-
+#include "ugrid.hpp"
 
 
 /**
@@ -169,8 +169,6 @@ typedef K::Vector_2 Vector_2;
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
-
-// // The type used for indexes on the local rank
 
 
 
@@ -842,6 +840,7 @@ public:
      * If output to the mesh vtk/vtu format is required, this will be allocate the vtk data structure.
      */
     void init_vtkUnstructured_Grid(std::vector<std::string> output_variables);
+    void write_ugrid();
 
     /// Initializes all the face timeseries to hold the selected variables
     /// @param variables

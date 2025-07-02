@@ -79,6 +79,7 @@ set(CHM_SRCS
 		physics/Atmosphere.cpp
 
 		mesh/triangulation.cpp
+		mesh/ugrid.cpp
 
 		interpolation/inv_dist.cpp
 		interpolation/TPSpline.cpp
