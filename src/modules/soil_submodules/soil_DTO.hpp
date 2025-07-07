@@ -85,6 +85,7 @@ struct two_layer_DTO : virtual shared_DTO
     double snow_density = 0.0;
 
     virtual int get_dt(two_layer_DTO& DTO) = 0;
+    virtual bool get_new_day() = 0;
     //virtual bool is_day_start(two_layer_DTO& DTO) = 0;
     //virtual void call_model_error(two_layer_DTO& DTO) = 0;
 };
