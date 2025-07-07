@@ -19,8 +19,9 @@ struct soil_ET_DTO : virtual shared_DTO
     int ground_cover_type = 0;
     int soil_type_rechr = 0;
     int soil_type_lower = 0;
-
-    virtual bool is_lake(soil_ET_DTO& DTO) = 0;
+	bool is_lake = false;
+    //REMOVED and replaced by variable (see above) (MAy 2025)
+	//virtual bool is_lake(soil_ET_DTO& DTO) = 0;
     
 };
 
