@@ -17,6 +17,7 @@ soil_module::soil_module(config_file cfg) : module_base("soil_module", parallel:
     provides("actual_soil_ET");
     provides("soil_excess_to_runoff");
     provides("soil_excess_to_gw");
+	provides("runoff_to_depression");
     provides("ground_water_out");
     provides("soil_to_ssr");
     provides("rechr_to_ssr");
@@ -112,7 +113,8 @@ void soil_module::set_soil_outputs(mesh_elem& face,soil_module::data& d)
     (*face)["actual_soil_ET"_s] = d.actual_soil_ET; 
     (*face)["soil_excess_to_runoff"_s] = d.soil_excess_to_runoff; 
     (*face)["soil_excess_to_gw"_s] = d.soil_excess_to_gw; 
-    (*face)["ground_water_out"_s] = d.ground_water_out; 
+    (*face)["runoff_to_depression"_s] = d.runoff_to_depression;
+	(*face)["ground_water_out"_s] = d.ground_water_out; 
     (*face)["soil_to_ssr"_s] = d.soil_to_ssr;
     (*face)["rechr_to_ssr"_s] = d.rechr_to_ssr;
     (*face)["soil_storage"_s] = d.soil_storage;
