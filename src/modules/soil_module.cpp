@@ -79,12 +79,15 @@ void soil_module::init(mesh& domain)
 
 void soil_module::run(mesh_elem& face)
 {
-
-    auto& d = face->make_module_data<soil_module::data>(ID);
     
-    get_soil_inputs(face,d);
+    auto& d = face->make_module_data<soil_module::data>(ID);
+   
+    // TODO new newday stuff and is last day new and is crhm test
+    XG_algorithm XG = get_XG(face,d); 
+    XG.run();
+    get_soil_inputs(face,d,XG);
 
-
+    
     // order of operations here is hard coded, but it wouldn't be physically wrong to impose ET before soil
     // This is fine because this soil module is run in this order.
 
@@ -94,13 +97,14 @@ void soil_module::run(mesh_elem& face)
         d.ET->run();
     else
         d.actual_soil_ET = 0.0;
+    
+    
 
     set_soil_outputs(face,d);
 
 
 };
 
-void soil_module::get_soil_inputs(mesh_elem& face,soil_module::data& d)
 bool soil_module::is_new_day()
 {
     // TODO This has hard coded elements, Chris suggested something different here: https://godbolt.org/z/3c51T1avT
@@ -114,11 +118,12 @@ bool soil_module::is_new_day()
         return false;
 };
 
+void soil_module::get_soil_inputs(mesh_elem& face,soil_module::data& d,XG_algorithm& XG)
 {
     d.swe = (*face)["swe"_s];
-    d.thaw_front_depth = (*face)["thaw_front_depth"_s];
-    d.freeze_front_depth = (*face)["freeze_front_depth"_s];
-    d.freeze_thaw_first_front = (*face)["first_front_depth"_s];
+    d.thaw_front_depth = XG.get_thaw_depth(); //(*face)["thaw_front_depth"_s];
+    d.freeze_front_depth = XG.get_freeze_depth(); //(*face)["freeze_front_depth"_s];
+    d.freeze_thaw_first_front = XG.get_first_front_depth(); //(*face)["first_front_depth"_s];
     d.actual_ET = (*face)["ET"_s];
     d.infil = (*face)["inf"_s];
     d.runoff = (*face)["runoff"_s];
@@ -148,6 +153,13 @@ void soil_module::set_soil_outputs(mesh_elem& face,soil_module::data& d)
     (*face)["K_depression_to_gw"_s] = d.K_depression_to_gw;
     (*face)["K_ground_water_out"_s] = d.K_ground_water_out;
     (*face)["K_soil_to_gw"_s] = d.K_soil_to_gw;
+    
+    (*face)["thaw_fraction_rechr"_s] = d.thaw_fraction_rechr;
+    (*face)["thaw_fraction_lower"_s] = d.thaw_fraction_lower;
+    // XG out
+    (*face)["thaw_front_depth"_s] = d.thaw_front_depth;
+    (*face)["freeze_front_depth"_s] = d.freeze_front_depth;
+    (*face)["first_front_depth"_s] = d.freeze_thaw_first_front;
 };
 
 void soil_module::set_soil_params(mesh_elem& face, soil_module::data& d)
