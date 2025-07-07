@@ -35,6 +35,7 @@ struct two_layer_DTO : virtual shared_DTO
 
     double condensation = 0.0; //out (and used)
     double soil_excess_to_runoff = 0.0; //out (and used)
+	double runoff_to_depression = 0.0; //out
     double soil_excess_to_gw = 0.0; //out (and used)
     double ground_water_out = 0.0; //out (and used)
     double soil_to_ssr = 0.0; //out (and used)
