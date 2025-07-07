@@ -20,7 +20,7 @@ void K_estimate::run(void)
 
 void K_estimate::set_K_values(I_Darcy_Vels& Vels)
 { 
-    double unit_changer = DTO.get_dt(DTO) * 1000.0; // m/s * s/step * mm/m = mm/step | m/s -> units of Vels.lateral_rechr (and others)
+    double unit_changer = DTO.get_dt() * 1000.0; // m/s * s/step * mm/m = mm/step | m/s -> units of Vels.lateral_rechr (and others)
     double unit_changer_lateral = unit_changer / 1000.0; // dW/A from Fang et al, (2013), only applies to lateral flow
     DTO.K_rechr_to_ssr = Vels.lateral_rechr * DTO.soil_rechr_max * unit_changer_lateral;
     DTO.K_lower_to_ssr = Vels.lateral_lower * (DTO.soil_storage_max - DTO.soil_rechr_max) * unit_changer_lateral;
