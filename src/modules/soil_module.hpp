@@ -120,7 +120,7 @@ private:
     
     std::unique_ptr<Soil::_soils_base> SoilDataObj;
 
-    void get_soil_inputs(mesh_elem& face, data& d);
+    void get_soil_inputs(mesh_elem& face, data& d,XG_algorithm& XG);
     void set_soil_outputs(mesh_elem& face, data& d);
     void set_soil_params(mesh_elem& face, soil_module::data& d);
     void set_ET_params(mesh_elem& face, soil_module::data& d);
