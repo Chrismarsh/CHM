@@ -41,7 +41,9 @@ struct two_layer_DTO : virtual shared_DTO
     double soil_to_ssr = 0.0; //out (and used)
     double rechr_to_ssr = 0.0;
     double excess = 0.0;
-    
+	
+	// This parameter, if false, disables runoff produces from infiltration
+	// Or, ignores thaw fraction in soil produces by thaw/freeze fronts
     bool allow_runoff_from_infiltration;
 			// All K_ stuff are in
     double K_soil_to_gw = 0.0; // All these K's could be swapped to held from previous and could be global/system wide
