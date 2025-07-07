@@ -19,8 +19,9 @@ struct soil_ET_DTO : virtual shared_DTO
     int ground_cover_type = 0;
     int soil_type_rechr = 0;
     int soil_type_lower = 0;
-
-    virtual bool is_lake(soil_ET_DTO& DTO) = 0;
+	bool is_lake = false;
+    //REMOVED and replaced by variable (see above) (MAy 2025)
+	//virtual bool is_lake(soil_ET_DTO& DTO) = 0;
     
 };
 
@@ -35,12 +36,15 @@ struct two_layer_DTO : virtual shared_DTO
 
     double condensation = 0.0; //out (and used)
     double soil_excess_to_runoff = 0.0; //out (and used)
+	double runoff_to_depression = 0.0; //out
     double soil_excess_to_gw = 0.0; //out (and used)
     double ground_water_out = 0.0; //out (and used)
     double soil_to_ssr = 0.0; //out (and used)
     double rechr_to_ssr = 0.0;
     double excess = 0.0;
-    
+	
+	// This parameter, if false, disables runoff produces from infiltration
+	// Or, ignores thaw fraction in soil produces by thaw/freeze fronts
     bool allow_runoff_from_infiltration;
 			// All K_ stuff are in
     double K_soil_to_gw = 0.0; // All these K's could be swapped to held from previous and could be global/system wide
@@ -81,7 +85,8 @@ struct two_layer_DTO : virtual shared_DTO
     double snow_grain_diameter = 0.0; // divided by 1000 in K_estimate, likely converting from mm to m, this var is mm
     double snow_density = 0.0;
 
-    virtual int get_dt(two_layer_DTO& DTO) = 0;
+    virtual int get_dt() = 0;
+    virtual bool get_new_day() = 0;
     //virtual bool is_day_start(two_layer_DTO& DTO) = 0;
     //virtual void call_model_error(two_layer_DTO& DTO) = 0;
 };
