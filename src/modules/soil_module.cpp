@@ -5,13 +5,11 @@ REGISTER_MODULE_CPP(soil_module);
 soil_module::soil_module(config_file cfg) : module_base("soil_module", parallel::data, cfg)
 {
     depends("swe");
-    depends("thaw_front_depth"); 
-    depends("freeze_front_depth");
-    depends("first_front_depth");
     depends("ET");
     depends("inf");
     depends("runoff");
-//    depends("routing_residual");
+    depends("surface_temperature");
+    //    depends("routing_residual");
 
     provides("condensation");
     provides("actual_soil_ET");
@@ -33,6 +31,11 @@ soil_module::soil_module(config_file cfg) : module_base("soil_module", parallel:
     provides("K_depression_to_gw");
     provides("K_ground_water_out");
     provides("K_soil_to_gw");
+    provides("thaw_front_depth"); 
+    provides("freeze_front_depth");
+    provides("first_front_depth");
+    provides("thaw_fraction_rechr");
+    provides("thaw_fraction_lower");
 };
 
 soil_module::~soil_module()
