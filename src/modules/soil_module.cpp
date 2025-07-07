@@ -52,7 +52,8 @@ void soil_module::init(mesh& domain)
         // I do some evil things here to allow for the submodules to access module_base functions like is_water
         // A pointer to face is put in d, likewise a pointer to this instance of this class is also added, see the overridden functions
         // get_dt and is_lake below.
-        d.my_face = &face;
+        // Changed is_lake to a variable from a function, so it stores the result of is_water rather than requiring a copy of face.
+		//d.my_face = &face;
         set_local_module(d);
         set_soil_params(face,d);
    
@@ -96,6 +97,19 @@ void soil_module::run(mesh_elem& face)
 };
 
 void soil_module::get_soil_inputs(mesh_elem& face,soil_module::data& d)
+bool soil_module::is_new_day()
+{
+    // TODO This has hard coded elements, Chris suggested something different here: https://godbolt.org/z/3c51T1avT
+    int td = global_param->posix_time().time_of_day().total_seconds();
+    int time_to_midnight = 86400 - td;
+    if (td >= 0 && td < global_param->dt()) //(time_to_midnight >= global_param->dt())
+    {
+        return true;
+    }
+    else
+        return false;
+};
+
 {
     d.swe = (*face)["swe"_s];
     d.thaw_front_depth = (*face)["thaw_front_depth"_s];
@@ -105,6 +119,7 @@ void soil_module::get_soil_inputs(mesh_elem& face,soil_module::data& d)
     d.infil = (*face)["inf"_s];
     d.runoff = (*face)["runoff"_s];
     d.routing_residual = 0.0; //(*face)["routine_residual"_s];
+	d.is_lake = is_water(face);
 };
 
 void soil_module::set_soil_outputs(mesh_elem& face,soil_module::data& d)
@@ -274,26 +289,40 @@ void soil_module::initial_soil_conditions(mesh_elem& face, soil_module::data& d)
 
 };
 
-bool soil_module::data::is_lake(soil_ET_DTO& DTO)
+//bool soil_module::data::is_lake(soil_ET_DTO& DTO)
+//{
+//    try 
+//    {
+//        // TODO resolve this bug
+//        soil_module::data& d = dynamic_cast<soil_module::data&>(DTO);
+//        //bool temp = d.local_module->is_water(*d.my_face);
+//        return false;//d.local_module->is_water(*d.my_face);
+//    } catch (const std::bad_cast& e) {
+//        SPDLOG_DEBUG("bad cast");
+//        return false;
+//    }
+//};
+
+int soil_module::data::get_dt()
 {
-    try 
-    {
-        // TODO resolve this bug
-        soil_module::data& d = dynamic_cast<soil_module::data&>(DTO);
-        //bool temp = d.local_module->is_water(*d.my_face);
-        return false;//d.local_module->is_water(*d.my_face);
-    } catch (const std::bad_cast& e) {
-        SPDLOG_DEBUG("bad cast");
-        return false;
-    }
+    if (this->local_module)
+        return this->local_module->global_param->dt();
+    
+    CHM_THROW_EXCEPTION(module_error,"local_module not set in soil_module::data");
+    
 };
 
-int soil_module::data::get_dt(two_layer_DTO& DTO)
+bool soil_module::data::get_new_day()
 {
-    soil_module::data& d = static_cast<soil_module::data&>(DTO);
-
-    return d.local_module->global_param->dt();
-
+    if (this->first_day)
+    {
+        this->first_day = false;
+        return true;
+    }
+    else if (this->local_module)
+        return this->local_module->is_new_day();
+        
+    CHM_THROW_EXCEPTION(module_error,"local_module not set in soil_module::data");
 };
 
 void soil_module::set_local_module(soil_module::data& d)
