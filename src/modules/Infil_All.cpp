@@ -315,7 +315,7 @@ void Infil_All::melt_to_infil(double& inf,double& snowinf,double& snowmelt)
 
 bool Infil_All::is_new_day()
 {
-    // TODO This has hard coded elements, Chris suggested something different here: https://godbolt.org/z/3c51T1avT:Q
+    // TODO This has hard coded elements, Chris suggested something different here: https://godbolt.org/z/3c51T1avT
 	int td = global_param->posix_time().time_of_day().total_seconds();
     int time_to_midnight = 86400 - td;
     if (td >= 0 && td < global_param->dt()) //(time_to_midnight >= global_param->dt())
