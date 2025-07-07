@@ -63,9 +63,8 @@ double PenmanMonteith::CalcStomatalResistance(const PM_vars& var)
 
     double f4 = 1.0;
     if (var.t < 5.0 || var.t > 40.0)
-        f4 = 5000/50; //TODO evap_Resist module in CRHM has this as 5000/stomatal_resistance_min
+        f4 = 5000/stomatal_resistance_min; 
     
-
     if (var.short_wave_in <= 0)
         return 5000;
     else

@@ -46,8 +46,8 @@ Evapotranspiration_All::Evapotranspiration_All(config_file cfg)
 void Evapotranspiration_All::init(mesh& domain)
 {
     alpha = cfg.get("alpha_PriestleyTaylor",1.26);
-    wind_height = cfg.get("wind_measurement_height",2);
-    stomatal_resistance_min = cfg.get("stomatal_resistance_min",62);
+    wind_height = cfg.get("wind_measurement_height",2.0);
+    stomatal_resistance_min = cfg.get("stomatal_resistance_min",62.0);
     Frac_to_ground = cfg.get<double>("Frac_to_ground",1.0); // iswr_subcanopy exists.
 
     SoilDataObj = std::make_unique<Soil::soils_na>();
