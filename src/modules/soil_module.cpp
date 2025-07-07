@@ -68,10 +68,14 @@ void soil_module::init(mesh& domain)
     
         initial_soil_conditions(face,d);
     
+        init_param_state_XG(face,d);  
+        
         set_soil_outputs(face,d);
 
     }
 };
+
+
 
 void soil_module::run(mesh_elem& face)
 {
@@ -341,4 +345,101 @@ void soil_module::set_local_module(soil_module::data& d)
  //   }
  //   return is
       
-//}; 
+//};
+//
+void soil_module::init_param_state_XG(mesh_elem& face, soil_module::data& d)
+{
+    if (face->has_soil())
+    {
+        C.Trigthrhld = cfg.get("Trigthrhld",100.0);
+        
+        double depths = cfg.get("depth_per_layer",0.5);
+        double theta_default = cfg.get("theta_default",0.5);
+        bool uniform_conductivities = cfg.get("uniform_conductivities",true);
+        double dry_soil_k, sat_soil_frozen_k, sat_soil_thaw_k;
+        if (uniform_conductivities)
+        {
+            dry_soil_k = cfg.get<double>("dry_soil_k");
+            sat_soil_frozen_k = cfg.get<double>("sat_soil_frozen_k");
+            sat_soil_thaw_k = cfg.get<double>("sat_soil_thaw_k");
+        }
+        else
+        {
+            dry_soil_k = face->soil_attribute<double>("dry_soil_k"_s);
+            sat_soil_frozen_k = face->soil_attribute<double>("sat_soil_frozen_k"_s);
+            sat_soil_thaw_k = face->soil_attribute<double>("sat_soil_thaw_k"_s);
+        }
+
+
+        C.num_layers = cfg.get("number_XG_layers",10);
+        std::vector<double> dry_soil_k_vec(C.num_layers,dry_soil_k);
+        std::vector<double> sat_soil_frozen_k_vec(C.num_layers,sat_soil_frozen_k);
+        std::vector<double> sat_soil_thaw_k_vec(C.num_layers,sat_soil_thaw_k);
+        std::vector<double> depth_vec(C.num_layers,depths);
+        std::vector<double> por(C.num_layers,d.porosity);
+        std::vector<double> theta_default_vec(C.num_layers,theta_default);
+        C.theta_min = cfg.get("moisture_content_min_per_layer",0.001);
+        double perma_frost_depth = face->soil_attribute<double>("perma_frost_depth"_s);
+        C.freeze_kw_ki_update = cfg.get("update_k_behind_front_freeze",true);
+        C.thaw_ki_kw_update = cfg.get("update_k_behind_front_thaw",true);
+        C.k_update = cfg.get("k_update",1);
+        C.time_step_per_day = 86400.0/global_param->dt();
+        C.calc_conductivity = cfg.get("Johansen_conductivity",false);
+
+        sat_soil_frozen_k_vec.at(0) = 1.55;
+        sat_soil_thaw_k_vec.at(0) = 0.8;
+        
+        d.P = std::make_unique<XG_algorithm::params>(depth_vec,
+                C.Trigthrhld,
+                por,
+                C.num_layers,
+                theta_default_vec,
+                C.theta_min,
+                dry_soil_k_vec,
+                sat_soil_frozen_k_vec,
+                sat_soil_thaw_k_vec,
+                0.0, //SWE_k Not actually used but still part of the module for now
+                perma_frost_depth,
+                C.freeze_kw_ki_update,
+                C.thaw_ki_kw_update,
+                C.k_update,
+                d.soil_rechr_max,
+                d.soil_storage_max,
+                C.time_step_per_day,
+                C.calc_conductivity);
+        
+        d.P->is_crhm_test = true;
+        d.S = std::make_unique<XG_algorithm::state>(d.P->N_Soil_layers,*(d.P));
+
+        d.S->set_layer_moisture_maximums(*(d.P))
+            .set_thermal_conductivities(*(d.P),d.soil_storage,d.soil_rechr_storage)
+            .set_freezethaw_ratios(*(d.P));
+
+        double Zdf_init = face->soil_attribute<double>("init_freeze_front_depth"_s);
+        double Zdt_init = face->soil_attribute<double>("init_thaw_front_depth"_s);
+        
+        
+        XG_algorithm XG(0.0,0.0,0.0,*(d.S),*(d.P));
+
+        
+        XG.init_freezethaw_degreedays(Zdf_init,Zdt_init,d.P->Zpf_init);
+
+    }
+};
+
+XG_algorithm soil_module::get_XG(mesh_elem& face,soil_module::data& d)
+{
+    if (d.first_day)
+    {
+        d.S->is_newday = true;
+    }
+    else
+        d.S->is_newday = is_new_day();
+     
+
+    XG_algorithm XG((*face)["surface_temperature"_s],d.soil_storage,d.soil_rechr_storage,*(d.S),*(d.P));
+
+    return XG;
+};
+
+

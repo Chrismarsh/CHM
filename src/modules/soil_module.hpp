@@ -28,10 +28,12 @@
 #include "module_base.hpp"
 #include "TPSpline.hpp"
 #include <cmath>
+#include <memory>
 #include "Soil.h"
 #include "soil_two_layer.hpp"
 #include "soil_ET.hpp"
 #include "K_estimate.hpp"
+#include "XG_algorithm.hpp"
 
 /**
  * \ingroup modules infil soil_module exp
@@ -104,6 +106,9 @@ public:
         bool get_new_day() override;
         // custom deletor that does nothing to make sure it doesn't try to delete the mesh_elem it points to
         soil_module* local_module;//(nullptr, [](soil_module*) {});
+    
+        std::unique_ptr<XG_algorithm::params> P;
+        std::unique_ptr<XG_algorithm::state> S;
 
         bool first_day = true;
     };
@@ -123,4 +128,19 @@ private:
 
     int compare_substring(std::string& type, std::string sub);
 
+    XG_algorithm get_XG(mesh_elem& face,data& d);
+    void init_param_state_XG(mesh_elem& face,data& d);
+    bool is_new_day();
+    struct XG_shared_const
+    {
+        double Trigthrhld;
+        size_t num_layers;
+        double theta_min;
+        size_t freeze_kw_ki_update;
+        size_t thaw_ki_kw_update;
+        size_t k_update;
+        size_t time_step_per_day;
+        bool calc_conductivity;
+    };
+    XG_shared_const C;
 };
