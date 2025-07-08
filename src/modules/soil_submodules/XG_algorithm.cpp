@@ -219,74 +219,50 @@ double XG_algorithm::Interpolated_ftc(double Za, size_t layer) { //
 void XG_algorithm::find_thaw_D(double dt) { // XG-Algorithm - Thawing - used by init
 // solve for Bth from Zdt using Bisection method
     
-    if (!P.is_crhm_test)
-    {
-        if(dt == 0)
-            return;
+    if(dt == 0)
+        return;
 
-        auto solution = [&dt](double Zdt)
-        { return Zdt - dt; };
+    auto solution = [&dt](double Zdt)
+    { return Zdt - dt; };
 
-        double low = 0.0;
-        double high = 50000.0;
+    double low = 0.0;
+    double high = 50000.0;
 
-        do {
-            double mid = (high + low)/2;
-            S.Bth = mid;
-            thaw();
-            if (solution(S.Zdt) > 0)
-                high = mid;
-            else
-                low = mid;
+    do {
+        double mid = (high + low)/2;
+        S.Bth = mid;
+        thaw();
+        if (solution(S.Zdt) > 0)
+            high = mid;
+        else
+            low = mid;
 
-        } while (high - low > tolerance);
-    }
-    else
-    {
-        for(size_t B = 1; B < 50000; ++B){
-            S.Bth = B;
-            thaw();
-            if(S.Zdt > dt || S.Zdt >= P.Zpf_init)
-            return;
-        }
-    }
+    } while (high - low > tolerance);
+    
   //TODO Throw CHM exception here, indicates that Zdt is too large
 };
 
 void XG_algorithm::find_freeze_D(double df) { // XG-Algorithm - Thawing - used by init
 // solve for Bfr from Zdt using Bisection method
+    if(df == 0)
+        return;
+    
+    auto solution = [&df](double Zdf)
+    { return Zdf - df; };
 
-    if (!P.is_crhm_test)
-    {
-        if(df == 0)
-            return;
-        
-        auto solution = [&df](double Zdf)
-        { return Zdf - df; };
+    double low = 0.0;
+    double high = 50000.0;
 
-        double low = 0.0;
-        double high = 50000.0;
+    do {
+        double mid = (high + low)/2;
+        S.Bfr = mid;
+        freeze();
+        if (solution(S.Zdf) > 0)
+            high = mid;
+        else
+            low = mid;
 
-        do {
-            double mid = (high + low)/2;
-            S.Bfr = mid;
-            freeze();
-            if (solution(S.Zdf) > 0)
-                high = mid;
-            else
-                low = mid;
-
-        } while (high - low > tolerance);
-    }
-    else
-    {
-        for(size_t B = 1; B < 50000; ++B){
-            S.Bfr = B;
-            freeze();
-            if(S.Zdf > df || S.Zdf >= P.Zpf_init)
-            return;
-        }
-    }
+    } while (high - low > tolerance);
     //TODO Throw CHM exception here, indicates Zdf is too large
 };
 
