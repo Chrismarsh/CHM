@@ -652,6 +652,8 @@ void core::config_forcing(pt::ptree &value)
         nstations = _metdata->nstations();
     }
 
+    // based on config file the loaded metdata might be trimmed so we need to wait until
+    // determine_starend_ts_forcing call to populate any global structs of star/end time.
 
     SPDLOG_DEBUG("Found # stations = {}", nstations);
     if(nstations == 0)
@@ -740,6 +742,9 @@ void core::determine_startend_ts_forcing()
     //ensure all the stations have the same start and end times
     // per-timestep agreement happens during runtime.
     _metdata->check_ts_consistency();
+
+    // write this into global
+    _global->_n_timestep = _metdata->n_timestep();
 }
 void core::config_parameters(pt::ptree &value)
 {
@@ -1126,7 +1131,8 @@ void core::config_output(pt::ptree &value)
 
 
             out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
-            out.name = "vtu output";
+            out.mesh_output_formats.push_back(output_info::mesh_outputs::ugrid);
+            out.name = "mesh output";
             out.list_outputs();
 
         } else
@@ -1154,9 +1160,7 @@ void core::config_output(pt::ptree &value)
             _outputs.push_back(out);
         }
     }
-#ifdef USE_MPI
-    SPDLOG_DEBUG("MPI Process {} has #ouput points = {}", _comm_world.rank(), _outputs.size());
-#endif
+
     vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
     polydata->SetPoints(points);
     polydata->GetPointData()->AddArray(labels);
@@ -1164,10 +1168,8 @@ void core::config_output(pt::ptree &value)
     vtkSmartPointer<vtkXMLPolyDataWriter> writer = vtkSmartPointer<vtkXMLPolyDataWriter>::New();
 
     //output this to the same folder as the points are written out to
-    std::string rank = "";
-#ifdef USE_MPI
-    rank = "."+ std::to_string(_comm_world.rank());
-#endif
+    std::string rank = "."+ std::to_string(_comm_world.rank());
+
     auto f = pts_path / ("output_points"+rank+".vtp");
     writer->SetFileName(f.string().c_str());
     #if VTK_MAJOR_VERSION <= 5
@@ -2287,20 +2289,6 @@ void core::run()
             SPDLOG_ERROR(e.what());
         }
 
-        // check that we actually need a mesh output this timestep
-        for (auto &itr : _outputs)
-        {
-            if(itr.type == output_info::output_type::mesh &&
-                itr.should_output(max_ts, current_ts, _global->_current_date))
-            {
-                std::vector<std::string> output;
-                output.assign(itr.variables.begin(),itr.variables.end()); //convert to list to match internal lists
-
-                _mesh->update_vtk_data(output); //update the internal vtk mesh
-                break; // we're done as soon as we've called update once. No need to do it multiple times.
-            }
-        }
-
         // save the current state
         if(_checkpoint_opts.should_checkpoint(current_ts,
                                                (max_ts-1) == current_ts,
@@ -2397,8 +2385,6 @@ void core::run()
             }
         }
 
-        SPDLOG_DEBUG("testing UGRID output");
-        _mesh->write_ugrid();
         for (auto &itr : _outputs)
         {
             if (itr.type == output_info::output_type::mesh)
@@ -2408,6 +2394,9 @@ void core::run()
 
                 if(do_output)
                 {
+
+                    std::vector<std::string> output;
+                    output.assign(itr.variables.begin(),itr.variables.end()); //convert to list to match internal lists
 
                     #pragma omp parallel
                     {
@@ -2422,16 +2411,16 @@ void core::run()
 
                                     if (jtr == output_info::mesh_outputs::vtu  )
                                     {
+                                        _mesh->update_vtk_data(output); //update the internal vtk mesh
+
                                         // this really only works if we let rank0 handle the io.
                                         // If we let each process do it, they walk all over each other's output
-#ifdef USE_MPI
+
                                         if(_comm_world.rank() == 0)
                                         {
                                             for(int rank = 0; rank < _comm_world.size(); rank++)
                                             {
-#else
-                                                int rank = 0;
-#endif
+
                                                 // write paths that are relative to the pvd file
                                                 boost::filesystem::path vtu_path(output_folder_path.string() + "/meshes/" + p.filename().string()+"_"+std::to_string(rank) + ".vtu");
                                                 pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
@@ -2439,20 +2428,19 @@ void core::run()
                                                 dataset.add("<xmlattr>.group", "");
                                                 dataset.add("<xmlattr>.part", rank);
                                                 dataset.add("<xmlattr>.file", boost::filesystem::relative(vtu_path, output_folder_path).string());
-#ifdef USE_MPI
+
                                             }
                                         }
-#endif
 
                                         //because a full path can be provided for the base_name, we need to strip this off
                                         //to make it a relative path in the xml file.
-
-#ifdef USE_MPI
                                         _mesh->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
-#else
-                                        _mesh->write_vtu(base_name + "_"+std::to_string(rank)+ ".vtu");
-#endif
 
+                                    }
+                                    else if (jtr == output_info::mesh_outputs::ugrid)
+                                    {
+                                        SPDLOG_DEBUG("Outputting ugrid");
+                                        _mesh->write_ugrid(output, base_name+".nc");
                                     }
                                 }
                             }

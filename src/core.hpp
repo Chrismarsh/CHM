@@ -348,6 +348,7 @@ protected:
         {
             vtp,
             vtu,
+            ugrid,
             ascii
         };
 

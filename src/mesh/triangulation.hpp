@@ -840,7 +840,9 @@ public:
      * If output to the mesh vtk/vtu format is required, this will be allocate the vtk data structure.
      */
     void init_vtkUnstructured_Grid(std::vector<std::string> output_variables);
-    void write_ugrid();
+
+    void init_ugrid(std::vector<std::string> output_variables, std::string fname);
+    void write_ugrid(std::vector<std::string> output_variables, std::string fname);
 
     /// Initializes all the face timeseries to hold the selected variables
     /// @param variables
@@ -1074,6 +1076,12 @@ protected:
     bool _write_parameters_to_vtu;
     //should we write ghost neighbor faces to the vtu file?
     bool _write_ghost_neighbors_to_vtu;
+
+    //holds the file id for the ugrid output netcdf
+    int _ugrid_fid;
+
+    //maps the variable string to the netcdf id to write to file
+    std::map<std::string, int> _ugrid_id_var;
 
     // min and max elevations
     double _min_z;

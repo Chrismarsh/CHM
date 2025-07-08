@@ -72,7 +72,10 @@ triangulation::triangulation()
 
 triangulation::~triangulation()
 {
-
+    if (_ugrid_fid != -1)
+    {
+        nc_close(_ugrid_fid);
+    }
 }
 
 std::string triangulation::proj4()
@@ -2388,7 +2391,33 @@ void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 
     m->to_file(fname);
 }
-void triangulation::write_ugrid()
+void triangulation::write_ugrid(std::vector<std::string> output_variables, std::string fname)
+{
+    if (_ugrid_fid==-1)
+    {
+        init_ugrid(output_variables, fname);
+    }
+    // use C api as boost doesn't have info
+    MPI_Comm comm = _comm_world;
+    MPI_Info info_used;
+    MPI_Comm_get_info(comm, &info_used);
+
+    for (size_t i = 0; i < this->size_faces(); i++)
+    {
+        mesh_elem fit = this->face(i);
+        size_t index[2] = {_global->timestep_counter, fit->cell_global_id};
+
+        for (auto& var : output_variables)
+        {
+            double value = (*fit)[var];
+            nc_put_var1_double(_ugrid_fid, _ugrid_id_var[var], index, &value);
+        }
+    }
+
+    MPI_Info_free(&info_used);
+}
+
+void triangulation::init_ugrid(std::vector<std::string> output_variables, std::string fname)
 {
 
     // use C api as boost doesn't have info
@@ -2396,121 +2425,127 @@ void triangulation::write_ugrid()
     MPI_Info info_used;
     MPI_Comm_get_info(comm, &info_used);
 
-    int ncid;
-    int status = nc_create_par("test.nc", NC_NETCDF4 | NC_CLOBBER, comm, info_used, &ncid);
+    int status = nc_create_par(fname.c_str(), NC_NETCDF4 | NC_CLOBBER, comm, info_used, &_ugrid_fid);
     if (status != NC_NOERR)
     {
-        SPDLOG_ERROR("failed");
+        CHM_THROW_EXCEPTION(file_write_error, "Failed to create ugrid output file");
     }
 
     size_t num_global_vertex;
+    // determine the number of global vertex but summing the local vertex counts from all mpi ranks
     boost::mpi::all_reduce(_comm_world, _num_vertex, num_global_vertex, std::plus<size_t>());
 
-    int dim_Mesh2_node, dim_Mesh2_face, dim_two, dim_three; // dimension index
-    nc_def_dim(ncid, "nMesh2_node", num_global_vertex, &dim_Mesh2_node);
-    nc_def_dim(ncid, "nMesh2_face", _num_global_faces, &dim_Mesh2_face);
-    nc_def_dim(ncid, "Two", 2, &dim_two);
-    nc_def_dim(ncid, "Three", 3, &dim_three);
+    if (num_global_vertex > UINT_MAX)
+    {
+        CHM_THROW_EXCEPTION(mesh_error, "Due to a limitation for paraview, the ugrid field can't have more than UINT_MAX nodes");
+    }
 
-    //time
-    int time_dimid;
-    size_t num_times = 1; // for example
-    nc_def_dim(ncid, "time", num_times, &time_dimid);
-    int time_varid;
-    nc_def_var(ncid, "time", NC_DOUBLE, 1, &time_dimid, &time_varid);
-    nc_put_att_text(ncid, time_varid, "standard_name", strlen("time"), "time");
-    nc_put_att_text(ncid, time_varid, "long_name", strlen("Time"), "Time");
-    nc_put_att_text(ncid, time_varid, "units", strlen("seconds since 1970-01-01 00:00:00"), "seconds since 1970-01-01 00:00:00");
+    // base dimension structure
+    int dim_Mesh2_node, dim_Mesh2_face, dim_two, dim_three;
+    nc_def_dim(_ugrid_fid, "nMesh2_node", num_global_vertex, &dim_Mesh2_node);
+    nc_def_dim(_ugrid_fid, "nMesh2_face", _num_global_faces, &dim_Mesh2_face);
+    nc_def_dim(_ugrid_fid, "Two", 2, &dim_two);
+    nc_def_dim(_ugrid_fid, "Three", 3, &dim_three);
 
-    int var_Mesh2, var_Mesh2_face_nodes, var_Mesh2_node_x, var_Mesh2_node_y, var_Mesh2_node_z;
+    // time Dimension
+    int time_dimid, time_varid;
+    size_t num_times = _global->n_timesteps();
+
+    nc_def_dim(_ugrid_fid, "time", num_times, &time_dimid);
+    nc_def_var(_ugrid_fid, "time", NC_DOUBLE, 1, &time_dimid, &time_varid);
+    nc_put_att_text(_ugrid_fid, time_varid, "standard_name", strlen("time"), "time");
+    nc_put_att_text(_ugrid_fid, time_varid, "long_name", strlen("Time"), "Time");
+    nc_put_att_text(_ugrid_fid, time_varid, "units", strlen("minutes since 1970-01-01 00:00:00"), "minutes since 1970-01-01 00:00:00");
+
+    int var_Mesh2, var_Mesh2_face_nodes, var_Mesh2_node_x, var_Mesh2_node_y, var_Mesh2_node_z, var_Mesh2_node_z_PV;
     int dims_face_nodes[2] = {dim_Mesh2_face, dim_three};
     int dims_node[1] = {dim_Mesh2_node};
 
     // Mesh2 variable
-    nc_def_var(ncid, "Mesh2", NC_INT, 0, NULL, &var_Mesh2);
-    nc_put_att_text(ncid, var_Mesh2, "cf_role", strlen("mesh_topology"), "mesh_topology");
-    nc_put_att_text(ncid, var_Mesh2, "long_name", strlen("Topology data of 2D unstructured mesh"), "Topology data of 2D unstructured mesh");
+    nc_def_var(_ugrid_fid, "Mesh2", NC_INT, 0, NULL, &var_Mesh2);
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "cf_role", strlen("mesh_topology"), "mesh_topology");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "long_name", strlen("Topology data of 2D unstructured mesh"), "Topology data of 2D unstructured mesh");
 
     int topo_dim = 2;
-    nc_put_att_int(ncid, var_Mesh2, "topology_dimension", NC_INT, 1, &topo_dim);
+    nc_put_att_int(_ugrid_fid, var_Mesh2, "topology_dimension", NC_INT, 1, &topo_dim);
 
-    nc_put_att_text(ncid, var_Mesh2, "node_coordinates", strlen("Mesh2_node_x Mesh2_node_y"), "Mesh2_node_x Mesh2_node_y");
-    nc_put_att_text(ncid, var_Mesh2, "face_node_connectivity", strlen("Mesh2_face_nodes"), "Mesh2_face_nodes");
-    nc_put_att_text(ncid, var_Mesh2, "face_dimension", strlen("nMesh2_face"), "nMesh2_face");
-    // nc_put_att_text(ncid, var_Mesh2, "edge_dimension", strlen("nMesh2_edge"), "nMesh2_edge");
-    nc_put_att_text(ncid, var_Mesh2, "face_coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "node_coordinates", strlen("Mesh2_node_x Mesh2_node_y"), "Mesh2_node_x Mesh2_node_y");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "face_node_connectivity", strlen("Mesh2_face_nodes"), "Mesh2_face_nodes");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "face_dimension", strlen("nMesh2_face"), "nMesh2_face");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "face_coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
 
-    // Mesh2_face_nodes variable
-    nc_def_var(ncid, "Mesh2_face_nodes", NC_INT, 2, dims_face_nodes, &var_Mesh2_face_nodes); //NC_UINT64
-    nc_put_att_text(ncid, var_Mesh2_face_nodes, "cf_role", strlen("face_node_connectivity"), "face_node_connectivity");
-    nc_put_att_text(ncid, var_Mesh2_face_nodes, "long_name", strlen("Maps every triangular face to its three corner nodes."), "Maps every triangular face to its three corner nodes.");
+    // Mesh2_face_nodes node connectivity that makes up the faces
+    nc_def_var(_ugrid_fid, "Mesh2_face_nodes", NC_UINT, 2, dims_face_nodes, &var_Mesh2_face_nodes);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "cf_role", strlen("face_node_connectivity"), "face_node_connectivity");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "long_name", strlen("Maps every triangular face to its three corner nodes."), "Maps every triangular face to its three corner nodes.");
 
-    // unsigned long long fill = ULLONG_MAX;
-    // nc_put_att_ulonglong(ncid, var_Mesh2_face_nodes, "_FillValue", NC_UINT64, 1, &fill);
-    int fill = -9999;
-    nc_put_att_int(ncid, var_Mesh2_face_nodes, "_FillValue", NC_INT, 1, &fill);
+    // Mesh2_node_x
+    nc_def_var(_ugrid_fid, "Mesh2_node_x", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_x);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "standard_name", strlen("longitude"), "longitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "long_name", strlen("Longitude of 2D mesh nodes."), "Longitude of 2D mesh nodes.");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "units", strlen("degrees_east"), "degrees_east");
 
-    // Mesh2_node_x variable
-    nc_def_var(ncid, "Mesh2_node_x", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_x);
-    nc_put_att_text(ncid, var_Mesh2_node_x, "standard_name", strlen("longitude"), "longitude");
-    nc_put_att_text(ncid, var_Mesh2_node_x, "long_name", strlen("Longitude of 2D mesh nodes."), "Longitude of 2D mesh nodes.");
-    nc_put_att_text(ncid, var_Mesh2_node_x, "units", strlen("degrees_east"), "degrees_east");
+    // Mesh2_node_y
+    nc_def_var(_ugrid_fid, "Mesh2_node_y", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_y);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "long_name", strlen("Latitude of 2D mesh nodes."), "Latitude of 2D mesh nodes.");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "units", strlen("degrees_north"), "degrees_north");
 
+    // Mesh2_node_z elevation
+    nc_def_var(_ugrid_fid, "Mesh2_node_z", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_z);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "standard_name", strlen("altitude"), "altitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "long_name", strlen("Z coordinate of 2D mesh nodes."), "Z coordinate of 2D mesh nodes.");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "units", strlen("m"), "m");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "location", strlen("node"), "node");
 
-    // Mesh2_node_y variable
-    nc_def_var(ncid, "Mesh2_node_y", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_y);
-    nc_put_att_text(ncid, var_Mesh2_node_y, "standard_name", strlen("latitude"), "latitude");
-    nc_put_att_text(ncid, var_Mesh2_node_y, "long_name", strlen("Latitude of 2D mesh nodes."), "Latitude of 2D mesh nodes.");
-    nc_put_att_text(ncid, var_Mesh2_node_y, "units", strlen("degrees_north"), "degrees_north");
-
-
-    nc_def_var(ncid, "Mesh2_node_z", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_z);
-    nc_put_att_text(ncid, var_Mesh2_node_z, "standard_name", strlen("altitude"), "altitude");
-    nc_put_att_text(ncid, var_Mesh2_node_z, "long_name", strlen("Z coordinate of 2D mesh nodes."), "Z coordinate of 2D mesh nodes.");
-    nc_put_att_text(ncid, var_Mesh2_node_z, "units", strlen("m"), "m");
-    nc_put_att_text(ncid, var_Mesh2_node_z, "mesh", strlen("Mesh2"), "Mesh2");
-    nc_put_att_text(ncid, var_Mesh2_node_z, "location", strlen("node"), "node");
+    // Scaled Mesh2_node_z elevation
+    // Paraview struggles to plot the z coord when the x and y are in geographic, so this scales down the z
+    // so it renders correctly.
+    nc_def_var(_ugrid_fid, "Mesh2_node_z_paraview", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_z_PV);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "standard_name", strlen("scaled_altitude"), "scaled_altitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "long_name", strlen("Scaled Z coordinate of 2D mesh nodes."), "Scaled Z coordinate of 2D mesh nodes.");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "units", strlen("m"), "m");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "location", strlen("node"), "node");
 
 
     int var_global_id, var_Mesh2_face_x, var_Mesh2_face_y, var_Mesh2_face_z;
 
-    nc_def_var(ncid, "global_id", NC_INT, 1, &dim_Mesh2_face, &var_global_id); //NC_UINT64
-    nc_def_var(ncid, "Mesh2_face_x", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_x);
-    nc_def_var(ncid, "Mesh2_face_y", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_y);
-    nc_def_var(ncid, "Mesh2_face_z", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_z);
+    nc_def_var(_ugrid_fid, "global_id", NC_UINT64, 1, &dim_Mesh2_face, &var_global_id);
+    nc_put_att_text(_ugrid_fid, var_global_id, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(_ugrid_fid, var_global_id, "location", strlen("face"), "face");
+    nc_put_att_text(_ugrid_fid, var_global_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
 
-    // For 'global_id'
-    nc_put_att_text(ncid, var_global_id, "mesh", strlen("Mesh2"), "Mesh2");
-    nc_put_att_text(ncid, var_global_id, "location", strlen("face"), "face");
-    nc_put_att_text(ncid, var_global_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
+    nc_def_var(_ugrid_fid, "Mesh2_face_x", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_x);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "units", strlen("degrees_north"), "degrees_north");
 
-    // For 'Mesh2_face_x'
-    nc_put_att_text(ncid, var_Mesh2_face_x, "standard_name", strlen("longitude"), "longitude");
-    nc_put_att_text(ncid, var_Mesh2_face_x, "long_name", strlen("Characteristics longitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics longitude of 2D mesh triangle (e.g. circumcenter coordinate).");
-    nc_put_att_text(ncid, var_Mesh2_face_x, "units", strlen("degrees_east"), "degrees_east");
+    nc_def_var(_ugrid_fid, "Mesh2_face_y", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_y);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "units", strlen("degrees_north"), "degrees_north");
 
-    // For 'Mesh2_face_y'
-    nc_put_att_text(ncid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude");
-    nc_put_att_text(ncid, var_Mesh2_face_y, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
-    nc_put_att_text(ncid, var_Mesh2_face_y, "units", strlen("degrees_north"), "degrees_north");
+    nc_def_var(_ugrid_fid, "Mesh2_face_z", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_z);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "standard_name", strlen("altitude"), "altitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "units", strlen("m"), "m");
 
-    nc_put_att_text(ncid, var_Mesh2_face_z, "standard_name", strlen("altitude"), "altitude");
-    nc_put_att_text(ncid, var_Mesh2_face_z, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
-    nc_put_att_text(ncid, var_Mesh2_face_z, "units", strlen("m"), "m");
+    for (auto& var : output_variables)
+    {
+        int dims[2] = {time_dimid, dim_Mesh2_face};
+        nc_def_var(_ugrid_fid, var.c_str(), NC_DOUBLE, 2, dims, &_ugrid_id_var[var]);
+        nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "mesh", strlen("Mesh2"), "Mesh2");
+        nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "location", strlen("face"), "face");
+    }
 
-    int var_face_data;
-    int dims[2] = {time_dimid, dim_Mesh2_face};
-    nc_def_var(ncid, "t", NC_DOUBLE, 2, dims, &var_face_data);
-    nc_put_att_text(ncid, var_face_data, "mesh", strlen("Mesh2"), "Mesh2");
-    nc_put_att_text(ncid, var_face_data, "location", strlen("face"), "face");
-
-
-    nc_enddef(ncid); // End define mode
+    nc_enddef(_ugrid_fid); // End define mode
 
 
     // Fill node_x, node_y, node_z, face_nodes, face_neighbors, face_gid, static_param
-    std::map<int, int> global_to_local_vertex_id;
-    std::vector<int> global_vertex_id;
+    std::map<size_t, size_t> global_to_local_vertex_id;
+    std::vector<size_t> global_vertex_id;
 
     OGRSpatialReference outsrs;
     outsrs.SetWellKnownGeogCS("WGS84");
@@ -2523,11 +2558,10 @@ void triangulation::write_ugrid()
     OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
 
-    double time = 0.0;
-    size_t index = 0; // First element
+    double time = _global->posix_time_double();
+    size_t index = _global->timestep_counter;
 
-    status = nc_put_var1_double(ncid, time_varid, &index, &time);
-
+    status = nc_put_var1_double(_ugrid_fid, time_varid, &index, &time);
 
     int npoints=0;
     for (size_t i = 0; i < this->size_faces(); i++)
@@ -2556,30 +2590,27 @@ void triangulation::write_ugrid()
                     CHM_THROW_EXCEPTION(forcing_error, "failed ugrid");
                 }
 
-                int gid = global_id; //fix this cast later
-                nc_put_var1_double(ncid, var_Mesh2_node_x, &global_id, &x);
-                nc_put_var1_double(ncid, var_Mesh2_node_y, &global_id, &y);
-                nc_put_var1_double(ncid, var_Mesh2_node_z, &global_id, &z);
+                nc_put_var1_double(_ugrid_fid, var_Mesh2_node_x, &global_id, &x);
+                nc_put_var1_double(_ugrid_fid, var_Mesh2_node_y, &global_id, &y);
+                nc_put_var1_double(_ugrid_fid, var_Mesh2_node_z, &global_id, &z);
 
+                // scale for paraview
+                z = z/100000.;
+                nc_put_var1_double(_ugrid_fid, var_Mesh2_node_z_PV, &global_id, &z);
 
-                // points->InsertNextPoint(vit->point().x()*scale, vit->point().y()*scale, vit->point().z());
                 global_vertex_id.push_back(global_id);
             }
-            // tri->GetPointIds()->SetId(j, global_to_local_vertex_id[global_id]);
         }
         size_t start[2] = {fit->cell_global_id, 0};   // Start at face_idx, first node
         size_t count[2] = {1, 3};          // One face, all three nodes
-        // const unsigned long long face_data[3] = {
-        //     static_cast<unsigned long long>(fit->vertex(0)->get_id()),
-        //     static_cast<unsigned long long>(fit->vertex(1)->get_id()),
-        //     static_cast<unsigned long long>(fit->vertex(2)->get_id())
-        // };
-        const int face_data[3] = {
-            static_cast<int>(fit->vertex(0)->get_id()),
-            static_cast<int>(fit->vertex(1)->get_id()),
-            static_cast<int>(fit->vertex(2)->get_id())
+
+        // uint64_t causes Paraview to crash so these indexes can't be bigger than uint
+        const unsigned int face_data[3] = {
+            static_cast<unsigned int>(fit->vertex(0)->get_id()),
+            static_cast<unsigned int>(fit->vertex(1)->get_id()),
+            static_cast<unsigned int>(fit->vertex(2)->get_id())
         };
-        status = nc_put_vara_int(ncid, var_Mesh2_face_nodes, start, count, face_data);
+        nc_put_vara_uint(_ugrid_fid, var_Mesh2_face_nodes, start, count, face_data);
 
         double fit_c_x = fit->center().x();
         double fit_c_y = fit->center().y();
@@ -2588,43 +2619,21 @@ void triangulation::write_ugrid()
         {
             CHM_THROW_EXCEPTION(forcing_error, "failed ugrid");
         }
-        nc_put_var1_double(ncid, var_Mesh2_face_x, &fit->cell_global_id, &fit_c_x);
-        nc_put_var1_double(ncid, var_Mesh2_face_y, &fit->cell_global_id, &fit_c_y);
-        nc_put_var1_double(ncid, var_Mesh2_face_z, &fit->cell_global_id, &fit_c_z);
+        nc_put_var1_double(_ugrid_fid, var_Mesh2_face_x, &fit->cell_global_id, &fit_c_x);
+        nc_put_var1_double(_ugrid_fid, var_Mesh2_face_y, &fit->cell_global_id, &fit_c_y);
+        nc_put_var1_double(_ugrid_fid, var_Mesh2_face_z, &fit->cell_global_id, &fit_c_z);
 
-        // auto gid = static_cast<unsigned long long>(fit->cell_global_id);
-        // nc_put_var1_ulonglong(ncid, var_global_id, &fit->cell_global_id, &gid);
-        auto gid = static_cast<int>(fit->cell_global_id);
-        nc_put_var1_int(ncid, var_global_id, &fit->cell_global_id, &gid);
 
-        size_t index[2] = {0, fit->cell_global_id};    // time = 0, face = j
-        double value = 42.0;
+        // nc_put_var1_ulonglong(_ugrid_fid, var_global_id, &fit->cell_global_id, &gid);
+        auto gid = static_cast<unsigned long long>(fit->cell_global_id);
+        nc_put_var1_ulonglong(_ugrid_fid, var_global_id, &fit->cell_global_id, &gid);
 
-        status = nc_put_var1_double(ncid, var_face_data, index, &value);
-        if (status != NC_NOERR)
-            {
-            SPDLOG_ERROR("wtf");
-        }
-
-        // triangles->InsertNextCell(tri);
     }
 
-    nc_close(ncid);
+    // nc_close(_ugrid_fid);
     MPI_Info_free(&info_used);
 
     OGRCoordinateTransformation::DestroyCT(coordTrans);
-
-
-    //
-    // writer.write_mesh_topology(node_x, node_y, node_z, face_nodes, face_neighbors, face_gid, static_param);
-    //
-    // // For each time step
-    // for (int t = 0; t < nTimeSteps; ++t) {
-    //     std::vector<double> var_data(nFaces); // fill with your data
-    //     writer.write_time_step(t, var_data, "my_var");
-    // }
-    //
-    // writer.close();
 
 }
 

@@ -65,6 +65,8 @@ private:
     bool _is_point_mode;
     bool _from_checkpoint;
 
+    size_t _n_timestep; // number of timesteps
+
 
 public:
 
@@ -86,7 +88,19 @@ public:
     int sec();
     int dt();
     boost::posix_time::ptime posix_time();
+
+    /**
+     * Number of timesteps
+     */
+    size_t n_timesteps();
+
+    /**
+     * Returns the current ptime as an integer representation
+     * @return
+     */
     uint64_t posix_time_int();
+
+    double posix_time_double();
 
     size_t timestep_counter; // the timestep we are on, start = 0
 
