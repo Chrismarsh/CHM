@@ -1,6 +1,7 @@
 #pragma once
 #include <stdexcept>
 #include <iostream>
+#include <concepts>
 
 #define THROW_NULL_POINTER_EXCEPTION() \
 	throw std::runtime_error( \
