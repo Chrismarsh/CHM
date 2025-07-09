@@ -843,6 +843,7 @@ public:
 
     void init_ugrid(std::vector<std::string> output_variables, std::string fname);
     void write_ugrid(std::vector<std::string> output_variables, std::string fname);
+    void close_ugrid(); // unlike vtu, we have to close the ugrid before mpi finalize has been called
 
     /// Initializes all the face timeseries to hold the selected variables
     /// @param variables

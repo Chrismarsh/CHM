@@ -2176,7 +2176,6 @@ void core::_schedule_modules()
 
 void core::run()
 {
-
     timer c;
 
 
@@ -2232,26 +2231,26 @@ void core::run()
 #ifdef OMP_SAFE_EXCEPTION
                     ompException e;
 #endif
-                    #pragma omp parallel for
+#pragma omp parallel for
                     for (size_t i = 0; i < _mesh->size_faces(); i++)
                     {
                         auto face = _mesh->face(i);
                         if (point_mode.enable && face->_debug_name != _outputs[0].name)
                             continue;
 
-                         //module calls
-                         for (auto &jtr : itr)
-                         {
+                        //module calls
+                        for (auto &jtr : itr)
+                        {
 #ifdef OMP_SAFE_EXCEPTION
-                             e.Run(
-                                 [&]
-                                 {
+                            e.Run(
+                                [&]
+                                {
 #endif
-                                     jtr->run(face);
+                                    jtr->run(face);
 #ifdef OMP_SAFE_EXCEPTION
-                                 });
+                                });
 #endif
-                         }
+                        }
                     }
 #ifdef OMP_SAFE_EXCEPTION
                     e.Rethrow();
@@ -2262,7 +2261,7 @@ void core::run()
                     //module calls for domain parallel
                     for (auto &jtr : itr)
                     {
-                      jtr->run(_mesh);
+                        jtr->run(_mesh);
                     }
                 }
 
@@ -2398,13 +2397,13 @@ void core::run()
                     std::vector<std::string> output;
                     output.assign(itr.variables.begin(),itr.variables.end()); //convert to list to match internal lists
 
-                    #pragma omp parallel
+#pragma omp parallel
                     {
-                        #pragma omp single
+#pragma omp single
                         {
                             for (auto jtr : itr.mesh_output_formats)
                             {
-                                #pragma omp task
+#pragma omp task
                                 {
                                     std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
                                     boost::filesystem::path p(base_name);
@@ -2450,66 +2449,66 @@ void core::run()
             }
         }
 
-            //If we are output a timeseries at specific triangles, we do that here
-            //Each output knows what face it corresponds to
-            for (auto &itr : _outputs)
+        //If we are output a timeseries at specific triangles, we do that here
+        //Each output knows what face it corresponds to
+        for (auto &itr : _outputs)
+        {
+            //only update the full timeseries
+            if (itr.type == output_info::output_type::time_series)
             {
-                //only update the full timeseries
-                if (itr.type == output_info::output_type::time_series)
+                for (auto v : _provided_var_module)
                 {
-                    for (auto v : _provided_var_module)
-                    {
-                        auto data = (*itr.face)[v];
-                        itr.ts.at(v, current_ts) = data;
-                    }
+                    auto data = (*itr.face)[v];
+                    itr.ts.at(v, current_ts) = data;
                 }
             }
+        }
 
-            if(!_metdata->next())
-            {
-                done = true;
-            }
-            else
-            {
-                // loading a new netcdf will invalidate all our stations, so we need to rebuild the list of stations
-                if(_metdata->is_multipart_nc() && _metdata->nc_just_loaded())
-                    populate_face_station_lists();
-            }
-
-
-            auto timestep = c.toc<ms>();
-            meantime += timestep;
-
-            current_ts++;
-            _global->timestep_counter++;
-
-            double mt = meantime / current_ts;
-            bool ms = true;
-            if (mt > 1000)
-            {
-                mt /= 1000.;
-                ms = false;
-            }
-
-            std::string s = std::to_string(std::lround(mt)) + (ms == true ? " ms" : "s");
+        if(!_metdata->next())
+        {
+            done = true;
+        }
+        else
+        {
+            // loading a new netcdf will invalidate all our stations, so we need to rebuild the list of stations
+            if(_metdata->is_multipart_nc() && _metdata->nc_just_loaded())
+                populate_face_station_lists();
+        }
 
 
-            //we need it in seconds now
-            if (ms)
-            {
-                mt /= 1000.0;
-            }
+        auto timestep = c.toc<ms>();
+        meantime += timestep;
 
-            boost::posix_time::ptime pt(boost::posix_time::second_clock::local_time());
-            pt = pt + boost::posix_time::seconds(size_t(mt) * (max_ts - current_ts));
+        current_ts++;
+        _global->timestep_counter++;
 
-            SPDLOG_DEBUG("Took {}s. Avg duration {} \tEstimated completion: {}", std::lround(timestep/1000), s, boost::posix_time::to_simple_string(pt));
-            _global->first_time_step = false;
+        double mt = meantime / current_ts;
+        bool ms = true;
+        if (mt > 1000)
+        {
+            mt /= 1000.;
+            ms = false;
+        }
+
+        std::string s = std::to_string(std::lround(mt)) + (ms == true ? " ms" : "s");
+
+
+        //we need it in seconds now
+        if (ms)
+        {
+            mt /= 1000.0;
+        }
+
+        boost::posix_time::ptime pt(boost::posix_time::second_clock::local_time());
+        pt = pt + boost::posix_time::seconds(size_t(mt) * (max_ts - current_ts));
+
+        SPDLOG_DEBUG("Took {}s. Avg duration {} \tEstimated completion: {}", std::lround(timestep/1000), s, boost::posix_time::to_simple_string(pt));
+        _global->first_time_step = false;
 
 
     }
-        double elapsed = c.toc<s>();
-        SPDLOG_DEBUG("Total runtime was {}s", elapsed);
+    double elapsed = c.toc<s>();
+    SPDLOG_DEBUG("Total runtime was {}s", elapsed);
 
 
 
@@ -2546,7 +2545,8 @@ void core::run()
             itr.ts.to_file(itr.fname);
         }
     }
-
+    // we can call this without a check
+    _mesh->close_ugrid();
 
     if(_notification_script != "")
     {

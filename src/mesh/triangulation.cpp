@@ -66,16 +66,15 @@ triangulation::triangulation()
     geographic_dims=1;
     partition_dims=1;
 
+    _ugrid_fid = -1;
+
 }
 
 
 
 triangulation::~triangulation()
 {
-    if (_ugrid_fid != -1)
-    {
-        nc_close(_ugrid_fid);
-    }
+
 }
 
 std::string triangulation::proj4()
@@ -2391,11 +2390,21 @@ void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 
     m->to_file(fname);
 }
+void triangulation::close_ugrid()
+{
+    if (_ugrid_fid != -1)
+    {
+        SPDLOG_DEBUG("Closing ugrid file");
+        nc_close(_ugrid_fid);
+    }
+}
 void triangulation::write_ugrid(std::vector<std::string> output_variables, std::string fname)
 {
+    auto variables = output_variables.size() == 0 ? this->face(0)->variables() : output_variables;
     if (_ugrid_fid==-1)
     {
-        init_ugrid(output_variables, fname);
+        SPDLOG_DEBUG(fname);
+        init_ugrid(variables, fname);
     }
     // use C api as boost doesn't have info
     MPI_Comm comm = _comm_world;
@@ -2407,7 +2416,7 @@ void triangulation::write_ugrid(std::vector<std::string> output_variables, std::
         mesh_elem fit = this->face(i);
         size_t index[2] = {_global->timestep_counter, fit->cell_global_id};
 
-        for (auto& var : output_variables)
+        for (auto& var : variables)
         {
             double value = (*fit)[var];
             nc_put_var1_double(_ugrid_fid, _ugrid_id_var[var], index, &value);
@@ -2531,6 +2540,7 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "standard_name", strlen("altitude"), "altitude");
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "units", strlen("m"), "m");
+
 
     for (auto& var : output_variables)
     {
