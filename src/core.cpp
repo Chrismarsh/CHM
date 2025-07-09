@@ -2405,11 +2405,11 @@ void core::run()
                             {
 #pragma omp task
                                 {
-                                    std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
-                                    boost::filesystem::path p(base_name);
 
                                     if (jtr == output_info::mesh_outputs::vtu  )
                                     {
+                                        std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
+                                        boost::filesystem::path p(base_name);
                                         _mesh->update_vtk_data(output); //update the internal vtk mesh
 
                                         // this really only works if we let rank0 handle the io.
@@ -2438,8 +2438,9 @@ void core::run()
                                     }
                                     else if (jtr == output_info::mesh_outputs::ugrid)
                                     {
+                                        boost::filesystem::path ugrid_path = output_folder_path / (output_folder_path.filename().string() + ".nc");
                                         SPDLOG_DEBUG("Outputting ugrid");
-                                        _mesh->write_ugrid(output, base_name+".nc");
+                                        _mesh->write_ugrid(output, ugrid_path.string());
                                     }
                                 }
                             }
