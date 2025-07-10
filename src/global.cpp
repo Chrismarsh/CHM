@@ -77,7 +77,7 @@ double global::posix_time_double()
 {
     const boost::posix_time::ptime epoch = boost::posix_time::from_time_t(0);
     boost::posix_time::time_duration duration = _current_date - epoch;
-    return duration.total_seconds() / 60;
+    return duration.total_seconds();
 }
 
 int global::dt()

@@ -1078,7 +1078,7 @@ protected:
 #endif
 
     //should we write parameters to the vtu file?
-    bool _write_parameters_to_vtu;
+    bool _write_parameters;
     //should we write ghost neighbor faces to the vtu file?
     bool _write_ghost_neighbors_to_vtu;
 

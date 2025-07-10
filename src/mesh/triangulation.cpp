@@ -84,7 +84,7 @@ std::string triangulation::proj4()
 
 void triangulation::write_param_to_vtu(bool write_param)
 {
-    _write_parameters_to_vtu = write_param;
+    _write_parameters = write_param;
 }
 
 void triangulation::write_ghost_neighbors_to_vtu(bool write_ghost_neighbors)
@@ -2406,6 +2406,11 @@ void triangulation::write_ugrid(std::vector<std::string> output_variables, std::
     MPI_Info info_used;
     MPI_Comm_get_info(comm, &info_used);
 
+
+    double time = _global->posix_time_double()  / 60 ;
+    size_t index = _global->timestep_counter;
+    nc_put_var1_double(_ugrid_fid, _ugrid_id_var["time"], &index, &time);
+
     for (size_t i = 0; i < this->size_faces(); i++)
     {
         mesh_elem fit = this->face(i);
@@ -2414,6 +2419,7 @@ void triangulation::write_ugrid(std::vector<std::string> output_variables, std::
         for (auto& var : variables)
         {
             double value = (*fit)[var];
+            if (value == -9999.) value = nan("");
             nc_put_var1_double(_ugrid_fid, _ugrid_id_var[var], index, &value);
         }
     }
@@ -2557,14 +2563,47 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "units", strlen("m"), "m");
 
 
+    int dims[2] = {time_dimid, dim_Mesh2_face};
     for (auto& var : output_variables)
     {
-        int dims[2] = {time_dimid, dim_Mesh2_face};
         nc_def_var(_ugrid_fid, var.c_str(), NC_DOUBLE, 2, dims, &_ugrid_id_var[var]);
         nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "mesh", strlen("Mesh2"), "Mesh2");
         nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "location", strlen("face"), "face");
         nc_put_att_double(_ugrid_fid, _ugrid_id_var[var], "_FillValue", NC_DOUBLE, 1, &nan_value);
     }
+
+    _ugrid_id_var["time"] = time_varid;
+    std::map<std::string, int> param_id;
+
+    auto define_face_variable = [&](const std::string& v, const std::string& prefix="") {
+        return [&]() {
+            nc_def_var(_ugrid_fid, (prefix+v).c_str(), NC_DOUBLE, 1, &dim_Mesh2_face, &param_id[v]);
+            nc_put_att_text(_ugrid_fid, param_id[v], "mesh", strlen("Mesh2"), "Mesh2");
+            nc_put_att_text(_ugrid_fid, param_id[v], "location", strlen("face"), "face");
+            nc_put_att_double(_ugrid_fid, param_id[v], "_FillValue", NC_DOUBLE, 1, &nan_value);
+        };
+    };
+
+    if(_write_parameters)
+    {
+        auto params = this->face(0)->parameters();
+        for (auto &v: params)
+        {
+            define_face_variable(v, "param_")();
+        }
+
+        define_face_variable("Elevation")();
+        define_face_variable("Slope")();
+        define_face_variable("Aspect")();
+        define_face_variable("Area")();
+
+
+        nc_def_var(_ugrid_fid, "owner", NC_INT, 1, &dim_Mesh2_face, &param_id["owner"]);
+        nc_put_att_text(_ugrid_fid, param_id["owner"], "mesh", strlen("Mesh2"), "Mesh2");
+        nc_put_att_text(_ugrid_fid, param_id["owner"], "location", strlen("face"), "face");
+
+    }
+
 
     nc_enddef(_ugrid_fid); // End define mode
 
@@ -2583,13 +2622,6 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
 
     OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
-
-    double time = _global->posix_time_double();
-    size_t index = _global->timestep_counter;
-
-    status = nc_put_var1_double(_ugrid_fid, time_varid, &index, &time);
-
-    int npoints=0;
     for (size_t i = 0; i < this->size_faces(); i++)
     {
         mesh_elem fit = this->face(i);
@@ -2645,6 +2677,35 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
         // size_t to ulonlong should be safe
         auto gid = static_cast<unsigned long long>(fit->cell_global_id);
         nc_put_var1_ulonglong(_ugrid_fid, var_global_id, &fit->cell_global_id, &gid);
+
+        if(_write_parameters)
+        {
+
+            auto params = this->face(0)->parameters();
+            for (auto &v: params)
+            {
+                double p = fit->parameter(v);
+                if( p == -9999.) p = nan("");
+
+                nc_put_var1_double(_ugrid_fid, param_id[v], &fit->cell_global_id, &p);
+            }
+
+            double tmp = fit->slope();
+            nc_put_var1_double(_ugrid_fid, param_id["Slope"], &fit->cell_global_id, &tmp);
+
+            tmp = fit->aspect();
+            nc_put_var1_double(_ugrid_fid, param_id["Aspect"], &fit->cell_global_id, &tmp);
+
+            tmp = fit->get_area();
+            nc_put_var1_double(_ugrid_fid, param_id["Area"], &fit->cell_global_id, &tmp);
+
+            auto tmp_i = _comm_world.rank();
+            nc_put_var1_int(_ugrid_fid, param_id["owner"], &fit->cell_global_id, &tmp_i);
+
+            tmp = fit->get_z();
+            nc_put_var1_double(_ugrid_fid, param_id["Elevation"], &fit->cell_global_id, &tmp);
+
+        }
 
     }
 
@@ -2761,7 +2822,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     _vtu_global_id = vtkSmartPointer<vtkUnsignedLongArray>::New();
     _vtu_global_id->SetName("global_id");
 
-    if(_write_parameters_to_vtu)
+    if(_write_parameters)
     {
         auto params = this->face(0)->parameters();
         for (auto &v: params)
@@ -2924,7 +2985,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         //this is mandatory now
         _vtu_global_id->InsertTuple1(i, fit->cell_global_id);
 
-        if(_write_parameters_to_vtu)
+        if(_write_parameters)
         {
             for (auto &v: params)
             {
@@ -2994,7 +3055,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
         _vtu_global_id->InsertTuple1(insert_offset,fit->cell_global_id);
 
-        if(_write_parameters_to_vtu)
+        if(_write_parameters)
         {
             for (auto &v: params)
             {
