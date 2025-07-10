@@ -1050,7 +1050,7 @@ protected:
 
     size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
     size_t _num_global_faces; //number of global faces
-    size_t _num_vertex; //number of rows in the original data matrix.
+    size_t _num_vertex; //number of vertexes. This includes vertices that are used in ghost face construction
     K::Iso_rectangle_2 _bbox;
     bool _is_geographic;
     bool _mesh_is_from_partition;

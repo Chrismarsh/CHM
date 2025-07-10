@@ -892,11 +892,6 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             Vh->set_id(i);
             _vertexes.push_back(Vh);
 
-            // std::cout << i << ":";
-            // for(int j=0; j< 3; ++j){
-            //   std::cout << " " << vertex[i][j];
-            // }
-            // std::cout << "\n";
         }
 
         _num_vertex = _vertexes.size();
@@ -1512,7 +1507,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
         {
             _faces[i]->is_ghost = false;
 
-            // Although we set thsin from_h5 we need to reset it here such that it doesn"t include ghosts
+            // Although we set this from_h5 we need to reset it here such that it doesn't include ghosts
             _faces[i]->cell_local_id = local_face_i;
 
             _local_faces.push_back(_faces[i]);
@@ -2440,10 +2435,40 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
         CHM_THROW_EXCEPTION(file_write_error, "Failed to create ugrid output file");
     }
 
+    // std::set<size_t> verts;
+    // size_t max_id = 0;
+    //
+    // for (size_t i = 0; i < this->size_faces(); i++)
+    // {
+    //     for (int j = 0; j<3; j++)
+    //     {
+    //         auto id = face(i)->vertex(j)->get_id();
+    //         if (id > max_id)
+    //             max_id = id;
+    //         verts.insert(id);
+    //     }
+    // }
+    //
+    // SPDLOG_DEBUG("I have {} verts, max id = {}", verts.size(), max_id);
+
+    // number of vertex per rank, these are our offsets
+    std::vector<size_t> all_offsets;
+    boost::mpi::all_gather(_comm_world, _num_vertex, all_offsets);
+
+    SPDLOG_DEBUG("offsets:");
+    for (auto& itr : all_offsets)
+    {
+        SPDLOG_DEBUG("\titr");
+    }
+    size_t offset = std::accumulate(all_offsets.begin(), all_offsets.begin() + _comm_world.rank(), 0);
+    SPDLOG_DEBUG("my offset = {}", offset);
+
     size_t num_global_vertex;
     // determine the number of global vertex but summing the local vertex counts from all mpi ranks
+    // _num_vertex
     boost::mpi::all_reduce(_comm_world, _num_vertex, num_global_vertex, std::plus<size_t>());
-
+    // boost::mpi::all_reduce(_comm_world, max_id, num_global_vertex, boost::mpi::maximum<size_t>());
+    // num_global_vertex++;
     if (num_global_vertex > UINT_MAX)
     {
         CHM_THROW_EXCEPTION(mesh_error, "Due to a limitation for paraview, the ugrid field can't have more than UINT_MAX nodes");
@@ -2489,16 +2514,19 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "long_name", strlen("Maps every triangular face to its three corner nodes."), "Maps every triangular face to its three corner nodes.");
 
     // Mesh2_node_x
+    double nan_value = NAN; // IEEE NaN
     nc_def_var(_ugrid_fid, "Mesh2_node_x", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_x);
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "standard_name", strlen("longitude"), "longitude");
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "long_name", strlen("Longitude of 2D mesh nodes."), "Longitude of 2D mesh nodes.");
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "units", strlen("degrees_east"), "degrees_east");
+    nc_put_att_double(_ugrid_fid, var_Mesh2_node_x, "_FillValue", NC_DOUBLE, 1, &nan_value);
 
     // Mesh2_node_y
     nc_def_var(_ugrid_fid, "Mesh2_node_y", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_y);
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "standard_name", strlen("latitude"), "latitude");
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "long_name", strlen("Latitude of 2D mesh nodes."), "Latitude of 2D mesh nodes.");
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "units", strlen("degrees_north"), "degrees_north");
+    nc_put_att_double(_ugrid_fid, var_Mesh2_node_y, "_FillValue", NC_DOUBLE, 1, &nan_value);
 
     // Mesh2_node_z elevation
     nc_def_var(_ugrid_fid, "Mesh2_node_z", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_z);
@@ -2507,6 +2535,7 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "units", strlen("m"), "m");
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "mesh", strlen("Mesh2"), "Mesh2");
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "location", strlen("node"), "node");
+    nc_put_att_double(_ugrid_fid, var_Mesh2_node_z, "_FillValue", NC_DOUBLE, 1, &nan_value);
 
     // Scaled Mesh2_node_z elevation
     // Paraview struggles to plot the z coord when the x and y are in geographic, so this scales down the z
@@ -2517,6 +2546,7 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "units", strlen("m"), "m");
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "mesh", strlen("Mesh2"), "Mesh2");
     nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "location", strlen("node"), "node");
+    nc_put_att_double(_ugrid_fid, var_Mesh2_node_z_PV, "_FillValue", NC_DOUBLE, 1, &nan_value);
 
 
     int var_global_id, var_Mesh2_face_x, var_Mesh2_face_y, var_Mesh2_face_z;
@@ -2527,9 +2557,9 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     nc_put_att_text(_ugrid_fid, var_global_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
 
     nc_def_var(_ugrid_fid, "Mesh2_face_x", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_x);
-    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude");
-    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
-    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "units", strlen("degrees_north"), "degrees_north");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "units", strlen("degrees_north"), "degrees_north");
 
     nc_def_var(_ugrid_fid, "Mesh2_face_y", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_y);
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude");
@@ -2576,17 +2606,19 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     int npoints=0;
     for (size_t i = 0; i < this->size_faces(); i++)
     {
-        mesh_elem fit = this->face(i);
 
+        mesh_elem fit = this->face(i);
+        SPDLOG_DEBUG("face {}={}", i, fit->cell_global_id);
         // loop over vertices of a face
         for (int j=0;j<3;++j)
-            {
+        {
             auto vit = fit->vertex(j);
-            size_t global_id = vit->get_id();
+            size_t global_id = vit->get_id() + offset;
 
             // If point hasn't been seen yet, account for it
             if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() )
                 {
+                SPDLOG_DEBUG("\tvertex={} global_id={}", j, global_id);
                 global_to_local_vertex_id[global_id] = npoints;
                 npoints++;
 
@@ -2595,10 +2627,10 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
                 double z = vit->point().z();
 
                 //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
-                if(!coordTrans->Transform(1, &x, &y))
-                {
-                    CHM_THROW_EXCEPTION(forcing_error, "failed ugrid");
-                }
+                // if(!coordTrans->Transform(1, &x, &y))
+                // {
+                //     CHM_THROW_EXCEPTION(forcing_error, "failed ugrid");
+                // }
 
                 nc_put_var1_double(_ugrid_fid, var_Mesh2_node_x, &global_id, &x);
                 nc_put_var1_double(_ugrid_fid, var_Mesh2_node_y, &global_id, &y);
@@ -2616,10 +2648,11 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
 
         // uint64_t causes Paraview to crash so these indexes can't be bigger than uint
         const unsigned int face_data[3] = {
-            static_cast<unsigned int>(fit->vertex(0)->get_id()),
-            static_cast<unsigned int>(fit->vertex(1)->get_id()),
-            static_cast<unsigned int>(fit->vertex(2)->get_id())
+            static_cast<unsigned int>(fit->vertex(0)->get_id() + offset),
+            static_cast<unsigned int>(fit->vertex(1)->get_id() + offset),
+            static_cast<unsigned int>(fit->vertex(2)->get_id() + offset)
         };
+        SPDLOG_DEBUG("\t{} {} {}", face_data[0], face_data[1], face_data[2]);
         nc_put_vara_uint(_ugrid_fid, var_Mesh2_face_nodes, start, count, face_data);
 
         double fit_c_x = fit->center().x();

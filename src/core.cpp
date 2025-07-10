@@ -834,7 +834,7 @@ bool core::config_meshes( pt::ptree &value)
             CHM_THROW_EXCEPTION(mesh_error, "MPI multiprocess run requires hdf5 mesh.\n\n    Run the serial hdf5 conversion tool\n\n");
         }
 
-        // only check the params and ics if we aren't using a parition file
+        // only check the params and ics if we aren't using a partition file
         if(mesh_file_extension != ".partition")
         {
 
