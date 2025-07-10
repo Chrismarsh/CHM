@@ -398,8 +398,8 @@ class preprocessingTriangulation : public triangulation
                     _vertexes.push_back(Vh);
                 }
 
-                _num_vertex = _vertexes.size();
-                SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
+                _num_local_vertex = _vertexes.size();
+                SPDLOG_DEBUG("# nodes created = {}",_num_local_vertex);
             }
 
             {

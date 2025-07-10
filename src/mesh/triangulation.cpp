@@ -112,7 +112,7 @@ size_t triangulation::size_global_faces()
 
 size_t triangulation::size_vertex()
 {
-    return _num_vertex;
+    return _num_local_vertex;
 }
 
 mesh_elem triangulation::locate_face(double x, double y)
@@ -260,8 +260,8 @@ void triangulation::from_json(pt::ptree &mesh)
         _vertexes.push_back(Vh);
         i++;
     }
-    _num_vertex = this->number_of_vertices();
-    SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
+    _num_local_vertex = this->number_of_vertices();
+    SPDLOG_DEBUG("# nodes created = {}",_num_local_vertex);
 
     if( this->number_of_vertices() != nvertex_toread)
     {
@@ -460,7 +460,7 @@ void triangulation::from_json(pt::ptree &mesh)
         // we don"t have this section, no worries
     }
     _num_faces = this->number_of_faces();
-    _num_vertex = this->number_of_vertices();
+    _num_local_vertex = this->number_of_vertices();
 
     // Get local sizes for each rank
     // If not available, use the old "balanced" setting
@@ -894,8 +894,8 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
         }
 
-        _num_vertex = _vertexes.size();
-        SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
+        _num_local_vertex = _vertexes.size();
+        SPDLOG_DEBUG("# nodes created = {}",_num_local_vertex);
     }
 
     {
@@ -2435,41 +2435,25 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
         CHM_THROW_EXCEPTION(file_write_error, "Failed to create ugrid output file");
     }
 
-    // std::set<size_t> verts;
-    // size_t max_id = 0;
-    //
-    // for (size_t i = 0; i < this->size_faces(); i++)
-    // {
-    //     for (int j = 0; j<3; j++)
-    //     {
-    //         auto id = face(i)->vertex(j)->get_id();
-    //         if (id > max_id)
-    //             max_id = id;
-    //         verts.insert(id);
-    //     }
-    // }
-    //
-    // SPDLOG_DEBUG("I have {} verts, max id = {}", verts.size(), max_id);
+    // We also only have per-rank vertex IDs (they aren't global)
+    // thus need to compute a perrank offset to write into the global ugrid datastruct.
+    // Rank 0 => [0, _num_local_vertex_on_rank0)
+    // Rank 1 => [_num_local_vertex_on_rank0, _num_local_vertex_on_rank1)
+    // etc
 
-    // number of vertex per rank, these are our offsets
     std::vector<size_t> all_offsets;
-    boost::mpi::all_gather(_comm_world, _num_vertex, all_offsets);
+    boost::mpi::all_gather(_comm_world, _num_local_vertex, all_offsets);
 
-    SPDLOG_DEBUG("offsets:");
-    for (auto& itr : all_offsets)
-    {
-        SPDLOG_DEBUG("\titr");
-    }
+    // Our rank needs the sum of all the vertexes from the preceeding ranks as its start offset
     size_t offset = std::accumulate(all_offsets.begin(), all_offsets.begin() + _comm_world.rank(), 0);
-    SPDLOG_DEBUG("my offset = {}", offset);
 
+    // When the mesh is read we only know the number of vertexes on each rank, not the global number
+    // This gathers the number of vertexes per rank.
     size_t num_global_vertex;
-    // determine the number of global vertex but summing the local vertex counts from all mpi ranks
-    // _num_vertex
-    boost::mpi::all_reduce(_comm_world, _num_vertex, num_global_vertex, std::plus<size_t>());
-    // boost::mpi::all_reduce(_comm_world, max_id, num_global_vertex, boost::mpi::maximum<size_t>());
-    // num_global_vertex++;
-    if (num_global_vertex > UINT_MAX)
+    boost::mpi::all_reduce(_comm_world, _num_local_vertex, num_global_vertex, std::plus<size_t>());
+
+    // Paraview's vtk-based ugrid reader segfaults when the mesh indexing is uint64. We probably don't have
+    if (_num_global_faces > UINT_MAX)
     {
         CHM_THROW_EXCEPTION(mesh_error, "Due to a limitation for paraview, the ugrid field can't have more than UINT_MAX nodes");
     }
@@ -2483,9 +2467,8 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
 
     // time Dimension
     int time_dimid, time_varid;
-    size_t num_times = _global->n_timesteps();
 
-    nc_def_dim(_ugrid_fid, "time", num_times, &time_dimid);
+    nc_def_dim(_ugrid_fid, "time", _global->n_timesteps(), &time_dimid);
     nc_def_var(_ugrid_fid, "time", NC_DOUBLE, 1, &time_dimid, &time_varid);
     nc_put_att_text(_ugrid_fid, time_varid, "standard_name", strlen("time"), "time");
     nc_put_att_text(_ugrid_fid, time_varid, "long_name", strlen("Time"), "Time");
@@ -2509,6 +2492,8 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     nc_put_att_text(_ugrid_fid, var_Mesh2, "face_coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
 
     // Mesh2_face_nodes node connectivity that makes up the faces
+    // should be NC_UINT64 but this crashes paraview
+    // https://gitlab.kitware.com/paraview/paraview/-/issues/23019
     nc_def_var(_ugrid_fid, "Mesh2_face_nodes", NC_UINT, 2, dims_face_nodes, &var_Mesh2_face_nodes);
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "cf_role", strlen("face_node_connectivity"), "face_node_connectivity");
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "long_name", strlen("Maps every triangular face to its three corner nodes."), "Maps every triangular face to its three corner nodes.");
@@ -2578,6 +2563,7 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
         nc_def_var(_ugrid_fid, var.c_str(), NC_DOUBLE, 2, dims, &_ugrid_id_var[var]);
         nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "mesh", strlen("Mesh2"), "Mesh2");
         nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "location", strlen("face"), "face");
+        nc_put_att_double(_ugrid_fid, _ugrid_id_var[var], "_FillValue", NC_DOUBLE, 1, &nan_value);
     }
 
     nc_enddef(_ugrid_fid); // End define mode
@@ -2606,43 +2592,34 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     int npoints=0;
     for (size_t i = 0; i < this->size_faces(); i++)
     {
-
         mesh_elem fit = this->face(i);
-        SPDLOG_DEBUG("face {}={}", i, fit->cell_global_id);
+
         // loop over vertices of a face
         for (int j=0;j<3;++j)
         {
             auto vit = fit->vertex(j);
             size_t global_id = vit->get_id() + offset;
 
-            // If point hasn't been seen yet, account for it
-            if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() )
-                {
-                SPDLOG_DEBUG("\tvertex={} global_id={}", j, global_id);
-                global_to_local_vertex_id[global_id] = npoints;
-                npoints++;
+            // The vtk writer has a handler to ensure duplicate points aren't added
+            // but that strategy isn't needed here
+            double x = vit->point().x();
+            double y = vit->point().y();
+            double z = vit->point().z();
 
-                double x = vit->point().x();
-                double y = vit->point().y();
-                double z = vit->point().z();
-
-                //CRS created with the “EPSG:4326” or “WGS84” strings use the latitude first, longitude second axis order.
-                // if(!coordTrans->Transform(1, &x, &y))
-                // {
-                //     CHM_THROW_EXCEPTION(forcing_error, "failed ugrid");
-                // }
-
-                nc_put_var1_double(_ugrid_fid, var_Mesh2_node_x, &global_id, &x);
-                nc_put_var1_double(_ugrid_fid, var_Mesh2_node_y, &global_id, &y);
-                nc_put_var1_double(_ugrid_fid, var_Mesh2_node_z, &global_id, &z);
-
-                // scale for paraview
-                z = z/100000.;
-                nc_put_var1_double(_ugrid_fid, var_Mesh2_node_z_PV, &global_id, &z);
-
-                global_vertex_id.push_back(global_id);
+            if(!coordTrans->Transform(1, &x, &y))
+            {
+                CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
             }
+
+            nc_put_var1_double(_ugrid_fid, var_Mesh2_node_x, &global_id, &x);
+            nc_put_var1_double(_ugrid_fid, var_Mesh2_node_y, &global_id, &y);
+            nc_put_var1_double(_ugrid_fid, var_Mesh2_node_z, &global_id, &z);
+
+            // scale Z for paraview 3D view
+            z = z/100000.;
+            nc_put_var1_double(_ugrid_fid, var_Mesh2_node_z_PV, &global_id, &z);
         }
+
         size_t start[2] = {fit->cell_global_id, 0};   // Start at face_idx, first node
         size_t count[2] = {1, 3};          // One face, all three nodes
 
@@ -2652,7 +2629,6 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
             static_cast<unsigned int>(fit->vertex(1)->get_id() + offset),
             static_cast<unsigned int>(fit->vertex(2)->get_id() + offset)
         };
-        SPDLOG_DEBUG("\t{} {} {}", face_data[0], face_data[1], face_data[2]);
         nc_put_vara_uint(_ugrid_fid, var_Mesh2_face_nodes, start, count, face_data);
 
         double fit_c_x = fit->center().x();
@@ -2660,20 +2636,23 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
         double fit_c_z = fit->center().z();
         if(!coordTrans->Transform(1, &fit_c_x, &fit_c_y))
         {
-            CHM_THROW_EXCEPTION(forcing_error, "failed ugrid");
+            CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
         }
         nc_put_var1_double(_ugrid_fid, var_Mesh2_face_x, &fit->cell_global_id, &fit_c_x);
         nc_put_var1_double(_ugrid_fid, var_Mesh2_face_y, &fit->cell_global_id, &fit_c_y);
         nc_put_var1_double(_ugrid_fid, var_Mesh2_face_z, &fit->cell_global_id, &fit_c_z);
 
-
-        // nc_put_var1_ulonglong(_ugrid_fid, var_global_id, &fit->cell_global_id, &gid);
+        // size_t to ulonlong should be safe
         auto gid = static_cast<unsigned long long>(fit->cell_global_id);
         nc_put_var1_ulonglong(_ugrid_fid, var_global_id, &fit->cell_global_id, &gid);
 
     }
 
+    // The file is closed from core::run() because it needs to be kept open to write to but closed
+    // before the MPI finalized is closed, ie can't do this when ~triangulation is called
     // nc_close(_ugrid_fid);
+
+    // clean up the handle to info
     MPI_Info_free(&info_used);
 
     OGRCoordinateTransformation::DestroyCT(coordTrans);
