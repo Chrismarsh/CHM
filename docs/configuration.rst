@@ -413,6 +413,10 @@ The name of the ``timeseries`` key is used to uniquely identify this output: ``"
 If using ``point_mode``, this name corresponds to the ``output`` key. If a lot of stations are to be
 output, consider keeping them in a separate file and inserting using the top-level ".json" behaviour.
 
+There is currently no check that one MPI rank finds the output triangle. Any rank that doesn't have this output
+triangle will raise a warning, but exactly 1 rank should report that it finds the output triangle. If the file is empty, confirm
+that a rank does find the triangle and confirm the output lat long is correct.
+
 .. confval:: longitude
 
    :type: float
@@ -473,7 +477,7 @@ please see the :ref:`output` section.
    
    :type: string
    
-   The base file name to be used. 
+   The base file name to be used. Default is the same name as the output folder.
 
 .. confval:: variables
 
@@ -502,6 +506,18 @@ please see the :ref:`output` section.
    (``frequency:24``) as the model simulation starts at 00:00. However, the auto-checkpoint suspends at the 8am
    timestep, the next output will be at 8am instead of midnight.
 
+   Because the ugrid output has to know a priori how many timesteps to output, setting frequency>1 with ugrid output
+   will result in non-written times being full of NaN values. This breaks Paraview's ability to render subseuqnt timesteps.be
+
+.. confval:: rotate_frequency
+
+  :type: int
+  :default: 0
+
+  Only applies to ugrid outputs. The timestep frequency to create a new ugrid file at. Because the netcdf writer needs
+  to know at file creation how many timesteps need to be written, the file is a full-timeseries file, however it is filled
+  with NaN values except at the timesteps defined by the output frequency and rotation frequency.
+
 .. confval:: write_parameters
 
    :type: boolean
@@ -515,6 +531,7 @@ please see the :ref:`output` section.
    :default: false
 
    Write each MPI rank's ghost face data to vtu output. Only possible with vtu output.
+
 
 .. confval:: specific_datetime
 
