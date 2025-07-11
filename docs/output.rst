@@ -1,7 +1,18 @@
 Output
 =======
 
-There are two main outputs from CHM: timeseries and mesh output.
+There are two main outputs from CHM: timeseries and mesh outputs.
+
+The mesh outputs are either the Paraview vtu format or the netcdf ugrid format.
+
+The vtu output has 1 file per MPI rank, per timestep.
+For large domains, large MPI rank counts, and long time periods, this can produce a large number of files. HPC
+file systems often do not perform well with millions of files. A further consideration is that to produce
+raster tiff files or similar in post processing requires that the vtu files be converted to ugrid using pyCHM.
+The vtu format does have some benifits as it allows for viewing a single ranks' subset, as well as visualisation of the
+ghost regions. Lastly, because of limitations in the vtu format, a duplicate mesh used for outputting must be held in
+memory making it more memory heavy than the ugrid output.
+
 
 mesh (.vtu)
 ************
@@ -31,6 +42,12 @@ Although the ``vtu`` files may be loaded directly into Paraview, it is preferred
 
    If MPI is enabled, the ``pvd`` file is the only reasonable way of loading all the parts of the mesh into one view.
 
+ugrid
+*******
+
+The ugrid is a netcdf standard https://ugrid-conventions.github.io/
+
+For analysis, xarray can load this file, but uxarray is likely a better option
 
 timeseries
 ***********

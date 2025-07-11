@@ -91,11 +91,10 @@ This section contains options for CHM and the simulation in general. This is a r
    {
       "option":
       {
-           "per_triangle_timeseries": false,
-           "ui": false,
            "debug_level": "debug",
            "prj_name": "SnowCast",
-           "enddate": "20180501T050000"
+           "startdate": "20180501T050000"
+           "enddate": "20180501T060000"
 
       }
    }
@@ -146,15 +145,7 @@ This section contains options for CHM and the simulation in general. This is a r
        "notification_script":"./finished.sh"
 
 And example of what ``finished.sh`` might do is below, which triggers a
-notification to Pushbullet thus showing up on all computers and phones
-that the account is active on:
-
-.. code::  
-
-   #!/bin/bash
-
-   curl -s -u <token here>: https://api.pushbullet.com/v2/pushes -d type=note -d title="Finished model run" >/dev/null
-
+notification.
 
 
 .. confval:: debug_level
@@ -195,7 +186,8 @@ In the same ISO format as the forcing data: ``YYYYMDTHMS``.
    :default: None
 
 Allows for a different end time than that specified by the input timeseries.
-In the same ISO format as the forcing data: ``YYYYMDTHMS``.
+In the same ISO format as the forcing data: ``YYYYMDTHMS``. If enddate == stardate, then
+one timestep is run.
 
 .. code:: json 
 
@@ -238,7 +230,7 @@ A few notes:
 remove_depency
 ***************
 
-   Under some edge cases, a cyclic dependency is created when a module B
+   Under some cases, a cyclic dependency is created when a module B
    depends on module A’s output, and module A depends on module B’s output. There is no way to
    automatically resolve this. It requires the modeller to manually break
    the cycle and force one module to run ahead of another (essentially
@@ -347,10 +339,19 @@ This section has two keys:
     }
    }
 
-If CHM is in MPI mode, then HDF5-based meshes need to be used to ensure fast partial loading of the mesh on a per-MPI rank basis.
-Please see :ref:`meshgen` for how to convert the mesh.
+If CHM is run with MPI ranks > 1, then pre-partitioned HDF5-based meshes need to be used. See :ref:`partition` and
+ :ref:`meshgen` for how to convert the mesh.
 
+When using the partitioned mesh, then the following is sufficient:
 
+.. code:: json
+
+    "meshes": {
+        "mesh":"FABDEM-clip_mesh.np160.partition"
+    }
+
+There is currently a limitation in CHM such that the ``.partition`` and ``.mesh`` folder need to be in the CHM
+project root.
 
 parameter_mapping
 ******************
@@ -390,7 +391,7 @@ output
 Output may be either to an ascii-timeseries for a specific triangle on the mesh
 or it may be the entirety of the mesh. The two output types are set by:
 
-   - a key named ``"mesh":{ ... }`` will enable the entire mesh output
+   - a key named ``"vtu":{ ... }`` or ``"ugrid":{ ... }`` will enable the entire mesh output
    - all other keys (``"some_name":{...}```) are assumed to be the names of output timeseries
 
 Both mesh and timeseries can be used together.
@@ -407,7 +408,7 @@ Both mesh and timeseries can be used together.
 timeseries output
 ~~~~~~~~~~~~~~~~~~
 
-The name of the ``timeseries`` key is used to uniquely identify this output: ``"output_name"{ ... }``. 
+The name of the ``timeseries`` key is used to uniquely identify this output: ``"output_name":{ ... }``.
 
 If using ``point_mode``, this name corresponds to the ``output`` key. If a lot of stations are to be
 output, consider keeping them in a separate file and inserting using the top-level ".json" behaviour.
@@ -455,16 +456,17 @@ where ``mystations.json`` would look like
         }
    }
 
-mesh
-~~~~
+Entire mesh
+~~~~~~~~~~~~~~~
 
-The entire mesh may be written to Paraview’s vtu format for
-visualization in Paraview and for analysis. This is denoted by a ``"mesh":{ ... }`` key.
+The entire mesh may be written to a netCDF UGRID compliant file or Paraview’s vtu format. Both can be
+use for visualization in Paraview and for analysis.
 
-For more details on the output files, please see the :ref:`output` section.
+For general usage, the ugrid file is recommended as the output format. For more details on the output files,
+please see the :ref:`output` section.
 
 .. note::
-   The default behaviour of ``mesh`` output is not to output any vtu files. The user must specify the output frequency
+   The default behaviour of both ``ugrid`` and ``vtu``` outputs is not to output any files. The user must specify the output frequency
    or timing.
 
 .. confval:: base_name
@@ -477,7 +479,8 @@ For more details on the output files, please see the :ref:`output` section.
 
    :type: ``[ "variable_name", ... ]``
 
-   The default behaviour to is to write every variable at each timestep. This may produce an undesirable amount of output. This takes a list of variables to output.
+   The default behaviour to is to write every variable. This may produce an undesirable amount of output.
+   This takes a list of variables to output.
 
 .. code:: json
 
@@ -511,7 +514,7 @@ For more details on the output files, please see the :ref:`output` section.
    :type: boolean
    :default: false
 
-   Write each MPI rank's ghost face data to vtu output
+   Write each MPI rank's ghost face data to vtu output. Only possible with vtu output.
 
 .. confval:: specific_datetime
 
@@ -537,7 +540,7 @@ All of the frequency options can mixed together, allowing more complex output fr
 
    "output":
    {
-    "mesh": {
+    "vtu": {
             "base_name": "SC",
             "variables": [
                 "t",
@@ -548,8 +551,17 @@ All of the frequency options can mixed together, allowing more complex output fr
             "frequency": "24",
             "specific_datetime": "20191227T160000",
             "write_parameters": false,
-            "write_ghost_neighbors": false
-        }
+            "write_ghost_neighbors": true
+        },
+        "ugrid": {
+                "variables": [
+                    "t",
+                    "U_2m_above_srf",
+                ],
+                "frequency": "1",
+                "specific_datetime": "20191227T160000",
+                "write_parameters": false
+            }
    }
 
 
