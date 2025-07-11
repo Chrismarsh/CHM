@@ -13,8 +13,7 @@ The vtu format does have some benifits as it allows for viewing a single ranks' 
 ghost regions. Lastly, because of limitations in the vtu format, a duplicate mesh used for outputting must be held in
 memory making it more memory heavy than the ugrid output.
 
-
-mesh (.vtu)
+vtu
 ************
 
 The ``.vtu`` format is a Paraview (vtk) unstructured mesh. It is one file, per MPI rank, per timestep.
