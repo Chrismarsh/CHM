@@ -992,10 +992,18 @@ void core::config_output(pt::ptree &value)
             continue;
         }
 
-        if ((out_type != "mesh"))  // anything else *should* be a time series*......
+        if (out_type == "mesh")
+        {
+            CHM_THROW_EXCEPTION(config_error,
+                "output.mesh is now removed in favour of output.vtu or output.ugrid\n"
+                "Please see\n\thttps://chm.readthedocs.io/en/develop/configuration.html#output \n for more information.");
+        }
+
+        if ((out_type !="vtu") &&
+            (out_type !="ugrid"))  // anything else *should* be a time series*......
         {
             out.type = output_info::time_series;
-            out.name = out_type;
+            out.name = out_type; //station name = key name
 
             std::string fname = "";
             try
@@ -1079,11 +1087,19 @@ void core::config_output(pt::ptree &value)
                 SPDLOG_WARN("Output point {} was not found in this rank's mesh", out.name);
             }
         }
-        else if (out_type == "mesh")
+        else if (out_type == "vtu" || out_type == "ugrid")
         {
             out.type = output_info::mesh;
 
-            auto fname = itr.second.get<std::string>("base_name","output");
+            if (out_type == "vtu")
+                out.mesh_output_formats = output_info::mesh_outputs::vtu;
+            else
+                out.mesh_output_formats = output_info::mesh_outputs::ugrid;
+
+            out.name = out_type;
+
+            auto fname = output_dir;
+            //itr.second.get<std::string>("base_name","output");
             auto f = msh_path / fname;
             boost::filesystem::create_directories(f.parent_path());
             out.fname = f.string();
@@ -1091,7 +1107,12 @@ void core::config_output(pt::ptree &value)
             _mesh->write_param_to_vtu( itr.second.get("write_parameters",true) ) ;
 
 	    // Set option for writing ghost neighbor data, defaults to not
-            _mesh->write_ghost_neighbors_to_vtu( itr.second.get("write_ghost_neighbors",false) ) ;
+            auto write_ghost = itr.second.get("write_ghost_neighbors",false);
+            if (write_ghost && out.mesh_output_formats == output_info::mesh_outputs::ugrid )
+            {
+                CHM_THROW_EXCEPTION(config_error, "ugrid output cannot have write_ghost_neighbors=true");
+            }
+            _mesh->write_ghost_neighbors_to_vtu(write_ghost) ;
 
             try
             {
@@ -1130,9 +1151,7 @@ void core::config_output(pt::ptree &value)
             }
 
 
-            out.mesh_output_formats.push_back(output_info::mesh_outputs::vtu);
-            out.mesh_output_formats.push_back(output_info::mesh_outputs::ugrid);
-            out.name = "mesh output";
+
             out.list_outputs();
 
         } else
@@ -1146,14 +1165,10 @@ void core::config_output(pt::ptree &value)
         {
             // we will pass for now, but ultimiately we should have done an MPI comms and
             // check if we are missing an output
-#ifndef USE_MPI
-            CHM_THROW_EXCEPTION(config_error(), "Requested an output point that is not in the triangulation domain. Pt:"
-                                                             + std::to_string(out.longitude) + "," +
-                                                             std::to_string(out.latitude) + " name: " + out.name));
-#else
-            SPDLOG_WARN("In MPI mode there is currently no check if all the nodes correctly find the output triangle. "
+
+            SPDLOG_WARN("There is currently no check if all the MPI ranks correctly find the output timeseries triangle. "
                            "If you are missing output, ensure that all the output points are within the domain.");
-#endif
+
 
         }else
         {
@@ -2397,54 +2412,42 @@ void core::run()
                     std::vector<std::string> output;
                     output.assign(itr.variables.begin(),itr.variables.end()); //convert to list to match internal lists
 
-#pragma omp parallel
+
+                    if (itr.mesh_output_formats == output_info::mesh_outputs::vtu)
                     {
-#pragma omp single
+                        std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
+                        boost::filesystem::path p(base_name);
+                        _mesh->update_vtk_data(output); //update the internal vtk mesh
+
+                        // this really only works if we let rank0 handle the io.
+                        // If we let each process do it, they walk all over each other's output
+
+                        if(_comm_world.rank() == 0)
                         {
-                            for (auto jtr : itr.mesh_output_formats)
+                            for(int rank = 0; rank < _comm_world.size(); rank++)
                             {
-#pragma omp task
-                                {
 
-                                    if (jtr == output_info::mesh_outputs::vtu  )
-                                    {
-                                        std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
-                                        boost::filesystem::path p(base_name);
-                                        _mesh->update_vtk_data(output); //update the internal vtk mesh
+                                // write paths that are relative to the pvd file
+                                boost::filesystem::path vtu_path(output_folder_path.string() + "/meshes/" + p.filename().string()+"_"+std::to_string(rank) + ".vtu");
+                                pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
+                                dataset.add("<xmlattr>.timestep", _global->posix_time_int());
+                                dataset.add("<xmlattr>.group", "");
+                                dataset.add("<xmlattr>.part", rank);
+                                dataset.add("<xmlattr>.file", boost::filesystem::relative(vtu_path, output_folder_path).string());
 
-                                        // this really only works if we let rank0 handle the io.
-                                        // If we let each process do it, they walk all over each other's output
-
-                                        if(_comm_world.rank() == 0)
-                                        {
-                                            for(int rank = 0; rank < _comm_world.size(); rank++)
-                                            {
-
-                                                // write paths that are relative to the pvd file
-                                                boost::filesystem::path vtu_path(output_folder_path.string() + "/meshes/" + p.filename().string()+"_"+std::to_string(rank) + ".vtu");
-                                                pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
-                                                dataset.add("<xmlattr>.timestep", _global->posix_time_int());
-                                                dataset.add("<xmlattr>.group", "");
-                                                dataset.add("<xmlattr>.part", rank);
-                                                dataset.add("<xmlattr>.file", boost::filesystem::relative(vtu_path, output_folder_path).string());
-
-                                            }
-                                        }
-
-                                        //because a full path can be provided for the base_name, we need to strip this off
-                                        //to make it a relative path in the xml file.
-                                        _mesh->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
-
-                                    }
-                                    else if (jtr == output_info::mesh_outputs::ugrid)
-                                    {
-                                        boost::filesystem::path ugrid_path = output_folder_path / (output_folder_path.filename().string() + ".nc");
-                                        SPDLOG_DEBUG("Outputting ugrid");
-                                        _mesh->write_ugrid(output, ugrid_path.string());
-                                    }
-                                }
                             }
                         }
+
+                        //because a full path can be provided for the base_name, we need to strip this off
+                        //to make it a relative path in the xml file.
+                        _mesh->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
+
+                    }
+                    else if (itr.mesh_output_formats == output_info::mesh_outputs::ugrid)
+                    {
+                        boost::filesystem::path ugrid_path = output_folder_path / (output_folder_path.filename().string() + ".nc");
+                        // SPDLOG_DEBUG("Outputting ugrid");
+                        _mesh->write_ugrid(output, ugrid_path.string());
                     }
                 }
             }
