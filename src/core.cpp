@@ -1005,7 +1005,7 @@ void core::config_output(pt::ptree &value)
             out.type = output_info::time_series;
             out.name = out_type; //station name = key name
 
-            std::string fname = "";
+            std::string fname;
             try
             {
                 fname = itr.second.get<std::string>("file");
@@ -1097,10 +1097,9 @@ void core::config_output(pt::ptree &value)
                 out.mesh_output_formats = output_info::mesh_outputs::ugrid;
 
             out.name = out_type;
+            out.base_name = itr.second.get<std::string>("base_name", output_dir);
 
-            auto fname = output_dir;
-            //itr.second.get<std::string>("base_name","output");
-            auto f = msh_path / fname;
+            auto f = msh_path / out.base_name;
             boost::filesystem::create_directories(f.parent_path());
             out.fname = f.string();
 
@@ -1113,6 +1112,7 @@ void core::config_output(pt::ptree &value)
                 CHM_THROW_EXCEPTION(config_error, "ugrid output cannot have write_ghost_neighbors=true");
             }
             _mesh->write_ghost_neighbors_to_vtu(write_ghost) ;
+
 
             try
             {
@@ -1127,6 +1127,12 @@ void core::config_output(pt::ptree &value)
             }
 
             out.frequency = itr.second.get_optional<size_t>("frequency"); //defaults to every timestep
+            out.rotate_frequency = itr.second.get_optional<size_t>("rotate_frequency"); //defaults to never
+
+            if (out.rotate_frequency)
+            {
+                SPDLOG_DEBUG("Creating new UGRID output every {} timestep", *out.rotate_frequency);
+            }
 
             out.only_last_n = itr.second.get_optional<size_t>("only_last_n");
 
@@ -2193,7 +2199,6 @@ void core::run()
 {
     timer c;
 
-
     //setup a XML writer for the PVD paraview format
     pt::ptree pvd;
     pvd.add("VTKFile.<xmlattr>.type", "Collection");
@@ -2403,6 +2408,7 @@ void core::run()
         {
             if (itr.type == output_info::output_type::mesh)
             {
+
                 // check if we should output or not
                 bool do_output = itr.should_output(max_ts, current_ts, _global->_current_date);
 
@@ -2411,7 +2417,6 @@ void core::run()
 
                     std::vector<std::string> output;
                     output.assign(itr.variables.begin(),itr.variables.end()); //convert to list to match internal lists
-
 
                     if (itr.mesh_output_formats == output_info::mesh_outputs::vtu)
                     {
@@ -2445,8 +2450,18 @@ void core::run()
                     }
                     else if (itr.mesh_output_formats == output_info::mesh_outputs::ugrid)
                     {
-                        boost::filesystem::path ugrid_path = output_folder_path / (output_folder_path.filename().string() + ".nc");
-                        // SPDLOG_DEBUG("Outputting ugrid");
+                        // first, check if we need a new ugrid file
+                        bool new_ugrid = itr.should_rotate(max_ts, current_ts, _global->_current_date);
+
+                        auto base_name = itr.base_name;
+                        if (new_ugrid)
+                        {
+                            _mesh->close_ugrid();
+                            base_name = itr.base_name + "_" + to_iso_string(_global->posix_time());
+                        }
+
+                        boost::filesystem::path ugrid_path = output_folder_path / (base_name + ".nc");
+
                         _mesh->write_ugrid(output, ugrid_path.string());
                     }
                 }
@@ -2520,7 +2535,7 @@ void core::run()
 
     for (auto &itr : _outputs)
     {
-        if (itr.type == output_info::output_type::mesh)
+        if (itr.mesh_output_formats == output_info::mesh_outputs::vtu)
         {
 
 #ifdef USE_MPI

@@ -2387,11 +2387,12 @@ void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 }
 void triangulation::close_ugrid()
 {
+    SPDLOG_DEBUG("Closing ugrid file");
     if (_ugrid_fid != -1)
     {
-        SPDLOG_DEBUG("Closing ugrid file");
         nc_close(_ugrid_fid);
     }
+    _ugrid_fid = -1;
 }
 void triangulation::write_ugrid(std::vector<std::string> output_variables, std::string fname)
 {
