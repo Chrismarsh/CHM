@@ -93,6 +93,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/multi_array.hpp>
 #include <boost/iterator/zip_iterator.hpp>
 namespace pt = boost::property_tree;
 
@@ -131,16 +132,13 @@ using namespace H5;
 #include "gis.hpp"
 #include "station.hpp"
 #include "global.hpp"
-// use this to inform what our local ordinal type should be
-// this is the type we use to index the triangulation at. It can't have more precision that what
-// the global linear algebra solver can use
-// #include "LinearAlgebra.hpp"
 #include "vertex.hpp"
 #include "timeseries.hpp"
 #include "math/coordinates.hpp"
 #include "utility/xxh64.hpp"
 #include "timeseries/variablestorage.hpp"
 #include "ugrid.hpp"
+#include "timer.hpp"
 
 
 /**
@@ -458,6 +456,9 @@ public:
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
     size_t cell_global_id;
     size_t cell_local_id;
+
+    //continuous, monotonically increasing ID
+    size_t cell_continuous_global_id;
 
 
     /**
@@ -1158,7 +1159,7 @@ protected:
   std::map< int, std::vector<mesh_elem> >
       ghost_faces_to_recv; // key=process to send to, entry=locally owned pointer to face
 
-    std::vector<int> _global_IDs;
+ std::vector<int> _global_IDs;
 
   std::vector< std::shared_ptr<station> > _stations;
 

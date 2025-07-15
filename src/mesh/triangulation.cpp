@@ -918,9 +918,12 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             auto vert3 = _vertexes.at(elem[i][2]);
 
             auto face = this->create_face(vert1, vert2, vert3);
+
             // get the global ID from file, so-as to support either pre partitioned or non partitioned meshes
             face->cell_global_id = _global_IDs.at(i);
             face->owner = owner.at(i);
+
+            face->cell_continuous_global_id = i * (_comm_world.rank()+1);
 
             // this local id will include local ids for ghosts. However, that will need to be reset once partition
             // splits out the ghosts
@@ -2402,27 +2405,35 @@ void triangulation::write_ugrid(std::vector<std::string> output_variables, std::
         SPDLOG_DEBUG(fname);
         init_ugrid(variables, fname);
     }
+
     // use C api as boost doesn't have info
     MPI_Comm comm = _comm_world;
     MPI_Info info_used;
     MPI_Comm_get_info(comm, &info_used);
 
+    std::vector<size_t> all_face_offsets;
+    boost::mpi::all_gather(_comm_world, _num_faces, all_face_offsets);
+    size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + _comm_world.rank(), 0);
 
     double time = _global->posix_time_double()  / 60 ;
     size_t index = _global->timestep_counter;
     nc_put_var1_double(_ugrid_fid, _ugrid_id_var["time"], &index, &time);
 
-    for (size_t i = 0; i < this->size_faces(); i++)
+    for (auto& var : variables)
     {
-        mesh_elem fit = this->face(i);
-        size_t index[2] = {_global->timestep_counter, fit->cell_global_id};
-
-        for (auto& var : variables)
+        std::vector<double> v(_num_faces);
+        for (size_t i = 0; i < this->size_faces(); i++)
         {
-            double value = (*fit)[var];
+            double value = (*face(i))[var];
             if (value == -9999.) value = nan("");
-            nc_put_var1_double(_ugrid_fid, _ugrid_id_var[var], index, &value);
+            v.at(i) = value;
         }
+
+        size_t start[2] = {_global->timestep_counter, offset_face};
+        size_t count[2] = {1, _num_faces};
+
+        nc_put_vara_double(_ugrid_fid, _ugrid_id_var[var], start,count,v.data());
+
     }
 
     MPI_Info_free(&info_used);
@@ -2430,7 +2441,7 @@ void triangulation::write_ugrid(std::vector<std::string> output_variables, std::
 
 void triangulation::init_ugrid(std::vector<std::string> output_variables, std::string fname)
 {
-
+    timer c;
     // use C api as boost doesn't have info
     MPI_Comm comm = _comm_world;
     MPI_Info info_used;
@@ -2448,11 +2459,18 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     // Rank 1 => [_num_local_vertex_on_rank0, _num_local_vertex_on_rank1)
     // etc
 
+    SPDLOG_DEBUG("Starting ugrid def write");
+    c.tic();
+
     std::vector<size_t> all_offsets;
     boost::mpi::all_gather(_comm_world, _num_local_vertex, all_offsets);
 
     // Our rank needs the sum of all the vertexes from the preceeding ranks as its start offset
     size_t offset = std::accumulate(all_offsets.begin(), all_offsets.begin() + _comm_world.rank(), 0);
+
+    std::vector<size_t> all_face_offsets;
+    boost::mpi::all_gather(_comm_world, _num_faces, all_face_offsets);
+    size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + _comm_world.rank(), 0);
 
     // When the mesh is read we only know the number of vertexes on each rank, not the global number
     // This gathers the number of vertexes per rank.
@@ -2541,12 +2559,17 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     nc_put_att_double(_ugrid_fid, var_Mesh2_node_z_PV, "_FillValue", NC_DOUBLE, 1, &nan_value);
 
 
-    int var_global_id, var_Mesh2_face_x, var_Mesh2_face_y, var_Mesh2_face_z;
+    int var_global_id, var_local_id, var_Mesh2_face_x, var_Mesh2_face_y, var_Mesh2_face_z;
 
     nc_def_var(_ugrid_fid, "global_id", NC_UINT64, 1, &dim_Mesh2_face, &var_global_id);
     nc_put_att_text(_ugrid_fid, var_global_id, "mesh", strlen("Mesh2"), "Mesh2");
     nc_put_att_text(_ugrid_fid, var_global_id, "location", strlen("face"), "face");
     nc_put_att_text(_ugrid_fid, var_global_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
+
+    nc_def_var(_ugrid_fid, "local_id", NC_UINT64, 1, &dim_Mesh2_face, &var_local_id);
+    nc_put_att_text(_ugrid_fid, var_local_id, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(_ugrid_fid, var_local_id, "location", strlen("face"), "face");
+    nc_put_att_text(_ugrid_fid, var_local_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
 
     nc_def_var(_ugrid_fid, "Mesh2_face_x", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_x);
     nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "standard_name", strlen("latitude"), "latitude");
@@ -2605,8 +2628,11 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
 
     }
 
-
+    nc_var_par_access(_ugrid_fid, NC_GLOBAL, NC_COLLECTIVE);
     nc_enddef(_ugrid_fid); // End define mode
+
+    auto t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid def section -- {} ms", t);
 
 
     // Fill node_x, node_y, node_z, face_nodes, face_neighbors, face_gid, static_param
@@ -2623,92 +2649,206 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
 
     OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
 
-    for (size_t i = 0; i < this->size_faces(); i++)
+    c.tic();
+
+    // write the vertexes
     {
-        mesh_elem fit = this->face(i);
+        std::vector<double> v_x(_num_local_vertex);
+        std::vector<double> v_y(_num_local_vertex);
+        std::vector<double> v_z(_num_local_vertex);
+        std::vector<double> v_z_scaled(_num_local_vertex);
 
-        // loop over vertices of a face
-        for (int j=0;j<3;++j)
+        for (size_t i = 0; i < _vertexes.size(); i++)
         {
-            auto vit = fit->vertex(j);
-            size_t global_id = vit->get_id() + offset;
-
-            // The vtk writer has a handler to ensure duplicate points aren't added
-            // but that strategy isn't needed here
-            double x = vit->point().x();
-            double y = vit->point().y();
-            double z = vit->point().z();
-
-            if(!coordTrans->Transform(1, &x, &y))
-            {
-                CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
-            }
-
-            nc_put_var1_double(_ugrid_fid, var_Mesh2_node_x, &global_id, &x);
-            nc_put_var1_double(_ugrid_fid, var_Mesh2_node_y, &global_id, &y);
-            nc_put_var1_double(_ugrid_fid, var_Mesh2_node_z, &global_id, &z);
+            auto vit = _vertexes.at(i);
+            v_x.at(i) = vit->point().x();
+            v_y.at(i) = vit->point().y();
+            v_z.at(i) = vit->point().z();
 
             // scale Z for paraview 3D view
-            z = z/100000.;
-            nc_put_var1_double(_ugrid_fid, var_Mesh2_node_z_PV, &global_id, &z);
+            v_z_scaled.at(i) = vit->point().z() / 100000. ;
         }
 
-        size_t start[2] = {fit->cell_global_id, 0};   // Start at face_idx, first node
-        size_t count[2] = {1, 3};          // One face, all three nodes
-
-        // uint64_t causes Paraview to crash so these indexes can't be bigger than uint
-        const unsigned int face_data[3] = {
-            static_cast<unsigned int>(fit->vertex(0)->get_id() + offset),
-            static_cast<unsigned int>(fit->vertex(1)->get_id() + offset),
-            static_cast<unsigned int>(fit->vertex(2)->get_id() + offset)
-        };
-        nc_put_vara_uint(_ugrid_fid, var_Mesh2_face_nodes, start, count, face_data);
-
-        double fit_c_x = fit->center().x();
-        double fit_c_y = fit->center().y();
-        double fit_c_z = fit->center().z();
-        if(!coordTrans->Transform(1, &fit_c_x, &fit_c_y))
+        if (!coordTrans->Transform(_num_local_vertex, v_x.data(), v_y.data()))
         {
             CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
         }
-        nc_put_var1_double(_ugrid_fid, var_Mesh2_face_x, &fit->cell_global_id, &fit_c_x);
-        nc_put_var1_double(_ugrid_fid, var_Mesh2_face_y, &fit->cell_global_id, &fit_c_y);
-        nc_put_var1_double(_ugrid_fid, var_Mesh2_face_z, &fit->cell_global_id, &fit_c_z);
 
-        // size_t to ulonlong should be safe
-        auto gid = static_cast<unsigned long long>(fit->cell_global_id);
-        nc_put_var1_ulonglong(_ugrid_fid, var_global_id, &fit->cell_global_id, &gid);
+        size_t start_v[1] = {offset};
+        size_t count_v[1] = {_num_local_vertex};
 
-        if(_write_parameters)
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_node_x, start_v, count_v, v_x.data());
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_node_y, start_v, count_v, v_y.data());
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_node_z, start_v, count_v, v_z.data());
+
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_node_z_PV, start_v, count_v, v_z_scaled.data());
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid vertex -- {} ms", t);
+
+
+    c.tic();
+    // Write the connectivity matrix that defines what vertexes each face is comprised of
+    {
+        boost::multi_array<unsigned int,2> connectivity(boost::extents[_num_faces][3]);
+        for (size_t i = 0; i < this->size_faces(); i++)
         {
+            auto fit = this->face(i);
+            connectivity[i][0] = static_cast<unsigned int>(fit->vertex(0)->get_id() + offset);
+            connectivity[i][1] = static_cast<unsigned int>(fit->vertex(1)->get_id() + offset);
+            connectivity[i][2] = static_cast<unsigned int>(fit->vertex(2)->get_id() + offset);
+        }
 
-            auto params = this->face(0)->parameters();
-            for (auto &v: params)
+        size_t start[2] = {offset_face, 0};   // Start at face_idx, first node
+        size_t count[2] = {_num_faces, 3};          // One face, all three nodes
+        nc_put_vara_uint(_ugrid_fid, var_Mesh2_face_nodes, start, count, connectivity.data());
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid connectivity -- {} ms", t);
+
+    c.tic();
+    // Write the x,y,z for the face centers
+    {
+        std::vector<double> f_x(_num_faces);
+        std::vector<double> f_y(_num_faces);
+        std::vector<double> f_z(_num_faces);
+
+        for (size_t i = 0; i < this->size_faces(); i++)
+        {
+            auto fit = this->face(i);
+
+           f_x.at(i) = fit->center().x();
+           f_y.at(i) = fit->center().y();
+           f_z.at(i) = fit->center().z();
+        }
+
+        if (!coordTrans->Transform(_num_faces, f_x.data(), f_y.data()))
+        {
+            CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
+        }
+
+        size_t start[1] = {offset_face};
+        size_t count[1] = {_num_faces};
+
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_face_x, start, count, f_x.data());
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_face_y, start, count, f_y.data());
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_face_z, start, count, f_z.data());
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid xyz centres -- {} ms", t);
+
+    c.tic();
+    {
+        size_t start[1] = {offset_face};
+        size_t count[1] = {_num_faces};
+
+        // update to uing / size_t nc_put_var1_ulonglong
+        nc_put_vara_int(_ugrid_fid, var_global_id, start, count, _global_IDs.data());
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid global_id -- {} ms", t);
+
+    c.tic();
+    if(_write_parameters)
+    {
+        // This strategy takes a bit more CPU because of param* n_face iterations, but cuts down on having to store
+        // entire duplicates of the mesh
+        for (auto &v: face(0)->parameters())
+        {
+            std::vector<double> param(_num_faces);
+
+            for (size_t i = 0; i < this->size_faces(); i++)
             {
-                double p = fit->parameter(v);
+                double p = face(i)->parameter(v);
                 if( p == -9999.) p = nan("");
-
-                nc_put_var1_double(_ugrid_fid, param_id[v], &fit->cell_global_id, &p);
+                param.at(i) = p;
             }
 
-            double tmp = fit->slope();
-            nc_put_var1_double(_ugrid_fid, param_id["Slope"], &fit->cell_global_id, &tmp);
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id[v], start, count, param.data());
+        }
 
-            tmp = fit->aspect();
-            nc_put_var1_double(_ugrid_fid, param_id["Aspect"], &fit->cell_global_id, &tmp);
+        // Slope
+        {
+            std::vector<double> param(_num_faces);
 
-            tmp = fit->get_area();
-            nc_put_var1_double(_ugrid_fid, param_id["Area"], &fit->cell_global_id, &tmp);
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->slope();
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
 
-            auto tmp_i = _comm_world.rank();
-            nc_put_var1_int(_ugrid_fid, param_id["owner"], &fit->cell_global_id, &tmp_i);
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id["Slope"], start, count, param.data());
+        }
 
-            tmp = fit->get_z();
-            nc_put_var1_double(_ugrid_fid, param_id["Elevation"], &fit->cell_global_id, &tmp);
+        // Aspect
+        {
+            std::vector<double> param(_num_faces);
 
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->aspect();
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id["Aspect"], start, count, param.data());
+        }
+
+        // Area
+        {
+            std::vector<double> param(_num_faces);
+
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->get_area();
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id["Area"], start, count, param.data());
+        }
+
+
+        // Elevation
+        {
+            std::vector<double> param(_num_faces);
+
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->get_z();
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id["Elevation"], start, count, param.data());
+        }
+
+        // Slope
+        {
+            std::vector<int> param(_num_faces, _comm_world.rank());
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_int(_ugrid_fid, param_id["owner"], start, count, param.data());
         }
 
     }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid params -- {} ms", t);
+
+
+
 
     // The file is closed from core::run() because it needs to be kept open to write to but closed
     // before the MPI finalized is closed, ie can't do this when ~triangulation is called
