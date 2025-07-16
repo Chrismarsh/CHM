@@ -116,7 +116,7 @@ void soil_ET::run()
 
         DTO.actual_soil_ET += ET;
         std::cout << "in soil ET" << std::endl;
-        if (DTO.is_lake(DTO))
+        if (DTO.is_lake)
         {
             std::cout << "out" <<  std::endl;
             DTO.actual_soil_ET = DTO.actual_ET;
