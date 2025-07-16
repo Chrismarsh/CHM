@@ -2403,7 +2403,11 @@ void triangulation::write_ugrid(std::vector<std::string> output_variables, std::
     if (_ugrid_fid==-1)
     {
         SPDLOG_DEBUG(fname);
-        init_ugrid(variables, fname);
+        // if we are resuming from checkpoint, don't mangle out existing ugrid!
+        if (_global->from_checkpoint())
+            open_ugrid(variables, fname);
+        else
+            init_ugrid(variables, fname);
     }
 
     // use C api as boost doesn't have info
@@ -2438,7 +2442,41 @@ void triangulation::write_ugrid(std::vector<std::string> output_variables, std::
 
     MPI_Info_free(&info_used);
 }
+void triangulation::open_ugrid(std::vector<std::string> output_variables, std::string fname)
+{
+    if (_ugrid_fid != -1)
+    {
+        CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file is already open");
+    }
 
+    if (!boost::filesystem::exists(fname))
+    {
+        CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file is not found");
+    }
+
+    MPI_Comm comm = _comm_world;
+    MPI_Info info_used;
+    MPI_Comm_get_info(comm, &info_used);
+    int status = nc_open_par(fname.c_str(), NC_WRITE, _comm_world, info_used, &_ugrid_fid);
+
+    int nvars;
+    char name[NC_MAX_NAME + 1];
+    nc_inq_nvars(_ugrid_fid, &nvars);
+
+    for (int varid = 0; varid < nvars; ++varid)
+    {
+        nc_inq_varname(_ugrid_fid, varid, name);
+
+        if (std::find(output_variables.begin(), output_variables.end(), name) == output_variables.end())
+        {
+            CHM_THROW_EXCEPTION(model_init_error, "Asking for variable " std::string(name) + " to be output that doesn't exist in the ugrid!");
+        }
+
+        _ugrid_id_var[std::string(name)] = varid;
+    }
+
+    MPI_Info_free(&info_used);
+}
 void triangulation::init_ugrid(std::vector<std::string> output_variables, std::string fname)
 {
     timer c;
@@ -2446,6 +2484,7 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
     MPI_Comm comm = _comm_world;
     MPI_Info info_used;
     MPI_Comm_get_info(comm, &info_used);
+
 
     int status = nc_create_par(fname.c_str(), NC_NETCDF4 | NC_CLOBBER, comm, info_used, &_ugrid_fid);
     if (status != NC_NOERR)
@@ -2669,10 +2708,10 @@ void triangulation::init_ugrid(std::vector<std::string> output_variables, std::s
             v_z_scaled.at(i) = vit->point().z() / 100000. ;
         }
 
-        if (!coordTrans->Transform(_num_local_vertex, v_x.data(), v_y.data()))
-        {
-            CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
-        }
+        // if (!coordTrans->Transform(_num_local_vertex, v_x.data(), v_y.data()))
+        // {
+        //     CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
+        // }
 
         size_t start_v[1] = {offset};
         size_t count_v[1] = {_num_local_vertex};

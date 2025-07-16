@@ -90,6 +90,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <boost/tuple/tuple.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -843,6 +844,10 @@ public:
     void init_vtkUnstructured_Grid(std::vector<std::string> output_variables);
 
     void init_ugrid(std::vector<std::string> output_variables, std::string fname);
+
+    // opens an existing ugrid, such as when resuming from checkpoint
+    // assumes the main topology structure has been written
+    void open_ugrid(std::vector<std::string> output_variables, std::string fname);
     void write_ugrid(std::vector<std::string> output_variables, std::string fname);
     void close_ugrid(); // unlike vtu, we have to close the ugrid before mpi finalize has been called
 
