@@ -65,27 +65,20 @@ void iswr::run(mesh_elem& face)
     //radiation data
     //solar vector
     //xyz cartesian
-    arma::vec S;
-    S << cos(E) * sin(A) << arma::endr
-      << cos(E) * cos(A) << arma::endr
-      << sin(E) << arma::endr;
+    arma::vec S ={ cos(E) * sin(A), cos(E) * cos(A), sin(E)};
 
     arma::vec N;
     if (assume_no_slope)
     {
 
-        N << 0 << arma::endr
-        << 0 << arma::endr
-        << 1 << arma::endr;
+        N ={0, 0, 1};
     }
     else
     {
         Vector_3 n = face->normal();
 
 
-        N << n[0] << arma::endr
-        << n[1] << arma::endr
-        << n[2] << arma::endr;
+        N = {n[0],  n[1], n[2]};
     }
 
 

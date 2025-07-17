@@ -4,11 +4,6 @@
 # configuration settings.
 spack:
   definitions:
-#  - vtk: [ "vtk@9.2:" ]
-##    when: '"ubuntu" not in os'
-## has a compilation error in llvm when enabled
-#    - vtk: [ "vtk@9.2.6: ^mesa~llvm" ]
-#      when: '"linux" in platform'
     - tbb: ["intel-tbb"]
       when: '"darwin" in platform'
     - tbb: [ "intel-oneapi-tbb" ]
@@ -28,16 +23,19 @@ spack:
     - "eigen"
     - "meteoio"
     - "func@2.2.0: ~openmp"
-    - "trilinos@15.1.1 +mpi"
+    - "trilinos@15: +mpi"
     - "jemalloc"
-    - "vtk@9.2:"
     - "spdlog"
     - "openblas"
     - "cmake@3.30:"
     - "openmpi"
-    - "vtk@9.2:"
-    - "gcc@14"
+    - "vtk@9.3:"
+    # - "gcc@14"
   #  - udunits
-  view: true
+  view:
+    default:
+      root: .spack-env/view
+      projections:
+        all: '{name}/{version}-{compiler.name}'
   concretizer:
     unify: true

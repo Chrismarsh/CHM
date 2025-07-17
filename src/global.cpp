@@ -30,6 +30,7 @@ global::global()
     _is_point_mode = false;
     timestep_counter=0;
     _from_checkpoint = false;
+    _n_timestep = 0;
 }
 
 bool global::is_geographic()
@@ -72,6 +73,13 @@ uint64_t global::posix_time_int()
     return duration.total_seconds();
 }
 
+double global::posix_time_double()
+{
+    const boost::posix_time::ptime epoch = boost::posix_time::from_time_t(0);
+    boost::posix_time::time_duration duration = _current_date - epoch;
+    return duration.total_seconds();
+}
+
 int global::dt()
 {
     return _dt;
@@ -85,4 +93,9 @@ bool  global::is_point_mode()
 bool global::from_checkpoint()
 {
     return _from_checkpoint;
+}
+
+size_t global::n_timesteps()
+{
+    return _n_timestep;
 }

@@ -26,6 +26,7 @@ target_link_libraries(SNOWPACK PUBLIC
     Boost::regex
     Boost::iostreams
     Boost::program_options
+    spdlog::spdlog
 )
 
 
@@ -40,6 +41,8 @@ add_library(SNOBAL OBJECT
 target_link_libraries(SNOBAL PUBLIC
     Func::Func
     Boost::headers
+    spdlog::spdlog
+    ARMADILLO::ARMADILLO # needs to be upper case
 )
 if(OpenMP_FOUND)
     target_link_libraries(SNOBAL PUBLIC OpenMP::OpenMP_CXX)

@@ -16,14 +16,10 @@
 
 #pragma once
 
-#include "interpolation.hpp"
-#include "gis.hpp"
-#include "station.hpp"
-#include "global.hpp"
+// CGAL includes
 
 //for valgrind, remove
 #define CGAL_DISABLE_ROUNDING_MATH_CHECK
-// CGAL includes
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Kd_tree.h>
 #include <CGAL/algorithm.h>
@@ -47,6 +43,7 @@
 #include <CGAL/Euclidean_distance.h>
 #include <CGAL/property_map.h>
 
+// openmp includes
 #ifdef _OPENMP
 #include <omp.h>
 #else
@@ -56,6 +53,7 @@ inline int omp_get_thread_num() { return 0;}
 inline int omp_get_max_threads() { return 1;}
 #endif
 
+// std includes
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -68,11 +66,11 @@ inline int omp_get_max_threads() { return 1;}
 #include <utility>
 #include <random> // for send/recv tag generation
 
-
+// other libs
 #include <armadillo>
-
 #include <ogr_spatialref.h>
 
+// sparsehash includes
 #ifdef USE_SPARSEHASH
 #include <sparsehash/dense_hash_map>
 #else
@@ -92,22 +90,17 @@ inline int omp_get_max_threads() { return 1;}
 #include <boost/tuple/tuple.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/multi_array.hpp>
 #include <boost/iterator/zip_iterator.hpp>
-
+namespace pt = boost::property_tree;
 
 // tbb includes
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_sort.h>
-
-
-
-namespace pt = boost::property_tree;
-
-//required for the spatial searching
-
 
 // vtk includes
 #include <vtkVersion.h>
@@ -123,25 +116,35 @@ namespace pt = boost::property_tree;
 #include <vtkUnstructuredGrid.h>
 #include <vtkPoints.h>
 
-
+// MPI incldues
 #ifdef USE_MPI
 #include <boost/mpi.hpp>
 #include <boost/serialization/vector.hpp>
 #endif
 
+// hdf5 include
+#include "H5Cpp.h"
+using namespace H5;
+
+#include <netcdf>
+
+// CHM includes
+#include "interpolation.hpp"
+#include "gis.hpp"
+#include "station.hpp"
+#include "global.hpp"
 #include "vertex.hpp"
 #include "timeseries.hpp"
 #include "math/coordinates.hpp"
 #include "utility/xxh64.hpp"
-
 #include "timeseries/variablestorage.hpp"
+#include "ugrid.hpp"
+#include "timer.hpp"
 
-// #include "hdf5.h"
-#include "H5Cpp.h"
-using namespace H5;
+
 /**
 * \struct face_info
-* A way of embedding arbirtrary data into the face. This is how modules should store their data.
+* A way of embedding arbitrary data into the face. This is how modules should store their data.
 */
 struct face_info
 {
@@ -165,7 +168,6 @@ typedef K::Vector_2 Vector_2;
 typedef CGAL::Projection_traits_xy_3<K> Gt; //allows for using 2D algorithms on the 3D points
 
 typedef ex_vertex<Gt> Vb; //custom vertex class
-
 
 
 
@@ -482,6 +484,9 @@ public:
     size_t cell_global_id;
     size_t cell_local_id;
 
+    //continuous, monotonically increasing ID
+    size_t cell_continuous_global_id;
+
 
     /**
      * Gets the face parameter value. E.g., landcover type
@@ -657,6 +662,8 @@ public:
 
     /**
     * Sets a new order to the face numbering.
+    * global_ordinal_type is used as this may be called with the json -> h5 conversion step which has the entire
+    * mesh in memory
     * \param permutation desired ordering
     */
   void reorder_faces(std::vector<size_t> permutation);
@@ -861,6 +868,14 @@ public:
      * If output to the mesh vtk/vtu format is required, this will be allocate the vtk data structure.
      */
     void init_vtkUnstructured_Grid(std::vector<std::string> output_variables);
+
+    void init_ugrid(std::vector<std::string> output_variables, std::string fname);
+
+    // opens an existing ugrid, such as when resuming from checkpoint
+    // assumes the main topology structure has been written
+    void open_ugrid(std::vector<std::string> output_variables, std::string fname);
+    void write_ugrid(std::vector<std::string> output_variables, std::string fname);
+    void close_ugrid(); // unlike vtu, we have to close the ugrid before mpi finalize has been called
 
     /// Initializes all the face timeseries to hold the selected variables
     /// @param variables
@@ -1067,7 +1082,11 @@ protected:
 
     size_t _num_faces; //number of faces, in MPI mode this will be the local number of faces
     size_t _num_global_faces; //number of global faces
-    size_t _num_vertex; //number of rows in the original data matrix.
+
+    //number of local vertexes. This includes vertices that are used in ghost face construction
+    size_t _num_local_vertex;
+
+
     K::Iso_rectangle_2 _bbox;
     bool _is_geographic;
     bool _mesh_is_from_partition;
@@ -1091,9 +1110,15 @@ protected:
 #endif
 
     //should we write parameters to the vtu file?
-    bool _write_parameters_to_vtu;
+    bool _write_parameters;
     //should we write ghost neighbor faces to the vtu file?
     bool _write_ghost_neighbors_to_vtu;
+
+    //holds the file id for the ugrid output netcdf
+    int _ugrid_fid;
+
+    //maps the variable string to the netcdf id to write to file
+    std::map<std::string, int> _ugrid_id_var;
 
     // min and max elevations
     double _min_z;
@@ -1165,7 +1190,7 @@ protected:
   std::map< int, std::vector<mesh_elem> >
       ghost_faces_to_recv; // key=process to send to, entry=locally owned pointer to face
 
-    std::vector<int> _global_IDs;
+ std::vector<int> _global_IDs;
 
   std::vector< std::shared_ptr<station> > _stations;
 

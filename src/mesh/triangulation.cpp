@@ -66,6 +66,8 @@ triangulation::triangulation()
     geographic_dims=1;
     partition_dims=1;
 
+    _ugrid_fid = -1;
+
 }
 
 
@@ -82,7 +84,7 @@ std::string triangulation::proj4()
 
 void triangulation::write_param_to_vtu(bool write_param)
 {
-    _write_parameters_to_vtu = write_param;
+    _write_parameters = write_param;
 }
 
 void triangulation::write_ghost_neighbors_to_vtu(bool write_ghost_neighbors)
@@ -110,7 +112,7 @@ size_t triangulation::size_global_faces()
 
 size_t triangulation::size_vertex()
 {
-    return _num_vertex;
+    return _num_local_vertex;
 }
 
 mesh_elem triangulation::locate_face(double x, double y)
@@ -217,7 +219,7 @@ void triangulation::from_json(pt::ptree &mesh)
     SPDLOG_DEBUG("Reading in #vertex={}",nvertex_toread);
     size_t i=0;
 
-    //paraview struggles with lat/long as it doesn't seem to have the accuracy. So we need to scale up lat-long.
+    //paraview struggles with lat/long as it doesn"t seem to have the accuracy. So we need to scale up lat-long.
     int is_geographic = mesh.get<int>("mesh.is_geographic");
     if( is_geographic == 1)
     {
@@ -258,8 +260,8 @@ void triangulation::from_json(pt::ptree &mesh)
         _vertexes.push_back(Vh);
         i++;
     }
-    _num_vertex = this->number_of_vertices();
-    SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
+    _num_local_vertex = this->number_of_vertices();
+    SPDLOG_DEBUG("# nodes created = {}",_num_local_vertex);
 
     if( this->number_of_vertices() != nvertex_toread)
     {
@@ -362,17 +364,17 @@ void triangulation::from_json(pt::ptree &mesh)
         // build up the entire list of parameters so we can use this to init the per-face parameter
         // storage later
 
-        std::set<std::string> blacklist; // holds any parameters that have 0 length, eg "area": [],
+        std::set<std::string> excludelist; // holds any parameters that have 0 length, eg "area": [],
         for (auto &itr : mesh.get_child("parameters"))
         {
             // we could have an item like this
             // "area": [],
-            // and we need to ensure we *don't* load those
+            // and we need to ensure we *don"t* load those
             std::string name = itr.first.data();
             size_t i=0;
             for (auto &jtr : itr.second)
             {
-                //just count the first couple items, make sure it's non zero
+                //just count the first couple items, make sure it"s non zero
                 if(i > 1)
                     break;
                 ++i;
@@ -380,7 +382,7 @@ void triangulation::from_json(pt::ptree &mesh)
 
             if(i == 0)
             {
-                blacklist.insert(name);
+                excludelist.insert(name);
                 SPDLOG_WARN("Parameter " + name + " is zero length and will be ignored.");
             } else {
                 _parameters.insert(name);
@@ -401,8 +403,8 @@ void triangulation::from_json(pt::ptree &mesh)
             i = 0; // reset evertime we get a new parameter set
             auto name = itr.first.data();
 
-            if(blacklist.find(name) != blacklist.end())
-                continue; // skip blacklisted ones, as we don't want to use these
+            if(excludelist.find(name) != excludelist.end())
+                continue; // skip blacklisted ones, as we don"t want to use these
 
             SPDLOG_DEBUG("Applying parameter: {}",name);
 
@@ -424,7 +426,7 @@ void triangulation::from_json(pt::ptree &mesh)
         }
     }catch(pt::ptree_bad_path& e)
     {
-        // we don't have this section, no worries
+        // we don"t have this section, no worries
         // but we still need to build up the face storage as we may have parameters from a module
         // init the storage, which builds the mphf
 #pragma omp parallel for
@@ -455,10 +457,10 @@ void triangulation::from_json(pt::ptree &mesh)
         }
     }catch(pt::ptree_bad_path& e)
     {
-        // we don't have this section, no worries
+        // we don"t have this section, no worries
     }
     _num_faces = this->number_of_faces();
-    _num_vertex = this->number_of_vertices();
+    _num_local_vertex = this->number_of_vertices();
 
     // Get local sizes for each rank
     // If not available, use the old "balanced" setting
@@ -490,7 +492,7 @@ void triangulation::from_json(pt::ptree &mesh)
         SPDLOG_DEBUG("No face permutation.");
     }
 
-    // Don't actually want to partition the mesh. Use the non-MPI one
+    // Don"t actually want to partition the mesh. Use the non-MPI one
     partition_mesh_nonMPI(_faces.size());
 
     _build_dDtree();
@@ -777,7 +779,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         }
         catch (AttributeIException& e)
         {
-            // non partition meshes won't have this
+            // non partition meshes won"t have this
             _mesh_is_from_partition = false;
         }
 
@@ -806,7 +808,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
         }
 
         // if we are from a partition we are loading _local_sizes from the partition file not from the h5
-        // they're almost always identical /unless/ we have created a subset debugging partition file (e.g., -v 1 -v 2)
+        // they"re almost always identical /unless/ we have created a subset debugging partition file (e.g., -v 1 -v 2)
         // in this case, the partition file will have the "real" number of partitions whereas this h5 is
         // before we subset it
         if(!_mesh_is_from_partition)
@@ -840,7 +842,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
     std::vector<int> owner; //what MPIrank owns each triangle,
     {
-        // if we have a h5 that isn't partitioned (ie mesh <v3.0.0) then we are entirely owned by rank 0
+        // if we have a h5 that isn"t partitioned (ie mesh <v3.0.0) then we are entirely owned by rank 0
         if(_version.to_string() == "1.0.0" ||
             _version.to_string() == "1.2.0" ||
             _version.to_string() == "2.0.0")
@@ -890,15 +892,10 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             Vh->set_id(i);
             _vertexes.push_back(Vh);
 
-            // std::cout << i << ":";
-            // for(int j=0; j< 3; ++j){
-            //   std::cout << " " << vertex[i][j];
-            // }
-            // std::cout << "\n";
         }
 
-        _num_vertex = _vertexes.size();
-        SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
+        _num_local_vertex = _vertexes.size();
+        SPDLOG_DEBUG("# nodes created = {}",_num_local_vertex);
     }
 
     {
@@ -921,9 +918,12 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
             auto vert3 = _vertexes.at(elem[i][2]);
 
             auto face = this->create_face(vert1, vert2, vert3);
+
             // get the global ID from file, so-as to support either pre partitioned or non partitioned meshes
             face->cell_global_id = _global_IDs.at(i);
             face->owner = owner.at(i);
+
+            face->cell_continuous_global_id = i * (_comm_world.rank()+1);
 
             // this local id will include local ids for ghosts. However, that will need to be reset once partition
             // splits out the ghosts
@@ -992,7 +992,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 //            // if we are loading from a partition, convert these to local ids
             if(_mesh_is_from_partition)
             {
-                // neighbours that are missing come in as -1 so they won't cleanly remap
+                // neighbours that are missing come in as -1 so they won"t cleanly remap
 
                 neigh_i_0_idx = neigh_i_0_idx != -1 ? _global_to_locally_owned_index_map[neigh_i_0_idx] : -1;
                 neigh_i_1_idx = neigh_i_1_idx != -1 ? _global_to_locally_owned_index_map[neigh_i_1_idx] : -1;
@@ -1155,7 +1155,7 @@ void triangulation::from_partitioned_hdf5(const std::string& partition_filename,
         SPDLOG_DEBUG("No addtional initial conditions found in mesh section.");
     }
 
-    // keep just our rank's. The hdf5 loader expects a vector of potential files so make a vector of 1
+    // keep just our rank"s. The hdf5 loader expects a vector of potential files so make a vector of 1
 
     int tmp_rank = 0; // play nicely in non mpi builds
 #ifdef USE_MPI
@@ -1237,7 +1237,7 @@ void triangulation::from_hdf5(const std::string& mesh_filename,
 void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_filenames)
 {
 
-    // we might have modules params but we aren't loading file params, so do the init here
+    // we might have modules params but we aren"t loading file params, so do the init here
     // this is a copy paste as the logic in the main loop below has to handle loading multiple param files
 
     if (param_filenames.empty())
@@ -1336,7 +1336,7 @@ void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_
 
                 // _num_faces will have been set to the local face size in MPI mode
                 // however, if we are reading from a partitioned mesh file, we can actually load the entire set of
-                // faces' data in one go
+                // faces" data in one go
                 hsize_t local_size = static_cast<hsize_t>(
                     _mesh_is_from_partition ? _faces.size() : _num_faces);
 
@@ -1420,9 +1420,9 @@ void triangulation::load_hdf5_parameters( const std::vector<std::string>& param_
 
 void triangulation::reorder_faces(std::vector<size_t> permutation)
 {
-  // NOTE: be careful with evaluating this, the 'cell_global_id's and a
-  // cell's position in the '_faces' vec are unrelated. They must both
-  // be modified (ie. renumber the 'cell_global_id's, AND sort the '_faces'
+  // NOTE: be careful with evaluating this, the "cell_global_id"s and a
+  // cell"s position in the "_faces" vec are unrelated. They must both
+  // be modified (ie. renumber the "cell_global_id"s, AND sort the "_faces"
   // vector) before the new ordering is consistent.
 
   assert( permutation.size() == size_faces() );
@@ -1483,14 +1483,14 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 
     SPDLOG_DEBUG(mesh_filename);
 
-    // when we get to here, we have a mix of ghosts and not ghosts in _local_faces and don't have the sizes
+    // when we get to here, we have a mix of ghosts and not ghosts in _local_faces and don"t have the sizes
     // we need to pick this apart
     // since the faces are sorted coming from the partition tool, they will be sorted here. Since we grow arrays we
-    // can't do this in parallel which will preserve the sort. If this is every changed, then need to sort
+    // can"t do this in parallel which will preserve the sort. If this is every changed, then need to sort
 
 
     // here we loop through all (incl ghosts!) to figure out where everything should go.
-    // DO NOT do this in parallel (at the moment) as it's not thread safe
+    // DO NOT do this in parallel (at the moment) as it"s not thread safe
     size_t local_face_i = 0;
     for (size_t i = 0; i < _faces.size(); ++i)
     {
@@ -1510,7 +1510,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
         {
             _faces[i]->is_ghost = false;
 
-            // Although we set thsin from_h5 we need to reset it here such that it doesn't include ghosts
+            // Although we set this from_h5 we need to reset it here such that it doesn't include ghosts
             _faces[i]->cell_local_id = local_face_i;
 
             _local_faces.push_back(_faces[i]);
@@ -1521,7 +1521,7 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
         }
     }
 
-    // Set up so that all processors know how 'big' all other processors are
+    // Set up so that all processors know how "big" all other processors are
     _num_faces_in_partition.resize(_comm_world.size());
     for (unsigned int i = 0; i < _comm_world.size(); ++i)
     {
@@ -1547,13 +1547,13 @@ void triangulation::load_partition_from_mesh(const std::string& mesh_filename)
 //    if (face_start_idx != _local_faces.front()->cell_global_id ||
 //        face_end_idx != _local_faces.back()->cell_global_id)
 //    {
-//        LOG_ERROR << "The computed and read start/end index don't match. Computed:\n"
+//        LOG_ERROR << "The computed and read start/end index don"t match. Computed:\n"
 //                  << "\tface_start_idx = " << face_start_idx << "\n"
 //                  << "\tface_end_idx = " << face_end_idx << "\n"
 //                  << "Read:\n"
 //                  << "\t_local_faces[0] = " << _local_faces.front()->cell_global_id << "\n"
 //                  << "\t_local_faces[-1] = " << _local_faces.back()->cell_global_id;
-//        CHM_THROW_EXCEPTION(mesh_error, "Computed and read global indexs don't match");
+//        CHM_THROW_EXCEPTION(mesh_error, "Computed and read global indexs don"t match");
 //    }
 
     // Store in the public members
@@ -1621,7 +1621,7 @@ void triangulation::partition_mesh()
 
     int my_rank = _comm_world.rank();
 
-    // Set up so that all processors know how 'big' all other processors are
+    // Set up so that all processors know how "big" all other processors are
     _num_faces_in_partition.resize(_comm_world.size(), _num_global_faces / _comm_world.size());
     for (unsigned int i = 0; i < _num_global_faces % _comm_world.size(); ++i)
     {
@@ -1643,7 +1643,7 @@ void triangulation::partition_mesh()
     // Set size of vector containing locally owned faces
     _local_faces.resize(_num_faces_in_partition[_comm_world.rank()]);
 
-    // Loop can't be parallel due to modifying map
+    // Loop can"t be parallel due to modifying map
     for (size_t local_ind = 0; local_ind < _local_faces.size(); ++local_ind)
     {
         size_t offset_idx = global_cell_start_idx + local_ind;
@@ -1688,7 +1688,7 @@ void triangulation::determine_local_boundary_faces()
   using th_safe_multicontainer_type = std::vector< std::pair<mesh_elem,bool> >[];
 
 #ifdef USE_MPI
-  // Need to ensure we're starting from nothing?
+  // Need to ensure we"re starting from nothing?
   assert( _boundary_faces.size() == 0 );
 
   SPDLOG_DEBUG("Determining local boundary faces");
@@ -1711,26 +1711,26 @@ void triangulation::determine_local_boundary_faces()
 
              int num_owned_neighbors = 0;
              for (int neigh_index = 0; neigh_index < 3; ++neigh_index)
-               {
+             {
 
                  auto neigh = face->neighbor(neigh_index);
 
-                 // Test status of neighbor
-                 if (neigh == nullptr)
-                   {
-                     th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
-                     num_owned_neighbors=3; // set this to avoid triggering the post-loop if statement
-                     break;
-                   } else
-                   {
-                     if (neigh->is_ghost == false)
-                       {
-                         num_owned_neighbors++;
-                       }
-                   }
-               }
+            // Test status of neighbor
+            if (neigh == nullptr)
+            {
+                th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,true));
+                num_owned_neighbors=3; // set this to avoid triggering the post-loop if statement
+                break;
+            } else
+            {
+                if (neigh->is_ghost == false)
+                {
+                    num_owned_neighbors++;
+                }
+            }
+             }
 
-             // If we don't own 3 neighbors, we are a local, but not a global boundary face
+             // If we don"t own 3 neighbors, we are a local, but not a global boundary face
              if( num_owned_neighbors<3 ) {
                th_local_boundary_faces[omp_get_thread_num()].push_back(std::make_pair(face,false));
              }
@@ -1868,7 +1868,7 @@ void triangulation::determine_ghost_owners()
         // on first it, no value of prev_owner exists... set it
         if(i==0) prev_owner = _ghost_neighbor_owners[i];
 
-        // if owner different from last owner, store prev segment's ownership info
+        // if owner different from last owner, store prev segment"s ownership info
         if (prev_owner != _ghost_neighbor_owners[i])
         {
             num_partners++;
@@ -2045,7 +2045,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
   // For each communication partner:
   // - pack vectors of the variable to send
   // - send/recv it
-  // - unpack the recv'd vectors into mesh_elem->face_data (so it can be used exactly as local info)
+  // - unpack the recv"d vectors into mesh_elem->face_data (so it can be used exactly as local info)
 
   std::vector<boost::mpi::request> reqs;
 
@@ -2157,7 +2157,7 @@ void triangulation::ghost_to_neighbors_communicate_variable(const uint64_t& var)
     // For each communication partner:
     // - pack vectors of the variable to send
     // - send/recv it
-    // - unpack the recv'd vectors into mesh_elem->face_data (so it can be used exactly as local info)
+    // - unpack the recv"d vectors into mesh_elem->face_data (so it can be used exactly as local info)
 
     std::vector<boost::mpi::request> reqs;
 
@@ -2253,7 +2253,7 @@ void dfs_to_max_distance_aux(mesh_elem starting_face, double max_distance, mesh_
 {
   // DFS auxiliary function, does all of the work constructing the set of faces
 
-  // if we're outside of the distance or already visited, we're done
+  // if we"re outside of the distance or already visited, we"re done
   bool is_not_within_distance = (math::gis::distance(starting_face->center(),face->center()) > max_distance);
   bool is_visited             = (visited.find(face) != visited.end());
   if(  is_not_within_distance || is_visited  )
@@ -2388,6 +2388,518 @@ void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
 
     m->to_file(fname);
 }
+void triangulation::close_ugrid()
+{
+    SPDLOG_DEBUG("Closing ugrid file");
+    if (_ugrid_fid != -1)
+    {
+        nc_close(_ugrid_fid);
+    }
+    _ugrid_fid = -1;
+}
+void triangulation::write_ugrid(std::vector<std::string> output_variables, std::string fname)
+{
+    auto variables = output_variables.size() == 0 ? this->face(0)->variables() : output_variables;
+    if (_ugrid_fid==-1)
+    {
+        SPDLOG_DEBUG(fname);
+        // if we are resuming from checkpoint, don't mangle out existing ugrid!
+        if (_global->from_checkpoint())
+            open_ugrid(variables, fname);
+        else
+            init_ugrid(variables, fname);
+    }
+
+    // use C api as boost doesn't have info
+    MPI_Comm comm = _comm_world;
+    MPI_Info info_used;
+    MPI_Comm_get_info(comm, &info_used);
+
+    std::vector<size_t> all_face_offsets;
+    boost::mpi::all_gather(_comm_world, _num_faces, all_face_offsets);
+    size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + _comm_world.rank(), 0);
+
+    double time = _global->posix_time_double()  / 60 ;
+    size_t index = _global->timestep_counter;
+    nc_put_var1_double(_ugrid_fid, _ugrid_id_var["time"], &index, &time);
+
+    for (auto& var : variables)
+    {
+        std::vector<double> v(_num_faces);
+        for (size_t i = 0; i < this->size_faces(); i++)
+        {
+            double value = (*face(i))[var];
+            if (value == -9999.) value = nan("");
+            v.at(i) = value;
+        }
+
+        size_t start[2] = {_global->timestep_counter, offset_face};
+        size_t count[2] = {1, _num_faces};
+
+        nc_put_vara_double(_ugrid_fid, _ugrid_id_var[var], start,count,v.data());
+
+    }
+
+    MPI_Info_free(&info_used);
+}
+void triangulation::open_ugrid(std::vector<std::string> output_variables, std::string fname)
+{
+    if (_ugrid_fid != -1)
+    {
+        CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file is already open");
+    }
+
+    if (!boost::filesystem::exists(fname))
+    {
+        CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file is not found");
+    }
+
+    MPI_Comm comm = _comm_world;
+    MPI_Info info_used;
+    MPI_Comm_get_info(comm, &info_used);
+    int status = nc_open_par(fname.c_str(), NC_WRITE, _comm_world, info_used, &_ugrid_fid);
+
+    int nvars;
+    char name[NC_MAX_NAME + 1];
+    nc_inq_nvars(_ugrid_fid, &nvars);
+
+    for (int varid = 0; varid < nvars; ++varid)
+    {
+        nc_inq_varname(_ugrid_fid, varid, name);
+
+        if (std::find(output_variables.begin(), output_variables.end(), name) == output_variables.end())
+        {
+            CHM_THROW_EXCEPTION(model_init_error, "Asking for variable " std::string(name) + " to be output that doesn't exist in the ugrid!");
+        }
+
+        _ugrid_id_var[std::string(name)] = varid;
+    }
+
+    MPI_Info_free(&info_used);
+}
+void triangulation::init_ugrid(std::vector<std::string> output_variables, std::string fname)
+{
+    timer c;
+    // use C api as boost doesn't have info
+    MPI_Comm comm = _comm_world;
+    MPI_Info info_used;
+    MPI_Comm_get_info(comm, &info_used);
+
+
+    int status = nc_create_par(fname.c_str(), NC_NETCDF4 | NC_CLOBBER, comm, info_used, &_ugrid_fid);
+    if (status != NC_NOERR)
+    {
+        CHM_THROW_EXCEPTION(file_write_error, "Failed to create ugrid output file");
+    }
+
+    // We also only have per-rank vertex IDs (they aren't global)
+    // thus need to compute a perrank offset to write into the global ugrid datastruct.
+    // Rank 0 => [0, _num_local_vertex_on_rank0)
+    // Rank 1 => [_num_local_vertex_on_rank0, _num_local_vertex_on_rank1)
+    // etc
+
+    SPDLOG_DEBUG("Starting ugrid def write");
+    c.tic();
+
+    std::vector<size_t> all_offsets;
+    boost::mpi::all_gather(_comm_world, _num_local_vertex, all_offsets);
+
+    // Our rank needs the sum of all the vertexes from the preceeding ranks as its start offset
+    size_t offset = std::accumulate(all_offsets.begin(), all_offsets.begin() + _comm_world.rank(), 0);
+
+    std::vector<size_t> all_face_offsets;
+    boost::mpi::all_gather(_comm_world, _num_faces, all_face_offsets);
+    size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + _comm_world.rank(), 0);
+
+    // When the mesh is read we only know the number of vertexes on each rank, not the global number
+    // This gathers the number of vertexes per rank.
+    size_t num_global_vertex;
+    boost::mpi::all_reduce(_comm_world, _num_local_vertex, num_global_vertex, std::plus<size_t>());
+
+    // Paraview's vtk-based ugrid reader segfaults when the mesh indexing is uint64. We probably don't have
+    if (_num_global_faces > UINT_MAX)
+    {
+        CHM_THROW_EXCEPTION(mesh_error, "Due to a limitation for paraview, the ugrid field can't have more than UINT_MAX nodes");
+    }
+
+    // base dimension structure
+    int dim_Mesh2_node, dim_Mesh2_face, dim_two, dim_three;
+    nc_def_dim(_ugrid_fid, "nMesh2_node", num_global_vertex, &dim_Mesh2_node);
+    nc_def_dim(_ugrid_fid, "nMesh2_face", _num_global_faces, &dim_Mesh2_face);
+    nc_def_dim(_ugrid_fid, "Two", 2, &dim_two);
+    nc_def_dim(_ugrid_fid, "Three", 3, &dim_three);
+
+    // time Dimension
+    int time_dimid, time_varid;
+
+    nc_def_dim(_ugrid_fid, "time", _global->n_timesteps(), &time_dimid);
+    nc_def_var(_ugrid_fid, "time", NC_DOUBLE, 1, &time_dimid, &time_varid);
+    nc_put_att_text(_ugrid_fid, time_varid, "standard_name", strlen("time"), "time");
+    nc_put_att_text(_ugrid_fid, time_varid, "long_name", strlen("Time"), "Time");
+    nc_put_att_text(_ugrid_fid, time_varid, "units", strlen("minutes since 1970-01-01 00:00:00"), "minutes since 1970-01-01 00:00:00");
+
+    int var_Mesh2, var_Mesh2_face_nodes, var_Mesh2_node_x, var_Mesh2_node_y, var_Mesh2_node_z, var_Mesh2_node_z_PV;
+    int dims_face_nodes[2] = {dim_Mesh2_face, dim_three};
+    int dims_node[1] = {dim_Mesh2_node};
+
+    // Mesh2 variable
+    nc_def_var(_ugrid_fid, "Mesh2", NC_INT, 0, NULL, &var_Mesh2);
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "cf_role", strlen("mesh_topology"), "mesh_topology");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "long_name", strlen("Topology data of 2D unstructured mesh"), "Topology data of 2D unstructured mesh");
+
+    int topo_dim = 2;
+    nc_put_att_int(_ugrid_fid, var_Mesh2, "topology_dimension", NC_INT, 1, &topo_dim);
+
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "node_coordinates", strlen("Mesh2_node_x Mesh2_node_y"), "Mesh2_node_x Mesh2_node_y");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "face_node_connectivity", strlen("Mesh2_face_nodes"), "Mesh2_face_nodes");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "face_dimension", strlen("nMesh2_face"), "nMesh2_face");
+    nc_put_att_text(_ugrid_fid, var_Mesh2, "face_coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
+
+    // Mesh2_face_nodes node connectivity that makes up the faces
+    // should be NC_UINT64 but this crashes paraview
+    // https://gitlab.kitware.com/paraview/paraview/-/issues/23019
+    nc_def_var(_ugrid_fid, "Mesh2_face_nodes", NC_UINT, 2, dims_face_nodes, &var_Mesh2_face_nodes);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "cf_role", strlen("face_node_connectivity"), "face_node_connectivity");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "long_name", strlen("Maps every triangular face to its three corner nodes."), "Maps every triangular face to its three corner nodes.");
+
+    // Mesh2_node_x
+    double nan_value = NAN; // IEEE NaN
+    nc_def_var(_ugrid_fid, "Mesh2_node_x", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_x);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "standard_name", strlen("longitude"), "longitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "long_name", strlen("Longitude of 2D mesh nodes."), "Longitude of 2D mesh nodes.");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "units", strlen("degrees_east"), "degrees_east");
+    nc_put_att_double(_ugrid_fid, var_Mesh2_node_x, "_FillValue", NC_DOUBLE, 1, &nan_value);
+
+    // Mesh2_node_y
+    nc_def_var(_ugrid_fid, "Mesh2_node_y", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_y);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "long_name", strlen("Latitude of 2D mesh nodes."), "Latitude of 2D mesh nodes.");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_y, "units", strlen("degrees_north"), "degrees_north");
+    nc_put_att_double(_ugrid_fid, var_Mesh2_node_y, "_FillValue", NC_DOUBLE, 1, &nan_value);
+
+    // Mesh2_node_z elevation
+    nc_def_var(_ugrid_fid, "Mesh2_node_z", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_z);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "standard_name", strlen("altitude"), "altitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "long_name", strlen("Z coordinate of 2D mesh nodes."), "Z coordinate of 2D mesh nodes.");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "units", strlen("m"), "m");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z, "location", strlen("node"), "node");
+    nc_put_att_double(_ugrid_fid, var_Mesh2_node_z, "_FillValue", NC_DOUBLE, 1, &nan_value);
+
+    // Scaled Mesh2_node_z elevation
+    // Paraview struggles to plot the z coord when the x and y are in geographic, so this scales down the z
+    // so it renders correctly.
+    nc_def_var(_ugrid_fid, "Mesh2_node_z_paraview", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_z_PV);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "standard_name", strlen("scaled_altitude"), "scaled_altitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "long_name", strlen("Scaled Z coordinate of 2D mesh nodes."), "Scaled Z coordinate of 2D mesh nodes.");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "units", strlen("m"), "m");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_node_z_PV, "location", strlen("node"), "node");
+    nc_put_att_double(_ugrid_fid, var_Mesh2_node_z_PV, "_FillValue", NC_DOUBLE, 1, &nan_value);
+
+
+    int var_global_id, var_local_id, var_Mesh2_face_x, var_Mesh2_face_y, var_Mesh2_face_z;
+
+    nc_def_var(_ugrid_fid, "global_id", NC_UINT64, 1, &dim_Mesh2_face, &var_global_id);
+    nc_put_att_text(_ugrid_fid, var_global_id, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(_ugrid_fid, var_global_id, "location", strlen("face"), "face");
+    nc_put_att_text(_ugrid_fid, var_global_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
+
+    nc_def_var(_ugrid_fid, "local_id", NC_UINT64, 1, &dim_Mesh2_face, &var_local_id);
+    nc_put_att_text(_ugrid_fid, var_local_id, "mesh", strlen("Mesh2"), "Mesh2");
+    nc_put_att_text(_ugrid_fid, var_local_id, "location", strlen("face"), "face");
+    nc_put_att_text(_ugrid_fid, var_local_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y");
+
+    nc_def_var(_ugrid_fid, "Mesh2_face_x", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_x);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "units", strlen("degrees_north"), "degrees_north");
+
+    nc_def_var(_ugrid_fid, "Mesh2_face_y", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_y);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "units", strlen("degrees_north"), "degrees_north");
+
+    nc_def_var(_ugrid_fid, "Mesh2_face_z", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_z);
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "standard_name", strlen("altitude"), "altitude");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "long_name", strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."), "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate).");
+    nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "units", strlen("m"), "m");
+
+
+    int dims[2] = {time_dimid, dim_Mesh2_face};
+    for (auto& var : output_variables)
+    {
+        nc_def_var(_ugrid_fid, var.c_str(), NC_DOUBLE, 2, dims, &_ugrid_id_var[var]);
+        nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "mesh", strlen("Mesh2"), "Mesh2");
+        nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "location", strlen("face"), "face");
+        nc_put_att_double(_ugrid_fid, _ugrid_id_var[var], "_FillValue", NC_DOUBLE, 1, &nan_value);
+    }
+
+    _ugrid_id_var["time"] = time_varid;
+    std::map<std::string, int> param_id;
+
+    auto define_face_variable = [&](const std::string& v, const std::string& prefix="") {
+        return [&]() {
+            nc_def_var(_ugrid_fid, (prefix+v).c_str(), NC_DOUBLE, 1, &dim_Mesh2_face, &param_id[v]);
+            nc_put_att_text(_ugrid_fid, param_id[v], "mesh", strlen("Mesh2"), "Mesh2");
+            nc_put_att_text(_ugrid_fid, param_id[v], "location", strlen("face"), "face");
+            nc_put_att_double(_ugrid_fid, param_id[v], "_FillValue", NC_DOUBLE, 1, &nan_value);
+        };
+    };
+
+    if(_write_parameters)
+    {
+        auto params = this->face(0)->parameters();
+        for (auto &v: params)
+        {
+            define_face_variable(v, "param_")();
+        }
+
+        define_face_variable("Elevation")();
+        define_face_variable("Slope")();
+        define_face_variable("Aspect")();
+        define_face_variable("Area")();
+
+
+        nc_def_var(_ugrid_fid, "owner", NC_INT, 1, &dim_Mesh2_face, &param_id["owner"]);
+        nc_put_att_text(_ugrid_fid, param_id["owner"], "mesh", strlen("Mesh2"), "Mesh2");
+        nc_put_att_text(_ugrid_fid, param_id["owner"], "location", strlen("face"), "face");
+
+    }
+
+    nc_var_par_access(_ugrid_fid, NC_GLOBAL, NC_COLLECTIVE);
+    nc_enddef(_ugrid_fid); // End define mode
+
+    auto t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid def section -- {} ms", t);
+
+
+    // Fill node_x, node_y, node_z, face_nodes, face_neighbors, face_gid, static_param
+    std::map<size_t, size_t> global_to_local_vertex_id;
+    std::vector<size_t> global_vertex_id;
+
+    OGRSpatialReference outsrs;
+    outsrs.SetWellKnownGeogCS("WGS84");
+    outsrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); //enforce ingoing as x y
+
+    OGRSpatialReference insrs;
+    insrs.importFromProj4(proj4().c_str());
+    insrs.SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER); //enforce outgoing as x y
+
+    OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(&insrs, &outsrs);
+
+    c.tic();
+
+    // write the vertexes
+    {
+        std::vector<double> v_x(_num_local_vertex);
+        std::vector<double> v_y(_num_local_vertex);
+        std::vector<double> v_z(_num_local_vertex);
+        std::vector<double> v_z_scaled(_num_local_vertex);
+
+        for (size_t i = 0; i < _vertexes.size(); i++)
+        {
+            auto vit = _vertexes.at(i);
+            v_x.at(i) = vit->point().x();
+            v_y.at(i) = vit->point().y();
+            v_z.at(i) = vit->point().z();
+
+            // scale Z for paraview 3D view
+            v_z_scaled.at(i) = vit->point().z() / 100000. ;
+        }
+
+        // if (!coordTrans->Transform(_num_local_vertex, v_x.data(), v_y.data()))
+        // {
+        //     CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
+        // }
+
+        size_t start_v[1] = {offset};
+        size_t count_v[1] = {_num_local_vertex};
+
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_node_x, start_v, count_v, v_x.data());
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_node_y, start_v, count_v, v_y.data());
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_node_z, start_v, count_v, v_z.data());
+
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_node_z_PV, start_v, count_v, v_z_scaled.data());
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid vertex -- {} ms", t);
+
+
+    c.tic();
+    // Write the connectivity matrix that defines what vertexes each face is comprised of
+    {
+        boost::multi_array<unsigned int,2> connectivity(boost::extents[_num_faces][3]);
+        for (size_t i = 0; i < this->size_faces(); i++)
+        {
+            auto fit = this->face(i);
+            connectivity[i][0] = static_cast<unsigned int>(fit->vertex(0)->get_id() + offset);
+            connectivity[i][1] = static_cast<unsigned int>(fit->vertex(1)->get_id() + offset);
+            connectivity[i][2] = static_cast<unsigned int>(fit->vertex(2)->get_id() + offset);
+        }
+
+        size_t start[2] = {offset_face, 0};   // Start at face_idx, first node
+        size_t count[2] = {_num_faces, 3};          // One face, all three nodes
+        nc_put_vara_uint(_ugrid_fid, var_Mesh2_face_nodes, start, count, connectivity.data());
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid connectivity -- {} ms", t);
+
+    c.tic();
+    // Write the x,y,z for the face centers
+    {
+        std::vector<double> f_x(_num_faces);
+        std::vector<double> f_y(_num_faces);
+        std::vector<double> f_z(_num_faces);
+
+        for (size_t i = 0; i < this->size_faces(); i++)
+        {
+            auto fit = this->face(i);
+
+           f_x.at(i) = fit->center().x();
+           f_y.at(i) = fit->center().y();
+           f_z.at(i) = fit->center().z();
+        }
+
+        if (!coordTrans->Transform(_num_faces, f_x.data(), f_y.data()))
+        {
+            CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
+        }
+
+        size_t start[1] = {offset_face};
+        size_t count[1] = {_num_faces};
+
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_face_x, start, count, f_x.data());
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_face_y, start, count, f_y.data());
+        nc_put_vara_double(_ugrid_fid, var_Mesh2_face_z, start, count, f_z.data());
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid xyz centres -- {} ms", t);
+
+    c.tic();
+    {
+        size_t start[1] = {offset_face};
+        size_t count[1] = {_num_faces};
+
+        // update to uing / size_t nc_put_var1_ulonglong
+        nc_put_vara_int(_ugrid_fid, var_global_id, start, count, _global_IDs.data());
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid global_id -- {} ms", t);
+
+    c.tic();
+    if(_write_parameters)
+    {
+        // This strategy takes a bit more CPU because of param* n_face iterations, but cuts down on having to store
+        // entire duplicates of the mesh
+        for (auto &v: face(0)->parameters())
+        {
+            std::vector<double> param(_num_faces);
+
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->parameter(v);
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id[v], start, count, param.data());
+        }
+
+        // Slope
+        {
+            std::vector<double> param(_num_faces);
+
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->slope();
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id["Slope"], start, count, param.data());
+        }
+
+        // Aspect
+        {
+            std::vector<double> param(_num_faces);
+
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->aspect();
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id["Aspect"], start, count, param.data());
+        }
+
+        // Area
+        {
+            std::vector<double> param(_num_faces);
+
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->get_area();
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id["Area"], start, count, param.data());
+        }
+
+
+        // Elevation
+        {
+            std::vector<double> param(_num_faces);
+
+            for (size_t i = 0; i < this->size_faces(); i++)
+            {
+                double p = face(i)->get_z();
+                if( p == -9999.) p = nan("");
+                param.at(i) = p;
+            }
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_double(_ugrid_fid, param_id["Elevation"], start, count, param.data());
+        }
+
+        // Slope
+        {
+            std::vector<int> param(_num_faces, _comm_world.rank());
+
+            size_t start[1] = {offset_face};
+            size_t count[1] = {_num_faces};
+            nc_put_vara_int(_ugrid_fid, param_id["owner"], start, count, param.data());
+        }
+
+    }
+    t = c.toc<ms>();
+    SPDLOG_DEBUG("Finished ugrid params -- {} ms", t);
+
+
+
+
+    // The file is closed from core::run() because it needs to be kept open to write to but closed
+    // before the MPI finalized is closed, ie can't do this when ~triangulation is called
+    // nc_close(_ugrid_fid);
+
+    // clean up the handle to info
+    MPI_Info_free(&info_used);
+
+    OGRCoordinateTransformation::DestroyCT(coordTrans);
+
+}
+
 
 void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
 {
@@ -2424,7 +2936,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 	for (int j=0;j<3;++j){
 	  auto vit = fit->vertex(j);
 	  int global_id = vit->get_id();
-	  // If point hasn't been seen yet, account for it
+	  // If point hasn"t been seen yet, account for it
 	  if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
 	    global_to_local_vertex_id[global_id] = npoints;
 	    npoints++;
@@ -2452,7 +2964,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
             for (int j=0;j<3;++j){
               auto vit = fit->vertex(j);
               int global_id = vit->get_id();
-              // If point hasn't been seen yet, account for it
+              // If point hasn"t been seen yet, account for it
               if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
                 global_to_local_vertex_id[global_id] = npoints;
                 npoints++;
@@ -2490,7 +3002,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     _vtu_global_id = vtkSmartPointer<vtkUnsignedLongArray>::New();
     _vtu_global_id->SetName("global_id");
 
-    if(_write_parameters_to_vtu)
+    if(_write_parameters)
     {
         auto params = this->face(0)->parameters();
         for (auto &v: params)
@@ -2624,7 +3136,7 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
 
 void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 {
-    //if we haven't inited yet, do so.
+    //if we haven"t inited yet, do so.
     if(!_vtk_unstructuredGrid || _terrain_deformed)
     {
         this->init_vtkUnstructured_Grid(output_variables);
@@ -2653,7 +3165,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
         //this is mandatory now
         _vtu_global_id->InsertTuple1(i, fit->cell_global_id);
 
-        if(_write_parameters_to_vtu)
+        if(_write_parameters)
         {
             for (auto &v: params)
             {
@@ -2723,7 +3235,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
 
         _vtu_global_id->InsertTuple1(insert_offset,fit->cell_global_id);
 
-        if(_write_parameters_to_vtu)
+        if(_write_parameters)
         {
             for (auto &v: params)
             {
@@ -2895,11 +3407,11 @@ void segmented_AABB::make( triangulation* domain, size_t rows, size_t cols)
             arma::mat* t = new arma::mat(5, 2);
 
 
-            *t << h_x << h_y - v_dy << arma::endr // bottom left
-                    << h_x + h_dx << h_y - v_dy << arma::endr //bottom right
-                    << h_x + h_dx << h_y << arma::endr // top right
-                    << h_x << h_y << arma::endr //top left
-                    << h_x << h_y - v_dy << arma::endr; // bottom left
+            *t = {{ h_x, h_y - v_dy},// bottom left
+                    {h_x + h_dx, h_y - v_dy}, //bottom right
+                    {h_x + h_dx, h_y}, // top right
+                    {h_x,  h_y},//top left
+                    {h_x, h_y - v_dy}}; // bottom left
 
 
             m_grid[i][j] = new rect(t);

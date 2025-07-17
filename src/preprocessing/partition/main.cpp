@@ -99,7 +99,7 @@ class preprocessingTriangulation : public triangulation
         _is_standalone = false;
         _is_partition = true;
         _write_ghost_neighbors_to_vtu = true;
-        _write_parameters_to_vtu = false;
+        _write_parameters = false;
     }
 
     void write_vtu(std::string file_name, std::vector<std::string> output_variables ={} )
@@ -398,8 +398,8 @@ class preprocessingTriangulation : public triangulation
                     _vertexes.push_back(Vh);
                 }
 
-                _num_vertex = _vertexes.size();
-                SPDLOG_DEBUG("# nodes created = {}",_num_vertex);
+                _num_local_vertex = _vertexes.size();
+                SPDLOG_DEBUG("# nodes created = {}",_num_local_vertex);
             }
 
             {
