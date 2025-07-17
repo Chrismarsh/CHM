@@ -28,18 +28,68 @@ point_mode::point_mode(config_file cfg)
         : module_base("point_mode", parallel::data, cfg)
 {
 
-     t              = cfg.get("provide.t",true);
-     rh             = cfg.get("provide.rh",true);
-     U_R            = cfg.get("provide.U_R",true);
-     U_2m_above_srf = cfg.get("provide.U_2m_above_srf",true);
-     p              = cfg.get("provide.p",true);
-     ilwr           = cfg.get("provide.ilwr",true);
-     iswr           = cfg.get("provide.iswr",true);
-     vw_dir         = cfg.get("provide.vw_dir",true);
-     iswr_diffuse   = cfg.get("provide.iswr_diffuse",false);
-     iswr_direct    = cfg.get("provide.iswr_direct",false);
-     T_g    = cfg.get("provide.T_g",false);
+    t              = cfg.get("provide.t",false);
+    rh             = cfg.get("provide.rh",false);
+    U_R            = cfg.get("provide.U_R",false);
+    U_2m_above_srf = cfg.get("provide.U_2m_above_srf",false);
+    p              = cfg.get("provide.p",false);
+    ilwr           = cfg.get("provide.ilwr",false);
+    iswr           = cfg.get("provide.iswr",false);
+    vw_dir         = cfg.get("provide.vw_dir",false);
+    iswr_diffuse   = cfg.get("provide.iswr_diffuse",false);
+    iswr_direct    = cfg.get("provide.iswr_direct",false);
+    T_g    = cfg.get("provide.T_g",false);
+    svf    = cfg.get("provide.svf",false);
+        
+    unit_test_new_modules = cfg.get("provide.unit_test_Donovan",false);
 
+
+
+    if(unit_test_new_modules)    
+    {
+        // Infil_All
+        depends_from_met("SWE");
+        provides("swe");
+
+        depends_from_met("snowmeltD");
+        provides("snowmelt_int"); 
+        
+        depends_from_met("net_rain");
+        provides("rainfall_int");  
+        
+        depends_from_met("fallstat_V");
+        provides("soil_storage_at_freeze");
+
+        // t is included in another section
+
+        // Evapotranspiration_All
+        depends_from_met("Rn");
+        provides("netall");   
+        
+        depends_from_met("Pa");
+        provides("P_atm");  
+
+        depends_from_met("hru_ea");
+        provides("ea"); 
+       
+        // rh, t, U_2m_above_srf included already here
+        // soil_storage comes from the soil module
+
+        // soil_module
+        depends_from_met("rho");
+        provides("snow_density");
+        // All depends/provides come from other modules
+        // swe, ET, inf, runoff
+        //
+        depends_from_met("hru_t");
+        provides("t");
+
+        depends_from_met("hru_u");
+        provides("U_2m_above_srf");
+        
+        depends_from_met("hru_tsf");
+        provides("surface_temperature");        
+    }    
     if(t)
     {
         depends_from_met("t");
@@ -110,11 +160,52 @@ point_mode::~point_mode()
 
 }
 
+void point_mode::init(mesh &domain)
+{
+    size_t i=0;
+    auto face = domain->face(i);
+    elevation = face->parameter("elevation"_s);
+};
 void point_mode::run(mesh_elem &face)
 {
     // at this point, if the user has provided more than 1 station, they've been stripped out.
     // we can safetly take the 1st (and only) station.
 
+    if(unit_test_new_modules)
+    {
+        double swe = (*face->nearest_station())["SWE"_s];
+        (*face)["swe"_s] = swe;
+
+        double snowmelt_int = (*face->nearest_station())["snowmeltD"_s];
+        (*face)["snowmelt_int"_s] = snowmelt_int/24;
+
+        double rainfall_int = (*face->nearest_station())["net_rain"_s];
+        (*face)["rainfall_int"_s] = rainfall_int;
+
+        double soil_storage_at_freeze = (*face->nearest_station())["fallstat_V"_s];
+        (*face)["soil_storage_at_freeze"_s] = soil_storage_at_freeze;
+
+        double netall = (*face->nearest_station())["Rn"_s];
+        (*face)["netall"_s] = netall;
+
+        double P_atm = 101.3*pow( (293.0 - 0.0065*elevation)/293.0,5.26);
+        (*face)["P_atm"_s] = P_atm;
+
+        double ea = (*face->nearest_station())["hru_ea"_s];
+        (*face)["ea"_s] = ea;
+
+        double rho = (*face->nearest_station())["rho"_s];
+        (*face)["snow_density"_s] = rho;
+
+        double t = (*face->nearest_station())["hru_t"_s];
+        (*face)["t"_s] = t;
+        
+        double u = (*face->nearest_station())["hru_u"_s];
+        (*face)["U_2m_above_srf"_s] = u;
+
+        double temp = (*face->nearest_station())["hru_tsf"_s];
+        (*face)["surface_temperature"_s] = temp;
+    }
     if(t)
     {
         double st =(*face->nearest_station())["t"_s];
@@ -180,7 +271,8 @@ void point_mode::run(mesh_elem &face)
         double T_g =(*face->nearest_station())["T_g"_s];
         (*face)["T_g"_s]= T_g;
     }
-
-    face->parameter("svf") = cfg.get("override.svf", face->parameter("svf"_s));
-
+    if(svf)
+    {
+        face->parameter("svf") = cfg.get("override.svf", face->parameter("svf"_s));
+    }
 }
