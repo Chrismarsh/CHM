@@ -78,7 +78,7 @@ WindNinja::WindNinja(config_file cfg)
 void WindNinja::init(mesh& domain)
 {
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->make_module_data<data>(ID);
@@ -271,7 +271,7 @@ void WindNinja::run(mesh& domain)
         double delta_angle = 360. / N_windfield;
 
         #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i);
 
@@ -418,7 +418,7 @@ void WindNinja::run(mesh& domain)
            }
 
         #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
        {
 
             auto face = domain->face(i);
@@ -483,7 +483,7 @@ void WindNinja::run(mesh& domain)
 //	domain->ghost_neighbors_communicate_variable("U_R"_s);
 //
 //        #pragma omp parallel for
-//        for (size_t i = 0; i < domain->size_faces(); i++)
+//        for (size_t i = 0; i < domain->size_local_faces(); i++)
 //        {
 //
 //            auto face = domain->face(i);
@@ -508,7 +508,7 @@ void WindNinja::run(mesh& domain)
 //
 //        }
 //        #pragma omp parallel for
-//        for (size_t i = 0; i < domain->size_faces(); i++)
+//        for (size_t i = 0; i < domain->size_local_faces(); i++)
 //        {
 //            auto face = domain->face(i);
 //            (*face)["U_R"_s]= std::max(0.1, face->get_module_data<data>(ID).temp_u);

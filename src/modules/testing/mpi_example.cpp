@@ -39,7 +39,7 @@ mpi::~mpi()
 void mpi::run(mesh& domain)
 {
 
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i); // Get face
         (*face)["mpi_rank"] = face->owner;

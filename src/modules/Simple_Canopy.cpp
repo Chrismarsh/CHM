@@ -580,7 +580,7 @@ void Simple_Canopy::init(mesh& domain)
 
     #pragma omp parallel for
     // For each face
-    for(size_t i=0;i<domain->size_faces();i++)
+    for(size_t i=0;i<domain->size_local_faces();i++)
     {
 
         // Get current face
@@ -668,20 +668,20 @@ double Simple_Canopy::Qs(double air_pressure, double T1) {
 void Simple_Canopy::checkpoint(mesh& domain,  netcdf& chkpt)
 {
 
-    chkpt.create_variable1D("Simple_Canopy:LAI", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:CanopyHeight", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:canopyType", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:rain_load", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:Snow_load", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:cum_net_snow", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:cum_net_rain", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:cum_Subl_Cpy", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:cum_intcp_evap", domain->size_faces());
-    chkpt.create_variable1D("Simple_Canopy:cum_SUnload_H2O", domain->size_faces());
+    chkpt.create_variable1D("Simple_Canopy:LAI", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:CanopyHeight", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:canopyType", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:rain_load", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:Snow_load", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_net_snow", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_net_rain", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_Subl_Cpy", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_intcp_evap", domain->size_local_faces());
+    chkpt.create_variable1D("Simple_Canopy:cum_SUnload_H2O", domain->size_local_faces());
 
 
     //netcdf puts are not threadsafe.
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->get_module_data<data>(ID);
@@ -702,7 +702,7 @@ void Simple_Canopy::checkpoint(mesh& domain,  netcdf& chkpt)
 
 void Simple_Canopy::load_checkpoint(mesh& domain, netcdf& chkpt)
 {
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->get_module_data<data>(ID);

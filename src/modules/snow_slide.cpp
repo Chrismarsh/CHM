@@ -59,13 +59,13 @@ snow_slide::~snow_slide()
 void snow_slide::checkpoint(mesh& domain,  netcdf& chkpt)
 {
 
-    chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth", domain->size_faces());
-    chkpt.create_variable1D("snow_slide:delta_avalanche_mass", domain->size_faces());
+    chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth", domain->size_local_faces());
+    chkpt.create_variable1D("snow_slide:delta_avalanche_mass", domain->size_local_faces());
 
-    chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth_sum", domain->size_faces());
-    chkpt.create_variable1D("snow_slide:delta_avalanche_mass_sum", domain->size_faces());
+    chkpt.create_variable1D("snow_slide:delta_avalanche_snowdepth_sum", domain->size_local_faces());
+    chkpt.create_variable1D("snow_slide:delta_avalanche_mass_sum", domain->size_local_faces());
 
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         chkpt.put_var1D("snow_slide:delta_avalanche_snowdepth",i,face->get_module_data<data>(ID).delta_avalanche_snowdepth);
@@ -79,7 +79,7 @@ void snow_slide::checkpoint(mesh& domain,  netcdf& chkpt)
 
 void snow_slide::load_checkpoint(mesh& domain,  netcdf& chkpt)
 {
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         face->get_module_data<data>(ID).delta_avalanche_snowdepth = chkpt.get_var1D("snow_slide:delta_avalanche_snowdepth",i);
@@ -102,13 +102,13 @@ void snow_slide::run(mesh& domain)
 
         int this_iter_moved_snow = false;
         // Make a vector of pairs (elevation + snowdepth, pointer to face)
-        tbb::concurrent_vector<std::pair<double, mesh_elem>> sorted_z(domain->size_faces());
+        tbb::concurrent_vector<std::pair<double, mesh_elem>> sorted_z(domain->size_local_faces());
 
         // only init these on the first iteration
         if(iterations ==0)
         {
 #pragma omp parallel for
-            for (size_t i = 0; i < domain->size_faces(); i++)
+            for (size_t i = 0; i < domain->size_local_faces(); i++)
             {
                 auto face = domain->face(i); // Get face
                 auto& data = face->get_module_data<snow_slide::data>(ID); // Get data
@@ -135,7 +135,7 @@ void snow_slide::run(mesh& domain)
 //#endif
 
 #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i); // Get face
             auto& data = face->get_module_data<snow_slide::data>(ID); // Get data
@@ -342,7 +342,7 @@ void snow_slide::run(mesh& domain)
 
         size_t ghost_transport = 0;
         #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i); // Get face                        // Get pointer to face
             auto& data = face->get_module_data<snow_slide::data>(ID); // Get stored data for face
@@ -420,7 +420,7 @@ void snow_slide::init(mesh& domain)
     double avalache_pow  = cfg.get("avalache_pow", -1.998); // param from dhiraj
 
     // Initialize for each triangle
-    for(size_t i=0;i<domain->size_faces();i++)
+    for(size_t i=0;i<domain->size_local_faces();i++)
     {
         auto face = domain->face(i);
 

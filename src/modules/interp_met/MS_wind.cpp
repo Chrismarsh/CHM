@@ -55,7 +55,7 @@ MS_wind::MS_wind(config_file cfg)
 void MS_wind::init(mesh& domain)
 {
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
 
@@ -71,7 +71,7 @@ void MS_wind::run(mesh& domain)
     if(!use_ryan_dir)
     {
         #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i);
 		     std::vector<boost::tuple<double, double, double> > u;
@@ -167,7 +167,7 @@ void MS_wind::run(mesh& domain)
 	domain->ghost_neighbors_communicate_variable("U_R"_s);
 
         #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
           auto face = domain->face(i);
 
@@ -224,7 +224,7 @@ void MS_wind::run(mesh& domain)
 
 
         #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i);
 
@@ -237,7 +237,7 @@ void MS_wind::run(mesh& domain)
         double max_omega_s = -99999.0;
 
         #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i);
 
@@ -296,7 +296,7 @@ void MS_wind::run(mesh& domain)
 
 
         #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i);
 
@@ -368,7 +368,7 @@ void MS_wind::run(mesh& domain)
     domain->ghost_neighbors_communicate_variable("U_R"_s);
 
     #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
 
             auto face = domain->face(i);
@@ -394,7 +394,7 @@ void MS_wind::run(mesh& domain)
         }
 
     #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i);
 
@@ -414,7 +414,7 @@ void MS_wind::run(mesh& domain)
 //    double max_omega_s = -99999.0;
 //
 //    #pragma omp parallel for
-//    for (size_t i = 0; i < domain->size_faces(); i++)
+//    for (size_t i = 0; i < domain->size_local_faces(); i++)
 //    {
 //        auto face = domain->face(i);
 //
@@ -466,7 +466,7 @@ void MS_wind::run(mesh& domain)
 //        face->get_module_data<data>(ID).W = W;
 //    }
 //    #pragma omp parallel for
-//    for (size_t i = 0; i < domain->size_faces(); i++)
+//    for (size_t i = 0; i < domain->size_local_faces(); i++)
 //    {
 //        auto face = domain->face(i);
 //
@@ -528,7 +528,7 @@ void MS_wind::run(mesh& domain)
 //
 //
 //#pragma omp parallel for
-//    for (size_t i = 0; i < domain->size_faces(); i++)
+//    for (size_t i = 0; i < domain->size_local_faces(); i++)
 //    {
 //
 //        auto face = domain->face(i);
@@ -546,7 +546,7 @@ void MS_wind::run(mesh& domain)
 //        face->get_module_data<data>(ID).temp_u = new_u;
 //    }
 //#pragma omp parallel for
-//    for (size_t i = 0; i < domain->size_faces(); i++)
+//    for (size_t i = 0; i < domain->size_local_faces(); i++)
 //    {
 //        auto face = domain->face(i);
 //        (*face)["U_R"_s]= std::max(0.1,face->get_module_data<data>(ID->temp_u) );

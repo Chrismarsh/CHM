@@ -46,7 +46,7 @@ void Kunkel_monthlyTd_rh::init(mesh& domain)
 {
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
 
 	       auto face = domain->face(i);

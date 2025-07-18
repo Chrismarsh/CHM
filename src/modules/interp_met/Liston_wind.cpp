@@ -59,7 +59,7 @@ void Liston_wind::init(mesh& domain)
     yc = cfg.get("yc",0.5);
 
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
 
         auto face = domain->face(i);
@@ -75,7 +75,7 @@ void Liston_wind::init(mesh& domain)
     double curmax = -9999.0;
 
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
 
         auto face = domain->face(i);
@@ -135,7 +135,7 @@ void Liston_wind::init(mesh& domain)
 
 
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
 
         auto face = domain->face(i);
@@ -171,7 +171,7 @@ void Liston_wind::run(mesh& domain)
     double max_omega_s = -99999.0;
 
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
 
         auto face = domain->face(i);
@@ -235,7 +235,7 @@ void Liston_wind::run(mesh& domain)
 
 
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
 
         auto face = domain->face(i);
@@ -299,7 +299,7 @@ void Liston_wind::run(mesh& domain)
     domain->ghost_neighbors_communicate_variable("U_R"_s);
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
 
         auto face = domain->face(i);
@@ -324,7 +324,7 @@ void Liston_wind::run(mesh& domain)
 
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
 
         auto face = domain->face(i);

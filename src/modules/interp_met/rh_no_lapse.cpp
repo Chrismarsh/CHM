@@ -42,7 +42,7 @@ void rh_no_lapse::init(mesh& domain)
 {
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->make_module_data<rh_no_lapse::data>(ID);

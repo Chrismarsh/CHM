@@ -113,7 +113,7 @@ void FSM::init(mesh& domain)
 
 
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->make_module_data<data>(ID);
@@ -330,67 +330,67 @@ void FSM::run(mesh_elem& face)
 
 void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
 {
-    chkpt.create_variable1D("fsm:snw", domain->size_faces());
-    chkpt.create_variable1D("fsm:snd", domain->size_faces());
-    chkpt.create_variable1D("fsm:sum_snowpack_subl", domain->size_faces());
+    chkpt.create_variable1D("fsm:snw", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:snd", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:sum_snowpack_subl", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:albs", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsrf", domain->size_faces());
+    chkpt.create_variable1D("fsm:albs", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsrf", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Dsnw[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Dsnw[1]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Dsnw[2]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Dsnw[3]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Dsnw[4]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Dsnw[5]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Dsnw[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Dsnw[1]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Dsnw[2]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Dsnw[3]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Dsnw[4]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Dsnw[5]", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Nsnow", domain->size_faces());
+    chkpt.create_variable1D("fsm:Nsnow", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Qcan[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Qcan[1]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Qcan[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Qcan[1]", domain->size_local_faces());
 
 
-//    chkpt.create_variable1D("fsm:Rgrn", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sice[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sice[1]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sice[2]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sice[3]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sice[4]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sice[5]", domain->size_faces());
+//    chkpt.create_variable1D("fsm:Rgrn", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sice[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sice[1]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sice[2]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sice[3]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sice[4]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sice[5]", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Sliq[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sliq[1]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sliq[2]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sliq[3]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sliq[4]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sliq[5]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Sliq[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sliq[1]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sliq[2]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sliq[3]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sliq[4]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sliq[5]", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Sveg[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Sveg[1]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Sveg[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Sveg[1]", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Tcan[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tcan[1]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Tcan[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tcan[1]", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Tsnow[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsnow[1]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsnow[2]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsnow[3]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsnow[4]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsnow[5]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Tsnow[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsnow[1]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsnow[2]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsnow[3]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsnow[4]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsnow[5]", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Tsoil[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsoil[1]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsoil[2]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tsoil[3]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Tsoil[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsoil[1]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsoil[2]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tsoil[3]", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Tveg[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Tveg[1]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Tveg[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Tveg[1]", domain->size_local_faces());
 
-    chkpt.create_variable1D("fsm:Vsmc[0]", domain->size_faces());
-    chkpt.create_variable1D("fsm:Vsmc[1]", domain->size_faces());
+    chkpt.create_variable1D("fsm:Vsmc[0]", domain->size_local_faces());
+    chkpt.create_variable1D("fsm:Vsmc[1]", domain->size_local_faces());
 
     //netcdf puts are not threadsafe.
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->get_module_data<data>(ID);
@@ -458,7 +458,7 @@ void FSM::checkpoint(mesh& domain,  netcdf& chkpt)
 
 void FSM::load_checkpoint(mesh& domain, netcdf& chkpt)
 {
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->get_module_data<data>(ID);

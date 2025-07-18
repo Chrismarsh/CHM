@@ -52,7 +52,7 @@ void Gray_inf::init(mesh& domain)
 
     //store all of snobals global variables from this timestep to be used as ICs for the next timestep
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->make_module_data<Gray_inf::data>(ID);

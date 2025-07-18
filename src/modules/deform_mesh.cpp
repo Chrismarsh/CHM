@@ -39,7 +39,7 @@ void deform_mesh::run(mesh& domain)
 {
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_vertex(); i++)
+    for (size_t i = 0; i < domain->size_local_vertex(); i++)
     {
 
        Point_3 p;

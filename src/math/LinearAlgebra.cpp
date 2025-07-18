@@ -36,7 +36,7 @@ namespace math
       m_comm = Tpetra::getDefaultComm();
 
       // Sizes of the domain
-      size_t ntri = domain->size_faces();
+      size_t ntri = domain->size_local_faces();
       size_t n_global_tri = domain->size_global_faces();
 
       /*

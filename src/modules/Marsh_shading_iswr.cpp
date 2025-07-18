@@ -48,7 +48,7 @@ void Marsh_shading_iswr::run(mesh& domain)
     //    rot_faces.grow_by(domain->size());
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_vertex(); i++)
+    for (size_t i = 0; i < domain->size_local_vertex(); i++)
     {
         auto vert = domain->vertex(i);
 
@@ -89,7 +89,7 @@ void Marsh_shading_iswr::run(mesh& domain)
     auto BBR = domain->AABB(x_AABB,y_AABB);
 
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
       auto face = domain->face(i);
       double E = (*domain->face(i))["solar_el"_s];
@@ -205,7 +205,7 @@ void Marsh_shading_iswr::run(mesh& domain)
 
     // here we need to 'undo' the rotation we applied.
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_vertex(); i++)
+    for (size_t i = 0; i < domain->size_local_vertex(); i++)
     {
 
         auto vert = domain->vertex(i);

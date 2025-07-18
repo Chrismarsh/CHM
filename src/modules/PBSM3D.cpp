@@ -265,7 +265,7 @@ void PBSM3D::init(mesh& domain)
     n_non_edge_tri = 0;
 
     // Size of the domain
-    size_t ntri = domain->size_faces();
+    size_t ntri = domain->size_local_faces();
 
     SPDLOG_DEBUG("#face={}",ntri);
 
@@ -403,7 +403,7 @@ void PBSM3D::run(mesh& domain)
     SPDLOG_DEBUG("PBSM: ");
 
     // needed for linear system offsets
-    size_t ntri = domain->size_faces();
+    size_t ntri = domain->size_local_faces();
     size_t n_global_tri = domain->size_global_faces();
 
     suspension_NNP->zeroSystem();
@@ -425,7 +425,7 @@ void PBSM3D::run(mesh& domain)
         // ice density
         double rho_p = PhysConst::rho_ice;
 #pragma omp for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
 
             auto face = domain->face(i);
@@ -1514,7 +1514,7 @@ void PBSM3D::run(mesh& domain)
        */
 
 #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& d = face->get_module_data<data>(ID);
@@ -1708,7 +1708,7 @@ void PBSM3D::run(mesh& domain)
         auto deposition_sol_array = deposition_NNP->getSolutionView();
 
 #pragma omp parallel for
-        for (size_t i = 0; i < domain->size_faces(); i++)
+        for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
             auto face = domain->face(i);
             double qdep = is_nan(deposition_sol_array[i]) ? 0 : deposition_sol_array[i];
@@ -1752,9 +1752,9 @@ PBSM3D::~PBSM3D() {
 
 void PBSM3D::checkpoint(mesh& domain,  netcdf& chkpt)
 {
-    chkpt.create_variable1D("PBSM3D:sum_drift", domain->size_faces());
+    chkpt.create_variable1D("PBSM3D:sum_drift", domain->size_local_faces());
 
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         chkpt.put_var1D("PBSM3D:sum_drift", i,
@@ -1765,7 +1765,7 @@ void PBSM3D::checkpoint(mesh& domain,  netcdf& chkpt)
 
 void PBSM3D::load_checkpoint(mesh& domain,  netcdf& chkpt)
 {
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         (*face)["sum_drift"_s] = chkpt.get_var1D("PBSM3D:sum_drift", i);

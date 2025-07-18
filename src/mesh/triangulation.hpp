@@ -733,7 +733,7 @@ public:
     * Return the number of faces in the local triangluation
     * \return Number of triangle faces
     */
-    size_t size_faces();
+    size_t size_local_faces();
 
     /**
     * Return the number of faces in the global triangluation
@@ -742,10 +742,10 @@ public:
     size_t size_global_faces();
 
     /**
-    * Return the number of verticies in the triangulation
+    * Return the number of local vertexes in the triangulation
     * \return Number of vertices
     */
-    size_t size_vertex();
+    size_t size_local_vertex();
 
     /**
      * Locates the closest triangle (based on centers) that the point x y lies on in 2 dimensions.

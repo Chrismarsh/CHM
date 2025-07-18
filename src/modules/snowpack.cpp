@@ -299,7 +299,7 @@ void Lehning_snowpack::init(mesh& domain)
 {
     const_T_g = cfg.get("const_T_g",-4.0);
 
-    for(size_t i=0;i<domain->size_faces();i++)
+    for(size_t i=0;i<domain->size_local_faces();i++)
     {
         auto face = domain->face(i);
 

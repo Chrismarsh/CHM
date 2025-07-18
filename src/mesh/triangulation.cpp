@@ -101,7 +101,7 @@ bool triangulation::is_geographic()
 {
     return _is_geographic;
 }
-size_t triangulation::size_faces()
+size_t triangulation::size_local_faces()
 {
     return _num_faces;
 }
@@ -110,7 +110,7 @@ size_t triangulation::size_global_faces()
     return _num_global_faces;
 }
 
-size_t triangulation::size_vertex()
+size_t triangulation::size_local_vertex()
 {
     return _num_local_vertex;
 }
@@ -319,12 +319,12 @@ void triangulation::from_json(pt::ptree &mesh)
 
     _num_faces = this->number_of_faces();
 
-    SPDLOG_DEBUG("Created a mesh with {} triangles", this->size_faces());
+    SPDLOG_DEBUG("Created a mesh with {} triangles", this->size_local_faces());
 
     if( this->number_of_faces() != num_elem)
     {
         CHM_THROW_EXCEPTION(config_error,
-                "Expected: " + std::to_string(num_elem) + " elems, got: " + std::to_string(this->size_faces()));
+                "Expected: " + std::to_string(num_elem) + " elems, got: " + std::to_string(this->size_local_faces()));
     }
 
     SPDLOG_DEBUG("Building face neighbors");
@@ -392,7 +392,7 @@ void triangulation::from_json(pt::ptree &mesh)
 
         // init the storage
 #pragma omp parallel for
-        for (size_t i = 0; i < size_faces(); i++)
+        for (size_t i = 0; i < size_local_faces(); i++)
         {
              _faces.at(i)->init_parameters(_parameters);
         }
@@ -430,7 +430,7 @@ void triangulation::from_json(pt::ptree &mesh)
         // but we still need to build up the face storage as we may have parameters from a module
         // init the storage, which builds the mphf
 #pragma omp parallel for
-        for (size_t i = 0; i < size_faces(); i++)
+        for (size_t i = 0; i < size_local_faces(); i++)
         {
              _faces.at(i)->init_parameters(_parameters);
         }
@@ -526,7 +526,7 @@ void triangulation::to_hdf5(std::string filename_base)
     H5::Group group(file.createGroup("/mesh"));
 
     hsize_t ntri= size_global_faces();
-    hsize_t nvert= size_vertex();
+    hsize_t nvert= size_local_vertex();
 
     { // Local sizes
       SPDLOG_DEBUG("Writing Local Sizes.");
@@ -954,7 +954,7 @@ void triangulation::load_mesh_from_h5(const std::string& mesh_filename)
 
         }
         _num_faces = _faces.size();
-        SPDLOG_DEBUG("Created a mesh with {} triangles", this->size_faces());
+        SPDLOG_DEBUG("Created a mesh with {} triangles", this->size_local_faces());
     }
 
     {
@@ -1425,7 +1425,7 @@ void triangulation::reorder_faces(std::vector<size_t> permutation)
   // be modified (ie. renumber the "cell_global_id"s, AND sort the "_faces"
   // vector) before the new ordering is consistent.
 
-  assert( permutation.size() == size_faces() );
+  assert( permutation.size() == size_local_faces() );
   SPDLOG_DEBUG("Reordering faces");
 
   // Update the IDs on all faces
@@ -2922,9 +2922,9 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
     if(_write_ghost_neighbors_to_vtu)
     {
-      triangles->Allocate(this->size_faces()+_ghost_faces.size());
+      triangles->Allocate(this->size_local_faces()+_ghost_faces.size());
     } else {
-      triangles->Allocate(this->size_faces());
+      triangles->Allocate(this->size_local_faces());
     }
 
     vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
@@ -2939,7 +2939,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 
     // npoints holds the total number of points
     int npoints=0;
-    for (size_t i = 0; i < this->size_faces(); i++)
+    for (size_t i = 0; i < this->size_local_faces(); i++)
     {
         mesh_elem fit = this->face(i);
 
@@ -3076,7 +3076,7 @@ void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_va
 void triangulation::init_timeseries(std::set< std::string > variables)
 {
     #pragma omp parallel for
-    for (size_t it = 0; it < size_faces(); it++)
+    for (size_t it = 0; it < size_local_faces(); it++)
     {
         auto face = this->face(it);
         face->init_time_series(variables);
@@ -3087,7 +3087,7 @@ void triangulation::init_timeseries(std::set< std::string > variables)
 void triangulation::init_vectors(std::set<std::string>& variables)
 {
 #pragma omp parallel for
-    for (size_t it = 0; it < size_faces(); it++)
+    for (size_t it = 0; it < size_local_faces(); it++)
     {
         auto face = this->face(it);
         face->init_vectors(variables);
@@ -3097,7 +3097,7 @@ void triangulation::init_vectors(std::set<std::string>& variables)
 void triangulation::init_module_data(std::set< std::string > modules)
 {
 #pragma omp parallel for
-    for (size_t it = 0; it < size_faces(); it++)
+    for (size_t it = 0; it < size_local_faces(); it++)
     {
         auto face = this->face(it);
         face->init_module_data(modules);
@@ -3127,7 +3127,7 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
                     std::set< std::string >& module_data)
 {
     #pragma omp parallel for
-        for (size_t it = 0; it < size_faces(); it++)
+        for (size_t it = 0; it < size_local_faces(); it++)
         {
             auto face = this->face(it);
             face->init_time_series(timeseries);
@@ -3161,7 +3161,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
     auto ics = this->face(0)->initial_conditions();
     auto vecs = this->face(0)->vectors();
 
-    for (size_t i = 0; i < this->size_faces(); i++)
+    for (size_t i = 0; i < this->size_local_faces(); i++)
     {
         mesh_elem fit = this->face(i);
 
@@ -3230,7 +3230,7 @@ void triangulation::update_vtk_data(std::vector<std::string> output_variables)
     {
         mesh_elem fit = _ghost_faces[i];
 
-	size_t insert_offset = i + this->size_faces();
+	size_t insert_offset = i + this->size_local_faces();
 
 
         for (auto &v: variables)

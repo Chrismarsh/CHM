@@ -88,7 +88,7 @@ void snobal::init(mesh& domain)
 
     //store all of snobals global_param variables from this timestep to be used as ICs for the next timestep
     #pragma omp parallel for
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
        auto face = domain->face(i);
 
@@ -506,25 +506,25 @@ void snobal::run(mesh_elem &face)
 void snobal::checkpoint(mesh& domain,  netcdf& chkpt)
 {
 
-    chkpt.create_variable1D("snobal:m_s",domain->size_faces());
-    chkpt.create_variable1D("snobal:rho",domain->size_faces());
-    chkpt.create_variable1D("snobal:T_s",domain->size_faces());
-    chkpt.create_variable1D("snobal:T_s_0",domain->size_faces());
-    chkpt.create_variable1D("snobal:T_s_l",domain->size_faces());
-    chkpt.create_variable1D("snobal:z_s",domain->size_faces());
-    chkpt.create_variable1D("snobal:h2o_sat",domain->size_faces());
-    chkpt.create_variable1D("snobal:max_h2o_vol",domain->size_faces());
-    chkpt.create_variable1D("snobal:sum_runoff",domain->size_faces());
-    chkpt.create_variable1D("snobal:sum_melt",domain->size_faces());
-    chkpt.create_variable1D("snobal:sum_pcp_sno",domain->size_faces());
-    chkpt.create_variable1D("snobal:sum_subl",domain->size_faces());
-    chkpt.create_variable1D("snobal:E_s_sum",domain->size_faces());
-    chkpt.create_variable1D("snobal:melt_sum",domain->size_faces());
-    chkpt.create_variable1D("snobal:ro_pred_sum",domain->size_faces());
-    chkpt.create_variable1D("snobal:h2o_total",domain->size_faces());
+    chkpt.create_variable1D("snobal:m_s",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:rho",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:T_s",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:T_s_0",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:T_s_l",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:z_s",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:h2o_sat",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:max_h2o_vol",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:sum_runoff",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:sum_melt",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:sum_pcp_sno",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:sum_subl",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:E_s_sum",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:melt_sum",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:ro_pred_sum",domain->size_local_faces());
+    chkpt.create_variable1D("snobal:h2o_total",domain->size_local_faces());
 
 //netcdf puts are not threadsafe.
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& g = face->get_module_data<snodata>(ID);
@@ -553,7 +553,7 @@ void snobal::checkpoint(mesh& domain,  netcdf& chkpt)
 
 void snobal::load_checkpoint(mesh& domain, netcdf& chkpt)
 {
-    for (size_t i = 0; i < domain->size_faces(); i++)
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
     {
         auto face = domain->face(i);
         auto& g = face->get_module_data<snodata>(ID);
