@@ -448,10 +448,7 @@ void core::config_checkpoint( pt::ptree& value)
         ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
         SPDLOG_DEBUG("Rank {} using checkpoint restore file {}", rank, ckpt_nc_path.string());
         _checkpoint_opts.in_savestate.open(ckpt_nc_path.string());
-
-
     }
-
 }
 void core::config_forcing(pt::ptree &value)
 {
@@ -1126,6 +1123,10 @@ void core::config_output(pt::ptree &value)
                 out.fname = ugrid_path.string();
 
                 out.writer = boost::make_shared<ugrid_writer>(_mesh, _global, _mesh->write_param_to_output(), out.fname);
+
+                boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)->compress = itr.second.get<bool>("compress", true);
+                boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)->bitgroom = itr.second.get<bool>("bitgroom", true);
+
             }
 
 
@@ -1137,8 +1138,6 @@ void core::config_output(pt::ptree &value)
                 CHM_THROW_EXCEPTION(config_error, "ugrid output cannot have write_ghost_neighbors=true");
             }
             _mesh->write_ghost_neighbors_to_vtu(write_ghost) ;
-
-
 
             out.frequency = itr.second.get_optional<size_t>("frequency"); //defaults to every timestep
             out.rotate_frequency = itr.second.get_optional<size_t>("rotate_frequency"); //defaults to never
@@ -1639,8 +1638,8 @@ void core::init(int argc, char **argv)
         }
     }
 
-
-    pt::json_parser::write_json((output_folder_path / "config.json" ).string(),cfg); // output a full dump of the cfg, after all modifications, to the output directory
+    // output a full dump of the cfg, after all modifications, to the output directory
+    pt::json_parser::write_json((output_folder_path / "config.json" ).string(), cfg);
     _cfg = cfg;
 
     SPDLOG_DEBUG("Finished initialization");

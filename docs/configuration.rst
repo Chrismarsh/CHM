@@ -506,17 +506,13 @@ please see the :ref:`output` section.
    (``frequency:24``) as the model simulation starts at 00:00. However, the auto-checkpoint suspends at the 8am
    timestep, the next output will be at 8am instead of midnight.
 
-   Because the ugrid output has to know a priori how many timesteps to output, setting frequency>1 with ugrid output
-   will result in non-written times being full of NaN values. This breaks Paraview's ability to render subseuqnt timesteps.be
 
 .. confval:: rotate_frequency
 
   :type: int
   :default: 0
 
-  Only applies to ugrid outputs. The timestep frequency to create a new ugrid file at. Because the netcdf writer needs
-  to know at file creation how many timesteps need to be written, the file is a full-timeseries file, however it is filled
-  with NaN values except at the timesteps defined by the output frequency and rotation frequency.
+  Only applies to ugrid outputs. The timestep frequency to create a new ugrid file at.
 
 .. confval:: write_parameters
 
@@ -548,6 +544,22 @@ please see the :ref:`output` section.
 
     Output at a specific time every day, given in a "HH:MM" 24hr-format, e.g., ``"specific_time": "14:00"``
 
+.. confval:: compress
+
+    :type: bool
+    :default: true
+
+    Enable shuffle + deflate level 5. `Docs <https://www.unidata.ucar.edu/blogs/developer/entry/netcdf_compression>`_/
+    Improvements `compression <https://www.unidata.ucar.edu/software/netcdf/workshops/2012/nc4chunking/CompressionResults.html>`_.
+    Only on ugrid output.
+
+.. confval:: bitgroom
+
+    :type: bool
+    :default: true
+
+    Enable `bitgrooming <https://docs.unidata.ucar.edu/netcdf-c/4.9.2/md__media_psf_Home_Desktop_netcdf_releases_v4_9_2_release_netcdf_c_docs_quantize.html>`_.
+    Only on ugrid output.
 
 Example:
 

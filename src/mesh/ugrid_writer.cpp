@@ -21,6 +21,9 @@ ugrid_writer::ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_param
 {
     _ugrid_fid = -1;
     _time_index = 0;
+    compress = true;
+    bitgroom = false;
+
 }
 
 ugrid_writer::~ugrid_writer()
@@ -45,6 +48,14 @@ void ugrid_writer::close_ugrid()
         nc_chk_ret(nc_close(_ugrid_fid));
     }
     _ugrid_fid = -1;
+
+    // start writing at the start of new file
+    _time_index = 0;
+
+    // clean up for a new write
+    _fname = "";
+    _ugrid_id_var = {};
+
 }
 void ugrid_writer::write_ugrid(const std::vector<std::string>& output_variables)
 {
@@ -294,6 +305,9 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "units", strlen("m"), "m"));
 
 
+    // bitgroom sigfigs
+    int NSD = 4;
+
     int dims[2] = {time_dimid, dim_Mesh2_face};
     for (auto& var : output_variables)
     {
@@ -301,22 +315,36 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
         nc_chk_ret(nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "mesh", strlen("Mesh2"), "Mesh2"));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "location", strlen("face"), "face"));
         nc_chk_ret(nc_put_att_double(_ugrid_fid, _ugrid_id_var[var], "_FillValue", NC_DOUBLE, 1, &nan_value));
+
+        nc_chk_ret(nc_var_par_access(_ugrid_fid, _ugrid_id_var[var], NC_COLLECTIVE));
+
+        if (compress) nc_chk_ret(nc_def_var_deflate(_ugrid_fid, _ugrid_id_var[var], 1, 1, 5));
+        if (bitgroom) nc_chk_ret(nc_def_var_quantize(_ugrid_fid, _ugrid_id_var[var], NC_QUANTIZE_BITGROOM, NSD));
     }
 
     _ugrid_id_var["time"] = time_varid;
+    nc_chk_ret(nc_var_par_access(_ugrid_fid, _ugrid_id_var["time"], NC_COLLECTIVE));
+    if (compress) nc_chk_ret(nc_def_var_deflate(_ugrid_fid, _ugrid_id_var["time"], 1, 1, 5));
+
+
     std::map<std::string, int> param_id;
-
-    auto define_face_variable = [&](const std::string& v, const std::string& prefix="") {
-        return [&]() {
-            nc_chk_ret(nc_def_var(_ugrid_fid, (prefix+v).c_str(), NC_DOUBLE, 1, &dim_Mesh2_face, &param_id[v]));
-            nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id[v], "mesh", strlen("Mesh2"), "Mesh2"));
-            nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id[v], "location", strlen("face"), "face"));
-            nc_chk_ret(nc_put_att_double(_ugrid_fid, param_id[v], "_FillValue", NC_DOUBLE, 1, &nan_value));
-        };
-    };
-
     if(_write_parameters)
     {
+        auto define_face_variable = [&](const std::string& v, const std::string& prefix="") {
+            return [&]() {
+                nc_chk_ret(nc_def_var(_ugrid_fid, (prefix+v).c_str(), NC_DOUBLE, 1, &dim_Mesh2_face, &param_id[v]));
+                nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id[v], "mesh", strlen("Mesh2"), "Mesh2"));
+                nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id[v], "location", strlen("face"), "face"));
+                nc_chk_ret(nc_put_att_double(_ugrid_fid, param_id[v], "_FillValue", NC_DOUBLE, 1, &nan_value));
+
+                nc_chk_ret(nc_var_par_access(_ugrid_fid, param_id[v], NC_COLLECTIVE));
+
+                if (compress) nc_chk_ret(nc_def_var_deflate(_ugrid_fid, param_id[v], 1, 1, 5));
+                if (bitgroom) nc_chk_ret(nc_def_var_quantize(_ugrid_fid, param_id[v], NC_QUANTIZE_BITGROOM, NSD));
+            };
+        };
+
+
         auto params = _mesh->face(0)->parameters();
         for (auto &v: params)
         {
@@ -332,17 +360,11 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
         nc_chk_ret(nc_def_var(_ugrid_fid, "owner", NC_INT, 1, &dim_Mesh2_face, &param_id["owner"]));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id["owner"], "mesh", strlen("Mesh2"), "Mesh2"));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id["owner"], "location", strlen("face"), "face"));
+        nc_chk_ret(nc_var_par_access(_ugrid_fid, param_id["owner"], NC_COLLECTIVE));
+        if (compress) nc_chk_ret(nc_def_var_deflate(_ugrid_fid, param_id["owner"], 1, 1, 5));
 
     }
 
-    for (auto p:param_id)
-    {
-        nc_chk_ret(nc_var_par_access(_ugrid_fid, p.second, NC_COLLECTIVE));
-    }
-    for (auto p:_ugrid_id_var)
-    {
-        nc_chk_ret(nc_var_par_access(_ugrid_fid, p.second, NC_COLLECTIVE));
-    }
 
     nc_chk_ret(nc_enddef(_ugrid_fid)); // End define mode
 

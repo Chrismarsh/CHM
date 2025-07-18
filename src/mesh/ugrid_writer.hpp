@@ -46,6 +46,8 @@ public:
     void open_ugrid(const std::vector<std::string>& output_variables);
     void init_ugrid(const std::vector<std::string>& output_variables);
 
+    bool bitgroom;
+    bool compress;
 private:
     //holds the file id for the ugrid output netcdf
     int _ugrid_fid;
@@ -63,6 +65,7 @@ private:
 
     boost::mpi::environment _mpi_env;
     boost::mpi::communicator _comm_world;
+
 
     bool _write_parameters;
 };

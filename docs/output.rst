@@ -49,7 +49,20 @@ ugrid
 
 The ugrid file is a netcdf `URGID <https://ugrid-conventions.github.io/>`_  schema. It defines the mesh in the same
  way as what is used internally to CHM where the triangles are composed indexes of 3-nodes into the vertex list.
- The values in CHM are almost exclusively face centered.
+ The values in CHM are almost exclusively face centered. By default the ugrid is `level 5 deflate+shuffle <https://www.unidata.ucar.edu/blogs/developer/entry/netcdf_compression>`_ with
+ `bitgrooming <https://docs.unidata.ucar.edu/netcdf-c/4.9.2/md__media_psf_Home_Desktop_netcdf_releases_v4_9_2_release_netcdf_c_docs_quantize.html>`_. This improves the compression,
+ and improves the output speed. For a mesh of #cells=2200 for 24 hours with 3 ranks:
+
++---------------------+-----------+----------------+
+| Method              | size (b)  | timestep (ms)  |
++=====================+===========+================+
+| +bit +compress      | 1866316   | 235            |
++---------------------+-----------+----------------+
+| ~bit +compress      | 3568842   | 350            |
++---------------------+-----------+----------------+
+| ~bit ~compress      | 5076286   | 280            |
++---------------------+-----------+----------------+
+
 
 .. code::
 
