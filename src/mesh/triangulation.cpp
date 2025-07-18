@@ -2469,7 +2469,7 @@ void triangulation::open_ugrid(std::vector<std::string> output_variables, std::s
 
         if (std::find(output_variables.begin(), output_variables.end(), name) == output_variables.end())
         {
-            CHM_THROW_EXCEPTION(model_init_error, "Asking for variable " std::string(name) + " to be output that doesn't exist in the ugrid!");
+            CHM_THROW_EXCEPTION(model_init_error, "Asking for variable " + std::string(name) + " to be output that doesn't exist in the ugrid!");
         }
 
         _ugrid_id_var[std::string(name)] = varid;
