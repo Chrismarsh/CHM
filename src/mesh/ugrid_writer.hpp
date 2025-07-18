@@ -28,13 +28,12 @@
 #include "timer.hpp"
 #include "global.hpp"
 
-typedef boost::shared_ptr<triangulation> mesh;
 
-class ugrid
+class ugrid_writer
 {
 public:
-    ugrid(mesh m, boost::shared_ptr<global> g);
-    ~ugrid();
+    ugrid_writer(mesh m, boost::shared_ptr<global> g,  bool write_parameters, std::string fname);
+    ~ugrid_writer();
 
     /**
      * Check a netcdf C call's return value and convert to exception if needed
@@ -43,9 +42,9 @@ public:
     void nc_chk_ret(int status);
 
     void close_ugrid();
-    void write_ugrid(std::vector<std::string> output_variables );
-    void open_ugrid(std::vector<std::string> output_variables, std::string fname);
-    void init_ugrid(std::vector<std::string> output_variables, std::string fname);
+    void write_ugrid(const std::vector<std::string>& output_variables);
+    void open_ugrid(const std::vector<std::string>& output_variables);
+    void init_ugrid(const std::vector<std::string>& output_variables);
 
 private:
     //holds the file id for the ugrid output netcdf
@@ -56,10 +55,15 @@ private:
 
     std::string _fname;
 
+    // track the number of outputs that have been done to correctly compute the offset in the nc
+    size_t _time_index;
+
     mesh _mesh;
     boost::shared_ptr<global> _global;
 
     boost::mpi::environment _mpi_env;
     boost::mpi::communicator _comm_world;
+
+    bool _write_parameters;
 };
 

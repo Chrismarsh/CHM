@@ -28,7 +28,7 @@ global::global()
     first_time_step = true;
     _utc_offset = 0;
     _is_point_mode = false;
-    timestep_counter=0;
+    timestep_counter=-1;
     _from_checkpoint = false;
     _n_timestep = 0;
 }

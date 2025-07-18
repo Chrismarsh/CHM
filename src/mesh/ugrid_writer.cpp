@@ -14,28 +14,30 @@
 // 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#include "ugrid.hpp"
+#include "ugrid_writer.hpp"
 
-ugrid::ugrid(mesh m, global g) :
-    _mesh(m), _global(g)
+ugrid_writer::ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_parameters, std::string fname):
+    _mesh(m), _global(g), _write_parameters(write_parameters), _fname(fname)
+{
+    _ugrid_fid = -1;
+    _time_index = 0;
+}
+
+ugrid_writer::~ugrid_writer()
 {
 
 }
 
-ugrid::~ugrid()
-{
-
-}
-
-void ugrid::nc_chk_ret(int status)
+void ugrid_writer::nc_chk_ret(int status)
 {
     if (status != NC_NOERR)
     {
+        SPDLOG_ERROR("NC error status = {}", status);
         CHM_THROW_EXCEPTION(chm_error, nc_strerror(status));
     }
 }
 
-void ugrid::close_ugrid()
+void ugrid_writer::close_ugrid()
 {
     SPDLOG_DEBUG("Closing ugrid file");
     if (_ugrid_fid != -1)
@@ -44,7 +46,7 @@ void ugrid::close_ugrid()
     }
     _ugrid_fid = -1;
 }
-void ugrid::write_ugrid(std::vector<std::string> output_variables)
+void ugrid_writer::write_ugrid(const std::vector<std::string>& output_variables)
 {
     auto variables = output_variables.size() == 0 ? _mesh->face(0)->variables() : output_variables;
     if (_ugrid_fid==-1)
@@ -52,9 +54,9 @@ void ugrid::write_ugrid(std::vector<std::string> output_variables)
         SPDLOG_DEBUG(_fname);
         // if we are resuming from checkpoint, don't mangle out existing ugrid!
         if (_global->from_checkpoint())
-            open_ugrid(variables, _fname);
+            open_ugrid(variables);
         else
-            init_ugrid(variables, _fname);
+            init_ugrid(variables);
     }
 
     // use C api as boost doesn't have info
@@ -67,36 +69,37 @@ void ugrid::write_ugrid(std::vector<std::string> output_variables)
     size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + _comm_world.rank(), 0);
 
     double time = _global->posix_time_double()  / 60 ;
-    size_t index = _global->timestep_counter;
-    nc_chk_ret(nc_put_var1_double(_ugrid_fid, _ugrid_id_var["time"], &index, &time));
+    nc_chk_ret(nc_put_var1_double(_ugrid_fid, _ugrid_id_var["time"], &_time_index, &time));
 
     for (auto& var : variables)
     {
         std::vector<double> v(_mesh->size_local_faces());
         for (size_t i = 0; i < _mesh->size_local_faces(); i++)
         {
-            double value = (*face(i))[var];
+            double value = (*_mesh->face(i))[var];
             if (value == -9999.) value = nan("");
             v.at(i) = value;
         }
 
-        size_t start[2] = {_global->timestep_counter, offset_face};
+        size_t start[2] = {_time_index, offset_face};
         size_t count[2] = {1, _mesh->size_local_faces()};
 
         nc_chk_ret(nc_put_vara_double(_ugrid_fid, _ugrid_id_var[var], start,count,v.data()));
 
     }
 
+    ++_time_index;
+
     MPI_Info_free(&info_used);
 }
-void ugrid::open_ugrid(std::vector<std::string> output_variables, std::string fname)
+void ugrid_writer::open_ugrid(const std::vector<std::string>& output_variables)
 {
     if (_ugrid_fid != -1)
     {
         CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file is already open");
     }
 
-    if (!boost::filesystem::exists(fname))
+    if (!boost::filesystem::exists(_fname))
     {
         CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file is not found");
     }
@@ -106,7 +109,7 @@ void ugrid::open_ugrid(std::vector<std::string> output_variables, std::string fn
     MPI_Comm_get_info(comm, &info_used);
 
     SPDLOG_DEBUG("Opening existing ugrid for writting");
-    nc_chk_ret(nc_open_par(fname.c_str(), NC_WRITE, _comm_world, info_used, &_ugrid_fid));
+    nc_chk_ret(nc_open_par(_fname.c_str(), NC_WRITE, _comm_world, info_used, &_ugrid_fid));
 
     for (auto vara:output_variables)
     {
@@ -120,10 +123,21 @@ void ugrid::open_ugrid(std::vector<std::string> output_variables, std::string fn
     if (status != NC_NOERR)
         CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file does not have variable to write: time");
 
+    for (auto p:_ugrid_id_var)
+    {
+        nc_chk_ret(nc_var_par_access(_ugrid_fid, p.second, NC_COLLECTIVE));
+    }
+
+    int unlimdimidp;
+
+    nc_chk_ret(nc_inq_unlimdim(_ugrid_fid, &unlimdimidp)); // get the time /dimension/. it's the only unlimited
+    nc_chk_ret(nc_inq_dimlen(_ugrid_fid, unlimdimidp, &_time_index));
+
+    SPDLOG_DEBUG("Existing ugrid output has {} timesteps already", _time_index);
 
     MPI_Info_free(&info_used);
 }
-void ugrid::init_ugrid(std::vector<std::string> output_variables, std::string fname)
+void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
 {
     timer c;
     // use C api as boost doesn't have info
@@ -131,8 +145,7 @@ void ugrid::init_ugrid(std::vector<std::string> output_variables, std::string fn
     MPI_Info info_used;
     MPI_Comm_get_info(comm, &info_used);
 
-
-    int status = nc_create_par(fname.c_str(), NC_NETCDF4 | NC_CLOBBER, comm, info_used, &_ugrid_fid);
+    int status = nc_create_par(_fname.c_str(), NC_NETCDF4 | NC_CLOBBER, comm, info_used, &_ugrid_fid);
     if (status != NC_NOERR)
     {
         CHM_THROW_EXCEPTION(file_write_error, "Failed to create ugrid output file");
@@ -322,7 +335,15 @@ void ugrid::init_ugrid(std::vector<std::string> output_variables, std::string fn
 
     }
 
-    nc_chk_ret(nc_var_par_access(_ugrid_fid, NC_GLOBAL, NC_COLLECTIVE));
+    for (auto p:param_id)
+    {
+        nc_chk_ret(nc_var_par_access(_ugrid_fid, p.second, NC_COLLECTIVE));
+    }
+    for (auto p:_ugrid_id_var)
+    {
+        nc_chk_ret(nc_var_par_access(_ugrid_fid, p.second, NC_COLLECTIVE));
+    }
+
     nc_chk_ret(nc_enddef(_ugrid_fid)); // End define mode
 
     auto t = c.toc<ms>();
@@ -352,9 +373,9 @@ void ugrid::init_ugrid(std::vector<std::string> output_variables, std::string fn
         std::vector<double> v_z(_mesh->size_local_vertex());
         std::vector<double> v_z_scaled(_mesh->size_local_vertex());
 
-        for (size_t i = 0; i < _mesh->_vertexes.size(); i++)
+        for (size_t i = 0; i < _mesh->size_local_vertex(); i++)
         {
-            auto vit = _mesh->_vertexes.at(i);
+            auto vit = _mesh->vertex(i);
             v_x.at(i) = vit->point().x();
             v_y.at(i) = vit->point().y();
             v_z.at(i) = vit->point().z();
@@ -469,7 +490,7 @@ void ugrid::init_ugrid(std::vector<std::string> output_variables, std::string fn
 
             for (size_t i = 0; i < _mesh->size_local_faces(); i++)
             {
-                double p = face(i)->slope();
+                double p = _mesh->face(i)->slope();
                 if( p == -9999.) p = nan("");
                 param.at(i) = p;
             }
@@ -485,7 +506,7 @@ void ugrid::init_ugrid(std::vector<std::string> output_variables, std::string fn
 
             for (size_t i = 0; i < _mesh->size_local_faces(); i++)
             {
-                double p = face(i)->aspect();
+                double p = _mesh->face(i)->aspect();
                 if( p == -9999.) p = nan("");
                 param.at(i) = p;
             }

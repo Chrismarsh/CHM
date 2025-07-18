@@ -406,14 +406,22 @@ void core::config_checkpoint( pt::ptree& value)
         size_t csz = 1;
         size_t rank = 0;
 
-        #ifdef USE_MPI
-            csz = _comm_world.size();
-            rank = _comm_world.rank();
-        #endif
+        csz = _comm_world.size();
+        rank = _comm_world.rank();
+
 
         if( csz != chkp.get<size_t>("ranks") )
         {
             CHM_THROW_EXCEPTION(config_error, "Checkpoint file was saved with a different number of ranks");
+        }
+
+        try
+        {
+            _global->timestep_counter = chkp.get<size_t>("timestep_counter");
+        }catch (...)
+        {
+            CHM_THROW_EXCEPTION(config_error,
+                "This checkpoint was saved with an older version and does not have the field timestep_counter");
         }
 
         boost::filesystem::path ckpt_nc_path;
@@ -440,11 +448,9 @@ void core::config_checkpoint( pt::ptree& value)
         ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
         SPDLOG_DEBUG("Rank {} using checkpoint restore file {}", rank, ckpt_nc_path.string());
         _checkpoint_opts.in_savestate.open(ckpt_nc_path.string());
+
+
     }
-
-
-
-
 
 }
 void core::config_forcing(pt::ptree &value)
@@ -966,20 +972,15 @@ void core::config_output(pt::ptree &value)
 
     size_t ID = 0;
     auto pts_dir = "points";
-    auto msh_dir = "meshes";
     boost::filesystem::path pts_path;
-    boost::filesystem::path msh_path;
-
 
     auto output_dir = value.get<std::string>("output_dir","output");
     output_folder_path = cwd_dir / output_dir;
     boost::filesystem::create_directories(output_folder_path);
 
-    // Create empty folders /points/ and /meshes/
+    // Create empty folders /points/
     pts_path = output_folder_path / pts_dir;
-    msh_path = output_folder_path / msh_dir;
     boost::filesystem::create_directories(pts_path);
-    boost::filesystem::create_directories(msh_path);
 
     _find_and_insert_subjson(value);
 
@@ -1091,28 +1092,10 @@ void core::config_output(pt::ptree &value)
         {
             out.type = output_info::mesh;
 
-            if (out_type == "vtu")
-                out.mesh_output_formats = output_info::mesh_outputs::vtu;
-            else
-                out.mesh_output_formats = output_info::mesh_outputs::ugrid;
-
             out.name = out_type;
             out.base_name = itr.second.get<std::string>("base_name", output_dir);
 
-            auto f = msh_path / out.base_name;
-            boost::filesystem::create_directories(f.parent_path());
-            out.fname = f.string();
-
-            _mesh->write_param_to_vtu( itr.second.get("write_parameters",true) ) ;
-
-	    // Set option for writing ghost neighbor data, defaults to not
-            auto write_ghost = itr.second.get("write_ghost_neighbors",false);
-            if (write_ghost && out.mesh_output_formats == output_info::mesh_outputs::ugrid )
-            {
-                CHM_THROW_EXCEPTION(config_error, "ugrid output cannot have write_ghost_neighbors=true");
-            }
-            _mesh->write_ghost_neighbors_to_vtu(write_ghost) ;
-
+            _mesh->write_param_to_output( itr.second.get("write_parameters",true) ) ;
 
             try
             {
@@ -1125,6 +1108,37 @@ void core::config_output(pt::ptree &value)
             {
                 SPDLOG_WARN("Writing all variables to output mesh");
             }
+
+            if (out_type == "vtu")
+            {
+                auto msh_path = output_folder_path / "vtu";
+                boost::filesystem::create_directories(msh_path);
+
+                auto f = msh_path / out.base_name;
+                boost::filesystem::create_directories(f.parent_path());
+                out.fname = f.string();
+                out.mesh_output_formats = output_info::mesh_outputs::vtu;
+            }
+            else
+            {
+                boost::filesystem::path ugrid_path = output_folder_path / (out.base_name + ".nc");
+                out.mesh_output_formats = output_info::mesh_outputs::ugrid;
+                out.fname = ugrid_path.string();
+
+                out.writer = boost::make_shared<ugrid_writer>(_mesh, _global, _mesh->write_param_to_output(), out.fname);
+            }
+
+
+	    // Set option for writing ghost neighbor data, defaults to not
+            // only possible for vtu outputs
+            auto write_ghost = itr.second.get("write_ghost_neighbors",false);
+            if (write_ghost && out.mesh_output_formats == output_info::mesh_outputs::ugrid )
+            {
+                CHM_THROW_EXCEPTION(config_error, "ugrid output cannot have write_ghost_neighbors=true");
+            }
+            _mesh->write_ghost_neighbors_to_vtu(write_ghost) ;
+
+
 
             out.frequency = itr.second.get_optional<size_t>("frequency"); //defaults to every timestep
             out.rotate_frequency = itr.second.get_optional<size_t>("rotate_frequency"); //defaults to never
@@ -1155,7 +1169,6 @@ void core::config_output(pt::ptree &value)
                 auto time = "3000-01-01 " + *specific_time + ":00";
                 out.specific_time = boost::posix_time::ptime(boost::posix_time::time_from_string(time));
             }
-
 
 
             out.list_outputs();
@@ -1709,7 +1722,7 @@ void core::init(int argc, char **argv)
             }
         }
         _mesh->prune_faces(faces_to_init);
-        SPDLOG_DEBUG("Mesh now has #faces = {}",_mesh->size_faces());
+        SPDLOG_DEBUG("Mesh now has #faces = {}",_mesh->size_local_faces());
     }
 
     // module provided params are initialized when the mesh loads as we also have to handle the mesh params at the same time
@@ -2224,13 +2237,14 @@ void core::run()
 
     double meantime = 0;
     size_t current_ts = 0;
-    _global->timestep_counter = 0; //use this to pass the timestep info to the modules for easier debugging specific timesteps
-    size_t max_ts = _metdata->n_timestep();
+      size_t max_ts = _metdata->n_timestep();
     bool done = false;
 
     while (!done)
     {
         boost::posix_time::ptime t;
+
+        _global->timestep_counter++;
 
         _global->_current_date = _metdata->current_time();
 
@@ -2308,6 +2322,8 @@ void core::run()
             SPDLOG_ERROR(e.what());
         }
 
+
+
         // save the current state
         if(_checkpoint_opts.should_checkpoint(current_ts,
                                                (max_ts-1) == current_ts,
@@ -2327,10 +2343,8 @@ void core::run()
             auto timestr = boost::posix_time::to_iso_string(timestamp); // start from current TS + dt
 
 
-            size_t rank = 0;
-#ifdef USE_MPI
-            rank = _comm_world.rank();
-#endif
+            size_t rank = _comm_world.rank();
+
 
             auto dirpath = _checkpoint_opts.ckpt_path / timestr;
             boost::filesystem::create_directories(dirpath);
@@ -2359,18 +2373,18 @@ void core::run()
             }
 
             savestate.get_ncfile().putAtt("restart_time",boost::posix_time::to_simple_string(timestamp));
-            savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64,ts_sec);
+            savestate.get_ncfile().putAtt("restart_time_sec", netCDF::ncUint64, ts_sec);
+            savestate.get_ncfile().putAtt("timestep_counter", netCDF::ncUint64, static_cast<unsigned long long>(_global->timestep_counter));
 
             pt::ptree tree;
 
-            int nranks = 1;
-#ifdef USE_MPI
-            nranks = _comm_world.size();
-#endif
+            int nranks = _comm_world.size();
+
 
             tree.put("ranks", nranks);
             tree.put("restart_time_sec", ts_sec);
             tree.put("startdate", timestr);
+            tree.put("timestep_counter", _global->timestep_counter);
 
             pt::ptree files;
 
@@ -2408,13 +2422,11 @@ void core::run()
         {
             if (itr.type == output_info::output_type::mesh)
             {
-
                 // check if we should output or not
                 bool do_output = itr.should_output(max_ts, current_ts, _global->_current_date);
 
                 if(do_output)
                 {
-
                     std::vector<std::string> output;
                     output.assign(itr.variables.begin(),itr.variables.end()); //convert to list to match internal lists
 
@@ -2453,16 +2465,13 @@ void core::run()
                         // first, check if we need a new ugrid file
                         bool new_ugrid = itr.should_rotate(max_ts, current_ts, _global->_current_date);
 
-                        auto base_name = itr.base_name;
+                        auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(itr.writer);
                         if (new_ugrid)
                         {
-                            _mesh->close_ugrid();
-                            base_name = itr.base_name + "_" + to_iso_string(_global->posix_time());
+                            writer->close_ugrid();
                         }
 
-                        boost::filesystem::path ugrid_path = output_folder_path / (base_name + ".nc");
-
-                        _mesh->write_ugrid(output, ugrid_path.string());
+                        writer->write_ugrid({itr.variables.begin(), itr.variables.end()} );
                     }
                 }
             }
@@ -2499,7 +2508,7 @@ void core::run()
         meantime += timestep;
 
         current_ts++;
-        _global->timestep_counter++;
+
 
         double mt = meantime / current_ts;
         bool ms = true;
@@ -2563,9 +2572,12 @@ void core::run()
             itr.ts.subset(*_start_ts,*_end_ts); // in the event of an exception, _end_ts will be reset to have the esception timestep so-as to no write massive amounts of nan values
             itr.ts.to_file(itr.fname);
         }
+
+        if (itr.mesh_output_formats == output_info::mesh_outputs::ugrid)
+        {
+            boost::get<boost::shared_ptr<ugrid_writer>>(itr.writer)->close_ugrid();
+        }
     }
-    // we can call this without a check
-    _mesh->close_ugrid();
 
     if(_notification_script != "")
     {

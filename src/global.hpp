@@ -102,7 +102,9 @@ public:
 
     double posix_time_double();
 
-    size_t timestep_counter; // the timestep we are on, start = 0
+    // the timestep we are on, start of simulation is 0
+    // preserved through checkpointing
+    size_t timestep_counter;
 
 
     bool first_time_step;
