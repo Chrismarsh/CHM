@@ -12,6 +12,7 @@ spack:
     - "boost@1.85.0: +system+filesystem+date_time+thread+chrono+regex+iostreams+program_options+mpi+serialization~python"
     - "cgal@6: +gmp"
     - "hdf5 +cxx"
+    - "netcdf-c@4.9.0: +mpi"
     - "netcdf-cxx4@4.3:"
     - "gdal@3.8: +hdf5 +netcdf"
     - "proj@9: +curl+tiff"
