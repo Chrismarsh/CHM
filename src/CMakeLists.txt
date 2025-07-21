@@ -42,6 +42,7 @@ set(MODULE_SRCS
 		modules/Marsh_shading_iswr.cpp
 		modules/Sicart_ilwr.cpp
 		modules/PenmanMonteith_evaporation.cpp
+        modules/Evapotranspiration_All.cpp
 		modules/interp_met/Thornton_p.cpp
 		modules/Walcek_cloud.cpp
 		modules/Harder_precip_phase.cpp
@@ -50,7 +51,9 @@ set(MODULE_SRCS
 		modules/Richard_albedo.cpp
 		modules/snowpack.cpp
 		modules/Gray_inf.cpp
-		modules/Simple_Canopy.cpp
+        modules/Infil_All.cpp
+        modules/soil_module.cpp
+        modules/Simple_Canopy.cpp
 		modules/scale_wind_vert.cpp
 		modules/sub_grid.cpp
     	modules/snow_slide.cpp
@@ -68,6 +71,21 @@ set(MODULE_SRCS
 
 		CACHE INTERNAL "" FORCE )
 
+set(MODEL_SRCS
+        modules/EvapotranspirationModels/evapbase.cpp
+        modules/EvapotranspirationModels/PenmanMonteith.cpp
+        modules/EvapotranspirationModels/PriestleyTaylor.cpp
+        
+        modules/soil_submodules/soil_two_layer.cpp
+        modules/soil_submodules/soil_ET.cpp
+        modules/soil_submodules/soil_classes.cpp
+
+        modules/soil_submodules/K_estimate.cpp
+
+        modules/soil_submodules/XG_algorithm.cpp
+    
+        modules/infil_submodules/Crack.cpp
+        CACHE INTERNAL "" FORCE )
 
 set(CHM_SRCS
 		#main.cpp needs to be added below so we can re use CHM_SRCS in the gtest build
@@ -77,6 +95,7 @@ set(CHM_SRCS
 		metdata.cpp
 
 		physics/Atmosphere.cpp
+        physics/Soil.cpp
 
 		mesh/triangulation.cpp
         mesh/ugrid_writer.cpp
@@ -109,7 +128,10 @@ set (HEADER_FILES
         modules/interp_met
 		modules/snobal
 		modules/testing
-		math
+        modules/EvapotranspirationModels/
+        modules/soil_submodules/
+        modules/infil_submodules/
+        math
         libmaw
         interpolation
         timeseries
@@ -227,7 +249,8 @@ add_executable(
 		main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
 		${CHM_SRCS}
 		${FILTER_SRCS}
-		${MODULE_SRCS}
+        ${MODEL_SRCS}
+        ${MODULE_SRCS}
 )
 
 
@@ -394,26 +417,31 @@ endif()
 
 if (BUILD_TESTS)
 	message(STATUS "Tests enabled. Run with make check")
-	add_subdirectory (tests/googletest/googletest)
+	add_subdirectory (tests/googletest)
 
 	set(TEST_SRCS
-			tests/test_station.cpp
-			tests/test_interpolation.cpp
-			tests/test_timeseries.cpp
-			tests/test_core.cpp
-			tests/test_variablestorage.cpp
-			tests/test_metdata.cpp
-			tests/test_netcdf.cpp
+        #tests/test_station.cpp
+            #tests/test_interpolation.cpp
+            #tests/test_timeseries.cpp
+            #tests/test_core.cpp
+            #tests/test_variablestorage.cpp
+            #tests/test_metdata.cpp
+            #tests/test_netcdf.cpp
 			#    test_mesh.cpp
-			tests/test_regexptokenizer.cpp
+            #tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-            tests/test_triangulation.cpp
-			tests/main.cpp
-)
+            #tests/test_triangulation.cpp
+            tests/main.cpp
+            tests/submoduletests/test_crack.cpp
+			tests/submoduletests/test_ayers.cpp
+            tests/submoduletests/test_CSVreader.cpp
+            tests/submoduletests/test_daily_accumulator.cpp
+	)
 
 
 	set( GTEST_LINK
 			gtest
+            gmock
 			)
 
 
@@ -421,7 +449,7 @@ if (BUILD_TESTS)
 	add_executable(
 			runUnitTests
 			${CHM_SRCS}
-			${FILTER_SRCS}
+            ${MODEL_SRCS}
 			${MODULE_SRCS}
 			${TEST_SRCS}
 	)

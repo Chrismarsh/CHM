@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.30)
+cmake_minimum_required (VERSION 3.27)
 project (CHM-project C CXX Fortran)
 
 # MACOSX_RPATH is enabled by default.
@@ -16,7 +16,7 @@ cmake_policy(SET CMP0144 NEW)
 
 # The NEW behavior is for find_package(Boost) to search for the upstream BoostConfig.cmake
 # https://cmake.org/cmake/help/latest/policy/CMP0167.html
-cmake_policy(SET CMP0167 NEW)
+#cmake_policy(SET CMP0167 NEW)
 
 # Needed in addition to the target cxx standard set later
 set(CMAKE_CXX_STANDARD 20)

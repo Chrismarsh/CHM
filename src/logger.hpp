@@ -41,9 +41,9 @@
  };
 
 //#ifdef USE_MPI
-//#define MPI_RANK_DBG(RANK) if(_comm_world.rank() == RANK) \
-//    {\
-//    LOG_DEBUG << "\n\n-----------------------------\n\nI am PID " << getpid() <<", attach within 45s\n\n-----------------------------\n\n"; \
-//            sleep(45);\
-//    }
+//#define MPI_RANK_DBG(RANK) if(_comm_world.rank() == RANK)
+//    {
+//    LOG_DEBUG << "\n\n-----------------------------\n\nI am PID " << getpid() <<", attach within 45s\n\n-----------------------------\n\n";
+//            sleep(45);
+//    t }
 //#endif
