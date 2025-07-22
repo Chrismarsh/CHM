@@ -75,7 +75,7 @@ NetCDF
 
 When using a NetCDF file as input, this creates virtual stations at the cell-centres. Only the stations that are
 required by the mesh subset are loaded as specified by the ``option:station_N_nearest``, and timesteps are lazy loaded
-as required. This ensures the memory foot print is low. In MPI mode, only the stations required for the current ranks'
+as required. This ensures the memory foot print is low. With multiple MPI ranks, only the stations required for the current ranks'
 mesh subset are loaded. The internal CHM variable names are mapped from CF compliant ``standard_name`` variable
 attributes. If a variable doesn't have a ``standard_name`` or is not in this table, it is ignored and not loaded.
 
@@ -104,7 +104,8 @@ Currently the following mappings are supported:
 +---------------+----------------------------------+---------------------+
 | p             | precipitation_amount             | mm                 |
 +---------------+----------------------------------+---------------------+
-
+| GZ             | Geopoential height              | m                 |
++---------------+----------------------------------+---------------------+
 
 
 
@@ -126,8 +127,7 @@ Notes
 - Assumed that the netcdf is in EPSG:4326 / WGS84 lat/lon
 - Consistent grid between model timesteps, e.g., regular 1-hour forcing
 - Time is in UTC+0
-- If a single timestep is present in a file, then the ``time:delta_t=<timestep in seconds>`` and ``time:delta_t_units="s"``
-must be added to inform the model about the integration length of the forcing file.
+- If a single timestep is present in a file, then the attribute ``time:delta_t=<timestep in seconds>`` and ``time:delta_t_units="s"`` must be added to inform the model about the integration length of the forcing file.
 - The elevation is generally given by the geopotential height, assumed to be in metres
 - Time units: ``time:units = "hours since 2017-09-01 06:00:00" ;``
 - offset are given as ``int64``
@@ -137,7 +137,11 @@ Multipart NetCDF files
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 Multi-part netcdf files are allowed. This handles cases where the forcing data are split into a file per n-timesteps,
-such as one netcdf file per day. This is specified as a ``.json`` file that has a list of files:
+such as one netcdf file per day. Each time a new file is loaded occurs a small performance penalty as the entire
+datastructure has to be re-created. The upside to this is that the topology (e.g., spatial resolution) of each
+netcdf does not need to remain constant.
+
+This is specified as a ``.json`` file that has a list of files:
 
 .. code::
 
