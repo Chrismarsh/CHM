@@ -59,6 +59,8 @@
 #include <vtkXMLPolyDataWriter.h>
 #include <vtkPointData.h>
 
+#include <fmt/core.h>
+
 //CHM includes
 #include "exception.hpp"
 #include "logger.hpp"
@@ -111,7 +113,7 @@ class metdata
      * @param num_stations_to_use OPtionally the number of statons we require which might require a bbox expansion to
      * search
      */
-metdata(const mesh& mesh, boost::filesystem::path output_dir, boost::optional<int> num_stations_to_use);
+    metdata(const mesh& mesh, boost::filesystem::path output_dir, boost::optional<int> num_stations_to_use);
 
     ~metdata();
 

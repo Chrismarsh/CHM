@@ -80,6 +80,8 @@ namespace po = boost::program_options;
 //gls
 #include <gsl/gsl_errno.h>
 
+#include <fmt/core.h>
+
 //includes from CHM
 #include "exception.hpp"
 #include "filter_base.hpp"

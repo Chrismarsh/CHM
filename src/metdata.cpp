@@ -161,7 +161,7 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
     } catch(netCDF::exceptions::NcException& e)
     {
         OGRCoordinateTransformation::DestroyCT(coordTrans);
-        CHM_THROW_EXCEPTION(forcing_error, std::format("Failed to open netcdf file {}. Error: {}", path, e.what()));
+        CHM_THROW_EXCEPTION(forcing_error, fmt::format("Failed to open netcdf file {}. Error: {}", path, e.what()));
     }
 
     try
@@ -195,7 +195,6 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
                     _nc_ignored_variables.insert(itr);
                     SPDLOG_WARN("Could not remap nc var {} with standard_name {}, ignoring", itr, stdname);
                     continue;
-                    // CHM_THROW_EXCEPTION(forcing_error, std::format("Could not remap nc var {} with standard_name {}", itr, stdname));
                 }
 
                 SPDLOG_DEBUG("Remapping variable nc var {} to {} ", itr, chm_var);
@@ -207,7 +206,7 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
     } catch(netCDF::exceptions::NcException& e)
     {
         OGRCoordinateTransformation::DestroyCT(coordTrans);
-        CHM_THROW_EXCEPTION(forcing_error, std::format("Failed to map variables. Error: {}", e.what()));
+        CHM_THROW_EXCEPTION(forcing_error, fmt::format("Failed to map variables. Error: {}", e.what()));
     }
 
     try{
@@ -241,7 +240,7 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
     } catch(netCDF::exceptions::NcException& e)
     {
         OGRCoordinateTransformation::DestroyCT(coordTrans);
-        CHM_THROW_EXCEPTION(forcing_error, std::format("Failed to load coordinates. Error: {}", e.what()));
+        CHM_THROW_EXCEPTION(forcing_error, fmt::format("Failed to load coordinates. Error: {}", e.what()));
     }
 
     try
@@ -390,7 +389,7 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
         boost::filesystem::path nc_path(path);
 
         boost::filesystem::create_directories(_output_dir / "forcing" / nc_path.stem());
-        auto forcing_point_path = _output_dir / "forcing" / nc_path.stem() / std::format("stations_{}.", local.rank());
+        auto forcing_point_path = _output_dir / "forcing" / nc_path.stem() / fmt::format("stations_{}.", local.rank());
 
         // SPDLOG_DEBUG("Forcing points: {}", forcing_point_path.string());
         write_stations_to_ptv(forcing_point_path.string() + "vtp");

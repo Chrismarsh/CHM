@@ -1535,7 +1535,7 @@ void core::init(int argc, char **argv)
 
     // needs both the mesh loaded and output folder setup
     boost::filesystem::create_directories(output_folder_path / "mesh_boundingbox");
-    auto f = output_folder_path / "mesh_boundingbox" / std::format("mesh_bbox_{}.geojson", _comm_world.rank());
+    auto f = output_folder_path / "mesh_boundingbox" / fmt::format("mesh_bbox_{}.geojson", _comm_world.rank());
     _mesh->write_bbox_geojson(f.string());
 
     config_forcing(cfg.get_child("forcing"));
