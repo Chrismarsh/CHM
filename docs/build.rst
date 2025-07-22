@@ -1,5 +1,5 @@
-Compilation
-============
+Installation
+==============
 
 .. warning::
     Conan is no longer used to build CHM. Spack is now used
@@ -7,7 +7,7 @@ Compilation
 .. note::
    Building CHM without MPI support is now deprecated. MPI is now required.
 
-CHM uses `spack <https://spack.readthedocs.io/>`__ to manage and build all
+It is recommended to use `spack <https://spack.readthedocs.io/>`__ to manage and build all
 dependencies. Because of the various requirements on build
 configuration, versions, and inter-dependencies, using system libraries (apt/yum/brew/&c)
 is not recommended. Take care when compiling against homebrew libraries. Because homebrew releases
@@ -17,27 +17,35 @@ However, as the build system uses cmake to locate libraries, there are no assump
 library provider will work, such as the above noted system libraries or other dependency management tools
 like easy_build.
 
+The simplest way to build CHM for usage is to install and configure spack (as described below :ref:`Configure Spack`)
+and then install CHM:
+
+::
+
+    spack install chm
+
+
+
 Environment requirements
 **************************
 
 Linux (x86_64) and Macos (arm64) are the only supported environments.
 
 Build env requirements:
-   - cmake >=3.21
+   - cmake >=3.30
    - C++20 compiler (e.g., gcc 9.3.0+)
    - Fortran 90+ compiler (e.g., gfortran)
    - OpenMPI or IntelMPI
 
 .. warning::
    Unfortunately the Intel compiler doesn't currently work with applications that also
-   link against GSL. This is being investigated. For now, please do no build CHM with Intel Compilers.
-
+   link against GSL. This is being investigated. For now, please do not build CHM with Intel Compilers.
 
 Spack will build all required libraries and their dependencies, including compilers and MPI as required.
 This is the recommended approach.
 
-CHM source
-*************
+Prep source code
+******************
 
 An out of source build should be used. That is, build in a separate folder outside of the CHM source.
 This makes it easier to clean up and start from scratch and to keep separate release and debug builds.
@@ -47,11 +55,10 @@ An example is given below:
 ::
 
    cd ~/
-   git clone --recurse-submodules https://github.com/Chrismarsh/CHM
+   git clone https://github.com/Chrismarsh/CHM
    mkdir ~/build-CHM
    cd ~/build-CHM
    # This is where the build configuration will occur in the next steps
-
 
 
 CHM with spack
@@ -78,33 +85,31 @@ spack <https://spack.readthedocs.io/en/latest/getting_started.html#spack-compile
 If you use a system MPI or intel-oneapi-(mkl|tbb) (i.e., a not-spack built version), this is when it should be configured
 `as a spack external <https://spack.readthedocs.io/en/latest/packages_yaml.html#external-packages>`__ package.
 
-On macos, apple-clang does not have a fortran compiler. The current suggestion is to install gfortran via gcc in brew
-and it will be detected as the fortran compiler for apple-clang in spack. Note th at when gcc updates, you'll need to
-rebuild impacted packages.
+On macos, apple-clang does not have a fortran compiler. Install gcc via spack and gfortran will be detected and
+added to apple-clang as the FC provider when using spack compiler find. Using brew's gfortran works, but you're
+then at the mercy of brew updates.
 
-CHM uses some libraries that are not currently in mainline spack. Until they have been accepted, please clone
-the CHM spack-repo
-
-::
-
-   git clone https://github.com/Chrismarsh/spack-repo.git /some/path/here/
-
-
-then create ``repos.yml`` in ``~/.spack`` and add the path to the above cloned ``spack-repo``.
-It will look like this
+CHM uses some libraries that are not currently in mainline spack. Please add the CHM spack repo as:
 
 ::
 
-    $ cat ~/.spack/repos.yaml
-        repos:
-          - /some/path/here/spack-repo
-          - $spack/var/spack/repos/builtin
+   spack repo add https://github.com/Chrismarsh/spack-repo.git
+
+
+You may also manually clone spack-repo and add it to ``~/.spack/repos.yaml``:
+
+::
+
+    repos:
+      chm: $spack/../spack-repo/spack_repo/chm
 
 
 Build dependencies
 +++++++++++++++++++++
+If you wish to develop CHM, then the following should be done to install the dependencies and build an environment
+to work on CHM. If you only want to run CHM, use the method above in :ref:`Installation`.
 
-This step will build and install the dependencies via spack.
+Create a spack environment and build and install the dependencies.
 
 ::
 
@@ -116,6 +121,9 @@ This step will build and install the dependencies via spack.
 
 CHM with easy_build
 **********************
+.. warning::
+    This hasn't been updated in a while. YMMV.
+
 When targeting the Digital Alliance Canada stack, `this repository <https://github.com/Chrismarsh/easy_build>`__ hosts
 the easy_build scripts needed for missing libraries. They can be installed in a dependency-preserving order with ``install-all.sh``.
 
@@ -163,28 +171,11 @@ Optionally you can save this with ``module save chm``.
 CHM with system packages
 **************************
 
-Please install the following libraries using the package manager of your choice:
-  - boost >= 1.74.0 with: system, filesystem, date_time, thread, regex, iostreams, program_options, mpi, serialization
-  - cgal (header-only)
-  - hdf5 with c++ bindings
-  - netcdf
-  - netcdf-cxx4 >= 4.3
-  - gdal >= 3.6
-  - proj >=9
-  - sparsehash
-  - gperftools (only needed if tcmalloc is enabled)
-  - gsl
-  - armadillo
-  - intel-oneapi-tbb
-  - eigen
-  - meteoio
-  - func
-  - trilinos@15.0.0 with mpi, optionally openmp & threadsafe if CHM is built with omp
-  - jemalloc (only needed if jemalloc is enabled)
-  - vtk >= 9.2
-  - spdlog
-  - openblas
-  - MPI
+.. warning::
+    This often doesn't work well due to system libraries not being compiled with the features needed. YMMV.
+
+Please install the the libraries from your package manager of choice following the version constraints listed
+in the `CHM spack.yaml <https://github.com/Chrismarsh/CHM/blob/develop/spack.yaml>`_ file.
 
 .. warning::
     apple-clang doesn't ship with an OpenMP library,
