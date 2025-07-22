@@ -42,7 +42,7 @@ protected:
 
     virtual void SetUp()
     {
-        logging::core::get()->set_logging_enabled(false);
+        // // logging::core::get()->set_logging_enabled(false);
 
 //        ASSERT_NO_THROW(c0.init(argc,argv));
     }

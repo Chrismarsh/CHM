@@ -41,7 +41,7 @@ class TriangulationTest : public testing::Test
 
     virtual void SetUp()
     {
-        logging::core::get()->set_logging_enabled(false);
+        // logging::core::get()->set_logging_enabled(false);
         mesh_json = read_json("meshes/granger1m.mesh");
         param_json = read_json("meshes/granger1m.param");
         ic_json = read_json("meshes/granger1m.ic");

@@ -30,7 +30,7 @@ class VariableStorageTest : public testing::Test
 
     virtual void SetUp()
     {
-        logging::core::get()->set_logging_enabled(false);
+        // logging::core::get()->set_logging_enabled(false);
 
         // some test variables
         variables.insert("t");

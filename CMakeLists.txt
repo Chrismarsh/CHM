@@ -124,6 +124,9 @@ endmacro()
 # ---------------------------------------------------------------
 # ------ Start of find_package section --------------------------
 # ---------------------------------------------------------------
+if(BUILD_TESTS)
+    find_package(GTest CONFIG REQUIRED)
+endif(BUILD_TESTS)
 
 # Need to check for MPI before building external libraries
 find_package(MPI REQUIRED COMPONENTS C CXX Fortran REQUIRED) # MPI_C is needed for the mpi that HDF can bring in
@@ -244,8 +247,6 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 
 set(BLA_VENDOR OpenBLAS)
 find_package(BLAS REQUIRED)
-
-
 
 find_package(Sparsehash)
 if( Sparsehash_FOUND )

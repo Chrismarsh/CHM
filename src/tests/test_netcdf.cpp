@@ -33,7 +33,7 @@ class NetCDFTest : public testing::Test
 
     virtual void SetUp()
     {
-        logging::core::get()->set_logging_enabled(false);
+        // logging::core::get()->set_logging_enabled(false);
 
         nc.open_GEM("GEM-CHM_2p5_snowcast_2018011506_2018011605.nc");
 

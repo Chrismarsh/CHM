@@ -32,7 +32,7 @@ protected:
 
     virtual void SetUp()
     {
-        logging::core::get()->set_logging_enabled(false);
+        // logging::core::get()->set_logging_enabled(false);
         EXPECT_NO_THROW(t.from_file("tin_30mdem_30mtol_nodes.csv"));
       
     }

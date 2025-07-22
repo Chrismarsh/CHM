@@ -33,7 +33,7 @@ class MetdataTest : public testing::Test
 
     virtual void SetUp()
     {
-        logging::core::get()->set_logging_enabled(false);
+        // logging::core::get()->set_logging_enabled(false);
 
     }
     std::string proj4str = "+proj=utm +zone=8 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ";
