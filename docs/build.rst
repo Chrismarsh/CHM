@@ -1,7 +1,7 @@
 Installation
 ==============
 
-The simplest way to build CHM for usage is to install and configure spack (as described below :ref:`Configure Spack`)
+The simplest way to build CHM for usage is to install and configure spack (as described below :ref:`configure-spack`)
 and then install CHM:
 
 ::
@@ -31,7 +31,7 @@ Build env requirements:
    link against GSL. This is being investigated. For now, please do not build CHM with Intel Compilers.
 
 
-It is recommended to use `spack <https://spack.readthedocs.io/>`__ to manage and build all
+It is recommended to use `spack <https://spack.readthedocs.io/>`_ to manage and build all
 dependencies. Because of the various requirements on build
 configuration, versions, and inter-dependencies, using system libraries (apt/yum/brew/&c)
 is not recommended. Take care when compiling against homebrew libraries. Because homebrew releases
@@ -72,7 +72,7 @@ Install `spack <https://spack-tutorial.readthedocs.io/en/latest/tutorial_basics.
 Use the git repository and use the develop branch, as significant bug fixes to packages CHM uses have been made in
 this branch.
 
-.. _Configure Spack:
+.. _configure-spack:
 
 Configure Spack
 +++++++++++++++++++
