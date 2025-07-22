@@ -1,7 +1,7 @@
 Installation
 ==============
 
-The simplest way to build CHM for usage is to install and configure spack (as described below :ref: `Configure Spack`)
+The simplest way to build CHM for usage is to install and configure spack (as described below :ref:`Configure Spack`)
 and then install CHM:
 
 ::
