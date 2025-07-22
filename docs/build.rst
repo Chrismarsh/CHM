@@ -1,23 +1,7 @@
 Installation
 ==============
 
-.. warning::
-    Conan is no longer used to build CHM. Spack is now used
-
-.. note::
-   Building CHM without MPI support is now deprecated. MPI is now required.
-
-It is recommended to use `spack <https://spack.readthedocs.io/>`__ to manage and build all
-dependencies. Because of the various requirements on build
-configuration, versions, and inter-dependencies, using system libraries (apt/yum/brew/&c)
-is not recommended. Take care when compiling against homebrew libraries. Because homebrew releases
-new versions of libraries often, it often results in having to frequently recompile CHM.
-
-However, as the build system uses cmake to locate libraries, there are no assumptions about using spack, so any
-library provider will work, such as the above noted system libraries or other dependency management tools
-like easy_build.
-
-The simplest way to build CHM for usage is to install and configure spack (as described below :ref:`Configure Spack`)
+The simplest way to build CHM for usage is to install and configure spack (as described below :ref: `Configure Spack`)
 and then install CHM:
 
 ::
@@ -25,9 +9,14 @@ and then install CHM:
     spack install chm
 
 
-
 Environment requirements
 **************************
+
+.. warning::
+    Conan is no longer used to build CHM. Spack is now used
+
+.. note::
+   Building CHM without MPI support is now deprecated. MPI is now required.
 
 Linux (x86_64) and Macos (arm64) are the only supported environments.
 
@@ -41,8 +30,20 @@ Build env requirements:
    Unfortunately the Intel compiler doesn't currently work with applications that also
    link against GSL. This is being investigated. For now, please do not build CHM with Intel Compilers.
 
+
+It is recommended to use `spack <https://spack.readthedocs.io/>`__ to manage and build all
+dependencies. Because of the various requirements on build
+configuration, versions, and inter-dependencies, using system libraries (apt/yum/brew/&c)
+is not recommended. Take care when compiling against homebrew libraries. Because homebrew releases
+new versions of libraries often, it often results in having to frequently recompile CHM.
+
+
 Spack will build all required libraries and their dependencies, including compilers and MPI as required.
 This is the recommended approach.
+
+As the build system uses cmake to locate libraries, there are no assumptions about using spack, so any
+library provider will work, such as the above noted system libraries or other dependency management tools
+like easy_build.
 
 Prep source code
 ******************
@@ -70,6 +71,8 @@ Install `spack <https://spack-tutorial.readthedocs.io/en/latest/tutorial_basics.
 
 Use the git repository and use the develop branch, as significant bug fixes to packages CHM uses have been made in
 this branch.
+
+.. _Configure Spack:
 
 Configure Spack
 +++++++++++++++++++
