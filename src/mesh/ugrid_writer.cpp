@@ -406,10 +406,10 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
             v_z_scaled.at(i) = vit->point().z() / 100000. ;
         }
 
-        // if (!coordTrans->Transform(_num_local_vertex, v_x.data(), v_y.data()))
-        // {
-        //     CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
-        // }
+        if (!coordTrans->Transform(_mesh->size_local_vertex(), v_x.data(), v_y.data()))
+        {
+            CHM_THROW_EXCEPTION(forcing_error, "Failed to reproject coordinates");
+        }
 
         size_t start_v[1] = {offset};
         size_t count_v[1] = {_mesh->size_local_vertex()};
@@ -582,11 +582,6 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     }
     t = c.toc<ms>();
     SPDLOG_DEBUG("Finished ugrid params -- {} ms", t);
-
-
-    // The file is closed from core::run() because it needs to be kept open to write to but closed
-    // before the MPI finalized is closed, ie can't do this when ~triangulation is called
-    // nc_close(_ugrid_fid);
 
     // clean up the handle to info
     MPI_Info_free(&info_used);
