@@ -838,7 +838,7 @@ double netcdf::get_var(std::string var, boost::posix_time::ptime timestep, size_
 {
     auto diff = timestep - _start; // a duration
 
-    auto offset = diff.total_seconds() / _epoch_offset_unit.total_seconds();
+    auto offset = diff.total_seconds() /  _delta_t.total_seconds();
 
     return get_var(var, offset,x,y);
 }
@@ -846,7 +846,7 @@ netcdf::data netcdf::get_var(std::string var, boost::posix_time::ptime timestep)
 {
     auto diff = timestep - _start; // a duration
 
-    auto offset = diff.total_seconds() / _epoch_offset_unit.total_seconds();
+    auto offset = diff.total_seconds() / _delta_t.total_seconds();
 
     return get_var(var, offset);
 }
