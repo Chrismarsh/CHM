@@ -873,7 +873,7 @@ bool metdata::next_nc()
             {
                 //auto ud = d * si::kelvin;
                 //d = ud.numerical_value_in(si::degree_Celsius);
-                d = d + 273.15;
+                d = d - 273.15;
             }
 
             if(stdname == "relative_humidity" && unit == "1")
