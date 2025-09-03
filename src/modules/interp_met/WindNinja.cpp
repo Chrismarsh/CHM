@@ -244,6 +244,7 @@ void WindNinja::init(mesh& domain)
     H_forc = cfg.get("H_forc",40.0);
     Max_spdup = cfg.get("Max_spdup",3.);
     Min_spdup = cfg.get("Min_spdup",0.1);
+    scale_factor = cfg.get("scale_factor",1.0);
     ninja_recirc = cfg.get("ninja_recirc",false);
     Sx_crit = cfg.get("Sx_crit", 30.);
 
@@ -465,8 +466,8 @@ void WindNinja::run(mesh& domain)
                                            Atmosphere::Z_U_R,  // UR is at our reference height
                                            0); // no canopy, no snow, but uses a snow roughness
 
-            (*face)["U_R"_s]= W;
-
+            // scale_factor can be used to correct any low bias. Heavy handed approach
+            (*face)["U_R"_s]= W * scale_factor;
 
             (*face)["zonal_u"_s]= U; // these are still H_forc
             (*face)["zonal_v"_s]= V;

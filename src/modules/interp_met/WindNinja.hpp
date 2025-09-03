@@ -185,6 +185,7 @@ public:
     double H_forc; // Reference height for GEM forcing and WindNinja wind field library
     double Max_spdup;  // Maximal value of crest speedup
     double Min_spdup;  // Minimal value of crest speedup
+    double scale_factor; // used to scale up the windspeeds in the case of a serious bias
     int L_avg;   // Size of the square of averaging when computing the speed-up map
                  // Not used by default and set to -1 if not specified in the config file.
     bool ninja_recirc; // Boolean to activate wind speed reduction on the leeside of mountainous terrain
