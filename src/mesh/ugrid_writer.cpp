@@ -79,7 +79,7 @@ void ugrid_writer::write_ugrid(const std::vector<std::string>& output_variables)
     boost::mpi::all_gather(_comm_world, _mesh->size_local_faces(), all_face_offsets);
     size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + _comm_world.rank(), 0);
 
-    double time = _global->posix_time_double()  / 60 ;
+    double time = _global->posix_time_double()  / 60 ; //s to m
     nc_chk_ret(nc_put_var1_double(_ugrid_fid, _ugrid_id_var["time"], &_time_index, &time));
 
     for (auto& var : variables)
