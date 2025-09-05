@@ -81,32 +81,31 @@ attributes. If a variable doesn't have a ``standard_name`` or is not in this tab
 
 Currently the following mappings are supported:
 
-+---------------+----------------------------------+---------------------+
-| Short Name    | Standard Name                    | Units              |
-+===============+==================================+=====================+
-| t             | air_temperature                  | C                  |
-+---------------+----------------------------------+---------------------+
-| rh            | relative_humidity                | %                  |
-+---------------+----------------------------------+---------------------+
-| t_lapse_rate  | air_temperature_lapse_rate      |  C/m                  |
-+---------------+----------------------------------+---------------------+
-| vw_dir        | wind_from_direction             | degrees from north |
-+---------------+----------------------------------+---------------------+
-| U_R           | wind_speed                      | m/s                |
-+---------------+----------------------------------+---------------------+
-| press         | surface_air_pressure             | Pa                 |
-+---------------+----------------------------------+---------------------+
-| Qli           | surface_downwelling_longwave_flux| W/m^2             |
-+---------------+----------------------------------+---------------------+
-| Qsi           | surface_downwelling_shortwave_flux| W/m^2            |
-+---------------+----------------------------------+---------------------+
-| z             | geopotential_height              | m                  |
-+---------------+----------------------------------+---------------------+
-| p             | precipitation_amount             | mm                 |
-+---------------+----------------------------------+---------------------+
-| GZ             | Geopoential height              | m                 |
-+---------------+----------------------------------+---------------------+
-
++---------------+------------------------------------+---------------------+
+| Short Name    | Standard Name                      | Units               |
++===============+====================================+=====================+
+| t             | air_temperature                     | C                  |
++---------------+------------------------------------+---------------------+
+| rh            | relative_humidity                   | %                  |
++---------------+------------------------------------+---------------------+
+| t_lapse_rate  | air_temperature_lapse_rate          | C/m                |
++---------------+------------------------------------+---------------------+
+| vw_dir        | wind_from_direction                 | degrees from north |
++---------------+------------------------------------+---------------------+
+| U_R           | wind_speed                          | m/s                |
++---------------+------------------------------------+---------------------+
+| press         | surface_air_pressure                | Pa                 |
++---------------+------------------------------------+---------------------+
+| Qli           | surface_downwelling_longwave_flux   | W/m^2              |
++---------------+------------------------------------+---------------------+
+| Qsi           | surface_downwelling_shortwave_flux  | W/m^2              |
++---------------+------------------------------------+---------------------+
+| z             | geopotential_height                 | m                  |
++---------------+------------------------------------+---------------------+
+| p             | precipitation_amount                | mm                 |
++---------------+------------------------------------+---------------------+
+| GZ            | Geopotential height                 | m                  |
++---------------+------------------------------------+---------------------+
 
 
 An example of this is shown below, where each black point is a virtual station, representing the center for a NetCDF grid cell from a NWP product.
@@ -219,67 +218,67 @@ In detail the following is the schema for the required NetCDF files:
 
 .. code:: 
 
-$ ncdump -h /Users/cbm038/Documents/science/data/hrdps/CF-20241101T0000.nc
-    netcdf CF-20241101T0000 {
-    dimensions:
-        time = 1 ;
-        latitude = 1309 ;
-        longitude = 3384 ;
-        string1 = 1 ;
-    variables:
-        float FI(time, latitude, longitude) ;
-            FI:_FillValue = NaNf ;
-            FI:long_name = "Incoming longwave radiation at the surface" ;
-            FI:standard_name = "surface_downwelling_longwave_flux" ;
-            FI:units = "W/m2" ;
-            FI:coordinates = "time latitude longitude" ;
-        char crs(time, string1) ;
-            crs:grid_mapping_name = "latitude_longitude" ;
-            crs:long_name = "CRS definition" ;
-            crs:longitude_of_prime_meridian = 0. ;
-            crs:semi_major_axis = 6378137. ;
-            crs:inverse_flattening = 298.257223563 ;
-            crs:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
-            crs:crs_wkt = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
-            crs:GeoTransform = "-152.7684898376465 0.03312879297980011 0 70.62275695800781 0 -0.03312879297980011 " ;
-            crs:coordinates = "time latitude longitude" ;
-        double latitude(latitude) ;
-            latitude:_FillValue = NaN ;
-            latitude:standard_name = "latitude" ;
-            latitude:long_name = "latitude" ;
-            latitude:units = "degrees_north" ;
-        double longitude(longitude) ;
-            longitude:_FillValue = NaN ;
-            longitude:standard_name = "longitude" ;
-            longitude:long_name = "longitude" ;
-            longitude:units = "degrees_east" ;
-        int64 time(time) ;
-            time:standard_name = "time" ;
-            time:delta_t = 3600LL ;
-            time:delta_t_units = "s" ;
-            time:units = "days since 2024-11-01" ;
-            time:calendar = "proleptic_gregorian" ;
-        double wind_speed(time, latitude, longitude) ;
-            wind_speed:_FillValue = NaN ;
-            wind_speed:standard_name = "wind_speed" ;
-            wind_speed:long_name = "Surface wind speed" ;
-            wind_speed:units = "m s**-1" ;
-            wind_speed:coordinates = "time latitude longitude" ;
-        double wind_from_direction(time, latitude, longitude) ;
-            wind_from_direction:_FillValue = NaN ;
-            wind_from_direction:standard_name = "wind_from_direction" ;
-            wind_from_direction:long_name = "Surface wind direction" ;
-            wind_from_direction:units = "degree" ;
-            wind_from_direction:coordinates = "time latitude longitude" ;
-        float RH(time, latitude, longitude) ;
-            RH:_FillValue = NaNf ;
-            RH:standard_name = "relative_humidity" ;
-            RH:long_name = "surface relative humidity" ;
-            RH:units = "1" ;
-            RH:coordinates = "time latitude longitude" ;
+    $ ncdump -h CF-20241101T0000.nc
+        netcdf CF-20241101T0000 {
+        dimensions:
+            time = 1 ;
+            latitude = 1309 ;
+            longitude = 3384 ;
+            string1 = 1 ;
+        variables:
+            float FI(time, latitude, longitude) ;
+                FI:_FillValue = NaNf ;
+                FI:long_name = "Incoming longwave radiation at the surface" ;
+                FI:standard_name = "surface_downwelling_longwave_flux" ;
+                FI:units = "W/m2" ;
+                FI:coordinates = "time latitude longitude" ;
+            char crs(time, string1) ;
+                crs:grid_mapping_name = "latitude_longitude" ;
+                crs:long_name = "CRS definition" ;
+                crs:longitude_of_prime_meridian = 0. ;
+                crs:semi_major_axis = 6378137. ;
+                crs:inverse_flattening = 298.257223563 ;
+                crs:spatial_ref = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
+                crs:crs_wkt = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Latitude\",NORTH],AXIS[\"Longitude\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]" ;
+                crs:GeoTransform = "-152.7684898376465 0.03312879297980011 0 70.62275695800781 0 -0.03312879297980011 " ;
+                crs:coordinates = "time latitude longitude" ;
+            double latitude(latitude) ;
+                latitude:_FillValue = NaN ;
+                latitude:standard_name = "latitude" ;
+                latitude:long_name = "latitude" ;
+                latitude:units = "degrees_north" ;
+            double longitude(longitude) ;
+                longitude:_FillValue = NaN ;
+                longitude:standard_name = "longitude" ;
+                longitude:long_name = "longitude" ;
+                longitude:units = "degrees_east" ;
+            int64 time(time) ;
+                time:standard_name = "time" ;
+                time:delta_t = 3600LL ;
+                time:delta_t_units = "s" ;
+                time:units = "days since 2024-11-01" ;
+                time:calendar = "proleptic_gregorian" ;
+            double wind_speed(time, latitude, longitude) ;
+                wind_speed:_FillValue = NaN ;
+                wind_speed:standard_name = "wind_speed" ;
+                wind_speed:long_name = "Surface wind speed" ;
+                wind_speed:units = "m s**-1" ;
+                wind_speed:coordinates = "time latitude longitude" ;
+            double wind_from_direction(time, latitude, longitude) ;
+                wind_from_direction:_FillValue = NaN ;
+                wind_from_direction:standard_name = "wind_from_direction" ;
+                wind_from_direction:long_name = "Surface wind direction" ;
+                wind_from_direction:units = "degree" ;
+                wind_from_direction:coordinates = "time latitude longitude" ;
+            float RH(time, latitude, longitude) ;
+                RH:_FillValue = NaNf ;
+                RH:standard_name = "relative_humidity" ;
+                RH:long_name = "surface relative humidity" ;
+                RH:units = "1" ;
+                RH:coordinates = "time latitude longitude" ;
 
-    // global attributes:
-            :Conventions = "CF-1.7" ;
-    }
+        // global attributes:
+                :Conventions = "CF-1.7" ;
+        }
 
 
