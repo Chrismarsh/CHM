@@ -79,33 +79,49 @@ as required. This ensures the memory foot print is low. With multiple MPI ranks,
 mesh subset are loaded. The internal CHM variable names are mapped from CF compliant ``standard_name`` variable
 attributes. If a variable doesn't have a ``standard_name`` or is not in this table, it is ignored and not loaded.
 
-Currently the following mappings are supported:
+Currently the following ``standard_name``s are supported:
 
-+---------------+------------------------------------+---------------------+
-| Short Name    | Standard Name                      | Units               |
-+===============+====================================+=====================+
-| t             | air_temperature                     | C                  |
-+---------------+------------------------------------+---------------------+
-| rh            | relative_humidity                   | %                  |
-+---------------+------------------------------------+---------------------+
-| t_lapse_rate  | air_temperature_lapse_rate          | C/m                |
-+---------------+------------------------------------+---------------------+
-| vw_dir        | wind_from_direction                 | degrees from north |
-+---------------+------------------------------------+---------------------+
-| U_R           | wind_speed                          | m/s                |
-+---------------+------------------------------------+---------------------+
-| press         | surface_air_pressure                | Pa                 |
-+---------------+------------------------------------+---------------------+
-| Qli           | surface_downwelling_longwave_flux   | W/m^2              |
-+---------------+------------------------------------+---------------------+
-| Qsi           | surface_downwelling_shortwave_flux  | W/m^2              |
-+---------------+------------------------------------+---------------------+
-| z             | geopotential_height                 | m                  |
-+---------------+------------------------------------+---------------------+
-| p             | precipitation_amount                | mm                 |
-+---------------+------------------------------------+---------------------+
-| GZ            | Geopotential height                 | m                  |
-+---------------+------------------------------------+---------------------+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 36 14
+
+   * - CHM Short Name
+     - CF ``standard_name```
+     - Units
+   * - t
+     - air_temperature
+     - C
+   * - rh
+     - relative_humidity
+     - %
+   * - t_lapse_rate
+     - air_temperature_lapse_rate
+     - C/m
+   * - vw_dir
+     - wind_from_direction
+     - degrees from north
+   * - U_R
+     - wind_speed
+     - m/s
+   * - press
+     - surface_air_pressure
+     - Pa
+   * - Qli
+     - surface_downwelling_longwave_flux
+     - W/m^2
+   * - Qsi
+     - surface_downwelling_shortwave_flux
+     - W/m^2
+   * - z
+     - geopotential_height
+     - m
+   * - p
+     - precipitation_amount
+     - mm
+   * - GZ
+     - Geopotential height
+     - m
+
 
 
 An example of this is shown below, where each black point is a virtual station, representing the center for a NetCDF grid cell from a NWP product.
