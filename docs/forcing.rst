@@ -79,7 +79,7 @@ as required. This ensures the memory foot print is low. With multiple MPI ranks,
 mesh subset are loaded. The internal CHM variable names are mapped from CF compliant ``standard_name`` variable
 attributes. If a variable doesn't have a ``standard_name`` or is not in this table, it is ignored and not loaded.
 
-Currently the following ``standard_name``s are supported:
+Currently the following ``standard_name``s are supported with some basic unit conversion supported:
 
 .. list-table::
    :header-rows: 1
@@ -90,10 +90,10 @@ Currently the following ``standard_name``s are supported:
      - Units
    * - t
      - air_temperature
-     - C
+     - C or K
    * - rh
      - relative_humidity
-     - %
+     - % or (-)
    * - t_lapse_rate
      - air_temperature_lapse_rate
      - C/m
