@@ -73,20 +73,33 @@ Various conversion scripts for other models’ input/output are located in the `
 NetCDF
 ********
 
-When using a NetCDF file as input, this creates virtual stations at the cell-centres. Only the stations that are
-required by the mesh subset are loaded as specified by the ``option:station_N_nearest``, and timesteps are lazy loaded
-as required. This ensures the memory foot print is low. With multiple MPI ranks, only the stations required for the current ranks'
-mesh subset are loaded. The internal CHM variable names are mapped from CF compliant ``standard_name`` variable
+When using a NetCDF file as input, CHM creates virtual stations at the cell-centres. Only the stations that are
+required by the mesh subset are loaded as specified by the ``option:station_N_nearest``. With multiple MPI ranks,
+only the stations required for the current ranks' mesh subset are loaded. This is shown in the figure below where
+each black dot is a cell-centre virtual station location, and the gray squares are each MPI ranks bounding box. In
+red is some arbitrary rank's bounding box with the cell centres used. Note that non of the forcing cell centres falls
+within the meshes' domain. An iterative increasing 25% search radius is used until ``option:station_N_nearest`` are
+found or 250% expansion is reached with no stations found.
+
+.. image:: images/mpi-domain-netcdf.png
+
+All timesteps are lazy loaded as required. This ensures the memory foot print is low.
+The internal CHM variable names are mapped from CF compliant ``standard_name`` variable
 attributes. If a variable doesn't have a ``standard_name`` or is not in this table, it is ignored and not loaded.
 
-Currently the following ``standard_name``s are supported with some basic unit conversion supported:
+.. warning::
+
+   As of 1.5.0, CHM requires netcdf files to have NetCDF CF-compliant ``standard_name`` variable attributes.
+
+
+Currently the following ``standard_name`` are supported with some basic unit conversion supported:
 
 .. list-table::
    :header-rows: 1
    :widths: 18 36 14
 
    * - CHM Short Name
-     - CF ``standard_name```
+     - CF compliant ``standard_name``
      - Units
    * - t
      - air_temperature
@@ -123,30 +136,25 @@ Currently the following ``standard_name``s are supported with some basic unit co
      - m
 
 
-
-An example of this is shown below, where each black point is a virtual station, representing the center for a NetCDF grid cell from a NWP product.
-
-.. image:: images/netcdf.png
-
 .. warning::
    
    NetCDF and ``point_mode`` are not supported.
 
-The stations for each rank are written to the ouput folder in both shape file (.shp) as well as paraview point (.vtp).
+The stations for each rank are written to the output folder in both shape file (.shp) as well as paraview point (.vtp).
 
 Notes
 ~~~~~~
 
-- The Dimension and variable that corresponds to the dimension (i.e., the coordinate) must have the same name
+- The dimension and variable that corresponds to the dimension (i.e., the coordinate) must have the same name
 - lat/lon can be either 1D or 2D -- 1D prefered due to being CF-compliant
 - Assumed that the netcdf is in EPSG:4326 / WGS84 lat/lon
 - Consistent grid between model timesteps, e.g., regular 1-hour forcing
 - Time is in UTC+0
 - If a single timestep is present in a file, then the attribute ``time:delta_t=<timestep in seconds>`` and ``time:delta_t_units="s"`` must be added to inform the model about the integration length of the forcing file.
-- The elevation is generally given by the geopotential height, assumed to be in metres
-- Time units: ``time:units = "hours since 2017-09-01 06:00:00" ;``
-- offset are given as ``int64``
-- Variable units are not currently handled
+- The elevation of the forcing cell centre is given by the geopotential height, assumed to be in metres. This can be missing and infered from the nearest triangle, but this is almost always not what you want and often results in nonsense results.
+- Time units can be hours, minutes, or seconds since some epoch, e.g., ``time:units = "hours since 2017-09-01 06:00:00" ;``
+- Offset are given as ``int64``
+- Variable units are not currently handled with a couple exceptions given in the table above
 
 Multipart NetCDF files
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -154,7 +162,7 @@ Multipart NetCDF files
 Multi-part netcdf files are allowed. This handles cases where the forcing data are split into a file per n-timesteps,
 such as one netcdf file per day. Each time a new file is loaded occurs a small performance penalty as the entire
 datastructure has to be re-created. The upside to this is that the topology (e.g., spatial resolution) of each
-netcdf does not need to remain constant.
+netcdf does not need to remain constant between files.
 
 This is specified as a ``.json`` file that has a list of files:
 
@@ -225,12 +233,20 @@ This json can be generated as follows:
 
 
 
-Instead of a netcdf file, choose the json file.
+Instead of a netcdf file, choose the json file in the configuration.
+
+.. code::
+    "forcing":
+    {
+        "file":"metdata-hrdps.json"
+    }
+
 
 Schema
 ~~~~~~~
 
-In detail the following is the schema for the required NetCDF files:
+In detail the following is the schema for the required NetCDF files.
+CF compliant attributes ``:standard_name``, ``:units`` are now required since CHM 1.5.0.
 
 .. code:: 
 
