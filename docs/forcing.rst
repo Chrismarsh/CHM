@@ -82,7 +82,7 @@ red is some arbitrary rank's bounding box with the cell centres used. Note that 
 within the meshes' domain. An iterative increasing 25% search radius is used until ``option:station_N_nearest`` are
 found or 250% expansion is reached with no stations found.
 
-.. image:: images/mpi_domain_netcdf.png
+.. image:: images/mpi-domain-netcdf.png
 
 All timesteps are lazy loaded as required. This ensures the memory foot print is low.
 The internal CHM variable names are mapped from CF compliant ``standard_name`` variable
