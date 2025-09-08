@@ -1,17 +1,5 @@
 Installation
 ==============
-
-The simplest way to build CHM for usage is to install and configure spack (as described below :ref:`configure-spack`)
-and then install CHM:
-
-::
-
-    spack install chm
-
-
-Environment requirements
-**************************
-
 .. note::
     Conan is no longer used to build CHM. Spack is now used
 
@@ -23,6 +11,15 @@ Environment requirements
     use MPI to obtain good parallel performance.
 
 Linux (x86_64) and Macos (arm64) are the only supported environments.
+
+
+The simplest way to build CHM for usage is to install and configure spack (as described in :ref:`configure-spack`)
+and then install CHM:
+
+::
+
+    spack install chm
+
 
 .. warning::
    Unfortunately the Intel compiler doesn't currently work with applications that also
@@ -185,11 +182,13 @@ CHM standalone
 
 Regardless of what method was used to build the libraries, the configuration of CHM is the same.
 
+Environment requirements
+++++++++++++++++++++++++++++
 Build env requirements:
    - cmake >=3.30
    - C++20 compiler (e.g., gcc 9.3.0+)
    - Fortran 90+ compiler (e.g., gfortran)
-   - OpenMPI or IntelMPI
+   - OpenMPI or IntelMPI (OMPI recommended)
 
 Source code
 +++++++++++++++
@@ -232,11 +231,7 @@ Both ``ninja`` and ``make`` (this is the default) are supported. To use ``ninja`
 The default build option creates an optimized “release” build. To build
 a debug build, use ``-DCMAKE_BUILD_TYPE=Debug``.
 
-
-Set compiler
-+++++++++++++++
-
-CMake does not always detect the most-optimal compiler you wish to use. The compiler can be manually specified to cmake.
+Sometimes CMake does not always detect the most-optimal compiler you wish to use. The compiler can be manually specified to cmake.
 For example, if the Intel compiler is used, add the following cmake flags:
 
 ::
@@ -248,7 +243,7 @@ If using spack to build the compiler (e.g., gcc), use ``spack find -p gcc`` to f
 High performance allocators
 ++++++++++++++++++++++++++++++++
 
-By default jemalloc is used.
+By default jemalloc is used. Unless there are issues these should be enabled.
 
 ``-DUSE_TCMALLOC=FALSE -DUSE_JECMALLOC=TRUE``.
 
@@ -278,6 +273,7 @@ Tests can be enabled with ``-DBUILD_TESTS=TRUE`` and run with
 
 Install
 +++++++++++
+Generally not needed for developemnt.
 
 ``make install``/``ninja install``
 
