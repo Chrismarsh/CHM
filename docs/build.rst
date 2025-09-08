@@ -12,31 +12,27 @@ and then install CHM:
 Environment requirements
 **************************
 
-.. warning::
+.. note::
     Conan is no longer used to build CHM. Spack is now used
 
 .. note::
    Building CHM without MPI support is now deprecated. MPI is now required.
 
-Linux (x86_64) and Macos (arm64) are the only supported environments.
+.. note::
+    The OpenMP features are disabled by default for good reason. Unless you know you need OpenMP support,
+    use MPI to obtain good parallel performance.
 
-Build env requirements:
-   - cmake >=3.30
-   - C++20 compiler (e.g., gcc 9.3.0+)
-   - Fortran 90+ compiler (e.g., gfortran)
-   - OpenMPI or IntelMPI
+Linux (x86_64) and Macos (arm64) are the only supported environments.
 
 .. warning::
    Unfortunately the Intel compiler doesn't currently work with applications that also
    link against GSL. This is being investigated. For now, please do not build CHM with Intel Compilers.
-
 
 It is recommended to use `spack <https://spack.readthedocs.io/>`_ to manage and build all
 dependencies. Because of the various requirements on build
 configuration, versions, and inter-dependencies, using system libraries (apt/yum/brew/&c)
 is not recommended. Take care when compiling against homebrew libraries. Because homebrew releases
 new versions of libraries often, it often results in having to frequently recompile CHM.
-
 
 Spack will build all required libraries and their dependencies, including compilers and MPI as required.
 This is the recommended approach.
@@ -45,25 +41,12 @@ As the build system uses cmake to locate libraries, there are no assumptions abo
 library provider will work, such as the above noted system libraries or other dependency management tools
 like easy_build.
 
-Prep source code
-******************
-
-An out of source build should be used. That is, build in a separate folder outside of the CHM source.
-This makes it easier to clean up and start from scratch and to keep separate release and debug builds.
-
-An example is given below:
-
-::
-
-   cd ~/
-   git clone https://github.com/Chrismarsh/CHM
-   mkdir ~/build-CHM
-   cd ~/build-CHM
-   # This is where the build configuration will occur in the next steps
-
 
 CHM with spack
 ***************
+
+This is the recommend method to build CHM for HPC usage.
+
 
 Install spack
 +++++++++++++++
@@ -107,8 +90,18 @@ You may also manually clone spack-repo and add it to ``~/.spack/repos.yaml``:
       chm: $spack/../spack-repo/spack_repo/chm
 
 
-Build dependencies
-+++++++++++++++++++++
+Build and install CHM
+++++++++++++++++++++++++
+
+Once everything for spack is setup:
+
+::
+
+    spack install chm
+
+
+(optional) Create develop environment
+++++++++++++++++++++++++++++++++++++++++
 If you wish to develop CHM, then the following should be done to install the dependencies and build an environment
 to work on CHM. If you only want to run CHM, use the method above in :ref:`Installation`.
 
@@ -131,7 +124,7 @@ When targeting the Digital Alliance Canada stack, `this repository <https://gith
 the easy_build scripts needed for missing libraries. They can be installed in a dependency-preserving order with ``install-all.sh``.
 
 Digital Alliance Canada
------------------------------
+++++++++++++++++++++++++
 
 To build on Compute Canada stack machines, such as Graham, all dependencies must be built
 from source to ensure the correct optimizations are used.
@@ -185,17 +178,42 @@ in the `CHM spack.yaml <https://github.com/Chrismarsh/CHM/blob/develop/spack.yam
     so OpenMP `should be installed <https://mac.r-project.org/openmp/>`__.
     Doing so via homebrew (``brew install libomp``) is likely the easiest.
 
-Compile CHM
-**************
+and then follow the instructions for CHM standalone.
+
+CHM standalone
+****************
 
 Regardless of what method was used to build the libraries, the configuration of CHM is the same.
 
+Build env requirements:
+   - cmake >=3.30
+   - C++20 compiler (e.g., gcc 9.3.0+)
+   - Fortran 90+ compiler (e.g., gfortran)
+   - OpenMPI or IntelMPI
+
+Source code
++++++++++++++++
+
+An out of source build should be used. That is, build in a separate folder outside of the CHM source.
+This makes it easier to clean up and start from scratch and to keep separate release and debug builds.
+
+An example is given below:
+
+::
+
+   cd ~/
+   git clone https://github.com/Chrismarsh/CHM
+   mkdir ~/build-CHM
+   cd ~/build-CHM
+   # This is where the build configuration will occur in the next steps
+
+
 .. note::
-   The follow instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
+   The following instructions assume that they are invoked from within ``~/build-CHM`` (or your equivalent).
 
 
 Run cmake
----------
+++++++++++++
 
 This guide assumes you are building CHM to build and debug it. However, you can set the install prefix to be anywhere,
 such as shown in the example below
@@ -216,7 +234,7 @@ a debug build, use ``-DCMAKE_BUILD_TYPE=Debug``.
 
 
 Set compiler
-~~~~~~~~~~~~~~
++++++++++++++++
 
 CMake does not always detect the most-optimal compiler you wish to use. The compiler can be manually specified to cmake.
 For example, if the Intel compiler is used, add the following cmake flags:
@@ -228,7 +246,7 @@ For example, if the Intel compiler is used, add the following cmake flags:
 If using spack to build the compiler (e.g., gcc), use ``spack find -p gcc`` to find the spack-built compiler.
 
 High performance allocators
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++++++
 
 By default jemalloc is used.
 
@@ -236,7 +254,7 @@ By default jemalloc is used.
 
 
 Building
---------
++++++++++++
 
 Using make
 
@@ -253,13 +271,13 @@ Using Ninja
    ninja -C . 
 
 Run tests
----------
+++++++++++
 
 Tests can be enabled with ``-DBUILD_TESTS=TRUE`` and run with
 ``make check``/ ``ninja check``. These have not been updated and currently fail
 
 Install
--------
++++++++++++
 
 ``make install``/``ninja install``
 
@@ -291,7 +309,7 @@ Troubleshooting
 ***************
 
 Disable allocators
---------------------
++++++++++++++++++++++
 
 The high performance allocators may need to be disabled and can be done via
 ``-DUSE_TCMALLOC=FALSE -DUSE_JEMALLOC=FALSE``

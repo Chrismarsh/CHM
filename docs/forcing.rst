@@ -88,12 +88,16 @@ All timesteps are lazy loaded as required. This ensures the memory foot print is
 The internal CHM variable names are mapped from CF compliant ``standard_name`` variable
 attributes. If a variable doesn't have a ``standard_name`` or is not in this table, it is ignored and not loaded.
 
+
+CF standard names
+~~~~~~~~~~~~~~~~~~
+
 .. warning::
 
    As of 1.5.0, CHM requires netcdf files to have NetCDF CF-compliant ``standard_name`` variable attributes.
 
 
-Currently the following ``standard_name`` are supported with some basic unit conversion supported:
+Currently the following CF ``standard_name`` are supported with some basic unit conversion supported:
 
 .. list-table::
    :header-rows: 1
@@ -133,7 +137,7 @@ Currently the following ``standard_name`` are supported with some basic unit con
      - precipitation_amount
      - mm
    * - GZ
-     - Geopotential height
+     - geopotential_height
      - m
 
 
@@ -142,6 +146,16 @@ Currently the following ``standard_name`` are supported with some basic unit con
    NetCDF and ``point_mode`` are not supported.
 
 The stations for each rank are written to the output folder in both shape file (.shp) as well as paraview point (.vtp).
+
+Although ``geopotential_height`` is optional, for reasonable results it is really not optional. If this height is not given, then CHM
+must estimate the height of the forcing for all the lapse rate and downscaling methods to work. To do so, it finds the closest triangle
+to the forcing cell centre, and uses that triangle's elevation. Unless the met is high spatial resolution, this often doesn't work well.
+When not including this variable, CHM will issue the following warning:
+
+::
+
+    [warning] No geopotential height field found. Using the height of nearest triangle. This is almost certainly NOT what you want.
+
 
 Notes
 ~~~~~~
