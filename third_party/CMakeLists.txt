@@ -44,9 +44,10 @@ target_link_libraries(SNOBAL PUBLIC
     spdlog::spdlog
     ARMADILLO::ARMADILLO # needs to be upper case
 )
-if(OpenMP_FOUND)
+if(USE_OMP)
     target_link_libraries(SNOBAL PUBLIC OpenMP::OpenMP_CXX)
 endif()
+
 target_include_directories(SNOBAL PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/    # needed for logger.hpp... that's a funny dependence
 )
@@ -55,6 +56,12 @@ target_include_directories(SNOBAL PUBLIC
 set_target_properties( SNOBAL
         PROPERTIES
         COMPILE_FLAGS ${CHM_BUILD_FLAGS})
+
+# If OpenMP is disabled and the compiler supports it, explicitly disable
+# OpenMP pragmas for this target to neutralize any inherited -fopenmp.
+if(NOT USE_OMP AND CHM_HAS_FNO_OPENMP)
+  target_compile_options(SNOBAL PRIVATE -fno-openmp)
+endif()
 
 ###################################
 add_library(FSM OBJECT
@@ -75,6 +82,12 @@ set(THIRD_PARTY_TARGETS
 set_target_properties( SNOWPACK
         PROPERTIES
         COMPILE_FLAGS ${CHM_BUILD_FLAGS})
+
+# If OpenMP is disabled and the compiler supports it, explicitly disable
+# OpenMP pragmas for this target to neutralize any inherited -fopenmp.
+if(NOT USE_OMP AND CHM_HAS_FNO_OPENMP)
+  target_compile_options(SNOWPACK PRIVATE -fno-openmp)
+endif()
 
 
 # third party includes in CHM src files to be specified relative to this directory

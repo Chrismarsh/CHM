@@ -223,14 +223,12 @@ endif()
 if(USE_OMP)
     find_package(OpenMP REQUIRED) # This will produce the target for us
 
-    if(OpenMP_FOUND)
-        set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${OpenMP_CXX_FLAGS}")
-        if(OMP_SAFE_EXCEPTION)
-            message(STATUS "Enabling safe OMP exception handling")
-            add_definitions(-DOMP_SAFE_EXCEPTION)
-        endif()
-     #should correctly work with cmake 3.12+ https://iscinumpy.gitlab.io/post/omp-on-high-sierra/
+    set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${OpenMP_CXX_FLAGS}")
+    if(OMP_SAFE_EXCEPTION)
+        message(STATUS "Enabling safe OMP exception handling")
+        add_definitions(-DOMP_SAFE_EXCEPTION)
     endif()
+
 endif()
 
 #already makes a target
@@ -332,6 +330,22 @@ endif()
 find_package(Trilinos REQUIRED)
 create_target(Trilinos)
 
+# If Trilinos (or any dependency) drags in OpenMP and we explicitly do not want
+# OpenMP, strip interface flags from the imported OpenMP target to prevent
+# propagation of -fopenmp into CHM builds.
+if(NOT USE_OMP)
+    if(TARGET OpenMP::OpenMP_CXX)
+        message(STATUS "USE_OMP=OFF: stripping OpenMP interface options from OpenMP::OpenMP_CXX")
+        # Clear compile and link interface options to avoid implicit -fopenmp
+        set_property(TARGET OpenMP::OpenMP_CXX PROPERTY INTERFACE_COMPILE_OPTIONS "")
+        set_property(TARGET OpenMP::OpenMP_CXX PROPERTY INTERFACE_LINK_OPTIONS "")
+    endif()
+endif()
+
+# Detect compiler support for disabling OpenMP pragmas explicitly.
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag("-fno-openmp" CHM_HAS_FNO_OPENMP)
+set(CHM_HAS_FNO_OPENMP ${CHM_HAS_FNO_OPENMP} CACHE INTERNAL "Compiler supports -fno-openmp")
 #setup src dirs
 include(third_party/CMakeLists.txt)
 add_subdirectory(src)

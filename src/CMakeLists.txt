@@ -166,10 +166,9 @@ set(EXT_TARGETS
 
 		CACHE INTERNAL "" FORCE)
 
-
 #handle the optionals
-if(OpenMP_FOUND)
-	list( APPEND EXT_TARGETS	OpenMP::OpenMP_CXX)
+if(USE_OMP)
+	list( APPEND EXT_TARGETS OpenMP::OpenMP_CXX)
 endif()
 
 if(USE_OCL AND OPENCL_FOUND)
@@ -221,6 +220,12 @@ set_target_properties(CHMmath
 		PROPERTIES
 		COMPILE_FLAGS ${CHM_BUILD_FLAGS})
 
+# If OpenMP is disabled and the compiler supports it, explicitly disable
+# OpenMP pragmas for this target to neutralize any inherited -fopenmp.
+if(NOT USE_OMP AND CHM_HAS_FNO_OPENMP)
+  target_compile_options(CHMmath PRIVATE -fno-openmp)
+endif()
+
 
 add_executable(
 		CHM
@@ -255,6 +260,11 @@ set_target_properties(CHM
 		UNITY_BUILD OFF
 		UNITY_BUILD_BATCH_SIZE 2
 		)
+
+# Explicitly disable OpenMP on CHM if requested and supported.
+if(NOT USE_OMP AND CHM_HAS_FNO_OPENMP)
+  target_compile_options(CHM PRIVATE -fno-openmp)
+endif()
 
 if(BUILD_WITH_CONAN)
 	# the patches suggested by conan https://docs.conan.io/en/latest/howtos/manage_shared_libraries/rpaths.html
@@ -340,6 +350,11 @@ set_target_properties(partition
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 		COMPILE_FLAGS ${CHM_BUILD_FLAGS}
 		)
+
+# Explicitly disable OpenMP on partition tool if requested and supported.
+if(NOT USE_OMP AND CHM_HAS_FNO_OPENMP)
+  target_compile_options(partition PRIVATE -fno-openmp)
+endif()
 
 if(BUILD_WITH_CONAN)
 	if(APPLE)
@@ -444,6 +459,11 @@ if (BUILD_TESTS)
 			PROPERTIES
 			RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
 			)
+
+	# Explicitly disable OpenMP on unit tests if requested and supported.
+	if(NOT USE_OMP AND CHM_HAS_FNO_OPENMP)
+	  target_compile_options(runUnitTests PRIVATE -fno-openmp)
+	endif()
 
 	#add the `make check` target that runs the unit tests
 	set(TEST_DIR ${CMAKE_BINARY_DIR}/tests)
