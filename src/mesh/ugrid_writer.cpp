@@ -284,11 +284,11 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_local_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y"));
 
     nc_chk_ret(nc_def_var(_ugrid_fid, "Mesh2_face_x", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_x));
-    nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "standard_name", strlen("latitude"), "latitude"));
+    nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "standard_name", strlen("longitude"), "longitude"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "long_name",
-        strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."),
-        "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."));
-    nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "units", strlen("degrees_north"), "degrees_north"));
+        strlen("Characteristics longitude of 2D mesh triangle (e.g. circumcenter coordinate)."),
+        "Characteristics longitude of 2D mesh triangle (e.g. circumcenter coordinate)."));
+    nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "units", strlen("degrees_east"), "degrees_east"));
 
     nc_chk_ret(nc_def_var(_ugrid_fid, "Mesh2_face_y", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_y));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude"));
