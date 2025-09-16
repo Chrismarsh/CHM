@@ -418,7 +418,12 @@ void netcdf::open_GEM(const std::string &file)
     {
         _elevation_field = find_var_by_attr("geopotential_height");
         _missing_z = false;
-    }catch(...)
+    }
+    catch (forcing_duplicate_stdnames& e)
+    {
+        CHM_THROW_EXCEPTION(forcing_error, boost::diagnostic_information(e));
+    }
+    catch(forcing_error& e)
     {
         SPDLOG_WARN("No geopotential height field found. Using the height of nearest triangle. This is almost certainly NOT what you want");
         _elevation_field="";
@@ -508,27 +513,34 @@ std::string netcdf::find_var_by_attr(const std::string& search, const std::vecto
         // check all requested attributes
         for(const auto& jtr:attrs_to_search)
         {
-            netCDF::NcVarAtt search_att;
+
             try
             {
-                // no standard_name, ignore it
-                search_att = var.getAtt(jtr);
+                // llok for the attribute in the variable
+                netCDF::NcVarAtt search_att = var.getAtt(jtr);
+
+                // no attribute that we are looking for, ignore it
                 if(search_att.isNull())
                     continue;
+
+                std::string attr_value;
+                search_att.getValues(attr_value);
+
+                // we found the variable with the standard name we are looking for
+                // SPDLOG_WARN("Looking for " + search + " in " + var.getName() + ":"+jtr +" found="+attr_value);
+                if(attr_value == search)
+                {
+                    // save this variable's name
+                    result.push_back(fst);
+                }
             }
             catch(netCDF::exceptions::NcException& e)
             {
+                // SPDLOG_WARN(e.what());
                 // no standard_name, ignore it
                 continue;
             }
 
-
-            std::string std_name;
-            search_att.getValues(std_name);
-            if(std_name == search)
-            {
-                result.push_back(fst);
-            }
         }
     }
 
@@ -537,9 +549,15 @@ std::string netcdf::find_var_by_attr(const std::string& search, const std::vecto
         // we didn't find what we were looking for
         CHM_THROW_EXCEPTION(forcing_error, "Could not find variable by searching attrs for " + search);
     }
-    else if(result.size() > 1)
+
+    if(result.size() > 1)
     {
-        CHM_THROW_EXCEPTION(forcing_error, "Multiple variables found for attr " + search);
+        auto e = "Multiple variables found with standard_name " + search + ": ";
+        for (auto& r : result)
+        {
+            e = e + " " + r;
+        }
+        CHM_THROW_EXCEPTION(forcing_duplicate_stdnames, e);
     }
 
     return result.at(0);
