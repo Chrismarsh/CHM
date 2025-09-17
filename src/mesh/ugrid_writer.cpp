@@ -186,6 +186,14 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     size_t num_global_vertex;
     boost::mpi::all_reduce(_comm_world, _mesh->size_local_vertex(), num_global_vertex, std::plus<size_t>());
 
+    // Time-dependent face writes must align chunks with rank ownership to stay contiguous.
+    size_t max_faces_per_rank = 0;
+    boost::mpi::all_reduce(_comm_world, _mesh->size_local_faces(), max_faces_per_rank, boost::mpi::maximum<size_t>());
+    if (_mesh->size_global_faces() > 0 && max_faces_per_rank > _mesh->size_global_faces())
+        max_faces_per_rank = _mesh->size_global_faces();
+    if (max_faces_per_rank == 0)
+        max_faces_per_rank = 1;
+
     // Paraview's vtk-based ugrid reader segfaults when the mesh indexing is uint64. We probably don't have
     if (_mesh->size_global_faces() > UINT_MAX)
     {
@@ -205,6 +213,8 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     // nc_def_dim(_ugrid_fid, "time", _global->n_timesteps(), &time_dimid);
     nc_chk_ret(nc_def_dim(_ugrid_fid, "time", NC_UNLIMITED, &time_dimid));
     nc_chk_ret(nc_def_var(_ugrid_fid, "time", NC_DOUBLE, 1, &time_dimid, &time_varid));
+    size_t time_chunk[1] = {1};
+    nc_chk_ret(nc_def_var_chunking(_ugrid_fid, time_varid, NC_CHUNKED, time_chunk));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, time_varid, "standard_name", strlen("time"), "time"));
     nc_chk_ret( nc_put_att_text(_ugrid_fid, time_varid, "long_name", strlen("Time"), "Time"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, time_varid, "units", strlen("minutes since 1970-01-01 00:00:00"), "minutes since 1970-01-01 00:00:00"));
@@ -317,6 +327,8 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     for (auto& var : output_variables)
     {
         nc_chk_ret(nc_def_var(_ugrid_fid, var.c_str(), NC_DOUBLE, 2, dims, &_ugrid_id_var[var]));
+        size_t face_chunks[2] = {1, max_faces_per_rank};
+        nc_chk_ret(nc_def_var_chunking(_ugrid_fid, _ugrid_id_var[var], NC_CHUNKED, face_chunks));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "mesh", strlen("Mesh2"), "Mesh2"));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "location", strlen("face"), "face"));
         nc_chk_ret(nc_put_att_double(_ugrid_fid, _ugrid_id_var[var], "_FillValue", NC_DOUBLE, 1, &nan_value));
@@ -338,6 +350,8 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
         auto define_face_variable = [&](const std::string& v, const std::string& prefix="") {
             return [&]() {
                 nc_chk_ret(nc_def_var(_ugrid_fid, (prefix+v).c_str(), NC_DOUBLE, 1, &dim_Mesh2_face, &param_id[v]));
+                size_t param_chunks[1] = {max_faces_per_rank};
+                nc_chk_ret(nc_def_var_chunking(_ugrid_fid, param_id[v], NC_CHUNKED, param_chunks));
                 nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id[v], "mesh", strlen("Mesh2"), "Mesh2"));
                 nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id[v], "location", strlen("face"), "face"));
                 nc_chk_ret(nc_put_att_double(_ugrid_fid, param_id[v], "_FillValue", NC_DOUBLE, 1, &nan_value));
@@ -363,6 +377,8 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
 
 
         nc_chk_ret(nc_def_var(_ugrid_fid, "owner", NC_INT, 1, &dim_Mesh2_face, &param_id["owner"]));
+        size_t owner_chunks[1] = {max_faces_per_rank};
+        nc_chk_ret(nc_def_var_chunking(_ugrid_fid, param_id["owner"], NC_CHUNKED, owner_chunks));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id["owner"], "mesh", strlen("Mesh2"), "Mesh2"));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id["owner"], "location", strlen("face"), "face"));
         nc_chk_ret(nc_var_par_access(_ugrid_fid, param_id["owner"], NC_COLLECTIVE));
