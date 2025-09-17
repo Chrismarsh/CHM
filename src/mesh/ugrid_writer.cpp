@@ -233,6 +233,11 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "cf_role", strlen("face_node_connectivity"), "face_node_connectivity"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "long_name",
         strlen("Maps every triangular face to its three corner nodes."), "Maps every triangular face to its three corner nodes."));
+    // UGRID recommends start_index attribute; indices are 0-based here
+    {
+        int start_index = 0;
+        nc_chk_ret(nc_put_att_int(_ugrid_fid, var_Mesh2_face_nodes, "start_index", NC_INT, 1, &start_index));
+    }
 
     // Mesh2_node_x
     double nan_value = NAN; // IEEE NaN
