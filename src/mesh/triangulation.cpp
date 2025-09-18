@@ -210,6 +210,7 @@ void triangulation::from_json(pt::ptree &mesh)
 {
 
     _version.from_string(mesh.get<std::string>("mesh.version",""));
+    _mesh_is_from_partition = false;
 
     if(!_version.mesh_ver_meets_min_json())
     {
@@ -462,6 +463,7 @@ void triangulation::from_json(pt::ptree &mesh)
     }
     _num_faces = this->number_of_faces();
     _num_local_vertex = this->number_of_vertices();
+    _num_global_faces = _faces.size();
 
     // Get local sizes for each rank
     // If not available, use the old "balanced" setting
@@ -493,8 +495,9 @@ void triangulation::from_json(pt::ptree &mesh)
         SPDLOG_DEBUG("No face permutation.");
     }
 
-    // Don"t actually want to partition the mesh. Use the non-MPI one
+
     partition_mesh_nonMPI(_faces.size());
+
 
     _build_dDtree();
 
@@ -1591,9 +1594,12 @@ void triangulation::partition_mesh_nonMPI(size_t _num_global_faces)
 #pragma omp parallel for
     for (size_t i = 0; i < _num_global_faces; ++i)
     {
+        auto face = _faces.at(i);
         _global_IDs[i] = i;
-        _faces.at(i)->is_ghost = false;
-        _faces.at(i)->cell_local_id =
+        face->is_ghost = false;
+        face->owner = 0;
+        face->ghost_type = 0;
+        face->cell_local_id =
             i; // Mesh has been (potentially) reordered before this point. Set the local_id correctly
     }
 
