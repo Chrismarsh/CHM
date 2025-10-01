@@ -2444,7 +2444,7 @@ void core::run()
                             {
 
                                 // write paths that are relative to the pvd file
-                                boost::filesystem::path vtu_path(output_folder_path.string() + "/meshes/" + p.filename().string()+"_"+std::to_string(rank) + ".vtu");
+                                boost::filesystem::path vtu_path(output_folder_path.string() + "/vtu/" + p.filename().string()+"_"+std::to_string(rank) + ".vtu");
                                 pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
                                 dataset.add("<xmlattr>.timestep", _global->posix_time_int());
                                 dataset.add("<xmlattr>.group", "");
