@@ -56,13 +56,20 @@ void Dist_tlapse::init(mesh& domain)
 void Dist_tlapse::run(mesh_elem& face)
 {
     // Distributed forcing lapse_rate to each face (changes per time step)
-    //lapse_rate=0.0047;
+    std::vector< boost::tuple<double, double, double> > t_lapse_rate_values;
+    for (auto& s : face->stations())
+    {
+        if( is_nan((*s)["t_lapse_rate"_s]))
+            continue;
+        double v = (*s)["t_lapse_rate"_s];
+        if (is_nan(v))
+            CHM_THROW_EXCEPTION(module_error, "Nan in " + ID);
 
-    // Find nearest station
-    auto s_near = face->nearest_station();
+        t_lapse_rate_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
+    }
+    auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
+    double lapse_rate = face->get_module_data<data>(ID).interp(t_lapse_rate_values, query);
 
-    // Get the lapse rate from that station
-    double lapse_rate = (*s_near)["t_lapse_rate"_s];
 
     //lower all the station values to sea level prior to the interpolation
     std::vector< boost::tuple<double, double, double> > lowered_values;
@@ -71,18 +78,18 @@ void Dist_tlapse::run(mesh_elem& face)
         if( is_nan((*s)["t"_s]))
             continue;
         double v = (*s)["t"_s] - lapse_rate * (0.0 - s->z());
+        if (is_nan(v))
+            CHM_THROW_EXCEPTION(module_error, "Nan in " + ID);
+
         lowered_values.push_back( boost::make_tuple(s->x(), s->y(), v ) );
     }
 
-
-    auto query = boost::make_tuple(face->get_x(), face->get_y(), face->get_z());
     double value = face->get_module_data<data>(ID).interp(lowered_values, query);
 
     //raise value back up to the face's elevation from sea level
     value =  value + lapse_rate * (0.0 - face->get_z());
 
     (*face)["t"_s]=value;
-
     (*face)["t_lapse_rate"_s]=lapse_rate;
 
 }
