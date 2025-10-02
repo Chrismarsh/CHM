@@ -224,6 +224,8 @@ class metdata
     /// @return False if no more timesteps
     bool next();
 
+
+
     /// Removes a subset of stations from the  station list
     /// @param stations The set of station IDs to remove
     void prune_stations(std::unordered_set<std::string>& station_ids);
@@ -274,6 +276,8 @@ class metdata
     /// @return
     std::pair<boost::posix_time::ptime, boost::posix_time::ptime> find_unified_start_end();
 
+    /// Prune out all the nullptr stations
+    void _prune_nullptr_stations();
 
     // NetCDF specific variables
     // -----------------------------------

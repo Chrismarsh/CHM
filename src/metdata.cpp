@@ -250,7 +250,7 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
         std::variant<netcdf::data, netcdf::vec> lat = is_2D_coords ? std::variant<netcdf::data, netcdf::vec>(_nc->get_lat2D()) : std::variant<netcdf::data, netcdf::vec>(_nc->get_lat());
         std::variant<netcdf::data, netcdf::vec> lon = is_2D_coords ? std::variant<netcdf::data, netcdf::vec>(_nc->get_lon2D()) : std::variant<netcdf::data, netcdf::vec>(_nc->get_lon());
 
-        SPDLOG_DEBUG("Initializing datastructure");
+        SPDLOG_DEBUG("Building list of forcing inputs");
 
 
         netcdf::data e;
@@ -325,13 +325,10 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
                         continue;
                     }
 
-
-
                     if(missing_z())
                         z = -9999; // estimate this later
                     else
                         z = (*e)[y][x];
-
 
                     std::shared_ptr<station> s = std::make_shared<station>(station_name,
                         longitude, latitude, z, _variables);
@@ -365,6 +362,9 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
                 _bounding_box.y_min -= y_expansion;
                 _bounding_box.y_max += y_expansion;
 
+                // This will hold stale stations upon the bbox expansion, so clear it
+                _dD_tree.clear();
+
                 tries++;
             }
 
@@ -384,6 +384,9 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
         }while(!done);
 
         SPDLOG_DEBUG("Done initializing datastructure");
+
+        _prune_nullptr_stations();
+
 
         boost::mpi::communicator local;
         boost::filesystem::path nc_path(path);
@@ -930,13 +933,25 @@ std::vector< std::shared_ptr<station> > metdata::nearest_station(double x, doubl
 
 }
 
+void metdata::_prune_nullptr_stations()
+{
+    _stations.erase(
+    std::remove_if(_stations.begin(), _stations.end(),
+                   [](auto const& it) {
+                       return it == nullptr;   // erase only nullptr entries
+                   }),
+    _stations.end());
+
+    _nstations = _stations.size();
+}
+
 void metdata::prune_stations(std::unordered_set<std::string>& station_ids)
 {
     _stations.erase(
         std::remove_if(std::begin(_stations), std::end(_stations),
         [&](auto const& it)
         {
-                           //handle nan stations from the nc
+          //handle nan stations from the nc
           return (!it || station_ids.find(it->ID()) != std::end(station_ids));
         }),
         std::end(_stations));
