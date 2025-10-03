@@ -278,14 +278,13 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
                     size_t index = x + y * _nc->get_xsize();
 
                     double latitude = 0;
-                    double longitude = 0 ;
-                    double z = 0;
+                    double longitude = 0;
+                    double z = -9999.;
 
                     if(is_2D_coords)
                     {
                         latitude = (*std::get<netcdf::data>(lat))[y][x];
                         longitude = (*std::get<netcdf::data>(lon))[y][x];
-
                     }
                     else
                     {
@@ -293,11 +292,14 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
                         longitude = (*std::get<netcdf::vec>(lon))[x];
                     }
 
-                    // Some Netcdf files have NaN grid squares, For these cases we will just insert a nullptr station and
-                    // don't add the station to the dD list which is the only way it ever gets to modules
-                    if ( std::isnan(latitude) ||
-                        std::isnan(longitude) ||
-                        std::isnan(z))
+                    if(!missing_z())
+                    {
+                        z = (*e)[y][x];
+                    }
+
+                    // Some Netcdf files have NaN grid squares (latitude/longitude or sometimes height). Drop those points
+                    // so downstream modules never see undefined forcing values.
+                    if (std::isnan(latitude) || std::isnan(longitude) || std::isnan(z))
                     {
                         _stations.at(index) = nullptr;
                         ++skipped;
