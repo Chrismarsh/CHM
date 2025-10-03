@@ -186,17 +186,21 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
 
             // check if we have a nc standard_name -> CHM mapping
             auto chm_var = itr;
-            if(stdname != "")
+            if(!stdname.empty())
             {
-                chm_var = CF_name_mapping::standard_names.right.find(stdname)->second;
-
-                if(chm_var == "")
+                auto mapped = CF_name_mapping::standard_names.right.find(stdname);
+                if(mapped == CF_name_mapping::standard_names.right.end())
                 {
                     _nc_ignored_variables.insert(itr);
-                    SPDLOG_WARN("Could not remap nc var {} with standard_name {}, ignoring", itr, stdname);
+
+                    // silence these warnings as it leads to users thinking something is wrong
+                    if (stdname != "geopotential_height" && stdname != "time")
+                        SPDLOG_WARN("Could not remap nc var {} with standard_name {}, ignoring", itr, stdname);
+
                     continue;
                 }
 
+                chm_var = mapped->second;
                 SPDLOG_DEBUG("Remapping variable nc var {} to {} ", itr, chm_var);
             }
             _variables.insert(chm_var);
