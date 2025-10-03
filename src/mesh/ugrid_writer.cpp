@@ -17,7 +17,7 @@
 #include "ugrid_writer.hpp"
 
 ugrid_writer::ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_parameters, std::string fname):
-    _mesh(m), _global(g), _write_parameters(write_parameters), _fname(fname)
+    _mesh(m), _global(g), _fname(fname), _write_parameters(write_parameters)
 {
     _ugrid_fid = -1;
     _time_index = 0;
