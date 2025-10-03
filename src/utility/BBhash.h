@@ -1,6 +1,8 @@
 // Current as of Jul 10, 2025
 // https://github.com/rizkg/BBHash/commit/a95f8230829913d89cdf7222cab35580a192e009
 
+#pragma once
+
 // Silence deprecated decl of iterator
 // https://github.com/rizkg/BBHash/issues/25
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -32,7 +34,6 @@
 // intended to be a minimal perfect hash function with fast and low memory construction, at the cost of (slightly) higher bits/elem than other state of the art libraries once built.
 // should work with arbitray large number of elements, based on a cascade of  "collision-free" bit arrays
 
-#pragma once
 #include <stdio.h>
 #include <climits>
 #include <stdlib.h>
