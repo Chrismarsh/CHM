@@ -109,7 +109,7 @@ extern "C"
  *
  *  * \rst
  * .. warning::
- *    Snow transport and vegetation characteristics remain a TODO
+ *    Vegetation characteristics remain a TODO
  *
  * \endrst
  *
@@ -125,9 +125,28 @@ extern "C"
  * - Incoming shortwave radiation, diffuse beam "iswr_diffuse" \f$[W \cdot m^{-2}\f$]
  *
  * **Provides:**
- * - Snow Water Equivalent "swe" [mm]
- * - Snow depth "snowdepthavg" [m]
- * - Snow depth slope corrected "snowdepthavg_vert" [m]
+ * - Sensible heat flux "H" \f$[W \cdot m^{-2}]\f$
+ * - Latent heat flux "E" \f$[W \cdot m^{-2}]\f$
+ * - Outgoing longwave radiation "ilwr_out" (alias "LWout") \f$[W \cdot m^{-2}]\f$
+ * - Melt rate "melt_rate" \f$[mm \cdot dt^{-1}]\f$
+ * - Surface runoff/drainage, includes rain on snow percolation "roff" \f$[mm \cdot dt^{-1}]\f$
+ * - Mean snow depth (slope-normal) "snowdepthavg" [m]
+ * - Mean snow depth (vertical projection) "snowdepthavg_vert" [m]
+ * - Snow water equivalent "swe" [mm]
+ * - Instantaneous sublimation "subl" \f$[mm \cdot dt^{-1}]\f$
+ * - Cumulative sublimation "sum_snowpack_subl" [mm]
+ * - Snow albedo "snow_albedo" [-]
+ * - Number of snow layers "Nsnow" [-]
+ * - Snow liquid water content layer 0 "Sliq[0]" [mm]
+ * - Snow liquid water content layer 1 "Sliq[1]" [mm]
+ * - Snow liquid water content layer 2 "Sliq[2]" [mm]
+ * - Snow temperature layer 0 "Tsnow[0]" [K]
+ * - Snow temperature layer 1 "Tsnow[1]" [K]
+ * - Snow temperature layer 2 "Tsnow[2]" [K]
+ * - Soil temperature layer 0 "Tsoil[0]" [K]
+ * - Soil temperature layer 1 "Tsoil[1]" [K]
+ * - Soil temperature layer 2 "Tsoil[2]" [K]
+ * - Soil temperature layer 3 "Tsoil[3]" [K]
  *
  * **Optional:**
  *
