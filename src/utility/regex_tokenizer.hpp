@@ -140,7 +140,7 @@ class regex_tokenizer
                                     std::string tmp = what[0];
                                     items.push_back(boost::lexical_cast<T>(tmp));
                                 }
-                                catch (boost::bad_lexical_cast)
+                                catch (const boost::bad_lexical_cast& e)
                                 {
                                     BOOST_THROW_EXCEPTION(bad_lexical_cast() 
                                         << errstr_info( std::string("Bad lexical cast"))
