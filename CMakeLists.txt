@@ -191,7 +191,8 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
         # a superior debugging experience while providing a reasonable level of run-time performance.
         # Overall experience for development should be better than the default optimization level -O0.
         # new to 4.8 https://gcc.gnu.org/gcc-4.8/changes.html
-        set(DEBUG_FLAGS "${DEBUG_FLAGS}  -Og -fno-inline")
+        # -Wno-misleading-indentation is for armadillo
+        set(DEBUG_FLAGS "${DEBUG_FLAGS}  -Og -fno-inline -Wall -Wno-misleading-indentation")
     else("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
         set(DEBUG_FLAGS "${DEBUG_FLAGS}  -O0 -fno-omit-frame-pointer -fno-inline -fno-eliminate-unused-debug-symbols")
     endif()
@@ -201,7 +202,8 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     set(CHM_BUILD_FLAGS "${CHM_BUILD_FLAGS} ${DEBUG_FLAGS}")
 else()
     message(STATUS "Release mode")
-    set(RELEASE_FLAGS "-g -O3 -ggdb")
+    # -Wno-misleading-indentation is for armadillo
+    set(RELEASE_FLAGS "-g -O3 -ggdb -Wno-misleading-indentation")
 
     if(ENABLE_SAFE_CHECKS)
         add_definitions(-DSAFE_CHECKS)
