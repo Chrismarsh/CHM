@@ -386,7 +386,7 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
         SPDLOG_DEBUG("Done initializing datastructure");
 
         _prune_nullptr_stations();
-
+        SPDLOG_DEBUG("This rank is using # grid cells = {}", _stations.size());
 
         boost::mpi::communicator local;
         boost::filesystem::path nc_path(path);
@@ -402,7 +402,6 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
         // The output diagnostic forcing points and bbox need to be written before we bail if there were any mistakes
         local.barrier();
 
-        SPDLOG_DEBUG("This rank is using # grid cells = {}", _stations.size() - skipped);
         if( skipped == _nstations)
         {
             CHM_THROW_EXCEPTION(forcing_error,
@@ -410,6 +409,8 @@ void metdata::load_from_netcdf(const std::string& path, std::map<std::string, bo
                                 " regardless of the timestep the model is started from, are defined from timestep = 0 "
                                 ". Ensure it is defined then. Also, could be a bounding box issue.");
         }
+
+
         
     } catch(netCDF::exceptions::NcException& e)
     {
