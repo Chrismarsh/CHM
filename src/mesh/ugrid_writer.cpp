@@ -17,7 +17,7 @@
 #include "ugrid_writer.hpp"
 
 ugrid_writer::ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_parameters, std::string fname):
-    _mesh(m), _global(g), _fname(fname), _write_parameters(write_parameters)
+    _mesh(m),  _fname(fname), _global(g), _write_parameters(write_parameters)
 {
     _ugrid_fid = -1;
     _time_index = 0;
@@ -77,7 +77,7 @@ void ugrid_writer::write_ugrid(const std::vector<std::string>& output_variables)
 
     std::vector<size_t> all_face_offsets;
     boost::mpi::all_gather(_comm_world, _mesh->size_local_faces(), all_face_offsets);
-    size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + _comm_world.rank(), 0);
+    size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + static_cast<size_t>(_comm_world.rank()), 0);
 
     double time = _global->posix_time_double()  / 60 ; //s to m
     nc_chk_ret(nc_put_var1_double(_ugrid_fid, _ugrid_id_var["time"], &_time_index, &time));
@@ -122,7 +122,7 @@ void ugrid_writer::open_ugrid(const std::vector<std::string>& output_variables)
     SPDLOG_DEBUG("Opening existing ugrid for writting");
     nc_chk_ret(nc_open_par(_fname.c_str(), NC_WRITE, _comm_world, info_used, &_ugrid_fid));
 
-    for (auto vara:output_variables)
+    for (const auto& vara:output_variables)
     {
         int status =
             nc_inq_varid(_ugrid_fid, vara.c_str(), &_ugrid_id_var[std::string(vara)]);
@@ -134,7 +134,7 @@ void ugrid_writer::open_ugrid(const std::vector<std::string>& output_variables)
     if (status != NC_NOERR)
         CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file does not have variable to write: time");
 
-    for (auto p:_ugrid_id_var)
+    for (const auto& p : _ugrid_id_var)
     {
         nc_chk_ret(nc_var_par_access(_ugrid_fid, p.second, NC_COLLECTIVE));
     }
@@ -175,11 +175,11 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     boost::mpi::all_gather(_comm_world, _mesh->size_local_vertex(), all_offsets);
 
     // Our rank needs the sum of all the vertexes from the preceeding ranks as its start offset
-    size_t offset = std::accumulate(all_offsets.begin(), all_offsets.begin() + _comm_world.rank(), 0);
+    size_t offset = std::accumulate(all_offsets.begin(), all_offsets.begin() + static_cast<size_t>(_comm_world.rank()), 0);
 
     std::vector<size_t> all_face_offsets;
     boost::mpi::all_gather(_comm_world, _mesh->size_local_faces(), all_face_offsets);
-    size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + _comm_world.rank(), 0);
+    size_t offset_face = std::accumulate(all_face_offsets.begin(), all_face_offsets.begin() + static_cast<size_t>(_comm_world.rank()), 0);
 
     // When the mesh is read we only know the number of vertexes on each rank, not the global number
     // This gathers the number of vertexes per rank.
