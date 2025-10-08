@@ -931,6 +931,22 @@ checkpoints every ``on_frequency`` timesteps as well as on the last timestep.
 
    The frequency of checkpointing. Checkpoints every ``on_frequency`` timesteps.
 
+.. confval:: specific_datetime
+
+    :type: string
+    :default: ""
+
+    Checkpoints at a specific date-time, given in the iso format, e.g., ``"specific_datetime": "20191227T160000"``
+
+
+.. confval:: specific_time
+
+    :type: string
+    :default: ""
+
+    Checkpoints at a specific time every day, given in a "HH:MM" 24hr-format, e.g., ``"specific_time": "14:00"``
+
+
 .. confval:: on_last
 
    :type: bool
