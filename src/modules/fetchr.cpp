@@ -96,7 +96,7 @@ void fetchr::run(mesh_elem& face)
         //equation 1, pg 771, Lapen and Martz 1993
         double Z_core = face->center().z() + distance*I;
 
-        double z0_1 = 0.12*Z_CanTop;
+        double z0_1 = std::max(0.12*Z_CanTop,0.001);
         double z0_2 = 0.001;
         double n=1.0/0.8;
         double h = 5; //IBL height, m
