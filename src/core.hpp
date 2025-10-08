@@ -321,7 +321,7 @@ protected:
     {
         bool enable;
 
-        // The default mode of point mode is to use whatever stations we'd use for the face containing
+        // The defaultch mode of point mode is to use whatever stations we'd use for the face containing
         //  this output. If we ask sepficially for a single station, then only that station will be used.
         bool use_specific_station;
         std::string forcing; // empty unless the above is set true
@@ -336,7 +336,8 @@ protected:
         name{""},
         fname{""},
         latitude{0}, longitude{0},
-        x{0}, y{0},
+        x{0}, y{0}, type{output_type::output_type_none},
+        mesh_output_formats{mesh_outputs::mesh_outputs_none},
         only_last_n{SIZE_MAX}
         {
             face = nullptr;
@@ -344,11 +345,13 @@ protected:
 
         enum output_type
         {
+            output_type_none,
             time_series,
             mesh
         };
         enum mesh_outputs
         {
+            mesh_outputs_none,
             vtp,
             vtu,
             ugrid,

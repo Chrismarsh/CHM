@@ -30,6 +30,12 @@ core::core()
     _start_ts = nullptr;
     _end_ts = nullptr;
     _interpolation_method = interp_alg::tpspline;
+    radius = 0;
+    N=0;
+
+    point_mode.enable = false;
+    point_mode.use_specific_station = false;
+    point_mode.forcing = "";
 
     //default logging level
     _log_level = debug;
@@ -911,13 +917,13 @@ bool core::config_meshes( pt::ptree &value)
       bool triarea_found = false;
 
       // Parameter files
-      for (auto param_file : param_file_paths)
+      for (const auto& param_file : param_file_paths)
       {
 	    pt::ptree param_json = read_json(param_file);
 
             for(auto& ktr : param_json)
             {
-                //use put to ensure there are no duplciate parameters...
+                //use put to ensure there are no duplicate parameters...
                 std::string key = ktr.first.data();
                 mesh.put_child( "parameters." + key ,ktr.second);
 
@@ -934,7 +940,7 @@ bool core::config_meshes( pt::ptree &value)
         }
 
       // Initial condition files
-      for(auto ic_file : initial_condition_file_paths)
+      for(const auto& ic_file : initial_condition_file_paths)
       {
             pt::ptree ic_json = read_json(ic_file);
 
@@ -1683,7 +1689,7 @@ void core::init(int argc, char **argv)
 
     if(point_mode.enable)
     {
-        for(auto itr:_chunked_modules)
+        for(const auto& itr:_chunked_modules)
         {
             for(auto jtr:itr)
             {
@@ -2049,7 +2055,7 @@ void core::_determine_module_dep()
 
     std::string edge_str = "E[edgetype == \"%s\"] {\n color=\"/paired12/%i\";\n fontsize=%i;\n     fontname=\"%s\"\n }";
     int idx = 1;
-    for (auto itr : graphviz_vars)
+    for (const auto& itr : graphviz_vars)
     {
         std::string edge = str_format(edge_str, itr.c_str(), idx, fontsize, font.c_str());
         idx++;
@@ -2483,7 +2489,7 @@ void core::run()
             //only update the full timeseries
             if (itr.type == output_info::output_type::time_series)
             {
-                for (auto v : _provided_var_module)
+                for (const auto& v : _provided_var_module)
                 {
                     auto data = (*itr.face)[v];
                     itr.ts.at(v, current_ts) = data;
