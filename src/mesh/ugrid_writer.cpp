@@ -28,6 +28,14 @@ ugrid_writer::ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_param
 
 ugrid_writer::~ugrid_writer()
 {
+    try
+    {
+        // in theory can throw so log the closure error and swallow the exception
+        close_ugrid();
+    }catch (const chm_error& e)
+    {
+        SPDLOG_ERROR(e.what());
+    }
 
 }
 
@@ -65,9 +73,13 @@ void ugrid_writer::write_ugrid(const std::vector<std::string>& output_variables)
         SPDLOG_DEBUG(_fname);
         // if we are resuming from checkpoint, don't mangle out existing ugrid!
         if (_global->from_checkpoint())
+        {
             open_ugrid(variables);
+        }
         else
+        {
             init_ugrid(variables);
+        }
     }
 
     // use C api as boost doesn't have info
