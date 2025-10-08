@@ -95,7 +95,7 @@ class solar : public module_base
 REGISTER_MODULE_HPP(solar);
 public:
 
-    //if we have a UTM mesh, cache the calculated lat and long
+    //if we have a projected mesh, cache the calculated lat and long
     struct data : public face_info
     {
         double lat;
