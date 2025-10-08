@@ -27,6 +27,15 @@ triangulation::triangulation()
     _terrain_deformed=false;
     _min_z =  999999;
     _max_z = -999999;
+    _num_global_faces = 0;
+    _num_local_vertex = 0;
+    _mesh_is_from_partition = false;
+    _write_parameters = false;
+    _write_ghost_neighbors_to_vtu = false;
+    global_cell_start_idx = 0;
+    global_cell_end_idx = 0;
+
+
 
 #ifdef USE_SPARSEHASH
     data.set_empty_key("");
@@ -1856,8 +1865,7 @@ void triangulation::determine_ghost_owners()
     // Determine the owners of the ghost faces (for communication setup)
     _ghost_neighbor_owners.resize(_ghost_neighbors.size());
     int start_index=0;
-    int prev_owner;
-    int num_partners=0;
+    int prev_owner=0;
 
     // Construct ghost region ownership info
     for(size_t i=0; i<_ghost_neighbors.size(); ++i)
@@ -1878,7 +1886,6 @@ void triangulation::determine_ghost_owners()
         // if owner different from last owner, store prev segment"s ownership info
         if (prev_owner != _ghost_neighbor_owners[i])
         {
-            num_partners++;
             _comm_partner_ownership[prev_owner] = std::make_pair(start_index, i-start_index);
             start_index=i;
         } else if (i ==_ghost_neighbors.size()-1) {
