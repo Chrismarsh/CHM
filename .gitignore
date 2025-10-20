@@ -29,3 +29,6 @@ CRHMr.log
 /docs/doxygen/*
 /docs/_ext/__pycache__
 build-codechecker
+package-lock.json
+spack-devenv.sh
+build-test
