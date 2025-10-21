@@ -90,27 +90,15 @@ FSM::FSM(config_file cfg)
 
 void FSM::init(mesh& domain)
 {
-    //Canopy, snow and soil layers
-    __layers_MOD_fvg1 = 0.5; // Fraction of vegetation in upper canopy layer
-    __layers_MOD_zsub = 1.5; // Subcanopy wind speed diagnostic height (m)
+    fsm_layers_config(0.5f, 1.5f, CANOPY_LAYER_COUNT, SNOW_LAYER_COUNT, SOIL_LAYER_COUNT);
 
-//    __layers_MOD_ncnpy = 2; // Number of canopy layers
-    __layers_MOD_nsmax = 6; // Maximum number of snow layers
-    __layers_MOD_nsoil = 4; // Number of soil layers
+    fsm_soilprops_config(7.63f, 2.3e6f, 0.11f, 0.41f, 0.26f, 0.27f);
 
-    __soilprops_MOD_b = 7.63; // Clapp-Hornberger exponent
-    __soilprops_MOD_hcap_soil = 2.3e6; // Volumetric heat capacity of dry soil (J/K/m^3)
-    __soilprops_MOD_hcon_soil = 0.11; // Thermal conductivity of dry soil (W/m/K)
-    __soilprops_MOD_sathh = 0.41; // Saturated soil water pressure (m)
-    __soilprops_MOD_vcrit = 0.26; // Volumetric soil moisture at critical point
-    __soilprops_MOD_vsat = 0.27; // Volumetric soil moisture at saturation
+    fsm_allocate();
 
-    allocate();
-
-//    __layers_MOD_Dzsnow[0] = 0.1;
-//    __layers_MOD_Dzsnow[1] = 0.2;
-//    __layers_MOD_Dzsnow[2] = 0.4;
-
+    constants_e0_ = fsm_constants_e0();
+    constants_eps_ = fsm_constants_eps();
+    parameters_rgr0_ = fsm_parameters_rgr0();
 
     #pragma omp parallel for
     for (size_t i = 0; i < domain->size_local_faces(); i++)
@@ -126,6 +114,11 @@ void FSM::init(mesh& domain)
         d.diag.snd = 0;
         d.diag.snw = 0;
         d.diag.sum_snowpack_subl = 0;
+
+        for (int layer = 0; layer < SNOW_LAYER_COUNT; ++layer)
+        {
+            d.state.Rgrn[layer] = parameters_rgr0_;
+        }
 
         // the other d.* are init in the stat struct
 
@@ -232,7 +225,7 @@ void FSM::run(mesh_elem& face)
     t += 273.15;
 
     float tc = (float)(t - 273.15);
-    float Qs = __constants_MOD_eps * (__constants_MOD_e0 / Ps) *
+    float Qs = constants_eps_ * (constants_e0_ / Ps) *
                exp((float)17.5043 * tc / ((float)241.3 + tc));
     float Qa = (rh/ (float)100.0) * Qs; // specific humidity
 

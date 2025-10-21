@@ -31,7 +31,12 @@
 
 extern "C"
 {
-    extern void allocate();
+    void fsm_allocate();
+    void fsm_layers_config(float fvg1, float zsub, int ncnpy, int nsmax, int nsoil);
+    void fsm_soilprops_config(float b, float hcap_soil, float hcon_soil, float sathh, float vcrit, float vsat);
+    float fsm_constants_e0();
+    float fsm_constants_eps();
+    float fsm_parameters_rgr0();
     void fsm2_timestep(
     // Driving variables
         float* dt, float* elev, float* zT, float* zU,
@@ -50,49 +55,6 @@ extern "C"
         float* H, float* LE, float* LWout, float* LWsub, float* Melt, float* Roff, float* snd, float* snw, float* subl, float* svg,
         float* SWout, float* SWsub, float* Usub, float*  Wflx
         );
-
-    // This follows FSM2_MAIN.f90 example driver
-    // These externs expose internal FSM module options for configuration from C++ code
-
-    /**
-     * CONSTANTS
-     */
-    extern float __constants_MOD_e0;
-    extern float __constants_MOD_eps;
-
-    /**
-     * LAYERS
-     */
-    // These are currently spatially constant and CANNOT be changed on a per triangle basis
-    // The allocatable
-    //    Dzsnow = (/0.1, 0.2, 0.4/)
-    //    Dzsoil = (/0.1, 0.2, 0.4, 0.8/)
-    // are allocated in the F90 code and not here
-
-    extern float __layers_MOD_Dzsnow;
-
-// Fraction of vegetation in upper canopy layer
-    extern float __layers_MOD_fvg1;
-    extern int __layers_MOD_nsmax; // Maximum number of snow layers
-    extern int __layers_MOD_nsoil; // Number of soil layers
-    extern float __layers_MOD_zsub; // Subcanopy wind speed diagnostic height (m)
-
-    /**
-    * PARAMETERS
-    */
-    extern float __parameters_MOD_rgr0;
-
-    /**
-     * SOILPROPS
-     */
-    extern float __soilprops_MOD_b; // Clapp-Hornberger exponent
-    extern float __soilprops_MOD_hcap_soil; // Volumetric heat capacity of dry soil (J/K/m^3)
-    extern float __soilprops_MOD_hcon_soil; // Thermal conductivity of dry soil (W/m/K)
-    extern float __soilprops_MOD_sathh; // Saturated soil water pressure (m)
-    extern float __soilprops_MOD_vcrit; // Volumetric soil moisture at critical point
-    extern float __soilprops_MOD_vsat; // Volumetric soil moisture at saturation
-
-
 }
 
 /**
@@ -168,6 +130,9 @@ class FSM : public module_base
 {
   REGISTER_MODULE_HPP(FSM);
   private:
+    static constexpr int SNOW_LAYER_COUNT = 6;
+    static constexpr int SOIL_LAYER_COUNT = 4;
+    static constexpr int CANOPY_LAYER_COUNT = 2;
 
     struct data : public face_info
     {
@@ -184,23 +149,23 @@ class FSM : public module_base
             // State variables
             float albs = 0.8;
             float Tsrf = 263.0; // cold soils
-            float Dsnw[6] = {0, 0, 0, 0, 0, 0}; //Snow layer thicknesses (m)
+            float Dsnw[SNOW_LAYER_COUNT] = {0, 0, 0, 0, 0, 0}; //Snow layer thicknesses (m)
             int Nsnow = 0; //Number of snow layers
-            float Qcan[2] = {0, 0}; // Canopy air space humidities
-            float Rgrn[6] = {__parameters_MOD_rgr0, __parameters_MOD_rgr0, __parameters_MOD_rgr0, __parameters_MOD_rgr0, __parameters_MOD_rgr0, __parameters_MOD_rgr0 }; //Snow layer grain radii (m)
-            float Sice[6] = {0, 0, 0, 0, 0, 0}; // Ice content of snow layers (kg/m^2)
+            float Qcan[CANOPY_LAYER_COUNT] = {0, 0}; // Canopy air space humidities
+            float Rgrn[SNOW_LAYER_COUNT] = {0, 0, 0, 0, 0, 0}; //Snow layer grain radii (m)
+            float Sice[SNOW_LAYER_COUNT] = {0, 0, 0, 0, 0, 0}; // Ice content of snow layers (kg/m^2)
 
-            float Sliq[6] = {0, 0, 0, 0, 0, 0}; // Liquid content of snow layers (kg/m^2)
-            float Sveg[2] = {0, 0}; //Snow mass on vegetation layers (kg/m^2)
-            float Tcan[2] = {285, 285}; //Canopy air space temperatures (K)
-            float Tsnow[6] = {263, 263, 263, 263, 263, 263}; //Snow layer temperatures (K)
-            float Tsoil[4] = {263, 263.1, 263.2, 263.3}; //Soil layer temperatures (K); Cold soils
-            float Tveg[2] = {285, 285}; // Vegetation layer temperatures (K)
+            float Sliq[SNOW_LAYER_COUNT] = {0, 0, 0, 0, 0, 0}; // Liquid content of snow layers (kg/m^2)
+            float Sveg[CANOPY_LAYER_COUNT] = {0, 0}; //Snow mass on vegetation layers (kg/m^2)
+            float Tcan[CANOPY_LAYER_COUNT] = {285, 285}; //Canopy air space temperatures (K)
+            float Tsnow[SNOW_LAYER_COUNT] = {263, 263, 263, 263, 263, 263}; //Snow layer temperatures (K)
+            float Tsoil[SOIL_LAYER_COUNT] = {263, 263.1, 263.2, 263.3}; //Soil layer temperatures (K); Cold soils
+            float Tveg[CANOPY_LAYER_COUNT] = {285, 285}; // Vegetation layer temperatures (K)
 
             float Vsat = 0.27;
 
             // Volumetric moisture content of soil layers
-            float Vsmc[4] = {(float)0.5 * Vsat, (float)0.5 * Vsat, (float)0.5 * Vsat, (float)0.5 * Vsat};
+            float Vsmc[SOIL_LAYER_COUNT] = {(float)0.5 * Vsat, (float)0.5 * Vsat, (float)0.5 * Vsat, (float)0.5 * Vsat};
 
         } state;
 
@@ -222,11 +187,15 @@ class FSM : public module_base
             float SWout = -9999; // Outgoing SW radiation (W/m^2)
             float SWsub = -9999; // Subcanopy downward SW radiation (W/m^2)
             float Usub = -9999; // Subcanopy wind speed (m/s)
-            float Wflx[6] = {-9999, -9999, -9999, -9999, -9999, -9999}; // Water flux into snow layer (kg/m^2/s)
+            float Wflx[SNOW_LAYER_COUNT] = {-9999, -9999, -9999, -9999, -9999, -9999}; // Water flux into snow layer (kg/m^2/s)
 
             float sum_snowpack_subl = -9999; // cumulative sublimation (kg/m^2)
         } diag;
     };
+
+    float constants_e0_ = 0.0f;
+    float constants_eps_ = 0.0f;
+    float parameters_rgr0_ = 0.0f;
 
   public:
     FSM(config_file cfg);

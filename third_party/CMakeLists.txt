@@ -66,8 +66,12 @@ endif()
 ###################################
 add_library(FSM OBJECT
         ${CMAKE_CURRENT_SOURCE_DIR}/third_party/FSM/FSM2_CHM.f90
+        ${CMAKE_CURRENT_SOURCE_DIR}/third_party/FSM/fsm_c_bridge.f90
 	)
-target_compile_options(FSM PRIVATE -std=f2003 -fno-underscoring -O3) # may need to be PUBLIC to work properly
+set_target_properties(FSM PROPERTIES
+        Fortran_STANDARD 2003
+        Fortran_STANDARD_REQUIRED ON)
+target_compile_options(FSM PRIVATE -O3) # may need to be PUBLIC to work properly
 
 
 
