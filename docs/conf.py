@@ -33,7 +33,6 @@ author = 'Chris Marsh'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [ "breathe", "exhale",
-               "sphinx_rtd_theme",
                'sphinx.ext.autosectionlabel',
                # 'jsonlexer',
                'groups'
