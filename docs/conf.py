@@ -108,6 +108,8 @@ html_theme_options = {
     "logo": {
         "image_light": "_static/images/CHM_logo.png",
         "image_dark": "_static/images/CHM_logo.png",
+    }
+}
  
 
 # Add any paths that contain custom static files (such as style sheets) here,
