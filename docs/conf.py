@@ -106,7 +106,9 @@ html_theme_options = {
     "logo": {
         "image_light": "_static/images/CHM_logo.png",
         "image_dark": "_static/images/CHM_logo.png",
-    }
+    },
+    'collapse_navigation': False,
+    'sticky_navigation': True,
 }
  
 
@@ -117,10 +119,6 @@ html_static_path = ['_static']
 
 master_doc = 'index'
 
-html_theme_options = {
-    'collapse_navigation': False,
-    'sticky_navigation': True,
-}
 
 
 # Extensions to theme docs
