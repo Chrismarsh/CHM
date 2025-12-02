@@ -14,7 +14,6 @@ import os
 import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-import sphinx_rtd_theme
 from sphinx.locale import _
 
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
