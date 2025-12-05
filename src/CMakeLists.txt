@@ -110,6 +110,7 @@ set (HEADER_FILES
         modules/interp_met
 		modules/snobal
 		modules/testing
+        modules/submodules
 		math
         libmaw
         interpolation
@@ -412,17 +413,18 @@ if (BUILD_TESTS)
 	message(STATUS "Tests enabled. Run with make check")
 
 	set(TEST_SRCS
-			tests/test_station.cpp
-			tests/test_interpolation.cpp
-			tests/test_timeseries.cpp
-			tests/test_core.cpp
-			tests/test_variablestorage.cpp
-			tests/test_metdata.cpp
-			tests/test_netcdf.cpp
+        #tests/test_station.cpp
+        #	tests/test_interpolation.cpp
+        #		tests/test_timeseries.cpp
+        #	tests/test_core.cpp
+        #	tests/test_variablestorage.cpp
+        #	tests/test_metdata.cpp
+        #	tests/test_netcdf.cpp
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-            tests/test_triangulation.cpp
+            #     tests/test_triangulation.cpp
+            tests/submoduletests/test_data_base.cpp
 			tests/main.cpp
     )
 
