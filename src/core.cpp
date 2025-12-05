@@ -1349,21 +1349,18 @@ void core::init(int argc, char **argv)
 
     SPDLOG_DEBUG("Current working directory: {}",cwd_dir.string());
 
-
     std::string log_dir = "log";
     auto log_path = cwd_dir / log_dir;
 
     //output a unique logfile for each mpi rank
     std::string rank = "";
-#ifdef USE_MPI
-   rank = "."+std::to_string(_comm_world.rank());
-#endif
-
+    rank = "."+std::to_string(_comm_world.rank());
 
     std::string log_name = "CHM_" + log_start_time + rank + ".log";
 
-    boost::filesystem::create_directories(log_path);
-
+    if (_comm_world.rank() == 0)
+        boost::filesystem::create_directories(log_path);
+    _comm_world.barrier();
 
 
     log_file_path = log_path / log_name;
@@ -2328,14 +2325,17 @@ void core::run()
         }
 
 
-
-        // save the current state
-        if(_checkpoint_opts.should_checkpoint(current_ts,
-                                               (max_ts-1) == current_ts,
+        // ensure all ranks agree on this
+        bool my_shouldckp = _checkpoint_opts.should_checkpoint(current_ts,
+                                               (max_ts-1) == current_ts, // -1 because current_ts is 0 indexed
                                                _hpc_scheduler_info,
                                                _comm_world,
                                                _global->_current_date
-                                               )) // -1 because current_ts is 0 indexed
+                                               );
+        bool global_shouldckp=false;
+        boost::mpi::all_reduce(_comm_world, my_shouldckp, global_shouldckp, boost::mpi::maximum<bool>());
+        // save the current state
+        if(global_shouldckp) //
         {
             SPDLOG_DEBUG("Checkpointing...");
 
@@ -2347,15 +2347,16 @@ void core::run()
 
             auto timestr = boost::posix_time::to_iso_string(timestamp); // start from current TS + dt
 
-
-            size_t rank = _comm_world.rank();
-
-
             auto dirpath = _checkpoint_opts.ckpt_path / timestr;
-            boost::filesystem::create_directories(dirpath);
+            if (_comm_world.rank() == 0)
+            {
+                boost::filesystem::create_directories(dirpath);
+            }
+
+            _comm_world.barrier();
 
             //this parses both the input and the output paths for the checkpoint.
-            auto fname = ("chkp"+timestr + "_" + std::to_string(rank) + ".nc");
+            auto fname = ("chkp"+timestr + "_" + std::to_string(_comm_world.rank()) + ".nc");
             auto f = dirpath / fname;
             savestate.create( f.string());
 
@@ -2404,7 +2405,7 @@ void core::run()
             tree.add_child("files", tmp_files);
 
 
-            if(rank == 0)
+            if(_comm_world.rank() == 0)
             {
                 pt::write_json(
                     (_checkpoint_opts.ckpt_path / ("checkpoint_" + timestr + ".np" + std::to_string(nranks) + ".json")).string(),
@@ -2416,10 +2417,13 @@ void core::run()
             // if we checkpointed because we are out of time, we need to stop the simulation
             if(_checkpoint_opts.checkpoint_request_terminate)
             {
-                done = true;
-
                 // we bailed early because of wall clock, so this is not a clean exit
-                clean_exit = false;
+                // done = true; clean_exit = false;
+
+                // ensure everyone agrees we should be done = true
+                boost::mpi::all_reduce(_comm_world, true, done, boost::mpi::maximum<bool>());
+                // ensure everyone aggress we should be clean_exit = false
+                boost::mpi::all_reduce(_comm_world, false, clean_exit, boost::mpi::minimum<bool>());
             }
         }
 
@@ -2593,29 +2597,54 @@ void core::run()
 
 void core::end(const bool abort)
 {
-#ifdef USE_MPI
+
     if(abort)
     {
-        SPDLOG_ERROR("An exception has occurred, requesting MPI Abort!");
-        _mpi_env.abort(-1);
+        SPDLOG_ERROR("An exception has occurred, requesting MPI Abort! Log files of failed will be in <output>/error_logs");
     }
-#endif
 
     // Write the sentinel file IFF there is a clean exit
     // recall that if the checkpointing system detects an about-to-expire wallclock and terminates early,
     // this doesn't count as a clean exit.
     if(!abort && clean_exit)
     {
-        int rank = 0;
-#ifdef USE_MPI
-        rank = _comm_world.rank();
-#endif
-        if(rank == 0)
+        if(_comm_world.rank() == 0)
         {
             std::ofstream((output_folder_path / "clean_exit").string()).close();
         }
     }
     SPDLOG_DEBUG("Finished cleaning up");
+
+
+    // flush the logs and close the fhandles
+    spdlog::shutdown();
+
+    try
+    {
+        auto job_name = _hpc_scheduler_info.job_name;
+
+        if (abort) // copy any failing logs so we can easily figure out what the problem is
+        {
+            const auto path = output_folder_path / ("error_logs_" + job_name);
+
+            try{ boost::filesystem::create_directories(path); } catch (...) { /* already exists */ }
+            boost::filesystem::copy_file(log_file_path, path / log_file_path.filename(), boost::filesystem::copy_options::overwrite_existing);
+        }
+
+        const auto path = output_folder_path / ("logs_" + job_name);
+        try{ boost::filesystem::create_directories(path); } catch (...) { /* already exists */ }
+
+        boost::filesystem::rename(log_file_path, path / log_file_path.filename());
+    }
+    catch(const std::exception& e)
+    {
+        // if this copying goes wrong we are super out of options and just bail
+        std::cout << e.what() << std::endl;
+    }
+
+    if (abort)  _mpi_env.abort(-1);
+
+    // environment goes out of scope here and calls ~environment() which calls MPI finalize
 }
 
 bool core::check_is_geographic(const std::string& path)

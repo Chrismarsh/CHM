@@ -68,27 +68,11 @@ int main (int argc, char *argv[])
        ret = 1;
     }
 
-    // if we have an exception, ensure we tear down all of the MPI. In Non MPI mode this won't do anything
+    // if we have an exception, ensure we tear down all of the MPI
     if(ret == 1)
        kernel.end(true);
     else
        kernel.end();
-
-    try
-    {
-
-#if BOOST_VERSION < 107400
-        boost::filesystem::copy_file(kernel.log_file_path,kernel.output_folder_path / "CHM.log", boost::filesystem::copy_option::overwrite_if_exists);
-#else
-        boost::filesystem::copy_file(kernel.log_file_path,kernel.output_folder_path / "CHM.log", boost::filesystem::copy_options::overwrite_existing);
-#endif
-}
-
-    catch(...)
-    {
-
-    }
-
 
 
     return ret;

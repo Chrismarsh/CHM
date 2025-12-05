@@ -479,11 +479,13 @@ protected:
       boost::posix_time::time_duration max_wallclock; // maximum wallclock in seconds
       boost::posix_time::ptime wallclock_start; // time we started the simulation at
       bool has_wallclock_limit;
+      std::string job_name;
 
         hpc_scheduler_info()
         {
             max_wallclock = boost::posix_time::seconds(0);
             has_wallclock_limit = false;
+            job_name = "";
         }
 
         /**
@@ -505,8 +507,8 @@ protected:
                 const char* SLURM_TASK_PID = std::getenv("SLURM_TASK_PID"); // The process ID of the task being started.
                 const char* SLURM_PROCID =
                     std::getenv("SLURM_PROCID"); // The MPI rank (or relative process ID) of the current process
-
-                SPDLOG_DEBUG("Detected running under SLURM as jobid {}", SLURM_JOB_ID);
+                job_name = SLURM_JOB_ID;
+                SPDLOG_DEBUG("Detected running under SLURM as jobid {}", job_name);
                 SPDLOG_DEBUG("SLURM_TASK_PID = {}", SLURM_TASK_PID);
                 SPDLOG_DEBUG("SLURM_PROCID = {} ", SLURM_PROCID);
             }
@@ -516,7 +518,9 @@ protected:
             const char* PBS_JOB_ID = std::getenv("PBS_JOBID");
             if(PBS_JOB_ID)
             {
-                SPDLOG_DEBUG("Detected running under PBS as jobid {}", PBS_JOB_ID);
+                job_name = PBS_JOB_ID;
+                SPDLOG_DEBUG("Detected running under PBS as jobid {}", job_name);
+
             }
 
             const char* CHM_WALLCLOCK = std::getenv("CHM_WALLCLOCK_LIMIT");
@@ -531,7 +535,6 @@ protected:
                     CHM_THROW_EXCEPTION(chm_error, "The value given for environment variable CHM_WALLCLOCK is invalid");
                 }
             }
-
         }
     } _hpc_scheduler_info;
 
