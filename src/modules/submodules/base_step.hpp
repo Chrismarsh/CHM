@@ -1,3 +1,6 @@
+#pragma once
+#include <concepts>
+
 /**
  * @brief Base class for submodules using the Curiously Recurring Template Pattern (CRTP).
  *
@@ -20,8 +23,6 @@
  * step.execute(data); // Calls MyStep::execute_impl(data)
  * @endcode
  */
-
-#include <concepts>
 
 template<typename T, typename Data>
 concept GuaranteeImplementExecute = requires(const T& t, Data& d) {
