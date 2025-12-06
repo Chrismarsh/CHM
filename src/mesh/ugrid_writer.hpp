@@ -19,6 +19,7 @@
 #include <netcdf_par.h>
 #include <boost/mpi.hpp>
 #include <boost/shared_ptr.hpp>
+#include <algorithm>
 #include <vector>
 #include <string>
 
@@ -69,4 +70,3 @@ private:
 
     bool _write_parameters;
 };
-

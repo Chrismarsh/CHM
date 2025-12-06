@@ -156,6 +156,26 @@ void ugrid_writer::open_ugrid(const std::vector<std::string>& output_variables)
     nc_chk_ret(nc_inq_unlimdim(_ugrid_fid, &unlimdimidp)); // get the time /dimension/. it's the only unlimited
     nc_chk_ret(nc_inq_dimlen(_ugrid_fid, unlimdimidp, &_time_index));
 
+    // If we are resuming from a checkpoint, make sure we overwrite any timesteps
+    // beyond the checkpoint instead of blindly appending to the existing file.
+    if (_global->from_checkpoint() && _time_index > 0)
+    {
+        // chm outputs minutes since as time unit
+        const double restart_time_minutes = _global->posix_time_double() / 60.0;
+        std::vector<double> time_vals(_time_index, 0.0);
+
+        nc_chk_ret(nc_get_var_double(_ugrid_fid, _ugrid_id_var["time"], time_vals.data()));
+
+        auto it = std::lower_bound(time_vals.begin(), time_vals.end(), restart_time_minutes);
+        auto idx = static_cast<size_t>(std::distance(time_vals.begin(), it));
+
+        if (idx < _time_index)
+        {
+            SPDLOG_DEBUG("Resuming ugrid at time index {} (was {}).", idx, _time_index);
+            _time_index = idx;
+        }
+    }
+
     SPDLOG_DEBUG("Existing ugrid output has {} timesteps already", _time_index);
 
     MPI_Info_free(&info_used);
