@@ -64,7 +64,6 @@ private:
     mesh _mesh;
     boost::shared_ptr<global> _global;
 
-    boost::mpi::environment _mpi_env;
     boost::mpi::communicator _comm_world;
 
 
