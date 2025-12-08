@@ -363,12 +363,9 @@ void snow_slide::run(mesh& domain)
 
             (*face)["ghost_ss_snowdepthavg_vert_copy"] = data.snowdepthavg_vert_copy;
 
-            // Save state variables at end of time step
+            // Save state variables at end of this iteration
             (*face)["delta_avalanche_snowdepth"_s] = data.delta_avalanche_snowdepth;
             (*face)["delta_avalanche_mass"_s] = data.delta_avalanche_mass;
-
-            (*face)["delta_avalanche_snowdepth_sum"_s] += data.delta_avalanche_snowdepth;
-            (*face)["delta_avalanche_mass_sum"_s] += data.delta_avalanche_mass;
 
         }
 
@@ -404,6 +401,19 @@ void snow_slide::run(mesh& domain)
 #endif
 
     }while(!done);
+
+    // Accumulate totals for the timestep once, after the redistribution has converged
+    for (size_t i = 0; i < domain->size_local_faces(); i++)
+    {
+        auto face = domain->face(i);
+        auto& data = face->get_module_data<snow_slide::data>(ID);
+
+        (*face)["delta_avalanche_snowdepth"_s] = data.delta_avalanche_snowdepth;
+        (*face)["delta_avalanche_mass"_s] = data.delta_avalanche_mass;
+
+        (*face)["delta_avalanche_snowdepth_sum"_s] += data.delta_avalanche_snowdepth;
+        (*face)["delta_avalanche_mass_sum"_s] += data.delta_avalanche_mass;
+    }
 
     SPDLOG_DEBUG("[SnowSlide] needed {} iterations", iterations);
 
