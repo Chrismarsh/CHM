@@ -64,6 +64,25 @@ core::~core()
         itr.first.reset();
     }
 
+
+    // flush the logs and close the fhandles
+    spdlog::shutdown();
+
+    try
+    {
+        auto job_name = _hpc_scheduler_info.job_name;
+
+        const auto path = output_folder_path / ("logs_" + job_name);
+        try{ boost::filesystem::create_directories(path); } catch (...) { /* already exists */ }
+
+        boost::filesystem::rename(log_file_path, path / log_file_path.filename());
+    }
+    catch(const std::exception& e)
+    {
+        // if this copying goes wrong we are super out of options
+        std::cout << e.what() << std::endl;
+    }
+
 }
 
 void core::config_options( pt::ptree &value)
@@ -1347,8 +1366,6 @@ void core::init(int argc, char **argv)
     boost::filesystem::path path(cmdl_options.get<0>());
     cwd_dir = boost::filesystem::current_path();
 
-    SPDLOG_DEBUG("Current working directory: {}",cwd_dir.string());
-
     std::string log_dir = "log";
     auto log_path = cwd_dir / log_dir;
 
@@ -2598,11 +2615,6 @@ void core::run()
 void core::end(const bool abort)
 {
 
-    if(abort)
-    {
-        SPDLOG_ERROR("An exception has occurred, requesting MPI Abort! Log files of failed will be in <output>/error_logs");
-    }
-
     // Write the sentinel file IFF there is a clean exit
     // recall that if the checkpointing system detects an about-to-expire wallclock and terminates early,
     // this doesn't count as a clean exit.
@@ -2616,35 +2628,58 @@ void core::end(const bool abort)
     SPDLOG_DEBUG("Finished cleaning up");
 
 
-    // flush the logs and close the fhandles
-    spdlog::shutdown();
-
-    try
+    if(abort)
     {
-        auto job_name = _hpc_scheduler_info.job_name;
 
-        if (abort) // copy any failing logs so we can easily figure out what the problem is
+        SPDLOG_ERROR("An exception has occurred, requesting MPI Abort! Log files of failed will be in <output>/error_logs");
+
+        // best-effort copy of the log before aborting nukes the process
+        // mpi abort will trigger a shutdown and avoid the descructors so we have to process the log movement here
+        try
         {
-            const auto path = output_folder_path / ("error_logs_" + job_name);
+            // flush anything pending before we move the log files
+            try
+            {
+                spdlog::default_logger()->flush();
+            }
+            catch (...) {}
 
-            try{ boost::filesystem::create_directories(path); } catch (...) { /* already exists */ }
-            boost::filesystem::copy_file(log_file_path, path / log_file_path.filename(), boost::filesystem::copy_options::overwrite_existing);
+            std::string job_name = _hpc_scheduler_info.job_name;
+            if (job_name.empty())
+            {
+                job_name = "unknown.jobid";
+            }
+            const auto err_path = output_folder_path / ("error_logs_" + job_name);
+            const auto log_path = output_folder_path / ("logs_" + job_name);
+
+            try { boost::filesystem::create_directories(err_path); } catch (...) {}
+            try { boost::filesystem::create_directories(log_path); } catch (...) {}
+
+            try
+            {
+                boost::filesystem::copy_file(
+                    log_file_path,
+                    err_path / log_file_path.filename(),
+                    boost::filesystem::copy_options::overwrite_existing);
+            }
+            catch (...) {}
+
+            try
+            {
+                boost::filesystem::rename(
+                    log_file_path,
+                    log_path / log_file_path.filename());
+            }
+            catch (...) {}
+        }
+        catch (...)
+        {
+            // swallow all errors; we are aborting regardless
         }
 
-        const auto path = output_folder_path / ("logs_" + job_name);
-        try{ boost::filesystem::create_directories(path); } catch (...) { /* already exists */ }
-
-        boost::filesystem::rename(log_file_path, path / log_file_path.filename());
-    }
-    catch(const std::exception& e)
-    {
-        // if this copying goes wrong we are super out of options and just bail
-        std::cout << e.what() << std::endl;
+        _mpi_env.abort(-1);
     }
 
-    if (abort)  _mpi_env.abort(-1);
-
-    // environment goes out of scope here and calls ~environment() which calls MPI finalize
 }
 
 bool core::check_is_geographic(const std::string& path)
