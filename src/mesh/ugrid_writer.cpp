@@ -30,7 +30,6 @@ ugrid_writer::~ugrid_writer()
 {
     try
     {
-        // in theory can throw so log the closure error and swallow the exception
         close_ugrid();
     }catch (const chm_error& e)
     {
