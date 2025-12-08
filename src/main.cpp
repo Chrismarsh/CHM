@@ -37,10 +37,7 @@ int main (int argc, char *argv[])
     try
     {
         kernel.init(argc, argv) ;
-
         kernel.run();
-
-        kernel.end();
     }
     catch(chm_done& e)
     {
@@ -67,6 +64,7 @@ int main (int argc, char *argv[])
        SPDLOG_ERROR("Unknown exception");
        ret = 1;
     }
+
 
     // if we have an exception, ensure we tear down all of the MPI
     if(ret == 1)
