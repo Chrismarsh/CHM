@@ -50,7 +50,6 @@ void ugrid_writer::nc_chk_ret(int status)
 
 void ugrid_writer::close_ugrid()
 {
-    SPDLOG_DEBUG("Closing ugrid file");
     if (_ugrid_fid != -1)
     {
         nc_chk_ret(nc_close(_ugrid_fid));
