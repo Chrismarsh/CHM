@@ -22,7 +22,7 @@ public:
         update_value(v, l);
     };
     
-    // Same with update_value
+    // Same as update_value
     template<typename V,typename T>
     void output(V&& output, const T& t)
     {
@@ -75,7 +75,8 @@ TEST_F(DataBaseTest, CacheRespectsTimestepChanges) {
 
     // Second call at same timestep - should use cached value
     db.update([&]() -> auto& {return db.get_value();} ,A);
-    EXPECT_EQ(db.get_value(), B());  // No update to B
+    EXPECT_EQ(db.get_value(), B());  // value remains B. Should not update from B to A 
+                                     // at the same time step
 
     // Force cache reset by changing timestep
     mock_global->timestep_counter = 1;
