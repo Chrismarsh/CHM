@@ -21,10 +21,6 @@
 // <http://www.gnu.org/licenses/>.
 //
 
-//
-// Created by Donovan Allum 2025
-//
-
 #pragma once
 #include <concepts>
 
