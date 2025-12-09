@@ -132,7 +132,7 @@ template<data_base_concepts::CacheRules CacheType>
 class data_base {
     
     template<typename T>
-    bool constexpr check_if_set(T t)
+    bool constexpr is_unset(T t)
     {
         if constexpr (!std::is_floating_point_v<T>)
             return t == cache_base::default_value<T>();
@@ -199,7 +199,7 @@ void data_base<CacheType>::update_value(Value&& value, const Fetch& fetch) {
     init_cache();
     
     auto& V = value(); 
-    if ( check_if_set(V) )
+    if ( is_unset(V) )
     {
         V = fetch();
     }
