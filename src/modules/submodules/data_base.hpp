@@ -107,25 +107,28 @@ struct cache_base
 
 };
 
-template<typename C>
-concept CacheRules = std::derived_from<C,cache_base>;
+namespace data_base_concepts {
+    template<typename C>
+    concept CacheRules = std::derived_from<C,cache_base>;
 
-template<typename V>
-concept ValueRules = 
-    requires(V v) {
-    {v()} -> std::same_as<std::add_lvalue_reference_t<decltype(v())>>;
+    template<typename V>
+    concept ValueRules = 
+        requires(V v) {
+        {v()} -> std::same_as<std::add_lvalue_reference_t<decltype(v())>>;
+    };
+
+    template<typename O,typename T>
+    concept OutputRules = ValueRules<O> &&
+    requires(O o,const T t)
+    {
+        {o()} -> std::convertible_to<T>;
+        {o() += t};
+    };
 };
-
-template<typename O,typename T>
-concept OutputRules = ValueRules<O> &&
-requires(O o)
-{
-    {o()} -> std::convertible_to<T>;
-};
-
+    
 namespace pt = boost::property_tree;
 
-template<CacheRules CacheType>
+template<data_base_concepts::CacheRules CacheType>
 class data_base {
     
     template<typename T>
@@ -152,10 +155,10 @@ protected:
     const pt::ptree& cfg_;
     mutable std::optional<CacheType> cache_;
 
-    template<ValueRules Value,typename Fetch>
+    template<data_base_concepts::ValueRules Value,typename Fetch>
     void update_value(Value&& value, const Fetch& fetch);
 
-    template<typename T,OutputRules<T> Output>
+    template<typename T,data_base_concepts::OutputRules<T> Output>
     void set_output(Output&& output,const T t);
 
 public:
@@ -163,7 +166,7 @@ public:
     const std::optional<CacheType>& get_cache() { return cache_; }; 
 };
 
-template<CacheRules CacheType>
+template<data_base_concepts::CacheRules CacheType>
 void data_base<CacheType>::init_cache() {
     if (!cache_ || is_stale()) {
         cache_.emplace();
@@ -171,13 +174,13 @@ void data_base<CacheType>::init_cache() {
     }
 }
 
-template<CacheRules CacheType>
+template<data_base_concepts::CacheRules CacheType>
 bool data_base<CacheType>::is_stale()
 {
     return cache_->last_timestep != global_param->timestep_counter;
 }
 
-template<CacheRules CacheType>
+template<data_base_concepts::CacheRules CacheType>
 data_base<CacheType>::data_base(const mesh_elem& face_in, const boost::shared_ptr<global> param, 
         const pt::ptree& cfg, const bool istest) : face(face_in), global_param(param), cfg_(cfg)
 {
@@ -190,8 +193,8 @@ data_base<CacheType>::data_base(const mesh_elem& face_in, const boost::shared_pt
         throw std::invalid_argument("global parameter holder is null");
 };
 
-template<CacheRules CacheType>
-template<ValueRules Value,typename Fetch>
+template<data_base_concepts::CacheRules CacheType>
+template<data_base_concepts::ValueRules Value,typename Fetch>
 void data_base<CacheType>::update_value(Value&& value, const Fetch& fetch) {
     init_cache();
     
@@ -203,8 +206,8 @@ void data_base<CacheType>::update_value(Value&& value, const Fetch& fetch) {
 
 };
 
-template<CacheRules CacheType>
-template<typename T,OutputRules<T> Output>
+template<data_base_concepts::CacheRules CacheType>
+template<typename T,data_base_concepts::OutputRules<T> Output>
 void data_base<CacheType>::set_output(Output&& output,const T t)
 {
     init_cache();
