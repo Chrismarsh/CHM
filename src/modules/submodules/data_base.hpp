@@ -147,7 +147,10 @@ class data_base {
 protected:
     
     data_base(const mesh_elem& face_in, const boost::shared_ptr<global> param, 
-            const pt::ptree& cfg, const bool istest = false);
+            const pt::ptree& cfg);
+    // Test constructor to skip checks of valid mesh_elem
+    data_base(const mesh_elem& face_in, const boost::shared_ptr<global> param, 
+            const pt::ptree& cfg, bool istest);
     ~data_base() {};
     
     const mesh_elem face{nullptr};
@@ -182,17 +185,22 @@ bool data_base<CacheType>::is_stale()
 
 template<data_base_concepts::CacheRules CacheType>
 data_base<CacheType>::data_base(const mesh_elem& face_in, const boost::shared_ptr<global> param, 
-        const pt::ptree& cfg, const bool istest) : face(face_in), global_param(param), cfg_(cfg)
+        const pt::ptree& cfg) : face(face_in), global_param(param), cfg_(cfg)
 {
-	// Optional istest parameter only exists to skip these tests during tests of this class where we aren't testing whether the face object has been set correctly.
-	// This means tests show that the underlying functions work as intended
-    if (!face->is_valid() && !istest)
+    if (!face->is_valid())
         throw std::invalid_argument("Face handle points to an invalid face");
 
-    if (!global_param && !istest)
+    if (!global_param)
         throw std::invalid_argument("global parameter holder is null");
 };
 
+template<data_base_concepts::CacheRules CacheType>
+data_base<CacheType>::data_base(const mesh_elem& face_in, const boost::shared_ptr<global> param, 
+        const pt::ptree& cfg, const bool istest) : face(face_in), global_param(param), cfg_(cfg)
+{
+    if (!istest)
+        std::invalid_argument("data_base test constructor called with False istest flag. Should be true.");
+};
 template<data_base_concepts::CacheRules CacheType>
 template<data_base_concepts::ValueRules Value,typename Fetch>
 void data_base<CacheType>::update_value(Value&& value, const Fetch& fetch) {
