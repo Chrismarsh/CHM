@@ -166,7 +166,7 @@ protected:
 
 public:
     void reset_cache() { cache_.reset(); };
-    const std::optional<CacheType>& get_cache() { return cache_; }; 
+    const std::optional<CacheType>& get_cache() const { return cache_; }; 
 };
 
 template<data_base_concepts::CacheRules CacheType>
