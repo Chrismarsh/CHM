@@ -68,8 +68,8 @@
  *
  * class MyData : public data_base<MyCache> {
  * public:
- *     MyData(const mesh_elem& face, const boost::shared_ptr<global> param, 
- *            const pt::ptree& cfg) : data_base(face, param, cfg) {}
+ *     MyData(const mesh_elem& face_in, const boost::shared_ptr<global> param, 
+ *            const pt::ptree& cfg) : data_base(face_in, param, cfg) {}
  *     
  *     void compute_temperature() {
  *         update_value(
@@ -90,6 +90,7 @@
  * @tparam CacheType A type derived from cache_base that provides storage
  *         for cached values. Must satisfy the CacheRules concept.
  */
+
 struct cache_base 
 {
     int64_t last_timestep = -1;
