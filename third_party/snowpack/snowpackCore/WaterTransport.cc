@@ -547,7 +547,7 @@ void WaterTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double ql
 void WaterTransport::mergingElements(SnowStation& Xdata, SurfaceFluxes& Sdata)
 {
 	const size_t nN = Xdata.getNumberOfNodes(), nE = nN-1;
-	size_t rnN = nN, rnE = nN-1;
+	size_t rnE = nN-1;
 	vector<ElementData>& EMS = Xdata.Edata;
 
 	if ((nN == Xdata.SoilNode+1)
@@ -664,7 +664,6 @@ void WaterTransport::mergingElements(SnowStation& Xdata, SurfaceFluxes& Sdata)
 				}
 			}
 			rnE--;
-			rnN--;
 			if(UpperJoin==false) {
 				EMS[eUpper].Rho = Constants::undefined;
 				if (!merged) {
