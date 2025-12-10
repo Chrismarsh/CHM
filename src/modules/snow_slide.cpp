@@ -100,7 +100,6 @@ void snow_slide::run(mesh& domain)
     do
     {
 
-        int this_iter_moved_snow = false;
         // Make a vector of pairs (elevation + snowdepth, pointer to face)
         tbb::concurrent_vector<std::pair<double, mesh_elem>> sorted_z(domain->size_local_faces());
 
@@ -197,7 +196,6 @@ void snow_slide::run(mesh& domain)
             if ( snowdepthavg > maxDepth)
             {
                 done = 0;
-                this_iter_moved_snow = true;
 
                 double del_depth = snowdepthavg - maxDepth;           // Amount to be removed (positive) [m]
                 double del_swe = swe * (1 - maxDepth / snowdepthavg); // Amount of swe to be removed (positive) [m]
