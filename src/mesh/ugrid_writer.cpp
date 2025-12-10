@@ -17,10 +17,10 @@
 #include "ugrid_writer.hpp"
 
 ugrid_writer::ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_parameters, std::string fname, bool use_zarr):
-    _mesh(m),
     _fname(""),
     _store_path(std::move(fname)),
     _use_zarr(use_zarr),
+    _mesh(m),
     _global(g),
     _write_parameters(write_parameters)
 {
