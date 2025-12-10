@@ -2407,7 +2407,6 @@ void core::run()
         ss << _global->posix_time();
 
         c.tic();
-        size_t chunks = 0;
         try
         {
             for (auto &itr : _chunked_modules)
@@ -2451,8 +2450,6 @@ void core::run()
                         jtr->run(_mesh);
                     }
                 }
-
-                chunks++;
 
             }
         }
