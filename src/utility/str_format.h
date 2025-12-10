@@ -28,20 +28,25 @@
 
 
 
+#include <stdexcept>
 #include <string>
 #include <cstdio>
+#include <vector>
 
-
-//http://stackoverflow.com/a/26197300/410074
+//https://stackoverflow.com/a/26221725
 template <typename... Ts>
 std::string str_format (const std::string &fmt, Ts... vs)
 {
-    unsigned required = std::snprintf(nullptr, 0, fmt.c_str(), vs...) + 1;
-        // See comments: the +1 is necessary, while the first parameter
-        //               can also be set to nullptr
+    int size_s = std::snprintf(nullptr, 0, fmt.c_str(), vs ...) +1;
+    if (size_s <= 0)
+        throw std::runtime_error("Error during string formatting in str_format.h.");
 
-    char bytes[required];
-    std::snprintf(bytes, required, fmt.c_str(), vs...);
+    auto size = static_cast<size_t>(size_s);
+    std::vector<char>  buf(size);
 
-    return std::string(bytes);
+    auto result = std::snprintf(buf.data(), size, fmt.c_str(), vs ...);
+    if (result < 0 || static_cast<size_t>(result) >= size)
+        throw std::runtime_error("Error during string formatting in str_format.h.");
+
+    return std::string(buf.data(), buf.data() + result);
 }
