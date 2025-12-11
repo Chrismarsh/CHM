@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "data_base.hpp"
+#include "triangulation.hpp"
 #include <limits>
 // Mock Cache for Testing
 struct MockCache : public cache_base {
@@ -124,4 +125,3 @@ TEST_F(DataBaseTest, ChecksDefaultValue)
     EXPECT_TRUE(int_var == std::numeric_limits<int>::min());
     EXPECT_TRUE(size_t_var == std::numeric_limits<size_t>::min());
 };
-
