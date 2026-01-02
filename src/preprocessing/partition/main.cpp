@@ -26,6 +26,7 @@
 #include "logger.hpp"
 #include "sort_perm.hpp"
 #include "triangulation.hpp"
+#include "mesh/vtk_writer.hpp"
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -104,99 +105,14 @@ class preprocessingTriangulation : public triangulation
 
     void write_vtu(std::string file_name, std::vector<std::string> output_variables ={} )
     {
-        vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+        const bool write_ghost = _write_ghost_neighbors_to_vtu;
+        _write_ghost_neighbors_to_vtu = false;
 
-        vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
+        vtk_writer writer(this, true, true);
+        writer.update_data(output_variables);
+        writer.write_vtu(file_name);
 
-        triangles->Allocate(_local_faces.size());
-
-        vtkSmartPointer<vtkStringArray> proj4 = vtkSmartPointer<vtkStringArray>::New();
-        proj4->SetNumberOfComponents(1);
-        proj4->SetName("proj4");
-        proj4->InsertNextValue(_srs_wkt);
-
-        double scale = is_geographic() == true ? 100000. : 1.;
-
-        std::map<int, int> global_to_local_vertex_id;
-        std::vector<int> global_vertex_id;
-
-        // npoints holds the total number of points
-        int npoints=0;
-        for (size_t i = 0; i < _local_faces.size(); i++)
-        {
-            mesh_elem fit = _local_faces.at(i);
-
-            vtkSmartPointer<vtkTriangle> tri =
-                vtkSmartPointer<vtkTriangle>::New();
-
-            // loop over vertices of a face
-            for (int j=0;j<3;++j)
-            {
-                auto vit = fit->vertex(j);
-                int global_id = vit->get_id();
-                // If point hasn't been seen yet, account for it
-                if ( global_to_local_vertex_id.find(global_id) == global_to_local_vertex_id.end() ) {
-                    global_to_local_vertex_id[global_id] = npoints;
-                    npoints++;
-                    points->InsertNextPoint(vit->point().x()*scale, vit->point().y()*scale, vit->point().z());
-                    global_vertex_id.push_back(global_id);
-                }
-                tri->GetPointIds()->SetId(j, global_to_local_vertex_id[global_id]);
-            }
-
-            triangles->InsertNextCell(tri);
-        }
-        _vtk_unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-        _vtk_unstructuredGrid->SetPoints(points);
-        _vtk_unstructuredGrid->SetCells(VTK_TRIANGLE, triangles);
-        _vtk_unstructuredGrid->GetFieldData()->AddArray(proj4);
-
-        auto variables = output_variables.size() == 0 ? this->face(0)->variables() : output_variables;
-        for(auto& v: variables)
-        {
-            data[v] = vtkSmartPointer<vtkFloatArray>::New();
-            data[v]->SetName(v.c_str());
-        }
-
-        data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
-        data["Elevation"]->SetName("Elevation");
-
-        // Global vertex ids -> only need to be set here, get written in the writer
-        vertex_data["global_id"] = vtkSmartPointer<vtkFloatArray>::New();
-        vertex_data["global_id"]->SetName("global_id");
-        for(int i=0;i<npoints;++i){
-            vertex_data["global_id"]->InsertTuple1(i,global_vertex_id[i]);
-        }
-
-        for (size_t i = 0; i < _local_faces.size(); i++)
-        {
-            mesh_elem fit = _local_faces.at(i);
-
-            for (auto &v: variables)
-            {
-                double d = (*fit)[v];
-                if(d == -9999.)
-                {
-                    d = nan("");
-                }
-
-                data[v]->InsertTuple1(i,d);
-            }
-
-            data["Elevation"]->InsertTuple1(i,fit->get_z());
-
-        }
-        for(auto& m : data)
-        {
-            _vtk_unstructuredGrid->GetCellData()->AddArray(m.second);
-        }
-
-        vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-        writer->SetFileName(file_name.c_str());
-
-        writer->SetInputData(_vtk_unstructuredGrid);
-
-        writer->Write();
+        _write_ghost_neighbors_to_vtu = write_ghost;
     }
 
     // sets the partition owner on every face

@@ -65,6 +65,7 @@ inline int omp_get_max_threads() { return 1;}
 #include <fstream>
 #include <utility>
 #include <random> // for send/recv tag generation
+#include <memory>
 
 // other libs
 #include <armadillo>
@@ -101,20 +102,6 @@ namespace pt = boost::property_tree;
 // tbb includes
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_sort.h>
-
-// vtk includes
-#include <vtkVersion.h>
-#include <vtkSmartPointer.h>
-#include <vtkStringArray.h>
-#include <vtkTriangle.h>
-#include <vtkCellArray.h>
-#include <vtkCellData.h>
-#include <vtkPointData.h>
-#include <vtkFloatArray.h>
-#include <vtkUnsignedLongArray.h>
-#include <vtkXMLUnstructuredGridWriter.h>
-#include <vtkUnstructuredGrid.h>
-#include <vtkPoints.h>
 
 // MPI incldues
 #ifdef USE_MPI
@@ -155,6 +142,7 @@ struct face_info
 //fwd decl
 class segmented_AABB;
 class triangulation;
+class vtk_writer;
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 
@@ -578,6 +566,8 @@ class triangulation
 : public Delaunay
 {
 public:
+    friend class vtk_writer;
+
     triangulation();
     ~triangulation();
 
@@ -1062,24 +1052,12 @@ protected:
     int _UTM_zone;
 
     std::string _srs_wkt;
-    //holds the vtk ugrid if we are outputing to vtk formats
-    vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
-
-    //holds the vectors we use to create the vtu file
-    // these must be ints so cannot be stored in the other maps
-    vtkSmartPointer<vtkUnsignedLongArray> _vtu_global_id;
-#ifdef USE_SPARSEHASH
-    google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > data;
-    google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > vectors;
-    google::dense_hash_map< std::string, vtkSmartPointer<vtkFloatArray>  > vertex_data;
-#else
-	std::map<std::string, vtkSmartPointer<vtkFloatArray> > data;
-	std::map<std::string, vtkSmartPointer<vtkFloatArray> > vectors;
-    std::map<std::string, vtkSmartPointer<vtkFloatArray> > vertex_data;
-#endif
+    std::unique_ptr<vtk_writer> _vtk_writer;
 
     //should we write parameters to the vtu file?
     bool _write_parameters;
+    // write the core parameters of Elevation, Slope, Aspect,
+    bool _write_core_parameters;
     //should we write ghost neighbor faces to the vtu file?
     bool _write_ghost_neighbors_to_vtu;
 

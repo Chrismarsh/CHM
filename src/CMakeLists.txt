@@ -80,6 +80,7 @@ set(CHM_SRCS
 
 		mesh/triangulation.cpp
         mesh/ugrid_writer.cpp
+        mesh/vtk_writer.cpp
 
 		interpolation/inv_dist.cpp
 		interpolation/TPSpline.cpp

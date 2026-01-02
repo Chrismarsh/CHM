@@ -240,10 +240,14 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     // time Dimension
     int time_dimid, time_varid;
 
+
+
     // nc_def_dim(_ugrid_fid, "time", _global->n_timesteps(), &time_dimid);
     nc_chk_ret(nc_def_dim(_ugrid_fid, "time", NC_UNLIMITED, &time_dimid));
     nc_chk_ret(nc_def_var(_ugrid_fid, "time", NC_DOUBLE, 1, &time_dimid, &time_varid));
-    size_t time_chunk[1] = {1};
+
+    // small time chunks end up with huge meta data record requirements that bods down dask, etc
+    size_t time_chunk[1] = {24};
     nc_chk_ret(nc_def_var_chunking(_ugrid_fid, time_varid, NC_CHUNKED, time_chunk));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, time_varid, "standard_name", strlen("time"), "time"));
     nc_chk_ret( nc_put_att_text(_ugrid_fid, time_varid, "long_name", strlen("Time"), "Time"));
@@ -357,7 +361,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     for (auto& var : output_variables)
     {
         nc_chk_ret(nc_def_var(_ugrid_fid, var.c_str(), NC_DOUBLE, 2, dims, &_ugrid_id_var[var]));
-        size_t face_chunks[2] = {1, max_faces_per_rank};
+        size_t face_chunks[2] = {24, max_faces_per_rank};
         nc_chk_ret(nc_def_var_chunking(_ugrid_fid, _ugrid_id_var[var], NC_CHUNKED, face_chunks));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "mesh", strlen("Mesh2"), "Mesh2"));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "location", strlen("face"), "face"));
