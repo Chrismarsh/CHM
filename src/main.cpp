@@ -25,6 +25,8 @@
 #include <string>
 #include <boost/filesystem.hpp>
 
+#include <Kokkos_Core.hpp>
+
 #define BOOST_SPIRIT_THREADSAFE
 
 #include "core.hpp"
@@ -32,6 +34,12 @@
 int main (int argc, char *argv[])
 {
     core kernel;
+
+    // MPI is now init, so explicitly init kokkos to avoid
+    // https://github.com/trilinos/Trilinos/issues/14389
+    // we do this here even (if we don't use a tpetra solve this model run) based on the dev suggestion
+    // https://github.com/trilinos/Trilinos/issues/14389#issuecomment-3676685734
+    Kokkos::initialize(argc, argv);
 
     int ret = 0;
     try
@@ -65,6 +73,8 @@ int main (int argc, char *argv[])
        ret = 1;
     }
 
+    // and finalize kokkos right before we call MPI finalize
+    Kokkos::finalize();
 
     // if we have an exception, ensure we tear down all of the MPI
     if(ret == 1)
