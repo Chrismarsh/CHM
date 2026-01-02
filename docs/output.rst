@@ -58,6 +58,18 @@ and improves the output speed. For a mesh of #cells=2200 for 24 hours with 3 ran
 UGRID output can also be stored as a Zarr directory via NCZarr by setting ``output.ugrid.format`` to ``zarr``. This
 creates a ``.zarr`` store with the same schema and parallel write behavior.
 
+Chunking optimizations
+----------------------
+
+UGRID time chunking is sized to balance Dask recommendations and output cadence:
+
+- Target ~256MB per variable chunk, with bounds of 1MB (min) and 1GB (max).
+- If total chunks per output file would exceed 100k, the time chunk grows up to a hard ceiling of 2GB.
+- Chunk lengths align to the mesh output cadence (``frequency`` or ``only_last_n``). If neither is set,
+  the chunker assumes only a small number of outputs and keeps chunk sizes small.
+
+These settings reduce metadata overhead and avoid overly large task graphs while respecting model output frequency.
+
 +---------------------+-----------+----------------+
 | Method              | size (b)  | timestep (ms)  |
 +=====================+===========+================+
