@@ -1412,9 +1412,9 @@ void core::init(int argc, char **argv)
     // is not what we want.
     gsl_set_error_handler_off();
 
-#ifdef USE_MPI
+
     SPDLOG_DEBUG( "Built with MPI support,    #processes = {}", _comm_world.size());
-#endif
+
 
 #ifdef _OPENMP
     SPDLOG_DEBUG( "Built with OpenMP support, #threads   = {}", omp_get_max_threads());
