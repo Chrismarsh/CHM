@@ -23,8 +23,10 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <cstdint>
 
 #include <boost/mpi.hpp>
+#include <boost/optional.hpp>
 
 #include "triangulation.hpp"
 #include "timer.hpp"
@@ -47,12 +49,15 @@ public:
     void write_ugrid(const std::vector<std::string>& output_variables);
     void open_ugrid(const std::vector<std::string>& output_variables);
     void init_ugrid(const std::vector<std::string>& output_variables);
+    void set_output_cadence(const boost::optional<size_t>& frequency,
+                            const boost::optional<size_t>& only_last_n);
 
     bool bitgroom;
     bool compress;
 private:
     std::string build_store_uri(const std::string& store_path) const;
     bool store_exists() const;
+    size_t compute_time_chunk_len(size_t max_faces_per_rank, size_t num_output_vars) const;
 
     //holds the file id for the ugrid output netcdf
     int _ugrid_fid;
@@ -74,4 +79,6 @@ private:
 
 
     bool _write_parameters;
+    boost::optional<size_t> _frequency;
+    boost::optional<size_t> _only_last_n;
 };

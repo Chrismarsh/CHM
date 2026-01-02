@@ -1220,6 +1220,12 @@ void core::config_output(pt::ptree &value)
                 out.frequency.reset();
             }
 
+            if (out.mesh_output_formats == output_info::mesh_outputs::ugrid)
+            {
+                boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)
+                    ->set_output_cadence(out.frequency, out.only_last_n);
+            }
+
             auto specific_datetime = itr.second.get_optional<std::string>("specific_datetime");
             if(specific_datetime)
             {

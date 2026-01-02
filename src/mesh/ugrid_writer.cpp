@@ -71,6 +71,13 @@ void ugrid_writer::close_ugrid()
 
 }
 
+void ugrid_writer::set_output_cadence(const boost::optional<size_t>& frequency,
+                                      const boost::optional<size_t>& only_last_n)
+{
+    _frequency = frequency;
+    _only_last_n = only_last_n;
+}
+
 std::string ugrid_writer::build_store_uri(const std::string& store_path) const
 {
     if (!_use_zarr)
@@ -95,6 +102,129 @@ bool ugrid_writer::store_exists() const
     }
 
     return boost::filesystem::exists(_store_path);
+}
+
+size_t ugrid_writer::compute_time_chunk_len(size_t max_faces_per_rank, size_t num_output_vars) const
+{
+    // Heuristic goal: keep chunks ~256MB (per variable) to match Dask guidance,
+    // while bounding chunk counts and aligning to output cadence (frequency/only_last_n).
+    const uint64_t min_chunk_bytes = 1ULL * 1024ULL * 1024ULL;
+    const uint64_t target_chunk_bytes = 256ULL * 1024ULL * 1024ULL;
+    const uint64_t max_chunk_bytes = 1ULL * 1024ULL * 1024ULL * 1024ULL;
+    const uint64_t max_chunk_bytes_hard = 2ULL * 1024ULL * 1024ULL * 1024ULL;
+    const size_t max_chunks_per_file = 100000;
+
+    const uint64_t bytes_per_timestep = std::max<uint64_t>(1ULL, max_faces_per_rank * sizeof(double));
+
+    // Integer ceil division for byte/step and count calculations.
+    auto ceil_div = [](uint64_t num, uint64_t den) -> uint64_t {
+        return (num + den - 1ULL) / den;
+    };
+
+    // Round to the nearest output cadence; prefer smaller when exactly in the middle.
+    auto round_to_nearest_multiple = [](size_t value, size_t multiple) -> size_t {
+        if (multiple <= 1)
+        {
+            return std::max<size_t>(1, value);
+        }
+        size_t lower = (value / multiple) * multiple;
+        size_t upper = lower + multiple;
+        if (lower == 0)
+        {
+            return upper;
+        }
+        return (value - lower < upper - value) ? lower : upper;
+    };
+
+    // Ensure chunk length is not smaller than one output interval.
+    auto round_up_to_multiple = [](size_t value, size_t multiple) -> size_t {
+        if (multiple <= 1)
+        {
+            return std::max<size_t>(1, value);
+        }
+        size_t rem = value % multiple;
+        return rem == 0 ? value : value + (multiple - rem);
+    };
+
+    uint64_t min_steps = std::max<uint64_t>(1ULL, ceil_div(min_chunk_bytes, bytes_per_timestep));
+    uint64_t max_steps = std::max<uint64_t>(1ULL, max_chunk_bytes / bytes_per_timestep);
+    uint64_t max_steps_hard = std::max<uint64_t>(1ULL, max_chunk_bytes_hard / bytes_per_timestep);
+    uint64_t target_steps = std::max<uint64_t>(1ULL, (target_chunk_bytes + bytes_per_timestep / 2ULL) / bytes_per_timestep);
+
+    if (min_steps > max_steps)
+    {
+        min_steps = max_steps;
+    }
+
+    // Only trust frequency/only_last_n for cadence; otherwise assume 1-2 outputs.
+    size_t output_interval_steps = 1;
+    size_t output_count_est = 2;
+
+    if (_frequency)
+    {
+        output_interval_steps = std::max<size_t>(1, *_frequency);
+        size_t nsteps = _global->n_timesteps();
+        output_count_est = static_cast<size_t>(ceil_div(nsteps, output_interval_steps));
+        if (output_count_est == 0)
+        {
+            output_count_est = 1;
+        }
+    }
+    else if (_only_last_n)
+    {
+        output_interval_steps = 1;
+        output_count_est = std::max<size_t>(1, *_only_last_n);
+    }
+
+    // Start from size-based target, then align to output cadence.
+    size_t chunk_steps = static_cast<size_t>(std::min<uint64_t>(std::max<uint64_t>(target_steps, min_steps), max_steps));
+    chunk_steps = round_to_nearest_multiple(chunk_steps, output_interval_steps);
+    if (chunk_steps < output_interval_steps)
+    {
+        chunk_steps = output_interval_steps;
+    }
+
+    // If total chunk count would be huge, grow time chunks to keep task graphs reasonable.
+    if (output_count_est > 0)
+    {
+        size_t chunks_per_var = static_cast<size_t>(ceil_div(output_count_est, chunk_steps));
+        // Total chunks per file scales with number of output variables.
+        size_t total_chunks = chunks_per_var * std::max<size_t>(1, num_output_vars);
+        if (total_chunks > max_chunks_per_file)
+        {
+            // Grow chunk length to reduce total chunks, but cap chunk size at 2GB.
+            size_t desired_steps = static_cast<size_t>(ceil_div(output_count_est * std::max<size_t>(1, num_output_vars),
+                                                               max_chunks_per_file));
+            chunk_steps = std::max<size_t>(chunk_steps, desired_steps);
+            chunk_steps = round_up_to_multiple(chunk_steps, output_interval_steps);
+            if (chunk_steps > max_steps_hard)
+            {
+                chunk_steps = static_cast<size_t>(max_steps_hard);
+            }
+            chunks_per_var = static_cast<size_t>(ceil_div(output_count_est, chunk_steps));
+            total_chunks = chunks_per_var * std::max<size_t>(1, num_output_vars);
+            if (total_chunks > max_chunks_per_file && _comm_world.rank() == 0)
+            {
+                // If we're still over the chunk-count guidance, log but keep the 2GB ceiling.
+                SPDLOG_WARN("UGRID chunking exceeds {} total chunks ({}); keeping chunk size <= 2GB.",
+                            max_chunks_per_file, total_chunks);
+            }
+        }
+
+        // Avoid oversized chunks when only a handful of outputs exist.
+        if (chunk_steps > output_count_est)
+        {
+            chunk_steps = output_count_est;
+        }
+    }
+
+    chunk_steps = std::max<size_t>(1, chunk_steps);
+    if (chunk_steps < output_interval_steps)
+    {
+        chunk_steps = output_interval_steps;
+    }
+
+    return chunk_steps;
 }
 void ugrid_writer::write_ugrid(const std::vector<std::string>& output_variables)
 {
@@ -273,14 +403,19 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     // time Dimension
     int time_dimid, time_varid;
 
-
-
-    // nc_def_dim(_ugrid_fid, "time", _global->n_timesteps(), &time_dimid);
     nc_chk_ret(nc_def_dim(_ugrid_fid, "time", NC_UNLIMITED, &time_dimid));
     nc_chk_ret(nc_def_var(_ugrid_fid, "time", NC_DOUBLE, 1, &time_dimid, &time_varid));
 
+    // aim for chunks sized at 256MB per variable
+    size_t time_chunk_len = compute_time_chunk_len(max_faces_per_rank, output_variables.size());
+
+    double chunk_mb = static_cast<double>(time_chunk_len) * static_cast<double>(max_faces_per_rank) *
+                      static_cast<double>(sizeof(double)) / (1024.0 * 1024.0);
+    SPDLOG_DEBUG("UGRID time chunk = {} steps (~{:.1f} MB/variable)", time_chunk_len, chunk_mb);
+
+
     // small time chunks end up with huge meta data record requirements that bods down dask, etc
-    size_t time_chunk[1] = {24};
+    size_t time_chunk[1] = {time_chunk_len};
     nc_chk_ret(nc_def_var_chunking(_ugrid_fid, time_varid, NC_CHUNKED, time_chunk));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, time_varid, "standard_name", strlen("time"), "time"));
     nc_chk_ret( nc_put_att_text(_ugrid_fid, time_varid, "long_name", strlen("Time"), "Time"));
@@ -394,7 +529,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     for (auto& var : output_variables)
     {
         nc_chk_ret(nc_def_var(_ugrid_fid, var.c_str(), NC_DOUBLE, 2, dims, &_ugrid_id_var[var]));
-        size_t face_chunks[2] = {24, max_faces_per_rank};
+        size_t face_chunks[2] = {time_chunk_len, max_faces_per_rank};
         nc_chk_ret(nc_def_var_chunking(_ugrid_fid, _ugrid_id_var[var], NC_CHUNKED, face_chunks));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "mesh", strlen("Mesh2"), "Mesh2"));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, _ugrid_id_var[var], "location", strlen("face"), "face"));
