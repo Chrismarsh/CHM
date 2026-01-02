@@ -441,6 +441,7 @@ protected:
         double y;
 
         std::set<std::string> variables;
+        std::set<std::string> output_parameters;
         mesh_elem face;
         timeseries ts;
 

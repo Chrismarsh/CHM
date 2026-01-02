@@ -102,6 +102,28 @@ std::set<std::string> triangulation::parameters()
     return _parameters;
 }
 
+void triangulation::set_output_parameters(const std::set<std::string>& parameters)
+{
+    if (_output_parameters != parameters)
+    {
+        _output_parameters = parameters;
+        if (_vtk_writer)
+        {
+            _vtk_writer.reset();
+        }
+    }
+}
+
+std::set<std::string> triangulation::output_parameters() const
+{
+    if (_output_parameters.empty())
+    {
+        return {"Elevation", "Slope", "Aspect"};
+    }
+
+    return _output_parameters;
+}
+
 bool triangulation::is_geographic()
 {
     return _is_geographic;

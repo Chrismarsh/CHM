@@ -4,6 +4,8 @@ Output
 There are two main outputs from CHM: timeseries and mesh outputs.
 
 The mesh outputs are either the Paraview vtu format or the netcdf ugrid format.
+When parameter output is enabled, the default parameter set is ``Elevation``, ``Slope``, and ``Aspect``
+unless overridden in the output configuration.
 
 The vtu output has 1 file per MPI rank, per timestep.
 For large domains, large MPI rank counts, and long time periods, this can produce a large number of files. HPC
@@ -162,4 +164,3 @@ These files are output to the ``output_folder/points/`` subdirectory. The files 
 
    datetime,ilwr,l,acc_snow
    20170901T060000,429.61,1.81749
-

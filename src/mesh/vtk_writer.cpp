@@ -136,11 +136,17 @@ void vtk_writer::init_grid(const std::vector<std::string>& output_variables)
     _vtu_global_id = vtkSmartPointer<vtkUnsignedLongArray>::New();
     _vtu_global_id->SetName("global_id");
 
+    const auto output_params = _mesh->output_parameters();
     if (_mesh->_write_parameters)
     {
         auto params = _mesh->face(0)->parameters();
         for (auto& v : params)
         {
+            if (output_params.find(v) == output_params.end())
+            {
+                continue;
+            }
+
             data["[param] " + v] = vtkSmartPointer<vtkFloatArray>::New();
             data["[param] " + v]->SetName(("[param] " + v).c_str());
         }
@@ -152,18 +158,29 @@ void vtk_writer::init_grid(const std::vector<std::string>& output_variables)
             data["[ic] " + v]->SetName(("[ic] " + v).c_str());
         }
 
-        // handle elevation/aspect/slope
-        data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
-        data["Elevation"]->SetName("Elevation");
+        if (output_params.find("Elevation") != output_params.end())
+        {
+            data["Elevation"] = vtkSmartPointer<vtkFloatArray>::New();
+            data["Elevation"]->SetName("Elevation");
+        }
 
-        data["Slope"] = vtkSmartPointer<vtkFloatArray>::New();
-        data["Slope"]->SetName("Slope");
+        if (output_params.find("Slope") != output_params.end())
+        {
+            data["Slope"] = vtkSmartPointer<vtkFloatArray>::New();
+            data["Slope"]->SetName("Slope");
+        }
 
-        data["Aspect"] = vtkSmartPointer<vtkFloatArray>::New();
-        data["Aspect"]->SetName("Aspect");
+        if (output_params.find("Aspect") != output_params.end())
+        {
+            data["Aspect"] = vtkSmartPointer<vtkFloatArray>::New();
+            data["Aspect"]->SetName("Aspect");
+        }
 
-        data["Area"] = vtkSmartPointer<vtkFloatArray>::New();
-        data["Area"]->SetName("Area");
+        if (output_params.find("Area") != output_params.end())
+        {
+            data["Area"] = vtkSmartPointer<vtkFloatArray>::New();
+            data["Area"]->SetName("Area");
+        }
 
         data["is_ghost"] = vtkSmartPointer<vtkFloatArray>::New();
         data["is_ghost"]->SetName("is_ghost");
@@ -210,6 +227,7 @@ void vtk_writer::update_data(const std::vector<std::string>& output_variables)
     }
 
     auto variables = output_variables.size() == 0 ? _mesh->face(0)->variables() : output_variables;
+    const auto output_params = _mesh->output_parameters();
     auto params = _mesh->face(0)->parameters();
     auto ics = _mesh->face(0)->initial_conditions();
     auto vecs = _mesh->face(0)->vectors();
@@ -236,6 +254,11 @@ void vtk_writer::update_data(const std::vector<std::string>& output_variables)
         {
             for (auto& v : params)
             {
+                if (output_params.find(v) == output_params.end())
+                {
+                    continue;
+                }
+
                 double d = fit->parameter(v);
                 if (d == -9999.)
                 {
@@ -254,10 +277,22 @@ void vtk_writer::update_data(const std::vector<std::string>& output_variables)
                 data["[ic] " + v]->InsertTuple1(i, d);
             }
 
-            data["Elevation"]->InsertTuple1(i, fit->get_z());
-            data["Slope"]->InsertTuple1(i, fit->slope());
-            data["Aspect"]->InsertTuple1(i, fit->aspect());
-            data["Area"]->InsertTuple1(i, fit->get_area());
+            if (output_params.find("Elevation") != output_params.end())
+            {
+                data["Elevation"]->InsertTuple1(i, fit->get_z());
+            }
+            if (output_params.find("Slope") != output_params.end())
+            {
+                data["Slope"]->InsertTuple1(i, fit->slope());
+            }
+            if (output_params.find("Aspect") != output_params.end())
+            {
+                data["Aspect"]->InsertTuple1(i, fit->aspect());
+            }
+            if (output_params.find("Area") != output_params.end())
+            {
+                data["Area"]->InsertTuple1(i, fit->get_area());
+            }
             data["is_ghost"]->InsertTuple1(i, fit->is_ghost);
             data["ghost_type"]->InsertTuple1(i, fit->ghost_type);
 
@@ -309,6 +344,11 @@ void vtk_writer::update_data(const std::vector<std::string>& output_variables)
             {
                 for (auto& v : params)
                 {
+                    if (output_params.find(v) == output_params.end())
+                    {
+                        continue;
+                    }
+
                     double d = fit->parameter(v);
                     if (d == -9999.)
                     {
@@ -327,10 +367,22 @@ void vtk_writer::update_data(const std::vector<std::string>& output_variables)
                     data["[ic] " + v]->InsertTuple1(insert_offset, d);
                 }
 
-                data["Elevation"]->InsertTuple1(insert_offset, fit->get_z());
-                data["Slope"]->InsertTuple1(insert_offset, fit->slope());
-                data["Aspect"]->InsertTuple1(insert_offset, fit->aspect());
-                data["Area"]->InsertTuple1(insert_offset, fit->get_area());
+                if (output_params.find("Elevation") != output_params.end())
+                {
+                    data["Elevation"]->InsertTuple1(insert_offset, fit->get_z());
+                }
+                if (output_params.find("Slope") != output_params.end())
+                {
+                    data["Slope"]->InsertTuple1(insert_offset, fit->slope());
+                }
+                if (output_params.find("Aspect") != output_params.end())
+                {
+                    data["Aspect"]->InsertTuple1(insert_offset, fit->aspect());
+                }
+                if (output_params.find("Area") != output_params.end())
+                {
+                    data["Area"]->InsertTuple1(insert_offset, fit->get_area());
+                }
                 data["is_ghost"]->InsertTuple1(insert_offset, fit->is_ghost);
                 data["ghost_type"]->InsertTuple1(insert_offset, fit->ghost_type);
 

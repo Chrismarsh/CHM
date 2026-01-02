@@ -381,6 +381,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     std::map<std::string, int> param_id;
     if(_write_parameters)
     {
+        auto output_params = _mesh->output_parameters();
         auto define_face_variable = [&](const std::string& v, const std::string& prefix="") {
             return [&]() {
                 nc_chk_ret(nc_def_var(_ugrid_fid, (prefix+v).c_str(), NC_DOUBLE, 1, &dim_Mesh2_face, &param_id[v]));
@@ -401,13 +402,29 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
         auto params = _mesh->face(0)->parameters();
         for (auto &v: params)
         {
+            if (output_params.find(v) == output_params.end())
+            {
+                continue;
+            }
             define_face_variable(v, "param_")();
         }
 
-        define_face_variable("Elevation")();
-        define_face_variable("Slope")();
-        define_face_variable("Aspect")();
-        define_face_variable("Area")();
+        if (output_params.find("Elevation") != output_params.end())
+        {
+            define_face_variable("Elevation")();
+        }
+        if (output_params.find("Slope") != output_params.end())
+        {
+            define_face_variable("Slope")();
+        }
+        if (output_params.find("Aspect") != output_params.end())
+        {
+            define_face_variable("Aspect")();
+        }
+        if (output_params.find("Area") != output_params.end())
+        {
+            define_face_variable("Area")();
+        }
 
 
         nc_chk_ret(nc_def_var(_ugrid_fid, "owner", NC_INT, 1, &dim_Mesh2_face, &param_id["owner"]));
@@ -543,10 +560,15 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     c.tic();
     if(_write_parameters)
     {
+        auto output_params = _mesh->output_parameters();
         // This strategy takes a bit more CPU because of param* n_face iterations, but cuts down on having to store
         // entire duplicates of the mesh
         for (auto &v: _mesh->face(0)->parameters())
         {
+            if (output_params.find(v) == output_params.end())
+            {
+                continue;
+            }
             std::vector<double> param(_mesh->size_local_faces());
 
             for (size_t i = 0; i < _mesh->size_local_faces(); i++)
@@ -561,7 +583,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
             nc_chk_ret(nc_put_vara_double(_ugrid_fid, param_id[v], start, count, param.data()));
         }
 
-        // Slope
+        if (output_params.find("Slope") != output_params.end())
         {
             std::vector<double> param(_mesh->size_local_faces());
 
@@ -577,7 +599,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
             nc_chk_ret(nc_put_vara_double(_ugrid_fid, param_id["Slope"], start, count, param.data()));
         }
 
-        // Aspect
+        if (output_params.find("Aspect") != output_params.end())
         {
             std::vector<double> param(_mesh->size_local_faces());
 
@@ -593,7 +615,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
             nc_chk_ret(nc_put_vara_double(_ugrid_fid, param_id["Aspect"], start, count, param.data()));
         }
 
-        // Area
+        if (output_params.find("Area") != output_params.end())
         {
             std::vector<double> param(_mesh->size_local_faces());
 
@@ -609,8 +631,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
             nc_chk_ret(nc_put_vara_double(_ugrid_fid, param_id["Area"], start, count, param.data()));
         }
 
-
-        // Elevation
+        if (output_params.find("Elevation") != output_params.end())
         {
             std::vector<double> param(_mesh->size_local_faces());
 

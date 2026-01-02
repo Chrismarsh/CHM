@@ -1117,7 +1117,16 @@ void core::config_output(pt::ptree &value)
             out.name = out_type;
             out.base_name = itr.second.get<std::string>("base_name", output_dir);
 
-            _mesh->write_param_to_output( itr.second.get("write_parameters",true) ) ;
+            auto write_all_parameters = itr.second.get_optional<bool>("write_all_parameters");
+            if (!write_all_parameters)
+            {
+                write_all_parameters = itr.second.get_optional<bool>("write_parameters");
+                if (write_all_parameters)
+                {
+                    SPDLOG_WARN("Output {} uses deprecated write_parameters; use write_all_parameters instead.", out.name);
+                }
+            }
+            _mesh->write_param_to_output(write_all_parameters.value_or(true));
 
             try
             {
@@ -1129,6 +1138,18 @@ void core::config_output(pt::ptree &value)
             catch (pt::ptree_bad_path &e)
             {
                 SPDLOG_WARN("Writing all variables to output mesh");
+            }
+
+            try
+            {
+                for (auto &jtr: itr.second.get_child("output_parameters"))
+                {
+                    out.output_parameters.insert(jtr.second.data());
+                }
+            }
+            catch (pt::ptree_bad_path &e)
+            {
+                // defaults handled in triangulation
             }
 
             if (out_type == "vtu")
@@ -2453,6 +2474,8 @@ void core::run()
 
                 if(do_output)
                 {
+                    _mesh->set_output_parameters(itr.output_parameters);
+
                     std::vector<std::string> output;
                     output.assign(itr.variables.begin(),itr.variables.end()); //convert to list to match internal lists
 

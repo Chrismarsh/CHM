@@ -514,12 +514,19 @@ please see the :ref:`output` section.
 
   Only applies to ugrid outputs. The timestep frequency to create a new ugrid file at.
 
-.. confval:: write_parameters
+.. confval:: write_all_parameters
 
    :type: boolean
    :default: true
 
    Disables/enables writing parameters to the output.
+
+.. confval:: output_parameters
+
+   :type: ``[ "parameter_name", ... ]``
+
+   Controls which parameters are written when ``write_all_parameters`` is enabled. If omitted, the defaults are
+   ``Elevation``, ``Slope``, and ``Aspect``.
 
 .. confval:: write_ghost_neighbors
 
@@ -577,9 +584,14 @@ All of the frequency options can mixed together, allowing more complex output fr
                 "swe",
                 "iswr"
             ],
+            "output_parameters": [
+                "Elevation",
+                "Slope",
+                "Aspect"
+            ],
             "frequency": "24",
             "specific_datetime": "20191227T160000",
-            "write_parameters": false,
+            "write_all_parameters": false,
             "write_ghost_neighbors": true
         },
         "ugrid": {
@@ -587,9 +599,14 @@ All of the frequency options can mixed together, allowing more complex output fr
                     "t",
                     "U_2m_above_srf",
                 ],
+                "output_parameters": [
+                    "Elevation",
+                    "Slope",
+                    "Aspect"
+                ],
                 "frequency": "1",
                 "specific_datetime": "20191227T160000",
-                "write_parameters": false
+                "write_all_parameters": false
             }
    }
 
@@ -1034,6 +1051,3 @@ it.
         "minutes_of_wallclock": 5,
         "auto_resumed": true
      }
-
-
-

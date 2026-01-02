@@ -917,6 +917,18 @@ public:
      */
     std::set<std::string> parameters();
 
+    /**
+     * Set the parameters to output to mesh files (vtu/ugrid).
+     * An empty set uses the defaults: Elevation, Slope, Aspect.
+     */
+    void set_output_parameters(const std::set<std::string>& parameters);
+
+    /**
+     * Returns the parameters to output to mesh files (vtu/ugrid).
+     * An empty configured set falls back to defaults: Elevation, Slope, Aspect.
+     */
+    std::set<std::string> output_parameters() const;
+
     bool _terrain_deformed;
 
     /**
@@ -938,6 +950,8 @@ public:
     //however, core might have found some parameters from modules
     // it will have to insert them into this list so that the static hashmaps can be properly init
     std::set<std::string> _parameters;
+
+    std::set<std::string> _output_parameters;
 
 #ifdef USE_MPI
     boost::mpi::environment _mpi_env;
@@ -1054,10 +1068,10 @@ protected:
     std::string _srs_wkt;
     std::unique_ptr<vtk_writer> _vtk_writer;
 
-    //should we write parameters to the vtu file?
+    //should we write parameters to the vtu file? defaults to true
+    // default writes the core parameters of Elevation, Slope, Aspect
     bool _write_parameters;
-    // write the core parameters of Elevation, Slope, Aspect,
-    bool _write_core_parameters;
+
     //should we write ghost neighbor faces to the vtu file?
     bool _write_ghost_neighbors_to_vtu;
 
