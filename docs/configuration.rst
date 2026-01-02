@@ -479,6 +479,14 @@ please see the :ref:`output` section.
    
    The base file name to be used. Default is the same name as the output folder.
 
+.. confval:: format
+
+   :type: string
+   :default: "netcdf"
+
+   Storage backend for ``ugrid`` outputs. Options are ``netcdf`` (writes a ``.nc`` file) or ``zarr`` (writes a ``.zarr``
+   store via NCZarr). Only applies to ``ugrid`` outputs.
+
 .. confval:: variables
 
    :type: ``[ "variable_name", ... ]``
@@ -595,6 +603,7 @@ All of the frequency options can mixed together, allowing more complex output fr
             "write_ghost_neighbors": true
         },
         "ugrid": {
+                "format": "zarr",
                 "variables": [
                     "t",
                     "U_2m_above_srf",

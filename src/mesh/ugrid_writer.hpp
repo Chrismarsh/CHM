@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <utility>
 
 #include <boost/mpi.hpp>
 
@@ -33,7 +34,7 @@
 class ugrid_writer
 {
 public:
-    ugrid_writer(mesh m, boost::shared_ptr<global> g,  bool write_parameters, std::string fname);
+    ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_parameters, std::string fname, bool use_zarr = false);
     ~ugrid_writer();
 
     /**
@@ -50,6 +51,9 @@ public:
     bool bitgroom;
     bool compress;
 private:
+    std::string build_store_uri(const std::string& store_path) const;
+    bool store_exists() const;
+
     //holds the file id for the ugrid output netcdf
     int _ugrid_fid;
 
@@ -57,6 +61,8 @@ private:
     std::map<std::string, int> _ugrid_id_var;
 
     std::string _fname;
+    std::string _store_path;
+    bool _use_zarr;
 
     // track the number of outputs that have been done to correctly compute the offset in the nc
     size_t _time_index;

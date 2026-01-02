@@ -55,6 +55,9 @@ The values in CHM are almost exclusively face centered. By default the ugrid is 
 `bitgrooming <https://docs.unidata.ucar.edu/netcdf-c/4.9.2/md__media_psf_Home_Desktop_netcdf_releases_v4_9_2_release_netcdf_c_docs_quantize.html>`_. This improves the compression,
 and improves the output speed. For a mesh of #cells=2200 for 24 hours with 3 ranks:
 
+UGRID output can also be stored as a Zarr directory via NCZarr by setting ``output.ugrid.format`` to ``zarr``. This
+creates a ``.zarr`` store with the same schema and parallel write behavior.
+
 +---------------------+-----------+----------------+
 | Method              | size (b)  | timestep (ms)  |
 +=====================+===========+================+

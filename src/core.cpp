@@ -1164,11 +1164,30 @@ void core::config_output(pt::ptree &value)
             }
             else
             {
-                boost::filesystem::path ugrid_path = output_folder_path / (out.base_name + ".nc");
+                auto format = itr.second.get<std::string>("format", "netcdf");
+                bool use_zarr = false;
+                std::string extension = ".nc";
+
+                if (format == "zarr")
+                {
+                    use_zarr = true;
+                    extension = ".zarr";
+                }
+                else if (format != "netcdf" && format != "nc")
+                {
+                    CHM_THROW_EXCEPTION(config_error, "Unknown ugrid format: " + format);
+                }
+
+                boost::filesystem::path ugrid_path = output_folder_path / (out.base_name + extension);
                 out.mesh_output_formats = output_info::mesh_outputs::ugrid;
                 out.fname = ugrid_path.string();
 
-                out.writer = boost::make_shared<ugrid_writer>(_mesh, _global, _mesh->write_param_to_output(), out.fname);
+                out.writer = boost::make_shared<ugrid_writer>(
+                    _mesh,
+                    _global,
+                    _mesh->write_param_to_output(),
+                    out.fname,
+                    use_zarr);
 
                 boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)->compress = itr.second.get<bool>("compress", true);
                 boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)->bitgroom = itr.second.get<bool>("bitgroom", true);

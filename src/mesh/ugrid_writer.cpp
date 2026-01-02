@@ -16,13 +16,19 @@
 
 #include "ugrid_writer.hpp"
 
-ugrid_writer::ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_parameters, std::string fname):
-    _mesh(m),  _fname(fname), _global(g), _write_parameters(write_parameters)
+ugrid_writer::ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_parameters, std::string fname, bool use_zarr):
+    _mesh(m),
+    _fname(""),
+    _store_path(std::move(fname)),
+    _use_zarr(use_zarr),
+    _global(g),
+    _write_parameters(write_parameters)
 {
     _ugrid_fid = -1;
     _time_index = 0;
     compress = true;
     bitgroom = false;
+    _fname = build_store_uri(_store_path);
 
 }
 
@@ -60,8 +66,35 @@ void ugrid_writer::close_ugrid()
 
     // clean up for a new write
     _fname = "";
+    _store_path = "";
     _ugrid_id_var = {};
 
+}
+
+std::string ugrid_writer::build_store_uri(const std::string& store_path) const
+{
+    if (!_use_zarr)
+    {
+        return store_path;
+    }
+
+    const std::string prefix = "zarr://";
+    if (store_path.rfind(prefix, 0) == 0)
+    {
+        return store_path;
+    }
+
+    return prefix + store_path;
+}
+
+bool ugrid_writer::store_exists() const
+{
+    if (_store_path.empty())
+    {
+        return false;
+    }
+
+    return boost::filesystem::exists(_store_path);
 }
 void ugrid_writer::write_ugrid(const std::vector<std::string>& output_variables)
 {
@@ -120,7 +153,7 @@ void ugrid_writer::open_ugrid(const std::vector<std::string>& output_variables)
         CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file is already open");
     }
 
-    if (!boost::filesystem::exists(_fname))
+    if (!store_exists())
     {
         CHM_THROW_EXCEPTION(model_init_error, "Netcdf ugrid file is not found");
     }
