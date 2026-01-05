@@ -23,6 +23,7 @@ vtk_writer::vtk_writer(triangulation* mesh, bool include_vertex_global_id, bool 
     : _mesh(mesh)
     , _include_vertex_global_id(include_vertex_global_id)
     , _include_elevation_only(include_elevation_only)
+    , _write_ghost_neighbors(false)
     , _vtk_unstructuredGrid(nullptr)
     , _vtu_global_id(nullptr)
 {
@@ -33,12 +34,17 @@ vtk_writer::vtk_writer(triangulation* mesh, bool include_vertex_global_id, bool 
 #endif
 }
 
+void vtk_writer::set_write_ghost_neighbors(bool write_ghost_neighbors)
+{
+    _write_ghost_neighbors = write_ghost_neighbors;
+}
+
 void vtk_writer::init_grid(const std::vector<std::string>& output_variables)
 {
     vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
 
     vtkSmartPointer<vtkCellArray> triangles = vtkSmartPointer<vtkCellArray>::New();
-    if (_mesh->_write_ghost_neighbors_to_vtu)
+    if (_write_ghost_neighbors)
     {
         triangles->Allocate(_mesh->size_local_faces() + _mesh->_ghost_faces.size());
     }
@@ -87,7 +93,7 @@ void vtk_writer::init_grid(const std::vector<std::string>& output_variables)
         triangles->InsertNextCell(tri);
     }
 
-    if (_mesh->_write_ghost_neighbors_to_vtu)
+    if (_write_ghost_neighbors)
     {
         /* Ghost neighbors */
         for (size_t i = 0; i < _mesh->_ghost_faces.size(); i++)
@@ -188,10 +194,8 @@ void vtk_writer::init_grid(const std::vector<std::string>& output_variables)
         data["ghost_type"] = vtkSmartPointer<vtkFloatArray>::New();
         data["ghost_type"]->SetName("ghost_type");
 
-#ifdef USE_MPI
         data["owner"] = vtkSmartPointer<vtkFloatArray>::New();
         data["owner"]->SetName("owner");
-#endif
     }
     else if (_include_elevation_only)
     {
@@ -313,7 +317,7 @@ void vtk_writer::update_data(const std::vector<std::string>& output_variables)
         }
     }
 
-    if (_mesh->_write_ghost_neighbors_to_vtu)
+    if (_write_ghost_neighbors)
     {
         /* Ghost neighbors */
         for (size_t i = 0; i < _mesh->_ghost_faces.size(); i++)

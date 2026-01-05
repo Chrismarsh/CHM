@@ -95,6 +95,8 @@ herr_t group_info(hid_t loc_id, const char* name, const H5L_info_t* linfo, void*
 class preprocessingTriangulation : public triangulation
 {
   public:
+    bool _write_ghost_neighbors_to_vtu;
+
     preprocessingTriangulation()
     {
         _is_standalone = false;
@@ -109,6 +111,7 @@ class preprocessingTriangulation : public triangulation
         _write_ghost_neighbors_to_vtu = false;
 
         vtk_writer writer(this, true, true);
+        writer.set_write_ghost_neighbors(_write_ghost_neighbors_to_vtu);
         writer.update_data(output_variables);
         writer.write_vtu(file_name);
 

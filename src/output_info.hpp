@@ -38,6 +38,8 @@
 #include "timeseries/timeseries.hpp"
 #include "triangulation.hpp"
 
+class vtk_writer;
+
 
 class output_info
 {
@@ -179,6 +181,6 @@ public:
 
     // bespoke writer to write this output
     // the ugrid contains non-copyable MPI objects so needs to be ptr
-    boost::variant< boost::shared_ptr<ugrid_writer>> writer;
+    boost::variant< boost::shared_ptr<ugrid_writer>, boost::shared_ptr<vtk_writer>> writer;
 
 };

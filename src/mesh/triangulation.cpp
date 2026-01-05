@@ -16,7 +16,6 @@
 
 
 #include "triangulation.hpp"
-#include "vtk_writer.hpp"
 
 triangulation::triangulation()
 {
@@ -31,8 +30,6 @@ triangulation::triangulation()
     _num_local_vertex = 0;
     _mesh_is_from_partition = false;
     _write_parameters = false;
-    _write_ghost_neighbors_to_vtu = false;
-    _vtk_writer = nullptr;
     global_cell_start_idx = 0;
     global_cell_end_idx = 0;
 
@@ -92,11 +89,6 @@ void triangulation::write_param_to_output(bool write_param)
     _write_parameters = write_param;
 }
 
-void triangulation::write_ghost_neighbors_to_vtu(bool write_ghost_neighbors)
-{
-    _write_ghost_neighbors_to_vtu = write_ghost_neighbors;
-}
-
 std::set<std::string> triangulation::parameters()
 {
     return _parameters;
@@ -104,14 +96,7 @@ std::set<std::string> triangulation::parameters()
 
 void triangulation::set_output_parameters(const std::set<std::string>& parameters)
 {
-    if (_output_parameters != parameters)
-    {
-        _output_parameters = parameters;
-        if (_vtk_writer)
-        {
-            _vtk_writer.reset();
-        }
-    }
+    _output_parameters = parameters;
 }
 
 std::set<std::string> triangulation::output_parameters() const
@@ -2419,15 +2404,6 @@ void triangulation::timeseries_to_file(mesh_elem m, std::string fname)
     m->to_file(fname);
 }
 
-void triangulation::init_vtkUnstructured_Grid(std::vector<std::string> output_variables)
-{
-    if (!_vtk_writer)
-    {
-        _vtk_writer = std::make_unique<vtk_writer>(this);
-    }
-
-    _vtk_writer->init_grid(output_variables);
-}
 
 void triangulation::init_timeseries(std::set< std::string > variables)
 {
@@ -2504,24 +2480,6 @@ void triangulation::init_face_data(std::set< std::string >& timeseries,
         }
 }
 
-void triangulation::update_vtk_data(std::vector<std::string> output_variables)
-{
-    if (!_vtk_writer)
-    {
-        _vtk_writer = std::make_unique<vtk_writer>(this);
-    }
-
-    _vtk_writer->update_data(output_variables);
-}
-void triangulation::write_vtu(std::string file_name)
-{
-    if (!_vtk_writer)
-    {
-        _vtk_writer = std::make_unique<vtk_writer>(this);
-    }
-
-    _vtk_writer->write_vtu(file_name);
-}
 
 double triangulation::max_z()
 {

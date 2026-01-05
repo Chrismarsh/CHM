@@ -23,6 +23,8 @@
 
 #include "core.hpp"
 
+#include "mesh/vtk_writer.hpp"
+
 
 core::core()
 {
@@ -1161,6 +1163,7 @@ void core::config_output(pt::ptree &value)
                 boost::filesystem::create_directories(f.parent_path());
                 out.fname = f.string();
                 out.mesh_output_formats = output_info::mesh_outputs::vtu;
+                out.writer = boost::make_shared<vtk_writer>(_mesh);
             }
             else
             {
@@ -1204,7 +1207,11 @@ void core::config_output(pt::ptree &value)
             {
                 CHM_THROW_EXCEPTION(config_error, "ugrid output cannot have write_ghost_neighbors=true");
             }
-            _mesh->write_ghost_neighbors_to_vtu(write_ghost) ;
+            out.write_ghost_neighbors = write_ghost;
+            if (out.mesh_output_formats == output_info::mesh_outputs::vtu)
+            {
+                boost::get<boost::shared_ptr<vtk_writer>>(out.writer)->set_write_ghost_neighbors(write_ghost);
+            }
 
             out.frequency = itr.second.get_optional<size_t>("frequency"); //defaults to every timestep
             out.rotate_frequency = itr.second.get_optional<size_t>("rotate_frequency"); //defaults to never
@@ -2510,7 +2517,9 @@ void core::run()
                     {
                         std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
                         boost::filesystem::path p(base_name);
-                        _mesh->update_vtk_data(output); //update the internal vtk mesh
+                        auto& writer = boost::get<boost::shared_ptr<vtk_writer>>(itr.writer);
+                        writer->set_write_ghost_neighbors(itr.write_ghost_neighbors);
+                        writer->update_data(output);
 
                         // this really only works if we let rank0 handle the io.
                         // If we let each process do it, they walk all over each other's output
@@ -2533,7 +2542,7 @@ void core::run()
 
                         //because a full path can be provided for the base_name, we need to strip this off
                         //to make it a relative path in the xml file.
-                        _mesh->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
+                        writer->write_vtu(base_name + "_"+std::to_string(_comm_world.rank() )+ ".vtu");
 
                     }
                     else if (itr.mesh_output_formats == output_info::mesh_outputs::ugrid)

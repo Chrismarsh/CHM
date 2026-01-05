@@ -826,11 +826,6 @@ public:
     */
     void timeseries_to_file(mesh_elem m, std::string fname);
 
-    /**
-     * If output to the mesh vtk/vtu format is required, this will be allocate the vtk data structure.
-     */
-    void init_vtkUnstructured_Grid(std::vector<std::string> output_variables);
-
     /// Initializes all the face timeseries to hold the selected variables
     /// @param variables
     void init_timeseries(std::set< std::string > variables);
@@ -860,25 +855,12 @@ public:
      */
     void prune_faces(std::vector<Face_handle>& faces);
 
-	/**
-	 * Updates the internal vtk structure with this timesteps data.
-	 * Must be called prior to calling the write_vt* functions.
-	 * The write_vt* functions could call this, however it makes them not threadsafe.
-	 * If output_variables is empty, it will write all variables out
-	 * @param output_variables Selected variables to write out.
-	 */
-    void update_vtk_data(std::vector<std::string> output_variables);
 
     /**
      * Writes the bounding box of the mesh to geojson
      * @param filename
      */
     void write_bbox_geojson(const std::string& filename);
-
-    /**
-    * Saves the mesh with this timesteps values to a vtu file for visualization in Paraview
-    */
-    void write_vtu(std::string fname);
 
 
     /**
@@ -906,10 +888,6 @@ public:
      * Set the the private variable for writing parameters in vtu output
      */
     void write_param_to_output(bool write_param);
-    /**
-     * Set the the private variable for writing the ghost neighbor data in vtu output
-     */
-    void write_ghost_neighbors_to_vtu(bool write_ghost_neighbors);
 
     /**
      * Returns the set of parameters available on the triangulation
@@ -1067,14 +1045,10 @@ protected:
     int _UTM_zone;
 
     std::string _srs_wkt;
-    std::unique_ptr<vtk_writer> _vtk_writer;
 
     //should we write parameters to the vtu file? defaults to true
     // default writes the core parameters of Elevation, Slope, Aspect
     bool _write_parameters;
-
-    //should we write ghost neighbor faces to the vtu file?
-    bool _write_ghost_neighbors_to_vtu;
 
     // min and max elevations
     double _min_z;

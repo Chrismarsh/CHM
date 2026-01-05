@@ -43,6 +43,7 @@ class vtk_writer
 public:
     vtk_writer(triangulation* mesh, bool include_vertex_global_id = false, bool include_elevation_only = false);
 
+    void set_write_ghost_neighbors(bool write_ghost_neighbors);
     void init_grid(const std::vector<std::string>& output_variables);
     void update_data(const std::vector<std::string>& output_variables);
     void write_vtu(const std::string& file_name);
@@ -51,6 +52,7 @@ private:
     triangulation* _mesh;
     bool _include_vertex_global_id;
     bool _include_elevation_only;
+    bool _write_ghost_neighbors;
 
     vtkSmartPointer<vtkUnstructuredGrid> _vtk_unstructuredGrid;
     vtkSmartPointer<vtkUnsignedLongArray> _vtu_global_id;
