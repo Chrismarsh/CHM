@@ -953,10 +953,11 @@ public:
 
     std::set<std::string> _output_parameters;
 
-#ifdef USE_MPI
+    // Check: this is needed for the partitioning driver to have as a "fake" mpi_env
     boost::mpi::environment _mpi_env;
     boost::mpi::communicator _comm_world;
-#endif
+
+
 
     // some of the coordinates might be negative, so by init with a nan
     // when this is filled using std::min and std::max, the nan willbe ignored on the first
