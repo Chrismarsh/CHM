@@ -224,6 +224,16 @@ size_t ugrid_writer::compute_time_chunk_len(size_t max_faces_per_rank, size_t nu
         chunk_steps = output_interval_steps;
     }
 
+    // output the size in MB of the settled upon chunks
+    const uint64_t chunk_bytes = static_cast<uint64_t>(chunk_steps) * bytes_per_timestep;
+    const double chunk_mb = static_cast<double>(chunk_bytes) / (1024.0 * 1024.0);
+    const size_t chunks_per_var = static_cast<size_t>(ceil_div(output_count_est, chunk_steps));
+    const size_t total_chunks = chunks_per_var * std::max<size_t>(1, num_output_vars);
+    SPDLOG_DEBUG("UGRID chunking: steps={}, per-var chunk={} bytes (~{:.1f} MB), vars={}, chunks/var={}, total_chunks={}",
+                 chunk_steps, chunk_bytes, chunk_mb, std::max<size_t>(1, num_output_vars),
+                 chunks_per_var, total_chunks);
+
+
     return chunk_steps;
 }
 void ugrid_writer::write_ugrid(const std::vector<std::string>& output_variables)
