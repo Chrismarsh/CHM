@@ -19,8 +19,8 @@
 
 #include "triangulation.hpp"
 
-vtk_writer::vtk_writer(triangulation* mesh, bool include_vertex_global_id, bool include_elevation_only)
-    : _mesh(mesh)
+vtk_writer::vtk_writer(mesh m, bool include_vertex_global_id, bool include_elevation_only)
+    : _mesh(m)
     , _include_vertex_global_id(include_vertex_global_id)
     , _include_elevation_only(include_elevation_only)
     , _write_ghost_neighbors(false)
