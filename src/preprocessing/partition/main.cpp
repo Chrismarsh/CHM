@@ -47,7 +47,7 @@ using namespace H5;
 #include <boost/serialization/string.hpp>
 
 // these are the real mpi environments used for parallel processing in this program and
-// are not the faked ones we rely on for the abitrary partition generation in triangulation
+// are not the faked ones we rely on for the arbitrary partition generation in triangulation
 boost::mpi::environment real_mpi_env;
 boost::mpi::communicator real_comm_world;
 
