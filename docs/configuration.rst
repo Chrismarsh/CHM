@@ -479,6 +479,11 @@ please see the :ref:`output` section.
    
    The base file name to be used. Default is the same name as the output folder.
 
+
+.. warning::
+
+    NCZarr does not currently support creating of zarr files in MPI mode. Do not use format:"zarr" at the moment
+
 .. confval:: format
 
    :type: string

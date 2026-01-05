@@ -1172,6 +1172,8 @@ void core::config_output(pt::ptree &value)
                 {
                     use_zarr = true;
                     extension = ".zarr";
+
+                    CHM_THROW_EXCEPTION(config_error, "Zarr ugrid output is not currently supported for MPI builds");
                 }
                 else if (format != "netcdf" && format != "nc")
                 {
