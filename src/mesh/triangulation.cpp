@@ -118,7 +118,7 @@ std::set<std::string> triangulation::output_parameters() const
 {
     if (_output_parameters.empty())
     {
-        return {"Elevation", "Slope", "Aspect"};
+        return {"Elevation", "Slope", "Aspect", "Area"};
     }
 
     return _output_parameters;
