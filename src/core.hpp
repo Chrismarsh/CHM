@@ -71,6 +71,8 @@
 namespace pt = boost::property_tree;
 namespace po = boost::program_options;
 
+#include <Kokkos_Core.hpp>
+
 // tbb
 #include <tbb/concurrent_vector.h>
 
@@ -100,10 +102,10 @@ namespace po = boost::program_options;
 #include "triangulation.hpp"
 #include "version.h"
 
-#ifdef USE_MPI
+
 #include <boost/mpi.hpp>
 #include <boost/serialization/string.hpp>
-#endif
+
 
 struct vertex{
     std::string name;
@@ -641,7 +643,7 @@ protected:
     } cli_options;
 
 
-    boost::mpi::environment _mpi_env;
+
     boost::mpi::communicator _comm_world;
 
 

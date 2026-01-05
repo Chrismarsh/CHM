@@ -51,7 +51,7 @@ core::core()
 
 core::~core()
 {
-    // clean up all the modules to ensure that Tpetra:~Map() is called prior to MPI_Finalize as per GitHib Issue #2372
+    // clean up all the modules to ensure that Tpetra:~Map() is called prior to MPI_Finalize
     for(auto& itr : _chunked_modules)
     {
         for(auto& jtr : itr )
@@ -2724,8 +2724,6 @@ void core::end(const bool abort)
         {
             // swallow all errors; we are aborting regardless
         }
-
-        _mpi_env.abort(-1);
     }
 
 }

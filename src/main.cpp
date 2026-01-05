@@ -24,6 +24,7 @@
 #include <iostream>
 #include <string>
 #include <boost/filesystem.hpp>
+#include <boost/mpi.hpp>
 
 #include <Kokkos_Core.hpp>
 
@@ -33,24 +34,23 @@
 
 int main (int argc, char *argv[])
 {
-    core kernel;
-
+    boost::mpi::environment mpi_env;
     // MPI is now init, so explicitly init kokkos to avoid
     // https://github.com/trilinos/Trilinos/issues/14389
-    // we do this here even (if we don't use a tpetra solve this model run) based on the dev suggestion
-    // https://github.com/trilinos/Trilinos/issues/14389#issuecomment-3676685734
     Kokkos::initialize(argc, argv);
+
+    auto kernel = std::make_unique<core>();
 
     int ret = 0;
     try
     {
-        kernel.init(argc, argv) ;
-        kernel.run();
+        kernel->init(argc, argv) ;
+        kernel->run();
     }
     catch(chm_done& e)
     {
         // This catches the chm_done exception which we use to handle the version and help commands
-        kernel.end();
+        kernel->end();
     }
     catch(const module_error& e)
     {
@@ -73,15 +73,20 @@ int main (int argc, char *argv[])
        ret = 1;
     }
 
-    // and finalize kokkos right before we call MPI finalize
-    Kokkos::finalize();
-
     // if we have an exception, ensure we tear down all of the MPI
     if(ret == 1)
-       kernel.end(true);
+    {
+        kernel->end(true);
+        mpi_env.abort(-1);
+    }
     else
-       kernel.end();
+    {
+        kernel->end();
+    }
 
+    kernel.reset();
+    // and finalize kokkos right before we call MPI finalize
+    Kokkos::finalize();
 
     return ret;
 }
