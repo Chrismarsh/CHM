@@ -352,7 +352,8 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     int status = nc_create_par(_fname.c_str(), NC_NETCDF4 | NC_CLOBBER, comm, info_used, &_ugrid_fid);
     if (status != NC_NOERR)
     {
-        CHM_THROW_EXCEPTION(file_write_error, "Failed to create ugrid output file");
+        SPDLOG_ERROR("nc_create_par={}", status);
+        CHM_THROW_EXCEPTION(file_write_error, "Failed to create ugrid output file, error="+status);
     }
 
     // We also only have per-rank vertex IDs (they aren't global)
