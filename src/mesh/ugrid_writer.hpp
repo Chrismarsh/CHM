@@ -50,7 +50,12 @@ public:
     void open_ugrid(const std::vector<std::string>& output_variables);
     void init_ugrid(const std::vector<std::string>& output_variables);
     void set_output_cadence(const boost::optional<size_t>& frequency,
-                            const boost::optional<size_t>& only_last_n);
+                            const boost::optional<size_t>& only_last_n,
+                            const boost::optional<size_t>& rotate_frequency);
+    void set_chunking_override(const boost::optional<size_t>& chunk_len_steps,
+                               const boost::optional<double>& chunk_target_mb);
+    void set_store_path(std::string store_path);
+    const std::string& store_path() const;
 
     bool bitgroom;
     bool compress;
@@ -81,4 +86,7 @@ private:
     bool _write_parameters;
     boost::optional<size_t> _frequency;
     boost::optional<size_t> _only_last_n;
+    boost::optional<size_t> _rotate_frequency;
+    boost::optional<size_t> _chunk_len_steps;
+    boost::optional<double> _chunk_target_mb;
 };

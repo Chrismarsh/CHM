@@ -88,5 +88,9 @@ that specified in the checkpoint json file.
 The savestate occurs at the end of the timestep, so the resume time will be one timestep into the future, i.e., the
 next timestep.
 
+UGRID rotation state (active output file and rotation cadence) is stored in the checkpoint metadata. On resume, CHM
+continues writing to the active ugrid file and keeps the original rotation cadence even though internal timestep
+counters restart at zero.
+
 The make use of checkpointing, a module must implement the ``checkpoint(mesh& domain,  netcdf& chkpt)`` and
 ``load_checkpoint(mesh& domain, netcdf& chkpt)`` methods.

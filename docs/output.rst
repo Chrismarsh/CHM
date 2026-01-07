@@ -58,6 +58,13 @@ and improves the output speed. For a mesh of #cells=2200 for 24 hours with 3 ran
 UGRID output can also be stored as a Zarr directory via NCZarr by setting ``output.ugrid.format`` to ``zarr``. This
 creates a ``.zarr`` store with the same schema and parallel write behavior.
 
+Rotation
+--------
+
+UGRID rotation (``rotate_frequency``) starts a new file every N timesteps. Rotated files are named
+``<base_name>_YYYYMMDDTHHMMSS.nc`` based on the model time. When resuming from a checkpoint, CHM continues writing to
+the file that was active at checkpoint time and preserves the rotation cadence.
+
 Chunking optimizations
 ----------------------
 
@@ -67,6 +74,9 @@ UGRID time chunking is sized to balance Dask recommendations and output cadence:
 - If total chunks per output file would exceed 100k, the time chunk grows up to a hard ceiling of 2GB.
 - Chunk lengths align to the mesh output cadence (``frequency`` or ``only_last_n``). If neither is set,
   the chunker assumes only a small number of outputs and keeps chunk sizes small.
+
+Users can override chunk sizing with either ``chunk_time_len`` (explicit timesteps) or ``chunk_target_mb`` (target MB
+per variable). Only one override can be set at a time.
 
 These settings reduce metadata overhead and avoid overly large task graphs while respecting model output frequency.
 

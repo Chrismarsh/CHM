@@ -25,6 +25,9 @@
 
 #include <cstddef>
 
+#include <string>
+#include <vector>
+
 #include <boost/filesystem/path.hpp>
 #include <boost/mpi.hpp>
 #include <boost/optional.hpp>
@@ -65,6 +68,16 @@ class chkptOp
 
     // used to stop the simulation when we checkpoint when we are outta time
     bool checkpoint_request_terminate;
+
+    struct ugrid_output_state
+    {
+        std::string base_name;
+        std::string path;
+        boost::optional<size_t> rotate_offset;
+    };
+
+    // Cached output rotation state from checkpoint metadata (used during resume).
+    std::vector<ugrid_output_state> ugrid_outputs;
 
     /**
      * Should checkpointing occur

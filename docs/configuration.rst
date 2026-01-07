@@ -526,6 +526,23 @@ please see the :ref:`output` section.
   :default: 0
 
   Only applies to ugrid outputs. The timestep frequency to create a new ugrid file at.
+  Rotated files are named ``<base_name>_YYYYMMDDTHHMMSS.nc`` and the cadence is preserved across checkpoint resume.
+
+.. confval:: chunk_time_len
+
+  :type: int
+  :default: unset
+
+  Only applies to ugrid outputs. Sets an explicit time chunk length (in timesteps). Must not be set alongside
+  ``chunk_target_mb``.
+
+.. confval:: chunk_target_mb
+
+  :type: float
+  :default: unset
+
+  Only applies to ugrid outputs. Sets the target chunk size per variable (in MB). Must not be set alongside
+  ``chunk_time_len``.
 
 .. confval:: write_all_parameters
 

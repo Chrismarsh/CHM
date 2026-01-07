@@ -79,7 +79,9 @@ public:
         bool should = false;
         if(rotate_frequency)
         {
-            if(current_ts % *rotate_frequency == 0)
+            size_t offset = rotate_offset.value_or(0);
+            // Use the stored offset from checkpoint so rotation cadence stays aligned even after resume.
+            if((current_ts + offset) % *rotate_frequency == 0)
                 should = true;
         }
 
@@ -163,6 +165,8 @@ public:
     // because the ugrid file can get huge, start a new file every X timesteps
     // defaults to never
     boost::optional<size_t> rotate_frequency;
+    // When resuming, keep the original rotation cadence by offsetting current_ts.
+    boost::optional<size_t> rotate_offset;
 
     // every n timesteps
     boost::optional<size_t> frequency;

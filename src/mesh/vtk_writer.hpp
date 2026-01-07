@@ -23,6 +23,10 @@
 #include <sparsehash/dense_hash_map>
 #endif
 
+#include <boost/filesystem/path.hpp>
+#include <boost/property_tree/ptree.hpp>
+namespace pt = boost::property_tree;
+
 #include <vtkVersion.h>
 #include <vtkSmartPointer.h>
 #include <vtkStringArray.h>
@@ -44,6 +48,16 @@ class vtk_writer
 {
 public:
     vtk_writer(mesh m, bool include_vertex_global_id = false, bool include_elevation_only = false);
+
+    static void init_pvd(pt::ptree& pvd);
+    static void append_pvd_entry(pt::ptree& pvd,
+                                 const boost::filesystem::path& output_folder_path,
+                                 const std::string& base_name,
+                                 int rank,
+                                 long timestep);
+    static void write_pvd(const pt::ptree& pvd,
+                          const boost::filesystem::path& output_folder_path,
+                          const std::string& base_name);
 
     void set_write_ghost_neighbors(bool write_ghost_neighbors);
     void init_grid(const std::vector<std::string>& output_variables);

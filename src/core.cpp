@@ -375,7 +375,7 @@ void core::config_checkpoint( pt::ptree& value)
         CHM_THROW_EXCEPTION(config_error, "Error in checkpoint config");
     }
 
-    if(*auto_resume)
+    if(auto_resume && *auto_resume)
     {
 
         // match the filename of checkpoint_20170901T070000.np1.json
@@ -386,6 +386,13 @@ void core::config_checkpoint( pt::ptree& value)
         boost::filesystem::path newest_file; // will end up with the most recent chkpt to resume from
         boost::filesystem::path const dir(output_folder_path  / "checkpoint" );
 
+        if (!boost::filesystem::exists(dir))
+        {
+            SPDLOG_ERROR("auto_resume is enabled but checkpoint directory is missing: {}", dir.string());
+            CHM_THROW_EXCEPTION(config_error, "Checkpoint auto_resume failed: missing checkpoint directory");
+        }
+        else
+        {
         for(const auto& entry : boost::filesystem::directory_iterator(dir))
         {
             if (boost::filesystem::is_regular_file(entry.status()))
@@ -407,6 +414,7 @@ void core::config_checkpoint( pt::ptree& value)
                 }
             }
         }
+        }
 
         if(newest_file.empty())
         {
@@ -421,14 +429,14 @@ void core::config_checkpoint( pt::ptree& value)
 
 
 
-    if (file)
-    {
-        _checkpoint_opts.load_from_checkpoint = true;
+        if (file)
+        {
+            _checkpoint_opts.load_from_checkpoint = true;
 
-        boost::filesystem::path ckpt_path = *file;
+            boost::filesystem::path ckpt_path = *file;
 //        ckpt_path = boost::filesystem::canonical(ckpt_path);
 
-        auto chkp = read_json(ckpt_path.string());
+            auto chkp = read_json(ckpt_path.string());
 
         size_t csz = 1;
         size_t rank = 0;
@@ -472,10 +480,31 @@ void core::config_checkpoint( pt::ptree& value)
           CHM_THROW_EXCEPTION(config_error, "Error reading list of checkpoint files");
         }
 
-        ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
-        SPDLOG_DEBUG("Rank {} using checkpoint restore file {}", rank, ckpt_nc_path.string());
-        _checkpoint_opts.in_savestate.open(ckpt_nc_path.string());
-    }
+            ckpt_nc_path =  ckpt_path.parent_path() / ckpt_nc_path;
+            SPDLOG_DEBUG("Rank {} using checkpoint restore file {}", rank, ckpt_nc_path.string());
+            _checkpoint_opts.in_savestate.open(ckpt_nc_path.string());
+
+            _checkpoint_opts.ugrid_outputs.clear();
+            if (auto ugrid_child = chkp.get_child_optional("ugrid_outputs"))
+            {
+                // Preserve ugrid rotation state for resume; applied later when outputs are configured.
+                for (auto &itr : *ugrid_child)
+                {
+                    chkptOp::ugrid_output_state state;
+                    state.base_name = itr.second.get<std::string>("base_name", "");
+                    state.path = itr.second.get<std::string>("path", "");
+                    auto offset = itr.second.get_optional<size_t>("rotate_offset");
+                    if (offset)
+                    {
+                        state.rotate_offset = *offset;
+                    }
+                    if (!state.base_name.empty() || !state.path.empty())
+                    {
+                        _checkpoint_opts.ugrid_outputs.push_back(state);
+                    }
+                }
+            }
+        }
 }
 void core::config_forcing(pt::ptree &value)
 {
@@ -1232,7 +1261,58 @@ void core::config_output(pt::ptree &value)
             if (out.mesh_output_formats == output_info::mesh_outputs::ugrid)
             {
                 boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)
-                    ->set_output_cadence(out.frequency, out.only_last_n);
+                    ->set_output_cadence(out.frequency, out.only_last_n, out.rotate_frequency);
+            }
+
+            if (out.mesh_output_formats == output_info::mesh_outputs::ugrid)
+            {
+                auto chunk_len_steps = itr.second.get_optional<size_t>("chunk_time_len");
+                auto chunk_target_mb = itr.second.get_optional<double>("chunk_target_mb");
+                if (chunk_len_steps && chunk_target_mb)
+                {
+                    CHM_THROW_EXCEPTION(config_error, "Set only one of chunk_time_len or chunk_target_mb for ugrid output");
+                }
+                if (chunk_len_steps && *chunk_len_steps == 0)
+                {
+                    CHM_THROW_EXCEPTION(config_error, "chunk_time_len must be > 0 for ugrid output");
+                }
+                if (chunk_target_mb && *chunk_target_mb <= 0.0)
+                {
+                    CHM_THROW_EXCEPTION(config_error, "chunk_target_mb must be > 0 for ugrid output");
+                }
+                boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)
+                    ->set_chunking_override(chunk_len_steps, chunk_target_mb);
+            }
+
+            if (_checkpoint_opts.load_from_checkpoint && out.mesh_output_formats == output_info::mesh_outputs::ugrid)
+            {
+                // Restore the output path and rotation offset captured in the checkpoint metadata.
+                const chkptOp::ugrid_output_state* match = nullptr;
+                for (const auto &state : _checkpoint_opts.ugrid_outputs)
+                {
+                    if (state.base_name == out.base_name)
+                    {
+                        match = &state;
+                        break;
+                    }
+                }
+                if (!match && _checkpoint_opts.ugrid_outputs.size() == 1)
+                {
+                    match = &_checkpoint_opts.ugrid_outputs.front();
+                }
+                if (match)
+                {
+                    if (!match->path.empty())
+                    {
+                        auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(out.writer);
+                        writer->set_store_path(match->path);
+                        SPDLOG_DEBUG("Resuming ugrid output from checkpoint file {}", match->path);
+                    }
+                    if (match->rotate_offset)
+                    {
+                        out.rotate_offset = match->rotate_offset;
+                    }
+                }
             }
 
             auto specific_datetime = itr.second.get_optional<std::string>("specific_datetime");
@@ -2288,8 +2368,7 @@ void core::run()
 
     //setup a XML writer for the PVD paraview format
     pt::ptree pvd;
-    pvd.add("VTKFile.<xmlattr>.type", "Collection");
-    pvd.add("VTKFile.<xmlattr>.version", "0.1");
+    vtk_writer::init_pvd(pvd);
 
 
     SPDLOG_DEBUG("Loading first timestep's met data");
@@ -2476,6 +2555,35 @@ void core::run()
             }
             tree.add_child("files", tmp_files);
 
+            pt::ptree ugrid_outputs;
+            for (auto &out : _outputs)
+            {
+                if (out.mesh_output_formats != output_info::mesh_outputs::ugrid)
+                {
+                    continue;
+                }
+
+                // Cache the active file and rotation offset so resume can align rotation cadence.
+                pt::ptree entry;
+                entry.put("base_name", out.base_name);
+
+                auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(out.writer);
+                entry.put("path", writer->store_path());
+
+                if (out.rotate_frequency)
+                {
+                    // Store the offset for the next timestep after this checkpoint.
+                    size_t offset = (current_ts + 1) % *out.rotate_frequency;
+                    entry.put("rotate_offset", offset);
+                }
+
+                ugrid_outputs.push_back(std::make_pair("", entry));
+            }
+            if (!ugrid_outputs.empty())
+            {
+                tree.add_child("ugrid_outputs", ugrid_outputs);
+            }
+
 
             if(_comm_world.rank() == 0)
             {
@@ -2529,13 +2637,11 @@ void core::run()
                             for(int rank = 0; rank < _comm_world.size(); rank++)
                             {
 
-                                // write paths that are relative to the pvd file
-                                boost::filesystem::path vtu_path(output_folder_path.string() + "/vtu/" + p.filename().string()+"_"+std::to_string(rank) + ".vtu");
-                                pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
-                                dataset.add("<xmlattr>.timestep", _global->posix_time_int());
-                                dataset.add("<xmlattr>.group", "");
-                                dataset.add("<xmlattr>.part", rank);
-                                dataset.add("<xmlattr>.file", boost::filesystem::relative(vtu_path, output_folder_path).string());
+                                vtk_writer::append_pvd_entry(pvd,
+                                                             output_folder_path,
+                                                             p.string(),
+                                                             rank,
+                                                             _global->posix_time_int());
 
                             }
                         }
@@ -2553,7 +2659,19 @@ void core::run()
                         auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(itr.writer);
                         if (new_ugrid)
                         {
+                            auto rotated_path = [&]() {
+                                boost::filesystem::path base_path(itr.fname);
+                                std::string stem = base_path.stem().string();
+                                std::string ext = base_path.extension().string();
+                                std::string ts = boost::posix_time::to_iso_string(_global->posix_time());
+                                boost::filesystem::path rotated =
+                                    base_path.parent_path() /
+                                    (stem + "_" + ts + ext);
+                                return rotated.string();
+                            };
                             writer->close_ugrid();
+                            SPDLOG_DEBUG("Rotating ugrid output to {}", rotated_path());
+                            writer->set_store_path(rotated_path());
                         }
 
                         writer->write_ugrid({itr.variables.begin(), itr.variables.end()} );
@@ -2637,10 +2755,7 @@ void core::run()
             {
 #endif
 
-                // output the pvd one level higher in the main outdir than we have previously
-                boost::filesystem::path path(itr.fname + ".pvd");
-                pt::write_xml( (output_folder_path.string() / path.filename()).string(),
-                              pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
+                vtk_writer::write_pvd(pvd, output_folder_path, itr.fname);
                 break;
 
 #ifdef USE_MPI

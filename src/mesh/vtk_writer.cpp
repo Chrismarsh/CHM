@@ -18,6 +18,7 @@
 #include <cmath>
 
 #include "triangulation.hpp"
+#include <boost/property_tree/xml_parser.hpp>
 
 vtk_writer::vtk_writer(mesh m, bool include_vertex_global_id, bool include_elevation_only)
     : _mesh(m)
@@ -37,6 +38,37 @@ vtk_writer::vtk_writer(mesh m, bool include_vertex_global_id, bool include_eleva
 void vtk_writer::set_write_ghost_neighbors(bool write_ghost_neighbors)
 {
     _write_ghost_neighbors = write_ghost_neighbors;
+}
+
+void vtk_writer::init_pvd(pt::ptree& pvd)
+{
+    pvd.add("VTKFile.<xmlattr>.type", "Collection");
+    pvd.add("VTKFile.<xmlattr>.version", "0.1");
+}
+
+void vtk_writer::append_pvd_entry(pt::ptree& pvd,
+                                  const boost::filesystem::path& output_folder_path,
+                                  const std::string& base_name,
+                                  int rank,
+                                  long timestep)
+{
+    boost::filesystem::path p(base_name);
+    boost::filesystem::path vtu_path(output_folder_path.string() + "/vtu/" + p.filename().string() + "_" +
+                                     std::to_string(rank) + ".vtu");
+    pt::ptree &dataset = pvd.add("VTKFile.Collection.DataSet", "");
+    dataset.add("<xmlattr>.timestep", timestep);
+    dataset.add("<xmlattr>.group", "");
+    dataset.add("<xmlattr>.part", rank);
+    dataset.add("<xmlattr>.file", boost::filesystem::relative(vtu_path, output_folder_path).string());
+}
+
+void vtk_writer::write_pvd(const pt::ptree& pvd,
+                           const boost::filesystem::path& output_folder_path,
+                           const std::string& base_name)
+{
+    boost::filesystem::path path(base_name + ".pvd");
+    pt::write_xml((output_folder_path.string() / path.filename()).string(),
+                  pvd, std::locale(), pt::xml_writer_settings<std::string>(' ', 4));
 }
 
 void vtk_writer::init_grid(const std::vector<std::string>& output_variables)
