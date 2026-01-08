@@ -100,6 +100,8 @@ void snow_slide::run(mesh& domain)
     do
     {
 
+        // Commented to remove set but not used compiler warning (as well as any uses)
+        // int this_iter_moved_snow = false;
         // Make a vector of pairs (elevation + snowdepth, pointer to face)
         tbb::concurrent_vector<std::pair<double, mesh_elem>> sorted_z(domain->size_local_faces());
 
@@ -196,6 +198,7 @@ void snow_slide::run(mesh& domain)
             if ( snowdepthavg > maxDepth)
             {
                 done = 0;
+                // this_iter_moved_snow = true;
 
                 double del_depth = snowdepthavg - maxDepth;           // Amount to be removed (positive) [m]
                 double del_swe = swe * (1 - maxDepth / snowdepthavg); // Amount of swe to be removed (positive) [m]
@@ -369,7 +372,7 @@ void snow_slide::run(mesh& domain)
 
         // only do another iteration if we have incoming mass transport from the ghosts or if we have moved mass this itr
         // this algorithm tends to need a couple passes to make sure there are no straglers
-        if(ghost_transport > 0) // || this_iter_moved_snow)
+        if(ghost_transport > 0) // || this_iter_moved_snow) 
             done = 0;
         else
             done = 1;

@@ -141,9 +141,12 @@ class preprocessingTriangulation : public triangulation
         }
         // each processor only knows its own start and end indices
         size_t face_start_idx = 0;
+        // Commented to avoid set but not used compiler warning
+        // size_t face_end_idx = _num_faces_in_partition.at(0) - 1;
         for (int i = 1; i <= _comm_world.rank(); ++i)
         {
             face_start_idx += _num_faces_in_partition.at(i - 1);
+            // face_end_idx += _num_faces_in_partition.at(i);
         }
 
 #pragma omp parallel for

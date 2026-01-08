@@ -61,6 +61,7 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 {
 	va_list argptr; // get an arg ptr
 
+    // Commented to remove set but not used compiler warning
 	// int msg_ok = 0;
 
 	// Initialize argptr to point to the first argument after the format string
@@ -95,18 +96,23 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 	//printf("¬"); //if we need multiline output, use a special char as bloc delimiter
 	if (strcmp(msg_type, "err") == 0) {
 		spdlog::error(orig_msg);
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "wrn") == 0) {
 		spdlog::warn(orig_msg);
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg+") == 0) {
                 spdlog::debug(orig_msg);
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg-") == 0) {
                 spdlog::debug(orig_msg);
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg") == 0) {
                 spdlog::debug(orig_msg);
+		// msg_ok=1;
 	}
 }
 
