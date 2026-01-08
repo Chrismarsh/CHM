@@ -98,13 +98,21 @@ namespace gis
 
         OGRFieldDefn oFieldX("X", OFTReal);
         oFieldX.SetWidth(32);
-        poLayer->CreateField(&oFieldX);
-
+        OGRErr err = poLayer->CreateField(&oFieldX);
+        if (err)
+        {
+            std::string msg = std::format("GDAL CreateField error of type {}. See ogr_core.h for meaning.",err);
+            CHM_THROW_EXCEPTION(chm_error,msg);
+        }
 
         OGRFieldDefn oFieldY("Y", OFTReal);
         oFieldY.SetWidth(32);
-        poLayer->CreateField(&oFieldY);
-
+        err = poLayer->CreateField(&oFieldY);
+        if (err)
+        {
+            std::string msg = std::format("GDAL CreateField error of type {}. See ogr_core.h for meaning.",err);
+            CHM_THROW_EXCEPTION(chm_error,msg);
+        }
 //        double xCoordinates[] = {10.0, 20.0, 30.0}; // Example x coordinates
 //        double yCoordinates[] = {40.0, 50.0, 60.0}; // Example y coordinates
         int numPoints = xy.size();
