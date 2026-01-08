@@ -24,6 +24,7 @@
 #include <string>
 #include <utility>
 #include <cstdint>
+#include <format>
 
 #include <boost/mpi.hpp>
 #include <boost/optional.hpp>

@@ -45,11 +45,12 @@ class output_info
 {
 public:
     output_info():
+    type{output_type::output_type_none},
+    mesh_output_formats{mesh_outputs::mesh_outputs_none},
     name{""},
     fname{""},
     latitude{0}, longitude{0},
-    x{0}, y{0}, type{output_type::output_type_none},
-    mesh_output_formats{mesh_outputs::mesh_outputs_none},
+    x{0}, y{0}, 
     only_last_n{SIZE_MAX},
     write_ghost_neighbors{false}
     {
@@ -142,8 +143,8 @@ public:
     }
 
     output_type type; // the type of output, timeseries or mesh
-    std::string name;
     mesh_outputs mesh_output_formats;
+    std::string name;
     std::string fname;
     std::string base_name; // base file name for vtu or ugrid outputs
 
