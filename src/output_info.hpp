@@ -30,7 +30,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/posix_time/posix_time_io.hpp>
 #include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/variant.hpp>
 
 #include "logger.hpp"
@@ -185,6 +185,6 @@ public:
 
     // bespoke writer to write this output
     // the ugrid contains non-copyable MPI objects so needs to be ptr
-    boost::variant< boost::shared_ptr<ugrid_writer>, boost::shared_ptr<vtk_writer>> writer;
+    boost::variant< std::shared_ptr<ugrid_writer>, std::shared_ptr<vtk_writer>> writer;
 
 };

@@ -126,7 +126,7 @@ explicitly done by the module. The constructor specifies the paralle type: ``par
    ...
    }
 
-   void run(mesh domain, boost::shared_ptr<global> global_param)
+   void run(mesh domain, std::shared_ptr<global> global_param)
    {
     #pragma omp parallel for
        for (size_t i = 0; i < domain->size_faces(); i++)

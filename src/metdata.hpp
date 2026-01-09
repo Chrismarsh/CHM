@@ -101,7 +101,7 @@ class metdata
 
         //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
         //and run it on a per-station config.
-        std::vector<boost::shared_ptr<filter_base>> filters;
+        std::vector<std::shared_ptr<filter_base>> filters;
     };
 
     /**
@@ -119,7 +119,7 @@ class metdata
     /// @param path
     /// @param filters
     /// @param preserve_current_ts Do not update the current time_step when we load the netcdf. This is reequired if the current timestep is a custom timestpe, from chkpoint or user
-    void load_from_netcdf(const std::string& path,  std::map<std::string, boost::shared_ptr<filter_base> > filters = {}, bool preserve_current_ts = false);
+    void load_from_netcdf(const std::string& path,  std::map<std::string, std::shared_ptr<filter_base> > filters = {}, bool preserve_current_ts = false);
 
     /**
      * Loads from a list of netcdf files. Expects the list to be ordered
@@ -127,7 +127,7 @@ class metdata
      * @param box
      * @param filters
      */
-    void load_from_listof_netcdf(const std::string& path,  std::map<std::string, boost::shared_ptr<filter_base> > filters = {});
+    void load_from_listof_netcdf(const std::string& path,  std::map<std::string, std::shared_ptr<filter_base> > filters = {});
 
     /// Loads the standard ascii timeseries. Needs to be in UTC+0
     /// @param path
@@ -254,7 +254,7 @@ class metdata
     {
         //if we use text file inputs, each station can have its own filer (ie., winds at different heights). So we need to save the filter
         //and run it on a per-station config.
-        std::vector<boost::shared_ptr<filter_base>> filters;
+        std::vector<std::shared_ptr<filter_base>> filters;
 
         std::string id;
         // these are loaded into by metdata. Essentially this becomes like the old station
@@ -283,7 +283,7 @@ class metdata
         std::unique_ptr<netcdf> _nc;
 
         //if we use netcdf, we need to save the filters and run it once every timestep.
-        std::map<std::string, boost::shared_ptr<filter_base>>_netcdf_filters;
+        std::map<std::string, std::shared_ptr<filter_base>>_netcdf_filters;
 
         std::set<std::string> _provides_from_nc_filters;
 

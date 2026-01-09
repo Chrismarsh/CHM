@@ -24,7 +24,7 @@
 #pragma once
 
 #include <string>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 namespace pt = boost::property_tree;
@@ -180,7 +180,7 @@ public:
     /**
      * Global parameter store
      */
-    boost::shared_ptr<global> global_param;
+    std::shared_ptr<global> global_param;
 
     /**
      * Default constructor
@@ -195,13 +195,13 @@ public:
 		config_file input_cfg = pt::basic_ptree<std::string,std::string>())
       :    ID(name), cfg(input_cfg), IDnum(0),_parallel_type(type)
     {
-        _provides = boost::make_shared<std::vector<variable_info>>();
-        _provides_parameters = boost::make_shared<std::vector<std::string>>();
-        _vectors = boost::make_shared<std::vector<std::string>>();
-        _depends = boost::make_shared<std::vector<variable_info>>();
-        _depends_from_met = boost::make_shared<std::vector<std::string>>();
-        _optional = boost::make_shared<std::vector<std::string>>();
-        _conflicts = boost::make_shared<std::vector<std::string>>(); // modules that we explicitly cannot be run
+        _provides = std::make_shared<std::vector<variable_info>>();
+        _provides_parameters = std::make_shared<std::vector<std::string>>();
+        _vectors = std::make_shared<std::vector<std::string>>();
+        _depends = std::make_shared<std::vector<variable_info>>();
+        _depends_from_met = std::make_shared<std::vector<std::string>>();
+        _optional = std::make_shared<std::vector<std::string>>();
+        _conflicts = std::make_shared<std::vector<std::string>>(); // modules that we explicitly cannot be run
                                                                      // alongside. Use sparingly
         global_param = nullptr;
 
@@ -272,7 +272,7 @@ public:
     /**
     * List of the variables that this module provides.
     */
-    boost::shared_ptr<std::vector<variable_info> > provides()
+    std::shared_ptr<std::vector<variable_info> > provides()
     {
         return _provides;
     }
@@ -280,7 +280,7 @@ public:
     /**
     * List of the vetors that this module provides.
     */
-    boost::shared_ptr<std::vector<std::string> > provides_vector()
+    std::shared_ptr<std::vector<std::string> > provides_vector()
     {
         return _vectors;
     }
@@ -288,7 +288,7 @@ public:
     /**
     * List of the parameters that this module provides.
     */
-    boost::shared_ptr<std::vector<std::string> > provides_parameter()
+    std::shared_ptr<std::vector<std::string> > provides_parameter()
     {
         return _provides_parameters;
     }
@@ -361,7 +361,7 @@ public:
     /**
      * List of the variables from other modules that this module depends upon
      */
-    boost::shared_ptr<std::vector<variable_info>> depends() { return _depends; }
+    std::shared_ptr<std::vector<variable_info>> depends() { return _depends; }
 
     /**
     * Modules we conflict with and absolutely cannot run alongside. Use sparingly.
@@ -374,7 +374,7 @@ public:
         _conflicts->push_back(variable);
     }
 
-    boost::shared_ptr<std::vector<std::string> > conflicts()
+    std::shared_ptr<std::vector<std::string> > conflicts()
     {
         return _conflicts;
     }
@@ -383,7 +383,7 @@ public:
     /**
      * List of the optional depends variables from other modules that this module depends upon
      */
-    boost::shared_ptr<std::vector<std::string> > optionals()
+    std::shared_ptr<std::vector<std::string> > optionals()
     {
         return _optional;
     }
@@ -399,7 +399,7 @@ public:
     /**
     * List of the variables from the met files that this module depends upon
     */
-    boost::shared_ptr<std::vector<std::string> > depends_from_met()
+    std::shared_ptr<std::vector<std::string> > depends_from_met()
     {
         return _depends_from_met;
     }
@@ -504,17 +504,17 @@ public:
 
 protected:
     parallel _parallel_type;
-    boost::shared_ptr<std::vector<variable_info>> _provides;
-    boost::shared_ptr<std::vector<std::string>> _provides_parameters;
-    boost::shared_ptr<std::vector<variable_info>> _depends;
-    boost::shared_ptr<std::vector<std::string>> _depends_from_met;
-    boost::shared_ptr<std::vector<std::string>> _optional;
-    boost::shared_ptr<std::vector<std::string>> _conflicts;
+    std::shared_ptr<std::vector<variable_info>> _provides;
+    std::shared_ptr<std::vector<std::string>> _provides_parameters;
+    std::shared_ptr<std::vector<variable_info>> _depends;
+    std::shared_ptr<std::vector<std::string>> _depends_from_met;
+    std::shared_ptr<std::vector<std::string>> _optional;
+    std::shared_ptr<std::vector<std::string>> _conflicts;
 
     // Currently not used to resolve dependencies
     // This is a list of variables that are stored as x,y,z vectors, such as wind velocities
     // Vector_3 so magnitude needs to be stored in a normal _provides variable
-    boost::shared_ptr<std::vector<std::string>> _vectors;
+    std::shared_ptr<std::vector<std::string>> _vectors;
 
     // lists the options that were found
     std::map<std::string, bool> _optional_found;
@@ -523,7 +523,7 @@ protected:
 /**
 * Convenience typedef for modules.
 */
-typedef boost::shared_ptr<module_base> module;
+typedef std::shared_ptr<module_base> module;
 
 /**
 * Factory related convenience typedef and macros

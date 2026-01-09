@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "logger.hpp"
 #include "triangulation.hpp"
@@ -123,17 +123,17 @@ public:
     struct data : public face_info
     {
         //main snowpack model
-        boost::shared_ptr<Snowpack> sp;
+        std::shared_ptr<Snowpack> sp;
 
         /*
          * This is the PRIMARY data structure of the SNOWPACK program \n
          * It is used extensively not only during the finite element solution but also to control
          */
-        boost::shared_ptr<SnowStation> Xdata;
+        std::shared_ptr<SnowStation> Xdata;
 
-        boost::shared_ptr<SnowpackConfig> Spackconfig;
-        boost::shared_ptr<Meteo> meteo;
-        boost::shared_ptr<Stability> stability;
+        std::shared_ptr<SnowpackConfig> Spackconfig;
+        std::shared_ptr<Meteo> meteo;
+        std::shared_ptr<Stability> stability;
         mio::Config config;
         double cum_precip;
 

@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <tbb/concurrent_vector.h>
 #include <tbb/parallel_sort.h>
 #include "logger.hpp"

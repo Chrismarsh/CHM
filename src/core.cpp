@@ -245,7 +245,7 @@ void core::config_modules(pt::ptree &value, const pt::ptree &config, std::vector
             SPDLOG_DEBUG("No config for {}", module_name);
         }
 
-        boost::shared_ptr<module_base> module = module_factory::create(module_name, cfg);
+        std::shared_ptr<module_base> module = module_factory::create(module_name, cfg);
         //internal tracking of module initialization order
         module->IDnum = modnum;
 
@@ -504,6 +504,51 @@ void core::config_checkpoint( pt::ptree& value)
                     }
                 }
             }
+
+            if (_checkpoint_opts.load_from_checkpoint && !_checkpoint_opts.ugrid_outputs.empty())
+            {
+                // Outputs are configured before we load checkpoint metadata, so apply ugrid state here.
+                // Apply checkpoint ugrid rotation state now that outputs are configured.
+                for (auto &out : _outputs)
+                {
+                    if (out.mesh_output_formats != output_info::mesh_outputs::ugrid)
+                    {
+                        continue;
+                    }
+
+                    const chkptOp::ugrid_output_state* match = nullptr;
+                    for (const auto &state : _checkpoint_opts.ugrid_outputs)
+                    {
+                        if (state.base_name == out.base_name)
+                        {
+                            match = &state;
+                            break;
+                        }
+                    }
+                    if (!match && _checkpoint_opts.ugrid_outputs.size() == 1)
+                    {
+                        match = &_checkpoint_opts.ugrid_outputs.front();
+                    }
+                    if (!match)
+                    {
+                        // Warn if the checkpoint metadata doesn't match the configured ugrid outputs.
+                        SPDLOG_WARN("No checkpoint ugrid state matches base_name={}", out.base_name);
+                        continue;
+                    }
+
+                    if (!match->path.empty())
+                    {
+                        auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(out.writer);
+                        writer->set_store_path(match->path);
+                        SPDLOG_DEBUG("Resuming ugrid output from checkpoint file {}", match->path);
+                    }
+                    if (match->rotate_offset)
+                    {
+                        out.rotate_offset = match->rotate_offset;
+                        SPDLOG_DEBUG("Resuming ugrid rotation with offset {}", *match->rotate_offset);
+                    }
+                }
+            }
         }
 }
 void core::config_forcing(pt::ptree &value)
@@ -597,7 +642,7 @@ void core::config_forcing(pt::ptree &value)
     if(_use_netcdf)
     {
         std::string file = value.get<std::string>("file");
-        std::map<std::string, boost::shared_ptr<filter_base> > netcdf_filters;
+        std::map<std::string, std::shared_ptr<filter_base> > netcdf_filters;
         try
         {
             auto filter_section = value.get_child("filter");
@@ -607,7 +652,7 @@ void core::config_forcing(pt::ptree &value)
                 auto filter_name = jtr.first.data();
                 auto cfg  = jtr.second;
 
-                boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
+                std::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
                 filter->init();
                 netcdf_filters[filter_name] = filter;
             }
@@ -688,7 +733,7 @@ void core::config_forcing(pt::ptree &value)
                         auto filter_name = jtr.first.data();
                         auto cfg = jtr.second;
 
-                        boost::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
+                        std::shared_ptr<filter_base> filter = filter_factory::create(filter_name,cfg);
                         filter->init();
 
                         //save this filter to run later
@@ -832,7 +877,7 @@ bool core::config_meshes( pt::ptree &value)
 {
     SPDLOG_DEBUG("Found meshes sections");
 
-    _mesh = boost::make_shared<triangulation>();
+    _mesh = std::make_shared<triangulation>();
 
     _mesh->_global = _global;
 
@@ -1192,7 +1237,7 @@ void core::config_output(pt::ptree &value)
                 boost::filesystem::create_directories(f.parent_path());
                 out.fname = f.string();
                 out.mesh_output_formats = output_info::mesh_outputs::vtu;
-                out.writer = boost::make_shared<vtk_writer>(_mesh);
+                out.writer = std::make_shared<vtk_writer>(_mesh);
             }
             else
             {
@@ -1216,15 +1261,15 @@ void core::config_output(pt::ptree &value)
                 out.mesh_output_formats = output_info::mesh_outputs::ugrid;
                 out.fname = ugrid_path.string();
 
-                out.writer = boost::make_shared<ugrid_writer>(
+                out.writer = std::make_shared<ugrid_writer>(
                     _mesh,
                     _global,
                     _mesh->write_param_to_output(),
                     out.fname,
                     use_zarr);
 
-                boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)->compress = itr.second.get<bool>("compress", true);
-                boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)->bitgroom = itr.second.get<bool>("bitgroom", true);
+                boost::get<std::shared_ptr<ugrid_writer>>(out.writer)->compress = itr.second.get<bool>("compress", true);
+                boost::get<std::shared_ptr<ugrid_writer>>(out.writer)->bitgroom = itr.second.get<bool>("bitgroom", true);
 
             }
 
@@ -1239,7 +1284,7 @@ void core::config_output(pt::ptree &value)
             out.write_ghost_neighbors = write_ghost;
             if (out.mesh_output_formats == output_info::mesh_outputs::vtu)
             {
-                boost::get<boost::shared_ptr<vtk_writer>>(out.writer)->set_write_ghost_neighbors(write_ghost);
+                boost::get<std::shared_ptr<vtk_writer>>(out.writer)->set_write_ghost_neighbors(write_ghost);
             }
 
             out.frequency = itr.second.get_optional<size_t>("frequency"); //defaults to every timestep
@@ -1282,37 +1327,6 @@ void core::config_output(pt::ptree &value)
                 }
                 boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)
                     ->set_chunking_override(chunk_len_steps, chunk_target_mb);
-            }
-
-            if (_checkpoint_opts.load_from_checkpoint && out.mesh_output_formats == output_info::mesh_outputs::ugrid)
-            {
-                // Restore the output path and rotation offset captured in the checkpoint metadata.
-                const chkptOp::ugrid_output_state* match = nullptr;
-                for (const auto &state : _checkpoint_opts.ugrid_outputs)
-                {
-                    if (state.base_name == out.base_name)
-                    {
-                        match = &state;
-                        break;
-                    }
-                }
-                if (!match && _checkpoint_opts.ugrid_outputs.size() == 1)
-                {
-                    match = &_checkpoint_opts.ugrid_outputs.front();
-                }
-                if (match)
-                {
-                    if (!match->path.empty())
-                    {
-                        auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(out.writer);
-                        writer->set_store_path(match->path);
-                        SPDLOG_DEBUG("Resuming ugrid output from checkpoint file {}", match->path);
-                    }
-                    if (match->rotate_offset)
-                    {
-                        out.rotate_offset = match->rotate_offset;
-                    }
-                }
             }
 
             auto specific_datetime = itr.second.get_optional<std::string>("specific_datetime");
@@ -1538,7 +1552,7 @@ void core::init(int argc, char **argv)
     SPDLOG_DEBUG("Logger initialized. Writing to cout and {}",  log_name);
 
 
-    _global = boost::make_shared<global>();
+    _global = std::make_shared<global>();
 
     // This needs to be set so that underflows in gsl math
     // computations are not treated as errors. i.e.,
@@ -2567,7 +2581,7 @@ void core::run()
                 pt::ptree entry;
                 entry.put("base_name", out.base_name);
 
-                auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(out.writer);
+                auto& writer = boost::get<std::shared_ptr<ugrid_writer>>(out.writer);
                 entry.put("path", writer->store_path());
 
                 if (out.rotate_frequency)
@@ -2625,7 +2639,7 @@ void core::run()
                     {
                         std::string base_name = itr.fname + std::to_string(_global->posix_time_int());
                         boost::filesystem::path p(base_name);
-                        auto& writer = boost::get<boost::shared_ptr<vtk_writer>>(itr.writer);
+                        auto& writer = boost::get<std::shared_ptr<vtk_writer>>(itr.writer);
                         writer->set_write_ghost_neighbors(itr.write_ghost_neighbors);
                         writer->update_data(output);
 
@@ -2656,7 +2670,7 @@ void core::run()
                         // first, check if we need a new ugrid file
                         bool new_ugrid = itr.should_rotate(max_ts, current_ts, _global->_current_date);
 
-                        auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(itr.writer);
+                        auto& writer = boost::get<std::shared_ptr<ugrid_writer>>(itr.writer);
                         if (new_ugrid)
                         {
                             auto rotated_path = [&]() {
@@ -2775,7 +2789,7 @@ void core::run()
 
         if (itr.mesh_output_formats == output_info::mesh_outputs::ugrid)
         {
-            boost::get<boost::shared_ptr<ugrid_writer>>(itr.writer)->close_ugrid();
+            boost::get<std::shared_ptr<ugrid_writer>>(itr.writer)->close_ugrid();
         }
     }
 

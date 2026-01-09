@@ -27,7 +27,7 @@
 #include <vector>
 #include <functional>
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "exception.hpp"
 
@@ -35,7 +35,7 @@ template <class Interface, class... ConstructorArgs>
 class factory {
 public:
   // Only ever hand out unique pointers
-  static boost::shared_ptr<Interface> create(std::string name, ConstructorArgs... args);
+  static std::shared_ptr<Interface> create(std::string name, ConstructorArgs... args);
   // Actual registration function
   static void register_factory_function(std::string name,
         std::function<Interface*(ConstructorArgs...)> implementation_constructor_function);
@@ -62,7 +62,7 @@ public:
 };
 
 template <class Interface, class... ConstructorArgs>
-boost::shared_ptr<Interface> factory<Interface,ConstructorArgs...>::create(std::string name, ConstructorArgs... args)
+std::shared_ptr<Interface> factory<Interface,ConstructorArgs...>::create(std::string name, ConstructorArgs... args)
 {
   Interface * instance = nullptr;
 
@@ -75,7 +75,7 @@ boost::shared_ptr<Interface> factory<Interface,ConstructorArgs...>::create(std::
   if(instance == nullptr) {
     CHM_THROW_EXCEPTION(module_not_found, "Requested module not found in registry: [" + name +"]");
   }
-  return boost::shared_ptr<Interface>(instance);
+  return std::shared_ptr<Interface>(instance);
 }
 
 template <class Interface, class... ConstructorArgs>

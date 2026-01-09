@@ -1067,7 +1067,7 @@ void triangulation::_build_dDtree()
     }
 
     //make the search tree
-    dD_tree = boost::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
+    dD_tree = std::make_shared<Tree>(boost::make_zip_iterator(boost::make_tuple( center_points.begin(),_faces.begin() )),
                                        boost::make_zip_iterator(boost::make_tuple( center_points.end(),  _faces.end() ) )
     );
 }
@@ -2491,9 +2491,9 @@ double triangulation::min_z()
     return _min_z;
 }
 
-boost::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
+std::shared_ptr<segmented_AABB> triangulation::AABB(size_t rows, size_t cols)
 {
-boost::shared_ptr<segmented_AABB> AABB = boost::make_shared<segmented_AABB>();
+std::shared_ptr<segmented_AABB> AABB = std::make_shared<segmented_AABB>();
 AABB->make(this,rows,cols);
 return AABB;
 
