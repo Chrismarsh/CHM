@@ -35,7 +35,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp> // for boost::posix
 
 #include <boost/variant.hpp>
-#include <boost/make_shared.hpp>
+#include <memory>
 #include <boost/lexical_cast.hpp>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/utility.hpp>
@@ -298,7 +298,7 @@ private:
      std::ptrdiff_t distance_to(iterator const& other) const;
 
      //iterators for the current step
-     boost::shared_ptr<timestep> _currentStep;
+     std::shared_ptr<timestep> _currentStep;
 
  };
 

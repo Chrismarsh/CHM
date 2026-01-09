@@ -18,7 +18,7 @@
 #include <netcdf.h>
 #include <netcdf_par.h>
 #include <boost/mpi.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <algorithm>
 #include <vector>
 #include <string>
@@ -37,7 +37,7 @@
 class ugrid_writer
 {
 public:
-    ugrid_writer(mesh m, boost::shared_ptr<global> g, bool write_parameters, std::string fname, bool use_zarr = false);
+    ugrid_writer(mesh m, std::shared_ptr<global> g, bool write_parameters, std::string fname, bool use_zarr = false);
     ~ugrid_writer();
 
     /**
@@ -79,7 +79,7 @@ private:
     size_t _time_index;
 
     mesh _mesh;
-    boost::shared_ptr<global> _global;
+    std::shared_ptr<global> _global;
 
     boost::mpi::communicator _comm_world;
 

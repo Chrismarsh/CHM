@@ -364,7 +364,7 @@ void Lehning_snowpack::init(mesh& domain)
         }
         
 
-        d.Spackconfig = boost::make_shared<SnowpackConfig>(d.config);
+        d.Spackconfig = std::make_shared<SnowpackConfig>(d.config);
 
         d.cum_precip=0.;
 
@@ -423,7 +423,7 @@ void Lehning_snowpack::init(mesh& domain)
 
         SSdata.ErosionLevel = cfg.get<double>("sno.ErosionLevel",0);
 
-        d.Xdata = boost::make_shared<SnowStation>(false,false);
+        d.Xdata = std::make_shared<SnowStation>(false,false);
         d.Xdata->initialize(SSdata,0);
 //        d.Xdata->cos_sl = 1;
 //        d.Xdata->windward = false;
@@ -431,9 +431,9 @@ void Lehning_snowpack::init(mesh& domain)
 //        d.Xdata->hn = 0;
 //        d.Xdata->mH = 0;
 
-        d.sp = boost::make_shared<Snowpack>(*(d.Spackconfig));
-        d.meteo = boost::make_shared<Meteo>( (d.config));
-        d.stability = boost::make_shared<Stability> ( (d.config), false);
+        d.sp = std::make_shared<Snowpack>(*(d.Spackconfig));
+        d.meteo = std::make_shared<Meteo>( (d.config));
+        d.stability = std::make_shared<Stability> ( (d.config), false);
 
         d.sum_subl = 0;
 

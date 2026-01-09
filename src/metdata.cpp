@@ -55,7 +55,7 @@ metdata::~metdata()
 
 }
 
-void metdata::load_from_listof_netcdf(const std::string& path, std::map<std::string, boost::shared_ptr<filter_base> > filters)
+void metdata::load_from_listof_netcdf(const std::string& path, std::map<std::string, std::shared_ptr<filter_base> > filters)
 {
     _is_multipart_nc = true;
     SPDLOG_DEBUG("Loading forcing from list of netcdf file");
@@ -97,7 +97,7 @@ void metdata::load_from_listof_netcdf(const std::string& path, std::map<std::str
 
 }
 
-void metdata::load_from_netcdf(const std::string& path, std::map<std::string, boost::shared_ptr<filter_base> > filters, bool preserve_current_ts)
+void metdata::load_from_netcdf(const std::string& path, std::map<std::string, std::shared_ptr<filter_base> > filters, bool preserve_current_ts)
 {
     if(_mesh_proj4 == "")
     {

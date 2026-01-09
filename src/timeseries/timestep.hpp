@@ -65,7 +65,7 @@ public:
     /**
     * Copy const.
     */
-    timestep(const boost::shared_ptr<timestep> src);
+    timestep(const std::shared_ptr<timestep> src);
 
     ~timestep();
 

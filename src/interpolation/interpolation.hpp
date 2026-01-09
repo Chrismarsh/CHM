@@ -29,8 +29,8 @@
 
 #include <vector>
 #include <boost/tuple/tuple.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+#include <memory>
+
 
 #include "logger.hpp"
 enum interp_alg
@@ -56,7 +56,7 @@ public:
     void init(interp_alg ia, size_t size=0, std::map<std::string,std::string> config = std::map<std::string,std::string>());
 
     double operator()(std::vector< boost::tuple<double,double,double> >& sample_points, boost::tuple<double,double,double>& query_point);
-    boost::shared_ptr<interp_base> base;
+    std::shared_ptr<interp_base> base;
 private:
 
     size_t size;

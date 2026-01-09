@@ -60,13 +60,13 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/topological_sort.hpp>
-#include <boost/make_shared.hpp>
+#include <memory>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/regex.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/tokenizer.hpp>
 #include <boost/tuple/tuple.hpp>
 namespace pt = boost::property_tree;
@@ -299,7 +299,7 @@ protected:
     std::vector< std::pair<module,size_t> > _modules;
     std::vector< std::vector < module> > _chunked_modules;
     std::vector< std::pair<std::string,std::string> > _overrides;
-    boost::shared_ptr<global> _global;
+    std::shared_ptr<global> _global;
 
     bool _use_netcdf; // flag if we are using netcdf. If we are, it enables incremental reads of the netcdf file for speed.
     std::shared_ptr<metdata> _metdata; //met data loader, shared for use with boost::bind

@@ -718,12 +718,12 @@ void timeseries::iterator::decrement()
 
 timeseries::iterator::iterator()
 {
-    _currentStep = boost::make_shared<timestep>();
+    _currentStep = std::make_shared<timestep>();
 }
 
 timeseries::iterator::iterator(const iterator& src)
 {
-    _currentStep = boost::make_shared<timestep>(src._currentStep);
+    _currentStep = std::make_shared<timestep>(src._currentStep);
 }
 
 timeseries::iterator::~iterator()
@@ -735,7 +735,7 @@ timeseries::iterator& timeseries::iterator::operator=(const timeseries::iterator
 {
     if (this == &rhs)
         return (*this);
-    _currentStep = boost::make_shared<timestep>(rhs._currentStep);
+    _currentStep = std::make_shared<timestep>(rhs._currentStep);
     return *this;
 }
 

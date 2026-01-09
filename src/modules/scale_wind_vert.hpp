@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <physics/Atmosphere.h>
 #include "module_base.hpp"
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include "logger.hpp"
 #include <string>
 #include <math.h>

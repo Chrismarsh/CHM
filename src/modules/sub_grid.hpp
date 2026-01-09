@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include "module_base.hpp"
 #include "logger.hpp"
 #include <string>

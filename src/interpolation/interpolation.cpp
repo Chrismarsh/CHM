@@ -34,15 +34,15 @@ void interpolation::init(interp_alg ia, size_t size,std::map<std::string,std::st
 
     if (ia == interp_alg::tpspline)
     {
-        base = boost::make_shared<thin_plate_spline>(size,config);
+        base = std::make_shared<thin_plate_spline>(size,config);
     }
     else if(ia == interp_alg::idw)
     {
-        base = boost::make_shared<inv_dist>();
+        base = std::make_shared<inv_dist>();
     }
     else if(ia == interp_alg::nearest_sta)
     {
-        base = boost::make_shared<nearest>();
+        base = std::make_shared<nearest>();
     }
     else
     {

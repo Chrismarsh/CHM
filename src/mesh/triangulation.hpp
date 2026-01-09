@@ -87,7 +87,7 @@ inline int omp_get_max_threads() { return 1;}
 
 // boost includes
 #include <boost/lexical_cast.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/tuple/tuple.hpp>
 #include <boost/ptr_container/ptr_map.hpp>
 #include <boost/filesystem/path.hpp>
@@ -379,7 +379,7 @@ public:
     * Returns the underlying timeseries object
     * \return Pointer to the underlying timeseries
     */
-    boost::shared_ptr<timeseries> get_underlying_timeseries();
+    std::shared_ptr<timeseries> get_underlying_timeseries();
 
     /**
     * Returns the iterator of the current timestep.
@@ -510,8 +510,8 @@ private:
     //const so we can't modify the domain via this as thar be dragons
     triangulation* _domain;
 
-    boost::shared_ptr<Point_3> _center;
-    boost::shared_ptr<Vector_3> _normal;
+    std::shared_ptr<Point_3> _center;
+    std::shared_ptr<Vector_3> _normal;
 
 
     variablestorage<double> _variables;
@@ -521,7 +521,7 @@ private:
     variablestorage<double> _initial_conditions;
     variablestorage< Vector_3> _module_face_vectors; //holds vector components, currently no checks on anything. Proceed with caution.
 
-    boost::shared_ptr<timeseries> _data;
+    std::shared_ptr<timeseries> _data;
     timeseries::iterator _itr;
 
     std::vector<std::shared_ptr<station>> _stations;
@@ -534,7 +534,7 @@ typedef face<Gt> Fb; //custom face class
 typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Delaunay;
 
 typedef Delaunay::Face_handle mesh_elem;
-typedef boost::shared_ptr<tbb::concurrent_vector<double>  > vector;
+typedef std::shared_ptr<tbb::concurrent_vector<double>  > vector;
 
 //search tree typedefs
 //http://doc.cgal.org/latest/Spatial_searching/index.html
@@ -577,7 +577,7 @@ public:
     * \param rows number of rows in the AABB
     * \param cols number of cols in the AABB
     */
-    boost::shared_ptr<segmented_AABB> AABB(size_t rows, size_t cols);
+    std::shared_ptr<segmented_AABB> AABB(size_t rows, size_t cols);
 
     /**
     * Loads a mesh from file. Should by x y z values with no header, space delimited.
@@ -877,7 +877,7 @@ public:
 
     //holds the spatial search tree
     //http://doc.cgal.org/latest/Spatial_searching/index.html
-    boost::shared_ptr<Tree> dD_tree;
+    std::shared_ptr<Tree> dD_tree;
 
     /**
      * Should parameters on triangles be written to output files (vtu / ugrid)
@@ -922,7 +922,7 @@ public:
     double max_z();
 
     //Point to the global object that contains paramter information.
-    boost::shared_ptr<global> _global;
+    std::shared_ptr<global> _global;
 
     //this holds the parameters that we load
     //however, core might have found some parameters from modules
@@ -1166,7 +1166,7 @@ protected:
 * \typedef mesh
 * Provides a convenience typedef for passing around mesh pointers.
 */
-typedef boost::shared_ptr<triangulation> mesh;
+typedef std::shared_ptr<triangulation> mesh;
 
 /**
 * \class rect
@@ -1352,7 +1352,7 @@ face<Gt, Fb>::face()
 {
     _slope = -1;
     _azimuth = -1;
-    _data = boost::make_shared<timeseries>();
+    _data = std::make_shared<timeseries>();
     _center = NULL;
     _normal = NULL;
     _area = -1.;
@@ -1370,7 +1370,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
 {
     _slope = -1;
     _azimuth = -1;
-    _data = boost::make_shared<timeseries>();
+    _data = std::make_shared<timeseries>();
     _center = NULL;
     _normal = NULL;
     _area = -1.;
@@ -1389,7 +1389,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
 {
     _slope = -1;
     _azimuth = -1;
-    _data = boost::make_shared<timeseries>();
+    _data = std::make_shared<timeseries>();
     _center = NULL;
     _normal = NULL;
     _area = -1.;
@@ -1411,7 +1411,7 @@ face<Gt, Fb>::face(Vertex_handle v0,
 {
     _slope = -1;
     _azimuth = -1;
-    _data = boost::make_shared<timeseries>();
+    _data = std::make_shared<timeseries>();
     _center = NULL;
     _normal = NULL;
     _area = -1.;
@@ -1559,11 +1559,11 @@ Vector_3 face<Gt, Fb>::normal()
             CGAL::Point_3<K> v1(this->vertex(1)->point()[0]*100000., this->vertex(1)->point()[1]*100000.,this->vertex(1)->point()[2]);
             CGAL::Point_3<K> v2(this->vertex(2)->point()[0]*100000., this->vertex(2)->point()[1]*100000.,this->vertex(2)->point()[2]);
 
-            _normal = boost::make_shared<Vector_3>(CGAL::unit_normal(v0, v1, v2));
+            _normal = std::make_shared<Vector_3>(CGAL::unit_normal(v0, v1, v2));
 
         }
         else
-            _normal = boost::make_shared<Vector_3>(CGAL::unit_normal(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
+            _normal = std::make_shared<Vector_3>(CGAL::unit_normal(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
     }
 
     return *_normal;
@@ -1574,7 +1574,7 @@ Point_3 face<Gt, Fb>::center()
 {
     if (!_center)
     {
-        _center = boost::make_shared<Point_3>(CGAL::centroid(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
+        _center = std::make_shared<Point_3>(CGAL::centroid(this->vertex(0)->point(), this->vertex(1)->point(), this->vertex(2)->point()));
         _x=_center->x();
         _y=_center->y();
         _z=_center->z();
@@ -1776,7 +1776,7 @@ double face<Gt, Fb>::get_z()
     return _z;
 }
 template < class Gt, class Fb>
-boost::shared_ptr<timeseries> face<Gt, Fb>::get_underlying_timeseries()
+std::shared_ptr<timeseries> face<Gt, Fb>::get_underlying_timeseries()
 {
     return _data;
 }

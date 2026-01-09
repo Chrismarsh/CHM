@@ -260,7 +260,7 @@ void WindNinja::init(mesh& domain)
             tmp.put("incl_snw",false);
         }
 
-        Sx = boost::dynamic_pointer_cast<Winstral_parameters>(module_factory::create("Winstral_parameters",tmp));
+        Sx = std::dynamic_pointer_cast<Winstral_parameters>(module_factory::create("Winstral_parameters",tmp));
     }
 }
 

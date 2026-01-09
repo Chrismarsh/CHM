@@ -19,7 +19,7 @@ station.
 
 .. code:: cpp
 
-   void process(boost::shared_ptr<station> station);
+   void process(std::shared_ptr<station> station);
 
 init()
 ~~~~~~~~~~

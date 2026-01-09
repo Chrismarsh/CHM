@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include "logger.hpp"
 #include "module_base.hpp"
 #include <meteoio/MeteoIO.h>
