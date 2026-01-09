@@ -538,7 +538,7 @@ void core::config_checkpoint( pt::ptree& value)
 
                     if (!match->path.empty())
                     {
-                        auto& writer = boost::get<boost::shared_ptr<ugrid_writer>>(out.writer);
+                        auto& writer = boost::get<std::shared_ptr<ugrid_writer>>(out.writer);
                         writer->set_store_path(match->path);
                         SPDLOG_DEBUG("Resuming ugrid output from checkpoint file {}", match->path);
                     }
@@ -1305,7 +1305,7 @@ void core::config_output(pt::ptree &value)
 
             if (out.mesh_output_formats == output_info::mesh_outputs::ugrid)
             {
-                boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)
+                boost::get<std::shared_ptr<ugrid_writer>>(out.writer)
                     ->set_output_cadence(out.frequency, out.only_last_n, out.rotate_frequency);
             }
 
@@ -1325,7 +1325,7 @@ void core::config_output(pt::ptree &value)
                 {
                     CHM_THROW_EXCEPTION(config_error, "chunk_target_mb must be > 0 for ugrid output");
                 }
-                boost::get<boost::shared_ptr<ugrid_writer>>(out.writer)
+                boost::get<std::shared_ptr<ugrid_writer>>(out.writer)
                     ->set_chunking_override(chunk_len_steps, chunk_target_mb);
             }
 
