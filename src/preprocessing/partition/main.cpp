@@ -113,7 +113,7 @@ class preprocessingTriangulation : public triangulation
         // Wrap `this` in a non-owning shared_ptr so we can pass the base mesh type.
         // via a no-op deleter
         auto self = std::shared_ptr<preprocessingTriangulation>(this, [](preprocessingTriangulation*) {});
-        auto base = boost::static_pointer_cast<triangulation>(self);
+        auto base = std::static_pointer_cast<triangulation>(self);
         vtk_writer writer(base, true, true);
         writer.set_write_ghost_neighbors(_write_ghost_neighbors_to_vtu);
         writer.update_data(output_variables);
