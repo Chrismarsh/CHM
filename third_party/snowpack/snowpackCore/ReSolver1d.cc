@@ -792,7 +792,8 @@ void ReSolver1d::SolveRichardsEquation(SnowStation& Xdata, SurfaceFluxes& Sdata)
 	//Initializations for summarizing statistics and some supporting variables, like indices, counters, etc.
 	double accuracy=0.;				//Keeps track of reached accuracy.
 	int niter=0;					//Counts iterations within one time step of the Richards solver
-	int niter_snowpack_dt=0;			//Counts iterations within one time step of the SNOWPACK time domain
+	// Commented to remove set but not used compiler warning
+    // int niter_snowpack_dt=0;			//Counts iterations within one time step of the SNOWPACK time domain
 	int niter_nrewinds=0;				//Counts number of rewinds (i.e. a solution was not found and it is tried again with a smaller time step)
 	int niter_seqrewinds=0;				//Counts number of sequential rewinds. We then decrease the time step more, when we encounter sequential rewinds.
 	int seq_safemode=0;				//Counts the number of sequential SafeMode actions
@@ -1461,7 +1462,7 @@ void ReSolver1d::SolveRichardsEquation(SnowStation& Xdata, SurfaceFluxes& Sdata)
 
 		while (boolConvergence==false && DoRewindFlag==false) {			//In theory, this can create an endless loop, but for this, I put a throw in the code when no convergence is achieved, because then the situation is hopeless anyway.
 			niter++;
-			niter_snowpack_dt++;
+			// niter_snowpack_dt++;
 			memstate++;
 			int solver_result=0;
 

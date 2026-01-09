@@ -61,7 +61,8 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 {
 	va_list argptr; // get an arg ptr
 
-	int msg_ok = 0;
+    // Commented to remove set but not used compiler warning
+	// int msg_ok = 0;
 
 	// Initialize argptr to point to the first argument after the format string
 //	va_start(argptr, format);
@@ -95,35 +96,24 @@ void prn_msg(const char *theFile, const int theLine, const char *msg_type, const
 	//printf("¬"); //if we need multiline output, use a special char as bloc delimiter
 	if (strcmp(msg_type, "err") == 0) {
 		spdlog::error(orig_msg);
-		msg_ok=1;
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "wrn") == 0) {
 		spdlog::warn(orig_msg);
-		msg_ok=1;
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg+") == 0) {
                 spdlog::debug(orig_msg);
-		msg_ok=1;
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg-") == 0) {
                 spdlog::debug(orig_msg);
-		msg_ok=1;
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg") == 0) {
                 spdlog::debug(orig_msg);
-		msg_ok=1;
+		// msg_ok=1;
 	}
-
-//	if (msg_ok) {
-//		vfprintf(stdout, format, argptr);
-//	} else {
-//		fprintf(stdout, "[W] [%s] [%s:%d] Message type '%s' unknown!", currentdate.c_str(), theFile, theLine, msg_type);
-//	}
-
-	//fprintf(stdout, "\n");
-
-	// Clear ptr
-//	va_end(argptr);
 }
 
 /**
@@ -451,14 +441,14 @@ bool massBalanceCheck(const SnowStation& Xdata, const SurfaceFluxes& Sdata, doub
  */
 double forcedErosion(const double hs, SnowStation& Xdata)
 {
-	int    nErode=0;        // Counters
+	// int    nErode=0;        // Counters
 	double massErode=0.;    // Eroded mass (kg m-2)
 
 	while ( (Xdata.getNumberOfElements() > Xdata.SoilNode) && (hs + 0.01) < (Xdata.cH - Xdata.Ground) ) {
 		massErode += Xdata.Edata[Xdata.getNumberOfElements()-1].M;
 		Xdata.cH -= Xdata.Edata[Xdata.getNumberOfElements()-1].L;
 		Xdata.resize(Xdata.getNumberOfElements() - 1);
-		nErode++;
+		// nErode++;
 	}
 	Xdata.ErosionLevel = std::min(Xdata.getNumberOfElements()-1, Xdata.ErosionLevel);
 

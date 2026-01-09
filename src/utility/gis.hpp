@@ -26,6 +26,7 @@
 #include <vector>
 #include <tuple>
 #include <string>
+#include <format>
 
 #include "exception.hpp"
 

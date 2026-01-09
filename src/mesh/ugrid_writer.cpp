@@ -17,10 +17,10 @@
 #include "ugrid_writer.hpp"
 
 ugrid_writer::ugrid_writer(mesh m, std::shared_ptr<global> g, bool write_parameters, std::string fname, bool use_zarr):
-    _mesh(m),
     _fname(""),
     _store_path(std::move(fname)),
     _use_zarr(use_zarr),
+    _mesh(m),
     _global(g),
     _write_parameters(write_parameters)
 {
@@ -435,7 +435,8 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     if (status != NC_NOERR)
     {
         SPDLOG_ERROR("nc_create_par={}", status);
-        CHM_THROW_EXCEPTION(file_write_error, "Failed to create ugrid output file, error="+status);
+        std::string err = std::format("Failed to create ugrid output file, error = {}",status);
+        CHM_THROW_EXCEPTION(file_write_error, err);
     }
 
     // We also only have per-rank vertex IDs (they aren't global)

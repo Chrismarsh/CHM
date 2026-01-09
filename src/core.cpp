@@ -23,9 +23,6 @@
 
 #include "core.hpp"
 
-#include "mesh/vtk_writer.hpp"
-
-
 core::core()
 {
 
@@ -2216,11 +2213,16 @@ void core::_determine_module_dep()
     std::string font = "Helvetica";
     int fontsize = 11;
 
-    std::string edge_str = "E[edgetype == \"%s\"] {\n color=\"/paired12/%i\";\n fontsize=%i;\n     fontname=\"%s\"\n }";
     int idx = 1;
     for (const auto& itr : graphviz_vars)
     {
-        std::string edge = str_format(edge_str, itr.c_str(), idx, fontsize, font.c_str());
+        std::string edge = std::format(
+                "E[edgetype = \"{}\"] {{\n color=\"/paired12/{}\";\n fontsize={};\n     fontname=\"{}\"\n }}",
+                itr,
+                idx,
+                fontsize,
+                font
+                );
         idx++;
         gvpr << edge << std::endl;
     }
@@ -2421,7 +2423,8 @@ void core::run()
         ss << _global->posix_time();
 
         c.tic();
-        size_t chunks = 0;
+        // Commented to remove set but not used compiler warnings
+        // size_t chunks = 0;
         try
         {
             for (auto &itr : _chunked_modules)
@@ -2466,7 +2469,7 @@ void core::run()
                     }
                 }
 
-                chunks++;
+                // chunks++;
 
             }
         }

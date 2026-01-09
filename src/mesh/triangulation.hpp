@@ -569,7 +569,7 @@ public:
     friend class vtk_writer;
 
     triangulation();
-    ~triangulation();
+    virtual ~triangulation();
 
 
     /**
