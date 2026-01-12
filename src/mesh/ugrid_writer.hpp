@@ -44,7 +44,7 @@ public:
      * Check a netcdf C call's return value and convert to exception if needed
      * @param status
      */
-    void nc_chk_ret(int status);
+    void nc_chk_ret(int status) const;
 
     void close_ugrid();
     void write_ugrid(const std::vector<std::string>& output_variables);

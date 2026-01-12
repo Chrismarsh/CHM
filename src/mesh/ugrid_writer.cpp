@@ -16,6 +16,8 @@
 
 #include "ugrid_writer.hpp"
 
+#include <limits>
+
 ugrid_writer::ugrid_writer(mesh m, std::shared_ptr<global> g, bool write_parameters, std::string fname, bool use_zarr):
     _fname(""),
     _store_path(std::move(fname)),
@@ -44,7 +46,7 @@ ugrid_writer::~ugrid_writer()
 
 }
 
-void ugrid_writer::nc_chk_ret(int status)
+void ugrid_writer::nc_chk_ret(int status) const
 {
     if (status != NC_NOERR)
     {
@@ -534,6 +536,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     nc_chk_ret(nc_put_att_text(_ugrid_fid, time_varid, "standard_name", strlen("time"), "time"));
     nc_chk_ret( nc_put_att_text(_ugrid_fid, time_varid, "long_name", strlen("Time"), "Time"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, time_varid, "units", strlen("minutes since 1970-01-01 00:00:00"), "minutes since 1970-01-01 00:00:00"));
+    nc_chk_ret(nc_put_att_double(_ugrid_fid, time_varid, "_FillValue", NC_DOUBLE, 1, &    double nan_value = NAN; // IEEE NaN));
 
     int var_Mesh2, var_Mesh2_face_nodes, var_Mesh2_node_x, var_Mesh2_node_y, var_Mesh2_node_z, var_Mesh2_node_z_PV;
     int dims_face_nodes[2] = {dim_Mesh2_face, dim_three};
@@ -559,6 +562,10 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "cf_role", strlen("face_node_connectivity"), "face_node_connectivity"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_nodes, "long_name",
         strlen("Maps every triangular face to its three corner nodes."), "Maps every triangular face to its three corner nodes."));
+    {
+        unsigned int uint_fill = std::numeric_limits<unsigned int>::max();
+        nc_chk_ret(nc_put_att_uint(_ugrid_fid, var_Mesh2_face_nodes, "_FillValue", NC_UINT, 1, &uint_fill));
+    }
     // UGRID recommends start_index attribute; indices are 0-based here
     {
         int start_index = 0;
@@ -566,7 +573,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     }
 
     // Mesh2_node_x
-    double nan_value = NAN; // IEEE NaN
+
     nc_chk_ret(nc_def_var(_ugrid_fid, "Mesh2_node_x", NC_DOUBLE, 1, dims_node, &var_Mesh2_node_x));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "standard_name", strlen("longitude"), "longitude"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_node_x, "long_name", strlen("Longitude of 2D mesh nodes."), "Longitude of 2D mesh nodes."));
@@ -608,11 +615,19 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_global_id, "mesh", strlen("Mesh2"), "Mesh2"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_global_id, "location", strlen("face"), "face"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_global_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y"));
+    {
+        unsigned long long uint64_fill = std::numeric_limits<unsigned long long>::max();
+        nc_chk_ret(nc_put_att_ulonglong(_ugrid_fid, var_global_id, "_FillValue", NC_UINT64, 1, &uint64_fill));
+    }
 
     nc_chk_ret(nc_def_var(_ugrid_fid, "local_id", NC_UINT64, 1, &dim_Mesh2_face, &var_local_id));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_local_id, "mesh", strlen("Mesh2"), "Mesh2"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_local_id, "location", strlen("face"), "face"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_local_id, "coordinates", strlen("Mesh2_face_x Mesh2_face_y"), "Mesh2_face_x Mesh2_face_y"));
+    {
+        unsigned long long uint64_fill = std::numeric_limits<unsigned long long>::max();
+        nc_chk_ret(nc_put_att_ulonglong(_ugrid_fid, var_local_id, "_FillValue", NC_UINT64, 1, &uint64_fill));
+    }
 
     nc_chk_ret(nc_def_var(_ugrid_fid, "Mesh2_face_x", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_x));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "standard_name", strlen("longitude"), "longitude"));
@@ -620,6 +635,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
         strlen("Characteristics longitude of 2D mesh triangle (e.g. circumcenter coordinate)."),
         "Characteristics longitude of 2D mesh triangle (e.g. circumcenter coordinate)."));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_x, "units", strlen("degrees_east"), "degrees_east"));
+    nc_chk_ret(nc_put_att_double(_ugrid_fid, var_Mesh2_face_x, "_FillValue", NC_DOUBLE, 1, &nan_value));
 
     nc_chk_ret(nc_def_var(_ugrid_fid, "Mesh2_face_y", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_y));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "standard_name", strlen("latitude"), "latitude"));
@@ -627,6 +643,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
         strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."),
         "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_y, "units", strlen("degrees_north"), "degrees_north"));
+    nc_chk_ret(nc_put_att_double(_ugrid_fid, var_Mesh2_face_y, "_FillValue", NC_DOUBLE, 1, &nan_value));
 
     nc_chk_ret(nc_def_var(_ugrid_fid, "Mesh2_face_z", NC_DOUBLE, 1, &dim_Mesh2_face, &var_Mesh2_face_z));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "standard_name", strlen("altitude"), "altitude"));
@@ -634,6 +651,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
         strlen("Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."),
         "Characteristics latitude of 2D mesh triangle (e.g. circumcenter coordinate)."));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, var_Mesh2_face_z, "units", strlen("m"), "m"));
+    nc_chk_ret(nc_put_att_double(_ugrid_fid, var_Mesh2_face_z, "_FillValue", NC_DOUBLE, 1, &nan_value));
 
 
     // bitgroom sigfigs
@@ -714,6 +732,10 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
         nc_chk_ret(nc_def_var_chunking(_ugrid_fid, param_id["owner"], NC_CHUNKED, owner_chunks));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id["owner"], "mesh", strlen("Mesh2"), "Mesh2"));
         nc_chk_ret(nc_put_att_text(_ugrid_fid, param_id["owner"], "location", strlen("face"), "face"));
+        {
+            int int_fill = std::numeric_limits<int>::max();
+            nc_chk_ret(nc_put_att_int(_ugrid_fid, param_id["owner"], "_FillValue", NC_INT, 1, &int_fill));
+        }
         nc_chk_ret(nc_var_par_access(_ugrid_fid, param_id["owner"], NC_COLLECTIVE));
         if (compress) nc_chk_ret(nc_def_var_deflate(_ugrid_fid, param_id["owner"], 1, 1, 5));
 
