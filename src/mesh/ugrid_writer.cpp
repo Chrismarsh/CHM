@@ -463,6 +463,8 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     MPI_Info info_used;
     MPI_Comm_get_info(comm, &info_used);
 
+    double nan_value = NAN; // IEEE NaN
+
     int status = nc_create_par(_fname.c_str(), NC_NETCDF4 | NC_CLOBBER, comm, info_used, &_ugrid_fid);
     if (status != NC_NOERR)
     {
@@ -536,7 +538,7 @@ void ugrid_writer::init_ugrid(const std::vector<std::string>& output_variables)
     nc_chk_ret(nc_put_att_text(_ugrid_fid, time_varid, "standard_name", strlen("time"), "time"));
     nc_chk_ret( nc_put_att_text(_ugrid_fid, time_varid, "long_name", strlen("Time"), "Time"));
     nc_chk_ret(nc_put_att_text(_ugrid_fid, time_varid, "units", strlen("minutes since 1970-01-01 00:00:00"), "minutes since 1970-01-01 00:00:00"));
-    nc_chk_ret(nc_put_att_double(_ugrid_fid, time_varid, "_FillValue", NC_DOUBLE, 1, &    double nan_value = NAN; // IEEE NaN));
+    nc_chk_ret(nc_put_att_double(_ugrid_fid, time_varid, "_FillValue", NC_DOUBLE, 1, &nan_value));
 
     int var_Mesh2, var_Mesh2_face_nodes, var_Mesh2_node_x, var_Mesh2_node_y, var_Mesh2_node_z, var_Mesh2_node_z_PV;
     int dims_face_nodes[2] = {dim_Mesh2_face, dim_three};
