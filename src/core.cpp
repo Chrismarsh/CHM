@@ -490,11 +490,6 @@ void core::config_checkpoint( pt::ptree& value)
                     chkptOp::ugrid_output_state state;
                     state.base_name = itr.second.get<std::string>("base_name", "");
                     state.path = itr.second.get<std::string>("path", "");
-                    auto offset = itr.second.get_optional<size_t>("rotate_offset");
-                    if (offset)
-                    {
-                        state.rotate_offset = *offset;
-                    }
                     if (!state.base_name.empty() || !state.path.empty())
                     {
                         _checkpoint_opts.ugrid_outputs.push_back(state);
@@ -539,10 +534,14 @@ void core::config_checkpoint( pt::ptree& value)
                         writer->set_store_path(match->path);
                         SPDLOG_DEBUG("Resuming ugrid output from checkpoint file {}", match->path);
                     }
-                    if (match->rotate_offset)
+                    if (out.rotate_frequency && !match->path.empty())
                     {
-                        out.rotate_offset = match->rotate_offset;
-                        SPDLOG_DEBUG("Resuming ugrid rotation with offset {}", *match->rotate_offset);
+                        auto& writer = boost::get<std::shared_ptr<ugrid_writer>>(out.writer);
+                        // Derive rotation offset from the existing ugrid file instead of checkpoint JSON.
+                        size_t time_len = writer->probe_time_index();
+                        out.rotate_offset = time_len % *out.rotate_frequency;
+                        SPDLOG_DEBUG("Resuming ugrid rotation with offset {} ({} timesteps already in file)",
+                                     *out.rotate_offset, time_len);
                     }
                 }
             }
@@ -2586,13 +2585,6 @@ void core::run()
 
                 auto& writer = boost::get<std::shared_ptr<ugrid_writer>>(out.writer);
                 entry.put("path", writer->store_path());
-
-                if (out.rotate_frequency)
-                {
-                    // Store the offset for the next timestep after this checkpoint.
-                    size_t offset = (current_ts + 1) % *out.rotate_frequency;
-                    entry.put("rotate_offset", offset);
-                }
 
                 ugrid_outputs.push_back(std::make_pair("", entry));
             }

@@ -57,6 +57,8 @@ public:
                                const boost::optional<double>& chunk_target_mb);
     void set_store_path(std::string store_path);
     const std::string& store_path() const;
+    // Probe the existing ugrid file to determine how many timesteps are already written.
+    size_t probe_time_index();
 
     bool bitgroom;
     bool compress;
@@ -64,6 +66,7 @@ private:
     std::string build_store_uri(const std::string& store_path) const;
     bool store_exists() const;
     size_t compute_time_chunk_len(size_t max_faces_per_rank, size_t num_output_vars) const;
+    size_t read_time_index(int fid) const;
 
     //holds the file id for the ugrid output netcdf
     int _ugrid_fid;

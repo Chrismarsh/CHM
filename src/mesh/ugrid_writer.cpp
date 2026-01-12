@@ -98,6 +98,59 @@ const std::string& ugrid_writer::store_path() const
     return _store_path;
 }
 
+size_t ugrid_writer::probe_time_index()
+{
+    if (!store_exists())
+    {
+        return 0;
+    }
+
+    // Open the existing ugrid file read-only to determine how many timesteps are present.
+    int fid = -1;
+    MPI_Info info_used;
+    MPI_Comm_get_info(_comm_world, &info_used);
+
+    nc_chk_ret(nc_open_par(_fname.c_str(), NC_NOWRITE, _comm_world, info_used, &fid));
+    size_t time_len = read_time_index(fid);
+
+    nc_chk_ret(nc_close(fid));
+    MPI_Info_free(&info_used);
+
+    return time_len;
+}
+
+size_t ugrid_writer::read_time_index(int fid) const
+{
+    int unlimdimidp;
+    nc_chk_ret(nc_inq_unlimdim(fid, &unlimdimidp));
+
+    size_t time_len = 0;
+    nc_chk_ret(nc_inq_dimlen(fid, unlimdimidp, &time_len));
+
+    if (_global->from_checkpoint() && time_len > 0)
+    {
+        // Trim to the restart time so we overwrite any outputs past the checkpoint.
+        int time_varid = -1;
+        int status = nc_inq_varid(fid, "time", &time_varid);
+        if (status == NC_NOERR)
+        {
+            std::vector<double> time_vals(time_len, 0.0);
+            nc_chk_ret(nc_get_var_double(fid, time_varid, time_vals.data()));
+
+            const double restart_time_minutes = _global->posix_time_double() / 60.0;
+            auto it = std::lower_bound(time_vals.begin(), time_vals.end(), restart_time_minutes);
+            auto idx = static_cast<size_t>(std::distance(time_vals.begin(), it));
+
+            if (idx < time_len)
+            {
+                time_len = idx;
+            }
+        }
+    }
+
+    return time_len;
+}
+
 std::string ugrid_writer::build_store_uri(const std::string& store_path) const
 {
     if (!_use_zarr)
@@ -394,30 +447,7 @@ void ugrid_writer::open_ugrid(const std::vector<std::string>& output_variables)
         nc_chk_ret(nc_var_par_access(_ugrid_fid, p.second, NC_COLLECTIVE));
     }
 
-    int unlimdimidp;
-
-    nc_chk_ret(nc_inq_unlimdim(_ugrid_fid, &unlimdimidp)); // get the time /dimension/. it's the only unlimited
-    nc_chk_ret(nc_inq_dimlen(_ugrid_fid, unlimdimidp, &_time_index));
-
-    // If we are resuming from a checkpoint, make sure we overwrite any timesteps
-    // beyond the checkpoint instead of blindly appending to the existing file.
-    if (_global->from_checkpoint() && _time_index > 0)
-    {
-        // chm outputs minutes since as time unit
-        const double restart_time_minutes = _global->posix_time_double() / 60.0;
-        std::vector<double> time_vals(_time_index, 0.0);
-
-        nc_chk_ret(nc_get_var_double(_ugrid_fid, _ugrid_id_var["time"], time_vals.data()));
-
-        auto it = std::lower_bound(time_vals.begin(), time_vals.end(), restart_time_minutes);
-        auto idx = static_cast<size_t>(std::distance(time_vals.begin(), it));
-
-        if (idx < _time_index)
-        {
-            SPDLOG_DEBUG("Resuming ugrid at time index {} (was {}).", idx, _time_index);
-            _time_index = idx;
-        }
-    }
+    _time_index = read_time_index(_ugrid_fid);
 
     SPDLOG_DEBUG("Existing ugrid output has {} timesteps already", _time_index);
 

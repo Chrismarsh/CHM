@@ -73,7 +73,6 @@ class chkptOp
     {
         std::string base_name;
         std::string path;
-        boost::optional<size_t> rotate_offset;
     };
 
     // Cached output rotation state from checkpoint metadata (used during resume).
