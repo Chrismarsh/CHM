@@ -1515,10 +1515,15 @@ void core::init(int argc, char **argv)
     auto log_path = cwd_dir / log_dir;
 
     //output a unique logfile for each mpi rank
-    std::string rank = "";
-    rank = "."+std::to_string(_comm_world.rank());
+    std::string rank "."+std::to_string(_comm_world.rank());
 
-    std::string log_name = "CHM_" + log_start_time + rank + ".log";
+    _hpc_scheduler_info.detect_job_name();
+    std::string job_suffix = "";
+    if (!_hpc_scheduler_info.job_name.empty())
+    {
+        job_suffix = "." + _hpc_scheduler_info.job_name;
+    }
+    std::string log_name = "CHM_" + log_start_time + rank + job_suffix + ".log";
 
     if (_comm_world.rank() == 0)
         boost::filesystem::create_directories(log_path);
