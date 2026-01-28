@@ -1515,7 +1515,7 @@ void core::init(int argc, char **argv)
     auto log_path = cwd_dir / log_dir;
 
     //output a unique logfile for each mpi rank
-    std::string rank "."+std::to_string(_comm_world.rank());
+    std::string rank = "."+std::to_string(_comm_world.rank());
 
     _hpc_scheduler_info.detect_job_name();
     std::string job_suffix = "";
