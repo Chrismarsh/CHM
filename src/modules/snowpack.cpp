@@ -343,7 +343,7 @@ void Lehning_snowpack::init(mesh& domain)
         d.config.addKey("ADJUST_HEIGHT_OF_WIND_VALUE","SnowpackAdvanced","false"); // we always provide a 2m wind, even if there is snowcover
         d.config.addKey("HN_DENSITY","SnowpackAdvanced","MEASURED"); //We can then set it in at run time. Do it this way so we can have temporally variable if we want.
 
-        d.config.addKey("ADVECTIVE_HEAT","SnowpackAdvanced","TRUE");
+        d.config.addKey("ADVECTIVE_HEAT","SnowpackAdvanced","TRUE"); // This enables heat transport caused by moving water. Error if true/false not specified.
         
         d.config.addKey("COMBINE_ELEMENTS","SnowpackAdvanced","true"); //Defines whether joining elements will be considered at all
         //Activates algorithm to reduce the number of elements deeper in the snowpack AND to split elements again when they come back to the surface
