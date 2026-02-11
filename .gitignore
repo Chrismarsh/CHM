@@ -32,3 +32,4 @@ build-codechecker
 package-lock.json
 spack-devenv.sh
 build-test
+test
