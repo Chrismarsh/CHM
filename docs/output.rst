@@ -65,10 +65,17 @@ UGRID rotation (``rotate_frequency``) starts a new file every N timesteps. Rotat
 ``<base_name>_YYYYMMDDTHHMMSS.nc`` based on the model time. When resuming from a checkpoint, CHM continues writing to
 the file that was active at checkpoint time and preserves the rotation cadence.
 
-Chunking optimizations
-----------------------
+Chunking
+---------------
 
-UGRID time chunking is sized to balance Dask recommendations and output cadence:
+The UGRID netcdf files are chunked in space such that each in-space chunk corresponds to an MPI rank's spatial decomposition. In time,
+the chunking is per-timestep. With compression enabled, this is the most efficient way to write to disk. However, for large number
+of MPI ranks (e.g., 800), with many variables, with many timesteps, this results in significant overhead during analysis where
+the optimal chunking scheme may be 24 or more timestpes, and 1M+ triangles instead of the ~30k which is often in the MPI
+decomposition. Therefore, post processing tools exist in pyCHM to rechunk to more efficient analysis datastores (e.g., zarr)
+with a more optimal chunking layout.
+
+CHM can also attempt to optimize the UGRID time chunking, sized to balance Dask recommendations and output cadence:
 
 - Target ~256MB per variable chunk, with bounds of 1MB (min) and 1GB (max).
 - If total chunks per output file would exceed 100k, the time chunk grows up to a hard ceiling of 2GB.
@@ -76,9 +83,15 @@ UGRID time chunking is sized to balance Dask recommendations and output cadence:
   the chunker assumes only a small number of outputs and keeps chunk sizes small.
 
 Users can override chunk sizing with either ``chunk_time_len`` (explicit timesteps) or ``chunk_target_mb`` (target MB
-per variable). Only one override can be set at a time.
+per variable). Only one override can be set at a time. These settings can  metadata overhead and avoid overly large
+task graphs while respecting model output frequency.
 
-These settings reduce metadata overhead and avoid overly large task graphs while respecting model output frequency.
+.. warning::
+
+    A temporal chunking of t > 1 when compression is enabled results in having to decompress, append, recompress, and
+    write back each timestep. This is slow.
+
+
 
 +---------------------+-----------+----------------+
 | Method              | size (b)  | timestep (ms)  |
