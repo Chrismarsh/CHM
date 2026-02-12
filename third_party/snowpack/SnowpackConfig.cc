@@ -174,8 +174,8 @@ void SnowpackConfig::setDefaults()
 
 	getValue("ENFORCE_MEASURED_SNOW_HEIGHTS", "Snowpack", enforce_measured_snow_heights);
 
-	string s_minimum_l_element; getValue("MINIMUM_L_ELEMENT", "SnowpackAdvanced", s_minimum_l_element);
-	string s_height_new_elem; getValue("HEIGHT_NEW_ELEM", "SnowpackAdvanced", s_height_new_elem);
+	string s_minimum_l_element; getValue("MINIMUM_L_ELEMENT", "SnowpackAdvanced", s_minimum_l_element, IOUtils::nothrow);
+	string s_height_new_elem; getValue("HEIGHT_NEW_ELEM", "SnowpackAdvanced", s_height_new_elem, IOUtils::nothrow);
 	if (s_minimum_l_element.empty()) addKey("MINIMUM_L_ELEMENT", "SnowpackAdvanced", advancedConfig["MINIMUM_L_ELEMENT"]);
 	double minimum_l_element = get("MINIMUM_L_ELEMENT", "SnowpackAdvanced");
 
@@ -190,15 +190,15 @@ void SnowpackConfig::setDefaults()
 		}
 	}
 
-	string albedo_model; getValue("ALBEDO_MODEL", "SnowpackAdvanced", albedo_model);
-	string hn_density; getValue("HN_DENSITY", "SnowpackAdvanced", hn_density);
-	string hn_density_parameterization; getValue("HN_DENSITY_PARAMETERIZATION", "SnowpackAdvanced", hn_density_parameterization);
-	string metamorphism_model; getValue("METAMORPHISM_MODEL", "SnowpackAdvanced", metamorphism_model);
-	string strength_model; getValue("STRENGTH_MODEL", "SnowpackAdvanced", strength_model);
-	string viscosity_model; getValue("VISCOSITY_MODEL", "SnowpackAdvanced", viscosity_model);
-	string watertransportmodel_snow; getValue("WATERTRANSPORTMODEL_SNOW", "SnowpackAdvanced", watertransportmodel_snow);
-	string watertransportmodel_soil; getValue("WATERTRANSPORTMODEL_SOIL", "SnowpackAdvanced", watertransportmodel_soil);
-	string lb_cond_waterflux; getValue("LB_COND_WATERFLUX", "SnowpackAdvanced", lb_cond_waterflux);
+	string albedo_model; getValue("ALBEDO_MODEL", "SnowpackAdvanced", albedo_model, IOUtils::nothrow);
+	string hn_density; getValue("HN_DENSITY", "SnowpackAdvanced", hn_density, IOUtils::nothrow);
+	string hn_density_parameterization; getValue("HN_DENSITY_PARAMETERIZATION", "SnowpackAdvanced", hn_density_parameterization, IOUtils::nothrow);
+	string metamorphism_model; getValue("METAMORPHISM_MODEL", "SnowpackAdvanced", metamorphism_model, IOUtils::nothrow);
+	string strength_model; getValue("STRENGTH_MODEL", "SnowpackAdvanced", strength_model, IOUtils::nothrow);
+	string viscosity_model; getValue("VISCOSITY_MODEL", "SnowpackAdvanced", viscosity_model, IOUtils::nothrow);
+	string watertransportmodel_snow; getValue("WATERTRANSPORTMODEL_SNOW", "SnowpackAdvanced", watertransportmodel_snow, IOUtils::nothrow);
+	string watertransportmodel_soil; getValue("WATERTRANSPORTMODEL_SOIL", "SnowpackAdvanced", watertransportmodel_soil, IOUtils::nothrow);
+	string lb_cond_waterflux; getValue("LB_COND_WATERFLUX", "SnowpackAdvanced", lb_cond_waterflux, IOUtils::nothrow);
 
 	if ((variant.empty()) || (variant == "DEFAULT")) {
 		// Use default settings
@@ -260,19 +260,19 @@ void SnowpackConfig::setDefaults()
 	 */
 	for(map<string,string>::const_iterator it = advancedConfig.begin(); it != advancedConfig.end(); ++it) {
 		//[SnowpackAdvanced] section
-		string value; getValue(it->first, "SnowpackAdvanced", value);
+		string value; getValue(it->first, "SnowpackAdvanced", value, IOUtils::nothrow);
 		if (value.empty()) addKey(it->first, "SnowpackAdvanced", it->second);
 	}
 
 	for(map<string,string>::const_iterator it = inputConfig.begin(); it != inputConfig.end(); ++it) {
 		//[Input] section
-		string value; getValue(it->first, "Input", value);
+		string value; getValue(it->first, "Input", value, IOUtils::nothrow);
 		if (value.empty()) addKey(it->first, "Input", it->second);
 	}
 
 	for(map<string,string>::const_iterator it = outputConfig.begin(); it != outputConfig.end(); ++it) {
 		//[Output] section
-		string value; getValue(it->first, "Output", value);
+		string value; getValue(it->first, "Output", value, IOUtils::nothrow);
 		if (value.empty()) addKey(it->first, "Output", it->second);
 	}
 
@@ -301,7 +301,7 @@ void SnowpackConfig::setDefaults()
 	const double calculation_step_length = get("CALCULATION_STEP_LENGTH", "Snowpack");
 
 	string hazard_steps_between;
-	getValue("HAZARD_STEPS_BETWEEN", "Output", hazard_steps_between);
+	getValue("HAZARD_STEPS_BETWEEN", "Output", hazard_steps_between, IOUtils::nothrow);
 	if (hazard_steps_between.empty()) {
 		stringstream ss;
 		const int tmp = (int)(30./calculation_step_length + 0.5);
