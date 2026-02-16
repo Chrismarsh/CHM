@@ -21,8 +21,8 @@
 #ifndef ASCIIIO_H
 #define ASCIIIO_H
 
-#include "SnowpackIOInterface.h"
 #include <meteoio/MeteoIO.h>
+#include <snowpack/plugins/SnowpackIOInterface.h>
 
 class AsciiIO : public SnowpackIOInterface {
 
@@ -33,7 +33,7 @@ class AsciiIO : public SnowpackIOInterface {
 		virtual bool snowCoverExists(const std::string& i_snowfile, const std::string& stationID) const;
 
 		virtual void readSnowCover(const std::string& i_snowfile, const std::string& stationID,
-		                           SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata);
+		                           SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata, const bool& read_salinity);
 
 		virtual void writeSnowCover(const mio::Date& date, const SnowStation& Xdata,
 		                            const ZwischenData& Zdata, const bool& forbackup=false);
@@ -96,10 +96,8 @@ class AsciiIO : public SnowpackIOInterface {
                                            const double dhs_corr, const double mass_corr,
                                            const size_t nCalcSteps, std::ofstream &fout);
 
-		void readTags(const std::string& filename, const CurrentMeteo&  Mdata, TaggingData& TAGdata);
-
 		std::set<std::string> setAppendableFiles;
-		std::string variant, experiment, sw_mode;
+		std::string metamorphism_model, variant, experiment, sw_mode;
 		std::string inpath, snowfile, i_snowpath, outpath, o_snowpath;
 		const RunInfo info;
 
@@ -114,9 +112,14 @@ class AsciiIO : public SnowpackIOInterface {
 		double time_zone; // time zone of input
 		double calculation_step_length, hazard_steps_between, ts_days_between;
 		double min_depth_subsurf, hoar_density_surf, hoar_min_size_surf;
+		bool useRichardsEq, enable_pref_flow, enable_ice_reservoir;
+		bool enable_vapour_transport;
 		bool avgsum_time_series, useCanopyModel, useSoilLayers, research_mode, perp_to_slope;
+		bool useReferenceLayer;		//Whether or not the output should be referenced to the marked reference layer (i.e., the layer with int(mk/1000)==9).
 		bool out_heat, out_lw, out_sw, out_meteo, out_haz, out_mass, out_t, out_load, out_stab, out_canopy, out_soileb;
 		bool r_in_n;
+		std::string prof_ID_or_MK;
+		std::string prof_AGE_or_DATE;
 
 		static const bool t_srf, t_gnd;
 };

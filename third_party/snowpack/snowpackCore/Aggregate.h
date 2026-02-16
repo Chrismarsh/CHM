@@ -21,7 +21,7 @@
 #ifndef AGGREGATE_H
 #define AGGREGATE_H
 
-#include "../DataClasses.h"
+#include <snowpack/DataClasses.h>
 #include <vector>
 
 #include <cstddef> //needed for size_t

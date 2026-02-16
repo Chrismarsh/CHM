@@ -20,7 +20,7 @@
 #ifndef STABILITYALGORITHMS_H
 #define STABILITYALGORITHMS_H
 
-#include "DataClasses.h"
+#include <snowpack/DataClasses.h>
 
 /**
  * @class StabilityData
@@ -88,7 +88,7 @@ class StabilityAlgorithms {
 		
 		static double CriticalCutLength(const double& H_slab, const double& rho_slab, const double& cos_sl, const ElementData& Edata, const StabilityData& STpar, const double& stress);
 	private:
-		static bool normalizeLemon(std::vector<double>& vecData);
+		static bool normalizeVector(std::vector<double>& vecData);
 };
 
 #endif

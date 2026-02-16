@@ -23,11 +23,10 @@
 
 #include <meteoio/MeteoIO.h>
 
-#include "DataClasses.h"
-#include "Saltation.h"
-#include "SnowpackConfig.h"
+#include <snowpack/Saltation.h>
+#include <snowpack/DataClasses.h>
+#include <snowpack/SnowpackConfig.h>
 
-#include <algorithm>
 class Saltation;
 
 /**
@@ -40,18 +39,17 @@ class SnowDrift {
 	public:
 		SnowDrift(const SnowpackConfig& i_cfg);
 
-		void compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata, double& cumu_psum);
+		void compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata, double& cumu_psum) const;
 
 		static const double schmidt_drift_fudge;
 
  	private:
-		double compMassFlux(const ElementData& Edata, const double& ustar, const double& slope_angle);
+		double compMassFlux(const ElementData& Edata, const double& ustar, const double& slope_angle) const;
 
-		Saltation saltation; // The saltation model used
-		bool enforce_measured_snow_heights, snow_redistribution, snow_erosion; // Will be read from cfg object
-		bool alpine3d; ///< triggers various tricks for Alpine3D (including reducing the number of warnings)
-		double sn_dt;        //Calculation time step in seconds as derived from CALCULATION_STEP_LENGTH
-		int nSlopes;
+		const Saltation saltation; // The saltation model used
+		const bool enforce_measured_snow_heights, snow_redistribution, snow_erosion; // Will be read from cfg object
+		const bool alpine3d; ///< triggers various tricks for Alpine3D (including reducing the number of warnings)
+		const double sn_dt;        //Calculation time step in seconds as derived from CALCULATION_STEP_LENGTH
 		static const bool msg_erosion;
 }; //End class SnowDrift
 

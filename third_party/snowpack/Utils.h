@@ -27,15 +27,13 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "DataClasses.h"
+#include <snowpack/DataClasses.h>
 
 #include <cstdarg> // needed for va_list
 #include <string>
 #include <cstring>
 #include <vector>
 
-#include <boost/format.hpp>
-#include "logger.hpp"
 #ifdef _MSC_VER
 //Microsoft still does NOT support C99...
 //This replacement is not fully compatible, so
@@ -52,10 +50,10 @@ std::string getLibVersion();
 }
 
 #ifdef GNU	//in this case, GCC can check the format arguments for types, number, ...
-void prn_msg(const char *theFile, const int theLine, const char *msg_type, const mio::Date& date_in, const char *format, ...)
+void prn_msg(const char *fileAndPath, const int theLine, const char *msg_type, const mio::Date& date_in, const char *format, ...)
 __attribute__ ((format (printf, 5, 6)));
 #else
-void prn_msg(const char *theFile, const int theLine, const char *msg_type, const mio::Date& date_in, const char *format, ...);
+void prn_msg(const char *fileAndPath, const int theLine, const char *msg_type, const mio::Date& date_in, const char *format, ...);
 #endif
 
 bool booleanTime(const double& JulianDate, double days_between,
@@ -78,7 +76,7 @@ size_t findUpperNode(const double& z, const std::vector<NodeData>& Ndata, const 
 
 double forcedErosion(const double hs, SnowStation& Xdata);
 
-void deflateInflate(const CurrentMeteo& Mdata, SnowStation& Xdata, double& dhs_corr, double& mass_corr);
+void deflateInflate(const CurrentMeteo& Mdata, SnowStation& Xdata, double& dhs_corr, double& mass_corr, const bool &prn_check);
 
 double logisticFunction(const double input, const double threshold, const double width);
 

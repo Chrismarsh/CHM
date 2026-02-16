@@ -23,9 +23,9 @@
 
 #include <meteoio/MeteoIO.h>
 
-#include "../DataClasses.h"
-#include "../SnowpackConfig.h"
-#include "SnowpackIOInterface.h"
+#include <snowpack/DataClasses.h>
+#include <snowpack/SnowpackConfig.h>
+#include <snowpack/plugins/SnowpackIOInterface.h>
 
 #include <string>
 #include <vector>
@@ -46,9 +46,12 @@
  * -# the intial state of the various soil and snow layers
  *
  * Very often, 1) and 2) are provided together. But this depends ultimately on the file format that is used ot provide such data (SMET, INP, etc). These two points are
- * handled by <a href="https://models.slf.ch/p/meteoio">MeteoIO</a>, so please check its documentation (for the last official release, it is available
- * <A HREF="https://models.slf.ch/docserver/meteoio/html/index.html">online</A>), in the <i>"Available plugins and usage"</i> section for the relevant formats.
- * It is recommended to prepare the data in the <A HREF="https://models.slf.ch/docserver/meteoio/html/smetio.html">SMET</A> file format for its ease of use.
+ * handled by <a href="https://meteoio.slf.ch">MeteoIO</a>, so please check its documentation (for the last official release, it is available
+ * <A HREF="https://meteoio.slf.ch/doc-release/html/index.html">online</A>), in the <i>"Available plugins and usage"</i> section for the relevant formats.
+ * It is recommended to prepare the data in the <A HREF="https://meteoio.slf.ch/doc-release/html/smetio.html">SMET</A> file format for its ease of use. 
+ * In this case, you should also consider providing 1) as SMET for a simulation starting without snow on the ground (have a look at the files provided 
+ * in the examples) or as CAAML for a simulation starting with snow on the ground (have a look at <A HREF="https:niviz.org">niViz</A> to create a 
+ * CAAML snow profile).
  *
  * Please also check the \ref requirements "Data requirements" page.
  *
@@ -60,7 +63,7 @@
  * - a time serie of the meteorological data and fluxes as used in the model.
  * 
  * Depending on the chosen output format, 1) and 2) might be provided as one file or two files. Moreover, since %Snowpack pre-processes all the 
- * meteorological input data with <A HREF="https://models.slf.ch/p/meteoio">MeteoIO</A>, the forcing data that is seen in the core of the model might be different than 
+ * meteorological input data with <A HREF="https://meteoio.slf.ch">MeteoIO</A>, the forcing data that is seen in the core of the model might be different than 
  * the provided input data. In order to better fine tune the parameters of this pre-processing, it is possible to request a copy of the
  * pre-processed meteorological data by setting the key WRITE_PROCESSED_METEO to TRUE in the [Output] section.
  *
@@ -71,7 +74,7 @@
  * <center><table border="1">
  * <tr><th>Key</th><th>Description</th><th>Extra requirements</th></tr>
  * <tr><td>\subpage smet "SMET"</td><td>SMET based profile (including the hazard data), recommended</td><td></td></tr>
- * <tr><td>\subpage caaml "CAAML"</td><td>CAAML profile</td><td><A HREF="http://xmlsoft.org/">libxml</A></td></tr>
+ * <tr><td>\subpage caaml "CAAML"</td><td><A HREF="http://caaml.org">CAAML</A> profile</td><td></td></tr>
  * <tr><td>\subpage snoold_format "SNOOLD"</td><td>legacy %Snowpack profile (including the hazard data)</td><td></td></tr>
  * </table></center>
  *
@@ -86,10 +89,26 @@
  * <tr><td>\subpage prf_format "PRF"</td><td>tabular profile time series</td><td></td></tr>
  * <tr><td>\subpage profile_imis "IMIS"</td><td>write profile time series to the IMIS database</td><td><A HREF="http://docs.oracle.com/cd/B12037_01/appdev.101/b10778/introduction.htm">Oracle's OCCI library</A></td></tr>
  * </table></center>
+ * When the snow grain shapes are provided as <b>Swiss Code</b>, it means the following: the code is made of three decimal numbers, noted as <i>F1F2F3</i>. Here <i>F1</i> 
+ * represents the primary grain shape and <i>F2</i> the secondary grain shape. The grain shapes can be any of the following:
+ * <center><table border="1">
+ * <tr><th>Code</th><th>Grain shape</th><th>Code</th><th>Grain shape</th></tr>
+ * <tr><td>1</td><td>Precipitation particules (PP)</td><td>6</td><td>Surface hoar (SH)</td></tr>
+ * <tr><td>2</td><td>Decomposing fragmented PP (DF)</td><td>7</td><td>Melt forms (MF)</td></tr>
+ * <tr><td>3</td><td>Rounded grains (RG)</td><td>8</td><td>Ice formations (IF)</td></tr>
+ * <tr><td>4</td><td>Faceted crystals (FC)</td><td>9</td><td>Rounding faceted particules (FCxr)</td></tr>
+ * <tr><td>5</td><td>Depth hoar (DH)</td><td></td><td></td></tr>
+ * </table></center>
+ * 
+ * In case of Melt-freeze crust (MFcr), it is marked by using the \em 772 code.
  *
  * @section available_met_ts Fluxes time series
  * %Snowpack computes various meteorological parameters as well as fluxes and can write them out as time series.
- * Currently, only the \subpage met_format "MET format" is supported.
+ * <center><table border="1">
+ * <tr><th>Key</th><th>Description</th><th>Extra requirements</th></tr>
+ * <tr><td>\subpage met_format "MET"</td><td>legacy %Snowpack time series for visualization with sngui</td><td></td></tr>
+ * <tr><td>\subpage smet "SMET"</td><td>smet formatted time series for visualization with <A HREF="snopviz.org">SnopViz</A></td><td></td></tr>
+ * </table></center>
  *
  */
 class SnowpackIO : public SnowpackIOInterface {
@@ -102,7 +121,7 @@ class SnowpackIO : public SnowpackIOInterface {
 		virtual bool snowCoverExists(const std::string& i_snowfile, const std::string& stationID) const;
 
 		virtual void readSnowCover(const std::string& i_snowfile, const std::string& stationID,
-		                           SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata);
+		                           SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata, const bool& read_salinity);
 
 		virtual void writeSnowCover(const mio::Date& date, const SnowStation& Xdata,
                                     const ZwischenData& Zdata, const bool& forbackup=false);

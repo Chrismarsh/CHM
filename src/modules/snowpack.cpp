@@ -190,7 +190,7 @@ void Lehning_snowpack::run(mesh_elem &face)
     Mdata.elev      = (*face)["solar_el"_s]*mio::Cst::to_rad;
 
     data.cum_precip  += Mdata.psum; //running sum of the precip. snowpack removes the rain component for us.
-    data.meteo->compMeteo(Mdata,*(data.Xdata),false); // no canopy model
+    data.meteo->compMeteo(Mdata,*(data.Xdata),false,false); // no canopy model
 
     double mass_erode = 0;
 
