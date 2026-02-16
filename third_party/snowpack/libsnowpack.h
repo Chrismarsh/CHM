@@ -26,31 +26,31 @@
 #ifndef LIBSNOWPACK_H
 #define LIBSNOWPACK_H
 
-#include <snowpack/Constants.h>
-#include <snowpack/DataClasses.h>
-#include <snowpack/Hazard.h>
-#include <snowpack/Laws_sn.h>
-#include <snowpack/Meteo.h>
-#include <snowpack/Saltation.h>
-#include <snowpack/SnowDrift.h>
-#include <snowpack/SnowpackConfig.h>
-#include <snowpack/Stability.h>
-#include <snowpack/TechnicalSnow.h>
-#include <snowpack/Utils.h>
+#include "Constants.h"
+#include "DataClasses.h"
+#include "Hazard.h"
+#include "Laws_sn.h"
+#include "Meteo.h"
+#include "Saltation.h"
+#include "SnowDrift.h"
+#include "SnowpackConfig.h"
+#include "Stability.h"
+#include "TechnicalSnow.h"
+#include "Utils.h"
 
-#include <snowpack/plugins/SnowpackIO.h>
-#include <snowpack/plugins/SnowpackIOInterface.h>
-#include <snowpack/plugins/AsciiIO.h> //for direct calls to AsciiIO
-#include <snowpack/plugins/SmetIO.h> //for direct calls to SmetIO
+#include "plugins/SnowpackIO.h"
+#include "plugins/SnowpackIOInterface.h"
+#include "plugins/AsciiIO.h" //for direct calls to AsciiIO
+#include "plugins/SmetIO.h" //for direct calls to SmetIO
 
-#include <snowpack/snowpackCore/Aggregate.h>
-#include <snowpack/snowpackCore/Canopy.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/snowpackCore/PhaseChange.h>
-#include <snowpack/snowpackCore/ReSolver1d.h>
-#include <snowpack/snowpackCore/Snowpack.h>
-#include <snowpack/snowpackCore/Solver.h>
-#include <snowpack/snowpackCore/WaterTransport.h>
+#include "snowpackCore/Aggregate.h"
+#include "snowpackCore/Canopy.h"
+#include "snowpackCore/Metamorphism.h"
+#include "snowpackCore/PhaseChange.h"
+#include "snowpackCore/ReSolver1d.h"
+#include "snowpackCore/Snowpack.h"
+#include "snowpackCore/Solver.h"
+#include "snowpackCore/WaterTransport.h"
 
 #endif
 

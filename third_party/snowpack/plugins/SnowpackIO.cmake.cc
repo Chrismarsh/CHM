@@ -18,10 +18,10 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/plugins/SnowpackIO.h>
+#include "SnowpackIO.h"
 
-#include <snowpack/plugins/SmetIO.h>
-#include <snowpack/plugins/AsciiIO.h>
+#include "SmetIO.h"
+#include "AsciiIO.h"
 #include <stdexcept>
 
 #cmakedefine PLUGIN_IMISIO

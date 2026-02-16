@@ -36,10 +36,10 @@
  * directly from program HAEFELI, the 2d snowpack model.
  */
 
-#include <snowpack/Laws_sn.h>
-#include <snowpack/Utils.h>
-#include <snowpack/Constants.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
+#include "Laws_sn.h"
+#include "Utils.h"
+#include "Constants.h"
+#include "snowpackCore/Metamorphism.h"
 
 using namespace std;
 using namespace mio;
@@ -434,9 +434,9 @@ double SnLaws::parameterizedSnowAlbedo(const std::string& i_snow_albedo, const s
  */
 void SnLaws::compShortWaveAbsorption(const std::string& i_sw_absorption_scheme, SnowStation& Xdata, const double& I0)
 {
-	ElementData *EMS = &Xdata.Edata[0];
 	const size_t nE = Xdata.getNumberOfElements();
 	if (nE==0) return;
+	ElementData *EMS = &Xdata.Edata[0];
 
 	const size_t bottom_element = (Xdata.SoilNode > 0)? Xdata.SoilNode - 1 : Xdata.SoilNode;
 	for (size_t e = 0; e < nE; e++)
@@ -486,6 +486,8 @@ void SnLaws::compShortWaveAbsorption(const std::string& i_sw_absorption_scheme, 
  */
 void SnLaws::compAdvectiveHeat(SnowStation& Xdata, const double& advective_heat, const double& depth_begin, const double& depth_end)
 {
+	if (Xdata.getNumberOfElements() == 0) return;
+
 	ElementData *EMS = &Xdata.Edata[0];
 	NodeData   *NDS = &Xdata.Ndata[0];
 

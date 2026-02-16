@@ -29,9 +29,9 @@
 
 #include <meteoio/MeteoIO.h>
 
-#include <snowpack/SnowpackConfig.h>
-#include <snowpack/snowpackCore/Canopy.h>
-#include <snowpack/DataClasses.h>
+#include "SnowpackConfig.h"
+#include "snowpackCore/Canopy.h"
+#include "DataClasses.h"
 
 class Meteo {
 	public:

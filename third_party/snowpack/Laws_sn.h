@@ -28,8 +28,8 @@
 #include <string>
 #include <meteoio/MeteoIO.h>
 
-#include <snowpack/DataClasses.h>
-#include <snowpack/snowpackCore/Snowpack.h> //some constants are necessary
+#include "DataClasses.h"
+#include "snowpackCore/Snowpack.h" //some constants are necessary
 
 
 class SnLaws {

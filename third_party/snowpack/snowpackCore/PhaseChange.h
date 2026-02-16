@@ -20,7 +20,7 @@
 #ifndef PHASE_CHANGE_H
 #define PHASE_CHANGE_H
 
-#include <snowpack/DataClasses.h>
+#include "../DataClasses.h"
 #include <meteoio/MeteoIO.h>
 
 /**

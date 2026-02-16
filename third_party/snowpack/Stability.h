@@ -20,8 +20,8 @@
 #ifndef STABILITY_H
 #define STABILITY_H
 
-#include <snowpack/StabilityAlgorithms.h>
-#include <snowpack/DataClasses.h>
+#include "StabilityAlgorithms.h"
+#include "DataClasses.h"
 
 #include <map>
 #include <string>

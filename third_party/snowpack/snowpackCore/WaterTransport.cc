@@ -18,12 +18,12 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/snowpackCore/WaterTransport.h>
-#include <snowpack/snowpackCore/Snowpack.h>
-#include <snowpack/snowpackCore/ReSolver1d.h>
-#include <snowpack/snowpackCore/PhaseChange.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
+#include "WaterTransport.h"
+#include "Snowpack.h"
+#include "ReSolver1d.h"
+#include "PhaseChange.h"
+#include "../Constants.h"
+#include "../Utils.h"
 
 #include <assert.h>
 
@@ -1157,7 +1157,13 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 			if ((W0 > Wres) // NOTE: if water_layer is set, do not drain water element on top of soil
 				&& !(water_layer && (EMS[0].theta[ICE] < Snowpack::min_ice_content)
 					&& (EMS[0].theta[SOIL] < Constants::eps2))) {
-				const double dM = EMS[0].L * Constants::density_water * (W0 - Wres);
+				double dM = EMS[0].L * Constants::density_water * (W0 - Wres);
+				// Safety check: ensure we don't remove more mass than available
+				if (dM > EMS[0].M) {
+					SPDLOG_WARN("Removing more than available mass on bottom-most layer ! Mass will be 0 !");
+					dM = EMS[0].M; // Limit to available mass
+					EMS[0].theta[WATER] = Wres; // Set to residual water content
+				}
 				EMS[0].M -= dM;
 				assert(EMS[0].M >= (-Constants::eps2)); //mass must be positive
 				EMS[0].theta[WATER] = Wres;

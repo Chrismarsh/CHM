@@ -28,10 +28,10 @@
 #include <meteoio/MeteoIO.h>
 using namespace mio;
 
-#include <snowpack/Meteo.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Laws_sn.h>
-#include <snowpack/Utils.h>
+#include "Meteo.h"
+#include "Constants.h"
+#include "Laws_sn.h"
+#include "Utils.h"
 
 /************************************************************
 * non-static section                                       *

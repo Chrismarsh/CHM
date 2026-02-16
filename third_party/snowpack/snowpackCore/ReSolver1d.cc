@@ -17,11 +17,11 @@
     You should have received a copy of the GNU General Public License
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <snowpack/snowpackCore/ReSolver1d.h>
-#include <snowpack/vanGenuchten.h>
-#include <snowpack/snowpackCore/SalinityTransport.h>
-#include <snowpack/Utils.h>
-#include <snowpack/snowpackCore/Snowpack.h>
+#include "ReSolver1d.h"
+#include "../vanGenuchten.h"
+#include "SalinityTransport.h"
+#include "../Utils.h"
+#include "Snowpack.h"
 #ifdef CLAPACK
 	// Matching C data types with FORTRAN data types (taken from f2c.h):
 	typedef long int integer;

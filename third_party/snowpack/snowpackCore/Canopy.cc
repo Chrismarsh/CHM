@@ -18,10 +18,10 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/snowpackCore/Canopy.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
-#include <snowpack/Laws_sn.h>
+#include "Canopy.h"
+#include "../Constants.h"
+#include "../Utils.h"
+#include "../Laws_sn.h"
 
 #include <meteoio/MeteoIO.h>
 #include <assert.h>

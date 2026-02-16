@@ -27,13 +27,15 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <snowpack/DataClasses.h>
+#include "DataClasses.h"
 
 #include <cstdarg> // needed for va_list
 #include <string>
 #include <cstring>
 #include <vector>
 
+#include <boost/format.hpp>
+#include "logger.hpp"
 #ifdef _MSC_VER
 //Microsoft still does NOT support C99...
 //This replacement is not fully compatible, so

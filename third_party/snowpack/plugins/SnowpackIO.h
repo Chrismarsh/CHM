@@ -23,9 +23,9 @@
 
 #include <meteoio/MeteoIO.h>
 
-#include <snowpack/DataClasses.h>
-#include <snowpack/SnowpackConfig.h>
-#include <snowpack/plugins/SnowpackIOInterface.h>
+#include "../DataClasses.h"
+#include "../SnowpackConfig.h"
+#include "SnowpackIOInterface.h"
 
 #include <string>
 #include <vector>

@@ -23,8 +23,8 @@
  * @brief Implementation of technical snow production and grooming
  */
 
-#include <snowpack/TechnicalSnow.h>
-#include <snowpack/Utils.h>
+#include "TechnicalSnow.h"
+#include "Utils.h"
 
 #include <meteoio/MeteoIO.h>
 

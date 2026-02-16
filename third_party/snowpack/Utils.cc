@@ -23,7 +23,7 @@
  * @brief This module contains all-purpose functions
  */
 
-#include <snowpack/Utils.h>
+#include "Utils.h"
 #include <assert.h>
 #include <cstdio>
 
@@ -33,7 +33,7 @@ using namespace mio;
 namespace snowpack {
 std::string getLibVersion() {
 	std::stringstream ss;
-	ss << SN_VERSION << " compiled on " << __DATE__ << " " << __TIME__;
+	ss << _VERSION << " compiled on " << __DATE__ << " " << __TIME__;
 	return ss.str();
 }
 }
@@ -60,10 +60,10 @@ std::string getLibVersion() {
 void prn_msg(const char *fileAndPath, const int theLine, const char *msg_type, const mio::Date& date_in, const char *format, ...)
 {
 	va_list argptr; // get an arg ptr
-	int msg_ok = 0;
+//	int msg_ok = 0;
 
 	// Initialize argptr to point to the first argument after the format string
-	va_start(argptr, format);
+//	va_start(argptr, format);
 
 	//compute time stamp
 	string currentdate;
@@ -74,7 +74,22 @@ void prn_msg(const char *fileAndPath, const int theLine, const char *msg_type, c
 	} else {
 		currentdate = date_in.toString(Date::ISO);
 	}
+//http://stackoverflow.com/a/20503077/410074
+	int len;
+	char * orig_msg;
 
+	/* Compute length of original message */
+	va_start(argptr, format);
+	len = vsnprintf(NULL, 0, format, argptr);
+	va_end(argptr);
+
+	/* Allocate space for original message */
+	orig_msg = (char *)calloc(len+1, sizeof(char));
+
+	/* Write original message to string */
+	va_start(argptr, format);
+	vsnprintf(orig_msg, len+1, format, argptr);
+	va_end(argptr);
 	//doing it pure c for performance
 #if defined _WIN32
 	#if !defined __CYGWIN__
@@ -90,36 +105,25 @@ void prn_msg(const char *fileAndPath, const int theLine, const char *msg_type, c
 	//print message
 	//printf("¬"); //if we need multiline output, use a special char as bloc delimiter
 	if (strcmp(msg_type, "err") == 0) {
-		fprintf(stdout, "[E] [%s] [%s:%d] ", currentdate.c_str(), theFile, theLine);
-		msg_ok=1;
+		spdlog::error(orig_msg);
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "wrn") == 0) {
-		fprintf(stdout, "[W] [%s] [%s:%d] ", currentdate.c_str(), theFile, theLine);
-		msg_ok=1;
+		spdlog::warn(orig_msg);
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg+") == 0) {
-		fprintf(stdout, "[I] [%s] [%s:%d] ", currentdate.c_str(), theFile, theLine);
-		msg_ok=1;
+                spdlog::debug(orig_msg);
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg-") == 0) {
-		fprintf(stdout, "[i] []                 ");
-		msg_ok=1;
+                spdlog::debug(orig_msg);
+		// msg_ok=1;
 	}
 	if (strcmp(msg_type, "msg") == 0) {
-		fprintf(stdout, "[i] [%s] ---> ", currentdate.c_str());
-		msg_ok=1;
+                spdlog::debug(orig_msg);
+		// msg_ok=1;
 	}
-
-	if (msg_ok) {
-		vfprintf(stdout, format, argptr);
-	} else {
-		fprintf(stdout, "[W] [%s] [%s:%d] Message type '%s' unknown!", currentdate.c_str(), theFile, theLine, msg_type);
-	}
-
-	fprintf(stdout, "\n");
-
-	// Clear ptr
-	va_end(argptr);
 }
 
 /**
@@ -181,7 +185,7 @@ void deleteOldOutputFiles(const std::string& outdir, const std::string& experime
 				string fname;
 				if (nSlopes>1) {
 					stringstream ss;
-					ss << nSlopes-1;
+//					ss << nSlopes-1;
 					fname = ftrunc + "-" + ss.str() + "." + ext;
 				} else {
 					fname = ftrunc + "." + ext;
@@ -197,7 +201,7 @@ void deleteOldOutputFiles(const std::string& outdir, const std::string& experime
 				string fname;
 				if (jj > 0) {
 					stringstream ss;
-					ss << jj;
+//					ss << jj;
 					fname = ftrunc + ss.str() + "." + ext;
 				} else {
 					fname = ftrunc + "." + ext;
@@ -447,14 +451,14 @@ bool massBalanceCheck(const SnowStation& Xdata, const SurfaceFluxes& Sdata, doub
  */
 double forcedErosion(const double hs, SnowStation& Xdata)
 {
-	int    nErode=0;        // Counters
+//	int    nErode=0;        // Counters
 	double massErode=0.;    // Eroded mass (kg m-2)
 
 	while ( (Xdata.getNumberOfElements() > Xdata.SoilNode) && (hs + 0.01) < (Xdata.cH - Xdata.Ground) ) {
 		massErode += Xdata.Edata[Xdata.getNumberOfElements()-1].M;
 		Xdata.cH -= Xdata.Edata[Xdata.getNumberOfElements()-1].L;
 		Xdata.resize(Xdata.getNumberOfElements() - 1);
-		nErode++;
+		//nErode++;
 	}
 	Xdata.ErosionLevel = std::min(Xdata.getNumberOfElements()-1, Xdata.ErosionLevel);
 

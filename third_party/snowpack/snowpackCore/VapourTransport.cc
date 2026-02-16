@@ -19,10 +19,10 @@
 */
 
 
-#include <snowpack/snowpackCore/VapourTransport.h>
-#include <snowpack/vanGenuchten.h>
-#include <snowpack/snowpackCore/Snowpack.h>
-#include <snowpack/Constants.h>
+#include "VapourTransport.h"
+#include "../vanGenuchten.h"
+#include "Snowpack.h"
+#include "../Constants.h"
 
 // MeteoIO constants
 #include <meteoio/meteoLaws/Meteoconst.h>
@@ -200,6 +200,7 @@ void VapourTransport::compTransportMass(const CurrentMeteo& Mdata, double& ql,
 void VapourTransport::LayerToLayer(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata, double& ql)
 {
 	// First consider surface sublimation
+	if (Xdata.getNumberOfElements() == 0) return;
 	compSurfaceSublimation(Mdata, ql, Xdata, Sdata);
 
 	const size_t nN = Xdata.getNumberOfNodes();
@@ -600,6 +601,7 @@ void VapourTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double& 
 		//if rh is very close to 1, vw too high or ta too high, surface hoar is destroyed
 		hoar = std::min(hoar, 0.);
 	}*/
+	if (Xdata.getNumberOfElements() == 0) return;
 
 	Sdata.hoar += dHoar;
 	NDS[nN-1].hoar += dHoar;

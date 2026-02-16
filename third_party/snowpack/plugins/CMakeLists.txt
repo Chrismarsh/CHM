@@ -1,7 +1,7 @@
-INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/")
-LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake/")
+#INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/")
+#LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/tools/cmake/")
 
-CONFIGURE_FILE( ${PROJECT_SOURCE_DIR}/snowpack/plugins/SnowpackIO.cmake.cc ${PROJECT_SOURCE_DIR}/snowpack/plugins/SnowpackIO.cc )
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/third_party/snowpack/plugins/SnowpackIO.cmake.cc ${CMAKE_CURRENT_SOURCE_DIR}/third_party/snowpack/plugins/SnowpackIO.cc)
 
 SET(plugins_sources ${plugins_sources} plugins/SnowpackIO.cc)
 

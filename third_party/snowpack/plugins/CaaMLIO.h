@@ -19,10 +19,10 @@ along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 #define CAAMLIO_H
 
 #include <meteoio/MeteoIO.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Hazard.h>
-#include <snowpack/plugins/SnowpackIOInterface.h>
-#include <snowpack/plugins/SmetIO.h>
+#include "../Constants.h"
+#include "../Hazard.h"
+#include "SnowpackIOInterface.h"
+#include "SmetIO.h"
 
 #include <string>
 

@@ -18,9 +18,9 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/snowpackCore/SalinityTransport.h>
-#include <snowpack/snowpackCore/ReSolver1d.h>
-#include <snowpack/Utils.h>
+#include "SalinityTransport.h"
+#include "ReSolver1d.h"
+#include "../Utils.h"
 #include <stdio.h>
 
 static const bool ZeroFluxLowerBoundary_diffusion = false;

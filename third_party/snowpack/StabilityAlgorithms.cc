@@ -18,11 +18,11 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/StabilityAlgorithms.h>
-#include <snowpack/Laws_sn.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
-#include <snowpack/Stability.h>
+#include "StabilityAlgorithms.h"
+#include "Laws_sn.h"
+#include "Constants.h"
+#include "Utils.h"
+#include "Stability.h"
 
 #include <assert.h>
 

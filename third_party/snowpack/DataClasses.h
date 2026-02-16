@@ -26,11 +26,11 @@
 #ifndef DATACLASSES_H
 #define DATACLASSES_H
 
-#include <snowpack/SnowpackConfig.h>
-#include <snowpack/vanGenuchten.h>
-#include <snowpack/snowpackCore/SeaIce.h>
+#include "SnowpackConfig.h"
+#include "vanGenuchten.h"
+#include "snowpackCore/SeaIce.h"
 
-#include <snowpack/Constants.h>
+#include "Constants.h"
 #include <meteoio/MeteoIO.h>
 
 #include <string>
@@ -113,6 +113,7 @@ class CurrentMeteo {
 		double z0;       ///< The roughness length computed in SnowDrift and also used later for the MeteoHeat fluxes (m)
 		double psi_s;    ///< Stability correction for scalar heat fluxes
 		double iswr;     ///< Incoming SHORTWAVE radiation (W m-2)
+		double ilwr;     ///< Incomding LONGWAVE radiation (W m-2)    Chris Marsh added
 		double rswr;     ///< Reflected SHORTWAVE radiation (W m-2) divide this value by the ALBEDO to get iswr
 		double mAlbedo;  ///< Measured snow albedo
 		double diff;     ///< Diffuse radiation from the sky (W m-2)

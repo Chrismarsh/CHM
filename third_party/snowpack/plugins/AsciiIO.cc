@@ -18,14 +18,14 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/plugins/AsciiIO.h>
-#include <snowpack/Utils.h>
-#include <snowpack/snowpackCore/Canopy.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Hazard.h>
-#include <snowpack/Laws_sn.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/snowpackCore/Aggregate.h>
+#include "AsciiIO.h"
+#include "../Utils.h"
+#include "../snowpackCore/Canopy.h"
+#include "../Constants.h"
+#include "../Hazard.h"
+#include "../Laws_sn.h"
+#include "../snowpackCore/Metamorphism.h"
+#include "../snowpackCore/Aggregate.h"
 
 #define MAX_STRING_LENGTH 256
 
@@ -786,7 +786,7 @@ void AsciiIO::writeSnowCover(const mio::Date& date, const SnowStation& Xdata,
 	string snofilename = getFilenamePrefix(Xdata.meta.getStationID().c_str(), o_snowpath) + ".snoold";
 	if (forbackup){
 		stringstream ss;
-		ss << (date.toString(Date::NUM));
+//		ss << (date.toString(Date::NUM));
 		snofilename += ss.str();
 	}
 

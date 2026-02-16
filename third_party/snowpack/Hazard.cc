@@ -24,9 +24,9 @@
  */
 #include <stdio.h>
 
-#include <snowpack/Hazard.h>
-#include <snowpack/Stability.h>
-#include <snowpack/Utils.h>
+#include "Hazard.h"
+#include "Stability.h"
+#include "Utils.h"
 
 using namespace mio;
 using namespace std;

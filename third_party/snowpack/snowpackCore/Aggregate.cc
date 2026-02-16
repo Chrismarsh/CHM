@@ -18,8 +18,8 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/snowpackCore/Aggregate.h>
-#include <snowpack/Constants.h>
+#include "Aggregate.h"
+#include "../Constants.h"
 
 /************************************************************
  * static section                                           *

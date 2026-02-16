@@ -20,10 +20,10 @@
 
 #include <cstddef> //needed for size_t
 
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
-#include <snowpack/snowpackCore/Snowpack.h>
+#include "Metamorphism.h"
+#include "../Constants.h"
+#include "../Utils.h"
+#include "Snowpack.h"
 
 using namespace std;
 using namespace mio;
@@ -514,6 +514,7 @@ void Metamorphism::metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& X
 	static const double a1 = 1.11e-3, a2 = 3.65e-5;  // mm3 day-1 Volumetric growth coefficients for wet snow
 	static const double cw = 1.e8 * exp(-6000. / 273.15);
 	const size_t nE = Xdata.getNumberOfElements();
+	if (Xdata.getNumberOfElements() == 0) return;
 
 	// Dereference the element pointer containing micro-structure data
 	ElementData *EMS = &Xdata.Edata[0];

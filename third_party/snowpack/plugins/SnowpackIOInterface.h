@@ -21,8 +21,8 @@
 #ifndef SNOWPACKIOINTERFACE_H
 #define SNOWPACKIOINTERFACE_H
 
-#include <snowpack/DataClasses.h>
-#include <snowpack/Hazard.h>
+#include "../DataClasses.h"
+#include "../Hazard.h"
 
 class SnowpackIOInterface {
 

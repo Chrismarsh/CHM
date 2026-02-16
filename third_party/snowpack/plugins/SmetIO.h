@@ -22,9 +22,9 @@
 #define SMET_IO_H
 
 #include <meteoio/MeteoIO.h>
-#include <snowpack/Constants.h>
-#include <snowpack/plugins/SnowpackIOInterface.h>
-#include <snowpack/Hazard.h>
+#include "../Constants.h"
+#include "SnowpackIOInterface.h"
+#include "../Hazard.h"
 
 #include <string>
 

@@ -26,7 +26,7 @@
 #ifndef SEAICE_H
 #define SEAICE_H
 
-#include <snowpack/DataClasses.h>
+#include "../DataClasses.h"
 
 #include <meteoio/MeteoIO.h>
 #include <vector>

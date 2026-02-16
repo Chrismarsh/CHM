@@ -24,20 +24,20 @@
 #ifndef VAPOURTRANSPORT_H
 #define VAPOURTRANSPORT_H
 
-#include <snowpack/Constants.h>
-#include <snowpack/DataClasses.h>
-#include <snowpack/Laws_sn.h>
-#include <snowpack/snowpackCore/ReSolver1d.h>
-#include <snowpack/snowpackCore/WaterTransport.h>
-#include <snowpack/snowpackCore/Snowpack.h>
-#include <snowpack/snowpackCore/PhaseChange.h>
-#include <snowpack/Meteo.h>
-#include <snowpack/Utils.h>
-#include <snowpack/snowpackCore/Solver.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Laws_sn.h>
-#include <snowpack/SnowDrift.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
+#include "../Constants.h"
+#include "../DataClasses.h"
+#include "../Laws_sn.h"
+#include "ReSolver1d.h"
+#include "WaterTransport.h"
+#include "Snowpack.h"
+#include "PhaseChange.h"
+#include "../Meteo.h"
+#include "../Utils.h"
+#include "Solver.h"
+#include "../Constants.h"
+#include "../Laws_sn.h"
+#include "../SnowDrift.h"
+#include "Metamorphism.h"
 
 #include <meteoio/MeteoIO.h>
 

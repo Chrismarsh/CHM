@@ -20,7 +20,7 @@
 #ifndef STABILITYALGORITHMS_H
 #define STABILITYALGORITHMS_H
 
-#include <snowpack/DataClasses.h>
+#include "DataClasses.h"
 
 /**
  * @class StabilityData

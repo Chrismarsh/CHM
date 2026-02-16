@@ -25,8 +25,8 @@
 #ifndef RESOLVER1D_H
 #define RESOLVER1D_H
 
-#include <snowpack/snowpackCore/SalinityTransport.h>
-#include <snowpack/DataClasses.h>
+#include "SalinityTransport.h"
+#include "../DataClasses.h"
 
 /**
  * @class ReSolver1d

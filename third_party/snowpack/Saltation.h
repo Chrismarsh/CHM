@@ -23,7 +23,7 @@
 #include <meteoio/MeteoIO.h>
 #include <string.h>
 
-#include <snowpack/SnowpackConfig.h>
+#include "SnowpackConfig.h"
 
 /**
  * @brief This module contains the saltation model of Judith.

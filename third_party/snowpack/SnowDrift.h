@@ -23,10 +23,11 @@
 
 #include <meteoio/MeteoIO.h>
 
-#include <snowpack/Saltation.h>
-#include <snowpack/DataClasses.h>
-#include <snowpack/SnowpackConfig.h>
+#include "Saltation.h"
+#include "DataClasses.h"
+#include "SnowpackConfig.h"
 
+#include <algorithm>
 class Saltation;
 
 /**

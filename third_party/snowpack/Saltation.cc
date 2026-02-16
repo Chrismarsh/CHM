@@ -20,9 +20,9 @@
 
 #include <meteoio/MeteoIO.h>
 
-#include <snowpack/Saltation.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
+#include "Saltation.h"
+#include "Constants.h"
+#include "Utils.h"
 #include <cmath>
 
 using namespace mio;

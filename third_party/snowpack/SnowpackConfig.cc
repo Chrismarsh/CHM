@@ -18,7 +18,7 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/SnowpackConfig.h>
+#include "SnowpackConfig.h"
 
 using namespace mio;
 using namespace std;
@@ -230,7 +230,7 @@ void SnowpackConfig::setDefaults()
 		if(s_height_new_elem.empty()) {
 			stringstream ss;
 			const double tmp = 2. * minimum_l_element;
-			ss << tmp;
+//			ss << tmp;
 			addKey("HEIGHT_NEW_ELEM", "SnowpackAdvanced", ss.str());
 		}
 	}
@@ -257,7 +257,7 @@ void SnowpackConfig::setDefaults()
 			if ( !enforce_measured_snow_heights) {
 				stringstream ss;
 				const double tmp = 1.1 * minimum_l_element;
-				ss << tmp;
+//				ss << tmp;
 				addKey("HEIGHT_NEW_ELEM", "SnowpackAdvanced", ss.str());
 			}
 		}
@@ -361,7 +361,7 @@ void SnowpackConfig::setDefaults()
 	if (hazard_steps_between.empty()) {
 		stringstream ss;
 		const int tmp = (int)(30./calculation_step_length + 0.5);
-		ss << tmp;
+//		ss << tmp;
 		addKey("HAZARD_STEPS_BETWEEN", "Output", ss.str());
 	}
 

@@ -18,10 +18,10 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/vanGenuchten.h>
-#include <snowpack/snowpackCore/ReSolver1d.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
+#include "vanGenuchten.h"
+#include "snowpackCore/ReSolver1d.h"
+#include "Constants.h"
+#include "Utils.h"
 
 /**
  * @file vanGenuchten.cc

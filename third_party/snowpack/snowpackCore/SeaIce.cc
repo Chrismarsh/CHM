@@ -24,11 +24,11 @@
  * @brief This module contains the sea ice specific routines for the 1d snowpack model
  */
 
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/snowpackCore/SeaIce.h>
-#include <snowpack/snowpackCore/ReSolver1d.h>
+#include "../Constants.h"
+#include "../Utils.h"
+#include "Metamorphism.h"
+#include "SeaIce.h"
+#include "ReSolver1d.h"
 
 #include <assert.h>
 #include <sstream>

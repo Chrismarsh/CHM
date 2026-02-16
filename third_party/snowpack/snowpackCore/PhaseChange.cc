@@ -18,10 +18,10 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/snowpackCore/PhaseChange.h>
-#include <snowpack/snowpackCore/ReSolver1d.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
+#include "PhaseChange.h"
+#include "ReSolver1d.h"
+#include "../Constants.h"
+#include "../Utils.h"
 
 using namespace mio;
 using namespace std;
@@ -314,6 +314,7 @@ void PhaseChange::compSubSurfaceFrze(ElementData& Edata, const unsigned int nSol
 
 void PhaseChange::initialize(SnowStation& Xdata)
 {
+	if (Xdata.getNumberOfElements() == 0) return;
 	// Initialize PhaseChange: execute this function before doing any call to PhaseChange::compPhaseChange for the current time step, to reset the energy balance values.
 	size_t e, nE;
 	ElementData* EMS;
@@ -346,6 +347,7 @@ void PhaseChange::finalize(const SurfaceFluxes& Sdata, SnowStation& Xdata, const
 	double sum_Qmf=0.;
 	cold_content_out=0.;
 	cold_content_soil_out=0.;
+	if (Xdata.getNumberOfElements() == 0) return;
 
 	ElementData* EMS;
 	bool prn_CK = false;

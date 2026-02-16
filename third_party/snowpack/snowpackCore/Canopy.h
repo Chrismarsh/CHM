@@ -21,7 +21,7 @@
 #ifndef CANOPY_H
 #define CANOPY_H
 
-#include <snowpack/DataClasses.h>
+#include "../DataClasses.h"
 
 #include <string>
 #include <fstream>

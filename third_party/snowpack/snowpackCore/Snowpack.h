@@ -26,12 +26,12 @@
 #ifndef SNOWPACK_H
 #define SNOWPACK_H
 
-#include <snowpack/Meteo.h>
-#include <snowpack/DataClasses.h>
-#include <snowpack/SnowDrift.h>
-#include <snowpack/TechnicalSnow.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/snowpackCore/PhaseChange.h>
+#include "../Meteo.h"
+#include "../DataClasses.h"
+#include "../SnowDrift.h"
+#include "../TechnicalSnow.h"
+#include "Metamorphism.h"
+#include "PhaseChange.h"
 
 #include <meteoio/MeteoIO.h>
 #include <vector>
@@ -46,7 +46,7 @@ class Snowpack {
 		Snowpack(const SnowpackConfig& i_cfg);
 
 		void runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double& cumu_precip,
-		                      BoundCond& Bdata, SurfaceFluxes& Sdata);
+		                      BoundCond& Bdata, SurfaceFluxes& Sdata,double mass_erode);
 
 		/**
 		 * @brief Perform snow preparation (grooming, etc) on a given snowpack

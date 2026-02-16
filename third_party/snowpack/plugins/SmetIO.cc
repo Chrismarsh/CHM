@@ -18,10 +18,10 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/plugins/SmetIO.h>
-#include <snowpack/Utils.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/StabilityAlgorithms.h>
+#include "SmetIO.h"
+#include "../Utils.h"
+#include "../snowpackCore/Metamorphism.h"
+#include "../StabilityAlgorithms.h"
 
 using namespace std;
 using namespace mio;

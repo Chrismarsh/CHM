@@ -30,7 +30,7 @@
 #define HAZARD_H
 
 #include <meteoio/MeteoIO.h>
-#include <snowpack/DataClasses.h>
+#include "DataClasses.h"
 #include <vector>
 
 /// Structure of double values for output to SDB

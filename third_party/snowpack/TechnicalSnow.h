@@ -21,7 +21,7 @@
 #ifndef TECHNICALSNOW_H
 #define TECHNICALSNOW_H
 
-#include <snowpack/DataClasses.h>
+#include "DataClasses.h"
 
 /**
  * @brief Implementation of snow grooming

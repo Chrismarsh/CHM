@@ -15,8 +15,8 @@
     You should have received a copy of the GNU Lesser General Public License
     along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <snowpack/plugins/CaaMLIO.h>
-#include <snowpack/Utils.h>
+#include "CaaMLIO.h"
+#include "../Utils.h"
 //#include <meteoio/meteolaws/Atmosphere.h>
 
 #include <sstream>

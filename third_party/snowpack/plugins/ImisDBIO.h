@@ -21,8 +21,8 @@
 #ifndef IMISDBIO_H
 #define IMISDBIO_H
 
-#include <snowpack/plugins/SnowpackIOInterface.h>
-#include <snowpack/DataClasses.h>
+#include "SnowpackIOInterface.h"
+#include "../DataClasses.h"
 #include <meteoio/MeteoIO.h>
 #include <occi.h>
 #include <cctype>

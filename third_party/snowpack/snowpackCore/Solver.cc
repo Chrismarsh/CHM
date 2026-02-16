@@ -6,7 +6,7 @@
 * in order to solve a linear system of equations
 */
 
-#include <snowpack/snowpackCore/Solver.h>
+#include "Solver.h"
 #include <meteoio/MeteoIO.h>
 #include <iostream>
 #include <cstdio>

@@ -24,17 +24,17 @@
  * @brief This module contains the driving routines for the 1d snowpack model
  */
 
-#include <snowpack/snowpackCore/Snowpack.h>
-#include <snowpack/snowpackCore/Solver.h>
-#include <snowpack/Meteo.h>
-#include <snowpack/Constants.h>
-#include <snowpack/Utils.h>
-#include <snowpack/Laws_sn.h>
-#include <snowpack/snowpackCore/WaterTransport.h>
-#include <snowpack/snowpackCore/VapourTransport.h>
-#include <snowpack/TechnicalSnow.h>
-#include <snowpack/snowpackCore/Metamorphism.h>
-#include <snowpack/snowpackCore/PhaseChange.h>
+#include "Snowpack.h"
+#include "Solver.h"
+#include "../Meteo.h"
+#include "../Constants.h"
+#include "../Utils.h"
+#include "../Laws_sn.h"
+#include "WaterTransport.h"
+//#include "VapourTransport.h"
+#include "../TechnicalSnow.h"
+#include "Metamorphism.h"
+#include "PhaseChange.h"
 
 #include <assert.h>
 #include <sstream>
@@ -1960,11 +1960,11 @@ void Snowpack::compSnowFall(const CurrentMeteo& Mdata, SnowStation& Xdata, doubl
  * @param Sdata
  */
 void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double& cumu_precip,
-                                BoundCond& Bdata, SurfaceFluxes& Sdata)
+                                BoundCond& Bdata, SurfaceFluxes& Sdata, double mass_erode)
 {
 	// HACK -> couldn't the following objects be created once in init ?? (with only a reset method ??)
 	WaterTransport watertransport(cfg);
-	VapourTransport vapourtransport(cfg);
+	//VapourTransport vapourtransport(cfg);
 	Metamorphism metamorphism(cfg);
 	SnowDrift snowdrift(cfg);
 	PhaseChange phasechange(cfg);
@@ -2002,7 +2002,11 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 			double tmp=0.;
 			snowdrift.compSnowDrift(Mdata, Xdata, Sdata, tmp);
 		} else
-			snowdrift.compSnowDrift(Mdata, Xdata, Sdata, cumu_precip);
+		{
+            double tmp = mass_erode;
+            snowdrift.compSnowDrift(Mdata, Xdata, Sdata, tmp);
+        }
+//			snowdrift.compSnowDrift(Mdata, Xdata, Sdata, cumu_precip);
 
 		if (Xdata.Seaice != NULL) {
 			// Reinitialize and compute the initial meteo heat fluxes
@@ -2075,7 +2079,7 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 				if (ii == 1) phasechange.initialize(Xdata);
 
 				// See if any SUBSURFACE phase changes are occuring due to updated temperature profile
-				if(!coupled_phase_changes) {
+				if(!coupled_phase_changes && Xdata.getNumberOfElements() != 0) {
 					if (!alpine3d)
 						phasechange.compPhaseChange(Xdata, Mdata.date);
 					else
@@ -2144,10 +2148,10 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 		double ql = Bdata.ql;	// Variable to keep track of how latent heat is used
 		watertransport.compTransportMass(Mdata, Xdata, Sdata, ql);
 
-		vapourtransport.compTransportMass(Mdata, ql, Xdata, Sdata);
+//		vapourtransport.compTransportMass(Mdata, ql, Xdata, Sdata);
 
 		// See if any SUBSURFACE phase changes are occuring due to updated water content (infiltrating rain/melt water in cold snow layers)
-		if(!coupled_phase_changes) {
+		if(!coupled_phase_changes && Xdata.getNumberOfElements() != 0) {
 			if(!alpine3d)
 				phasechange.compPhaseChange(Xdata, Mdata.date);
 			else

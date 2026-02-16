@@ -18,9 +18,9 @@
     along with Snowpack.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <snowpack/plugins/ImisDBIO.h>
-#include <snowpack/Utils.h>
-#include <snowpack/snowpackCore/Aggregate.h>
+#include "ImisDBIO.h"
+#include "../Utils.h"
+#include "../snowpackCore/Aggregate.h"
 
 #include <algorithm>
 
