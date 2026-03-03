@@ -63,11 +63,11 @@ template<FluxType type>
 water_flux<type>::water_flux(const double mm_per_s) : _value_mm_per_s(mm_per_s) {};
 
 template<FluxType type> 
-water_flux<type> water_flux<type>::from_W_per_m_squared(const double Q,const Units::Celsius T)
+water_flux<type> water_flux<type>::from_W_per_m_squared(const double Q)
 {
 	auto val_mm_per_s = 0.0;
 	if constexpr (type == FluxType::latent)
-		val_mm_per_s = Q / (PhysConst::water_reference_density() * PhysConst::Lv(T)) * mm_per_m;
+		val_mm_per_s = Q / (PhysConst::water_reference_density() * PhysConst::Lf()) * mm_per_m;
 	else 
 	{
 		static_assert(type != FluxType::latent && 

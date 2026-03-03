@@ -2,7 +2,6 @@
 
 #include "Atmosphere.h"
 #include "base_step.hpp"
-#include "water_flux.hpp"
 #include "PhysConst.h"
 #include <concepts>
 
@@ -22,13 +21,13 @@ namespace katabatic_melt_energy
 		size_t seconds_per_step = 3600.0;
     }; 
 
-    const water_flux<FluxType::Default> bulk_coefficient( const Params&, const Units::TempDiff deficit,
+    const Units::m_per_s bulk_coefficient( const Params&, const Units::TempDiff deficit,
             const Units::LapseRateSI gamma,
             const Units::Kelvin glacier_temperature);
 
-    const water_flux<FluxType::latent> sensible_heat(const Params&, const water_flux<FluxType::Default> coeff,const Units::TempDiff deficit,const Units::DensitySI air_density);
+    const Units::Watts_per_m2 sensible_heat(const Params&, const Units::m_per_s coeff,const Units::TempDiff deficit,const Units::DensitySI air_density);
 
-    const water_flux<FluxType::latent> latent_heat(const Params&, const water_flux<FluxType::Default> coeff,const Units::Pa vapour_pressure_deficit,
+    const Units::Watts_per_m2 latent_heat(const Params&, const Units::m_per_s coeff,const Units::Pa vapour_pressure_deficit,
             const Units::Kelvin glacier_temperature, const Units::DensitySI air_density);
 	
 	template<typename T>

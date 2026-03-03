@@ -209,9 +209,8 @@ namespace Glacier
         layers.push_back(new_layer);
     };
 
-    const MeltInfo LayeredFirn::melt(const water_flux<FluxType::latent>& flux)
+    const MeltInfo LayeredFirn::melt(const Units::Milimeters input)
     {
-        Units::Milimeters input{flux.mm_per_dt(p->seconds_per_step)};
 		Units::Milimeters melt{0.0};
 		Units::Milimeters init_layer_WE{0.0};
         while (input.value > 0.0 && !layers.empty())
@@ -243,9 +242,9 @@ namespace Glacier
 		};
 
         return MeltInfo {
-            Units::Milimeters{melt},
-			water_flux<FluxType::latent>::from_mm_per_dt(input.value,p->seconds_per_step)
-		};
+            melt,
+            input			
+        };
 
     };
 
@@ -278,9 +277,8 @@ namespace Glacier
         _water_equivalent += WE;
     };
 
-    const MeltInfo Ice::melt(const water_flux<FluxType::latent>& flux)
+    const MeltInfo Ice::melt(const Units::Milimeters input)
     {
-        Units::Milimeters input{flux.mm_per_dt(p->seconds_per_step)};
         auto melted = Units::Milimeters{0.0};
 
         if (input > _water_equivalent)
@@ -294,12 +292,8 @@ namespace Glacier
 			_water_equivalent -= input;
 		}
 
-        water_flux remaining_energy = flux - water_flux<FluxType::latent>::from_mm_per_dt(melted.value,p->seconds_per_step); 
-
-        if (remaining_energy.mm_per_s() < 0.0)
-        {
-            remaining_energy = water_flux<FluxType::latent>::from_mm_per_s(0.0);
-        }
+        Units::Milimeters remaining_energy = input - melted;
+        remaining_energy.value = std::max(remaining_energy.value,0.0);
 
         return MeltInfo{melted,
                 remaining_energy};
@@ -312,6 +306,12 @@ namespace Glacier
 
 	namespace Melt
 	{
+        Units::Milimeters convert_to_mass(const Units::Watts_per_m2 energy,const size_t dt)
+        {
+            constexpr auto thermal_factor = 0.95;
+            return energy.value * dt / (PhysConst::Lf() * PhysConst::water_reference_density() * thermal_factor);
+        };
+
 		MeltScenario get_scenario(const State& s,
 				Units::Milimeters melt_energy,const Units::Milimeters swe)
 		{
@@ -343,7 +343,7 @@ namespace Glacier
 			throw std::logic_error(err);
 		};
 
-		std::optional<MeltInfo> compute_melt(MeltScenario scenario,State& s,const water_flux<FluxType::latent> melt_energy)
+		std::optional<MeltInfo> compute_melt(MeltScenario scenario,State& s,const Units::Milimeters melt_mass_max)
 		{
 			std::optional<MeltInfo> info;
 			switch(scenario)
@@ -352,17 +352,17 @@ namespace Glacier
 					// No melt, so info remains uninitialized
 					break;
 				case MeltScenario::FirnMelt:
-					info.emplace(s.firn.melt(melt_energy));
+					info.emplace(s.firn.melt(melt_mass_max));
 					break;
 				case MeltScenario::FirnAndIceMelt: {
-					info.emplace(s.firn.melt(melt_energy));
+					info.emplace(s.firn.melt(melt_mass_max));
 					MeltInfo ice_info = s.ice.melt(info->remaining_energy);
 					info->melt += ice_info.melt;
 					info->remaining_energy += ice_info.remaining_energy;
 				}
 					break;
 				case MeltScenario::IceMelt:
-					info.emplace(s.ice.melt(melt_energy));
+					info.emplace(s.ice.melt(melt_mass_max));
 					
 			}
 			return info;

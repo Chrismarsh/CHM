@@ -1,7 +1,6 @@
 #pragma once
 
 #include "base_step.hpp"
-#include "water_flux.hpp"
 #include <concepts>
 #include <deque>
 #include <optional>
@@ -80,7 +79,7 @@ namespace Glacier
     struct MeltInfo
     {
         Units::Milimeters melt;
-        water_flux<FluxType::latent> remaining_energy;
+        Units::Milimeters remaining_energy;
     };
 
     class LayeredFirn
@@ -100,7 +99,7 @@ namespace Glacier
 
         void accumulate(const Units::Milimeters);
         
-        const MeltInfo melt(const water_flux<FluxType::latent>&);
+        const MeltInfo melt(const Units::Milimeters);
         const Units::Milimeters water_equivalent() const;
         const LayerContainer& get_layers() const;
     };
@@ -114,7 +113,7 @@ namespace Glacier
         Ice(const Params*, const Units::Milimeters);
 
         void accumulate(const Units::Milimeters);
-        const MeltInfo melt(const water_flux<FluxType::latent>&);
+        const MeltInfo melt(const Units::Milimeters);
         const Units::Milimeters water_equivalent() const;
     };
 
@@ -137,9 +136,11 @@ namespace Glacier
 		enum class MeltScenario {
 			NoMelt, FirnMelt, FirnAndIceMelt, IceMelt};
 
+        Units::Milimeters convert_to_mass(const Units::Watts_per_m2);
+
 		MeltScenario get_scenario(const State&,const Units::Milimeters melt_energy,const Units::Milimeters swe);
 
-		std::optional<MeltInfo> compute_melt(MeltScenario,State&,const water_flux<FluxType::latent> melt_energy);
+		std::optional<MeltInfo> compute_melt(MeltScenario,State&,const Units::Milimeters);
 	};
 
     namespace Updates
@@ -170,11 +171,7 @@ namespace Glacier
         {
             auto& s = d.get_state();
 			auto SWE = d.swe();
-
-            water_flux melt_energy = 
-				water_flux<FluxType::latent>::from_W_per_m_squared(d.melt_energy().value,
-				d.glacier_temperature()); 
-			Units::Milimeters melt_energy_mm_per_dt{melt_energy.mm_per_dt(p.seconds_per_step)};
+            Units::Milimeters melt_energy_mm_per_dt = Melt::convert_to_mass(d.melt_energy());
 
 			using namespace Melt;
 			auto scenario = get_scenario(s,
@@ -185,7 +182,7 @@ namespace Glacier
 			if (scenario == MeltScenario::FirnAndIceMelt)
 				state_copy.emplace(s);
 
-			auto info = compute_melt(scenario,s,melt_energy);
+			auto info = compute_melt(scenario,s,melt_energy_mm_per_dt);
 
 			switch (scenario) {
 				case MeltScenario::NoMelt:
