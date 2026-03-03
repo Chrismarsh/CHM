@@ -33,7 +33,6 @@
 #include <optional>
 #include <boost/shared_ptr.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <cstddef>
 #include <stdexcept>
 #include <cassert>
 #include <cstdint>

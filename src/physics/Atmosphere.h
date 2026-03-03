@@ -22,9 +22,11 @@
 
 #include <math.h>
 #include <physics/Snow.h>
+#include "PhysConst.h"
 
 #pragma once
 
+namespace Units = PhysConst::units;
 namespace Atmosphere {
     /********* Atmosphere ************/
 
@@ -43,6 +45,17 @@ namespace Atmosphere {
     double corr_precip_slope(double p, double slope);
 
     double saturatedVapourPressure(const double& T);
+
+    /**
+    * @brief Latent heat of vapourization
+    * @param T temperature (K)
+    * @return Latent heat of vapourization (J/kg)
+    */
+    double latent_heat_vapour(const double T) noexcept;
+    
+    const Units::DensitySI air_density(Units::Pa p,
+            Units::Kelvin T,
+            Units::Pa e);
 }
 
 

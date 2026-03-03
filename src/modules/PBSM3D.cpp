@@ -423,7 +423,7 @@ void PBSM3D::run(mesh& domain)
         auto tol = [](double a, double b) -> bool { return fabs(a - b) < 1e-8; };
 
         // ice density
-        double rho_p = PhysConst::rho_ice;
+        double rho_p = PhysConst::rho_ice();
 #pragma omp for
         for (size_t i = 0; i < domain->size_local_faces(); i++)
         {
@@ -700,7 +700,7 @@ void PBSM3D::run(mesh& domain)
                         // c_4 = 0.5;
                         // g   = 9.81;
 
-                        return u2 * PhysConst::kappa / log(2.0 / (0.6131702345e-2 * ustar * ustar + .5 * lambda)) -
+                        return u2 * PhysConst::kappa() / log(2.0 / (0.6131702345e-2 * ustar * ustar + .5 * lambda)) -
                             ustar;
                     };
                     try
@@ -717,7 +717,7 @@ void PBSM3D::run(mesh& domain)
                 else
                 {
                     // follow PBSM (Pom & Li 2000; Alpine3D) and don't calculate the feedback of z0 on u*
-                    ustar = u2 * PhysConst::kappa / log(2.0 / 0.0002);
+                    ustar = u2 * PhysConst::kappa() / log(2.0 / 0.0002);
                 }
 
                 if (ustar >= u_star_saltation_threshold)
@@ -746,7 +746,7 @@ void PBSM3D::run(mesh& domain)
             {
                 // we still need a u* for spatial K estimation later
                 d.z0 = Snow::Z0_SNOW;
-                ustar = std::max(0.01, PhysConst::kappa * uref / log(Atmosphere::Z_U_R / d.z0));
+                ustar = std::max(0.01, PhysConst::kappa() * uref / log(Atmosphere::Z_U_R / d.z0));
             }
 
             // sanity checks
@@ -1153,7 +1153,7 @@ void PBSM3D::run(mesh& domain)
                     }
                 }
                 // Li and Pomeroy 2000
-                double l = PhysConst::kappa * (cz + d.z0) * l__max / (PhysConst::kappa * (cz + d.z0) + l__max);
+                double l = PhysConst::kappa() * (cz + d.z0) * l__max / (PhysConst::kappa() * (cz + d.z0) + l__max);
                 if (debug_output)
                     (*face)["l"_s] = l;
 

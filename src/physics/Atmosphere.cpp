@@ -22,6 +22,9 @@
 //
 
 #include "physics/Atmosphere.h"
+#include "PhysConst.h"
+#include <stdexcept>
+#include <format>
 
 namespace Atmosphere
 {
@@ -79,4 +82,18 @@ namespace Atmosphere
         return Es;
     }
 
+    const Units::DensitySI air_density(Units::Pa p, Units::Kelvin T,
+            Units::Pa e)
+    {
+		if (p < e)
+		{
+			std::string err = std::format("Air pressure, {} Pa, can never be less than the vapour pressure, {} Pa, which is a partial pressure",p.value,e.value);
+			throw std::runtime_error(err);
+		};
+
+		Units::DensitySI result{p.value / (T.value * PhysConst::RgasDry() ) *
+            (1 - (1 - PhysConst::em()) * e.value / p.value)};
+
+		return result;
+    }; 
 }
