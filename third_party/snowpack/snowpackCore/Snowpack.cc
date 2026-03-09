@@ -2170,8 +2170,9 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 		// computeSnowTemperatures where the vectors U, dU and dUU are allocated.
 		compSnowCreep(Mdata, Xdata);
 
-	} catch(const exception&) {
+	} catch(const exception& e) { // prevent silent failure
 		prn_msg(__FILE__, __LINE__, "err", Mdata.date, "Snowpack computation not completed");
+		std::cerr << "[ERROR] Snowpack exception: " << e.what() << std::endl;
 		throw;
 	}
 
