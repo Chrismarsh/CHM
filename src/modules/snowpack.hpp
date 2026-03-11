@@ -96,6 +96,7 @@
  * - Top layer Fraction of ice content "frac_ice_content" [-]
  * - Top layer Liquid water content "Sliq" [-]
  * - Snow surface temperature "Tsnow" [\f$ {}^\circ C \f$]
+ * - Top layer Snow density "snow_density" [\f$ kg \cdot m^{-3} \f$]
  *
  * **Configuration:**
  * \rst
@@ -152,6 +153,7 @@ public:
         double cum_precip;
 
         double sum_subl;
+        bool is_grooming; // Flag indicating if snow grooming is enabled for this face
     };
 
     double sn_dt; // calculation step length

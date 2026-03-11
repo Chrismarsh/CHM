@@ -82,6 +82,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     provides("frac_ice_content");
     provides("Sliq");
     provides("Tsnow");
+    provides("snow_density");
 
 }
 
@@ -246,6 +247,12 @@ void Lehning_snowpack::run(mesh_elem &face)
         }
     }
 
+    // Perform snow preparation (grooming) if enabled
+    if(data.is_grooming)
+    {
+        data.sp->snowPreparation(Mdata.date, *(data.Xdata));
+    }
+
 
     (*face)["sublimation"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
 
@@ -288,6 +295,7 @@ void Lehning_snowpack::run(mesh_elem &face)
             (*face)["snow_grain_size"_s] = top_element.rg;
             (*face)["frac_ice_content"_s] = top_element.theta[ICE]; // ICE is defined as 1 in DataClasses.h
             (*face)["Sliq"_s] = top_element.theta[WATER]; // WATER is defined as 2 in DataClasses.h
+            (*face)["snow_density"_s] = top_element.Rho; // Snow density [kg/m3]
         }
         
         if(data.Xdata->getNumberOfNodes() > 0)
@@ -380,19 +388,19 @@ void Lehning_snowpack::init(mesh& domain)
         double grooming_depth_start = cfg.get("GROOMING_DEPTH_START", 0.4); // How much snow on the ground to start grooming
         double grooming_depth_impact = cfg.get("GROOMING_DEPTH_IMPACT", 0.4); //maximum depth of snow impacted by grooming
         // Check for grooming parameter in domain - if true, enable SNOW_GROOMING
-        bool is_grooming = false;
+        d.is_grooming = false;
         if(face->has_parameter("grooming")){
-            is_grooming = face->parameter("grooming"_s);
+            d.is_grooming = face->parameter("grooming"_s);
         } else if(face->has_parameter("Resort")){ // Check if Resort parameter exists and use it to look up grooming in parameter mapping (similar to landcover for SimpleCanopy, look SnowCast config)
             int resort_type = face->parameter("Resort"_s);
             try {
-                is_grooming = global_param->parameters.get<bool>("Resort." + std::to_string(resort_type) + ".grooming");
+                d.is_grooming = global_param->parameters.get<bool>("Resort." + std::to_string(resort_type) + ".grooming");
             } catch(const boost::property_tree::ptree_bad_path& e) {
                 SPDLOG_ERROR("No grooming parameter defined for Resort type: {}", resort_type);
             }
         }
         
-        if(is_grooming)
+        if(d.is_grooming)
         {
             d.config.addKey("SNOW_GROOMING","TechSnow","true");
             d.config.addKey("GROOMING_WEEK_START","TechSnow",std::to_string(grooming_week_start));
