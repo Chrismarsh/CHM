@@ -47,12 +47,12 @@ namespace Atmosphere {
     double saturatedVapourPressure(const double& T);
 
     /**
-    * @brief Latent heat of vapourization
+    * @brief Calculation of air density
+    * @param p air pressure (Pa)
     * @param T temperature (K)
-    * @return Latent heat of vapourization (J/kg)
+    * @param e vapour pressure (Pa)
+    * @return Air Density (kg/m^3)
     */
-    double latent_heat_vapour(const double T) noexcept;
-    
     const Units::DensitySI air_density(Units::Pa p,
             Units::Kelvin T,
             Units::Pa e);

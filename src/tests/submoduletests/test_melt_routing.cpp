@@ -65,7 +65,7 @@ TEST_F(LinearReservoirTest,NonZeroKLessThanCriticalThrows)
 	EXPECT_THROW(func(),std::runtime_error);
 };
 
-TEST_F(LinearReservoirTest,StepTest)
+TEST_F(LinearReservoirTest,StepTestSimple)
 {
 	const auto dt = 1500.0;
 	const auto k = 3050.0;
@@ -75,7 +75,7 @@ TEST_F(LinearReservoirTest,StepTest)
 	run(k,dt,inputs);
 };
 
-TEST_F(LinearReservoirTest,StepTest2)
+TEST_F(LinearReservoirTest,StepTestLong)
 {
 	size_t N = 1000;
 	std::vector<double> inputs;
@@ -137,7 +137,7 @@ TEST_F(GlacierReservoirTest,ChainLengthOneSameAsLinearReservoir)
 	EXPECT_GT(out_lin + out_gla,0.0);
 };
 
-TEST_F(GlacierReservoirTest,LongChainSameAsLinearReservoir)
+TEST_F(GlacierReservoirTest,LongChainSameAsLinearReservoirButDelayed)
 {
 	p.chain_length = 75u;
 	LinearReservoir lin_res(p.k,p.seconds_per_step);
@@ -195,12 +195,12 @@ class Data
 public:
     State& get_state() { return s; }
 	Data(const Params* _p) : s(_p) {};
-    const Units::Milimeters snowmelt() 
-	{ return Units::Milimeters{snow.melt}; }
-    const Units::Milimeters firnmelt()
-	{ return Units::Milimeters{firn.melt}; }
-    const Units::Milimeters icemelt()
-	{ return Units::Milimeters{ice.melt}; }
+    const Units::Milimetres snowmelt() 
+	{ return Units::Milimetres{snow.melt}; }
+    const Units::Milimetres firnmelt()
+	{ return Units::Milimetres{firn.melt}; }
+    const Units::Milimetres icemelt()
+	{ return Units::Milimetres{ice.melt}; }
 
 	void snowmelt(const double T) { snow.melt = T; };
 	void firnmelt(const double T) { firn.melt = T; };

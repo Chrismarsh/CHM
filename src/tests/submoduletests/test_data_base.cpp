@@ -11,7 +11,7 @@ struct MockCache : public cache_base {
 class data : public data_base<MockCache>
 {
 public:
-    data(mesh_elem face, boost::shared_ptr<global> param, pt::ptree& cfg)
+    data(mesh_elem face, std::shared_ptr<global> param, pt::ptree& cfg)
         : data_base<MockCache>(face,param,cfg,true) {};
     ~data() {};
 
@@ -41,13 +41,13 @@ public:
 class DataBaseTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        mock_global = boost::make_shared<global>();
+        mock_global = std::make_shared<global>();
     }
 
 
     // mock components for the data constructor
     mesh_elem mock_face;
-    boost::shared_ptr<global> mock_global;
+    std::shared_ptr<global> mock_global;
     pt::ptree mock_cfg;
 
     // Lambdas for testing, standing in for face access

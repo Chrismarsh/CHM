@@ -71,9 +71,9 @@ namespace Glacier
         return 450.0 - 204.7 / h * (1 - std::exp(-h / 0.673));
     };
 
-    Layer::Layer(const Units::Milimeters water_eq)
+    Layer::Layer(const Units::Milimetres water_eq)
     {
-        using namespace Bisection;
+        using namespace math;
         auto test_function = [=,WE = water_eq](const double h) {
             auto height = std::max(h,0.6);
             auto rho = swe_to_firn(height);
@@ -165,7 +165,7 @@ namespace Glacier
         _height.value = old  * PhysConst::water_reference_density() / (_density.value * MM_PER_M);
     };
 
-    void Layer::remove(const Units::Milimeters amount)
+    void Layer::remove(const Units::Milimetres amount)
     {
         auto current = water_equivalent();
         if (amount >= current)
@@ -177,9 +177,9 @@ namespace Glacier
             ( _density.value * MM_PER_M );
     };
 
-    const Units::Milimeters Layer::water_equivalent() const
+    const Units::Milimetres Layer::water_equivalent() const
     {
-        return Units::Milimeters{_height.value * _density.value / PhysConst::water_reference_density() * MM_PER_M};
+        return Units::Milimetres{_height.value * _density.value / PhysConst::water_reference_density() * MM_PER_M};
     };
 
     LayeredFirn::LayeredFirn(const Params* _p) : p(_p) {};
@@ -190,29 +190,29 @@ namespace Glacier
 
     LayeredFirn::LayeredFirn(const Params* _p, const std::deque<Layer>& L) : p(_p), layers(L) {};
 
-    const Units::Milimeters LayeredFirn::water_equivalent() const
+    const Units::Milimetres LayeredFirn::water_equivalent() const
     {
         if (layers.empty())
-            return Units::Milimeters{0.0};
+            return Units::Milimetres{0.0};
         
         auto sum = std::accumulate(layers.begin(),layers.end(),0.0,
                 [](double sum, const Layer& layer) {
                     return sum + layer.water_equivalent().value;
                     });
 
-        return Units::Milimeters{sum};
+        return Units::Milimetres{sum};
     };
 
-    void LayeredFirn::accumulate(const Units::Milimeters WE)
+    void LayeredFirn::accumulate(const Units::Milimetres WE)
     {
         Layer new_layer(WE);
         layers.push_back(new_layer);
     };
 
-    const MeltInfo LayeredFirn::melt(const Units::Milimeters input)
+    const MeltInfo LayeredFirn::melt(Units::Milimetres input)
     {
-		Units::Milimeters melt{0.0};
-		Units::Milimeters init_layer_WE{0.0};
+		Units::Milimetres melt{0.0};
+		Units::Milimetres init_layer_WE{0.0};
         while (input.value > 0.0 && !layers.empty())
         {
             Layer& current = layers.back();
@@ -253,9 +253,9 @@ namespace Glacier
         return layers;
     };
 
-	std::optional<Units::Milimeters> LayeredFirn::convert_to_ice()
+	std::optional<Units::Milimetres> LayeredFirn::convert_to_ice()
     {
-        std::optional<Units::Milimeters> result;
+        std::optional<Units::Milimetres> result;
 
         if (layers.empty())
             return result;
@@ -270,16 +270,17 @@ namespace Glacier
 
     Ice::Ice(const Params* _p) : p(_p) {};
 
-    Ice::Ice(const Params* _p, const Units::Milimeters WE) : p(_p), _water_equivalent(WE) {};
+    Ice::Ice(const Params* _p, const Units::Milimetres WE) : p(_p), _water_equivalent(WE) {};
 
-    void Ice::accumulate(const Units::Milimeters WE)
+    void Ice::accumulate(const Units::Milimetres WE)
     {
         _water_equivalent += WE;
     };
 
-    const MeltInfo Ice::melt(const Units::Milimeters input)
+    const MeltInfo Ice::melt(const Units::Milimetres input)
     {
-        auto melted = Units::Milimeters{0.0};
+		Units::Milimetres local_input = input;
+        auto melted = Units::Milimetres{0.0};
 
         if (input > _water_equivalent)
         {
@@ -292,28 +293,28 @@ namespace Glacier
 			_water_equivalent -= input;
 		}
 
-        Units::Milimeters remaining_energy = input - melted;
+		Units::Milimetres remaining_energy = local_input;
+		remaining_energy -= melted;
         remaining_energy.value = std::max(remaining_energy.value,0.0);
 
         return MeltInfo{melted,
                 remaining_energy};
     };
 
-    const Units::Milimeters Ice::water_equivalent() const
+    const Units::Milimetres Ice::water_equivalent() const
     {
         return _water_equivalent;
     }
 
 	namespace Melt
 	{
-        Units::Milimeters convert_to_mass(const Units::Watts_per_m2 energy,const size_t dt)
+        Units::Milimetres convert_to_mass(const Units::Watts_per_m2 energy,const Params& p)
         {
-            constexpr auto thermal_factor = 0.95;
-            return energy.value * dt / (PhysConst::Lf() * PhysConst::water_reference_density() * thermal_factor);
+            return Units::Milimetres{energy.value * p.seconds_per_step * MM_PER_M / (PhysConst::Lf() * PhysConst::water_reference_density() * p.thermal_factor)};
         };
 
 		MeltScenario get_scenario(const State& s,
-				Units::Milimeters melt_energy,const Units::Milimeters swe)
+				Units::Milimetres melt_energy,const Units::Milimetres swe)
 		{
 			if (swe.value > 0.0 || melt_energy.value == 0.0)
 				return MeltScenario::NoMelt;
@@ -343,7 +344,7 @@ namespace Glacier
 			throw std::logic_error(err);
 		};
 
-		std::optional<MeltInfo> compute_melt(MeltScenario scenario,State& s,const Units::Milimeters melt_mass_max)
+		std::optional<MeltInfo> compute_melt(MeltScenario scenario,State& s,const Units::Milimetres melt_mass_max)
 		{
 			std::optional<MeltInfo> info;
 			switch(scenario)
@@ -374,7 +375,7 @@ namespace Glacier
 
     namespace Updates
     {
-        void swe_to_firn(const Params& p, LayeredFirn& firn, Units::Milimeters& swe)
+        void swe_to_firn(const Params& p, LayeredFirn& firn, Units::Milimetres& swe)
         {
             if (swe.value == 0.0)
                 return;
@@ -401,7 +402,7 @@ namespace Glacier
 
 	State::State(const LayeredFirn& f,const Ice& i) : firn(f), ice(i) {};
 
-	const Units::Milimeters State::total_water_equiv() const
+	const Units::Milimetres State::total_water_equiv() const
 	{
 		auto result = ice.water_equivalent();
 		result += firn.water_equivalent();

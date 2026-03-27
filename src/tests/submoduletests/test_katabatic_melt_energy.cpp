@@ -96,7 +96,7 @@ TEST_F(BulkCoefficientTest,AnalyticalBulkCoefficent)
                 Units::LapseRateSI{input.gamma},
                 Units::Kelvin{input.glacier_temperature});
 
-        EXPECT_EQ(result.m_per_s(),input.solution);
+        EXPECT_EQ(result.value,input.solution);
     }
 
 };
@@ -135,28 +135,28 @@ protected:
 
 TEST_F(KatabaticHeatTest,AnalyticalSensibleHeat)
 {
-    const auto coefficient = water_flux<>::from_m_per_s(1e3);
+    const Units::m_per_s coefficient{1e3};
     const Units::Celsius deficit{10.0};
     const Units::DensitySI air_density{1.5};
-    const auto expected = air_density.value * p.heat_capacity_air * coefficient.m_per_s() * deficit.value;
+    const auto expected = air_density.value * p.heat_capacity_air * coefficient.value * deficit.value;
 
     auto result = sensible_heat(p,coefficient,deficit,air_density);
 
-    EXPECT_DOUBLE_EQ(result.W_per_m_squared(),expected);
+    EXPECT_DOUBLE_EQ(result.value,expected);
     
 };
 
 TEST_F(KatabaticHeatTest,AnalyticlLatentHeat)
 {
-    const auto coefficient = water_flux<>::from_m_per_s(45.0);
+    const Units::m_per_s coefficient{45.0};
     const Units::DensitySI air_density{1.102};
     const Units::Celsius glacier_temperature{-1.3};
     const Units::Pa vapour_pressure_deficit{1e-3};
-    const auto expected = p.molecular_wt_ratio * air_density.value * PhysConst::Lv(glacier_temperature) * coefficient.m_per_s() * vapour_pressure_deficit.value;
+    const auto expected = p.molecular_wt_ratio * air_density.value * PhysConst::Lv(glacier_temperature) * coefficient.value * vapour_pressure_deficit.value;
 
     auto result = latent_heat(p,coefficient,vapour_pressure_deficit,glacier_temperature,air_density);
 
-    EXPECT_EQ(result.W_per_m_squared(),expected);
+    EXPECT_EQ(result.value,expected);
 };
 
 
@@ -235,13 +235,12 @@ TEST_F(KatabaticModelTest, ExecuteImplComputesCorrectSensibleHeat) {
     );
     
     auto expected_sensible = sensible_heat(params, K, T_deficit, rho_air);
-    auto expected_sensible_mm = expected_sensible.mm_per_dt(params.seconds_per_step);
     
     // Execute the model
     model.execute_impl(data);
     
     // Verify
-    EXPECT_DOUBLE_EQ(data.last_sensible_heat_value, expected_sensible_mm);
+    EXPECT_DOUBLE_EQ(data.last_sensible_heat_value, expected_sensible.value);
 }
 
 TEST_F(KatabaticModelTest, ExecuteImplComputesCorrectLatentHeat) {
@@ -284,13 +283,12 @@ TEST_F(KatabaticModelTest, ExecuteImplComputesCorrectLatentHeat) {
         data.glacier_temperature(),
         rho_air
     );
-    auto expected_latent_mm = expected_latent.mm_per_dt(params.seconds_per_step);
-    
+
     // Execute
     model.execute_impl(data);
     
     // Verify
-    EXPECT_DOUBLE_EQ(data.last_latent_heat_value, expected_latent_mm);
+	EXPECT_DOUBLE_EQ(data.last_latent_heat_value, expected_latent.value);
 }
 
 TEST_F(KatabaticModelTest, ExecuteImplWithZeroTemperatureGradient) {

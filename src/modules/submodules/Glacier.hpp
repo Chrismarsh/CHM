@@ -33,6 +33,7 @@ namespace Glacier
         double big_increment{50.0};
         double critical_density{550.0};
 		double firn_to_ice_density{830.0};
+		double thermal_factor{0.95};
         size_t seconds_per_step{3600};
 	};
 
@@ -56,14 +57,14 @@ namespace Glacier
         struct Height : public Units::Metres {};
         struct Density : public Units::DensitySI {}; 
 
-	    Layer(const Units::Milimeters water_equivalent);
+	    Layer(const Units::Milimetres water_equivalent);
         Layer(const Height,const Density);
 
-        const Units::Milimeters water_equivalent() const;
+        const Units::Milimetres water_equivalent() const;
         void densifyLinear(const Density small, const Density big,const Density critical);
         void densifyHerronLangway(const Units::Kelvin, double depth,
                 const double accumulation_rate, const Density critical_density);
-        void remove(const Units::Milimeters);
+        void remove(const Units::Milimetres);
 	
 		const Height height() const;
 		const Density density() const;
@@ -78,8 +79,8 @@ namespace Glacier
 
     struct MeltInfo
     {
-        Units::Milimeters melt;
-        Units::Milimeters remaining_energy;
+        Units::Milimetres melt;
+        Units::Milimetres remaining_energy;
     };
 
     class LayeredFirn
@@ -95,26 +96,26 @@ namespace Glacier
         explicit LayeredFirn(const Params*);
         LayeredFirn(const Params*,const std::vector<Layer>&);
         LayeredFirn(const Params*,const LayerContainer&);
-        std::optional<Units::Milimeters> convert_to_ice();
+        std::optional<Units::Milimetres> convert_to_ice();
 
-        void accumulate(const Units::Milimeters);
+        void accumulate(const Units::Milimetres);
         
-        const MeltInfo melt(const Units::Milimeters);
-        const Units::Milimeters water_equivalent() const;
+        const MeltInfo melt(const Units::Milimetres);
+        const Units::Milimetres water_equivalent() const;
         const LayerContainer& get_layers() const;
     };
     
     class Ice
     {
         const Params* const p;
-        Units::Milimeters _water_equivalent{0.0};
+        Units::Milimetres _water_equivalent{0.0};
     public:
         explicit Ice(const Params*);
-        Ice(const Params*, const Units::Milimeters);
+        Ice(const Params*, const Units::Milimetres);
 
-        void accumulate(const Units::Milimeters);
-        const MeltInfo melt(const Units::Milimeters);
-        const Units::Milimeters water_equivalent() const;
+        void accumulate(const Units::Milimetres);
+        const MeltInfo melt(const Units::Milimetres);
+        const Units::Milimetres water_equivalent() const;
     };
 
 	struct State
@@ -127,7 +128,7 @@ namespace Glacier
 		State(const Params* p, const Ice& i);
 		State(const Params* p, const LayeredFirn& f);
 		State(const LayeredFirn& f, const Ice& i);
-		const Units::Milimeters total_water_equiv() const;
+		const Units::Milimetres total_water_equiv() const;
 		const Units::Metres total_depth() const;
     };
 
@@ -136,23 +137,24 @@ namespace Glacier
 		enum class MeltScenario {
 			NoMelt, FirnMelt, FirnAndIceMelt, IceMelt};
 
-        Units::Milimeters convert_to_mass(const Units::Watts_per_m2);
+        Units::Milimetres convert_to_mass(const Units::Watts_per_m2,const Params&);
 
-		MeltScenario get_scenario(const State&,const Units::Milimeters melt_energy,const Units::Milimeters swe);
+		MeltScenario get_scenario(const State&,const Units::Milimetres melt_energy,const Units::Milimetres swe);
 
-		std::optional<MeltInfo> compute_melt(MeltScenario,State&,const Units::Milimeters);
+		std::optional<MeltInfo> compute_melt(MeltScenario,State&,const Units::Milimetres);
 	};
 
     namespace Updates
     {
-        void swe_to_firn(const Params&, LayeredFirn&, Units::Milimeters& swe);
+        void swe_to_firn(const Params&, LayeredFirn&, Units::Milimetres& swe);
         void firn_to_ice(const Params&, LayeredFirn&, Ice&);
     };
 
     template<class T>
     concept GlacierData = requires(T& t)
     {
-        { t.swe() } -> std::same_as<const Units::Milimeters>;
+		{ t.get_state() } -> std::same_as<State&>;
+        { t.swe() } -> std::same_as<const Units::Milimetres>;
         { t.melt_energy() } -> std::same_as<const Units::Watts_per_m2>;
 		{ t.glacier_temperature() } -> std::same_as<const Units::Celsius>;
         { t.update_now() } -> std::same_as<bool>;
@@ -167,11 +169,11 @@ namespace Glacier
     class Model : public base_step<Model<data>,data>
     {
     public:
-        void execute_impl(data& d)
+        void execute_impl(data& d) const
         {
             auto& s = d.get_state();
 			auto SWE = d.swe();
-            Units::Milimeters melt_energy_mm_per_dt = Melt::convert_to_mass(d.melt_energy());
+            Units::Milimetres melt_energy_mm_per_dt = Melt::convert_to_mass(d.melt_energy(),p);
 
 			using namespace Melt;
 			auto scenario = get_scenario(s,
@@ -217,7 +219,10 @@ namespace Glacier
 			d.glacier_water_equivalent(s.total_water_equiv().value);
 			d.total_depth(s.total_depth().value);
         };
-        Params& get_params();
+        Params& get_params()
+		{
+			return p;
+		};
     private:
         Params p;
     };

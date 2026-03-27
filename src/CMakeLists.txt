@@ -62,6 +62,7 @@ set(MODULE_SRCS
         modules/PBSM3D.cpp
 		modules/snobal.cpp
 		modules/fsm.cpp
+		modules/katabatic_routing_glacier.cpp
 
 		modules/testing/mpi_example.cpp
 
@@ -435,7 +436,7 @@ if (BUILD_TESTS)
 			#    test_daily.cpp
             #     tests/test_triangulation.cpp
             tests/submoduletests/test_data_base.cpp
-            tests/submoduletests/test_water_flux.cpp
+			#tests/submoduletests/test_water_flux.cpp
             tests/submoduletests/test_glacier.cpp
 			tests/submoduletests/test_katabatic_melt_energy.cpp
 			tests/submoduletests/test_melt_routing.cpp

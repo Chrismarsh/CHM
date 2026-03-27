@@ -80,10 +80,14 @@ namespace PhysConst {
 
 
         //depths
-        struct Milimeters
-            : public base<double,Milimeters> {};
+        struct Milimetres
+            : public base<double,Milimetres> {};
         struct Metres
             : public base<double,Metres> {};
+
+		// depth / time
+		struct m_per_s
+			: public base<double,m_per_s> {};
 
         // mass
         struct Kg_per_m3

@@ -54,9 +54,9 @@ namespace GlacierRouting
 	concept GlacierRoutingData = requires(T& t)
 	{
 		{ t.get_state() } -> std::same_as<State&>;
-		{ t.snowmelt() } -> std::same_as<const Units::Milimeters>;
-		{ t.firnmelt() } -> std::same_as<const Units::Milimeters>;
-		{ t.icemelt() } -> std::same_as<const Units::Milimeters>;
+		{ t.snowmelt() } -> std::same_as<const Units::Milimetres>;
+		{ t.firnmelt() } -> std::same_as<const Units::Milimetres>;
+		{ t.icemelt() } -> std::same_as<const Units::Milimetres>;
 
 		{ t.snowmelt_delayed(std::declval<double>()) } -> std::same_as<void>;
 		{ t.firnmelt_delayed(std::declval<double>()) } -> std::same_as<void>;

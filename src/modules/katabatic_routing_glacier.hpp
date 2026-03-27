@@ -75,22 +75,23 @@ public:
 
     ~katabatic_routing_glacier();
 
-    void run(mesh_elem &face);
-    void init(mesh& domain);
+    void run(mesh_elem &face) override;
+    void init(mesh& domain) override;
 
 	struct Cache : public cache_base
 	{
+		Cache() {};
 		// All submodule inputs
-		double swe = default_value<double>();
-        double melt_energy = default_value<double>();
-		double glacier_temperature = default_value<double>();
-        double update_now = default_value<double>();
-		double air_temperature = default_value<double>();
-		double air_pressure = default_value<double>();
-		double vapour_pressure = default_value<double>();
-		double vapour_pressure_surface = default_value<double>();
-		double lapse_rate = default_value<double>();
-		double snowmelt = default_value<double>();
+		double swe = cache_base::default_value<double>();
+        double melt_energy = cache_base::default_value<double>();
+		double glacier_temperature = cache_base::default_value<double>();
+        double update_now = cache_base::default_value<double>();
+		double air_temperature = cache_base::default_value<double>();
+		double air_pressure = cache_base::default_value<double>();
+		double vapour_pressure = cache_base::default_value<double>();
+		double vapour_pressure_surface = cache_base::default_value<double>();
+		double lapse_rate = cache_base::default_value<double>();
+		double snowmelt = cache_base::default_value<double>();
 
 		// All submodule outputs
     	double glacier_water_equivalent = 0.0;
@@ -105,14 +106,14 @@ public:
 		double total_delayed = 0.0;
 	};
 
-    class data : public face_info, data_base<Cache>
+    class data : public face_info, public data_base<Cache>
     {
     public:
-		data(const mesh_elem& face, const boost::shared_ptr<global> param, const config_file cfg,
+		data(const mesh_elem& face, const std::shared_ptr<global> param, const config_file cfg,
 				const Glacier::Params* g_p, const GlacierRouting::Params* r_p); 
 		
 		GlacierRouting::State routing_state;
-		Glacier::State reservoir_state;
+		Glacier::State glacier_state;
 
 		Units::Kelvin glacier_temperature();
 		Units::Kelvin air_temperature();
@@ -123,15 +124,15 @@ public:
 		void latent_heat(const double v);
 		void sensible_heat(const double v);
 
-        const Units::Milimeters snowmelt();
-        const Units::Milimeters firnmelt();
-        const Units::Milimeters icemelt();
+        const Units::Milimetres snowmelt();
+        const Units::Milimetres firnmelt();
+        const Units::Milimetres icemelt();
         void snowmelt_delayed(double v);
         void firnmelt_delayed(double v);
         void icemelt_delayed(double v);
 		void total_delayed(double v);
 
-		const Units::Milimeters swe();
+		const Units::Milimetres swe();
 		const Units::Watts_per_m2 melt_energy();
 		bool update_now();
 
@@ -140,14 +141,20 @@ public:
 		void firn_melt(const double out);
 		void ice_melt(const double out);
 
+		double firn_emissivity = 0.0;
+		double ice_emissivity = 0.0;
+		double total_energy = 0.0;
 	};
 
 	// Adapter that satisfies KatabaticData concept
 	class katabatic_view
 	{
 		data& d;
+		mesh_elem& face;
 	public:
-		explicit katabatic_view(data& d): d(d) {};
+		explicit katabatic_view(data& d,mesh_elem& face)
+			: d(d), face(face){};
+		~katabatic_view();
 		Units::Kelvin glacier_temperature() { return d.glacier_temperature(); }
 		Units::Kelvin air_temperature() { return d.air_temperature(); }
 		Units::Pa air_pressure() { return d.air_pressure(); }
@@ -162,12 +169,14 @@ public:
 	// Adapter that satisfies GlacierRoutingData concept
     class routing_view {
         data& d;
+		mesh_elem& face;
     public:
-        explicit routing_view(data& d) : d(d) {}
+        explicit routing_view(data& d,mesh_elem& face) : d(d),face(face) {}
+		~routing_view();
 		GlacierRouting::State& get_state() { return d.routing_state; }  // no name collision!
-        const Units::Milimeters snowmelt() { return d.snowmelt(); }
-        const Units::Milimeters firnmelt() { return d.firnmelt(); }
-        const Units::Milimeters icemelt() { return d.icemelt(); }
+        const Units::Milimetres snowmelt() { return d.snowmelt(); }
+        const Units::Milimetres firnmelt() { return d.firnmelt(); }
+        const Units::Milimetres icemelt() { return d.icemelt(); }
         void snowmelt_delayed(const double v) { d.snowmelt_delayed(v); }
         void firnmelt_delayed(const double v) { d.firnmelt_delayed(v); }
         void icemelt_delayed(const double v) { d.icemelt_delayed(v); }
@@ -177,10 +186,14 @@ public:
 	// Similarly for Glacier::Model's concept
     class glacier_view {
         data& d;
+		mesh_elem& face;
     public:
-        explicit glacier_view(data& d) : d(d) {}
-		const Units::Milimeters swe() { return d.swe(); }
-		const Units::Watts_per_m2 melt_energy() { return d.melt_energy(); }
+        explicit glacier_view(data& d,mesh_elem& face) 
+			: d(d), face(face) {}
+		~glacier_view();
+		Glacier::State& get_state() { return d.glacier_state; }
+		const Units::Milimetres swe() { return d.swe(); }
+		const Units::Watts_per_m2 melt_energy() { return Units::Watts_per_m2{d.total_energy}; }
 		const Units::Celsius glacier_temperature() { return d.glacier_temperature(); }
 		bool update_now() { return d.update_now(); }
 
@@ -194,4 +207,7 @@ private:
     katabatic_melt_energy::Model<katabatic_view> katabatic;
     GlacierRouting::Model<routing_view> routing;
     Glacier::Model<glacier_view> glacier;
+
+	bool is_new_day();
+	double rain_sun_energy(const mesh_elem& face,data& d);
 };

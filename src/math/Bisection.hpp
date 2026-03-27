@@ -3,7 +3,7 @@
 #include <functional>
 #include <cmath>
 #include <limits>
-namespace Bisection
+namespace math
 {
     enum class Root { Found, DidNotConverge, NoRootGuaranteed };
     struct Result
@@ -15,12 +15,12 @@ namespace Bisection
 
     inline Result bisection(
         std::function<double(double)> f,
-        double a,
-        double  b,
+        double low_guess,
+        double  high_guess,
         double tol = 1e-10,
         size_t max_iter = 1000
     ) {
-        double fa = f(a), fb = f(b);
+        double fa = f(low_guess), fb = f(high_guess);
 
         if (fa * fb > 0) 
             return Result {
@@ -29,17 +29,17 @@ namespace Bisection
                 0};
 
         for (size_t i = 0; i < max_iter; ++i) {
-            double c = a + (b - a) / 2;
+            double c = low_guess + (high_guess - low_guess) / 2;
             double fc = f(c);
 
-            if (std::abs(fc) < tol || (b - a) / 2 < tol) 
+            if (std::abs(fc) < tol || (high_guess - low_guess) / 2 < tol) 
                 return Result{Root::Found,c,i} ;
 
             if (fa * fc < 0) {
-                b = c;
+                high_guess = c;
                 fb = fc;
             } else {
-                a = c;
+                low_guess = c;
                 fa = fc;
             }
         }

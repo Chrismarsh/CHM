@@ -49,7 +49,7 @@ namespace katabatic_melt_energy
 	{
 		Params p;
 	public:
-		void execute_impl(Data& d)
+		void execute_impl(Data& d) const
 		{
 			auto air_pressure = d.air_pressure();
 			auto vapour_pressure = d.vapour_pressure();
@@ -69,8 +69,8 @@ namespace katabatic_melt_energy
 
 			auto Q_latent = latent_heat(p,K,vapour_pressure_deficit,glacier_temperature,rho_air);
 
-			d.latent_heat(Q_latent.mm_per_dt(p.seconds_per_step));
-			d.sensible_heat(Q_sensible.mm_per_dt(p.seconds_per_step));
+			d.latent_heat(Q_latent.value);
+			d.sensible_heat(Q_sensible.value);
 		};
 
 		Params& get_params() { return p; };

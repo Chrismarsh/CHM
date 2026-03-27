@@ -39,6 +39,7 @@ TEST(ParamsTest,ParamsSetByPhysConst)
     p.big_increment = 50.0;
     p.critical_density = 550.0;
 	p.firn_to_ice_density = 830.0;
+	p.thermal_factor = 0.95;
 	p.seconds_per_step = 3600.0;
     return p;
 };
@@ -144,14 +145,14 @@ protected:
     Params p = test_default_params();
 
     // placeholder to be allocated later and passed to the layer object
-    Units::Milimeters water_equivalent;
+    Units::Milimetres water_equivalent;
 
     // Height is metres, density is kg/m^3
     static_assert(std::derived_from<Layer::Height,Units::Metres>);
     static_assert(std::derived_from<Layer::Density,Units::DensitySI>);
 };
 
-// Layer constructs from Units::Milimeters struct and returns the same value with the same type
+// Layer constructs from Units::Milimetres struct and returns the same value with the same type
 TEST_F(FirnLayerTest,ConstructsFromMilimetreStruct)
 {
     water_equivalent.value = 30.0;
@@ -183,7 +184,7 @@ TEST_F(FirnLayerTest,PartialRemove)
     water_equivalent.value = 350.0;
     layer = std::make_unique<Layer>(water_equivalent);
 
-    Units::Milimeters to_remove{150.0};
+    Units::Milimetres to_remove{150.0};
     layer->remove(to_remove);
 
 	// Layer uses a bisection method upon construction
@@ -200,7 +201,7 @@ TEST_F(FirnLayerTest,PartialRemove)
 TEST_F(FirnLayerTest,ExcessiveRemoveThrowsException)
 {
     water_equivalent.value = 250;
-    Units::Milimeters to_remove{water_equivalent.value * 2.0};
+    Units::Milimetres to_remove{water_equivalent.value * 2.0};
     layer = std::make_unique<Layer>(water_equivalent);
 
     EXPECT_THROW(layer->remove(to_remove),std::invalid_argument);
@@ -211,7 +212,7 @@ TEST_F(FirnLayerTest,ExcessiveRemoveThrowsException)
 TEST_F(FirnLayerTest,RemoveEqualToTotalThrows)
 {
     water_equivalent.value = 903.0;
-    Units::Milimeters to_remove{water_equivalent.value};
+    Units::Milimetres to_remove{water_equivalent.value};
     to_remove += water_equivalent;
     layer = std::make_unique<Layer>(water_equivalent);
     
@@ -317,7 +318,7 @@ TEST_F(LayeredFirnTest,ConstructFromLayersVector)
 
 TEST_F(LayeredFirnTest,Accumulate)
 {
-    constexpr Units::Milimeters WE{350.0}; 
+    constexpr Units::Milimetres WE{350.0}; 
 
     firn = std::make_unique<LayeredFirn>(&p);
 
@@ -334,7 +335,7 @@ TEST_F(LayeredFirnTest,ConvertToIce)
     std::deque<Layer> layers = old_layers();
 
     firn = std::make_unique<LayeredFirn>(&p,layers); 
-    Units::Milimeters init_WE = firn->water_equivalent();
+    Units::Milimetres init_WE = firn->water_equivalent();
 
     auto result = firn->convert_to_ice();
 
@@ -353,7 +354,7 @@ TEST_F(LayeredFirnTest,NoConvertToIce)
     std::reverse(layers.begin(),layers.end());
 
     firn = std::make_unique<LayeredFirn>(&p,layers);
-    Units::Milimeters init_WE = firn->water_equivalent();
+    Units::Milimetres init_WE = firn->water_equivalent();
 
     auto result = firn->convert_to_ice();
 
@@ -385,7 +386,7 @@ protected:
 
 		for (size_t n = 0; n < N; ++n)
 		{
-			Units::Milimeters water_eq{WE[n]};
+			Units::Milimetres water_eq{WE[n]};
 			Layer layer(water_eq);
 			layers.push_back(layer);
 		};
@@ -414,19 +415,20 @@ TEST_F(LayeredFirnMeltTest,ConstructFromDeque)
 TEST_F(LayeredFirnMeltTest,PartialMeltSingleLayer)
 {
     firn = std::make_unique<LayeredFirn>(&p);
-    constexpr Units::Milimeters input{150.0};
+    constexpr Units::Milimetres input{150.0};
     constexpr double melt_flux{75.0};
     firn->accumulate(input);
     
     // second argument is dt in units of seconds / step
     // Must use p.seconds_per_step because internals do the same
-    auto F = water_flux<FluxType::latent>::from_mm_per_dt(melt_flux,p.seconds_per_step);
+    // auto F = Units::Milimetres{melt_flux * p.seconds_per_step};
+	auto F = Units::Milimetres{melt_flux};
 
     auto melt_info = firn->melt(F);
 
     EXPECT_DOUBLE_EQ(melt_info.melt.value,melt_flux);
 
-    EXPECT_EQ(melt_info.remaining_energy.mm_per_dt(p.seconds_per_step),0.0);
+    EXPECT_EQ(melt_info.remaining_energy.value,0.0);
     
     auto& layers = firn->get_layers();
 
@@ -437,32 +439,30 @@ TEST_F(LayeredFirnMeltTest,PartialMeltSingleLayer)
 
 TEST_F(LayeredFirnMeltTest,PartialMeltManyLayer)
 {
-	constexpr auto melt_energy_mm_per_dt = 705.0;
-	water_flux m = water_flux<FluxType::latent>::
-		from_mm_per_dt(melt_energy_mm_per_dt,p.seconds_per_step);
-	double initial_WE = std::accumulate(WE.begin(),WE.end(),0.0);
-	double expected_final_WE = initial_WE - melt_energy_mm_per_dt;
+	const auto melt_energy_mm_per_dt = Units::Milimetres{705.0};
+	const auto initial_WE = std::accumulate(WE.begin(),WE.end(),0.0);
+	const auto expected_final_WE = Units::Milimetres{initial_WE - melt_energy_mm_per_dt.value};
 	
-	MeltInfo info = firn->melt(m);
+	MeltInfo info = firn->melt(melt_energy_mm_per_dt);
 
     auto sum  = 0.0;
     auto excess = 0.0;
     for (auto it = WE.rbegin(); it != WE.rend(); ++it)
     {
         sum += *it;
-        if (sum >= melt_energy_mm_per_dt)
+        if (sum >= melt_energy_mm_per_dt.value)
         {
-            excess = sum - melt_energy_mm_per_dt;
+            excess = sum - melt_energy_mm_per_dt.value;
             break;
         }
     }
 
     // amount melted is equal to input flux
-	EXPECT_DOUBLE_EQ(info.melt.value,m.mm_per_dt(p.seconds_per_step));
+	EXPECT_DOUBLE_EQ(info.melt.value,melt_energy_mm_per_dt.value);
 	
     // final WE is correct
 	EXPECT_DOUBLE_EQ(firn->water_equivalent().value,
-			expected_final_WE);
+			expected_final_WE.value);
     
     // layers removed at END only.
     // This isn't quite right. It will fail at the last iteration
@@ -489,41 +489,37 @@ TEST_F(LayeredFirnMeltTest,MeltAllLayersExcess)
 {
 	constexpr double initial_WE = std::accumulate(WE.begin(),WE.end(),0.0);
 	constexpr auto melt_energy_mm_per_dt = initial_WE * 1.25;
-	water_flux m = water_flux<FluxType::latent>::
-		from_mm_per_dt(melt_energy_mm_per_dt,p.seconds_per_step);
 	double expected_final_WE = initial_WE - melt_energy_mm_per_dt;
 	
-	MeltInfo info = firn->melt(m);
+	MeltInfo info = firn->melt(Units::Milimetres{melt_energy_mm_per_dt});
 	
-	water_flux excess = m - info.remaining_energy;
+	auto excess = melt_energy_mm_per_dt - info.remaining_energy.value;
 
 	EXPECT_DOUBLE_EQ(info.melt.value,initial_WE);	
 
 	EXPECT_DOUBLE_EQ(firn->water_equivalent().value,
 			0.0);
 	
-	EXPECT_NEAR(info.remaining_energy.mm_per_dt(p.seconds_per_step),
-			m.mm_per_dt(p.seconds_per_step) - initial_WE,MARGIN);
+	EXPECT_NEAR(info.remaining_energy.value,
+			melt_energy_mm_per_dt - initial_WE,MARGIN);
 };
 
 TEST_F(LayeredFirnMeltTest,MeltAllLayersExact)
 {
 	constexpr double initial_WE = std::accumulate(WE.begin(),WE.end(),0.0);
 	constexpr auto melt_energy_mm_per_dt = initial_WE;
-	water_flux m = water_flux<FluxType::latent>::
-		from_mm_per_dt(melt_energy_mm_per_dt,p.seconds_per_step);
 	double expected_final_WE = initial_WE - melt_energy_mm_per_dt;
 	
-	MeltInfo info = firn->melt(m);
+	MeltInfo info = firn->melt(Units::Milimetres{melt_energy_mm_per_dt});
 	
-	water_flux excess = m - info.remaining_energy;
+	auto excess = melt_energy_mm_per_dt - info.remaining_energy.value;
 
 	EXPECT_DOUBLE_EQ(info.melt.value,initial_WE);	
 
 	EXPECT_DOUBLE_EQ(firn->water_equivalent().value,
 			0.0);
 	
-	EXPECT_EQ(info.remaining_energy.mm_per_dt(p.seconds_per_step),
+	EXPECT_EQ(info.remaining_energy.value,
 			0.0);
 
 };
@@ -546,16 +542,16 @@ TEST_F(IceTest,ConstructEmpty)
     EXPECT_EQ(ice->water_equivalent().value,0.0);
 };
 
-TEST_F(IceTest,ConstructFromEmptuMilimeterStruct)
+TEST_F(IceTest,ConstructFromEmptyMilimeterStruct)
 {
-    Units::Milimeters WE{0.0};
+    Units::Milimetres WE{0.0};
     ice = std::make_unique<Ice>(&p,WE);
 
     EXPECT_EQ(ice->water_equivalent().value,0.0);
 };
 TEST_F(IceTest,ConstructsFromMilimetreStruct)
 {   
-    Units::Milimeters WE{500.34};
+    Units::Milimetres WE{500.34};
     ice = std::make_unique<Ice>(&p,WE);
 
     EXPECT_EQ(ice->water_equivalent(),WE);
@@ -563,12 +559,12 @@ TEST_F(IceTest,ConstructsFromMilimetreStruct)
 
 TEST_F(IceTest,Accumulate)
 {
-    Units::Milimeters WE{125.0};
+    Units::Milimetres WE{125.0};
     ice = std::make_unique<Ice>(&p,WE);
 
     constexpr auto incoming = 340.5;
-    WE += Units::Milimeters{incoming};
-    ice->accumulate(Units::Milimeters{incoming});
+    WE += Units::Milimetres{incoming};
+    ice->accumulate(Units::Milimetres{incoming});
 
     auto current_WE = ice->water_equivalent();
 
@@ -577,33 +573,29 @@ TEST_F(IceTest,Accumulate)
 
 TEST_F(IceTest,MeltSmall)
 {
-    Units::Milimeters WE{3030.0};
+    Units::Milimetres WE{3030.0};
     ice = std::make_unique<Ice>(&p,WE);
-    Units::Milimeters to_melt{125.0};
+    Units::Milimetres to_melt{125.0};
 
-    auto m = water_flux<FluxType::latent>::from_mm_per_dt(to_melt.value,p.seconds_per_step);
-
-    auto melt_info = ice->melt(m);
+    auto melt_info = ice->melt(to_melt);
 
     EXPECT_EQ(melt_info.melt,to_melt);
 
-    EXPECT_EQ(ice->water_equivalent().value,WE.value - m.mm_per_dt(p.seconds_per_step));
+    EXPECT_EQ(ice->water_equivalent().value,WE.value - to_melt.value);
 
 };
 
 TEST_F(IceTest,MeltBig)
 {
-    Units::Milimeters WE{1245.0};
+    Units::Milimetres WE{1245.0};
     ice = std::make_unique<Ice>(&p,WE);
-    Units::Milimeters to_melt{WE.value * 1.35};
+    Units::Milimetres to_melt{WE.value * 1.35};
 
-    auto m = water_flux<FluxType::latent>::from_mm_per_dt(to_melt.value,p.seconds_per_step);
-
-    auto melt_info = ice->melt(m);
+    auto melt_info = ice->melt(to_melt);
 
     EXPECT_EQ(melt_info.melt,WE);
 
-    EXPECT_DOUBLE_EQ(melt_info.remaining_energy.mm_per_dt(p.seconds_per_step),WE.value*0.35);
+    EXPECT_DOUBLE_EQ(melt_info.remaining_energy.value,WE.value*0.35);
 };
     
 class StateTest : public ::testing::Test
@@ -613,7 +605,7 @@ protected:
 
 	Ice ice()
 	{
-		Units::Milimeters ice_WE{100.0};
+		Units::Milimetres ice_WE{100.0};
 		return Ice{&p,ice_WE};
 	};
 
@@ -622,10 +614,10 @@ protected:
 		struct Firn_WE
 		{
 			Layer layer;
-			Units::Milimeters mm;
+			Units::Milimetres mm;
 		};
 
-		std::vector<Units::Milimeters> init {{
+		std::vector<Units::Milimetres> init {{
 			{100.0},{200.0},{350.0},{75.0}
 		}};
 
@@ -649,7 +641,7 @@ TEST_F(StateTest,ConstructEmpty)
     auto WE = state.total_water_equiv();
 	auto depth = state.total_depth();
 
-    Units::Milimeters expected{0.0};
+    Units::Milimetres expected{0.0};
 
     EXPECT_DOUBLE_EQ(WE.value,expected.value);
 	constexpr auto MM_PER_M = 1000.0;
@@ -683,7 +675,7 @@ TEST_F(StateTest,ConstructWithIceAndFirn)
 
 	State s(f,i); // No p, not needed by s
 				  
-	Units::Milimeters init = i.water_equivalent();
+	Units::Milimetres init = i.water_equivalent();
 	init += f.water_equivalent();
 
 	constexpr auto M_PER_MM = 1e-3;
@@ -712,7 +704,7 @@ TEST_F(StateTest,ConstructWithIceAndFirn)
 
 class DailyMeltTest : public ::testing::Test
 {
-	std::array<Units::Milimeters,4> WE {{
+	std::array<Units::Milimetres,4> WE {{
 			{200.0},
 			{500.0},
 			{250.0},
@@ -730,7 +722,7 @@ protected:
 		}
 		
 		double sum = std::accumulate(WE.begin(),WE.end(),0.0,
-				[](double acc, const Units::Milimeters mm)
+				[](double acc, const Units::Milimetres mm)
 				{
 					return acc + mm.value;
 				});
@@ -748,34 +740,33 @@ protected:
     Ice ice{&p};
     void set_ice()
     {
-        Units::Milimeters temp{400.0};
+        Units::Milimetres temp{400.0};
         ice.accumulate(temp);
     };
 
-    Units::Milimeters swe{0.0};
+    Units::Milimetres swe{0.0};
     void set_swe()
     {
         swe.value = 450.0;
     }
 
-	water_flux<FluxType::latent> melt_energy = water_flux<FluxType::latent>::from_W_per_m_squared(0.0);
+	Units::Milimetres melt_energy{0.0};
 	void SetEnergySmall()
 	{	
 		double firn_WE = std::accumulate(WE.begin(),WE.end(),0.0,
-				[](double acc,Units::Milimeters mm) {
+				[](double acc,Units::Milimetres mm) {
 				acc += mm.value; 
 				return acc;});
-		auto value = water_flux<FluxType::latent>::from_mm_per_dt(firn_WE/2.0,p.seconds_per_step);
-		melt_energy += value;
+		melt_energy += Units::Milimetres{firn_WE/2.0};
 	};
 
 	void SetEnergyBig()
 	{
 		double firn_WE = std::accumulate(WE.begin(),WE.end(),0.0,
-				[](double acc,Units::Milimeters mm) {
+				[](double acc,Units::Milimetres mm) {
 				acc += mm.value; 
 				return acc;});
-		melt_energy = water_flux<FluxType::latent>::from_mm_per_dt(firn_WE*2.0,p.seconds_per_step);
+		melt_energy = Units::Milimetres{firn_WE*2.0};
 		//melt_energy += value;
 	};
 
@@ -830,17 +821,15 @@ protected:
 
 		State s(firn,ice);
 
-		Units::Milimeters melt_energy_mm_per_dt{melt_energy.mm_per_dt(p.seconds_per_step)};
-
-		EXPECT_EQ(Melt::get_scenario(s,melt_energy_mm_per_dt,swe), 
+		EXPECT_EQ(Melt::get_scenario(s,melt_energy,swe), 
 				withoutEnergy);
 
 		SetEnergySmall();
 
 
-		melt_energy_mm_per_dt += Units::Milimeters{melt_energy.mm_per_dt(p.seconds_per_step)};
+		melt_energy += Units::Milimetres{melt_energy};
 
-		EXPECT_EQ(Melt::get_scenario(s,melt_energy_mm_per_dt,swe),
+		EXPECT_EQ(Melt::get_scenario(s,melt_energy,swe),
 				withEnergy);
 	};
 	
@@ -851,6 +840,26 @@ protected:
 		test_scenario(f,withoutEnergy,withoutEnergy);
 	};
 };
+
+TEST_F(DailyMeltTest,ZeroWperM2_To_0mm)
+{
+	const Units::Watts_per_m2 input{0.0};
+	using namespace Melt;
+	EXPECT_EQ(convert_to_mass(input,p).value,0.0);
+};
+
+TEST_F(DailyMeltTest,PositiveWperM2_To_mm)
+{
+	const Units::Watts_per_m2 input{1234.0};
+	using namespace Melt;
+	using namespace PhysConst;
+
+	auto output = Units::Watts_per_m2{input.value / 
+		( 0.95 * water_reference_density() * Lf() ) * p.seconds_per_step * 1000.0 };
+
+	EXPECT_EQ(convert_to_mass(input,p).value,output.value);
+};
+
 
 TEST_F(DailyMeltTest,FullGlacierIsNoMelt)
 {
@@ -886,10 +895,7 @@ TEST_F(DailyMeltTest,NoSnowGlacier)
 
 	State s(firn,ice);
 
-	Units::Milimeters melt_energy_mm_per_dt{melt_energy.mm_per_dt(p.seconds_per_step)};
-
-
-	EXPECT_EQ(Melt::get_scenario(s,melt_energy_mm_per_dt,swe), 
+	EXPECT_EQ(Melt::get_scenario(s,melt_energy,swe), 
 			Melt::MeltScenario::FirnAndIceMelt);
 };
 
@@ -921,7 +927,7 @@ TEST_F(DailyMeltTest,NoMelt)
 
 	State s(firn,ice);
 
-	auto melt_energy = water_flux<FluxType::latent>::from_W_per_m_squared(1000.0);
+	melt_energy = Units::Milimetres{1000.0};
 	auto result = Melt::compute_melt(scenario,s,melt_energy);
 
 	EXPECT_FALSE(result);
@@ -935,12 +941,12 @@ TEST_F(DailyMeltTest,FirnMelt)
 
 	State s(firn,ice);
 	auto init_FWE = s.firn.water_equivalent();	
-	water_flux<FluxType::latent> melt_energy = water_flux<FluxType::latent>::from_mm_per_dt(firn.water_equivalent().value / 2.0,p.seconds_per_step);
+	auto melt_energy = Units::Milimetres{firn.water_equivalent().value / 2.0};
 	auto result = Melt::compute_melt(scenario,s,melt_energy);
 	auto final_FWE = s.firn.water_equivalent();
 
-	EXPECT_DOUBLE_EQ(result->melt.value,melt_energy.mm_per_dt(p.seconds_per_step));
-	EXPECT_DOUBLE_EQ(final_FWE.value,init_FWE.value - melt_energy.mm_per_dt(p.seconds_per_step)); 
+	EXPECT_DOUBLE_EQ(result->melt.value,melt_energy.value);
+	EXPECT_DOUBLE_EQ(final_FWE.value,init_FWE.value - melt_energy.value); 
 };
 
 TEST_F(DailyMeltTest,FirnAndIceMelt)
@@ -953,13 +959,13 @@ TEST_F(DailyMeltTest,FirnAndIceMelt)
 	auto init_IWE = s.ice.water_equivalent();
 	constexpr auto ice_melt_fraction = 0.5;
 	
-	water_flux<FluxType::latent> melt_energy = water_flux<FluxType::latent>::from_mm_per_dt(firn.water_equivalent().value +init_IWE.value * ice_melt_fraction,p.seconds_per_step);
+	auto melt_energy = Units::Milimetres{firn.water_equivalent().value +init_IWE.value * ice_melt_fraction};
 	auto result = Melt::compute_melt(scenario,s,melt_energy);
 	auto final_FWE = s.firn.water_equivalent();
 	auto& layers = s.firn.get_layers();
 	auto final_IWE = s.ice.water_equivalent();
 
-	EXPECT_DOUBLE_EQ(result->melt.value,melt_energy.mm_per_dt(p.seconds_per_step));
+	EXPECT_DOUBLE_EQ(result->melt.value,melt_energy.value);
 	EXPECT_DOUBLE_EQ(final_FWE.value,0.0);
 	EXPECT_EQ(layers.size(),0);
 	EXPECT_DOUBLE_EQ(final_IWE.value,init_IWE.value * ice_melt_fraction);
@@ -976,13 +982,13 @@ TEST_F(DailyMeltTest,FirnAndIceMeltAll)
 	auto init_IWE = s.ice.water_equivalent();
 	constexpr auto ice_melt_fraction = 1.5;
 	
-	water_flux<FluxType::latent> melt_energy = water_flux<FluxType::latent>::from_mm_per_dt(firn.water_equivalent().value +init_IWE.value * ice_melt_fraction,p.seconds_per_step);
+	auto melt_energy = Units::Milimetres{firn.water_equivalent().value +init_IWE.value * ice_melt_fraction};
 	auto result = Melt::compute_melt(scenario,s,melt_energy);
 	auto final_FWE = s.firn.water_equivalent();
 	auto& layers = s.firn.get_layers();
 	auto final_IWE = s.ice.water_equivalent();
 
-	EXPECT_DOUBLE_EQ(result->melt.value,melt_energy.mm_per_dt(p.seconds_per_step) - init_IWE.value * 0.5);
+	EXPECT_DOUBLE_EQ(result->melt.value,melt_energy.value - init_IWE.value * 0.5);
 	EXPECT_DOUBLE_EQ(final_FWE.value,0.0);
 	EXPECT_EQ(layers.size(),0);
 	EXPECT_DOUBLE_EQ(final_IWE.value,0.0);
@@ -998,14 +1004,13 @@ TEST_F(DailyMeltTest,IceMelt)
 
 	auto init_IWE = s.ice.water_equivalent();
 
-	water_flux<FluxType::latent> melt_energy = 
-		water_flux<FluxType::latent>::from_mm_per_dt(s.ice.water_equivalent().value * 0.75,p.seconds_per_step);
+	auto melt_energy = Units::Milimetres{s.ice.water_equivalent().value * 0.75};
 	auto result = Melt::compute_melt(scenario,s,melt_energy);
 
 	auto final_IWE = s.ice.water_equivalent();
 
-	EXPECT_EQ(result->melt.value,melt_energy.mm_per_dt(p.seconds_per_step));
-	EXPECT_EQ(final_IWE.value,init_IWE.value - melt_energy.mm_per_dt(p.seconds_per_step));
+	EXPECT_EQ(result->melt.value,melt_energy.value);
+	EXPECT_EQ(final_IWE.value,init_IWE.value - melt_energy.value);
 
 };
 /*
@@ -1037,7 +1042,7 @@ protected:
 	
 	// Construct fresh firn, no layers high density
 	LayeredFirn fresh_firn() {
-		std::vector<Units::Milimeters> WE {{
+		std::vector<Units::Milimetres> WE {{
 			{200.0},
 			{500.0},
 			{250.0},
@@ -1052,7 +1057,7 @@ protected:
 		}
 		
 		double sum = std::accumulate(WE.begin(),WE.end(),0.0,
-				[](double acc, const Units::Milimeters mm)
+				[](double acc, const Units::Milimetres mm)
 				{
 					return acc + mm.value;
 				});
@@ -1110,7 +1115,7 @@ protected:
 		
 	void some_ice()
 	{
-		Units::Milimeters ice_init_WE{6e3};
+		Units::Milimetres ice_init_WE{6e3};
 		ice.accumulate(ice_init_WE);
 	};
 
@@ -1119,7 +1124,7 @@ protected:
 TEST_F(YearlyUpdaterTest,NoSWEFreshFirnUnchanged)
 {
 	LayeredFirn firn = fresh_firn();
-	Units::Milimeters swe{0.0};
+	Units::Milimetres swe{0.0};
     auto swe_copy = swe;
 	auto layers_init = firn.get_layers();
 	
@@ -1136,7 +1141,7 @@ TEST_F(YearlyUpdaterTest,NoSWEFreshFirnUnchanged)
 TEST_F(YearlyUpdaterTest,SWEupdatesFirn)
 {
 	LayeredFirn firn = fresh_firn();
-	Units::Milimeters swe{150.0};
+	Units::Milimetres swe{150.0};
     auto swe_copy = swe;
 	const size_t init_firn_layers =
 		firn.get_layers().size();
@@ -1156,18 +1161,18 @@ TEST_F(YearlyUpdaterTest,SWEupdatesFirn)
 TEST_F(YearlyUpdaterTest,FreshFirnNotConvertedToIce)
 {
 	LayeredFirn firn = fresh_firn();
-	Units::Milimeters swe{0.0};
+	Units::Milimetres swe{0.0};
 
     //LayeredFirn firn2{Params()};
 	const size_t init_firn_layers =
 		firn.get_layers().size();
-	const Units::Milimeters init_ice = ice.water_equivalent();
+	const Units::Milimetres init_ice = ice.water_equivalent();
 
 	Updates::firn_to_ice(p,firn,ice);
 
 	EXPECT_EQ(firn.get_layers().size(),init_firn_layers);
 
-	EXPECT_EQ(Units::Milimeters{0.0},ice.water_equivalent());
+	EXPECT_EQ(Units::Milimetres{0.0},ice.water_equivalent());
 
 };
 
@@ -1175,12 +1180,12 @@ TEST_F(YearlyUpdaterTest,OldFirnConvertsFrontToIce)
 {
 	LayeredFirn firn = old_firn();
 	some_ice();
-	Units::Milimeters swe{0.0};
+	Units::Milimetres swe{0.0};
 
 	auto init_layers = firn.get_layers();
 	const size_t init_firn_layers =
 		init_layers.size();
-	const Units::Milimeters init_ice = ice.water_equivalent();
+	const Units::Milimetres init_ice = ice.water_equivalent();
 
 	Updates::firn_to_ice(p,firn,ice);
 
@@ -1220,7 +1225,7 @@ TEST_F(YearlyUpdaterTest,FreshFirnUnchangedIceAndFirn)
 	some_ice();
 
 	LayeredFirn init_firn = firn;
-	const Units::Milimeters init_ice = ice.water_equivalent();
+	const Units::Milimetres init_ice = ice.water_equivalent();
 
 	Updates::firn_to_ice(p,firn,ice);
 
@@ -1233,12 +1238,12 @@ TEST_F(YearlyUpdaterTest,FreshFirnUnchangedIceAndFirn)
 TEST_F(YearlyUpdaterTest,ManyIceUpdates)
 {
 	LayeredFirn firn = old_firn();
-	const Units::Milimeters init_ice = ice.water_equivalent();
+	const Units::Milimetres init_ice = ice.water_equivalent();
 
 	auto& layers = firn.get_layers();
     size_t init_layer_num = layers.size();
 	auto init_layers = layers;
-	Units::Milimeters sum{init_ice};
+	Units::Milimetres sum{init_ice};
     size_t iter_tracker = 0;
 	while (iter_tracker < init_layer_num)
 	{	
@@ -1258,7 +1263,7 @@ class TestData
     State _state;
 
     // Inputs (set before calling execute_impl)
-    Units::Milimeters _swe{0.0};
+    Units::Milimetres _swe{0.0};
     Units::Watts_per_m2 _melt_energy{0.0};
     Units::Celsius    _glacier_temperature{273.15};
     bool              _update_now{false};
@@ -1286,27 +1291,26 @@ public:
     // ── Setters for test configuration ──
     void set_swe(double v) { _swe.value = v; }
     void set_melt_energy(double v) { 
-		auto wf = water_flux<FluxType::latent>::from_mm_per_dt(v,3600);
-		_melt_energy.value = wf.W_per_m_squared(); }
+		_melt_energy.value = v; }
     void set_glacier_temperature(double v) { _glacier_temperature.value = v; }
     void set_update_now(bool v) { _update_now = v; }
 
     // ── GlacierData concept interface ──
-    Units::Milimeters swe() { return _swe; }
-    Units::Watts_per_m2 melt_energy() { return _melt_energy; }
-    Units::Celsius glacier_temperature() { return _glacier_temperature; }
+    const Units::Milimetres swe() { return _swe; }
+    const Units::Watts_per_m2 melt_energy() { return _melt_energy; }
+    const Units::Celsius glacier_temperature() { return _glacier_temperature; }
     bool update_now() { return _update_now; }
 
-    void glacier_water_equivalent(double v) { _glacier_water_equivalent = v; }
-    void total_depth(double v) { _total_depth = v; }
-    void firn_melt(double v) { _firn_melt = v; }
-    void ice_melt(double v) { _ice_melt = v; }
+    void glacier_water_equivalent(const double v) { _glacier_water_equivalent = v; }
+    void total_depth(const double v) { _total_depth = v; }
+    void firn_melt(const double v) { _firn_melt = v; }
+    void ice_melt(const double v) { _ice_melt = v; }
 
     // ── Extra methods used by execute_impl ──
     State& get_state() { return _state; }
     const State& get_state() const { return _state; }
-    Units::Milimeters snowmelt() { return Units::Milimeters{0.0}; } // unused by logic
-    Units::Milimeters rainfall() { return Units::Milimeters{0.0}; } // unused by logic
+    Units::Milimetres snowmelt() { return Units::Milimetres{0.0}; } // unused by logic
+    Units::Milimetres rainfall() { return Units::Milimetres{0.0}; } // unused by logic
 
     // ── Getters for test assertions ──
     double recorded_glacier_water_equivalent() const { return _glacier_water_equivalent; }
@@ -1331,22 +1335,32 @@ protected:
     {
         LayeredFirn f(&p);
         if (we_mm > 0.0)
-            f.accumulate(Units::Milimeters{we_mm});
+            f.accumulate(Units::Milimetres{we_mm});
         return f;
     }
 
     // Helper: create ice with known WE
     Ice make_ice(double we_mm)
     {
-        return Ice(&p, Units::Milimeters{we_mm});
+        return Ice(&p, Units::Milimetres{we_mm});
     }
+
+	double convert_mm_to_wperm2(const double v,const Params& p)
+	{
+		using namespace PhysConst;
+		// 0.95 -> themal quality factor
+		// mm/step * J/kg * kg/m^3 * step/s * m/mm = W/m^2
+		// This is a very coupled test, with the 0.95
+		// TODO improve this testing interface
+		return v * 0.95 * Lf() * water_reference_density() /( p.seconds_per_step * 1000.0); 
+	};
 };
 
 TEST_F(ModelTest, SwePositive_EmptyGlacier_NoMelt)
 {
     TestData d(&p);
     d.set_swe(100.0);
-    d.set_melt_energy(500.0);  // would melt if SWE were 0
+    d.set_melt_energy(convert_mm_to_wperm2(500.0,p));  // would melt if SWE were 0
 
     run(d);
 
@@ -1359,7 +1373,7 @@ TEST_F(ModelTest, SwePositive_WithFirn_NoMelt)
     auto firn = make_firn(200.0);
     TestData d(firn, make_ice(0.0));
     d.set_swe(50.0);
-    d.set_melt_energy(1000.0);
+    d.set_melt_energy(convert_mm_to_wperm2(1000.0,p));
 
     run(d);
 
@@ -1371,7 +1385,7 @@ TEST_F(ModelTest, SwePositive_WithIce_NoMelt)
 {
     TestData d(&p, make_ice(500.0));
     d.set_swe(10.0);
-    d.set_melt_energy(200.0);
+    d.set_melt_energy(convert_mm_to_wperm2(200.0,p));
 
     run(d);
 
@@ -1384,7 +1398,7 @@ TEST_F(ModelTest, SwePositive_WithFirnAndIce_NoMelt)
     auto firn = make_firn(300.0);
     TestData d(firn, make_ice(400.0));
     d.set_swe(1.0);
-    d.set_melt_energy(9999.0);
+    d.set_melt_energy(convert_mm_to_wperm2(9999.0,p));
 
     run(d);
 
@@ -1396,7 +1410,7 @@ TEST_F(ModelTest, ZeroMeltEnergy_EmptyGlacier_NoMelt)
 {
     TestData d(&p);
     d.set_swe(0.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
 
     run(d);
 
@@ -1409,7 +1423,7 @@ TEST_F(ModelTest, ZeroMeltEnergy_WithFirn_NoMelt)
     auto firn = make_firn(200.0);
     TestData d(firn, make_ice(0.0));
     d.set_swe(0.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
 
     run(d);
 
@@ -1421,7 +1435,7 @@ TEST_F(ModelTest, ZeroMeltEnergy_WithIce_NoMelt)
 {
     TestData d(&p, make_ice(500.0));
     d.set_swe(0.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
 
     run(d);
 
@@ -1435,7 +1449,7 @@ TEST_F(ModelTest, FirnOnlyMelt_PartialMelt)
     auto firn = make_firn(500.0);
     TestData d(firn, make_ice(0.0));
     d.set_swe(0.0);
-    d.set_melt_energy(100.0);  // less than firn WE
+    d.set_melt_energy(convert_mm_to_wperm2(100.0,p));  // less than firn WE
     d.set_glacier_temperature(0.0);
 
     run(d);
@@ -1451,7 +1465,7 @@ TEST_F(ModelTest, IceOnlyMelt)
     // Ice only, no firn → IceMelt scenario
     TestData d(&p, make_ice(500.0));
     d.set_swe(0.0);
-    d.set_melt_energy(100.0);
+    d.set_melt_energy(convert_mm_to_wperm2(100.0,p));
     d.set_glacier_temperature(0.0);
 
     run(d);
@@ -1465,11 +1479,12 @@ TEST_F(ModelTest, FirnAndIceMelt_MeltExceedsFirn)
 {
     // Both firn and ice present, melt energy exceeds firn WE
     // → FirnAndIceMelt scenario
+	// Possibly failing this test because of thermal melt factor?!
     auto firn = make_firn(50.0);  // small firn
     auto ice = make_ice(500.0);
     TestData d(firn, ice);
     d.set_swe(0.0);
-    d.set_melt_energy(200.0);  // well exceeds firn
+    d.set_melt_energy(convert_mm_to_wperm2(200.0,p));  // well exceeds firn
     d.set_glacier_temperature(0.0);
 
     double initial_firn_we = d.get_state().firn.water_equivalent().value;
@@ -1493,7 +1508,7 @@ TEST_F(ModelTest, FirnAndIce_MeltDoesNotExceedFirn)
     auto ice = make_ice(500.0);
     TestData d(firn, ice);
     d.set_swe(0.0);
-    d.set_melt_energy(50.0);  // less than firn
+    d.set_melt_energy(convert_mm_to_wperm2(50.0,p));  // less than firn
     d.set_glacier_temperature(0.0);
 
     run(d);
@@ -1506,7 +1521,7 @@ TEST_F(ModelTest, UpdateNowTrue_SweConvertedToFirn)
 {
     TestData d(&p);
     d.set_swe(300.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
     d.set_update_now(true);
 
     EXPECT_EQ(d.get_state().firn.get_layers().size(), 0u);
@@ -1522,7 +1537,7 @@ TEST_F(ModelTest, UpdateNowFalse_SweNotConvertedToFirn)
 {
     TestData d(&p);
     d.set_swe(300.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
     d.set_update_now(false);
 
     run(d);
@@ -1541,7 +1556,7 @@ TEST_F(ModelTest, UpdateNowTrue_DenseFirnConvertsToIce)
     LayeredFirn firn(&p, std::vector<Layer>{dense_layer});
     TestData d(firn, Ice(&p));
     d.set_swe(0.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
     d.set_update_now(true);
 
     double initial_firn_we = d.get_state().firn.water_equivalent().value;
@@ -1563,7 +1578,7 @@ TEST_F(ModelTest, UpdateNowFalse_DenseFirnDoesNotConvertToIce)
     LayeredFirn firn(&p, std::vector<Layer>{dense_layer});
     TestData d(firn, Ice(&p));
     d.set_swe(0.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
     d.set_update_now(false);
 
     run(d);
@@ -1577,7 +1592,7 @@ TEST_F(ModelTest, OutputsMatchStateAfterExecution_EmptyGlacier)
 {
     TestData d(&p);
     d.set_swe(0.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
 
     run(d);
 
@@ -1592,7 +1607,7 @@ TEST_F(ModelTest, OutputsMatchStateAfterExecution_WithMelt)
     auto firn = make_firn(300.0);
     TestData d(firn, make_ice(200.0));
     d.set_swe(0.0);
-    d.set_melt_energy(50.0);
+    d.set_melt_energy(convert_mm_to_wperm2(50.0,p));
     d.set_glacier_temperature(0.0);
 
     run(d);
@@ -1607,7 +1622,7 @@ TEST_F(ModelTest, OutputsMatchStateAfterExecution_WithUpdate)
 {
     TestData d(&p);
     d.set_swe(500.0);
-    d.set_melt_energy(0.0);
+    d.set_melt_energy(convert_mm_to_wperm2(0.0,p));
     d.set_update_now(true);
 
     run(d);
@@ -1618,42 +1633,13 @@ TEST_F(ModelTest, OutputsMatchStateAfterExecution_WithUpdate)
                      d.get_state().total_depth().value);
 }
 
-TEST_F(ModelTest, DifferentTemperatures_DifferentMeltAmounts)
-{
-    // Same melt_energy but different temperatures should produce 
-    // different water_flux conversions → different melt amounts
-    auto firn1 = make_firn(500.0);
-    TestData d1(firn1, make_ice(0.0));
-    d1.set_swe(0.0);
-    d1.set_melt_energy(100.0);
-    d1.set_glacier_temperature(-10.0);
-
-    auto firn2 = make_firn(500.0);
-    TestData d2(firn2, make_ice(0.0));
-    d2.set_swe(0.0);
-    d2.set_melt_energy(100.0);
-    d2.set_glacier_temperature(-30.0);
-
-    run(d1);
-    run(d2);
-
-    // The melt amounts should differ due to temperature-dependent conversion
-    // (If water_flux::from_W_per_m_squared uses temperature, they'll differ.
-    //  If not, this test documents that temperature has no effect on melt amount.)
-    // Either way, both should report zero ice melt
-    EXPECT_DOUBLE_EQ(d1.recorded_ice_melt(), 0.0);
-    EXPECT_DOUBLE_EQ(d2.recorded_ice_melt(), 0.0);
-
-	EXPECT_NE(d1.recorded_firn_melt(),d2.recorded_firn_melt());
-}
-
 TEST_F(ModelTest, MeltExceedsTotalGlacier_FullDepletion)
 {
     auto firn = make_firn(50.0);
     auto ice = make_ice(50.0);
     TestData d(firn, ice);
     d.set_swe(0.0);
-    d.set_melt_energy(99999.0);  // massive melt
+    d.set_melt_energy(convert_mm_to_wperm2(99999.0,p));  // massive melt
     d.set_glacier_temperature(0.0);
 
     run(d);
@@ -1669,7 +1655,7 @@ TEST_F(ModelTest, IceMeltThenUpdate_NoFirnConversionOnEmptyFirn)
     // Ice-only glacier, melt some ice, then update
     TestData d(&p, make_ice(500.0));
     d.set_swe(0.0);
-    d.set_melt_energy(50.0);
+    d.set_melt_energy(convert_mm_to_wperm2(50.0,p));
     d.set_glacier_temperature(0.0);
     d.set_update_now(true);
 
