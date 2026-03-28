@@ -1433,12 +1433,12 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
 
     if (vm.count("help"))
     {
-        cout << desc << std::endl;
+        std::cout << desc << std::endl;
         CHM_THROW_EXCEPTION(chm_done,"done");
     }
     else if (vm.count("version"))
     {
-        cout << version << std::endl;
+        std::cout << version << std::endl;
         CHM_THROW_EXCEPTION(chm_done,"done");
     }
 
@@ -1481,7 +1481,7 @@ core::cmdl_opt core::config_cmdl_options(int argc, char **argv)
     if (!vm.count("config-file"))
     {
         SPDLOG_ERROR("Configuration file required.");
-        cout << desc << std::endl;
+        std::cout << desc << std::endl;
         exit(1);
     }
 
