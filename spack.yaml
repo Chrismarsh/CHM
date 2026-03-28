@@ -32,7 +32,7 @@ spack:
     - "openmpi"
     - "vtk@9.3:"
     - "googletest"
-    # - "gcc@14"
+    - "gcc"
   #  - udunits
   view:
     default:
