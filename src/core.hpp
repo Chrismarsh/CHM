@@ -48,6 +48,8 @@
 #include <unistd.h> //for getpid
 #include <utility> // std::pair
 #include <vector>
+#include <format>
+#include <iostream> // std::cout in help docs
 
 //boost includes
 #include <boost/algorithm/cxx11/any_of.hpp>
