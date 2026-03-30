@@ -1,4 +1,5 @@
 #include "katabatic_routing_glacier.hpp"
+#include "Atmosphere.h"
 #include "Glacier.hpp"
 #include "PhysConst.h"
 #include "melt_routing_glacier.hpp"
@@ -217,19 +218,23 @@ Units::Kelvin katabatic_routing_glacier::data::air_temperature()
 	update_value( [this]() -> auto& { return cache_->air_temperature; },
 			[this]() { return (*face)["t"_s]; } );
 
-	return Units::Kelvin{cache_->air_temperature};
+	return Units::Kelvin{cache_->air_temperature + 274.15};
 };
 Units::Pa katabatic_routing_glacier::data::air_pressure()
 {
 	update_value( [this]() -> auto& { return cache_->air_pressure; },
-			[this]() { return (*face)["air_pressure"_s]; } );
+			[this]() { return (*face)["Pa"_s]; } );
 
 	return Units::Pa{cache_->air_pressure};
 };
 Units::Pa katabatic_routing_glacier::data::vapour_pressure()
 {
 	update_value( [this]() -> auto& { return cache_->vapour_pressure; },
-			[this]() { return (*face)["vapour_pressure"_s]; } );
+			[this]() { 
+                auto rh = (*face)["rh"_s];
+                auto output = rh * Atmosphere::saturatedVapourPressure(air_temperature().value);
+                return output; }
+                );
 
 	return Units::Pa{cache_->vapour_pressure};
 };

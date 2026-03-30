@@ -129,6 +129,8 @@ namespace PhysConst {
     
     // Specific heat of ice (J kg-1 K-1)
     inline const double Ci() { return mio::Cst::specific_heat_ice; }
+
+    inline const double Cw() { return mio::Cst::specific_heat_water; }
     
     // Molecular weight of water (kg kmol-1)
     constexpr double M() { return 18.01; }
