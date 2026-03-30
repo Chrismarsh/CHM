@@ -209,5 +209,6 @@ private:
     Glacier::Model<glacier_view> glacier;
 
 	bool is_new_day();
+	double rain_sun_energy(const mesh_elem& face);
 	double rain_sun_energy(const mesh_elem& face,data& d);
 };

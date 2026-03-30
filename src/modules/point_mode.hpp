@@ -128,6 +128,7 @@ public:
     bool T_g;
     bool svf;
     bool unit_test_new_modules;
+    bool unit_test_glacier_module;
     double elevation = 0.0;
     double soil_storage_at_freeze = 0.0;
 };

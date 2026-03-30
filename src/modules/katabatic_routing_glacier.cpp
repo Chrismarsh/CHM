@@ -13,13 +13,18 @@ katabatic_routing_glacier::katabatic_routing_glacier(config_file cfg)
 	depends("Pa");
 	depends("t");
 	depends("rh");
+    depends("vapour_pressure_surface");
 	// vapour pressure surface??
 	depends("t_lapse_rate");	
 	depends("snowmelt_int");
 	depends("swe");
-	depends("iswr_net");
-	depends("iswr_subcanopy");
-	depends("ilwr_subcanopy");
+	// TODO uncomment, only commented for CRHM coupling
+    //depends("iswr_net");
+	//depends("iswr_subcanopy");
+	//depends("ilwr_subcanopy");
+    // TODO remove, only for CRHM coupling 
+    // also should check if this exists in CHM
+    depends("T_rain");
 
 	// All submodule outputs
 	provides("glacier_water_equivalent");
@@ -96,28 +101,40 @@ void katabatic_routing_glacier::init(mesh& domain)
 	}
 };
 
+double katabatic_routing_glacier::rain_sun_energy(const mesh_elem& face)
+{
+    using namespace PhysConst;
+    constexpr auto M_PER_MM = 1 / 1000.0;
+    auto Qsun = (*face)["Qnsn_Var"_s];
+    auto Qrain = Cw() * water_reference_density() * (*face)["rainfall_int"] * M_PER_MM
+        * ((*face)["T_rain"_s]  - 0.0) / global_param->dt();
+
+    return Qsun + Qrain;
+};
+
 double katabatic_routing_glacier::rain_sun_energy(const mesh_elem& face,data& d)
 {
-	auto iswr = (*face)["iswr_subcanopy"_s];
-	auto ilwr = (*face)["ilwr_subcanopy"_s];
-	const auto& firn = d.glacier_state.firn;
-	const auto& ice = d.glacier_state.ice;
-	auto emissivity = 0.0;
-	if (d.swe().value > 0.0)
-		return 0.0;
-	else if (firn.water_equivalent().value)
-		emissivity = d.firn_emissivity;
-	else if (ice.water_equivalent().value)
-		emissivity = d.ice_emissivity;
-	else
-		return 0.0;
-	
-	auto olwr = PhysConst::sbc() * emissivity
-		* std::pow(d.air_temperature().value,4.0);
-	auto oswr = (*face)["glacier_albedo"_s] * iswr;
-	auto Qsun = (ilwr - olwr) + (iswr - oswr);
-	auto Qrain = (*face)["Qrain"_s];
-	// Means that katabatic_melt_energy didn't run
+	//auto iswr = (*face)["iswr_subcanopy"_s];
+	//auto ilwr = (*face)["ilwr_subcanopy"_s];
+	//const auto& firn = d.glacier_state.firn;
+	//const auto& ice = d.glacier_state.ice;
+	//auto emissivity = 0.0;
+	//if (d.swe().value > 0.0)
+	//	return 0.0;
+	//else if (firn.water_equivalent().value)
+	//	emissivity = d.firn_emissivity;
+	//else if (ice.water_equivalent().value)
+	//	emissivity = d.ice_emissivity;
+	//else
+	//	return 0.0;
+	//
+	//auto olwr = PhysConst::sbc() * emissivity
+	//	* std::pow(d.air_temperature().value,4.0);
+	//auto oswr = (*face)["glacier_albedo"_s] * iswr;
+	//auto Qsun = (ilwr - olwr) + (iswr - oswr);
+	//auto Qrain = (*face)["Qrain"_s];
+    auto Qsun = 0.0;
+    auto Qrain = 0.0;
 	return Qsun + Qrain;
 };
 
@@ -134,7 +151,8 @@ void katabatic_routing_glacier::run(mesh_elem& face)
 		// TODO write these values in as members
 		// look at body of data::melt_energy() for writing
 		// rain_sun_energy(const mesh_elem& face) function
-		d.total_energy += rain_sun_energy(face,d) + cache->latent_heat +
+        // TODO this version of rain_run_energy is for CRHM coupling, do not include
+		d.total_energy += rain_sun_energy(face) + cache->latent_heat +
 			cache->sensible_heat;
 		// only run once per day
 		if (is_new_day())

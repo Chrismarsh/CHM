@@ -22,6 +22,7 @@
 //
 
 #include "point_mode.hpp"
+#include "Atmosphere.h"
 REGISTER_MODULE_CPP(point_mode);
 
 point_mode::point_mode(config_file cfg)
@@ -42,8 +43,10 @@ point_mode::point_mode(config_file cfg)
     svf    = cfg.get("provide.svf",false);
         
     unit_test_new_modules = cfg.get("provide.unit_test_Donovan",false);
+    unit_test_glacier_module = cfg.get("provide.unit_test_glacier_module",false);
 
-
+    if (unit_test_new_modules && unit_test_glacier_module)
+        CHM_THROW_EXCEPTION(module_error,"Point_mode: conflicting booleans are both true");
 
     if(unit_test_new_modules)    
     {
@@ -90,6 +93,42 @@ point_mode::point_mode(config_file cfg)
         depends_from_met("hru_tsf");
         provides("surface_temperature");        
     }    
+    else if(unit_test_glacier_module)
+    {
+        depends_from_met("SWE");
+        provides("swe");
+
+        // TODO Convert to per-interval before setting to face
+        depends_from_met("snowmeltD");
+        provides("snowmelt_int");
+
+        // TODO Adjust katabatic module to accept thius and convert to Qrain
+        depends_from_met("net_rain");
+        provides("rainfall_int");
+        
+        depends_from_met("hru_t");
+        provides("t");
+
+        depends_from_met("Pa");
+        provides("Pa");
+
+        // TODO CRHM uses this as a system wide parameter, provide it here but dont look at met
+        // Look at (*face)-> instead
+        provides("t_lapse_rate");
+
+        // TODO look at module, adjust functions to accept rh, that means undoing the conversion here
+        // Careful with units...
+        depends_from_met("hru_ea");
+        provides("rh");
+
+        // Constant in crhm, provdided here
+        // TODO, adjust module to compute this itself
+        provides("vapour_pressure_surface");
+
+        depends_from_met("T_rain");
+        provides("T_rain"); 
+
+    }
     if(t)
     {
         depends_from_met("t");
@@ -205,6 +244,44 @@ void point_mode::run(mesh_elem &face)
 
         double temp = (*face->nearest_station())["hru_tsf"_s];
         (*face)["surface_temperature"_s] = temp;
+    }
+    else if (unit_test_glacier_module)
+    {
+        double SWE = (*face->nearest_station())["SWE"_s];
+        (*face)["swe"_s] = SWE;
+
+        // TODO Convert to per-interval before setting to face
+        double snowmeltD = (*face->nearest_station())["snowmeltD"_s];
+        (*face)["snowmelt_int"_s] = snowmeltD * global_param->dt() / (86400.0);
+
+        // TODO Adjust katabatic module to accept thius and convert to Qrain
+        double net_rain = (*face->nearest_station())["net_rain"_s];
+        (*face)["rainfall_int"_s] = net_rain;
+
+        // TODO use equation above to compute pressure, not from provides
+        double Pa = (*face->nearest_station())["Pa"_s];
+        (*face)["Pa"_s] = Pa * 1000.0; //in CRHM Pa is kPa
+
+        // EXPECTS KELVIN
+        double t = (*face->nearest_station())["hru_t"_s];
+        (*face)["t"_s] = t;
+
+        // TODO CRHM uses this as a system wide parameter, provide it here but dont look at met
+        // Look at (*face)-> instead
+        (*face)["t_lapse_rate"_s] = cfg.get<double>("t_lapse_rate");
+
+        // TODO look at module, adjust functions to accept rh, that means undoing the conversion here
+        // Careful with units...
+        double hru_ea = (*face->nearest_station())["hru_ea"_s];
+        double es = Atmosphere::saturatedVapourPressure(t + 273.15);
+        (*face)["rh"_s] = hru_ea / es;
+
+        double vapour_pressure_surface = 6113.0;
+        (*face)["vapour_pressure_surface"_s] = vapour_pressure_surface;
+
+        double T_rain = (*face->nearest_station())["T_rain"_s];
+        (*face)["T_rain"_s] = T_rain; 
+
     }
     if(t)
     {
