@@ -128,6 +128,10 @@ point_mode::point_mode(config_file cfg)
         depends_from_met("T_rain");
         provides("T_rain"); 
 
+
+        depends_from_met("Qnsn_Var");
+        provides("Qnsn_Var");
+
     }
     if(t)
     {
@@ -268,20 +272,23 @@ void point_mode::run(mesh_elem &face)
 
         // TODO CRHM uses this as a system wide parameter, provide it here but dont look at met
         // Look at (*face)-> instead
+
         (*face)["t_lapse_rate"_s] = cfg.get<double>("t_lapse_rate");
 
         // TODO look at module, adjust functions to accept rh, that means undoing the conversion here
         // Careful with units...
         double hru_ea = (*face->nearest_station())["hru_ea"_s];
         double es = Atmosphere::saturatedVapourPressure(t + 273.15);
-        (*face)["rh"_s] = hru_ea / es;
+        (*face)["rh"_s] = hru_ea / ( es ) * 1000.0;
 
-        double vapour_pressure_surface = 6113.0;
+        double vapour_pressure_surface = 611.3;
         (*face)["vapour_pressure_surface"_s] = vapour_pressure_surface;
 
         double T_rain = (*face->nearest_station())["T_rain"_s];
         (*face)["T_rain"_s] = T_rain; 
 
+        double Q = (*face->nearest_station())["Qnsn_Var"_s];
+        (*face)["Qnsn_Var"_s] = Q;
     }
     if(t)
     {
