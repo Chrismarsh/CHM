@@ -53,9 +53,9 @@ namespace Atmosphere {
     * @param e vapour pressure (Pa)
     * @return Air Density (kg/m^3)
     */
-    const Units::DensitySI air_density(Units::Pa p,
-            Units::Kelvin T,
-            Units::Pa e);
+    const Units::DensitySI air_density(const Units::Pa p,
+            const Units::Kelvin T,
+            const Units::Pa e);
 }
 
 

@@ -4,6 +4,6 @@ namespace PhysConst
 {
 	const double Lv(const units::Celsius T)
 	{
-		return Lv() - 0.002361 * T.value;
+		return Lv() - 0.002361 * T.value * 1e6;
 	};
 };

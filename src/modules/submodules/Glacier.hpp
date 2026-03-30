@@ -175,37 +175,40 @@ namespace Glacier
 			auto SWE = d.swe();
             Units::Milimetres melt_energy_mm_per_dt = Melt::convert_to_mass(d.melt_energy(),p);
 
-			using namespace Melt;
-			auto scenario = get_scenario(s,
-					melt_energy_mm_per_dt,SWE);
+            if (melt_energy_mm_per_dt.value > 0.0)
+            {
+                using namespace Melt;
+                auto scenario = get_scenario(s,
+                        melt_energy_mm_per_dt,SWE);
 
-			std::optional<State> state_copy;
+                std::optional<State> state_copy;
 
-			if (scenario == MeltScenario::FirnAndIceMelt)
-				state_copy.emplace(s);
+                if (scenario == MeltScenario::FirnAndIceMelt)
+                    state_copy.emplace(s);
 
-			auto info = compute_melt(scenario,s,melt_energy_mm_per_dt);
+                auto info = compute_melt(scenario,s,melt_energy_mm_per_dt);
 
-			switch (scenario) {
-				case MeltScenario::NoMelt:
-					d.firn_melt(0.0);
-					d.ice_melt(0.0);
-					break;
-				case MeltScenario::FirnMelt:
-					d.firn_melt(info->melt.value);
-					d.ice_melt(0.0);
-					break;
-				case MeltScenario::IceMelt:
-					d.ice_melt(info->melt.value);
-					d.firn_melt(0.0);
-					break;
-				case MeltScenario::FirnAndIceMelt:
-					d.firn_melt(state_copy->firn.water_equivalent().value);
+                switch (scenario) {
+                    case MeltScenario::NoMelt:
+                        d.firn_melt(0.0);
+                        d.ice_melt(0.0);
+                        break;
+                    case MeltScenario::FirnMelt:
+                        d.firn_melt(info->melt.value);
+                        d.ice_melt(0.0);
+                        break;
+                    case MeltScenario::IceMelt:
+                        d.ice_melt(info->melt.value);
+                        d.firn_melt(0.0);
+                        break;
+                    case MeltScenario::FirnAndIceMelt:
+                        d.firn_melt(state_copy->firn.water_equivalent().value);
 
-					d.ice_melt(state_copy->ice.water_equivalent().value
-							- s.ice.water_equivalent().value);
-					break;
-			}
+                        d.ice_melt(state_copy->ice.water_equivalent().value
+                                - s.ice.water_equivalent().value);
+                        break;
+                }
+            }
 
             if (d.update_now())
             {

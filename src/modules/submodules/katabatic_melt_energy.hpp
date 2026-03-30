@@ -12,7 +12,7 @@ namespace katabatic_melt_energy
     struct Params
     {
         const double heat_capacity_air = PhysConst::Cp(); 
-        const double molecular_wt_ratio = PhysConst::M();
+        const double molecular_wt_ratio = PhysConst::em();
         const double g = PhysConst::g();  
 
         double prandtl = 5.0;
@@ -28,7 +28,7 @@ namespace katabatic_melt_energy
     const Units::Watts_per_m2 sensible_heat(const Params&, const Units::m_per_s coeff,const Units::TempDiff deficit,const Units::DensitySI air_density);
 
     const Units::Watts_per_m2 latent_heat(const Params&, const Units::m_per_s coeff,const Units::Pa vapour_pressure_deficit,
-            const Units::Kelvin glacier_temperature, const Units::DensitySI air_density);
+            const Units::Kelvin glacier_temperature, const Units::DensitySI air_density, const Units::Pa air_pressure);
 	
 	template<typename T>
 	concept KatabaticData = requires(T& t)
@@ -67,7 +67,7 @@ namespace katabatic_melt_energy
 
 			Units::Pa vapour_pressure_deficit{vapour_pressure.value - d.vapour_pressure_surface().value};
 
-			auto Q_latent = latent_heat(p,K,vapour_pressure_deficit,glacier_temperature,rho_air);
+			auto Q_latent = latent_heat(p,K,vapour_pressure_deficit,glacier_temperature,rho_air,air_pressure);
 
 			d.latent_heat(Q_latent.value);
 			d.sensible_heat(Q_sensible.value);

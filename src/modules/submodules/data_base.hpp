@@ -147,15 +147,15 @@ class data_base {
 protected:
     
     data_base(const mesh_elem& face_in, const std::shared_ptr<global> param, 
-            const pt::ptree& cfg);
+            const pt::ptree* cfg);
     // Test constructor to skip checks of valid mesh_elem
     data_base(const mesh_elem& face_in, const std::shared_ptr<global> param, 
-            const pt::ptree& cfg, bool istest);
+            const pt::ptree* cfg, bool istest);
     ~data_base() {};
     
     const mesh_elem face{nullptr};
     const std::shared_ptr<global> global_param;
-    const pt::ptree& cfg_;
+    const pt::ptree* const cfg;
     mutable std::optional<CacheType> cache_;
 
     template<data_base_concepts::ValueRules Value,typename Fetch>
@@ -185,7 +185,7 @@ bool data_base<CacheType>::is_stale()
 
 template<data_base_concepts::CacheRules CacheType>
 data_base<CacheType>::data_base(const mesh_elem& face_in, const std::shared_ptr<global> param, 
-        const pt::ptree& cfg) : face(face_in), global_param(param), cfg_(cfg)
+        const pt::ptree* cfg) : face(face_in), global_param(param), cfg(cfg)
 {
     if (!face->is_valid())
         throw std::invalid_argument("Face handle points to an invalid face");
@@ -196,7 +196,7 @@ data_base<CacheType>::data_base(const mesh_elem& face_in, const std::shared_ptr<
 
 template<data_base_concepts::CacheRules CacheType>
 data_base<CacheType>::data_base(const mesh_elem& face_in, const std::shared_ptr<global> param, 
-        const pt::ptree& cfg, const bool istest) : face(face_in), global_param(param), cfg_(cfg)
+        const pt::ptree* cfg, const bool istest) : face(face_in), global_param(param), cfg(cfg)
 {
     if (!istest)
         std::invalid_argument("data_base test constructor called with False istest flag. Should be true.");

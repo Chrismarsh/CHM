@@ -32,11 +32,11 @@ namespace katabatic_melt_energy
     };
 
     const Units::Watts_per_m2 latent_heat(const Params& p, const Units::m_per_s coeff,const Units::Pa vapour_pressure_deficit,
-            const Units::Kelvin glacier_temperature, const Units::DensitySI air_density)
+            const Units::Kelvin glacier_temperature, const Units::DensitySI air_density,const Units::Pa air_pressure)
     {
 		Units::Celsius Temp{glacier_temperature.value - 273.15};
         auto m = Units::Watts_per_m2{p.molecular_wt_ratio * air_density.value * 
-                PhysConst::Lv(Temp) * coeff.value * vapour_pressure_deficit.value};
+                PhysConst::Lv(Temp) * coeff.value * vapour_pressure_deficit.value / air_pressure.value};
 
         return m;
 

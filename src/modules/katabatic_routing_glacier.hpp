@@ -109,7 +109,7 @@ public:
     class data : public face_info, public data_base<Cache>
     {
     public:
-		data(const mesh_elem& face, const std::shared_ptr<global> param, const config_file cfg,
+		data(const mesh_elem& face, const std::shared_ptr<global> param, const config_file* cfg,
 				const Glacier::Params* g_p, const GlacierRouting::Params* r_p); 
 		
 		GlacierRouting::State routing_state;

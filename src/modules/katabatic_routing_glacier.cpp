@@ -51,7 +51,7 @@ void katabatic_routing_glacier::init(mesh& domain)
 		auto face = domain->face(i);
 		auto& p_glacier = glacier.get_params();
 		auto& p_routing = routing.get_params();
-		auto& d = face->make_module_data<data>(ID,face,global_param,cfg,&p_glacier,&p_routing);
+		auto& d = face->make_module_data<data>(ID,face,global_param,&cfg,&p_glacier,&p_routing);
 		d.ice_emissivity = cfg.get<double>("ice_emissivity");
 		d.firn_emissivity = cfg.get<double>("firn_emissivity");
 	};
@@ -78,11 +78,11 @@ void katabatic_routing_glacier::init(mesh& domain)
 				p.big_increment = cfg.get<double>("big_increment",50.0);
 				break;
 			case DensifyVersion::HerronLangway:
-				p.critical_density = cfg.get<double>("critical_density",550.0);
-				p.firn_to_ice_density = cfg.get<double>("firn_to_ice_density",830.0);
 				break;
 		};
 
+        p.critical_density = cfg.get<double>("critical_density",550.0);
+        p.firn_to_ice_density = cfg.get<double>("firn_to_ice_density",830.0);
 		
 		p.thermal_factor = cfg.get<double>("thermal_factor",0.95);
 		p.seconds_per_step = global_param->dt();
@@ -148,9 +148,6 @@ void katabatic_routing_glacier::run(mesh_elem& face)
 		katabatic_view data_k(d,face);
 		katabatic.execute(data_k);
 		const auto& cache = d.get_cache();
-		// TODO write these values in as members
-		// look at body of data::melt_energy() for writing
-		// rain_sun_energy(const mesh_elem& face) function
         // TODO this version of rain_run_energy is for CRHM coupling, do not include
 		d.total_energy += rain_sun_energy(face) + cache->latent_heat +
 			cache->sensible_heat;
@@ -221,13 +218,18 @@ katabatic_routing_glacier::glacier_view::~glacier_view()
 	(*face)["icemelt"] = cache->icemelt;
 };
 
-katabatic_routing_glacier::data::data(const mesh_elem& face, std::shared_ptr<global> global_param, config_file cfg,
+katabatic_routing_glacier::data::data(const mesh_elem& face, std::shared_ptr<global> global_param, const config_file* cfg,
 		const Glacier::Params* p_g, const GlacierRouting::Params* p_r) 
 	: data_base(face,global_param,cfg), routing_state(p_r), glacier_state(p_g) {};
 
 Units::Kelvin katabatic_routing_glacier::data::glacier_temperature()
 {
-	static const double T = cfg_.get<double>("glacier_temp"_s,273.15);
+    if (!cfg)
+    {
+        std::string err = std::format("config file is null in katabatic_routing_glacier::data::glacier_temperature()");
+        CHM_THROW_EXCEPTION(module_error,err);
+    };
+	static const double T = 273.15;//cfg_.get<double>("glacier_temp"_s,273.15);
 
 	return Units::Kelvin{T};
 };
@@ -236,7 +238,7 @@ Units::Kelvin katabatic_routing_glacier::data::air_temperature()
 	update_value( [this]() -> auto& { return cache_->air_temperature; },
 			[this]() { return (*face)["t"_s]; } );
 
-	return Units::Kelvin{cache_->air_temperature + 274.15};
+	return Units::Kelvin{cache_->air_temperature + 273.15};
 };
 Units::Pa katabatic_routing_glacier::data::air_pressure()
 {
@@ -266,7 +268,7 @@ Units::Pa katabatic_routing_glacier::data::vapour_pressure_surface()
 Units::LapseRateSI katabatic_routing_glacier::data::lapse_rate()
 {
 	update_value( [this]() -> auto& { return cache_->lapse_rate; },
-			[this]() { return (*face)["lapse_rate"_s]; } );
+			[this]() { return (*face)["t_lapse_rate"_s]; } );
 
 	return Units::LapseRateSI{cache_->lapse_rate};
 };
@@ -284,7 +286,7 @@ void katabatic_routing_glacier::data::sensible_heat(const double v)
 const Units::Milimetres katabatic_routing_glacier::data::snowmelt()
 {
 	update_value( [this]() -> auto& { return cache_->snowmelt; },
-			[this]() { return (*face)["snowmelt"_s]; } );
+			[this]() { return (*face)["snowmelt_int"_s]; } );
 
 	return Units::Milimetres{cache_->snowmelt};
 };
@@ -370,7 +372,7 @@ const Units::Watts_per_m2 katabatic_routing_glacier::data::melt_energy()
 };
 bool katabatic_routing_glacier::data::update_now()
 {
-	static const size_t day = cfg_.get<size_t>("change_day"_s,300u);
+	static const size_t day = cfg->get<size_t>("change_day"_s,300u);
 	return day == global_param->day(); 
 };
 
