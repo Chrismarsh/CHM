@@ -37,6 +37,8 @@ katabatic_routing_glacier::katabatic_routing_glacier(config_file cfg)
 	provides("firnmelt_delayed");
 	provides("icemelt_delayed");
 	provides("total_delayed");
+	provides("firn");
+	provides("ice");
 
 };
 katabatic_routing_glacier::~katabatic_routing_glacier() {};
@@ -216,11 +218,48 @@ katabatic_routing_glacier::glacier_view::~glacier_view()
 	(*face)["total_depth"] = d.glacier_state.total_depth().value;
 	(*face)["firnmelt"] = cache->firnmelt;
 	(*face)["icemelt"] = cache->icemelt;
+
+	(*face)["firn"] = d.glacier_state.firn.water_equivalent().value;
+	(*face)["ice"] = d.glacier_state.ice.water_equivalent().value;
 };
 
+static Glacier::Ice construct_ice_1(const Glacier::Params* p)
+{
+	using namespace Glacier;
+	auto init = Units::Milimetres{1e6};
+	Ice ice(p,init);
+
+	return ice;
+};
+
+static Glacier::LayeredFirn construct_firn_1(const Glacier::Params* p)
+{
+	using namespace Glacier;
+	struct simple_layer
+	{
+		double h;
+		double rho;
+	};
+
+	std::vector<simple_layer> simple_layers = {{
+		{1.0,450.0},
+		{1.0,550.0},
+		{1.0,650.0}
+	}};
+
+	std::vector<Layer> layers;
+
+	for (auto l : simple_layers)
+	{
+		layers.emplace_back(Layer::Height{l.h},Layer::Density{l.rho});
+	};
+
+	LayeredFirn firn(p,layers);
+	return firn;
+};
 katabatic_routing_glacier::data::data(const mesh_elem& face, std::shared_ptr<global> global_param, const config_file* cfg,
 		const Glacier::Params* p_g, const GlacierRouting::Params* p_r) 
-	: data_base(face,global_param,cfg), routing_state(p_r), glacier_state(p_g) {};
+	: data_base(face,global_param,cfg), routing_state(p_r), glacier_state(construct_firn_1(p_g),construct_ice_1(p_g)) {};
 
 Units::Kelvin katabatic_routing_glacier::data::glacier_temperature()
 {
@@ -373,7 +412,14 @@ const Units::Watts_per_m2 katabatic_routing_glacier::data::melt_energy()
 bool katabatic_routing_glacier::data::update_now()
 {
 	static const size_t day = cfg->get<size_t>("change_day"_s,300u);
-	return day == global_param->day(); 
+	
+	auto p = global_param->posix_time();
+	auto d = p.date();
+
+	auto jd = d.day_of_year();
+	std::cout << jd << std::endl;
+	
+	return day == jd; 
 };
 
 void katabatic_routing_glacier::data::glacier_water_equivalent(const double out)

@@ -16,10 +16,11 @@ namespace katabatic_melt_energy
 			std::string err = std::format("Divide by zero in katabatic_melt_energy::bulk_coefficient for gamma = {} K/m, Pr = {}, T = {} K",gamma.value,p.prandtl,glacier_temperature.value);
 			throw std::runtime_error(err);
 		}
-		const auto result = Units::m_per_s{p.k * 
+		auto result = Units::m_per_s{p.k * 
 				std::pow(p.k2,2.0) * deficit.value * 
 				std::sqrt(p.g / 
 					(glacier_temperature.value * gamma.value * p.prandtl))};
+		//result.value = (0.01 + result.value)/2;
 		return result;
     };
 

@@ -26,8 +26,6 @@ namespace Glacier
 			PhysConst::RgasDry();
 		const double gas_constant_vapour =
 			PhysConst::RgasVapour();
-		const double molecular_wt_ratio = 
-			PhysConst::M();
         DensifyVersion densify_version = DensifyVersion::HerronLangway;
         double small_increment{25.0};
         double big_increment{50.0};
