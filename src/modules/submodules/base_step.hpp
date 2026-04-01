@@ -56,7 +56,6 @@ template<class Derived, class Data>
 class base_step {
 protected:
     base_step() {};
-    friend Derived;
 public:
     void execute(Data& d) const {
 
