@@ -199,7 +199,10 @@ data_base<CacheType>::data_base(const mesh_elem& face_in, const std::shared_ptr<
         const pt::ptree* cfg, const bool istest) : face(face_in), global_param(param), cfg(cfg)
 {
     if (!istest)
-        std::invalid_argument("data_base test constructor called with False istest flag. Should be true.");
+        throw std::invalid_argument("data_base test constructor called with False istest flag. Should be true.");
+
+    if (!global_param)
+        throw std::invalid_argument("global parameter holder is null");
 };
 template<data_base_concepts::CacheRules CacheType>
 template<data_base_concepts::ValueRules Value,typename Fetch>
