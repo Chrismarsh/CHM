@@ -42,8 +42,8 @@ struct Cache : public cache_base
 class data2 : public data_base<Cache>
 {
 public:
-    data2(mesh_elem face_in,boost::shared_ptr<global> param,pt::ptree& cfg)
-        : data_base(face_in,param,cfg,true) {};
+    data2(mesh_elem face_in,std::shared_ptr<global> param,pt::ptree& cfg)
+        : data_base(face_in,param,&cfg,true) {};
 
     double input1()
     {
@@ -62,7 +62,7 @@ public:
                 []() { return 2.5; }
                 );
 
-        return cache_->input1;
+        return cache_->input2;
     };
 
     void output(const double t)
@@ -74,12 +74,12 @@ public:
 class TestModule : public ::testing::Test
 {
 protected:
-    TestModule() : d(face,param,cfg) {};
+    TestModule() {};
     mesh_elem face{nullptr};
-    boost::shared_ptr<global> param;
+    std::shared_ptr<global> param = std::make_shared<global>();
     pt::ptree cfg;
 
-    data2 d;
+    data2 d{face,param,cfg};
     submodule<data2> submodule_instance;    
     void run() 
     { 
