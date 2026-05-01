@@ -88,6 +88,7 @@ FSM::FSM(config_file cfg)
 
 }
 
+
 void FSM::init(mesh& domain)
 {
     fsm_layers_config(0.5f, 1.5f, CANOPY_LAYER_COUNT, SNOW_LAYER_COUNT, SOIL_LAYER_COUNT);
@@ -201,19 +202,24 @@ void FSM::run(mesh_elem& face)
     }
 
 
-    float Sdiff = 0;
-    float Sdir = 0;
+    float Sdiff = 0.0f;
+    float Sdir = 0.0f;
     if(has_optional("iswr_subcanopy"))
     {
-        // TODO: double check this is correct understanding. I don't believe canopy is giving us a diffuse through canopy
+        // iswr is direct + diff -> which is fed to canopy so iswr_subcanopy is also direct + diff
         Sdiff = (float)(*face)["iswr_diffuse"_s];
-        Sdir  = (float)(*face)["iswr_subcanopy"_s];
+        // need to split this up
+        Sdir  = (float)(*face)["iswr_subcanopy"_s] - (float)(*face)["iswr_diffuse"_s];
     }
     else
     {
         Sdiff = (float)(*face)["iswr_diffuse"_s];
         Sdir = (float)(*face)["iswr_direct"_s];
     }
+
+    // clamp to positive
+    Sdiff = std::max(0.0f, Sdiff);
+    Sdir  = std::max(0.0f, Sdir);
 
 
     float t = -9999;
@@ -222,9 +228,9 @@ void FSM::run(mesh_elem& face)
     } else {
         t = (float)(*face)["t"_s];
     }
-    t += 273.15;
+    t += 273.15f;
 
-    float tc = (float)(t - 273.15);
+    float tc = t - 273.15f;
     float Qs = constants_eps_ * (constants_e0_ / Ps) *
                exp((float)17.5043 * tc / ((float)241.3 + tc));
     float Qa = (rh/ (float)100.0) * Qs; // specific humidity
@@ -232,7 +238,7 @@ void FSM::run(mesh_elem& face)
     float U = (float)(*face)["U_2m_above_srf"_s];
 
     //blowing snow
-    float trans = 0;
+    float trans = 0.0f;
     if(has_optional("drift_mass"))
     {
         double mass = (*face)["drift_mass"_s]; //kg/m^2  (mm)
@@ -242,7 +248,7 @@ void FSM::run(mesh_elem& face)
         trans = mass / dt;
     }
 
-    float rhod = 300;
+    float rhod = 300.0f;
     // If snow avalanche variables are available
     if(has_optional("delta_avalanche_mass"))
     {
@@ -265,6 +271,10 @@ void FSM::run(mesh_elem& face)
     d.state.Tsoil[2] = 263.2;
     d.state.Tsoil[3] = 263.3;
 
+    // the tiny snowpack -> snowfree cycles can do weird things to this temp, so reinit crazy cases
+    if (d.state.Tsrf < 230.0f)
+        d.state.Tsrf = 263.0f;
+
     fsm2_timestep(
         // Driving variables
         &dt, &elev, &zT, &zU,
@@ -282,7 +292,18 @@ void FSM::run(mesh_elem& face)
         &d.diag.H, &d.diag.LE, &d.diag.LWout, &d.diag.LWsub, &d.diag.Melt,
         &d.diag.Roff, &d.diag.snd, &d.diag.snw, &d.diag.subl, &d.diag.svg,
         &d.diag.SWout, &d.diag.SWsub, &d.diag.Usub,  d.diag.Wflx
-        );
+    );
+
+    // ensure no stale values are cached from FSM through a snow -> snow_free cycle
+    if (d.state.Nsnow == 0 || d.diag.snd <= 0.0f)
+    {
+        d.diag.snd = 0.0f;
+        d.diag.snw = 0.0f;
+
+        // in the case of tiny snowcover -> snow free cyles, this can end up crazy low,
+        // so reinit to cold soil interface
+        d.state.Tsrf = 263.0f;
+    }
 
     (*face)["H"_s] = d.diag.H;
     (*face)["E"_s] = d.diag.LE;
