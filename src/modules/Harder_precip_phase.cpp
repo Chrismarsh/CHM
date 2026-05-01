@@ -143,6 +143,10 @@ void Harder_precip_phase::run(mesh_elem& face)
     if(frTi > 0.97) // 97%
         frTi = 1.0;
 
+    // enforce [0, 1] bounds
+    frTi = std::max(0.0, frTi);
+    frTi = std::min(frTi, 1.0);
+
     (*face)["Ti"_s]=Ti;
     (*face)["frac_precip_rain"_s]=frTi;
     (*face)["frac_precip_snow"_s]=1.0-frTi;
