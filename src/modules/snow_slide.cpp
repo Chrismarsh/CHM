@@ -295,7 +295,7 @@ void snow_slide::run(mesh& domain)
                             n_data.snowdepthavg_copy += delta_sd_avg; // (m)
                             n_data.swe_copy += delta_swe;            // (m)
                             // Update vertical snow depth
-                            n_data.snowdepthavg_vert_copy = n_data.snowdepthavg_copy / std::max(0.001, cos(face->slope()));
+                            n_data.snowdepthavg_vert_copy = n_data.snowdepthavg_copy / std::max(0.001, cos(n->slope()));
 
                             // Update mass transport to neighbor
                             // Fraction of snowdepth (m) *center triangle area (m^2) = volune of snow depth (m^3)
