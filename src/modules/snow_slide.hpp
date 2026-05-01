@@ -30,6 +30,9 @@
 #include "triangulation.hpp"
 #include "module_base.hpp"
 
+#include <limits>
+#include <algorithm>
+#include <cmath>
 #include <string>
 
 /**

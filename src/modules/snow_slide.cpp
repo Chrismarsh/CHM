@@ -319,12 +319,29 @@ void snow_slide::run(mesh& domain)
                 data.delta_avalanche_snowdepth -= del_depth * cen_area;
                 data.delta_avalanche_mass -= del_swe * cen_area;
 
-                // Check mass transport balances for current avalanche cell
-                if (std::abs(orig_mass - out_mass) > 0.0001)
+                const double abs_tol = 1e-4;
+                // 64 factor to cover off multiple operations contributing to error
+                const double rel_tol = 64.0 * std::numeric_limits<double>::epsilon();
+
+                const double scale = std::max(std::abs(orig_mass), std::abs(out_mass));
+                const double tol = std::max(abs_tol, rel_tol * scale);
+
+                if (std::abs(orig_mass - out_mass) > tol)
                 {
                     SPDLOG_ERROR("Moved mass total is {}", out_mass);
+                    SPDLOG_ERROR("orig_mass = {}", orig_mass);
                     SPDLOG_ERROR("diff = {}", orig_mass - out_mass);
-                    SPDLOG_ERROR("Mass balance of avalanche times step was not conserved");
+                    SPDLOG_ERROR("relative diff = {}", (orig_mass - out_mass) / scale);
+                    SPDLOG_ERROR("tol = {}", tol);
+
+                    SPDLOG_ERROR("cen_area = {}", cen_area);
+                    SPDLOG_ERROR("del_swe = {}", del_swe);
+                    SPDLOG_ERROR("snowdepthavg = {}", snowdepthavg);
+                    SPDLOG_ERROR("maxDepth = {}", maxDepth);
+                    SPDLOG_ERROR("weights = {}, {}, {}", w[0], w[1], w[2]);
+                    SPDLOG_ERROR("sum weights = {}", w[0] + w[1] + w[2]);
+
+                    SPDLOG_ERROR("Mass balance of avalanche time step was not conserved");
                     CHM_THROW_EXCEPTION(module_error, "Snowslide did not conserve mass");
                 }
             } // end if snowdepth > maxdepth
