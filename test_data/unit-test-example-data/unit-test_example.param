@@ -1,0 +1,116 @@
+{
+    "soil_storage": [
+        375.0
+    ],
+    "soil_rechr_storage": [
+        125.0
+    ],
+    "soil_storage_max": [
+        750
+    ],
+    "soil_rechr_max": [
+        250
+    ],
+    "detention_snow_init": [
+        0.0
+    ],
+    "detention_organic_init": [
+        0.0
+    ],
+    "ground_water_storage": [
+        187.0
+    ],
+    "ground_water_max": [
+        375.0
+    ],
+    "excess_to_ssr": [
+        1
+    ],
+    "detention_snow_max": [
+        0.0
+    ],
+    "detention_organic_max": [
+        0.0
+    ],
+    "depression_max": [
+        1.0
+    ],
+    "depression_storage": [
+        0.0
+    ],
+    "soil_type": [
+        5
+    ],
+    "LAI": [
+        0.3
+    ],
+    "LAImax": [
+        0.5
+    ],
+    "CanopyHeight": [
+        1.5
+    ],
+    "soil_texture": [
+        0
+    ],
+    "soil_groundcover": [
+        5
+    ],
+    "soil_groundcover_ET": [
+        2
+    ],
+    "elevation": [
+        1845
+    ],
+    "landcover": [
+        1
+    ],
+    "local_slope": [
+        5
+    ],
+    "PSD_K_estimator": [
+        2.55
+    ],
+    "PSD_K_organic": [
+        0.252
+    ],
+    "Ksaturated_rechr": [
+        0.00176
+    ],
+    "Ksaturated_lower": [
+        6.9E-6
+    ],
+    "Ksaturated_ground_water": [
+        6.9E-6
+    ],
+    "Ksaturated_organic": [
+        6.9E-6
+    ],
+    "Ksaturated_snow": [
+        6.9E-6
+    ],
+    "soil_index": [
+        3.3
+    ],
+    "snow_grain_diameter": [
+        3.0
+    ],
+    "soil_depth": [
+        1.5
+    ],
+    "allow_runoff_from_infiltration": [
+        1
+    ],
+    "perma_frost_depth": [
+        2
+    ],
+    "init_freeze_front_depth": [
+        0
+    ],
+    "init_thaw_front_depth": [
+        0
+    ],
+    "landcover": [
+        1
+    ] 
+}

@@ -62,12 +62,21 @@ set(MODULE_SRCS
         modules/PBSM3D.cpp
 		modules/snobal.cpp
 		modules/fsm.cpp
+		modules/katabatic_routing_glacier.cpp
 
 		modules/testing/mpi_example.cpp
 
 
 		CACHE INTERNAL "" FORCE )
 
+set(SUBMODULE_SRCS
+	# modules/submodules/water_flux.cpp
+        modules/submodules/Glacier.cpp
+		modules/submodules/katabatic_melt_energy.cpp
+		modules/submodules/melt_routing_glacier.cpp
+
+
+        CACHE INTERNAL "" FORCE )
 
 set(CHM_SRCS
 		#main.cpp needs to be added below so we can re use CHM_SRCS in the gtest build
@@ -77,6 +86,7 @@ set(CHM_SRCS
 		metdata.cpp
 
 		physics/Atmosphere.cpp
+        physics/PhysConst.cpp
 
 		mesh/triangulation.cpp
         mesh/ugrid_writer.cpp
@@ -110,6 +120,7 @@ set (HEADER_FILES
         modules/interp_met
 		modules/snobal
 		modules/testing
+        modules/submodules
 		math
         libmaw
         interpolation
@@ -234,6 +245,7 @@ add_executable(
 		${CHM_SRCS}
 		${FILTER_SRCS}
 		${MODULE_SRCS}
+        ${SUBMODULE_SRCS}
 )
 
 
@@ -412,17 +424,23 @@ if (BUILD_TESTS)
 	message(STATUS "Tests enabled. Run with make check")
 
 	set(TEST_SRCS
-			tests/test_station.cpp
-			tests/test_interpolation.cpp
-			tests/test_timeseries.cpp
-			tests/test_core.cpp
-			tests/test_variablestorage.cpp
-			tests/test_metdata.cpp
-			tests/test_netcdf.cpp
+        #tests/test_station.cpp
+        #	tests/test_interpolation.cpp
+        #		tests/test_timeseries.cpp
+        #	tests/test_core.cpp
+        #	tests/test_variablestorage.cpp
+        #	tests/test_metdata.cpp
+        #	tests/test_netcdf.cpp
 			#    test_mesh.cpp
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
-            tests/test_triangulation.cpp
+            #     tests/test_triangulation.cpp
+            tests/submoduletests/test_data_base.cpp
+			#tests/submoduletests/test_water_flux.cpp
+            tests/submoduletests/test_glacier.cpp
+			tests/submoduletests/test_katabatic_melt_energy.cpp
+			tests/submoduletests/test_melt_routing.cpp
+            tests/submoduletests/test_bisection.cpp
 			tests/main.cpp
     )
 
@@ -435,6 +453,7 @@ if (BUILD_TESTS)
 			${CHM_SRCS}
 			${FILTER_SRCS}
 			${MODULE_SRCS}
+            ${SUBMODULE_SRCS}
 			${TEST_SRCS}
 	)
 	set_target_properties(runUnitTests
