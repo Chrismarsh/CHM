@@ -15,16 +15,18 @@ IF(ENABLE_LAPACK)
 ENDIF(ENABLE_LAPACK)
 
 SET(snowpacklib_sources
-        DataClasses.cc
-        SnowpackConfig.cc
-        Meteo.cc
-        Saltation.cc
-        Laws_sn.cc
-        Utils.cc
-        StabilityAlgorithms.cc
-        Stability.cc
-        Hazard.cc
-        SnowDrift.cc
+	DataClasses.cc
+	vanGenuchten.cc
+	SnowpackConfig.cc
+	Meteo.cc
+	Saltation.cc
+	Laws_sn.cc
+	Utils.cc
+	StabilityAlgorithms.cc
+	Stability.cc
+	Hazard.cc
+	SnowDrift.cc
+	TechnicalSnow.cc
 	${plugins_sources}
 	${core_sources}
 )

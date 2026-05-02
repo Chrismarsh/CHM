@@ -25,68 +25,81 @@
 #ifndef RESOLVER1D_H
 #define RESOLVER1D_H
 
+#include "SalinityTransport.h"
 #include "../DataClasses.h"
-#include "../SnowpackConfig.h"
-#include <meteoio/MeteoIO.h>
 
-#include <string.h>
 /**
  * @class ReSolver1d
- * @version 10.02
  * @author Nander Wever
- * @bug Prone to bugs at any changes! Be aware!
  * @brief This module contains the solver for the 1d Richards Equation for the 1d snowpack model
  */
 class ReSolver1d {
 
 	public:
-		ReSolver1d(const SnowpackConfig& cfg);	// Class constructor
-		void SolveRichardsEquation(SnowStation& Xdata, SurfaceFluxes& Sdata);
+		ReSolver1d(const SnowpackConfig& cfg, const bool& matrix_part);	// Class constructor
+		void SolveRichardsEquation(SnowStation& Xdata, SurfaceFluxes& Sdata, double& ql, const mio::Date& date);
 
-		double surfacefluxrate;		// Surfacefluxrate for solving RE. It is either surface of snow, in case of snowpack and solving RE for snow, or surface of soil, when no snowpack and/or solving RE only for soil.
-		double soilsurfacesourceflux;	// Soilsurfacesourceflux for solving RE. This is used when we use RE for snow AND there is a snowpack AND the lowest snow element is removed.
+		double surfacefluxrate;			// Surfacefluxrate for solving RE. It is either surface of snow, in case of snowpack and solving RE for snow, or surface of soil, when no snowpack and/or solving RE only for soil.
+		double soilsurfacesourceflux;		// Soilsurfacesourceflux for solving RE. This is used when we use RE for snow AND there is a snowpack AND the lowest snow element is removed.
 
+		const static double max_theta_ice;	// Maximum allowed theta[ICE]. RE always need some pore space, which is defined by this value.
+		const static double REQUIRED_ACCURACY_THETA;
+
+		// Solvers
+		static int TDMASolver (size_t n, double *a, double *b, double *c, double *v, double *x);	// Thomas algorithm for tridiagonal matrices
+		static int pinv(int m, int n, int lda, double *a);						// Full matrix inversion
 
 	private:
 		std::string variant;
 
 		//To prevent string comparisons, we define an enumerated list:
 		enum watertransportmodels{UNDEFINED, BUCKET, NIED, RICHARDSEQUATION};
-		//Soil types
-		enum SoilTypes{ORGANIC, CLAY, CLAYLOAM, LOAM, LOAMYSAND, SAND, SANDYCLAY, SANDYCLAYLOAM, SANDYLOAM, SILT, SILTYCLAY, SILTYCLAYLOAM, SILTLOAM, WFJGRAVELSAND};
-		//Hydraulic conductivity parameterizations
-		enum K_Parameterizations{SHIMIZU, CALONNE};
 		//K_Average types
-		enum K_AverageTypes{ARITHMETICMEAN, GEOMETRICMEAN, HARMONICMEAN, MINIMUMVALUE, UPSTREAM};
-		//Van genuchten model types
-		enum VanGenuchten_ModelTypesSnow{YAMAGUCHI2012, YAMAGUCHI2010, YAMAGUCHI2010_ADAPTED, DAANEN};
+		enum K_AverageTypes{ARITHMETICMEAN, LOGMEAN, GEOMETRICMEAN, HARMONICMEAN, MINIMUMVALUE, UPSTREAM};
+		//K_frozen_soil types
+		enum K_frozen_soilTypes{IGNORE, OMEGA, LIQUIDPORESPACE};
 		//Solvers
 		enum SOLVERS{DGESVD, DGTSV, TDMA};
 		//Boundary conditions
-		enum BoundaryConditions{DIRICHLET, NEUMANN, LIMITEDFLUXEVAPORATION, LIMITEDFLUXINFILTRATION, LIMITEDFLUX, WATERTABLE, FREEDRAINAGE, GRAVITATIONALDRAINAGE, SEEPAGEBOUNDARY};
-		
-		
+		enum BoundaryConditions{DIRICHLET, NEUMANN, LIMITEDFLUXEVAPORATION, LIMITEDFLUXINFILTRATION, LIMITEDFLUX, WATERTABLE, FREEDRAINAGE, GRAVITATIONALDRAINAGE, SEEPAGEBOUNDARY, SEAICE};
+		//Salinity mixing models
+		enum SalinityMixingModels{NONE, CAPILLARY_GRAVITY, DENSITY_DIFFERENCE, DENSITY_GRAVITY};
+
 		watertransportmodels iwatertransportmodel_snow, iwatertransportmodel_soil;
 
 		std::string watertransportmodel_snow;
 		std::string watertransportmodel_soil;
-		BoundaryConditions BottomBC;				//Bottom boundary condition (recommended choice either DIRICHLET with saturation (lower boundary in water table) or FREEDRAINAGE (lower boundary not in water table))
-		K_AverageTypes K_AverageType;				//Implemented choices: ARITHMETICMEAN (recommended), HARMONICMEAN, GEOMETRICMEAN, MINIMUMVALUE, UPSTREAM
+		BoundaryConditions BottomBC;			//Bottom boundary condition (recommended choice either DIRICHLET with saturation (lower boundary in water table) or FREEDRAINAGE (lower boundary not in water table))
+		K_AverageTypes K_AverageType;			//Implemented choices: ARITHMETICMEAN (recommended), LOGMEAN, GEOMETRICMEAN, HARMONICMEAN, MINIMUMVALUE, UPSTREAM
+		K_frozen_soilTypes K_frozen_soilType;		//Implemented choices: IGNORE (recommended), OMEGA, LIQUIDPORESPACE
+		double omega;					//The value of omega to use when K_frozen_soilType == OMEGA.
+		bool enable_pref_flow;				//true: dual domain approach, false: classic Richards equation.
+		double pref_flow_param_th;			//Tuning parameter: saturation threshold in preferential flow
+		double pref_flow_param_N;			//Tuning parameter: number of preferential flow paths for heat exchange
+		double pref_flow_param_heterogeneity_factor;	//Tuning parameter: heterogeneity factor for grain size
+		bool enable_ice_reservoir;			// Ice reservoir or not
+		bool runSoilInitializer;			// Run the function that initializes the soil in thermal equilibrium upon first function call
 
-		double sn_dt;
-		bool useSoilLayers, water_layer;
+		double sn_dt;					//SNOWPACK time step
+		bool allow_surface_ponding;			//boolean to switch on/off the formation of surface ponds in case prescribed infiltration flux exceeds matrix capacity
+		bool matrix;					//boolean to define if water transport is calculated for matrixflow or preferential flow
+		SalinityTransport::SalinityTransportSolvers SalinityTransportSolver;	//How to solve salinity transport?
 
+		// Grid info
+		std::vector<double> dz;				//Layer height (in meters)
+		std::vector<double> z;				//Height above the surface (so -1 is 1m below surface)
+		std::vector<double> dz_up;			//Distance to upper node (in meters)
+		std::vector<double> dz_down;			//Distance to lower node (in meters)
+		std::vector<double> dz_;			//Layer distance for the finite differences, see Rathfelder (2004).
 
-		// Van Genuchten functions
-		double fromTHETAtoH(double theta, double theta_r, double theta_s, double alpha, double m, double n, double Sc, double h_e, double h_d);
-		double fromTHETAtoHforICE(double theta, double theta_r, double theta_s, double alpha, double m, double n, double Sc, double h_e, double h_d, double theta_i);
-		double fromHtoTHETA(double h, double theta_r, double theta_s, double alpha, double m, double n, double Sc, double h_e);
-		double fromHtoTHETAforICE(double h, double theta_r, double theta_s, double alpha, double m, double n, double Sc, double h_e, double theta_i);
-		double AirEntryPressureHead(double MaximumPoreSize, double Temperature);
-		void SetSoil(SoilTypes type, double *theta_r, double *theta_s, double *alpha, double *m, double *n, double *ksat, double *he);
+		// General functions
+		void InitializeGrid(const std::vector<ElementData>& EMS, const size_t& lowernode, const size_t& uppernode);
+		std::vector<double> AssembleRHS(const size_t& lowernode, const size_t& uppernode, const std::vector<double>& h_np1_m, const std::vector<double>& theta_n, const std::vector<double>& theta_np1_m, const std::vector<double>& theta_i_n, const std::vector<double>& theta_i_np1_m, const std::vector<double>& s, const double& dt, const std::vector<double>& rho, const std::vector<double>& k_np1_m_im12, const std::vector<double>& k_np1_m_ip12, const BoundaryConditions aTopBC, const double& TopFluxRate, const BoundaryConditions aBottomBC, const double& BottomFluxRate, const SnowStation& Xdata, SalinityTransport& Salinity, const SalinityMixingModels& SALINITY_MIXING);
 
-		// Solvers
-		int TDMASolver (int n, double *a, double *b, double *c, double *v, double *x);
-		int pinv(int m, int n, int lda, double *a);
+		// Solver control variables
+		const static double REQUIRED_ACCURACY_H, convergencecriterionthreshold, MAX_ALLOWED_DELTA_H;
+		const static size_t INCR_ITER, DECR_ITER, MAX_ITER, BS_MAX_ITER;
+		const static double MIN_VAL_TIMESTEP, MAX_VAL_TIMESTEP, MIN_DT_FOR_INFILTRATION;
+		const static double SF_epsilon;
 };
-#endif //End of WaterTransport.h
+#endif //End of ReSolver1d.h

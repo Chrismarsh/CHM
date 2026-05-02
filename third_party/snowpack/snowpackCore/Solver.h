@@ -23,7 +23,7 @@
 #ifndef  SOLVER_H
 #define  SOLVER_H
 
-#include <cstddef> //needed for size_t
+#include <cstddef> //needed for int
 
 /**
  * @file Solver.h
@@ -50,7 +50,7 @@
  * March 1989].
  * All direct-solver (ds-)functions return 0 = FALSE if succesfull, respectively 1 = TRUE with
  * an error message on standard output if an error has occurred.
- * 
+ *
  * @author GUIDO SARTORIS  ETH ZUERICH
  */
 
@@ -58,7 +58,7 @@ typedef struct
 {
 	int     nChunks;
 	int     pChunksSize;
-	char   **pChunks;
+	char    **pChunks;
 	int     TotChunkSize;
 } SD_CHUNK_DATA;
 
@@ -66,7 +66,7 @@ typedef struct
 {
 	int                Row0;
 	int                Row1;
-	size_t             nCol;
+	int                nCol;
 	int                nColBlock;
 	int                iColBlock;
 	int                iFloat;
@@ -74,7 +74,7 @@ typedef struct
 
 typedef struct
 {
-	size_t              Dim;
+	int                Dim;
 	int                *pPerm;
 	int                 nRowBlock;
 	SD_ROW_BLOCK_DATA  *pRowBlock;
@@ -89,7 +89,7 @@ typedef struct
 
 typedef struct SD_COL_DATA
 {
-	size_t               Col;
+	int                 Col;
 	struct SD_COL_DATA  *Next;
 } SD_COL_DATA;
 
@@ -100,7 +100,7 @@ typedef struct SD_ROW_DATA
 
 typedef struct
 {
-	size_t                 nRow;
+	int                   nRow;
 	int                   *pPerm;
 	int                   *pPermInv;
 	int                    nSupernode;
@@ -110,12 +110,12 @@ typedef struct
 	SD_CHUNK_DATA          PoolCol;
 	SD_COL_DATA           *FreeCol;
 	int                    nFreeCol;
-	size_t                 nCol;
+	int                    nCol;
 }  SD_CON_MATRIX_DATA;
 
 typedef struct SD_COL_BLOCK_DATA
 {
-	size_t Col0, Col1;
+	int Col0, Col1;
 	struct SD_COL_BLOCK_DATA  *Next;
 } SD_COL_BLOCK_DATA;
 
@@ -137,7 +137,7 @@ typedef union
 
 typedef struct
 {
-	size_t                 nRow;
+	int                   nRow;
 	int                   *pPerm;
 
 	int                    nRowBlock;
@@ -166,8 +166,8 @@ typedef  struct
 	StateType State;
 	union
 	{  SD_CON_MATRIX_DATA      Con;
-	SD_TMP_CON_MATRIX_DATA  TmpCon;
-	SD_BLOCK_MATRIX_DATA    Block;
+	SD_TMP_CON_MATRIX_DATA     TmpCon;
+	SD_BLOCK_MATRIX_DATA       Block;
 	}  Mat;
 }  SD_MATRIX_DATA;
 
@@ -227,8 +227,13 @@ typedef enum SD_MATRIX_WHAT
 * clustered together in the vector pVec.
 */
 
+
 /**
- * @brief This function is needed for defining the system (matrix) connectivity i.e. the non-zero
+ * @brief This function assemble the element connnectivity for one or more elements in order to build
+ * a sparse matrix format. Of course we only store the upper part of the connectivity matrix
+ * because we only consider structure symmetric matrices.
+ *
+ * it is needed for defining the system (matrix) connectivity i.e. the non-zero
  * coefficients of the matrix [A] i.e. which equation is connected to which one. For each
  * (finite) element we have to specifies a list of equations. Here, we assume that all
  * equations in the list are connected to eachother and thus lead to non-zero coefficients in
@@ -249,7 +254,7 @@ typedef enum SD_MATRIX_WHAT
  * NOTE: Except the definition of the multiplicity in ds_Initialize(), all steps performed to
  * define the structure of matrix [A] are stricktly independent from the multiplicity
  *
- * @param [in] pMat0 Pointer to the matrix [A] opaque data returned by ds_Initialize()
+ * @param [in] pMat0 pointer to the matrix [A] opaque data returned by ds_Initialize()
  * @param [in] nEq No. of equations for one element forming a crique
  * @param [in] Eq Element list of equations for more elements with equal no. of eqs.
  * @param [in] nEl No. of elements  ( 0 <= i "<" nEq ;  0 <= e "<" nEl )
@@ -278,11 +283,18 @@ int ds_DefineConnectivity( SD_MATRIX_DATA *const pMat0, const int& nEq, int Eq[]
  * and unknowns is given by: MatDim * Multiplicity
  * @param ppMat A pointer to an opaque data type storing data related to the matrix [A]
  */
-int ds_Initialize( const size_t& MatDim, SD_MATRIX_DATA **ppMat );
+int ds_Initialize( const int& MatDim, SD_MATRIX_DATA **ppMat );
+
 
 /**
 * @brief This function assemble the element square matrix [ElMat] for one element with nEq*M x nEq*M
-* real coefficients in to the global matrix [A]. If a multiplicity factor M greather than 1
+* real coefficients in to the global matrix [A]. It must be called for each
+* (finite) element after the element connectivity have been assembled and the matrix symbolic
+* factorized. To perform this task we also require the element incidences. The
+* variable: Dim specifies the dimension of the matrix: Mat which is not required to be equal
+* to the numer of element incidences: nEq.
+*
+* If a multiplicity factor M greather than 1
 * has been defined the numerical values in the element matrix [ElMat] must be forall vector
 * components clustered together. E.g. for a multiplicity of 3 i.e. a 3D vector field, the 3x3
 * left-upper submatrix of [ElMat] must represent the coupling between the 3 vector field
@@ -292,7 +304,9 @@ int ds_Initialize( const size_t& MatDim, SD_MATRIX_DATA **ppMat );
 * connectivity has been defined with a call to: ds_DefineConnectivity().
 * ATTENTION: no error is detected if some of the the element connectivity defined when
 * calling ds_AssembleLocalMatrix() are not included in those previously specified when
-* calling ds_DefineConnectivity()
+* calling ds_DefineConnectivity() (ie. if the specified incidences have
+* not been previously defined).
+*
 * If the matrix [A] has been declared as symmetric only the upper triangular part of
 * [ElMat], i.e. only ElMat[i][j] = ElMat[Dim*i+j] with i<=j and i,j = 0...M*nEq-1 are used
 * and need to be defined. In the unsymmetric case all M*nEq x M*nEq coefficients are used. It
@@ -301,20 +315,22 @@ int ds_Initialize( const size_t& MatDim, SD_MATRIX_DATA **ppMat );
 * After all element matrices have been assembled the matrix [A] = [L][U] can be factorised in
 * to the lower [L] and upper [U] tringular matrices by calling ds_Solve(NumericFactorize,
 * ).
- * @param [in] pMat0 pointer to the matrix [A] opaque data returned by ds_Initialize()
- * @param [in] nEq no. of equations for one element forming a crique
- * @param [in] Eq Element list of equations for one element.
- * @param [in] Dim first dimension of the 2D-array ElMat[][Dim]
- * @param [in] ElMat element square matrix to be assembled in the matrix [A]
+* @param [in] pMat0 pointer to the matrix [A] opaque data returned by ds_Initialize()
+* @param [in] nEq no. of equations for one element forming a crique
+* @param [in] Eq Element list of equations for one element.
+* @param [in] Dim first dimension of the 2D-array ElMat[][Dim]
+* @param [in] ElMat element square matrix to be assembled in the matrix [A]
 */
 int ds_AssembleMatrix( SD_MATRIX_DATA *pMat0, const int& nEq, int Eq[], const int& Dim, const double *ElMat );
 
 /**
- * @param [in] Code functionlaity code defined above
+ * @brief This function calls the solver itself
+ * @param [in] Code functionlity code defined above
  * @param [in] pMat pointer to the matrix [A] opaque data
  * @param [in] pX right hand side vector {B} to be overwritten by the solution vector {X}:  B[i] := X[i]
+ * @return false whenever the solve produced NaNs in the solution vector
  */
-int ds_Solve( const SD_MATRIX_WHAT& Code, SD_MATRIX_DATA *pMat, double *pX );
+bool ds_Solve(const SD_MATRIX_WHAT& Code, SD_MATRIX_DATA *pMat, double *pX);
 
 int ReleaseConMatrix( SD_CON_MATRIX_DATA * pMat );
 int ReleaseBlockMatrix( SD_BLOCK_MATRIX_DATA * pMat );

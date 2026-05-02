@@ -19,10 +19,10 @@
 */
 
 #include "StabilityAlgorithms.h"
-#include "Constants.h"
 #include "Laws_sn.h"
-#include "Stability.h"
+#include "Constants.h"
 #include "Utils.h"
+#include "Stability.h"
 
 #include <assert.h>
 
@@ -435,11 +435,11 @@ double StabilityAlgorithms::getHandHardnessASARC(const ElementData& Edata, const
  */
 double StabilityAlgorithms::compCriticalStress(const double& epsNeckDot, const double& Ts)
 {
-	const double sigBrittle=1.e7;   // Brittle fracture stress of ice (Pa)
-	const double C1=-6.6249;     // Constant
-	const double C2=6.0780e-2;   // Constant
-	const double C3=-1.3380e-4;  // Constant
-	const double P1=70.000;      // Constant (Pa)
+	static const double sigBrittle=1.e7;   // Brittle fracture stress of ice (Pa)
+	static const double C1=-6.6249;     // Constant
+	static const double C2=6.0780e-2;   // Constant
+	static const double C3=-1.3380e-4;  // Constant
+	static const double P1=70.000;      // Constant (Pa)
 
 	// Find the rate dependent friction angle phi
 	const double phi = P1*pow(fabs(epsNeckDot), 0.23)*mio::Cst::to_rad; // Function of strain rate dependent failure surface
@@ -474,10 +474,10 @@ double StabilityAlgorithms::setDeformationRateIndex(ElementData& Edata)
 		return(0.1);
 	}
 
-	const double eps1Dot = 1.76e-7; // Unit strain rate (at stress = 1 MPa) (s-1)
-	const double sig1 = 0.5e6;      // Unit stress from Sinha's formulation (Pa)
+	static const double eps1Dot = 1.76e-7; // Unit strain rate (at stress = 1 MPa) (s-1)
+	static const double sig1 = 0.5e6;      // Unit stress from Sinha's formulation (Pa)
 	const double sig = -Edata.C;   // Overburden stress, that is, absolute value of Cauchy stress (Pa)
-	const double Te = std::min(Edata.Te, Edata.melting_tk); // Element temperature (K)
+	const double Te = std::min(Edata.Te, Edata.meltfreeze_tk); // Element temperature (K)
 
 	// First find the absolute neck stress
 	const double sigNeck = Edata.neckStressEnhancement() * (sig); // Neck stress (Pa)
@@ -494,7 +494,7 @@ double StabilityAlgorithms::setDeformationRateIndex(ElementData& Edata)
  */
 double StabilityAlgorithms::compPenetrationDepth(const SnowStation& Xdata)
 {
-	double rho_Pk = Constants::eps2, dz_Pk = Constants::eps2; // Penetration depth Pk, from mean slab density
+	double rho_Pk = 0., dz_Pk = 0.;           // Penetration depth Pk, from mean slab density
 	double top_crust = 0., thick_crust = 0.;  // Crust properties
 	bool crust = false;                       // Checks for crust
 	size_t e_crust = Constants::stundefined;
@@ -527,6 +527,9 @@ double StabilityAlgorithms::compPenetrationDepth(const SnowStation& Xdata)
 			}
 		}
 	}
+
+	if (dz_Pk == 0.) return IOUtils::nodata;
+
 	rho_Pk /= dz_Pk; //weighted average density of the snow slab penetrated by the skier
 
 	// NOTE Pre-factor 0.8 introduced May 2006 by S. Bellaire
@@ -585,17 +588,21 @@ double StabilityAlgorithms::getLayerSkierStability(const double& Pk, const doubl
 	}
 }
 
-bool StabilityAlgorithms::normalizeLemon(std::vector<double>& vecData)
+bool StabilityAlgorithms::normalizeVector(std::vector<double>& vecData)
 {
-	if (vecData.empty()) return false;
-	const double mean = mio::Interpol1D::arithmeticMean( vecData );
-	const double std_dev = mio::Interpol1D::std_dev( vecData );
-	if (std_dev==IOUtils::nodata || std_dev==0.) return false;
-	
-	for (size_t ii=0; ii<vecData.size(); ii++) {
-		vecData[ii] = (vecData[ii] - mean) / std_dev;
-	}
-	return true;
+    if (vecData.empty()) return true;
+    
+    const double mean = mio::Interpol1D::arithmeticMean( vecData );
+    const double std_dev = mio::Interpol1D::std_dev( vecData );
+    
+    const double denominator = (std_dev == 0. || std_dev==IOUtils::nodata) ? 1 : std_dev;
+    
+   //for (size_t ii=0; ii<vecData.size(); ii++) {
+	for (auto& value : vecData) {
+        //vecData[ii] = (vecData[ii] - mean) / denominator;
+		value = (value - mean) / denominator;
+    }
+    return true;
 }
 
 /**
@@ -610,21 +617,31 @@ bool StabilityAlgorithms::getRelativeThresholdSum(SnowStation& Xdata)
 	vector<NodeData>& NDS = Xdata.Ndata;
 	vector<ElementData>& EMS = Xdata.Edata;
 	const size_t nE = EMS.size();
-	size_t e = nE;
 	
 	const double cos_sl = Xdata.cos_sl;
-	const double hs_top = (NDS[e].z+NDS[e].u - NDS[Xdata.SoilNode].z) / cos_sl;
+	const double hs_top = (NDS[nE].z+NDS[nE].u - NDS[Xdata.SoilNode].z) / cos_sl;
 	std::vector<double> vecRG, vecRG_diff, vecHard, vecHard_diff, vecTypes;
 	std::vector<double> weibull, crust_index;
 	
 	double crust_coeff = 0.;
+	size_t e = nE-1;
+	NDS[ nE ].ssi = 0.; //the top node is assumed perfectly stable
 	while (e-- > Xdata.SoilNode) {
-		NDS[ e ].ssi = 0.; //initialize with 0 so layers that can not get computed don't t in the way
+		NDS[ e ].ssi = 0.; //initialize with 0 so layers that can not get computed don't get in the way
 		
 		vecRG.push_back( EMS[e].rg );
-		vecRG_diff.push_back( fabs(EMS[e+1].rg - EMS[e].rg) );
-		vecHard.push_back( EMS[e].hard );
-		vecHard_diff.push_back( fabs(EMS[e+1].hard - EMS[e].hard) );
+        vecHard.push_back( EMS[e].hard );
+        if (e > 0) {
+            vecRG_diff.push_back(std::max(EMS[e+1].hard>EMS[e].hard ? fabs(EMS[e+1].rg - EMS[e].rg) : 0,
+                                          EMS[e-1].hard>EMS[e].hard ? fabs(EMS[e-1].rg - EMS[e].rg) : 0
+                                          ));
+            vecHard_diff.push_back(std::max(EMS[e+1].hard>EMS[e].hard ? fabs(EMS[e+1].hard - EMS[e].hard) : 0,
+                                          EMS[e-1].hard>=EMS[e].hard ? fabs(EMS[e-1].hard - EMS[e].hard) : 0
+                                          ));
+        } else {
+            vecRG_diff.push_back(EMS[e+1].hard>EMS[e].hard ? fabs(EMS[e+1].rg - EMS[e].rg) : 0);
+            vecHard_diff.push_back(EMS[e+1].hard>EMS[e].hard ? fabs(EMS[e+1].hard - EMS[e].hard) : 0);
+        }
 		
 		//grain types receive a score depending on their primary and secondary forms
 		const unsigned short int primary = static_cast<unsigned short int>( EMS[e].type / 100 %100 );
@@ -642,61 +659,61 @@ bool StabilityAlgorithms::getRelativeThresholdSum(SnowStation& Xdata)
 		const double layer_depth = hs_top - (NDS[e].z+NDS[e].u - NDS[Xdata.SoilNode].z)/cos_sl;
 		static const double w1 = 2.5;
 		static const double w2 = 50.;
-		const double weibull_depth = (w1/w2) * pow(layer_depth, w1-1.) * exp( -1*pow(layer_depth/w2, w1) );
+		const double weibull_depth = (w1/w2) * pow((layer_depth*100), w1-1.) * exp( -1*pow((layer_depth*100)/w2, w1) );
 		
 		//compute crust factor
-		const bool crust_cond = (EMS[e].L>=1. && EMS[e].hard>=3 );
-		const double crust_value = (crust_cond)? exp( -(hs_top -  (NDS[e+1].z+NDS[e+1].u - NDS[Xdata.SoilNode].z)/cos_sl/20. ) ) : 0.;
+        const bool crust_cond = (EMS[e].L>=0.01 && EMS[e].hard>=3 );
+        const double crust_value = (crust_cond)? exp( -((hs_top*100) - ((NDS[e+1].z+NDS[e+1].u - NDS[Xdata.SoilNode].z)*100)/cos_sl)/20. ) : 0.;
 		crust_coeff += crust_value;
-		weibull.push_back( weibull_depth - crust_coeff ); //store the weibull corrected for the crust coefficient
+		const double crust_contrib = weibull_depth - crust_coeff;
+        if (crust_contrib>0)
+			weibull.push_back( crust_contrib ); //store the weibull corrected for the crust coefficient
+		else 
+			weibull.push_back( 0. ); //the crust is so thick that there is no additional load below
 	}
 	
 	//calculate the normalization parameters
-	if (!normalizeLemon(vecRG)) return false;
+    normalizeVector(vecRG);
 	const double RG_min = mio::Interpol1D::min_element( vecRG );
 	const double RG_max = mio::Interpol1D::max_element( vecRG );
-	if (RG_min==RG_max) return false;
 	
-	if (!normalizeLemon(vecRG_diff)) return false;
+    normalizeVector(vecRG_diff);
 	const double RG_diff_min = mio::Interpol1D::min_element( vecRG_diff );
 	const double RG_diff_max = mio::Interpol1D::max_element( vecRG_diff );
-	if (RG_diff_min==RG_diff_max) return false;
 	
-	if (!normalizeLemon(vecHard)) return false;
+    normalizeVector(vecHard);
 	const double hard_min = mio::Interpol1D::min_element( vecHard );
 	const double hard_max = mio::Interpol1D::max_element( vecHard );
-	if (hard_min==hard_max) return false;
 	
-	if (!normalizeLemon(vecHard_diff)) return false;
+    normalizeVector(vecHard_diff);
 	const double hard_diff_min = mio::Interpol1D::min_element( vecHard_diff );
 	const double hard_diff_max = mio::Interpol1D::max_element( vecHard_diff );
-	if (hard_diff_min==hard_diff_max) return false;
 	
-	if (!normalizeLemon(vecTypes)) return false;
+    normalizeVector(vecTypes);
 	const double type_min = mio::Interpol1D::min_element( vecTypes );
 	const double type_max = mio::Interpol1D::max_element( vecTypes );
-	if (type_min==type_max) return false;
-	
+    
+    
 	const double dp_min = mio::Interpol1D::min_element( weibull );
 	const double dp_max = mio::Interpol1D::max_element( weibull );
-	if (dp_min==dp_max) return false;
 	
 	vector<double> index;
 	double max_index = 0.;
 	for (size_t ii=0; ii<vecRG.size(); ii++) {
-		const double RG_norm = (vecRG[ii] - RG_min) / (RG_max - RG_min);
-		const double RG_diff_norm = (vecRG_diff[ii] - RG_diff_min) / (RG_diff_max - RG_diff_min);
-		const double hard_norm = 1. - (vecHard[ii] - hard_min) / (hard_max - hard_min);
-		const double hard_diff_norm = (vecHard_diff[ii] - hard_diff_min) / (hard_diff_max - hard_diff_min);
-		const double type_norm = (vecTypes[ii] - type_min) / (type_max - type_min);
-		const double dp_norm = (weibull[ii] - dp_min) / (dp_max - dp_min);
+		const double RG_norm = (RG_min!=RG_max)? (vecRG[ii] - RG_min) / (RG_max - RG_min) : 0.;
+		const double RG_diff_norm = (RG_diff_min!=RG_diff_max)? (vecRG_diff[ii] - RG_diff_min) / (RG_diff_max - RG_diff_min) : 0.;
+		const double hard_norm = (hard_min!=hard_max)? 1. - (vecHard[ii] - hard_min) / (hard_max - hard_min) : 0.;
+		const double hard_diff_norm = (hard_diff_min!=hard_diff_max)? (vecHard_diff[ii] - hard_diff_min) / (hard_diff_max - hard_diff_min) : 0.;
+		const double type_norm = (type_min!=type_max)? (vecTypes[ii] - type_min) / (type_max - type_min) : 0.;
+		const double dp_norm = (dp_min!=dp_max)? (weibull[ii] - dp_min) / (dp_max - dp_min) : 0.;
 		
 		index.push_back( RG_norm + RG_diff_norm + hard_norm + hard_diff_norm + type_norm + dp_norm );
 		if (index.back()>max_index) max_index = index.back();
 	}
 	
+	if (max_index==0.) max_index=1.; //in this case, all index()==0 so we will set all ssi to zero
 	for (size_t ii=0; ii<vecRG.size(); ii++) {
-		NDS[ nE - ii ].ssi = index[ii] / max_index;
+		NDS[ nE - ii -1 ].ssi = index[ii] / max_index;
 	}
 	
 	return true;
@@ -1286,8 +1303,8 @@ bool StabilityAlgorithms::setShearStrength_NIED(const double& cH, const double& 
 	//NIED (H. Hirashima)
 	const double Sig_ET = 9.4*0.0001*pow(Edata.theta[ICE]*Constants::density_ice,2.91)*exp(-0.235*Edata.theta[WATER]*100.)/1000.;
 	const double Sig_DH = 2.3*0.0001*pow(Edata.theta[ICE]*Constants::density_ice,2.78)*exp(-0.235*Edata.theta[WATER]*100.)/1000.;
-	Ndata.Sigdhf = Sig_ET - Edata.dhf*(Sig_ET - Sig_DH);
-	Ndata.S_dhf = (Ndata.Sigdhf + phi*STpar.sig_n)/STpar.sig_s;
+	Ndata.Sigdsm = Sig_ET - Edata.dsm*(Sig_ET - Sig_DH);
+	Ndata.S_dsm = (Ndata.Sigdsm + phi*STpar.sig_n)/STpar.sig_s;
 	// original SNOWPACK
 	Edata.s_strength = Sig_c2;
 	STpar.Sig_c2 = std::min(Sig_c2, STpar.strength_upper);
@@ -1326,12 +1343,11 @@ double StabilityAlgorithms::CriticalCutLength(const double& H_slab, const double
 	const double tau_p = STpar.Sig_c2;
 	const double sigma_n = - stress / 1000.; 
 	const double tau_g = sigma_n * sin_sl / cos_sl; 
-	const double E = ElementData::getYoungModule(rho_slab, ElementData::Exp);
+	const double E = ElementData::getYoungModule(rho_slab, ElementData::Pow);
 	
 	const double E_prime = E / (1. - 0.2*0.2);	// 0.2 is poisson ratio
-	static const double G_wl = 2e5;
-	const double Dwl = Edata.L;
-	const double lambda = sqrt( (E_prime * D * Dwl) / (G_wl) );
+	const double Fwl = 6.21e-7 * exp(-2.11*log(Edata.Rho)) * exp(-2.11*log(2. * Edata.rg*0.001)) * 0.01; //[m/Pa]
+	const double lambda = sqrt( E_prime * D * Fwl );
 	const double sqrt_arg = Optim::pow2(tau_g) + 2.*sigma_n*(tau_p - tau_g);
 	if (sqrt_arg<0.) return 0.;
 	

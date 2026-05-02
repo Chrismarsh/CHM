@@ -91,19 +91,32 @@
  * - "MS_WATER"
  * - "MS_TOTALMASS"
  * - "MS_SOIL_RUNOFF"
+ * - Top layer Snow sphericity "snow_sphericity" [-]
+ * - Top layer Snow grain size "snow_grain_size" [mm]
+ * - Top layer Fraction of ice content "frac_ice_content" [-]
+ * - Top layer Liquid water content "Sliq" [-]
+ * - Snow surface temperature "Tsnow" [\f$ {}^\circ C \f$]
+ * - Top layer Snow density "snow_density" [\f$ kg \cdot m^{-3} \f$]
  *
  * **Configuration:**
  * \rst
  * .. code:: json
  *
+ *    "Lehning_snowpack":
  *    {
- *       "sno":
- *       {
- *          "SoilAlbedo": 0.09,
- *          "BareSoil_z0": 0.2,
- *          "WindScalingFactor": 1,
- *          "TimeCountDeltaHS": 0.0 *
- *       }
+ *      "sno":
+ *      {
+ *         "SoilAlbedo": 0.09,
+ *         "BareSoil_z0": 0.2,
+ *         "WindScalingFactor": 1,
+ *         "TimeCountDeltaHS": 0.0
+ *      },
+ *      "GROOMING_WEEK_START": 40,
+ *      "GROOMING_WEEK_END": 17,
+ *      "GROOMING_HOUR": 21,
+ *      "GROOMING_DEPTH_START": 0.4,
+ *      "GROOMING_DEPTH_IMPACT": 0.4
+ *    }
  * \endrst
  * @}
  */
@@ -119,6 +132,8 @@ public:
 
     virtual void init(mesh& domain);
 
+    virtual void checkpoint(mesh& domain, netcdf& chkpt);
+    virtual void load_checkpoint(mesh& domain, netcdf& chkpt);
 
     struct data : public face_info
     {
@@ -138,6 +153,7 @@ public:
         double cum_precip;
 
         double sum_subl;
+        bool is_grooming; // Flag indicating if snow grooming is enabled for this face
     };
 
     double sn_dt; // calculation step length
