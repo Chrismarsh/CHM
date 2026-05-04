@@ -49,20 +49,20 @@ namespace math
         using Teuchos::rcp;
         using Teuchos::Time;
         using Teuchos::tuple;
-        typedef Tpetra::CrsGraph<> graph_type;
-        typedef Tpetra::CrsMatrix<> crs_matrix_type;
-        typedef Tpetra::Map<> map_type;
-        typedef Tpetra::MultiVector<> MV;
-        typedef Tpetra::Operator<> OP;
-        typedef Tpetra::RowMatrix<> row_matrix_type;
-        typedef MV::scalar_type scalar_type;
-        typedef Ifpack2::Preconditioner<> prec_type;
-        typedef Belos::LinearProblem<scalar_type, MV, OP> problem_type;
-        typedef Belos::SolverManager<scalar_type, MV, OP> solver_type;
-        typedef Tpetra::MatrixMarket::Reader<crs_matrix_type> reader_type;
+        using graph_type = Tpetra::CrsGraph<>;
+        using crs_matrix_type = Tpetra::CrsMatrix<>;
+        using map_type = Tpetra::Map<>;
+        using MV = Tpetra::MultiVector<>;
+        using OP = Tpetra::Operator<>;
+        using row_matrix_type = Tpetra::RowMatrix<>;
+        using scalar_type = MV::scalar_type;
+        using prec_type = Ifpack2::Preconditioner<>;
+        using problem_type = Belos::LinearProblem<scalar_type, MV, OP>;
+        using solver_type = Belos::SolverManager<scalar_type, MV, OP>;
+        using reader_type = Tpetra::MatrixMarket::Reader<crs_matrix_type>;
         // The type used for indexes on the local rank
-        typedef Tpetra::Details::DefaultTypes::global_ordinal_type global_ordinal_type;
-        typedef Tpetra::Details::DefaultTypes::local_ordinal_type local_ordinal_type;
+        using global_ordinal_type = Tpetra::Details::DefaultTypes::global_ordinal_type;
+        using local_ordinal_type = Tpetra::Details::DefaultTypes::local_ordinal_type;
 
 
         struct SolveConverge
