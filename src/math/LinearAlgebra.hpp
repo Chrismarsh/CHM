@@ -61,9 +61,8 @@ namespace math
         using solver_type = Belos::SolverManager<scalar_type, MV, OP>;
         using reader_type = Tpetra::MatrixMarket::Reader<crs_matrix_type>;
         // The type used for indexes on the local rank
-        using global_ordinal_type = Tpetra::Details::DefaultTypes::global_ordinal_type;
-        using local_ordinal_type = Tpetra::Details::DefaultTypes::local_ordinal_type;
-
+        using global_index_type = Tpetra::Map<>::global_ordinal_type;
+        using local_index_type = Tpetra::Map<>::local_ordinal_type;
 
         struct IndexTracker;
 
