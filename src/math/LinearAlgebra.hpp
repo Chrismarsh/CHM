@@ -137,9 +137,6 @@ namespace math
             void matrixSumIntoGlobalValues(global_index_type global_row_idx, global_index_type global_col_idx,
                                            double val);
 
-            void matrixResumeFill();
-            void matrixFillComplete();
-
             void rhsSumIntoGlobalValue(global_index_type global_idx, double val);
 
             SolveConverge Solve();
