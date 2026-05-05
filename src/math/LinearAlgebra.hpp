@@ -123,9 +123,11 @@ namespace math
             RCP<prec_type> m_preconditioner;
             RCP<problem_type> m_problem;
 
+            std::string_view _module_name;
+
         public:
 			template<MeshObject M>
-            NearestNeighborProblem(M& domain, int nLayer = 1);
+            NearestNeighborProblem(M& domain, const std::string& module_name, int nLayer = 1);
             ~NearestNeighborProblem();
 
             void zeroSystem();
@@ -323,7 +325,8 @@ namespace math
             m_solver->setProblem(m_problem);
         }
         template <MeshObject M>
-	NearestNeighborProblem::NearestNeighborProblem(M& domain, int nLayer)
+	    NearestNeighborProblem::NearestNeighborProblem(M& domain, const std::string& module_name, int nLayer) 
+            : _module_name(module_name)
         {
             set_comm_for_parallel();
 

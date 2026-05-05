@@ -54,7 +54,8 @@ namespace math
             }
             if (m_solver.is_null())
             {
-                CHM_THROW_EXCEPTION(module_error, "PBSM3D failed to create solver");
+                std::string err = std::format("{} failed to create solver",_module_name);
+                CHM_THROW_EXCEPTION(module_error, err);
             }
         }
 
