@@ -130,15 +130,15 @@ namespace math
 
             void zeroSystem();
 
-            void matrixReplaceGlobalValues(global_ordinal_type global_row_idx, global_ordinal_type global_col_idx,
+            void matrixReplaceGlobalValues(global_index_type global_row_idx, global_index_type global_col_idx,
                                            double val);
-            void matrixSumIntoGlobalValues(global_ordinal_type global_row_idx, global_ordinal_type global_col_idx,
+            void matrixSumIntoGlobalValues(global_index_type global_row_idx, global_index_type global_col_idx,
                                            double val);
 
             void matrixResumeFill();
             void matrixFillComplete();
 
-            void rhsSumIntoGlobalValue(global_ordinal_type global_idx, double val);
+            void rhsSumIntoGlobalValue(global_index_type global_idx, double val);
 
             SolveConverge Solve();
 
@@ -166,7 +166,7 @@ namespace math
         RCP<const map_type> NearestNeighborProblem::init_local_global_index_map(M& domain, const Sizes& sizes)
         {
 	    auto global_IDs = domain->get_global_IDs();
-            std::vector<global_ordinal_type> extruded_global_IDs(sizes.local_elements());
+            std::vector<global_index_type> extruded_global_IDs(sizes.local_elements());
             // Create the global IDs for the extruded system
             // Ordering:
             // - mesh elements and then layers successively
@@ -174,7 +174,7 @@ namespace math
             for (int i = 0; i < sizes.vert_layers; ++i)
             {
                 std::transform(global_IDs.begin(), global_IDs.end(), extruded_ID_iterator,
-                               [=](int id) -> global_ordinal_type { return i * sizes.global + id; });
+                               [=](int id) -> global_index_type { return i * sizes.global + id; });
                 extruded_ID_iterator += sizes.local;
             }
 
@@ -189,7 +189,7 @@ namespace math
         struct IndexTracker
         {
             std::vector<size_t> entries_per_element;
-            std::vector<std::array<global_ordinal_type,6>> neighbor_global_idx;
+            std::vector<std::array<global_index_type,6>> neighbor_global_idx;
 
             template <class M> IndexTracker(M& domain, Sizes& sizes);
         };

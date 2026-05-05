@@ -67,19 +67,19 @@ namespace math
             m_solution->putScalar(0.0);
         }
 
-        void NearestNeighborProblem::matrixReplaceGlobalValues(global_ordinal_type global_row_idx,
-                                                               global_ordinal_type global_col_idx, double val)
+        void NearestNeighborProblem::matrixReplaceGlobalValues(global_index_type global_row_idx,
+                                                               global_index_type global_col_idx, double val)
         {
             m_matrix->replaceGlobalValues(global_row_idx, tuple(global_col_idx), tuple(val));
         }
 
-        void NearestNeighborProblem::matrixSumIntoGlobalValues(global_ordinal_type global_row_idx,
-                                                               global_ordinal_type global_col_idx, double val)
+        void NearestNeighborProblem::matrixSumIntoGlobalValues(global_index_type global_row_idx,
+                                                               global_index_type global_col_idx, double val)
         {
             m_matrix->sumIntoGlobalValues(global_row_idx, tuple(global_col_idx), tuple(val));
         }
 
-        void NearestNeighborProblem::rhsSumIntoGlobalValue(global_ordinal_type global_idx, double val)
+        void NearestNeighborProblem::rhsSumIntoGlobalValue(global_index_type global_idx, double val)
         {
             // Critical section needed because sumIntoGlobalValues is not respecting
             // the 4th arg (force atomic update)
