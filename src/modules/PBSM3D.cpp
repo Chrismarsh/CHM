@@ -503,37 +503,37 @@ void PBSM3D::run(mesh& domain)
                         // Coefficient for the filling function that give normalized snow depth as a function of TPI
 
                         double a1 = 1.5;
-                        double b1 = 0.3;
-                        double a2 = 0.6;
+                        const double b1 = 0.3;
+                        const double a2 = 0.6;
                         double b2 = 0.55;
                         if (snow_depth > 0.75 and snow_depth < 1.25)
                         {
-                            double a1 = 1.15;
+                            a1 = 1.15;
                         }
                         else if (snow_depth < 1.75)
                         {
-                            double a1 = 1.1;
-                            double b2 = 0.4;
+                            a1 = 1.1;
+                            b2 = 0.4;
                         }
                         else if (snow_depth < 2.25)
                         {
-                            double a1 = 0.9;
-                            double b2 = 0.4;
+                            a1 = 0.9;
+                            b2 = 0.4;
                         }
                         else if (snow_depth < 2.75)
                         {
-                            double a1 = 0.85;
-                            double b2 = 0.4;
+                            a1 = 0.85;
+                            b2 = 0.4;
                         }
                         else if (snow_depth < 3.25)
                         {
-                            double a1 = 0.75;
-                            double b2 = 0.4;
+                            a1 = 0.75;
+                            b2 = 0.4;
                         }
                         else
                         {
-                            double a1 = 0.6;
-                            double b2 = 0.35;
+                            a1 = 0.6;
+                            b2 = 0.35;
                         }
 
                         // Compute normalization factor
