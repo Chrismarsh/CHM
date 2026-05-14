@@ -25,6 +25,16 @@
 
 #include "netcdf.hpp"
 
+#include <cmath>
+
+namespace
+{
+    bool is_fill_value(double value, double fill_value)
+    {
+        return (std::isnan(fill_value) && std::isnan(value)) || value == fill_value;
+    }
+}
+
 netcdf::netcdf()
 {
     _is_open = false;
@@ -410,9 +420,11 @@ void netcdf::open_GEM(const std::string &file)
     SPDLOG_DEBUG("NetCDF end is {}",boost::posix_time::to_simple_string(_end));
     SPDLOG_DEBUG("NetCDF timestep is {}", boost::posix_time::to_simple_string(_delta_t));
 
-    // CF convention assumes that dim and coord have the same name,
-    _lat_field = find_dim_by_standard_name("latitude");
-    _lon_field = find_dim_by_standard_name("longitude");
+    // CF latitude/longitude coordinates can be either 1D coordinate variables
+    // such as latitude(latitude), longitude(longitude), or 2D auxiliary
+    // coordinate variables such as latitude(yc, xc), longitude(yc, xc).
+    _lat_field = find_var_by_attr("latitude", {"standard_name"});
+    _lon_field = find_var_by_attr("longitude", {"standard_name"});
 
     try
     {
@@ -431,13 +443,11 @@ void netcdf::open_GEM(const std::string &file)
     }
 
 
-    xgrid = _data.getDim(_lon_field).getSize();
-    ygrid = _data.getDim(_lat_field).getSize();
+    auto lat_var = _data.getVar(_lat_field);
+    auto lon_var = _data.getVar(_lon_field);
 
-    SPDLOG_DEBUG("NetCDF grid is {} (x) by {} (y)", xgrid, ygrid);
-
-    auto lat_dim = _data.getVar(find_coord_by_standard_name("latitude")).getDimCount();
-    auto lon_dim = _data.getVar(find_coord_by_standard_name("longitude")).getDimCount();
+    auto lat_dim = lat_var.getDimCount();
+    auto lon_dim = lon_var.getDimCount();
 
     if(lat_dim != lon_dim)
     {
@@ -445,12 +455,35 @@ void netcdf::open_GEM(const std::string &file)
     }
 
     _spatial_coord_dim = lat_dim;
-    SPDLOG_DEBUG("Coord dimensionality is {}D",_spatial_coord_dim);
 
-    if(_spatial_coord_dim > 2)
+    if(_spatial_coord_dim == 1)
     {
-        CHM_THROW_EXCEPTION(forcing_error, "Latitude and longitude dimensionality exceeds 2D");
+        ygrid = lat_var.getDim(0).getSize();
+        xgrid = lon_var.getDim(0).getSize();
     }
+    else if(_spatial_coord_dim == 2)
+    {
+        auto lat_y = lat_var.getDim(0).getSize();
+        auto lat_x = lat_var.getDim(1).getSize();
+
+        auto lon_y = lon_var.getDim(0).getSize();
+        auto lon_x = lon_var.getDim(1).getSize();
+
+        if(lat_y != lon_y || lat_x != lon_x)
+        {
+            CHM_THROW_EXCEPTION(forcing_error, "Latitude and longitude grid sizes do not match");
+        }
+
+        ygrid = lat_y;
+        xgrid = lat_x;
+    }
+    else
+    {
+        CHM_THROW_EXCEPTION(forcing_error, "Latitude and longitude dimensionality must be 1D or 2D");
+    }
+
+    SPDLOG_DEBUG("NetCDF grid is {} (x) by {} (y)", xgrid, ygrid);
+    SPDLOG_DEBUG("Coord dimensionality is {}D",_spatial_coord_dim);
 
 
 }
@@ -492,7 +525,19 @@ boost::posix_time::ptime netcdf::get_end()
 
 netcdf::data netcdf::get_z()
 {
-    return get_var(_elevation_field, 0);
+    auto z_var = _data.getVar(_elevation_field);
+    auto z_dim = z_var.getDimCount();
+
+    if(z_dim == 2)
+    {
+        return get_var2D(_elevation_field);
+    }
+    else if(z_dim == 3)
+    {
+        return get_var(_elevation_field, 0);
+    }
+
+    CHM_THROW_EXCEPTION(forcing_error, "geopotential_height must be 2D or 3D");
 }
 
 
@@ -571,13 +616,18 @@ std::set<std::string> netcdf::get_variable_names()
     {
         auto vars = _data.getVars();
 
-        std::vector<std::string> exclude = {"datetime","leadtime", "reftime", "HGT_P0_L1_GST", _lat_field, _lon_field};
+        std::set<std::string> exclude = {"datetime", "leadtime", "reftime", "HGT_P0_L1_GST", _datetime_field, _lat_field, _lon_field, _elevation_field};
+
+        for(const auto& itr : _data.getCoordVars())
+        {
+            exclude.insert(itr.first);
+        }
 
         for (auto itr: vars)
         {
             auto v = itr.first;
             //don't return the above variables as they are geo-spatial vars
-            if (std::find(exclude.begin(), exclude.end(), v) == exclude.end())
+            if (exclude.find(v) == exclude.end())
             {
                 _variable_names.insert(v);
             }
@@ -632,7 +682,7 @@ double netcdf::get_var1D(std::string var, size_t index)
 
     double fill_value = get_fillvalue(itr->second);
 
-    if( data == fill_value)
+    if(is_fill_value(data, fill_value))
     {
         data = std::nan("nan");
     }
@@ -662,7 +712,7 @@ netcdf::data netcdf::get_var2D(std::string var)
     {
         for(size_t j =0; j< array->shape()[1]; j++)
         {
-            if ((*array)[i][j] == fill_value)
+            if (is_fill_value((*array)[i][j], fill_value))
                 (*array)[i][j] = std::nan("nan");
         }
     }
@@ -689,7 +739,7 @@ double netcdf::get_var2D(std::string var, size_t x, size_t y)
 
     double fill_value = get_fillvalue(itr->second);
 
-    if(val == fill_value)
+    if(is_fill_value(val, fill_value))
         val = std::nan("nan");
 
     return val;
@@ -730,7 +780,7 @@ netcdf::vec netcdf::get_lat()
     std::transform(array->begin(), array->end(), array->begin(),
                    [fill_value](double val)
                    {
-                       return (val == fill_value) ? std::nan("") : val;
+                       return is_fill_value(val, fill_value) ? std::nan("") : val;
                    });
 
 
@@ -748,7 +798,7 @@ netcdf::vec netcdf::get_lon()
     std::transform(array->begin(), array->end(), array->begin(),
                    [fill_value](double val)
                    {
-                       return (val == fill_value) ? std::nan("") : val;
+                       return is_fill_value(val, fill_value) ? std::nan("") : val;
                    });
 
 
@@ -775,7 +825,19 @@ double netcdf::get_lon(size_t x, size_t y)
 
 double netcdf::get_z(size_t x, size_t y)
 {
-    return get_var(_elevation_field, 0, x, y);
+    auto z_var = _data.getVar(_elevation_field);
+    auto z_dim = z_var.getDimCount();
+
+    if(z_dim == 2)
+    {
+        return get_var2D(_elevation_field, x, y);
+    }
+    else if(z_dim == 3)
+    {
+        return get_var(_elevation_field, 0, x, y);
+    }
+
+    CHM_THROW_EXCEPTION(forcing_error, "geopotential_height must be 2D or 3D");
 }
 
 int netcdf::get_coord_dimensionality() const
@@ -809,7 +871,7 @@ double netcdf::get_var(std::string var, size_t timestep, size_t x, size_t y)
     }
     double fill_value = get_fillvalue(itr->second);
 
-    if(val == fill_value)
+    if(is_fill_value(val, fill_value))
         val = std::nan("nan");
 
     return val;
@@ -843,7 +905,7 @@ netcdf::data netcdf::get_var(std::string var, size_t timestep)
     {
         for(size_t j =0; j< array->shape()[1]; j++)
         {
-            if ((*array)[i][j] == fill_value)
+            if (is_fill_value((*array)[i][j], fill_value))
                 (*array)[i][j] = std::nan("nan");
         }
     }
