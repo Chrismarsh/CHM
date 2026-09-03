@@ -194,7 +194,7 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
         # -Wno-misleading-indentation is for armadillo
         set(DEBUG_FLAGS "${DEBUG_FLAGS}  -Og -fno-inline -Wall -Wno-misleading-indentation")
     else("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang" )
-        set(DEBUG_FLAGS "${DEBUG_FLAGS}  -O0 -fno-omit-frame-pointer -fno-inline -fno-eliminate-unused-debug-symbols")
+        set(DEBUG_FLAGS "${DEBUG_FLAGS}  -O0 -fno-omit-frame-pointer -glldb -fno-inline -fno-eliminate-unused-debug-symbols")
     endif()
 
     set(CGAL_DO_NOT_WARN_ABOUT_CMAKE_BUILD_TYPE TRUE)
