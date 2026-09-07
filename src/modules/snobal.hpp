@@ -87,7 +87,7 @@ public:
  * - Surface exchange layer temperature "T_s_0" [K]
  * - Lower layer temperature "T_s_l" [K]
  * - Was an iteration error hit "dead". Diagnostic, don't use. [-]
- * - Net shortwave radiation at the surface. Diagnostic. "iswr_out" [ \f$ W \cdot m^{-2} \f$ ]
+ * - Net shortwave radiation at the surface. Diagnostic. "iswr_net" [ \f$ W \cdot m^{-2} \f$ ]
  * - Binary is the snow isothermal "isothermal" [0,1]
  * - Outgoing longwave radiation "ilwr_out" [ \f$ W \cdot m^{-2} \f$ ]
  * - Total snowpack runoff "sum_snowpack_runoff"
