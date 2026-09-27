@@ -34,31 +34,31 @@ class Saltation {
 		Saltation(const SnowpackConfig& i_cfg);
 
 		bool compSaltation(const double& tauS, const double& tau_th, const double& slope_angle, const double& dg,
-		                   double& massflux, double& c_salt);
+		                   double& massflux, double& c_salt) const;
 
 		static const double karman;
 		static const double z0_salt;
 
 	private:
-		double sa_vw(const double& z, const double& tauA, const double& tauS, const double& z0,
+		static double sa_vw(const double& z, const double& tauA, const double& tauS, const double& z0,
                      const double& u_start, const double& slope_angle);
-		double sa_vw2(const double& z, const double& tauA, const double& tauS, const double& z0,
+		static double sa_vw2(const double& z, const double& tauA, const double& tauS, const double& z0,
                       const double& u_start, const double& slope_angle);
 
-		bool sa_Traject(const double& u0, const double& angle_e_rad, const double& slope_angle, const double& dg,
+		static bool sa_Traject(const double& u0, const double& angle_e_rad, const double& slope_angle, const double& dg,
 		                const double& tauA, const double& tauS, const double& z0,
 		                double& ubar, double& u_i, double& angle_i_rad, double& t_i, double& z_max);
 
-		double sa_MassFlux(const double& z0, const double& tauS, const double& tauA, const double& slope_angle,
+		static double sa_MassFlux(const double& z0, const double& tauS, const double& tauA, const double& slope_angle,
 		                   const double& dg, const double& tau_th, double& z_max, double& ubar, double& cs);
 
-		double sa_AeroEntrain(const double& z0, const double& tauS, const double& slope_angle, const double& dg,
+		static double sa_AeroEntrain(const double& z0, const double& tauS, const double& slope_angle, const double& dg,
 		                      const double& tau_th, double& flux, double& z_max, double& ubar, double& cs);
 
-		int sa_TestSaltation(const double& z0, const double& tauS, const double& tauA, const double& slope_angle,
+		static int sa_TestSaltation(const double& z0, const double& tauS, const double& tauA, const double& slope_angle,
 		                     const double& dg, const double& tau_th, double& z_max, double& ubar);
 
-		std::string saltation_model;
+		const std::string saltation_model;
 		static const double hs_frac, elas, angle_ej, ratio_ve_ustar, salt_height;
 		static const int strong, weak;
 };

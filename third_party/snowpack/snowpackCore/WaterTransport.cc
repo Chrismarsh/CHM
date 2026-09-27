@@ -19,24 +19,60 @@
 */
 
 #include "WaterTransport.h"
+#include "Snowpack.h"
+#include "ReSolver1d.h"
+#include "PhaseChange.h"
 #include "../Constants.h"
 #include "../Utils.h"
-#include "PhaseChange.h"
-#include "ReSolver1d.h"
-#include "Snowpack.h"
 
 #include <assert.h>
 
 using namespace std;
 using namespace mio;
 
+/**
+ * @page water_transport Water Transport
+ * It is important to realize that snow is really a three phases medium: it might contain at the same time water in its solid phase (the ice crystals matrix),
+ * in its liquid phase (interstitial water) and in its gaseous phase (water vapor in the pore space). As the liquid water can move through the
+ * ice matrix, it transports mass as well as potentially energy. Depending on the conditions, it might also significantly alter the microstructure of
+ * the snow pack. Therefore it is very important to be able to simulate how this liquid water moves through the snow layers.
+ *
+ * @section matrix_vs_pref Matrix flow and preferential flow
+ * Liquid water can move through the snow pack in two distinct ways: through <i>matrix flow</i> or through <i>preferential flow</i>. They are fundamentally different and
+ * have very different time scales.
+ *
+ * @subsection matrix_flow Matrix flow
+ * Matrix flow represents how the liquid water moves through the pore space of the ice matrix. This capillary motion is dominated by surface tension effects. Such a flow
+ * is highly dependent on the tortuosity of the ice matrix, the water column pressure head and changes of such properties which can lead to capillary barriers. The kind
+ * of flow moves the bulk of the mass in a gradual process.
+ *
+ * @subsection preferential_flow Preferential flow
+ * A second kind of liquid water transport mechanism is through preferential flow. This is a 2 dimensional effect where at some places the liquid water is able to locally
+ * flow much deeper into the snow pack. Although highly relevant for its impact on the snow microstructure and for its impact on snow stability, this transport mechanism
+ * only carries a minority of the liquid water mass. But by providing liquid water in deeper layers much faster, it can contribute to triggering a weak layer or accumulate
+ * liquid water at a capillary barrier (<i>ponding</i>) that could later refreeze and build an ice layer.
+ *
+ * @subsection wt_modeling Modeling
+ * In %Snowpack, water transport can currently either be modeled with the bucket approach or by solving the Richards equations.
+ *
+ * In the bucket approach, each snow layer has a given water storage capacity that can be filled by liquid water (thus similar to a bucket) and then overflows
+ * down to the next layer when full. This is computationally efficient but not a very accurate representation of the physical phenomenons involved in the liquid water transport.
+ *
+ * On the other hand, the Richards equation describes the flow of a liquid in a porous media and is therefore a much more adequate representation. The novelty of the Richards
+ * equation solver in %Snowpack is to use such equations in a media where the matrix is just a different phase of the liquid. This is computationally much more challenging
+ * than the bucket approach and needs to be much more carefully configured.
+ *
+ * @section snowpack_wt_keys Configuration keys
+ *
+ */
+
 WaterTransport::WaterTransport(const SnowpackConfig& cfg)
-               : RichardsEquationSolver1d(cfg), variant(),
-                 iwatertransportmodel_snow(BUCKET), iwatertransportmodel_soil(BUCKET), watertransportmodel_snow("BUCKET"), watertransportmodel_soil("BUCKET"),
+               : RichardsEquationSolver1d_matrix(cfg, true), RichardsEquationSolver1d_pref(cfg, false), variant(),
+                 iwatertransportmodel_snow(BUCKET), iwatertransportmodel_soil(BUCKET), watertransportmodel_snow("BUCKET"), watertransportmodel_soil("BUCKET"), enable_pref_flow(false), pref_flow_rain_input_domain("MATRIX"),
                  sn_dt(IOUtils::nodata),
                  hoar_thresh_rh(IOUtils::nodata), hoar_thresh_vw(IOUtils::nodata), hoar_thresh_ta(IOUtils::nodata),
                  hoar_density_buried(IOUtils::nodata), hoar_density_surf(IOUtils::nodata), hoar_min_size_buried(IOUtils::nodata),
-                 minimum_l_element(IOUtils::nodata), useSoilLayers(false), water_layer(false), jam(false)
+                 minimum_l_element(IOUtils::nodata), comb_thresh_l(IOUtils::nodata), useSoilLayers(false), water_layer(false), jam(false), enable_vapour_transport(false)
 {
 	cfg.getValue("VARIANT", "SnowpackAdvanced", variant);
 
@@ -61,7 +97,7 @@ WaterTransport::WaterTransport(const SnowpackConfig& cfg)
 	 * - r242: HOAR_THRESH_VW set to 3.5
 	 */
 	cfg.getValue("HOAR_THRESH_VW", "SnowpackAdvanced", hoar_thresh_vw);
-	
+
 	/**
 	 * @brief No surface hoar will form at air temperatures above threshold (m s-1)
 	 * - Originaly, using THRESH_RAIN
@@ -88,15 +124,35 @@ WaterTransport::WaterTransport(const SnowpackConfig& cfg)
 	//Minimum element length (m)
 	cfg.getValue("MINIMUM_L_ELEMENT", "SnowpackAdvanced", minimum_l_element);
 
+	double dummy_height_new_elem;	//only temporarily needed
+	cfg.getValue("HEIGHT_NEW_ELEM", "SnowpackAdvanced", dummy_height_new_elem);
+	cfg.getValue("COMB_THRESH_L", "SnowpackAdvanced", comb_thresh_l, IOUtils::nothrow);
+	if(comb_thresh_l == IOUtils::nodata) comb_thresh_l = SnowStation::comb_thresh_l_ratio * dummy_height_new_elem;	// If no comb_thres_l specified, use the default one (i.e., a fixed ratio from height_new_elem)
+
 	//Water transport model snow
 	cfg.getValue("WATERTRANSPORTMODEL_SNOW", "SnowpackAdvanced", watertransportmodel_snow);
 	iwatertransportmodel_snow=UNDEFINED;
+	enable_pref_flow=false;
 	if (watertransportmodel_snow=="BUCKET") {
 		iwatertransportmodel_snow=BUCKET;
 	} else if (watertransportmodel_snow=="NIED") {
 		iwatertransportmodel_snow=NIED;
 	} else if (watertransportmodel_snow=="RICHARDSEQUATION") {
 		iwatertransportmodel_snow=RICHARDSEQUATION;
+	}
+	cfg.getValue("PREF_FLOW", "SnowpackAdvanced", enable_pref_flow);
+	if (enable_pref_flow && watertransportmodel_snow!="RICHARDSEQUATION") {
+		prn_msg( __FILE__, __LINE__, "err", Date(), "PREF_FLOW = TRUE requires WATERTRANSPORTMODEL_SNOW = RICHARDSEQUATION. Preferential flow is only implemented as an extension of Richards equation.");
+		throw;
+	}
+	if(enable_pref_flow) {
+		cfg.getValue("PREF_FLOW_RAIN_INPUT_DOMAIN", "SnowpackAdvanced", pref_flow_rain_input_domain);
+		if(pref_flow_rain_input_domain != "MATRIX" && pref_flow_rain_input_domain != "PREF_FLOW") {
+			prn_msg( __FILE__, __LINE__, "err", Date(), "PREF_FLOW_RAIN_INPUT_DOMAIN is expected to be MATRIX or PREF_FLOW (mind the upper case!).");
+		}
+	} else {
+		// Enforce the rain water into the matrix domain, in case PREF_FLOW model is not enabled.
+		pref_flow_rain_input_domain="MATRIX";
 	}
 
 	//Water transport model soil
@@ -109,8 +165,11 @@ WaterTransport::WaterTransport(const SnowpackConfig& cfg)
 	} else if (watertransportmodel_soil=="RICHARDSEQUATION") {
 		iwatertransportmodel_soil=RICHARDSEQUATION;
 	}
-}
 
+	//Enable vapour transport
+	cfg.getValue("ENABLE_VAPOUR_TRANSPORT", "SnowpackAdvanced", enable_vapour_transport);
+
+}
 
 
 /**
@@ -249,30 +308,20 @@ void WaterTransport::KHCalcNaga(const double RG, const double Dens, double ThR, 
 }
 
 /**
- * @brief This part of the code is EXTREMELY IMPORTANT -- especially for predicting SURFACE HOAR and BURIED DEPTH HOAR layers \n
- * The total latent heat flux is predicted.  If positive (and above a certain cutoff level) then there
- * is a good possibility that SURFACE HOAR crystal have grown.  Of course, if negative
- * then we are also loosing mass from the surface.  These are seperate routines since
- * they might want to be changed or updated in future. \n
- * Just before his wedding, when Michael was implementing solute transport as initiated by
- * Peter Waldner, he realized that sublimation and evaporation was not possible from blank
- * soil layers. So he changed the routine on 29 of April 2002. \n
- * Another very important case of WATER movement through the snowpack is the SUBLIMATION of
- * VAPOR; this piece of code was taken from phase change and placed here because there is the
- * good possibility that the an ELEMENT might be SUBLIMATED away. \n
- * TODO Revise description!
- * @param *Xdata
+ * @brief This function deals with the top flux for the bucket water transport scheme.\n
+ * Determines the fraction of the latent heat flux ql that can be used for evaporation or
+ * condensation. IMPORTANT: sublimation/deposition is treated by VapourTransport.
+ * The variable ql is updated with the amount used for evaporation/condensation, such that
+ * VapourTransport should interpret all remaining energy as sublimation/deposition and
+ * additionally take care of surface hoar formation/destruction.
  * @param ql Latent heat flux (W m-2)
+ * @param *Xdata
  * @param *Sdata
- * @param *Mdata
  */
-void WaterTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double ql, SnowStation& Xdata,
-                                            SurfaceFluxes& Sdata)
+void WaterTransport::compTopFlux(double& ql, SnowStation& Xdata, SurfaceFluxes& Sdata)
 {
-	double dL=0., dM=0.;     // Length and mass chamges
-	double M=0.;             // Initial mass and volumetric content (water or ice)
-	double hoar=0.0;         // Actual change in hoar mass
-	double cH_old;           // Temporary variable to hold height of snow
+	double dM = 0.;              // Mass changes
+	double M = 0.;               // Initial mass and volumetric content (water or ice)
 
 	const size_t nN = Xdata.getNumberOfNodes();
 	const size_t nE = nN-1;
@@ -283,44 +332,24 @@ void WaterTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double ql
 	/*
 	 * If there are elements and ql > 0:
 	 * update densities and volumetric contents (ELEMENT data),
-	 * add/subtract mass to MS_SUBLIMATION and/or MS_EVAPORATION,
-	 * potential surface hoar formation will be tested at the end of this routine (NODAL data);
-	*/
+	 * add/subtract mass to MS_EVAPORATION,
+	 * potential surface hoar formation/destruction is tested in VapourTransport.
+	 */
 	if (ql > Constants::eps2) { // Add Mass
-		const double melting_tk = (Xdata.getNumberOfElements()>0)? Xdata.Edata[Xdata.getNumberOfElements()-1].melting_tk : Constants::melting_tk;
-		if (Tss < melting_tk) { // Add Ice
-			dM = ql*sn_dt/Constants::lh_sublimation;
-			ql=0.;
-			Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] += dM;
-			hoar = dM;
-
-			// In this case adjust properties of element, keeping snow density constant
-			const double L_top = EMS[nE-1].L;
-			const double theta_i0 = EMS[nE-1].theta[ICE];
-			dL = dM/(EMS[nE-1].Rho); // length change
-			if (nE == Xdata.SoilNode) {
-				dL = 0.;
-				dM = std::min(dM,EMS[nE-1].theta[AIR]*(Constants::density_ice*EMS[nE-1].L));
-			}
-			NDS[nE].z += dL + NDS[nE].u; NDS[nE].u = 0.0;
-			EMS[nE-1].L0 = EMS[nE-1].L = L_top + dL;
-			EMS[nE-1].E = EMS[nE-1].Eps = EMS[nE-1].dEps = EMS[nE-1].Eps_e = EMS[nE-1].Eps_v = EMS[nE-1].S = 0.0;
-			EMS[nE-1].theta[ICE] *= L_top/EMS[nE-1].L;
-			EMS[nE-1].theta[ICE] += dM/(Constants::density_ice*EMS[nE-1].L);
-			EMS[nE-1].theta[WATER] *= L_top/EMS[nE-1].L;
-
-			for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
-				EMS[nE-1].conc[ICE][ii] *= L_top*theta_i0/(EMS[nE-1].theta[ICE]*EMS[nE-1].L);
-			}
-		} else { // Add water
+		const double meltfreeze_tk = (Xdata.getNumberOfElements()>0)? Xdata.Edata[Xdata.getNumberOfElements()-1].meltfreeze_tk : Constants::meltfreeze_tk;
+		if (!(Tss < meltfreeze_tk)) {
+			// Add water
 			if ((iwatertransportmodel_snow != RICHARDSEQUATION && nE>Xdata.SoilNode) || (iwatertransportmodel_soil != RICHARDSEQUATION && nE==Xdata.SoilNode)) {	//NANDER: check if the upper element is not part of the domain solved by the Richards Equation, because if so, we should put it in the surface flux
 				// Add Water
 				const double theta_w0 = EMS[nE-1].theta[WATER];
 				dM = ql*sn_dt/Constants::lh_vaporization;
-				ql=0.;
+				ql = 0.;
 				Sdata.mass[SurfaceFluxes::MS_EVAPORATION] += dM;
 				if (nE == Xdata.SoilNode) {
+					Sdata.mass[SurfaceFluxes::MS_EVAPORATION] -= dM;
 					dM = std::min(dM,EMS[nE-1].theta[AIR]*(Constants::density_water*EMS[nE-1].L));
+					Sdata.mass[SurfaceFluxes::MS_EVAPORATION] += dM;
+					Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += dM;
 				}
 				EMS[nE-1].theta[WATER] += dM/(Constants::density_water*EMS[nE-1].L);
 
@@ -333,42 +362,50 @@ void WaterTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double ql
 		assert(EMS[nE-1].M >= (-Constants::eps2)); //mass must be positive
 
 		// Update remaining volumetric contents and density
-		EMS[nE-1].theta[AIR] = std::max(0., 1.0 - EMS[nE-1].theta[WATER] - EMS[nE-1].theta[ICE] - EMS[nE-1].theta[SOIL]);
-		EMS[nE-1].Rho = (EMS[nE-1].theta[ICE] * Constants::density_ice)
-		                     + (EMS[nE-1].theta[WATER] * Constants::density_water)
-		                         + (EMS[nE-1].theta[SOIL] * EMS[nE-1].soil[SOIL_RHO]);
+		EMS[nE-1].theta[AIR] = std::max(0., 1.0 - EMS[nE-1].theta[WATER] - EMS[nE-1].theta[WATER_PREF] - EMS[nE-1].theta[ICE] - EMS[nE-1].theta[SOIL]);
+		EMS[nE-1].updDensity();
 	} else if ((ql < (-Constants::eps2)) && (nE > 0)) {
-		// If  there is water in some form and ql < 0, SUBLIMATE and/or EVAPORATE some mass off
+		// If  there is water in some form and ql < 0, EVAPORATE some mass off
 		std::vector<double> M_Solutes(Xdata.number_of_solutes, 0.); // Mass of solutes from disappearing phases
 		size_t e = nE;
-		while ((e > 0) && (ql < (-Constants::eps2))) {  // While energy is available
+		double ql2 = ql; // Dummy of ql. We want to mimick the effect of evaporation from deeper layers, if the energy flux is so large, that complete elements disappear.
+				 // But, since we now have separate locations for water and ice evaporation respectively sublimation, we need to calculate already here the
+				 // sublimation of ice to decide whether any water is evaporated from the next element below. So, ql2 also keeps track of sublimation, which is not
+				 // applied here, but later in VapourTransport.
+		while ((e > 0) && (ql2 < (-Constants::eps2))) {  // While energy is available
 			e--;
 			if ((iwatertransportmodel_snow != RICHARDSEQUATION && e>=Xdata.SoilNode) || (iwatertransportmodel_soil != RICHARDSEQUATION && e<Xdata.SoilNode)) {
 				/*
 				* Determine the amount of potential sublimation/evaporation and collect some variables
 				* that will be continuously used: L0 and M
-				*  - NOTE: if water is present, evaporate first, then sublimate ice matrix.
-				*          Otherwise sublimate ice matrix only.
+				*  - NOTE: if water is present, evaporate
 				*/
 				const double L0 = EMS[e].L;
-				assert(L0>0.);
 				// If there is water ...
-				if (EMS[e].theta[WATER] > ((e==nE-1)?(2.*Constants::eps):0.)) {
+				if ((EMS[e].theta[WATER]+EMS[e].theta[WATER_PREF]) > ((e==nE-1)?(2.*Constants::eps):0.)) {
 					//For the top layer, it is important to keep a tiny amount of liquid water, so we are able to detect whether we need the
 					//implicit or explicit treatment of the top boundary condition when solving the heat equation.
-					const double theta_w0 = EMS[e].theta[WATER]-( (e==nE-1)? (2.*Constants::eps) : 0. );
+					const double theta_w0 = (EMS[e].theta[WATER]+EMS[e].theta[WATER_PREF]) - ( (e==nE-1) ? (2.*Constants::eps) : 0. );
 					dM = ql*sn_dt/Constants::lh_vaporization;
 					M = theta_w0*Constants::density_water*L0;
 					// Check that you only take the available mass of water
 					if (-dM >= M) {
 						dM = -M;
-						EMS[e].theta[WATER] += dM/(Constants::density_water*L0);
+						// First empty preferential flow
+						const double dM_pref = std::max(-EMS[e].theta[WATER_PREF], dM/(Constants::density_water*L0));
+						EMS[e].theta[WATER_PREF] += dM_pref;
+						// Then matrix flow
+						EMS[e].theta[WATER] += (dM - dM_pref)/(Constants::density_water*L0);
 						// Add solutes to Storage
 						for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
 							M_Solutes[ii] += EMS[e].conc[WATER][ii]*theta_w0*L0;
 						}
 					} else {
-						EMS[e].theta[WATER] += dM/(Constants::density_water*L0);
+						// First empty preferential flow
+						const double dM_pref = std::max(-EMS[e].theta[WATER_PREF], dM/(Constants::density_water*L0));
+						EMS[e].theta[WATER_PREF] += dM_pref;
+						// Then matrix flow
+						EMS[e].theta[WATER] += (dM - dM_pref)/(Constants::density_water*L0);
 						for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
 							EMS[e].conc[WATER][ii] *= theta_w0/EMS[e].theta[WATER];
 						}
@@ -376,105 +413,32 @@ void WaterTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double ql
 					EMS[e].M += dM;
 					assert(EMS[e].M >= (-Constants::eps2)); //mass must be positive
 					Sdata.mass[SurfaceFluxes::MS_EVAPORATION] += dM;
+					if(EMS[nE-1].theta[SOIL] > 0 ) {
+						Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += dM;
+					}
 					ql -= dM*Constants::lh_vaporization/sn_dt; // Update the energy used
+					ql2 -= dM*Constants::lh_vaporization/sn_dt; // Update the energy used
 				}
-				if (ql < (-Constants::eps2)) {
+				if (ql2 < (-Constants::eps2)) {
 					// If there is no water or if there was not enough water ...
 					const double theta_i0 = EMS[e].theta[ICE];
 					M = theta_i0*Constants::density_ice*L0;
-					dM = ql*sn_dt/Constants::lh_sublimation;
+					dM = ql2*sn_dt/Constants::lh_sublimation;
 					if (-dM > M) {
 						dM = -M;
-						// Add solutes to Storage
-						for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
-							M_Solutes[ii] += EMS[e].conc[ICE][ii]*theta_i0*L0;
-						}
-						EMS[e].theta[ICE]=0.0; dL = 0.;
-					} else {
-						dL = dM/(EMS[e].Rho);
-						if (e < Xdata.SoilNode) {
-							dL = 0.;
-						}
-						NDS[e+1].z += dL; EMS[e].L0 = EMS[e].L = L0 + dL;
-						NDS[e+1].z += NDS[e+1].u; NDS[e+1].u = 0.0;
-
-						EMS[e].E = EMS[e].Eps = EMS[e].dEps = EMS[e].Eps_e = EMS[e].Eps_v = EMS[e].S = 0.0;
-						EMS[e].theta[ICE] *= L0/EMS[e].L;
-						EMS[e].theta[ICE] += dM/(Constants::density_ice*EMS[e].L);
-						EMS[e].theta[WATER] *= L0/EMS[e].L;
-						for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
-							EMS[e].conc[ICE][ii] *= L0*theta_i0/(EMS[e].theta[ICE]*EMS[e].L);
-						}
 					}
-					EMS[e].M += dM;
-					//if we remove the whole mass, we might have some small inconcistencies between mass and theta[ICE]*density*L -> negative
-					//but the whole element will be removed anyway when getting out of here
-					assert(EMS[e].M >= (-Constants::eps2));
-					Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] += dM;
-					ql -= dM*Constants::lh_sublimation/sn_dt;     // Update the energy used
-
-					// If present at surface, surface hoar is sublimated away
-					if (e == nE-1) {
-						hoar = dM;
-					}
+					ql2 -= dM*Constants::lh_sublimation/sn_dt;     //Anticipated update of the energy that will be used for sublimation
 				}
 				// Update remaining volumetric contents and density
-				EMS[e].theta[AIR] = std::max(0., 1.0 - EMS[e].theta[WATER] - EMS[e].theta[ICE] - EMS[e].theta[SOIL]);
-				EMS[e].Rho = (EMS[e].theta[ICE] * Constants::density_ice) + (EMS[e].theta[WATER] * Constants::density_water) + (EMS[e].theta[SOIL] * EMS[e].soil[SOIL_RHO]);
-			} else if (e==nE-1) {
-				//In case we use RE for snow or soil, check if we can sublimate hoar away:
-				dM = ql*sn_dt/Constants::lh_sublimation;
-				if (-dM > NDS[nN-1].hoar ) dM=-NDS[nN-1].hoar;	//Limit, so that only the hoar will sublimate
-
-				if (dM < 0. ) {					//If we have actual hoar to sublimate, do it:
-	  				const double L0 = EMS[e].L;
-					const double theta_i0 = EMS[e].theta[ICE];
-					M = theta_i0*Constants::density_ice*L0;
-					if (-dM > M) {
-						dM = -M;
-						// Add solutes to Storage
-						for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
-							M_Solutes[ii] += EMS[e].conc[ICE][ii]*theta_i0*L0;
-						}
-						EMS[e].theta[ICE]=0.0; dL = 0.;
-					} else {
-						dL = dM/(EMS[e].Rho);
-						if (e < Xdata.SoilNode) {
-							dL = 0.;
-						}
-						NDS[e+1].z += dL; EMS[e].L0 = EMS[e].L = L0 + dL;
-						NDS[e+1].z += NDS[e+1].u; NDS[e+1].u = 0.0;
-
-						EMS[e].E = EMS[e].Eps = EMS[e].dEps = EMS[e].Eps_e = EMS[e].Eps_v = EMS[e].S = 0.0;
-						EMS[e].theta[ICE] *= L0/EMS[e].L;
-						EMS[e].theta[ICE] += dM/(Constants::density_ice*EMS[e].L);
-						EMS[e].theta[WATER] *= L0/EMS[e].L;
-						for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
-							EMS[e].conc[ICE][ii] *= L0*theta_i0/(EMS[e].theta[ICE]*EMS[e].L);
-						}
-					}
-					EMS[e].M += dM;
-					//if we remove the whole mass, we might have some small inconcistencies between mass and theta[ICE]*density*L -> negative
-					//but the whole element will be removed anyway when getting out of here
-					assert(EMS[e].M>=(-Constants::eps2));
-					Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] += dM;
-					ql -= dM*Constants::lh_sublimation/sn_dt;     // Update the energy used
-
-					// If present at surface, surface hoar is sublimated away
-					if (e == nE-1) {
-						hoar = dM;
-					}
-
-					// Update remaining volumetric contents and density
-					EMS[nE-1].theta[AIR] = std::max(0., 1.0 - EMS[nE-1].theta[WATER] - EMS[nE-1].theta[ICE] - EMS[nE-1].theta[SOIL]);
-					EMS[nE-1].Rho = (EMS[nE-1].theta[ICE] * Constants::density_ice) + (EMS[nE-1].theta[WATER] * Constants::density_water) + (EMS[nE-1].theta[SOIL] * EMS[nE-1].soil[SOIL_RHO]);
-				}
+				EMS[e].theta[AIR] = std::max(0., 1.0 - EMS[e].theta[WATER] - EMS[e].theta[WATER_PREF] - EMS[e].theta[ICE] - EMS[e].theta[SOIL]);
+				EMS[e].updDensity();
 			}
-			
+
 			//check that thetas and densities are consistent
 			assert(EMS[e].theta[SOIL] >= (-Constants::eps2) && EMS[e].theta[SOIL] <= (1.+Constants::eps2));
 			assert(EMS[e].theta[ICE] >= (-Constants::eps2) && EMS[e].theta[ICE]<=(1.+Constants::eps2));
 			assert(EMS[e].theta[WATER] >= (-Constants::eps2) && EMS[e].theta[WATER]<=(1.+Constants::eps2));
+			assert(EMS[e].theta[WATER_PREF] >= (-Constants::eps2) && EMS[e].theta[WATER_PREF]<=(1.+Constants::eps2));
 			assert(EMS[e].theta[AIR] >= (-Constants::eps2) && EMS[e].theta[AIR]<=(1.+Constants::eps2));
 			assert(EMS[e].Rho >= (-Constants::eps2) || EMS[e].Rho==IOUtils::nodata); //we want positive density
 		}
@@ -500,34 +464,6 @@ void WaterTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double ql
 			}
 		}
 	}
-
-	//Any left over energy (ql) should go to soil (surfacefluxrate). Units: ql = [W/m^2]=[J/s/m^2], surfacefluxrate=[m^3/m^2/s]
-	if(fabs(ql)>Constants::eps2) { // TODO Check that this takes correctly care of energy balance
-		RichardsEquationSolver1d.surfacefluxrate+=(ql/Constants::lh_vaporization)/Constants::density_water;
-		Sdata.mass[SurfaceFluxes::MS_EVAPORATION] += ql*sn_dt/Constants::lh_vaporization;
-	}
-
-	// Check for surface hoar destruction or formation (once upon a time ml_sn_SurfaceHoar)
-	if ((Mdata.rh > hoar_thresh_rh) || (Mdata.vw > hoar_thresh_vw) || (Mdata.ta >= IOUtils::C_TO_K(hoar_thresh_ta))) {
-		//if rh is very close to 1, vw too high or ta too high, surface hoar is destroyed
-		hoar = std::min(hoar, 0.);
-	}
-
-	Sdata.hoar += hoar;
-	NDS[nN-1].hoar += hoar;
-	if (NDS[nN-1].hoar < 0.) {
-		NDS[nN-1].hoar = 0.;
-	}
-	for (size_t e = 0; e<nE-1; e++) {
-		const double theta_r=((iwatertransportmodel_snow==RICHARDSEQUATION && e>=Xdata.SoilNode) || (iwatertransportmodel_soil==RICHARDSEQUATION && e<Xdata.SoilNode)) ? (PhaseChange::RE_theta_r) : (PhaseChange::theta_r);
-		if (Xdata.Edata[e].theta[WATER] > theta_r) {
-			NDS[e+1].hoar = 0.;
-		}
-	}
-	// At the end also update the overall height
-	cH_old = Xdata.cH;
-	Xdata.cH = NDS[Xdata.getNumberOfNodes()-1].z + NDS[Xdata.getNumberOfNodes()-1].u;
-	if (Xdata.mH!=Constants::undefined) Xdata.mH -= (cH_old - Xdata.cH);
 }
 
 /**
@@ -547,9 +483,7 @@ void WaterTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double ql
 void WaterTransport::mergingElements(SnowStation& Xdata, SurfaceFluxes& Sdata)
 {
 	const size_t nN = Xdata.getNumberOfNodes(), nE = nN-1;
-    // Commented to remove set but not used compiler warning
-	// size_t rnN = nN, 
-    size_t rnE = nN-1;
+	size_t rnN = nN, rnE = nN-1;
 	vector<ElementData>& EMS = Xdata.Edata;
 
 	if ((nN == Xdata.SoilNode+1)
@@ -559,11 +493,13 @@ void WaterTransport::mergingElements(SnowStation& Xdata, SurfaceFluxes& Sdata)
 		return;
 	}
 
+	bool verify_top_element = false;
+	double removedMass = 0.;
 	size_t eUpper = nE; // Index of the upper element, the properties of which will be transferred to the lower adjacent one
 	while (eUpper-- > Xdata.SoilNode) {
 		bool enforce_merge = true;	// To enforce merging in special cases
 		if ((EMS[eUpper].L < minimum_l_element) || (EMS[eUpper].mk%100 == 3)) {
-			if ((EMS[eUpper].mk >= 100) && (EMS[eUpper].L >= 0.5 * minimum_l_element)) {
+			if ((EMS[eUpper].mk >= 100 && int(EMS[eUpper].mk/1000)!=9) && (EMS[eUpper].L >= 0.5 * minimum_l_element)) {
 				enforce_merge = false;
 			}
 			if (EMS[eUpper].mk%100 == 3) {
@@ -579,80 +515,97 @@ void WaterTransport::mergingElements(SnowStation& Xdata, SurfaceFluxes& Sdata)
 			enforce_merge = false;
 		}
 		const double theta_r=((iwatertransportmodel_snow==RICHARDSEQUATION && eUpper>=Xdata.SoilNode) || (iwatertransportmodel_soil==RICHARDSEQUATION && eUpper<Xdata.SoilNode)) ? (PhaseChange::RE_theta_r) : (PhaseChange::theta_r);
-		const bool do_merge = (EMS[eUpper].theta[ICE] <= Snowpack::min_ice_content) || enforce_merge;
+		const bool do_merge = (EMS[eUpper].theta[ICE] < Snowpack::min_ice_content) || enforce_merge;
 		const bool is_snow_layer = (EMS[eUpper].theta[SOIL] < Constants::eps2) && (EMS[eUpper].mk % 100 != 9); //exclude plastic or water_layer
 		const bool wet_layer_exception = (eUpper > 0 && eUpper == nE-1 && EMS[eUpper].theta[ICE] > 0.2 * Snowpack::min_ice_content && EMS[eUpper].L > 0.2 * minimum_l_element && EMS[eUpper-1].theta[SOIL] < Constants::eps && EMS[eUpper].theta[ICE] > Constants::eps && EMS[eUpper].theta[WATER] < theta_r + Constants::eps && EMS[eUpper-1].theta[WATER] > theta_r + Constants::eps); // Don't merge a dry surface snow layer with a wet one below, as the surface node may then experience a sudden increase in temperature, destroying energy balance.
-		
+
 		if (do_merge && is_snow_layer && !wet_layer_exception) {
 			bool UpperJoin=false;			// Default is joining with elements below
-			bool merged = true;		// true: element is finally merged, false: element is finally removed.
+			bool merged = true;			// true: element is finally merged, false: element is finally removed.
 			if (eUpper > Xdata.SoilNode) { 		// If we have snow elements below to merge with
-				// We always merge snow elements, except if it is the top element, which is removed when the ice contents is below the threshold.
+				// We always merge snow elements
+				merged=true;
 				if ( (eUpper == rnE-1) && (EMS[eUpper].theta[ICE] < Snowpack::min_ice_content) ) {
-					merged=false;
+					// In this case, we would prefer to keep the eUpper-1 element density constant, which is done in SnowStation::mergeElements(...)
 					// In case we solve snow with Richards equation AND we remove the top element, we apply the water in the top layer as a Neumann boundary flux in the RE
-					if (iwatertransportmodel_snow == RICHARDSEQUATION) {
-						RichardsEquationSolver1d.surfacefluxrate+=(EMS[eUpper].theta[WATER]*EMS[eUpper].L)/(sn_dt);
+					if (iwatertransportmodel_snow == RICHARDSEQUATION && variant != "SEAICE") {
+						RichardsEquationSolver1d_matrix.surfacefluxrate+=((EMS[eUpper].theta[WATER]+EMS[eUpper].theta[WATER_PREF])*EMS[eUpper].L)/(sn_dt);
 						// We remove water from the element, which is now in surfacefluxrate
+						EMS[eUpper].theta[AIR]+=(EMS[eUpper].theta[WATER]+EMS[eUpper].theta[WATER_PREF]);
+						removedMass += (EMS[eUpper].theta[WATER] + EMS[eUpper].theta[WATER_PREF]) * Constants::density_water * EMS[eUpper].L;
 						EMS[eUpper].theta[WATER]=0.;
+						EMS[eUpper].theta[WATER_PREF]=0.;
 						// Adjust density and mass accordingly
-						EMS[eUpper].Rho = (EMS[eUpper].theta[ICE]*Constants::density_ice) + (EMS[eUpper].theta[WATER]*Constants::density_water) + (EMS[eUpper].theta[SOIL]*EMS[eUpper].soil[SOIL_RHO]);
+						EMS[eUpper].updDensity();
 						EMS[eUpper].M = EMS[eUpper].Rho*EMS[eUpper].L;
 					}
-				} else {
-					merged=true;
 				}
+
 				// We never merge snow elements with elements containing soil inside the snowpack (e.g., for snow farming)
 				if (EMS[eUpper-1].theta[SOIL]>Constants::eps) {
 					merged=false;
 				}
+
 				// After dealing with all possibilities, now finally do the merge:
-				SnowStation::mergeElements(EMS[eUpper-1], EMS[eUpper], merged, (eUpper==rnE-1));
+				SnowStation::mergeElements(EMS[eUpper-1], EMS[eUpper], merged, (eUpper==rnE-1 && variant != "SEAICE"));
+
+				// The upper element may grow too much in length by subsequent element merging, limit this! Note that this has the desired effect of averaging the two top elements.
+				if(eUpper==rnE-1 && merged==true) {
+					verify_top_element=true;
+				}
 			} else {										// We are dealing with first snow element above soil
-				if (rnE-1 > Xdata.SoilNode && EMS[eUpper+1].L > 0.) {				// If at least one snow layer above AND this layer above is not marked to be removed yet.
+				if (rnE-1 > Xdata.SoilNode && EMS[eUpper+1].L > 0. && EMS[eUpper+1].Rho > 0.) {	// If at least one snow layer above AND this layer above is not marked to be removed yet.
 					// In case it is the lowest snow element and there are snow elements above, join with the element above:
 					merged=true;
-					SnowStation::mergeElements(EMS[eUpper], EMS[eUpper+1], true, (eUpper==nE-1));
+					SnowStation::mergeElements(EMS[eUpper], EMS[eUpper+1], true, (eUpper==nE-1 && variant != "SEAICE"));
 					UpperJoin=true;
 				} else {									// Else we remove element
 					merged=false;
-					if(Xdata.SoilNode>0) {							// Case of soil present
-						// In case of soil and removal of first snow element above soil:
-						// First, make sure there is no ice anymore, as we do not want to transfer ice over soil-snow interface:
-						EMS[eUpper].theta[WATER]+=EMS[eUpper].theta[ICE]*(Constants::density_ice/Constants::density_water);
-						// Take care of energy used for melting the ice:
-						const double ql = (EMS[eUpper].theta[ICE] * EMS[eUpper].L * Constants::density_ice * Constants::lh_fusion );	// J/m^2
-						//ql is energy crossing the soil-snow interface and should be considered part of the soil-snow heat flux:
-						Sdata.qg0 += ql/sn_dt;
-						//Adjust upper soil element for the energy extracted to melt the ice:
+
+					// First, make sure there is no ice anymore, as we do not want to transfer ice over soil-snow interface:
+					EMS[eUpper].theta[WATER] += EMS[eUpper].theta[ICE] * (Constants::density_ice/Constants::density_water);
+					EMS[eUpper].theta[ICE] = 0.;
+
+					// Take care of energy used for melting the ice:
+					const double ql = (EMS[eUpper].theta[ICE] * EMS[eUpper].L * Constants::density_ice * Constants::lh_fusion);	// J/m^2
+
+					// ql is energy crossing the soil-snow interface and should be considered part of the soil-snow heat flux:
+					Sdata.qg0 += ql/sn_dt;
+
+					if (Xdata.SoilNode > 0) {							// Case of soil present
+						// Adjust upper soil element for the energy extracted to melt the ice:
 						EMS[eUpper-1].Te -= ql / (EMS[eUpper-1].c[TEMPERATURE] * EMS[eUpper-1].Rho * EMS[eUpper-1].L);
-						// Set amount of ice to 0.
-						EMS[eUpper].theta[ICE]=0.;
-						if(iwatertransportmodel_soil != RICHARDSEQUATION) {	//Only move water into soil when we don't run richardssolver for soil
-							// Now do actual merging of the elements:
-							SnowStation::mergeElements(EMS[eUpper-1], EMS[eUpper], merged, (eUpper==rnE-1));
-						} else {
-							// In this case, we don't need to call SnowStation::mergeElements(), as we put the mass in surfacefluxrate or soilsurfacesourceflux and just remove the element.
-							if(iwatertransportmodel_snow != RICHARDSEQUATION || (rnE-1)==Xdata.SoilNode) {	//If we use BUCKET for snow OR we remove the last snow element, we can consider it to be the surface flux
-								RichardsEquationSolver1d.surfacefluxrate+=(EMS[eUpper].M/Constants::density_water)/(sn_dt);	//surfacefluxrate=[m^3/m^2/s].
-							} else { //We are in the middle of the domain solved by the Richards Equation, so it becomes a source:
-								RichardsEquationSolver1d.soilsurfacesourceflux+=(EMS[eUpper].M/Constants::density_water)/(sn_dt);//soilsurfacesourceflux=[m^3/m^2/s].
-							}
-						}
 					}
 
 					// route mass and solute load to runoff
-					if (iwatertransportmodel_snow != RICHARDSEQUATION || (rnE-1)==Xdata.SoilNode) {	//When snow water transport is solved by Richards Equation, we calculate this there.
-															//Note: the second clause is necessary, because when we remove the last snow element, there is no way for the Richards Solver to figure out that this surfacefluxrate is still coming from the snowpack.
-						if (iwatertransportmodel_snow == RICHARDSEQUATION) {
-							// Special case for RE: if all snow elements disappear, soilsurfacesourceflux has no meaning, so it should become part of the surfacefluxrate:
-							RichardsEquationSolver1d.surfacefluxrate += RichardsEquationSolver1d.soilsurfacesourceflux;
-							RichardsEquationSolver1d.soilsurfacesourceflux = 0.;
-							// Now make sure surfacefluxrate is considered snowpack runoff:
-							Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += RichardsEquationSolver1d.surfacefluxrate*Constants::density_water*sn_dt;
+					removedMass += EMS[eUpper].M;
+					if (iwatertransportmodel_snow != RICHARDSEQUATION) {
+						// The mass from the snow element to be removed is snowpack runoff
+						Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += EMS[eUpper].M;
+						Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += EMS[eUpper].M;
+						if (iwatertransportmodel_soil != RICHARDSEQUATION) {
+							if (Xdata.SoilNode > 0) {
+								// Only move water into soil when we don't run richardssolver for soil ...
+								SnowStation::mergeElements(EMS[eUpper-1], EMS[eUpper], merged, (eUpper==rnE-1 && variant != "SEAICE"));
+							}
 						} else {
-							// Bucket and NIED case:
-							Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += EMS[eUpper].M;
+							// ... otherwise put it in surfacefluxrate
+							RichardsEquationSolver1d_matrix.surfacefluxrate += EMS[eUpper].M / Constants::density_water / sn_dt;
+						}
+					} else {
+						RichardsEquationSolver1d_matrix.soilsurfacesourceflux += EMS[eUpper].M / Constants::density_water / sn_dt;
+					}
+
+					//When snow water transport is solved by Richards Equation, we calculate snowpack runoff there.
+					//However: when we remove the last snow element, there is no way for the Richards Solver to figure out that this surfacefluxrate is still coming from the snowpack. In that case, we should add the water to snowpack runoff here.
+					if ( (rnE-1) == Xdata.SoilNode && (iwatertransportmodel_soil == RICHARDSEQUATION || Xdata.SoilNode == 0)) {
+						// Special case for RE: if all snow elements disappear, soilsurfacesourceflux has no meaning, so it should become part of the surfacefluxrate:
+						RichardsEquationSolver1d_matrix.surfacefluxrate += RichardsEquationSolver1d_matrix.soilsurfacesourceflux;
+						RichardsEquationSolver1d_matrix.soilsurfacesourceflux = 0.;
+						if (iwatertransportmodel_snow == RICHARDSEQUATION) {
+							// Now make sure any left-over surfacefluxrate is considered snowpack runoff:
+							Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += RichardsEquationSolver1d_matrix.surfacefluxrate*Constants::density_water*sn_dt;
+							Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += RichardsEquationSolver1d_matrix.surfacefluxrate*Constants::density_water*sn_dt;
 						}
 					}
 
@@ -666,7 +619,7 @@ void WaterTransport::mergingElements(SnowStation& Xdata, SurfaceFluxes& Sdata)
 				}
 			}
 			rnE--;
-			// rnN--;
+			rnN--;
 			if(UpperJoin==false) {
 				EMS[eUpper].Rho = Constants::undefined;
 				if (!merged) {
@@ -674,14 +627,24 @@ void WaterTransport::mergingElements(SnowStation& Xdata, SurfaceFluxes& Sdata)
 				}
 				if ((eUpper < nE-1) && (EMS[eUpper+1].Rho < 0.) && (EMS[eUpper+1].L > 0.)) {
 					// When upper+1 element is not marked to be removed, but we merge the upper element, we should remove the upper+1 element.
+					// Note that this starts to compound elements (see remark in SnowStation::reduceNumberOfElements(const size_t& rnE)):
 					EMS[eUpper+1].L *= -1.;
 				}
 			} else {
-				EMS[eUpper+1].Rho = Constants::undefined;
-				if (!merged)
-					EMS[eUpper+1].L *= -1.;	// Mark element as "removed".
-				if ((eUpper+1 < nE-1) && (EMS[eUpper+2].Rho < 0.) && (EMS[eUpper+2].L > 0.)) {
-					EMS[eUpper+2].L *= -1.;
+				if (EMS[eUpper+1].Rho == Constants::undefined) {
+					// The upper join has the risk that an element (eUpper+1) could become marked Rho == Constants::undefined twice,
+					// in which case we reduced rnE and rnN one too much.
+					rnE++;
+					rnN++;
+				} else {
+					EMS[eUpper+1].Rho = Constants::undefined;
+					if (!merged && EMS[eUpper+1].L > 0.) {
+						EMS[eUpper+1].L *= -1.;	// Mark element as "removed".
+					}
+					if ((eUpper+1 < nE-1) && (EMS[eUpper+2].Rho < 0.) && (EMS[eUpper+2].L > 0.)) {
+						// Note that this likely starts to compound elements (see remark in SnowStation::reduceNumberOfElements(const size_t& rnE)):
+						EMS[eUpper+2].L *= -1.;
+					}
 				}
 			}
 		}
@@ -689,11 +652,26 @@ void WaterTransport::mergingElements(SnowStation& Xdata, SurfaceFluxes& Sdata)
 	if (rnE < nE) {
 		Xdata.reduceNumberOfElements(rnE);
 		if (!useSoilLayers && (rnE == Xdata.SoilNode)) {
-			Xdata.Ndata[Xdata.SoilNode].T = std::min(Constants::melting_tk, Xdata.Ndata[Xdata.SoilNode].T);
+			Xdata.Ndata[Xdata.SoilNode].T = std::min(Constants::meltfreeze_tk, Xdata.Ndata[Xdata.SoilNode].T);
+		}
+		if (verify_top_element && rnE > 0 && rnE > Xdata.SoilNode) {
+			// Note: we have to check for the SoilNode, because verify_top_element may have been set to true, but multiple element removals may have
+			// set rnE to the upper soil element, in case we should inhibit element splitting.
+			if (EMS[Xdata.getNumberOfElements()-1].L > 2.*comb_thresh_l) {
+				Xdata.splitElement(Xdata.getNumberOfElements()-1);
+				rnE++;
+			}
 		}
 	}
 
-	if(rnE>=Xdata.SoilNode) {
+	if (removedMass > 0. && variant == "SEAICE" && iwatertransportmodel_snow == RICHARDSEQUATION) {
+		const double delta_h = (removedMass / (Constants::density_water + SeaIce::betaS * SeaIce::OceanSalinity));
+		for (size_t e=Xdata.SoilNode; e<rnE; e++) {
+			EMS[e].h -= delta_h;
+		}
+	}
+
+	if (rnE >= Xdata.SoilNode) {
 		Xdata.ColdContent = 0.;
 		for (size_t e=Xdata.SoilNode; e<rnE; e++) {
 			Xdata.ColdContent += EMS[e].coldContent();
@@ -734,12 +712,14 @@ void WaterTransport::adjustDensity(SnowStation& Xdata)
 			double multif = 0.05 / EMS[e].theta[ICE];
 			dL  = -L*((multif-1)/multif);
 			EMS[e].theta[WATER] *= multif;
+			EMS[e].theta[WATER_PREF] *= multif;
 			EMS[e].theta[ICE]   *= multif;
 		} else {
 			dL  = -L / 3.; //TODO check whether this approach is correct even though it is a "very old SNOWPACK approach"
 			// "dL = -L0/3" ist ein Urgestein in SNOWPACK und soll verhindern, dass Oberflächenelemente mit zu geringer Dichte entstehen. Die Setzung von Nassschnee ist weniger im Mittelpunkt hier.
 			// Die Beschreibung der Funktion entspricht derjenigen, die in den ältesten Versionen zu finden ist :-(
 			EMS[e].theta[WATER] *= 1.5;
+			EMS[e].theta[WATER_PREF] *= 1.5;
 			EMS[e].theta[ICE]   *= 1.5;
 		}
 
@@ -749,17 +729,17 @@ void WaterTransport::adjustDensity(SnowStation& Xdata)
 			EMS[eAbove].E = EMS[eAbove].Eps = EMS[eAbove].dEps= EMS[eAbove].Eps_e=EMS[eAbove].Eps_v=0.0;
 		}
 		EMS[e].L0 = EMS[e].L = L + dL;
-		EMS[e].theta[AIR] = 1.0 - EMS[e].theta[WATER] - EMS[e].theta[ICE];
-		EMS[e].Rho = (EMS[e].theta[ICE]*Constants::density_ice) + (EMS[e].theta[WATER]*Constants::density_water);
-		if (!(EMS[e].Rho > Constants::min_rho && EMS[e].Rho <= Constants::max_rho)) {
-			prn_msg(__FILE__, __LINE__, "err", Date(), "Volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf air:%le",
-			        e, nE, EMS[e].Rho, EMS[e].theta[ICE], EMS[e].theta[WATER], EMS[e].theta[AIR]);
+		EMS[e].theta[AIR] = 1.0 - EMS[e].theta[WATER] - EMS[e].theta[WATER_PREF] - EMS[e].theta[ICE];
+		EMS[e].updDensity();
+		if (!(EMS[e].Rho > Constants::eps && EMS[e].theta[AIR] >= 0.)) {
+			prn_msg(__FILE__, __LINE__, "err", Date(), "Volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf wat_pref:%lf air:%le",
+			        e, nE, EMS[e].Rho, EMS[e].theta[ICE], EMS[e].theta[WATER], EMS[e].theta[WATER_PREF], EMS[e].theta[AIR]);
 			throw IOException("Cannot evaluate mass balance in adjust density routine", AT);
 		}
 	}
 	const double cH_old = Xdata.cH;
 	Xdata.cH = NDS[Xdata.getNumberOfNodes()-1].z + NDS[Xdata.getNumberOfNodes()-1].u;
-	Xdata.mH -= (cH_old - Xdata.cH);
+	if (Xdata.mH!=Constants::undefined) Xdata.mH -= (cH_old - Xdata.cH);
 }
 
 /**
@@ -771,7 +751,7 @@ void WaterTransport::adjustDensity(SnowStation& Xdata)
  * @param *Sdata
  * @param *Mdata
  */
-void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata)
+void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata, double& ql)
 {
 	size_t nN = Xdata.getNumberOfNodes();
 	size_t nE = nN-1;
@@ -779,15 +759,14 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 	vector<ElementData>& EMS = Xdata.Edata;
 
 	//NIED (H. Hirashima) //Fz HACK Below follow some NIED specific declarations; please describe
-	std::vector<double> Such(nE, 0.);		//Suction pressure head
-	std::vector<double> HydK(nE, 0.);		//Hydraulic Conductivity
-	double ThR,SatK;  		//Residual water content, saturated water content and saturated hydraulic conductivity for both layers respectively.
-	double FluxQ;					//Flux between layers
+	std::vector<double> Such(nE, 0.); //Suction pressure head
+	std::vector<double> HydK(nE, 0.);  //Hydraulic Conductivity
+	double ThR,SatK;  //Residual water content, saturated water content and saturated hydraulic conductivity for both layers respectively.
+	double FluxQ;  //Flux between layers
 	double Rh0,Rh1,Rk0,Rk1;
 	double q0, qlim, qlim0, qlim1;
 	double P[15]={0.};
-	unsigned int WatCalc=1;					//Number of iterations in WaterTransport model "NIED".
-
+	unsigned int WatCalc=1;  //Number of iterations in WaterTransport model "NIED".
 	// First, consider no soil with no snow on the ground
 	if (!useSoilLayers && nN == 1) {
 		return;
@@ -795,7 +774,7 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 		if (Mdata.psum > 0. && Mdata.psum_ph>0.) { //there is some rain
 			double Store = (Mdata.psum * Mdata.psum_ph) / Constants::density_water; // Depth of liquid precipitation ready to infiltrate snow and/or soil (m)
 			// Now find out whether you are on an impermeable surface and want to create a water layer ...
-			if (water_layer && (Store > 0.)
+			if (water_layer && iwatertransportmodel_snow != RICHARDSEQUATION && iwatertransportmodel_soil != RICHARDSEQUATION && (Store > 0.)
 			        && ((useSoilLayers && (nE == Xdata.SoilNode)
 			                && (EMS[nE-1].theta[SOIL] > 0.95)) || ((nE-1 > 0) && (EMS[nE-2].theta[ICE] > 0.95)))) {
 				nE++;
@@ -814,10 +793,10 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 
 				EMS[nE-1].Te = Mdata.ta;
 				EMS[nE-1].L0 = EMS[nE-1].L = z_water;
-				EMS[nE-1].Rho = Constants::density_water;
+				EMS[nE-1].theta[WATER] = 1.0;
+				EMS[nE-1].updDensity();
 				EMS[nE-1].M = EMS[nE-1].L0 * EMS[nE-1].Rho;
 				assert(EMS[nE-1].M >= (-Constants::eps2)); //mass must be positive
-				EMS[nE-1].theta[WATER] = 1.0;
 				EMS[nE-1].mk = 19;
 				//NOTE all other microstructure parameters should better be set to Constants::undefined but ...
 				EMS[nE-1].N3 = 1.;
@@ -825,8 +804,9 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 				EMS[nE-1].sp = 1.;
 				EMS[nE-1].rg = 1.0;
 				EMS[nE-1].rb = 0.5;
-				Xdata.cH = Xdata.mH = NDS[nN-1].z + NDS[nN-1].u;
-			} else if (water_layer && (Store > 0.)
+				Xdata.cH = NDS[nN-1].z + NDS[nN-1].u;
+				if (Xdata.mH != IOUtils::nodata) Xdata.mH = Xdata.cH;
+			} else if (water_layer && iwatertransportmodel_snow != RICHARDSEQUATION && iwatertransportmodel_soil != RICHARDSEQUATION && (Store > 0.)
 			               && ((useSoilLayers && (nE == Xdata.SoilNode+1) && (EMS[nE-2].theta[SOIL] > 0.95))
 			                       || ((nE > 1) && (EMS[nE-2].theta[ICE] > 0.95)))) {
 				// Put rain water in existing wet layer
@@ -837,7 +817,8 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 				EMS[nE-1].L0 = EMS[nE-1].L = (NDS[nN-1].z + NDS[nN-1].u) - (NDS[nN-2].z + NDS[nN-2].u);
 				EMS[nE-1].M = EMS[nE-1].L0 * EMS[nE-1].Rho;
 				assert(EMS[nE-1].M >= (-Constants::eps2)); //mass must be positive
-				Xdata.cH = Xdata.mH = NDS[nN-1].z + NDS[nN-1].u;
+				Xdata.cH = NDS[nN-1].z + NDS[nN-1].u;
+				if (Xdata.mH != IOUtils::nodata) Xdata.mH = Xdata.cH;
 			}
 
 			//Put rain water in the layers, starting from the top element.
@@ -862,6 +843,7 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 					// Update snowpack runoff with rain infiltrating into soil (equal to Store when e == Xdata.SoilNode)
 					if (e == Xdata.SoilNode) {
 						Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += Store * Constants::density_water;
+						Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += Store * Constants::density_water;
 					}
 					// Update soil runoff with rain (equal to Store when e == 0)
 					if (e == 0) {
@@ -871,7 +853,16 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 			}
 
 			//This adds the left over rain input to the surfacefluxrate, to be used as BC in Richardssolver:
-			RichardsEquationSolver1d.surfacefluxrate+=(Store)/(sn_dt);	//NANDER: Store=[m], surfacefluxrate=[m^3/m^2/s]
+			if (pref_flow_rain_input_domain=="MATRIX") {
+				// Put rain in matrix domain
+				RichardsEquationSolver1d_matrix.surfacefluxrate+=(Store)/(sn_dt);	//NANDER: Store=[m], surfacefluxrate=[m^3/m^2/s]
+			} else if (pref_flow_rain_input_domain=="PREF_FLOW") {
+				// Put rain in preferential domain
+				RichardsEquationSolver1d_pref.surfacefluxrate+=(Store)/(sn_dt);		//NANDER: Store=[m], surfacefluxrate=[m^3/m^2/s]
+			} else {
+				prn_msg( __FILE__, __LINE__, "err", Mdata.date, "Unknown domain to transfer rain water to (check key PREF_FLOW_RAIN_INPUT_DOMAIN).");
+				throw;
+			}
 			Sdata.mass[SurfaceFluxes::MS_RAIN] += Mdata.psum * Mdata.psum_ph;
 		}
 	}
@@ -898,8 +889,11 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 			for (size_t eUpper = nE-1, eLower = nE-2; eUpper >= 1; eUpper--, eLower-- ) {
 				// Determine the additional storage capacity due to refreezing
 				const double dth_w = EMS[eUpper].c[TEMPERATURE] * EMS[eUpper].Rho / Constants::lh_fusion / Constants::density_water
-							* std::max(0., EMS[eUpper].melting_tk-EMS[eUpper].Te);
-				if ((eUpper == nE-1) && (EMS[eLower].theta[AIR] <= 0.05) && water_layer) {
+							* std::max(0., EMS[eUpper].meltfreeze_tk-EMS[eUpper].Te);
+				if ((variant=="SEAICE" && Xdata.Seaice!=NULL) && Xdata.Ndata[eUpper].z + 0.5 * Xdata.Edata[eUpper].L < Xdata.Seaice->SeaLevel) {
+					// for sea ice: elements below sea level may fill entire pore space
+					Wres = std::max(0., (1. - Xdata.Edata[eUpper].theta[ICE]) * (Constants::density_ice/Constants::density_water));
+				} else if ((eUpper == nE-1) && (EMS[eLower].theta[AIR] <= 0.05) && water_layer) {
 					// allow for a water table in the last layer above road/rock
 					Wres = Constants::density_ice/Constants::density_water
 						  * (1. - EMS[eUpper].theta[ICE] - EMS[eUpper].theta[SOIL] - 0.05);
@@ -915,11 +909,11 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 					// For watertransport model NIED:
 					// If we have too much water in the element (can happen when two quite saturated elements get joined), put the excess water in excess_water.
 					// Note: we have to do this in case of NIED method, because else SEff will not be calculated correctly.
-					if(EMS[eUpper].theta[WATER] > (1.-EMS[eUpper].theta[ICE]-EMS[eUpper].theta[SOIL])*(Constants::density_ice/Constants::density_water)+Constants::eps2) {
+					if(EMS[eUpper].theta[WATER] > (1.-EMS[eUpper].theta[WATER_PREF]-EMS[eUpper].theta[ICE]-EMS[eUpper].theta[SOIL])*(Constants::density_ice/Constants::density_water)+Constants::eps2) {
 						const double theta_water_orig=EMS[eUpper].theta[WATER];
-						EMS[eUpper].theta[WATER]=(1.-EMS[eUpper].theta[ICE]-EMS[eUpper].theta[SOIL])*(Constants::density_ice/Constants::density_water);
-						EMS[eUpper].theta[AIR]=(1.-EMS[eUpper].theta[ICE]-EMS[eUpper].theta[SOIL]-EMS[eUpper].theta[WATER]);
-						EMS[eUpper].Rho = (EMS[eUpper].theta[ICE] * Constants::density_ice) + (EMS[eUpper].theta[WATER] * Constants::density_water) + (EMS[eUpper].theta[SOIL] * EMS[eUpper].soil[SOIL_RHO]);
+						EMS[eUpper].theta[WATER]=(1.-EMS[eUpper].theta[WATER_PREF]-EMS[eUpper].theta[ICE]-EMS[eUpper].theta[SOIL])*(Constants::density_ice/Constants::density_water);
+						EMS[eUpper].theta[AIR]=(1.-EMS[eUpper].theta[ICE]-EMS[eUpper].theta[SOIL]-EMS[eUpper].theta[WATER]-EMS[eUpper].theta[WATER_PREF]);
+						EMS[eUpper].updDensity();
 						EMS[eUpper].M = EMS[eUpper].Rho*EMS[eUpper].L;
 
 						// Put excess water in excess_water
@@ -936,18 +930,13 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 					// In that case you need to update the volumetric air content and the density of the top element
 					// as it may have caught some rain! Only top element should be considered, as when rain would have
 					// infiltrated lower elements as well, W_upper>Wres.
-					EMS[eUpper].theta[AIR] = std::max(0., 1. - EMS[eUpper].theta[WATER] - EMS[eUpper].theta[ICE] - EMS[eUpper].theta[SOIL]);
-					EMS[eUpper].Rho = (EMS[eUpper].theta[ICE] * Constants::density_ice)
-							  + (EMS[eUpper].theta[WATER] * Constants::density_water)
-							      + (EMS[eUpper].theta[SOIL] * EMS[eUpper].soil[SOIL_RHO]);
-					assert(EMS[eUpper].Rho>=0. || EMS[eUpper].Rho==IOUtils::nodata); //we want positive density
-					if ( EMS[eUpper].theta[SOIL] < Constants::eps2 ) {
-						if ( !(EMS[eUpper].Rho > Constants::min_rho && EMS[eUpper].Rho <= Constants::max_rho) ) {
-							prn_msg(__FILE__, __LINE__, "err", Mdata.date,
-								"Volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf air:%le",
-								eUpper, nE, EMS[eUpper].Rho, EMS[eUpper].theta[ICE], EMS[eUpper].theta[WATER], EMS[eUpper].theta[AIR]);
-							throw IOException("Cannot transfer water within the snowpack in transportWater()", AT);
-						}
+					EMS[eUpper].theta[AIR] = std::max(0., 1. - EMS[eUpper].theta[WATER] - EMS[eUpper].theta[WATER_PREF] - EMS[eUpper].theta[ICE] - EMS[eUpper].theta[SOIL]);
+					EMS[eUpper].updDensity();
+					if (!(EMS[eUpper].Rho > Constants::eps && EMS[eUpper].theta[AIR] >= 0.)) {
+						prn_msg(__FILE__, __LINE__, "err", Mdata.date,
+							"Volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf wat_pref:%lf air:%le",
+							eUpper, nE, EMS[eUpper].Rho, EMS[eUpper].theta[ICE], EMS[eUpper].theta[WATER], EMS[eUpper].theta[WATER_PREF], EMS[eUpper].theta[AIR]);
+						throw IOException("Cannot transfer water within the snowpack in transportWater()", AT);
 					}
 				}
 
@@ -1035,6 +1024,7 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 									}
 									if (EMS[eLower].theta[SOIL] < Constants::eps2) {
 										Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += excess_water*Constants::density_water;
+										Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += excess_water*Constants::density_water;
 									}
 									// Take care of Solutes
 									for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
@@ -1061,54 +1051,50 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 							// update volumetric contents, masses and density
 							EMS[eUpper].theta[WATER]=W_upper-dThetaW_upper;
 							EMS[eLower].theta[WATER]=W_lower+dThetaW_lower;
-							EMS[eUpper].theta[AIR] = 1. - EMS[eUpper].theta[WATER] - EMS[eUpper].theta[ICE] - EMS[eUpper].theta[SOIL];
-							EMS[eLower].theta[AIR] = 1. - EMS[eLower].theta[WATER] - EMS[eLower].theta[ICE] - EMS[eLower].theta[SOIL];
+							EMS[eUpper].theta[AIR] = 1. - EMS[eUpper].theta[WATER] - EMS[eUpper].theta[WATER_PREF] - EMS[eUpper].theta[ICE] - EMS[eUpper].theta[SOIL];
+							EMS[eLower].theta[AIR] = 1. - EMS[eLower].theta[WATER] - EMS[eLower].theta[WATER_PREF] - EMS[eLower].theta[ICE] - EMS[eLower].theta[SOIL];
 							EMS[eUpper].M -= L_upper * Constants::density_water * dThetaW_upper;
 							assert(EMS[eUpper].M >= (-Constants::eps2)); //mass must be positive
 							EMS[eLower].M += L_lower * Constants::density_water * dThetaW_lower;
 							assert(EMS[eLower].M >= (-Constants::eps2)); //mass must be positive
-							EMS[eUpper].Rho = (EMS[eUpper].theta[ICE] * Constants::density_ice)
-									  + (EMS[eUpper].theta[WATER] * Constants::density_water)
-									      + (EMS[eUpper].theta[SOIL] * EMS[eUpper].soil[SOIL_RHO]);
+							EMS[eUpper].updDensity();
 							assert(EMS[eUpper].Rho>=0. || EMS[eUpper].Rho==IOUtils::nodata); //we want positive density
-							EMS[eLower].Rho = (EMS[eLower].theta[ICE] * Constants::density_ice)
-									  + (EMS[eLower].theta[WATER] * Constants::density_water)
-									      + (EMS[eLower].theta[SOIL] * EMS[eLower].soil[SOIL_RHO]);
+							EMS[eLower].updDensity();
 							assert(EMS[eLower].Rho>=0. || EMS[eLower].Rho==IOUtils::nodata); //we want positive density
 							if (EMS[eUpper].theta[SOIL] < Constants::eps2) {
 								if (!(EMS[eUpper].theta[AIR] >= -Constants::eps)) {
 									prn_msg(__FILE__, __LINE__, "err", Mdata.date,
-										"Volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf air:%le",
-										eUpper, nE, EMS[eUpper].Rho, EMS[eUpper].theta[ICE], EMS[eUpper].theta[WATER], EMS[eUpper].theta[AIR]);
+										"Volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf wat_pref:%lf air:%le",
+										eUpper, nE, EMS[eUpper].Rho, EMS[eUpper].theta[ICE], EMS[eUpper].theta[WATER], EMS[eUpper].theta[WATER_PREF], EMS[eUpper].theta[AIR]);
 									throw IOException("Cannot transfer water within the snowpack in transportWater()", AT);
 								}
 							}
 							// Update snowpack runoff with soil. Note: in case of no soil layers, or lowest soil element: the runoff for the lowest element is updated outside the loop.
 							if (useSoilLayers && eUpper == Xdata.SoilNode) {
 								Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += L_lower * Constants::density_water * dThetaW_lower + excess_water * Constants::density_water;
+								Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += L_lower * Constants::density_water * dThetaW_lower + excess_water * Constants::density_water;
 							}
 						} // end positive water movement
 					} else { //If eLower is soil (so water would be transported INTO soil), only remove water from snow element and don't put in soil, but in surfacefluxrate:
 						//dThetaW_upper = std::max(0, dThetaW_upper);
 						if(eLower==Xdata.SoilNode-1 && eUpper==Xdata.SoilNode) {
 							Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += L_upper * Constants::density_water * dThetaW_upper + excess_water * Constants::density_water;
-							RichardsEquationSolver1d.surfacefluxrate+=((dThetaW_upper*L_upper)+excess_water)/(sn_dt);	//surfacefluxrate is used for the Neumann BC in the Richards solver. Note: W0 is m^3/m^3
+							Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX]  += L_upper * Constants::density_water * dThetaW_upper + excess_water * Constants::density_water;
+							RichardsEquationSolver1d_matrix.surfacefluxrate+=((dThetaW_upper*L_upper)+excess_water)/(sn_dt);	//surfacefluxrate is used for the Neumann BC in the Richards solver. Note: W0 is m^3/m^3
 																//note: we devide by snowpack time-step (sn_dt), and not by (sn_dt/WatCalc), as we will spread the amount of runoff evenly over the snowpack time step.
 							excess_water=0.;
 
 							//Remove water from e0:
 							// update volumetric contents, masses and density
 							EMS[eUpper].theta[WATER]=W_upper-dThetaW_upper;
-							EMS[eUpper].theta[AIR] = 1. - EMS[eUpper].theta[WATER] - EMS[eUpper].theta[ICE] - EMS[eUpper].theta[SOIL];
+							EMS[eUpper].theta[AIR] = 1. - EMS[eUpper].theta[WATER] - EMS[eUpper].theta[WATER_PREF] - EMS[eUpper].theta[ICE] - EMS[eUpper].theta[SOIL];
 							EMS[eUpper].M -= L_upper * Constants::density_water * dThetaW_upper;
-							EMS[eUpper].Rho = (EMS[eUpper].theta[ICE] * Constants::density_ice)
-									  + (EMS[eUpper].theta[WATER] * Constants::density_water)
-									      + (EMS[eUpper].theta[SOIL] * EMS[eUpper].soil[SOIL_RHO]);
+							EMS[eUpper].updDensity();
 							if (EMS[eUpper].theta[SOIL] < Constants::eps2) {
 								if (!(EMS[eUpper].theta[AIR] >= -Constants::eps)) {
 									prn_msg(__FILE__, __LINE__, "err", Mdata.date,
-										"Volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf air:%le",
-										eUpper, nE, EMS[eUpper].Rho, EMS[eUpper].theta[ICE], EMS[eUpper].theta[WATER], EMS[eUpper].theta[AIR]);
+										"Volume contents: e:%d nE:%d rho:%lf ice:%lf wat:%lf wat_pref:%lf air:%le",
+										eUpper, nE, EMS[eUpper].Rho, EMS[eUpper].theta[ICE], EMS[eUpper].theta[WATER], EMS[eUpper].theta[WATER_PREF], EMS[eUpper].theta[AIR]);
 									throw IOException("Cannot transfer water within the snowpack in transportWater()", AT);
 								}
 							}
@@ -1122,7 +1108,22 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 
 	//Now solve richards equation:
 	if((iwatertransportmodel_snow == RICHARDSEQUATION && nE>0) || (iwatertransportmodel_soil == RICHARDSEQUATION && Xdata.SoilNode > 0)) {
-		RichardsEquationSolver1d.SolveRichardsEquation(Xdata, Sdata);
+		double dummy_ql = 0.;	// A dummy_ql, that may be sent to Richards equation, when evaporation / condensation doesn't need to be considered, to keep the original ql intact, so it can be treated as sublimation / deposition later
+
+		// Only send ql if Richards equation will solve the upper element and thus should take care of evaporation / condensation:
+		const bool isTopLayerSolvedByREQ = (nE == Xdata.SoilNode || (nE > Xdata.SoilNode && iwatertransportmodel_snow == RICHARDSEQUATION));
+
+		// Only send ql if ql should first be considered as evaporation / condensation, and NOT sublimation / deposition, depending on surface temperature:
+		const double meltfreeze_tk = (Xdata.getNumberOfElements()>0)? Xdata.Edata[Xdata.getNumberOfElements()-1].meltfreeze_tk : Constants::meltfreeze_tk;
+		const bool isSurfaceMelting = !(NDS[nE].T < meltfreeze_tk);
+
+		if(enable_vapour_transport) {
+			RichardsEquationSolver1d_matrix.SolveRichardsEquation(Xdata, Sdata, dummy_ql, Mdata.date);
+		} else {
+			RichardsEquationSolver1d_matrix.SolveRichardsEquation(Xdata, Sdata, ((isTopLayerSolvedByREQ && isSurfaceMelting) || (variant == "SEAICE" && ql < 0.)) ? (ql) : (dummy_ql), Mdata.date);
+		}
+
+		if(Xdata.getNumberOfElements() > Xdata.SoilNode && enable_pref_flow) RichardsEquationSolver1d_pref.SolveRichardsEquation(Xdata, Sdata, dummy_ql, Mdata.date);	// Matrix flow will take care of potential evaporation/condensation, provided by ql, so send dummy_ql for preferential flow
 	}
 
 	// The TOP element is very important because it is always losing mass--the strain state
@@ -1134,41 +1135,56 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 	EMS[eTop].E = EMS[eTop].Eps = EMS[eTop].dEps = EMS[eTop].Eps_e = EMS[eTop].Eps_v = EMS[eTop].S = 0.0;
 
 	// RUNOFF at bottom of either snowpack or soil
-	if(!useSoilLayers || iwatertransportmodel_soil != RICHARDSEQUATION) {	//Only if lowest element is snow or we do not use RE for soil.
-		// Determine the additional storage capacity due to refreezing
-		const double dth_w = EMS[0].c[TEMPERATURE] * EMS[0].Rho / Constants::lh_fusion / Constants::density_water
-					* std::max(0., EMS[0].melting_tk-EMS[0].Te);
-		if (EMS[0].theta[SOIL] < Constants::eps2) {
-			Wres = std::min((1. - EMS[0].theta[ICE]) * Constants::density_ice / Constants::density_water,
-				  EMS[0].res_wat_cont + dth_w);
-		} else { // treat soil separately
-			Wres = std::min(Constants::density_ice/Constants::density_water*(1. - EMS[0].theta[ICE] - EMS[0].theta[SOIL]),
-			      EMS[0].soilFieldCapacity() + dth_w);
-		}
-		Wres = std::max(0., Wres);
-
-		const double W0 = EMS[0].theta[WATER];
-		if ((W0 > Wres) // NOTE: if water_layer is set, do not drain water element on top of soil
-			&& !(water_layer && (EMS[0].theta[ICE] < Snowpack::min_ice_content)
-				&& (EMS[0].theta[SOIL] < Constants::eps2))) {
-			const double dM = EMS[0].L * Constants::density_water * (W0 - Wres);
-			EMS[0].M -= dM;
-			assert(EMS[0].M >= (-Constants::eps2)); //mass must be positive
-			EMS[0].theta[WATER] = Wres;
-			EMS[0].theta[AIR] = 1. - EMS[0].theta[WATER] - EMS[0].theta[ICE] - EMS[0].theta[SOIL];
-			EMS[0].Rho = (EMS[0].theta[ICE] * Constants::density_ice)
-					+ (EMS[0].theta[WATER] * Constants::density_water)
-					    + (EMS[0].theta[SOIL] * EMS[0].soil[SOIL_RHO]);
-			assert(EMS[0].Rho>=0. || EMS[0].Rho==IOUtils::nodata); //we want positive density
-			// Note that remaining excess_water should also be routed to MS_SOIL_RUNOFF and MS_SNOWPACK_RUNOFF
+	if(variant != "SEAICE") {	//Not for sea ice, where we assume the lowest element to be under water.
+		if((!useSoilLayers && iwatertransportmodel_snow != RICHARDSEQUATION) || iwatertransportmodel_soil != RICHARDSEQUATION) {	//Only if lowest element is snow or we do not use RE for soil.
+			// Determine the additional storage capacity due to refreezing
+			const double dth_w = EMS[0].c[TEMPERATURE] * EMS[0].Rho / Constants::lh_fusion / Constants::density_water
+						* std::max(0., EMS[0].meltfreeze_tk-EMS[0].Te);
 			if (EMS[0].theta[SOIL] < Constants::eps2) {
-				Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += dM + (excess_water * Constants::density_water);
+				Wres = std::min((1. - EMS[0].theta[ICE]) * Constants::density_ice / Constants::density_water,
+					  EMS[0].res_wat_cont + dth_w);
+			} else { // treat soil separately
+				Wres = std::min(Constants::density_ice/Constants::density_water*(1. - EMS[0].theta[ICE] - EMS[0].theta[SOIL]),
+				      EMS[0].soilFieldCapacity() + dth_w);
 			}
-			Sdata.mass[SurfaceFluxes::MS_SOIL_RUNOFF] += dM + (excess_water * Constants::density_water);
-			for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
-				Sdata.load[ii] +=  (EMS[0].conc[WATER][ii] * dM / S_TO_H(sn_dt));
+			Wres = std::max(0., Wres);
+
+			// Add excess water to the bottom element, such that it does not get lost
+			EMS[0].theta[WATER] += excess_water / EMS[0].L;
+			excess_water = 0.;
+
+			const double W0 = EMS[0].theta[WATER];
+			if ((W0 > Wres) // NOTE: if water_layer is set, do not drain water element on top of soil
+				&& !(water_layer && (EMS[0].theta[ICE] < Snowpack::min_ice_content)
+					&& (EMS[0].theta[SOIL] < Constants::eps2))) {
+				double dM = EMS[0].L * Constants::density_water * (W0 - Wres);
+				// Safety check: ensure we don't remove more mass than available
+				if (dM > EMS[0].M) {
+					SPDLOG_WARN("Removing more than available mass on bottom-most layer ! Mass will be 0 !");
+					dM = EMS[0].M; // Limit to available mass
+					EMS[0].theta[WATER] = Wres; // Set to residual water content
+				}
+				EMS[0].M -= dM;
+				assert(EMS[0].M >= (-Constants::eps2)); //mass must be positive
+				EMS[0].theta[WATER] = Wres;
+				EMS[0].theta[AIR] = 1. - EMS[0].theta[WATER] - EMS[0].theta[WATER_PREF] - EMS[0].theta[ICE] - EMS[0].theta[SOIL];
+				EMS[0].updDensity();
+				assert(EMS[0].Rho>=0. || EMS[0].Rho==IOUtils::nodata); //we want positive density
+				// Note that remaining excess_water should also be routed to MS_SOIL_RUNOFF and MS_SNOWPACK_RUNOFF
+				if (EMS[0].theta[SOIL] < Constants::eps2) {
+					Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += dM + (excess_water * Constants::density_water);
+					Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += dM + (excess_water * Constants::density_water);
+				}
+				Sdata.mass[SurfaceFluxes::MS_SOIL_RUNOFF] += dM + (excess_water * Constants::density_water);
+				for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
+					Sdata.load[ii] +=  (EMS[0].conc[WATER][ii] * dM / S_TO_H(sn_dt));
+				}
 			}
 		}
+	}
+	// If no snow, add rain in MS_SURFACE_MASS_FLUX
+	if(EMS[nE-1].theta[SOIL] > 0) {
+		Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += Mdata.psum * Mdata.psum_ph;
 	}
 }
 
@@ -1211,11 +1227,15 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
  * @param Sdata
  * @param Mdata
  */
-void WaterTransport::compTransportMass(const CurrentMeteo& Mdata, const double& ql,
-                                       SnowStation& Xdata, SurfaceFluxes& Sdata)
+void WaterTransport::compTransportMass(const CurrentMeteo& Mdata,
+                                       SnowStation& Xdata, SurfaceFluxes& Sdata, double& ql)
 {
-	RichardsEquationSolver1d.surfacefluxrate=0.;		//These are for the interface of snowpack with the richards solver. Initialize it to 0.
-	RichardsEquationSolver1d.soilsurfacesourceflux=0.;
+	RichardsEquationSolver1d_matrix.surfacefluxrate=0.;		//These are for the interface of snowpack with the richards solver. Initialize it to 0.
+	RichardsEquationSolver1d_matrix.soilsurfacesourceflux=0.;
+
+	RichardsEquationSolver1d_pref.surfacefluxrate=0.;		//These are for the interface of snowpack with the richards solver. Initialize it to 0.
+	RichardsEquationSolver1d_pref.soilsurfacesourceflux=0.;
+
 
 	// Do the checks for the WaterTransport model chosen:
 	if(iwatertransportmodel_snow != BUCKET && iwatertransportmodel_snow != NIED && iwatertransportmodel_snow != RICHARDSEQUATION) {
@@ -1238,17 +1258,13 @@ void WaterTransport::compTransportMass(const CurrentMeteo& Mdata, const double& 
 		throw;
 	}
 
-	if(iwatertransportmodel_snow == RICHARDSEQUATION && !useSoilLayers) {
-		prn_msg( __FILE__, __LINE__, "err", Mdata.date, "The implementation of RICHARDSEQUATION for snow without soil layers is not implemented and tested! It is not clear which lower boundary condition makes sense and the snow-soil interfaceflux is only defined with soil.");
-		throw;
-	}
-
 	// First, consider no soil with no snow on the ground and deal with possible rain water
 	if (!useSoilLayers && (Xdata.getNumberOfNodes() == Xdata.SoilNode+1)) {
 		if (Mdata.psum > 0. && Mdata.psum_ph>0.) { //there is some rain
 			double precip_rain = Mdata.psum * Mdata.psum_ph;
 			Sdata.mass[SurfaceFluxes::MS_RAIN] += precip_rain;
 			Sdata.mass[SurfaceFluxes::MS_SOIL_RUNOFF] += precip_rain;
+			Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += precip_rain;
 			for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
 				Sdata.load[ii] += Mdata.conc[ii] * precip_rain /*/ S_TO_H(sn_dt)*/;
 			}
@@ -1256,12 +1272,15 @@ void WaterTransport::compTransportMass(const CurrentMeteo& Mdata, const double& 
 		return;
 	}
 
-	compSurfaceSublimation(Mdata, ql, Xdata, Sdata);
+	if (!enable_vapour_transport) {
+		compTopFlux(ql, Xdata, Sdata);
+	}
 	mergingElements(Xdata, Sdata);
 
 	try {
 		adjustDensity(Xdata);
-		transportWater(Mdata, Xdata, Sdata);
+		if (variant=="SEAICE" && Xdata.Seaice!=NULL && iwatertransportmodel_snow == BUCKET) Xdata.Seaice->compFlooding(Xdata, Sdata);
+		transportWater(Mdata, Xdata, Sdata, ql);
 	} catch(const exception&){
 		prn_msg( __FILE__, __LINE__, "err", Mdata.date, "Error in transportMass()");
 		throw;

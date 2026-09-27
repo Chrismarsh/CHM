@@ -34,14 +34,14 @@
 
 class SnowStation;
 class Metamorphism;
-typedef void (Metamorphism::*MetaModelFn)(const CurrentMeteo&, SnowStation&);
-typedef double (Metamorphism::*MetaSpRateFn)(const ElementData&);
+typedef void (Metamorphism::*MetaModelFn)(const CurrentMeteo&, SnowStation&) const;
+typedef double (Metamorphism::*MetaSpRateFn)(const ElementData&) const;
 
 class Metamorphism {
 	public:
 		Metamorphism(const SnowpackConfig& i_cfg);
 
-		void runMetamorphismModel(const CurrentMeteo& Mdata, SnowStation& Xdata) throw();
+		void runMetamorphismModel(const CurrentMeteo& Mdata, SnowStation& Xdata) const throw();
 
 		static double csPoreArea(const ElementData& Edata);
 
@@ -53,32 +53,32 @@ class Metamorphism {
 		static const double max_grain_bond_ratio, wind_slab_enhance, wind_slab_vw, wind_slab_depth;
 
 	private:
-		double TGBondRate(const ElementData& Edata);
+		static double TGBondRate(const ElementData& Edata);
 
-		double LatticeConstant0(const double& th_ice);
+		double LatticeConstant0(const double& th_ice) const;
 
 		double TGGrainRate(const ElementData& Edata, const double& Tbot, const double& Ttop,
-		                   const double& gradTSub, const double& gradTSup);
+		                   const double& gradTSub, const double& gradTSup) const;
 
-		double ETBondRate(ElementData& Edata);
-		double ETGrainRate(const ElementData& Edata);
+		static double ETBondRate(ElementData& Edata);
+		static double ETGrainRate(const ElementData& Edata);
 
-		double PressureSintering(ElementData& Edata);
+		static double PressureSintering(ElementData& Edata);
 
-		void metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& Xdata);
-		void metamorphismNIED(const CurrentMeteo& Mdata, SnowStation& Xdata);
+		void metamorphismDEFAULT(const CurrentMeteo& Mdata, SnowStation& Xdata) const;
+		void metamorphismNIED(const CurrentMeteo& Mdata, SnowStation& Xdata) const;
 
 
-		double spRateDEFAULT(const ElementData& Edata);
-		double spRateNIED(const ElementData& Edata);
+		double spRateDEFAULT(const ElementData& Edata) const;
+		double spRateNIED(const ElementData& Edata) const;
 
 		static const bool __init;    ///<helper variable to enable the init of static collection data
 		static bool initStaticData();///<initialize the static containers
 		static std::map<std::string, MetaModelFn> mapMetamorphismModel;
 		static std::map<std::string, MetaSpRateFn> mapSpRate;
 
-		std::string metamorphism_model;
-		double sn_dt, new_snow_grain_size;
+		const std::string metamorphism_model;
+		const double sn_dt, new_snow_grain_size;
 };
 
 #endif //End of Metamorphism.h

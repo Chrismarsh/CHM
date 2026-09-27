@@ -38,7 +38,7 @@ PROJECT_NAME           = SNOWPACK
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
 
-PROJECT_NUMBER         = SNOWPACK-3.4.1
+PROJECT_NUMBER         = $(SN_VERSION)
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer a
@@ -1610,7 +1610,8 @@ PAPER_TYPE             = a4
 # If left blank no extra packages will be included.
 # This tag requires that the tag GENERATE_LATEX is set to YES.
 
-EXTRA_PACKAGES         =
+#EXTRA_PACKAGES         = amssymb amsthm
+EXTRA_PACKAGES         = mathtools
 
 # The LATEX_HEADER tag can be used to specify a personal LaTeX header for the
 # generated LaTeX document. The header should contain everything until the first

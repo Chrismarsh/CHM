@@ -18,17 +18,19 @@ along with MeteoIO.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef CAAMLIO_H
 #define CAAMLIO_H
 
+#include <meteoio/MeteoIO.h>
 #include "../Constants.h"
 #include "../Hazard.h"
-#include "SmetIO.h"
 #include "SnowpackIOInterface.h"
-#include <meteoio/MeteoIO.h>
+#include "SmetIO.h"
 
 #include <string>
 
-#include <libxml/parser.h>
-#include <libxml/xpath.h>
-#include <libxml/xmlwriter.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Weffc++"
+#include <snowpack/plugins/pugixml/pugixml.hpp>
+#pragma GCC diagnostic pop
+
 
 /**
  * @class CaaMLIO
@@ -43,14 +45,11 @@ class CaaMLIO : public SnowpackIOInterface {
 	public:
 		CaaMLIO(const SnowpackConfig& i_cfg, const RunInfo& run_info);
 		CaaMLIO(const CaaMLIO&);
-		~CaaMLIO() throw();
-
-		CaaMLIO& operator=(const CaaMLIO&); ///<Assignement operator, required because of pointer member
 
 		virtual bool snowCoverExists(const std::string& i_snowfile, const std::string& stationID) const;
 
 		virtual void readSnowCover(const std::string& i_snowfile, const std::string& stationID,
-		                           SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata);
+		                           SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata, const bool& read_salinity);
 
 		virtual void writeSnowCover(const mio::Date& date, const SnowStation& Xdata,
 		                            const ZwischenData& Zdata, const bool& forbackup=false);
@@ -66,55 +65,36 @@ class CaaMLIO : public SnowpackIOInterface {
 	private:
 		void cleanup() throw();
 		void init(const SnowpackConfig& cfg);
-		void openIn_CAAML(const std::string& in_snowfile);
-		void closeIn_CAAML() throw();
+
 		void setBasicHeader(const SnowStation& Xdata, const std::string& fields, smet::SMETWriter& smet_writer) const;
 		void setSnoSmetHeader(const SnowStation& Xdata, const SN_SNOWSOIL_DATA& SSdata, const mio::Date& date, smet::SMETWriter& smet_writer) const;
 		void setFormatting(const size_t& nr_solutes, std::vector<int>& vec_width, std::vector<int>&  vec_precision) const;
-
 		std::string getFilenamePrefix(const std::string& fnam, const std::string& path, const bool addexp=true) const;
+
+		//functions for reading caaml-files:
 		bool read_snocaaml(const std::string& snofilename, const std::string& stationID, SN_SNOWSOIL_DATA& SSdata);
-		void writeSnowFile(const std::string& snofilename, const mio::Date& date, const SnowStation& Xdata,
-		                   const bool aggregate);
-
-		const RunInfo info;
-		std::string i_snowpath, sw_mode, o_snowpath, experiment;
-		bool useSoilLayers, perp_to_slope, aggregate_caaml;
-		/*static const*/ double in_tz; //plugin specific time zones
-		std::string snow_prefix, snow_ext; //for the file naming scheme
-		double caaml_nodata; //plugin specific no data value
-
-		xmlDocPtr in_doc;
-		xmlXPathContextPtr in_xpathCtx;
-		xmlCharEncoding in_encoding;
-		static const xmlChar *xml_ns_caaml, *xml_ns_abrev_caaml;
-		static const xmlChar *xml_ns_gml, *xml_ns_abrev_gml;
-		static const xmlChar *xml_ns_xsi, *xml_ns_abrev_xsi;
-		static const xmlChar *xml_ns_slf, *xml_ns_abrev_slf;
-		static const xmlChar *xml_ns_snp, *xml_ns_abrev_snp;
-		static const std::string TimeData_xpath, StationMetaData_xpath, SnowData_xpath;
-
-		xmlNodeSetPtr xmlGetData(const std::string& path);
+		void openIn_CAAML(const std::string& in_snowfile);
 		mio::Date xmlGetDate();
 		mio::StationData xmlGetStationData(const std::string& stationID);
-		double xmlSetVal(const std::string& xpath, const std::string& property, const double& dflt);
-		int xmlSetVal(const std::string& xpath, const std::string& property, const int& dflt);
 		void setCustomSnowSoil(SN_SNOWSOIL_DATA& Xdata);
+		void xmlReadLayerData(SN_SNOWSOIL_DATA& SSdata);
+		void adjustToSlopeAngle(SN_SNOWSOIL_DATA& SSdata); // #cmb
+		LayerData xmlGetLayer(pugi::xml_node nodeLayer, std::string& grainFormCode);
 		bool getLayersDir();
-		LayerData xmlGetLayer(xmlNodePtr cur);
-		void getProfiles(const std::string path, std::vector<double> &depths, std::vector<double> &val);
-		void setProfileVal(std::vector<LayerData> &Layers, std::vector<std::vector<double> > depths, std::vector<std::vector<double> > val);
-		void setCustomLayerData(LayerData &Layer);
-		void setDepositionDates(std::vector<LayerData> &Layers, const mio::Date);
+		void getAndSetProfile(const std::string path, const std::string name,const bool directionTopDown,
+		                      const bool isRangeMeasurement,std::vector<LayerData>& Layers);
+		bool xmlGetProfile(const std::string path, const std::string name, std::vector<double>& zVec, std::vector<double>& valVec);
+		void estimateValidFormationTimesIfNotSetYet(std::vector<LayerData> &Layers, const mio::Date);
+		void checkAllDataForConsistencyAndSetMissingValues( SN_SNOWSOIL_DATA& SSdata );
+		bool checkWhatWasReadIn(SN_SNOWSOIL_DATA& SSdata);
 
-		void xmlWriteElement(const xmlTextWriterPtr writer, const char* name, const char* content, const char* att_name, const char* att_val);
-		// void writeDate(const xmlTextWriterPtr writer, const mio::Date date);
-		void writeDate(const xmlTextWriterPtr writer, const char* att_name, const char* att_val);
-		void writeCustomSnowSoil(const xmlTextWriterPtr writer, const SnowStation& Xdata);
-		void writeLayers(const xmlTextWriterPtr writer, const SnowStation& Xdata);
-		void writeCustomLayerData(const xmlTextWriterPtr writer, const ElementData& Edata, const NodeData& Ndata);
-		void writeProfiles(const xmlTextWriterPtr writer, const SnowStation& Xdata);
-		void writeStationData(const xmlTextWriterPtr writer, const SnowStation& Xdata);
+		//functions for writing caaml-file:
+		void writeSnowFile(const std::string& snofilename, const mio::Date& date, const SnowStation& Xdata);
+		void writeCustomSnowSoil(pugi::xml_node& node, const SnowStation& Xdata);
+		void writeLayers(pugi::xml_node& node, const SnowStation& Xdata);
+		void writeCustomLayerData(pugi::xml_node& node, const ElementData& Edata, const NodeData& Ndata);
+		void writeProfiles(pugi::xml_node& node, const SnowStation& Xdata);
+		void writeStationData(pugi::xml_node& root, const SnowStation& Xdata);
 
 		double lwc_codeToVal(const char* code);
 		std::string lwc_valToCode(const double val);
@@ -124,8 +104,35 @@ class CaaMLIO : public SnowpackIOInterface {
 		std::string grainShape_valToAbbrev(const unsigned int var);
 		std::string grainShape_valToAbbrev_old(const double* var);
 
-		char layerDepthTopStr[10], layerThicknessStr[10], layerValStr[10], valueStr[10], dateStr[30];
+		//xml functions:
+		double xmlReadValueFromPath(const std::string& xpath, const std::string& property, const double& dflt);
+		int xmlReadValueFromPath(const std::string& xpath, const std::string& property, const int& dflt);
+		void xmlWriteElement(pugi::xml_node& node, const char* name, const char* content, const char* att_name, const char* att_val);
+		bool xmlDoesPathExist(const std::string& path);
+		bool xmlReadValueFromNode(const pugi::xml_node node, const std::string propertyName, double& variableToSet,
+		                          const std::string unitOut = "",const std::string unitMeasured = "", const double factor=1.0);
+		std::string xmlReadAttributeFromPath (const std::string& path, const std::string& attributeName);
 
+		const RunInfo info;
+		std::string i_snowpath, o_snowpath, experiment;
+		double i_max_element_thickness;
+		bool caaml_writeout_as_readin, haz_write;
+		/*static const*/ double in_tz; //plugin specific time zones
+
+		pugi::xml_document inDoc;
+		pugi::xml_encoding inEncoding;
+
+		//charEncoding in_encoding;
+		static const char *xml_ns_caaml, *xml_ns_abrev_caaml;
+		static const char *xml_ns_gml, *xml_ns_abrev_gml;
+		static const char *xml_ns_xsi, *xml_ns_abrev_xsi;
+		static const char *xml_ns_slf, *xml_ns_abrev_slf;
+		static const char *xml_ns_snp, *xml_ns_abrev_snp;
+		static const std::string TimeData_xpath, StationMetaData_xpath, SnowData_xpath;
+
+		char layerDepthTopStr[10], layerThicknessStr[10], layerValStr[10], valueStr[10];
+		double hoarDensitySurf;
+		std::vector<std::string> grainForms;
 };
 
 #endif //End of CAAMLIO.h
