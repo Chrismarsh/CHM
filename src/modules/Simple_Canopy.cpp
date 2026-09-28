@@ -172,20 +172,20 @@ void Simple_Canopy::run(mesh_elem &face)
     // Canopy temperature is first approximated by the air temperature.
     double T1 = ta + mio::Cst::t_water_freezing_pt; // Canopy temperature (C to K)
 
-    double rho = air_pressure*1000/(PhysConst::Rgas*T1); // density of Air (pressure kPa to Pa = *1000)
+    double rho = air_pressure*1000/(PhysConst::RgasDry()*T1); // density of Air (pressure kPa to Pa = *1000)
 
     double U1 = U_R; // Wind speed (m/s) at height Z_vw [m] (top of canopy)
 
     // Aerodynamic resistance of canopy
-    ra = (log(Zref/Z0snow)*log(Zwind/Z0snow))/pow(PhysConst::kappa,2)/U1; // (s/m)
+    ra = (log(Zref/Z0snow)*log(Zwind/Z0snow))/pow(PhysConst::kappa(),2)/U1; // (s/m)
 
-    double deltaX = 0.622*PhysConst::Ls*Qs(air_pressure, T1)/(PhysConst::Rgas*(pow(T1,2))); // Must be (kg K-1)
+    double deltaX = 0.622*PhysConst::Ls()*Qs(air_pressure, T1)/(PhysConst::RgasDry()*(pow(T1,2))); // Must be (kg K-1)
 
     double q = (rh/100)*Qs(air_pressure, T1); // specific humidity (kg/kg)
 
     // snow surface temperature of snow in canopy
-    Ts = T1 + (Snow::emiss*(ilwr - PhysConst::sbc*pow(T1, 4.0)) + PhysConst::Ls*(q - Qs(air_pressure, T1))*rho/ra)/
-              (4.0*Snow::emiss*PhysConst::sbc*pow(T1, 3.0) + (PhysConst::Cp + PhysConst::Ls*deltaX)*rho/ra);
+    Ts = T1 + (Snow::emiss*(ilwr - PhysConst::sbc()*pow(T1, 4.0)) + PhysConst::Ls()*(q - Qs(air_pressure, T1))*rho/ra)/
+              (4.0*Snow::emiss*PhysConst::sbc()*pow(T1, 3.0) + (PhysConst::Cp() + PhysConst::Ls()*deltaX)*rho/ra);
 
     Ts -= mio::Cst::t_water_freezing_pt; // K to C
 
@@ -227,7 +227,7 @@ void Simple_Canopy::run(mesh_elem &face)
             Kstar_H = iswr * (1.0 - Alpha_c - Tauc * (1.0 - Albedo)); //  what is Kstar_H???
 
             // Incident long-wave at surface, "(W/m^2)"
-            Qlisn = ilwr * Vf_ + (1.0 - Vf_) * Vegetation::emiss_c * PhysConst::sbc * pow(T1, 4.0) + B_canopy * Kstar_H;
+            Qlisn = ilwr * Vf_ + (1.0 - Vf_) * Vegetation::emiss_c * PhysConst::sbc() * pow(T1, 4.0) + B_canopy * Kstar_H;
 
             // Incident short-wave at surface, "(W/m^2)"
             Qsisn = iswr * Tauc;
@@ -289,7 +289,7 @@ void Simple_Canopy::run(mesh_elem &face)
         Kd = iswr * (1.0 - Alpha_c - Tau_b_gap * (1.0 - Albedo));
 
         Qlisn = Vgap * ilwr + (1.0 - Vgap) * ((ilwr * Tau_b_gap +
-                                               (1.0 - Tau_b_gap) * Vegetation::emiss_c * PhysConst::sbc *
+                                               (1.0 - Tau_b_gap) * Vegetation::emiss_c * PhysConst::sbc() *
                                                pow(T1, 4.0f)) + B_canopy * Kd);
 
         Qsisn = cosxs * Qdfo * Tau_b_gap + Vgap * (iswr - Qdfo) + (1.0 - Vgap) * Tau_d * (iswr - Qdfo);
@@ -373,7 +373,7 @@ void Simple_Canopy::run(mesh_elem &face)
 
                 double Es = 611.15 * exp(22.452 * ta / (ta + 273.0));  // {sat pressure}
 
-                double SvDens = Es * PhysConst::M / (PhysConst::R * (ta + 273.0)); // {sat density}
+                double SvDens = Es * PhysConst::M() / (PhysConst::R() * (ta + 273.0)); // {sat density}
 
                 Lamb = 6.3e-4 * (ta + 273.0) + 0.0673;  // thermal conductivity of atmosphere
                 Nr = 2.0 * Snow::Radius * uVent / Atmosphere::KinVisc;  // Reynolds number
@@ -381,19 +381,19 @@ void Simple_Canopy::run(mesh_elem &face)
                 SStar = M_PI * pow(Snow::Radius, 2) * (1.0 - Snow::AlbedoIce) *
                         iswr;  // SW to snow particle !!!! changed
                 A1 = Lamb * (ta + 273) * Nu;
-                B1 = PhysConst::Ls * PhysConst::M / (PhysConst::R * (ta + 273.0)) - 1.0;
+                B1 = PhysConst::Ls() * PhysConst::M() / (PhysConst::R() * (ta + 273.0)) - 1.0;
                 J = B1 / A1;
                 Sigma2 = rh / 100 - 1;
                 D = 2.06e-5 * pow((ta + 273.0) / 273.0, -1.75); // diffusivity of water vapour
                 C1 = 1.0 / (D * SvDens * Nu);
 
                 Alpha = 5.0;
-                Mpm = 4.0 / 3.0 * M_PI * PhysConst::rho_ice * pow(Snow::Radius, 3) *
+                Mpm = 4.0 / 3.0 * M_PI * PhysConst::rho_ice() * pow(Snow::Radius, 3) *
                       (1.0 + 3.0 / Alpha + 2.0 / pow(Alpha, 2));
 
                 // sublimation rate of single 'ideal' ice sphere:
 
-                double Vs = (2.0 * M_PI * Snow::Radius * Sigma2 - SStar * J) / (PhysConst::Ls * J + C1) / Mpm;
+                double Vs = (2.0 * M_PI * Snow::Radius * Sigma2 - SStar * J) / (PhysConst::Ls() * J + C1) / Mpm;
 
                 // snow exposure coefficient (Ce):
 
@@ -409,7 +409,7 @@ void Simple_Canopy::run(mesh_elem &face)
 
                 // calculate 'ice-bulb' temperature of intercepted snow:
 
-                double IceBulbT = ta - (Vi * PhysConst::Ls / 1e6 / PhysConst::Ci);
+                double IceBulbT = ta - (Vi * PhysConst::Ls() / 1e6 / PhysConst::Ci());
 
                 // determine whether canopy snow is unloaded:
 
@@ -431,8 +431,8 @@ void Simple_Canopy::run(mesh_elem &face)
                 // limit sublimation to canopy snow available and take sublimated snow away from canopy snow at timestep start
 
                 //Subl_Cpy = -data.Snow_load*Vi*Hs*Global::Interval*24*3600/Hs; // make W/m2 (original in CRHM)
-                Subl_Cpy = -data.Snow_load * Vi * PhysConst::Ls * global_param->dt() /
-                           PhysConst::Ls; // make W/m2 TODO: check Interval is same as dt() (in seconds
+                Subl_Cpy = -data.Snow_load * Vi * PhysConst::Ls() * global_param->dt() /
+                           PhysConst::Ls(); // make W/m2 TODO: check Interval is same as dt() (in seconds
                 // TODO: Hs/HS = 1 !!! (in CRHM, kept here for conistency...)
 
                 if (Subl_Cpy > data.Snow_load) {
