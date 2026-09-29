@@ -52,6 +52,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     provides("iswr_subcanopy");
     provides("ilwr_subcanopy");
     provides("ts_canopy");
+    provides("canopy_sublimation")
 
 }
 
@@ -572,7 +573,7 @@ void Simple_Canopy::run(mesh_elem &face)
     (*face)["p_subcanopy"_s]=net_p; // Total precip (mm/int)
     (*face)["frac_precip_rain_subcanopy"_s]=net_rain/net_p; // Fraction rain (-)
     (*face)["frac_precip_snow_subcanopy"_s]=net_snow/net_p; // Fraction snow (-)
-
+    (*face)["canopy_sublimation"_s]=Subl_Cpy; // (mm/int)
 }
 
 void Simple_Canopy::init(mesh& domain)
