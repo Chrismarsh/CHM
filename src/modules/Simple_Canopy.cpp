@@ -52,7 +52,7 @@ Simple_Canopy::Simple_Canopy(config_file cfg)
     provides("iswr_subcanopy");
     provides("ilwr_subcanopy");
     provides("ts_canopy");
-    provides("canopy_sublimation")
+    provides("canopy_sublimation");
 
 }
 
