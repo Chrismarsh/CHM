@@ -22,144 +22,22 @@
 //
 
 #include "LinearAlgebra.hpp"
+#include <Tpetra_Core.hpp>
 
 namespace math
 {
     namespace LinearAlgebra
     {
-        NearestNeighborProblem::NearestNeighborProblem(mesh& domain, int nLayer) :
-            m_domain(domain), m_nLayer(nLayer)
+        size_t Sizes::total_elements() const { return global * vert_layers; }
+        size_t Sizes::local_elements() const { return local * vert_layers; }
+
+        void NearestNeighborProblem::set_comm_for_parallel()
         {
-            // TODO Accept a communicator on construction
-            m_comm = Tpetra::getDefaultComm();
+                m_comm = Tpetra::getDefaultComm();
+        };
 
-            // Sizes of the domain
-            size_t ntri = domain->size_local_faces();
-            size_t n_global_tri = domain->size_global_faces();
-
-            /*
-          Initialize the local-global index map for the extruded mesh system.
-            */
-            auto global_IDs = domain->get_global_IDs();
-            std::vector<global_ordinal_type> extruded_global_IDs(ntri * nLayer);
-            // Create the global IDs for the extruded system
-            // Ordering:
-            // - mesh elements and then layers successively
-            auto extruded_ID_iterator = extruded_global_IDs.begin();
-            for (int i = 0; i < nLayer; ++i)
-            {
-                std::transform(global_IDs.begin(), global_IDs.end(), extruded_ID_iterator,
-                               [=](int id) -> global_ordinal_type { return i * n_global_tri + id; });
-                extruded_ID_iterator += ntri;
-            }
-
-
-            const size_t numGlobalElements = n_global_tri * nLayer;
-            const auto* data_extruded_IDs = extruded_global_IDs.data();
-            const size_t indexListSize = ntri * nLayer;
-            int indexBase = 0;
-
-            m_map = rcp(new map_type(numGlobalElements, data_extruded_IDs, indexListSize, indexBase, m_comm));
-
-            // loop over locally owned rows, figure out number of neighbors (owned or
-            // otherwise!), and what their global indices are.
-            std::vector<size_t> num_entries(ntri * nLayer, 1);
-            std::vector<std::array<global_ordinal_type, 6>> neighbor_global_idx(ntri * nLayer);
-
-#pragma omp parallel for
-            for (size_t i = 0; i < ntri; ++i)
-            {
-                auto face = domain->face(i);
-                int face_bottom_idx = face->cell_global_id;
-                int face_bottom_local_idx = face->cell_local_id;
-
-                // Lateral neighbors and self
-                for (int layer = 0; layer < nLayer; ++layer)
-                {
-                    int element_idx = n_global_tri * layer + face_bottom_idx;
-                    int local_array_idx = ntri * layer + face_bottom_local_idx;
-                    neighbor_global_idx.at(local_array_idx).at(0) = element_idx;
-
-                    for (int f = 0; f < 3; f++)
-                    {
-                        auto neighbor = face->neighbor(f);
-
-                        if (neighbor != nullptr)
-                        {
-                            int neigh_bottom_idx = neighbor->cell_global_id;
-                            int neigh_global_idx = n_global_tri * layer + neigh_bottom_idx;
-                            neighbor_global_idx.at(local_array_idx).at(num_entries.at(local_array_idx)) =
-                                neigh_global_idx;
-                            ++num_entries.at(local_array_idx);
-                        }
-                    }
-                }
-                /*
-                  Above and below neighbor loops are null when single layer
-                */
-                // Neighbor below
-                for (int layer = 1; layer < nLayer; ++layer)
-                {
-                    int element_idx = n_global_tri * layer + face_bottom_idx;
-                    int local_array_idx = ntri * layer + face_bottom_local_idx;
-                    int below_idx = n_global_tri * (layer - 1) + face_bottom_idx;
-                    neighbor_global_idx.at(local_array_idx).at(num_entries.at(local_array_idx)) = below_idx;
-                    ++num_entries.at(local_array_idx);
-                }
-                // Neighbor above
-                for (int layer = 0; layer < nLayer - 1; ++layer)
-                {
-                    int element_idx = n_global_tri * layer + face_bottom_idx;
-                    int local_array_idx = ntri * layer + face_bottom_local_idx;
-                    int above_idx = n_global_tri * (layer + 1) + face_bottom_idx;
-                    neighbor_global_idx.at(local_array_idx).at(num_entries.at(local_array_idx)) = above_idx;
-                    ++num_entries.at(local_array_idx);
-                }
-            }
-
-            /*
-          Set up the CrsGraph structure for creating the distributed CrsMatrix and
-          Vectors for the linear nearest neighbor system
-
-          Graph for nearest neighbor connectivity.
-          6 entries (max) per row: self, three neighbors, above and below
-          (fewer entries for boundary elements)
-
-          Preferred construction of CrsGraph uses a Teuchos::ArrayView<T> for num entries/row
-            */
-            Teuchos::ArrayView<size_t> num_entries_view(num_entries.data(), ntri * nLayer);
-            m_graph = rcp(new graph_type(m_map, num_entries_view));
-            // I believe these are all StaticProfile by default now
-
-
-            // Set all of the desired nonzero columns in the graph
-            // due to insertGlobalIndices args
-            // DO NOT DO THIS THREAD PARALLEL
-            for (size_t i = 0; i < ntri; ++i)
-            {
-                auto face = domain->face(i);
-                int face_bottom_idx = face->cell_global_id;
-                int face_bottom_local_idx = face->cell_local_id;
-
-                for (int layer = 0; layer < nLayer; ++layer)
-                {
-                    int element_idx = n_global_tri * layer + face_bottom_idx;
-                    int local_array_idx = ntri * layer + face_bottom_local_idx;
-                    // std::cout << "insertGlobal : " << element_idx << " : " << num_suspension_entries[element_idx] << "\n";
-                    m_graph->insertGlobalIndices(element_idx, num_entries.at(local_array_idx),
-                                                 &(neighbor_global_idx.at(local_array_idx)[0]));
-                }
-            }
-            m_graph->fillComplete();
-
-            // Create a Tpetra::Matrix using the Map, with a static allocation
-            // dictated by NumNz.  (We know exactly how many elements there will
-            // be in each row, so we use static profile for efficiency.)
-            m_matrix = rcp(new crs_matrix_type(m_graph));
-            m_matrix->fillComplete();
-            m_rhs = rcp(new MV(m_map, 1));
-            m_solution = rcp(new MV(m_map, m_rhs->getNumVectors()));
-
+        void NearestNeighborProblem::build_Belos_solver()
+        {
             /*
           Belos solver and Ifpack2 preconditioner setup
           - TODO add optional input to set these params
@@ -176,30 +54,10 @@ namespace math
             }
             if (m_solver.is_null())
             {
-                CHM_THROW_EXCEPTION(module_error, "PBSM3D failed to create solver");
+                std::string err = std::format("{} failed to create solver",_module_name);
+                CHM_THROW_EXCEPTION(module_error, err);
             }
-
-            m_preconditioner = Ifpack2::Factory::create<row_matrix_type>("ILUT", m_matrix);
-            if (m_preconditioner.is_null())
-            {
-                CHM_THROW_EXCEPTION(module_error, "PBSM3D failed to create preconditioner");
-            }
-            ParameterList precondOptions;
-            precondOptions.set("fact: drop tolerance", 1e-4);
-            precondOptions.set("fact: ilut level-of-fill", 3.0);
-            // Note this is different from num_entries_per_row: https://docs.trilinos.org/dev/packages/ifpack2/doc/html/classIfpack2_1_1ILUT.html#aee2011b313e3070ee43b2cfc2d183634
-            m_preconditioner->setParameters(precondOptions);
-            m_preconditioner->initialize();
-
-            // Specify the deposition problem
-            m_problem = rcp(new problem_type(m_matrix, m_solution, m_rhs));
-            if (!m_preconditioner.is_null())
-            {
-                m_problem->setRightPrec(m_preconditioner);
-            }
-            m_problem->setProblem();
-            m_solver->setProblem(m_problem);
-        } // end constructor
+        }
 
         void NearestNeighborProblem::zeroSystem()
         {
@@ -210,19 +68,19 @@ namespace math
             m_solution->putScalar(0.0);
         }
 
-        void NearestNeighborProblem::matrixReplaceGlobalValues(global_ordinal_type global_row_idx,
-                                                               global_ordinal_type global_col_idx, double val)
+        void NearestNeighborProblem::matrixReplaceGlobalValues(global_index_type global_row_idx,
+                                                               global_index_type global_col_idx, double val)
         {
             m_matrix->replaceGlobalValues(global_row_idx, tuple(global_col_idx), tuple(val));
         }
 
-        void NearestNeighborProblem::matrixSumIntoGlobalValues(global_ordinal_type global_row_idx,
-                                                               global_ordinal_type global_col_idx, double val)
+        void NearestNeighborProblem::matrixSumIntoGlobalValues(global_index_type global_row_idx,
+                                                               global_index_type global_col_idx, double val)
         {
             m_matrix->sumIntoGlobalValues(global_row_idx, tuple(global_col_idx), tuple(val));
         }
 
-        void NearestNeighborProblem::rhsSumIntoGlobalValue(global_ordinal_type global_idx, double val)
+        void NearestNeighborProblem::rhsSumIntoGlobalValue(global_index_type global_idx, double val)
         {
             // Critical section needed because sumIntoGlobalValues is not respecting
             // the 4th arg (force atomic update)
@@ -304,5 +162,6 @@ namespace math
         NearestNeighborProblem::~NearestNeighborProblem()
         {
         }
-    }
+
+    } // namespace LinearAlgebra
 }

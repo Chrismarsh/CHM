@@ -392,8 +392,8 @@ void PBSM3D::init(mesh& domain)
 
     }
 
-    suspension_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain,nLayer));
-    deposition_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain));
+    suspension_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain,ID,nLayer));
+    deposition_NNP.reset(new math::LinearAlgebra::NearestNeighborProblem(domain,ID));
 
 }
 
