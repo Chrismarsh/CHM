@@ -436,9 +436,10 @@ public:
 
 //    void set_module_data(const std::string &module, face_info *fi);
 
-    template<typename T>
-    T& make_module_data(const std::string &module);
-
+    // Overload for module data constructor
+    template<typename T, typename... Args>
+    T& make_module_data(const std::string &module, Args... args);
+    
     std::string _debug_name; //for debugging to find the elem that we want
     int _debug_ID; //also for debugging. ID == the position in the output order, starting at 0
     size_t cell_global_id;
@@ -1788,21 +1789,21 @@ timeseries::iterator face<Gt, Fb>::now()
 }
 
 
+// Overloaded for construtor that requires arguments
 template < class Gt, class Vb>
-template<typename T>
-T& face<Gt, Vb>::make_module_data(const std::string &module)
+template<typename T, typename... Args>
+T& face<Gt, Vb>::make_module_data(const std::string &module, Args... args)
 {
 
     //we don't already have this, make a new one.
     if(!_module_face_data[module])
     {
 //        T* data = new T;
-        _module_face_data[module] = std::make_unique<T>();
+        _module_face_data[module] = std::make_unique<T>(args...);
     }
 
     return get_module_data<T&>(module);
 }
-
 
 template < class Gt, class Fb>
 template < typename T>
