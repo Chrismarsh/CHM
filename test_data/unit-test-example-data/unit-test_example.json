@@ -1,0 +1,212 @@
+{
+    "option": {
+        "per_triangle_timeseries": "true",
+        "ui": "false",
+        "debug_level": "debug",
+        "point_mode": {
+        },
+        "prj_name": "UNITTEST"
+    },
+    "modules": [
+        "Infil_All",
+        "soil_module",
+        "Evapotranspiration_All",
+        "point_mode"
+    ],
+    "remove_depency": {
+        "Simple_Canopy": "snobal",
+        "Richard_albedo": "snobal",
+        "scale_wind_vert": "snobal",
+
+        "Simple_Canopy": "Lehning_snowpack",
+        "Richard_albedo": "Lehning_snowpack",
+        "scale_wind_vert": "Lehning_snowpack",
+
+        "scale_wind_vert": "FSM",
+        "snow_slide": "snobal",
+        "PBSM3D": "snobal",
+        "WindNinja": "snobal",
+        "WindNinja": "FSM",
+        "WindNinja": "Lehning_snowpack",
+
+        "Simple_Canopy": "FSM",
+        "scale_wind_vert": "FSM",
+        "snow_slide": "FSM",
+        "PBSM3D": "FSM",
+        "WindNinja": "FSM",
+
+        "Evapotranspiration_All" : "soil_module",
+        "Infil_All" : "soil_module"
+    },
+    "config": {
+        "point_mode": {
+            "provide": {
+                "t": "false",
+                "U_2m_above_srf": "false",
+                "iswr": "true",
+                "unit_test_Donovan": "true"
+            }
+        },
+        "Evapotranspiration_All": {
+            "alpha": "1.26",
+            "stomatal_resistance_min": "25",
+            "Frac_to_ground": 0.1,
+            "wind_measurement_height": "10"
+        },
+
+        "Infil_All": {
+            "infDays": "6",
+            "min_swe_to_freeze": "25.0",
+            "major": "5",
+            "AllowPrior_inf": "true",
+            "thaw_type": "0",
+            "lens_temp": "-10.0"
+        },
+
+        "soil_module": {
+            "Ksaturated_rechr": "0.00176",
+            "Ksaturated_lower": "6.9E-6",
+            "Ksaturated_groundwater": "6.9E-6",
+            "Ksaturated_organic": "6.9E-6",
+            "Trigthrhld": "100.0",
+            "depth_per_layer": "0.5",
+            "theta_default": "0.5",
+            "uniform_conductivities": "true",
+            "dry_soil_k": "2.5",
+            "sat_soil_frozen_k": "1.98",
+            "sat_soil_thaw_k": "1.67",
+            "number_XG_layers": "10",
+            "moisture_content_min_per_layer": "0.0001",
+            "update_k_behind_front_freeze": "true",
+            "update_k_behind_front_thaw": "true",
+            "k_update": "1",
+            "Johansen_conductivity": "false"
+        },
+        
+        "Richard_albedo": {
+            "min_swe_refresh": "10",
+            "init_albedo_snow": "0.8",
+            "a2": "3.6e5"
+        },
+        "snobal": {
+            "param_snow_compaction": "1"
+        },
+        "Thornton_p": {
+            "apply_cosine_correction": "true"
+        },
+        "p_no_lapse": {
+            "apply_cosine_correction": "true"
+        },
+        "snow_slide": {
+            "use_vertical_snow": "true"
+        },
+        "PBSM3D": {
+            "nLayer": "10",
+            "smooth_coeff": "6500",
+            "rouault_diffusion_coef": "false",
+            "min_sd_trans": "0.1",
+            "enable_veg": "true",
+            "snow_diffusion_const": "0.3",
+            "settling_velocity": "0.5",
+            "do_fixed_settling": "true",
+            "do_sublimation": "true",
+            "use_tanh_fetch": "true",
+            "use_R94_lambda": "false",
+            "use_PomLi_probability": "false",
+            "use_subgrid_topo": "false",
+            "use_subgrid_topo_V2": "false",
+            "z0_ustar_coupling": "false",
+            "debug_output": "false"
+        },
+        "fetchr": {
+            "incl_veg": "false",
+            "I": "0.06"
+        },
+        "WindNinja": {
+            "Max_spdup": "3.5",
+            "ninja_recirc": "true",
+            "compute_Sx": "false",
+            "Sx_crit": "20.0",
+            "L_avg": "1000"
+        },
+        "iswr": {
+            "already_cosine_corrected": "true"
+        }
+    },
+    "meshes": {
+
+       "mesh": "unit-test_example.mesh",
+       "parameters": {
+           "file": "unit-test_example.param"
+       }
+
+
+    },
+    "parameter_mapping": {
+        "landcover": {
+            "1": {
+                "is_water": "false"
+            },
+            "0": {
+                "is_water": "true"
+            }
+        },
+        "soils": {
+            "soil_type": {
+                "0": "sand",
+                "1": "loam",
+                "2": "clay",
+                "3": "loamsand",
+                "4": "sandloam",
+                "5": "siltloam",
+                "6": "saclloam",
+                "7": "clayloam",
+                "8": "siclloam",
+                "9": "sandclay",
+                "10": "siltclay",
+                "99": "pavement"
+            },
+            "soil_texture": {
+                "0": "coarse_over_coarse",
+                "1": "medium_over_medium",
+                "2": "medium_over_fine",
+                "3": "fine_over_fine",
+                "4": "soil_over_bedrock"
+            },
+            "soil_groundcover": {
+                "0" : "bare_soil",
+                "1" : "row_crop",
+                "2" : "poor_pasture",
+                "3" : "small_grains",
+                "4" : "good_pasture",
+                "5" : "forested"
+            }
+         
+        }
+    },
+    "output": {
+        "UpperClearing" : {
+            "longitude": -115.175362,
+            "latitude": 50.956547,
+            "file": "output_test.txt",
+            "type": "timeseries"
+        }
+
+    },
+    "forcing":
+    {
+        "UTC_offset":11,
+        "num_stations_to_use": "1",
+        "interpolant": "nearest",
+
+        "UpperClearing":
+        {
+            "file": "combined.csv",
+            "longitude": -115.175362,
+            "latitude":  50.95654,
+            "elevation": 1845
+        }
+
+
+    }
+}
