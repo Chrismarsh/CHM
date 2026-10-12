@@ -1155,10 +1155,17 @@ void core::config_output(pt::ptree &value)
                 OGRCoordinateTransformation::DestroyCT(coordTrans);
             }
 
-            if(!_mesh->is_geographic())
-                out.face = _mesh->locate_face(out.x, out.y);
-            else
-                out.face = _mesh->locate_face(out.longitude, out.latitude);
+
+
+           // if(!_mesh->is_geographic())
+           // {
+           //     out.face = _mesh->locate_face(out.x, out.y);
+           // }
+           // else
+           // {
+           //     out.face = _mesh->locate_face(out.longitude, out.latitude);
+           // }
+           out.face = _mesh->face(0);
 
             if(out.face != nullptr)
             {
