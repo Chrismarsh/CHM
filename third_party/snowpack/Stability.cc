@@ -19,9 +19,9 @@
 */
 
 #include "Stability.h"
-#include "Constants.h"
-#include "Laws_sn.h"
 #include "StabilityAlgorithms.h"
+#include "Laws_sn.h"
+#include "Constants.h"
 #include "Utils.h"
 
 #include <assert.h>
@@ -166,13 +166,13 @@ void Stability::checkStability(const CurrentMeteo& Mdata, SnowStation& Xdata)
 	double slab_mass = 0.;	// Slab mass
 	double hi_Ei = 0.;		//this is the denominator of the multi layer Young's modulus
 
-	std::vector<unsigned short> n_lemon(nN, 0.);
+	std::vector<unsigned short> n_lemon(nN, 0);
 	size_t e = nE;
 	while (e-- > Xdata.SoilNode) {
 		EMS[e].hard = (mapHandHardness[hardness_parameterization])(EMS[e], hoar_density_buried);
 		EMS[e].S_dr = StabilityAlgorithms::setDeformationRateIndex(EMS[e]);
 		StabilityData  STpar(Stability::psi_ref);
-		
+
 		//update slab properties
 		const double hi = EMS[e].L;
 		slab_thick += hi;			//Increment slab depth
@@ -231,6 +231,9 @@ void Stability::checkStability(const CurrentMeteo& Mdata, SnowStation& Xdata)
 					    "Profile classification failed! (classifyStability_SchweizerWiesinger)");
 			}
 			break;
+		default:
+			prn_msg( __FILE__, __LINE__, "err", Mdata.date,
+						"Profile classification failed! Unknown prof. calss provided");
 	}
 
 	if (classify_profile) {
@@ -254,7 +257,7 @@ void Stability::findWeakLayer(const double& Pk, std::vector<unsigned short>& n_l
 	// Initialize
 	Swl_lemon = 0; // Lemon counter
 	double Swl_d, Swl_n, zwl_d, zwl_n, zwl_ssi, zwl_Sk38; // Temporary weak layer markers
-	Swl_d = Swl_n = Swl_ssi = Swl_Sk38 = INIT_STABILITY;
+	Swl_d = Swl_n = Swl_ssi = Swl_Sk38 = IOUtils::nodata;
 	zwl_d = zwl_n = zwl_ssi = zwl_Sk38 = Xdata.cH;
 
 	// Natural and "deformation rate" Stability Index
@@ -267,12 +270,12 @@ void Stability::findWeakLayer(const double& Pk, std::vector<unsigned short>& n_l
 		// Slab must be thicker than Stability::ground_rough (m)  for an avalanche to release.
 		while ((e-- > Xdata.SoilNode) && ((NDS[e+1].z + NDS[e+1].u)/cos_sl > Stability::ground_rough)) {
 			// "deformation rate" Stability Index: find minimum ...
-			if (Swl_d > EMS[e].S_dr) {
+			if (Swl_d > EMS[e].S_dr || Swl_d == IOUtils::nodata) {
 				Swl_d = EMS[e].S_dr;
 				zwl_d = (NDS[e].z + NDS[e+1].z + NDS[e].u + NDS[e+1].u)/2.;
 			}
 			// Natural Stability Index: find minimum ...
-			if ( Swl_n > NDS[e+1].S_n ) {
+			if ( Swl_n > NDS[e+1].S_n || Swl_n == IOUtils::nodata) {
 				Swl_n = NDS[e+1].S_n;
 				zwl_n = NDS[e+1].z + NDS[e+1].u;
 			}
@@ -301,7 +304,8 @@ void Stability::findWeakLayer(const double& Pk, std::vector<unsigned short>& n_l
 			while ((e-- > Xdata.SoilNode) && (((Xdata.cH - (NDS[e+1].z + NDS[e+1].u))/cos_sl) < (Pk + Stability::skier_depth)) && ((NDS[e+1].z + NDS[e+1].u)/cos_sl > Stability::ground_rough)) {
 				// Skier Stability Index: find minimum OR consider number of structural instabilities in case of near equalities
 
-				if ( (Swl_ssi > NDS[e+1].ssi) || ((fabs(Swl_ssi - NDS[e+1].ssi) < 0.09) && (n_lemon[e+1] > Swl_lemon)) ) {
+				if ( (Swl_ssi > NDS[e+1].ssi || Swl_ssi == IOUtils::nodata)
+				     || ((fabs(Swl_ssi - NDS[e+1].ssi) < 0.09) && (n_lemon[e+1] > Swl_lemon)) ) {
 					Swl_ssi = NDS[e+1].ssi;
 					zwl_ssi = NDS[e+1].z + NDS[e+1].u ;
 					Swl_lemon = n_lemon[e+1];

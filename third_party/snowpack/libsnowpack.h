@@ -35,12 +35,13 @@
 #include "SnowDrift.h"
 #include "SnowpackConfig.h"
 #include "Stability.h"
+#include "TechnicalSnow.h"
 #include "Utils.h"
 
-#include "plugins/AsciiIO.h" //for direct calls to AsciiIO
-#include "plugins/SmetIO.h"  //for direct calls to SmetIO
 #include "plugins/SnowpackIO.h"
 #include "plugins/SnowpackIOInterface.h"
+#include "plugins/AsciiIO.h" //for direct calls to AsciiIO
+#include "plugins/SmetIO.h" //for direct calls to SmetIO
 
 #include "snowpackCore/Aggregate.h"
 #include "snowpackCore/Canopy.h"

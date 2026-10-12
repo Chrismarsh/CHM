@@ -43,35 +43,37 @@ const bool SnowDrift::msg_erosion = false;
  * non-static section                                       *
  ************************************************************/
 
-SnowDrift::SnowDrift(const SnowpackConfig& cfg) : saltation(cfg),
-                     enforce_measured_snow_heights(false), snow_redistribution(false), snow_erosion(false), alpine3d(false),
-                     sn_dt(0.), nSlopes(0)
+static bool get_bool(const SnowpackConfig& cfg, const std::string& key, const std::string& section)
 {
-	cfg.getValue("ALPINE3D", "SnowpackAdvanced", alpine3d);
+	bool value;
+	cfg.getValue(key, section, value);
+	return value;
+}
 
-	// See Snowpack.cc for a description
-	cfg.getValue("ENFORCE_MEASURED_SNOW_HEIGHTS", "Snowpack", enforce_measured_snow_heights);
-
-	/*
-	 * Number of stations incl. the main station: at least 1, either 3, 5, 7 or 9 for SNOW_REDISTRIBUTION
-	 * - 1: real simulation at main station (flat field or slope. In the latter case virtual slopes are somewhat odd (see also PERP_TO_SLOPE)
-	 * - 3: real simulation at main station (flat field) plus 2 virtual slopes
-	 * - 5: real simulation at main station (flat field) plus 4 virtual slopes
-	 * - 7: real simulation at main station (flat field) plus 6 virtual slopes
-	 * - 9: real simulation at main station (flat field) plus 8 virtual slopes
-	 */
-	cfg.getValue("NUMBER_SLOPES", "SnowpackAdvanced", nSlopes);
+static bool get_redistribution(const SnowpackConfig& cfg)
+{
+	bool redistribution = false;
+	const int nSlopes = cfg.get("NUMBER_SLOPES", "SnowpackAdvanced");
 
 	// Defines whether real snow erosion at main station or/and redistribution on virtual slopes (default in operational mode)
 	// should happen under blowing snow conditions.
-	cfg.getValue("SNOW_EROSION", "SnowpackAdvanced", snow_erosion);
+	//cfg.getValue("SNOW_EROSION", "SnowpackAdvanced", snow_erosion);
 	if (nSlopes>1)
-		cfg.getValue("SNOW_REDISTRIBUTION", "SnowpackAdvanced", snow_redistribution);
+		cfg.getValue("SNOW_REDISTRIBUTION", "SnowpackAdvanced", redistribution);
+	
+	return redistribution;
+}
 
+static double get_sn_dt(const SnowpackConfig& cfg) 
+{
 	//Calculation time step in seconds as derived from CALCULATION_STEP_LENGTH
 	const double calculation_step_length = cfg.get("CALCULATION_STEP_LENGTH", "Snowpack");
-	sn_dt = M_TO_S(calculation_step_length);
+	return M_TO_S(calculation_step_length);
 }
+
+SnowDrift::SnowDrift(const SnowpackConfig& cfg) : saltation(cfg),
+                     enforce_measured_snow_heights( get_bool(cfg, "ENFORCE_MEASURED_SNOW_HEIGHTS", "Snowpack") ), snow_redistribution( get_redistribution(cfg) ), snow_erosion( get_bool(cfg, "SNOW_EROSION", "SnowpackAdvanced") ), alpine3d( get_bool(cfg, "ALPINE3D", "SnowpackAdvanced") ),
+                     sn_dt( get_sn_dt(cfg) ) {}
 
 /**
  * @brief Computes the local mass flux of snow
@@ -81,7 +83,7 @@ SnowDrift::SnowDrift(const SnowpackConfig& cfg) : saltation(cfg),
  * @param angle Slope angle (deg)
  * @return Saltation mass flux (kg m-1 s-1)
  */
-double SnowDrift::compMassFlux(const ElementData& Edata, const double& ustar, const double& slope_angle)
+double SnowDrift::compMassFlux(const ElementData& Edata, const double& ustar, const double& slope_angle) const
 {
 	// Compute basic quantities that are needed: friction velocity, z0, threshold vw
 	// For now assume logarithmic wind profile; TODO change this later
@@ -129,7 +131,7 @@ double SnowDrift::compMassFlux(const ElementData& Edata, const double& ustar, co
  * @param Sdata
  * @param forced_massErode if greater than 0, force the eroded mass to the given value (instead of computing it)
 */
-void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata, double& forced_massErode)
+void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, SurfaceFluxes& Sdata, double& forced_massErode) const
 {
 	size_t nE = Xdata.getNumberOfElements();
 	vector<NodeData>& NDS = Xdata.Ndata;
