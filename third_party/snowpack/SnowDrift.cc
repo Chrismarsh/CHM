@@ -177,11 +177,10 @@ void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, Sur
 
 		Xdata.ErosionMass = 0;
 
-        //don't remove more mass than what exists
+        // Don't remove more mass than what exists in the snow layers; never erode soil.
         double totalmass = 0;
-//        totalmass = Xdata.swe;
 
-        for(int i =0; i<nE;i++)
+        for(size_t i = Xdata.SoilNode; i < nE; i++)
         {
             totalmass += EMS[i].M;
         }
@@ -202,7 +201,10 @@ void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, Sur
                 Xdata.cH = std::max(0.0,Xdata.cH); // ensure we aren't ever so slightly negative
 				NDS[nE].hoar = 0.;
 				Xdata.ErosionMass += EMS[nE].M;
-				Xdata.ErosionLevel = std::min(nE - 1, Xdata.ErosionLevel);
+				if (nE > Xdata.SoilNode)
+					Xdata.ErosionLevel = std::min(nE - 1, Xdata.ErosionLevel);
+				else
+					Xdata.ErosionLevel = Xdata.SoilNode;
 				nErode++;
 				massErode -= EMS[nE].M; //reduce total mass to erode by what we removed
 //				forced_massErode -= massErode;
@@ -240,7 +242,8 @@ void SnowDrift::compSnowDrift(const CurrentMeteo& Mdata, SnowStation& Xdata, Sur
 			if (nErode > 0)
 				Xdata.resize(nE);
 
-            if(nE == 0)
+            // Never erode the soil column; stop as soon as only soil is left.
+            if(nE <= Xdata.SoilNode)
                 break;
 		}
 

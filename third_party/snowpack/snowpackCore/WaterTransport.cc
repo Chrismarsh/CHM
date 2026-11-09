@@ -1149,33 +1149,45 @@ void WaterTransport::transportWater(const CurrentMeteo& Mdata, SnowStation& Xdat
 			}
 			Wres = std::max(0., Wres);
 
-			// Add excess water to the bottom element, such that it does not get lost
-			EMS[0].theta[WATER] += excess_water / EMS[0].L;
+			// Add excess water to the bottom element, such that it does not get lost.
+			// Recompute the air content and the density (and therefore the mass M) right away:
+			// if M is left stale it does not contain the added excess water, so the drained
+			// mass dM below can exceed M and the old safety clamp would silently discard water.
+			if (EMS[0].L > 0.) {
+				EMS[0].theta[WATER] += excess_water / EMS[0].L;
+				EMS[0].theta[AIR] = std::max(0., 1. - EMS[0].theta[WATER] - EMS[0].theta[WATER_PREF] - EMS[0].theta[ICE] - EMS[0].theta[SOIL]);
+				EMS[0].updDensity();
+			} else {
+				// Degenerate bottom element: it cannot store the excess water, route it to runoff.
+				if (EMS[0].theta[SOIL] < Constants::eps2) {
+					Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += excess_water * Constants::density_water;
+					Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += excess_water * Constants::density_water;
+				}
+				Sdata.mass[SurfaceFluxes::MS_SOIL_RUNOFF] += excess_water * Constants::density_water;
+				for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
+					Sdata.load[ii] += (EMS[0].conc[WATER][ii] * excess_water * Constants::density_water / S_TO_H(sn_dt));
+				}
+			}
 			excess_water = 0.;
 
 			const double W0 = EMS[0].theta[WATER];
 			if ((W0 > Wres) // NOTE: if water_layer is set, do not drain water element on top of soil
 				&& !(water_layer && (EMS[0].theta[ICE] < Snowpack::min_ice_content)
 					&& (EMS[0].theta[SOIL] < Constants::eps2))) {
-				double dM = EMS[0].L * Constants::density_water * (W0 - Wres);
-				// Safety check: ensure we don't remove more mass than available
-				if (dM > EMS[0].M) {
-					SPDLOG_WARN("Removing more than available mass on bottom-most layer ! Mass will be 0 !");
-					dM = EMS[0].M; // Limit to available mass
-					EMS[0].theta[WATER] = Wres; // Set to residual water content
-				}
-				EMS[0].M -= dM;
-				assert(EMS[0].M >= (-Constants::eps2)); //mass must be positive
+				const double dM = EMS[0].L * Constants::density_water * (W0 - Wres);
+				// dM is the water mass above the residual content, so it can never exceed the
+				// total mass M once M has been made consistent with theta above.
+				assert(dM <= EMS[0].M * (1. + 1.e-9) + Constants::eps2);
 				EMS[0].theta[WATER] = Wres;
-				EMS[0].theta[AIR] = 1. - EMS[0].theta[WATER] - EMS[0].theta[WATER_PREF] - EMS[0].theta[ICE] - EMS[0].theta[SOIL];
+				EMS[0].theta[AIR] = std::max(0., 1. - EMS[0].theta[WATER] - EMS[0].theta[WATER_PREF] - EMS[0].theta[ICE] - EMS[0].theta[SOIL]);
 				EMS[0].updDensity();
+				assert(EMS[0].M >= (-Constants::eps2)); //mass must be positive
 				assert(EMS[0].Rho>=0. || EMS[0].Rho==IOUtils::nodata); //we want positive density
-				// Note that remaining excess_water should also be routed to MS_SOIL_RUNOFF and MS_SNOWPACK_RUNOFF
 				if (EMS[0].theta[SOIL] < Constants::eps2) {
-					Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += dM + (excess_water * Constants::density_water);
-					Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += dM + (excess_water * Constants::density_water);
+					Sdata.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF] += dM;
+					Sdata.mass[SurfaceFluxes::MS_SURFACE_MASS_FLUX] += dM;
 				}
-				Sdata.mass[SurfaceFluxes::MS_SOIL_RUNOFF] += dM + (excess_water * Constants::density_water);
+				Sdata.mass[SurfaceFluxes::MS_SOIL_RUNOFF] += dM;
 				for (size_t ii = 0; ii < Xdata.number_of_solutes; ii++) {
 					Sdata.load[ii] +=  (EMS[0].conc[WATER][ii] * dM / S_TO_H(sn_dt));
 				}

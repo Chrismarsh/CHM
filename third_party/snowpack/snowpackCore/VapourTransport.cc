@@ -203,6 +203,10 @@ void VapourTransport::LayerToLayer(const CurrentMeteo& Mdata, SnowStation& Xdata
 	if (Xdata.getNumberOfElements() == 0) return;
 	compSurfaceSublimation(Mdata, ql, Xdata, Sdata);
 
+	// In case all snow elements sublimated away in the step above, and there are no soil layers,
+	// there is nothing left to transport through: continue with nE==0 would index EMS[-1] / D_el[0].
+	if (!useSoilLayers && Xdata.getNumberOfNodes() == Xdata.SoilNode+1) return;
+
 	const size_t nN = Xdata.getNumberOfNodes();
 	size_t nE = nN-1;
 	vector<NodeData>& NDS = Xdata.Ndata;
@@ -363,14 +367,22 @@ void VapourTransport::LayerToLayer(const CurrentMeteo& Mdata, SnowStation& Xdata
 		for (e = 0; e < nE; e++) {
 			EMS[e].Qmm = 0.0;
 
+			if (deltaM[e] == 0.) continue;
+
 			if (deltaM[e] < 0.) {
 				// Mass loss: apply mass change first to water, then to ice, based on energy considerations
 				// We can only do this partitioning here in this "simple" way, without checking if the mass is available, because we already limited dM above, based on available ICE + WATER.
-				const double dTh_water = std::max((EMS[e].VG.theta_r * (1. + Constants::eps) - EMS[e].theta[WATER]),
-												  deltaM[e] / (Constants::density_water * EMS[e].L));
-				const double dTh_ice = ( deltaM[e] - (dTh_water * Constants::density_water * EMS[e].L) ) / (Constants::density_ice * EMS[e].L);
+				// Clamp both contributions so that neither water nor ice can become negative (the
+				// upstream fix): without this, a large deltaM can drive theta below zero and the
+				// mass-balance check below throws.
+				const double dTh_water = std::max(  // Take the least negative value from the two options below:
+										  std::min(0., (EMS[e].VG.theta_r * (1. + Constants::eps) - EMS[e].theta[WATER])),   // No water can evaporate below the residual water content, and mass loss must come from ice in those cases
+										  deltaM[e] / (Constants::density_water * EMS[e].L));                                // Mass loss to be applied
+				const double dTh_ice = std::max(-EMS[e].theta[ICE], ( deltaM[e] - (dTh_water * Constants::density_water * EMS[e].L) ) / (Constants::density_ice * EMS[e].L));
+
 				EMS[e].theta[WATER] += dTh_water;
 				EMS[e].theta[ICE] += dTh_ice;
+				EMS[e].theta[AIR] = std::max(0., 1.0 - EMS[e].theta[WATER] - EMS[e].theta[WATER_PREF] - EMS[e].theta[ICE] - EMS[e].theta[SOIL]);
 
 				Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] += dTh_water * Constants::density_water * EMS[e].L;
 				Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] += dTh_ice * Constants::density_ice * EMS[e].L;
@@ -388,13 +400,28 @@ void VapourTransport::LayerToLayer(const CurrentMeteo& Mdata, SnowStation& Xdata
 			} else {  // Mass gain: add water in case temperature at or above melting point, ice otherwise
 				if (EMS[e].Te >= EMS[e].meltfreeze_tk) {
 					EMS[e].theta[WATER] += deltaM[e] / (Constants::density_water * EMS[e].L);
+					if ((Constants::density_water / Constants::density_ice) * (EMS[e].theta[WATER] + EMS[e].theta[WATER_PREF]) > (1. - (EMS[e].theta[ICE] + EMS[e].theta[SOIL]))) {
+						// Not enough pore space to accommodate the liquid water part in frozen state;
+						// clamp theta[WATER] to the available pore space (upstream fix).
+						const double theta_w_in = EMS[e].theta[WATER];
+						EMS[e].theta[WATER] = ((1. - (EMS[e].theta[ICE] + EMS[e].theta[SOIL])) * (Constants::density_ice / Constants::density_water) - EMS[e].theta[WATER_PREF]);
+						prn_msg(__FILE__, __LINE__, "wrn", Date(), "FIXME! Not enough pore space in layer e=%zu from nE=%zu for condensation flux, estimated mass balance error: %f kg/m2", e, nE, EMS[e].L * (EMS[e].theta[WATER] - theta_w_in));
+					}
 					EMS[e].Qmm += (deltaM[e]*Constants::lh_vaporization)/sn_dt/EMS[e].L;	// [w/m^3]
 					Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] += deltaM[e];
 				} else {
 					EMS[e].theta[ICE] += deltaM[e] / (Constants::density_ice * EMS[e].L);
+					if ((Constants::density_water / Constants::density_ice) * (EMS[e].theta[WATER] + EMS[e].theta[WATER_PREF]) > (1. - (EMS[e].theta[ICE] + EMS[e].theta[SOIL]))) {
+						// Not enough pore space to accommodate the liquid water part in frozen state;
+						// clamp theta[ICE] to the available pore space (upstream fix).
+						const double theta_i_in = EMS[e].theta[ICE];
+						EMS[e].theta[ICE] = -1.*((Constants::density_water / Constants::density_ice) * (EMS[e].theta[WATER] + EMS[e].theta[WATER_PREF]) + EMS[e].theta[SOIL] - 1.);
+						prn_msg(__FILE__, __LINE__, "wrn", Date(), "FIXME! Not enough pore space e=%zu from nE=%zu for deposition flux, estimated mass balance error: %f kg/m2", e, nE, EMS[e].L * (EMS[e].theta[ICE] - theta_i_in));
+					}
 					EMS[e].Qmm += (deltaM[e]*Constants::lh_sublimation)/sn_dt/EMS[e].L;	// [w/m^3]
 					Sdata.mass[SurfaceFluxes::MS_SUBLIMATION] += deltaM[e];
 				}
+				EMS[e].theta[AIR] = std::max(0., 1.0 - EMS[e].theta[WATER] - EMS[e].theta[WATER_PREF] - EMS[e].theta[ICE] - EMS[e].theta[SOIL]);
 				EMS[e].M += deltaM[e];
 				assert(EMS[e].M >= (-Constants::eps2)); // mass must be positive
 			}
@@ -403,6 +430,9 @@ void VapourTransport::LayerToLayer(const CurrentMeteo& Mdata, SnowStation& Xdata
 			EMS[e].theta[AIR] = std::max(1. - EMS[e].theta[WATER] - EMS[e].theta[WATER_PREF] - EMS[e].theta[ICE] - EMS[e].theta[SOIL], 0.);
 			if (std::fabs(EMS[e].theta[AIR]) < 1.e-15) {
 				EMS[e].theta[AIR] = 0;
+			}
+			if (std::fabs(EMS[e].theta[WATER]) < 1.e-15) {
+				EMS[e].theta[WATER] = 0;
 			}
 			EMS[e].updDensity();
 			assert(EMS[e].Rho > 0 || EMS[e].Rho == IOUtils::nodata); // density must be positive
@@ -603,10 +633,12 @@ void VapourTransport::compSurfaceSublimation(const CurrentMeteo& Mdata, double& 
 	}*/
 	if (Xdata.getNumberOfElements() == 0) return;
 
+	// Elements may have been removed above, so nN is stale; refresh the top-node index.
+	const size_t nN_final = Xdata.getNumberOfNodes();
 	Sdata.hoar += dHoar;
-	NDS[nN-1].hoar += dHoar;
-	if (NDS[nN-1].hoar < 0.) {
-		NDS[nN-1].hoar = 0.;
+	NDS[nN_final-1].hoar += dHoar;
+	if (NDS[nN_final-1].hoar < 0.) {
+		NDS[nN_final-1].hoar = 0.;
 	}
 
 	// Surface hoar cannot exist when the top element is wet

@@ -22,6 +22,7 @@
 #include "../Utils.h"
 #include "../snowpackCore/Metamorphism.h"
 #include "../StabilityAlgorithms.h"
+#include <iomanip>
 
 using namespace std;
 using namespace mio;

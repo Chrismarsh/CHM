@@ -23,6 +23,7 @@
 #include "../snowpackCore/Aggregate.h"
 
 #include <algorithm>
+#include <iomanip>
 
 using namespace std;
 using namespace mio;

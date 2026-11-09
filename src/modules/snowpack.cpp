@@ -379,6 +379,7 @@ void Lehning_snowpack::init(mesh& domain)
         d.config.addKey("THRESH_RAIN","SnowpackAdvanced","2");
         d.config.addKey("THRESH_RAIN_RANGE","SnowpackAdvanced","2");
         d.config.addKey("WATERTRANSPORTMODEL_SNOW","SnowpackAdvanced","BUCKET");
+        d.config.addKey("ENABLE_VAPOUR_TRANSPORT","SnowpackAdvanced","true");
         d.config.addKey("VARIANT","SnowpackAdvanced","DEFAULT");
         d.config.addKey("ADJUST_HEIGHT_OF_WIND_VALUE","SnowpackAdvanced","false"); // we always provide a 2m wind, even if there is snowcover
         d.config.addKey("HN_DENSITY","SnowpackAdvanced","MEASURED"); //We can then set it in at run time. Do it this way so we can have temporally variable if we want.

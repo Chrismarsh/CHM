@@ -31,7 +31,7 @@
 #include "../Utils.h"
 #include "../Laws_sn.h"
 #include "WaterTransport.h"
-//#include "VapourTransport.h"
+#include "VapourTransport.h"
 #include "../TechnicalSnow.h"
 #include "Metamorphism.h"
 #include "PhaseChange.h"
@@ -39,6 +39,7 @@
 #include <assert.h>
 #include <sstream>
 #include <errno.h>
+#include <cmath>
 
 using namespace mio;
 using namespace std;
@@ -985,6 +986,11 @@ bool Snowpack::compTemperatureProfile(const CurrentMeteo& Mdata, SnowStation& Xd
 				const double T_mean_up = (n<(nN-1))? 0.5*(NDS[n].T+NDS[n+1].T) : IOUtils::nodata;
 				if (T_mean_down>t_crazy_min && T_mean_down<t_crazy_max) U[n] = T_mean_down;
 				else if (T_mean_up>t_crazy_min && T_mean_up<t_crazy_max) U[n] = T_mean_up;
+				// NaN never satisfies any of the comparisons above, so it would silently survive
+				// the reset. Fall back to the previous nodal temperature, and ultimately to a
+				// physically sane value, before applying the cold/hot clamps.
+				if (!std::isfinite(U[n])) U[n] = NDS[n].T;
+				if (!std::isfinite(U[n])) U[n] = IOUtils::C_TO_K(0.);
 				if (U[n] <= t_crazy_min) U[n] = .5*( IOUtils::C_TO_K(0.) + t_crazy_min); //too cold -> reset to avg(Tmin, 0C)
 				if (U[n] >= t_crazy_max) U[n] = .5*( IOUtils::C_TO_K(0.) + t_crazy_max); //too hot -> reset to avg(Tmax, 0C)
 
@@ -1250,7 +1256,15 @@ bool Snowpack::compTemperatureProfile(const CurrentMeteo& Mdata, SnowStation& Xd
 			if ((U[n] > t_crazy_min) && (U[n] < t_crazy_max)) {
 				NDS[n].T = U[n];
 			} else { // Correct for - hopefully transient - crazy temperatures!
-				NDS[n].T = 0.5*(U[n] + NDS[n].T);
+				// Never let NaN/inf propagate: fall back to the previous temperature when the
+				// new one is unusable, and damp towards the previous value otherwise.
+				if (std::isfinite(U[n]) && std::isfinite(NDS[n].T)) {
+					NDS[n].T = 0.5*(U[n] + NDS[n].T);
+				} else if (std::isfinite(U[n])) {
+					NDS[n].T = U[n];
+				} else if (!std::isfinite(NDS[n].T)) {
+					NDS[n].T = Constants::meltfreeze_tk;
+				}
 				if (!alpine3d) { //reduce number of warnings for Alpine3D
 					if (!crazy && (nN > Xdata.SoilNode + 3)) {
 						prn_msg(__FILE__, __LINE__, "wrn", Mdata.date, "Crazy temperature(s)!");
@@ -1964,7 +1978,7 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 {
 	// HACK -> couldn't the following objects be created once in init ?? (with only a reset method ??)
 	WaterTransport watertransport(cfg);
-	//VapourTransport vapourtransport(cfg);
+	VapourTransport vapourtransport(cfg);
 	Metamorphism metamorphism(cfg);
 	SnowDrift snowdrift(cfg);
 	PhaseChange phasechange(cfg);
@@ -2148,7 +2162,7 @@ void Snowpack::runSnowpackModel(CurrentMeteo& Mdata, SnowStation& Xdata, double&
 		double ql = Bdata.ql;	// Variable to keep track of how latent heat is used
 		watertransport.compTransportMass(Mdata, Xdata, Sdata, ql);
 
-//		vapourtransport.compTransportMass(Mdata, ql, Xdata, Sdata);
+		vapourtransport.compTransportMass(Mdata, ql, Xdata, Sdata);
 
 		// See if any SUBSURFACE phase changes are occuring due to updated water content (infiltrating rain/melt water in cold snow layers)
 		if(!coupled_phase_changes && Xdata.getNumberOfElements() != 0) {

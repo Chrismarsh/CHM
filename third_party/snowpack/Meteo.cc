@@ -26,6 +26,7 @@
  *               that this will also improve the little bit too strong melting of the version 8.1
  */
 #include <meteoio/MeteoIO.h>
+#include <iomanip>
 using namespace mio;
 
 #include "Meteo.h"
