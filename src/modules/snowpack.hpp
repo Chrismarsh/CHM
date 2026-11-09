@@ -84,7 +84,7 @@
  * - Snowpack runoff "runoff" [mm]
  * - Snow mass removed "mass_snowpack_removed" [mm]
  * - Total snowpack runoff "sum_runoff"
- * - Total surface sublimation loss "sum_subl"
+ * - Total surface sublimation loss "Lehning_sum_subl"
  * - Sublimation loss "sublimation"
  * - Evaporation loss "evap"
  * - "MS_SWE"
@@ -152,7 +152,7 @@ public:
         mio::Config config;
         double cum_precip;
 
-        double sum_subl;
+        double Lehning_sum_subl;
         bool is_grooming; // Flag indicating if snow grooming is enabled for this face
     };
 

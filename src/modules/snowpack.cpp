@@ -68,7 +68,7 @@ Lehning_snowpack::Lehning_snowpack(config_file cfg)
     provides("runoff");
     provides("mass_snowpack_removed");
     provides("sum_runoff");
-    provides("sum_subl");
+    provides("Lehning_sum_subl");
     provides("sublimation");
     provides("evap");
 
@@ -210,9 +210,17 @@ void Lehning_snowpack::run(mesh_elem &face)
         if(mass > 0)
         {
 
+            // Drift deposition is always snow, but the natural precipitation keeps its own
+            // rain/snow phase. Blend the phase so SNOWPACK removes exactly the natural rain:
+            //   precip_rain = (natural + mass) * psum_ph  ==  natural * natural_ph
+            // This avoids turning the liquid part of the natural precipitation into snowfall.
+            const double natural_psum = Mdata.psum;
+            const double natural_ph   = Mdata.psum_ph;
+
             Mdata.psum += mass;
-            data.cum_precip  += Mdata.psum;
-            Mdata.psum_ph = 0;
+            data.cum_precip  += mass; //only add the drift mass; natural precip already added above
+
+            Mdata.psum_ph = (Mdata.psum > 0.) ? (natural_psum * natural_ph / Mdata.psum) : 0.;
         }
         else
         {
@@ -317,8 +325,8 @@ void Lehning_snowpack::run(mesh_elem &face)
     (*face)["runoff"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF];
     (*face)["evap"_s]=surface_fluxes.mass[SurfaceFluxes::MS_EVAPORATION];
 //    (*face)["sum_runoff"_s]=  (*face["sum_runoff"_s] + surface_fluxes.mass[SurfaceFluxes::MS_SNOWPACK_RUNOFF]);
-    data.sum_subl +=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
-    (*face)["sum_subl"_s]=   data.sum_subl ;
+    data.Lehning_sum_subl +=surface_fluxes.mass[SurfaceFluxes::MS_SUBLIMATION];
+    (*face)["Lehning_sum_subl"_s]=   data.Lehning_sum_subl ;
 
 
     (*face)["MS_SWE"_s]=surface_fluxes.mass[SurfaceFluxes::MS_SWE];
@@ -498,7 +506,7 @@ void Lehning_snowpack::init(mesh& domain)
         d.meteo = std::make_shared<Meteo>( (d.config));
         d.stability = std::make_shared<Stability> ( (d.config), false);
 
-        d.sum_subl = 0;
+        d.Lehning_sum_subl = 0;
 
 
     }
@@ -575,7 +583,7 @@ void Lehning_snowpack::checkpoint(mesh& domain, netcdf& chkpt)
     create1D("snowpack:dIntEnergy");
     create1D("snowpack:ErosionMass");
     create1D("snowpack:cum_precip");
-    create1D("snowpack:sum_subl");
+    create1D("snowpack:Lehning_sum_subl");
     create1D("snowpack:hn");
     create1D("snowpack:rho_hn");
     
@@ -625,7 +633,7 @@ void Lehning_snowpack::checkpoint(mesh& domain, netcdf& chkpt)
     std::vector<double> buf_dIntEnergy(nFaces);
     std::vector<double> buf_ErosionMass(nFaces);
     std::vector<double> buf_cum_precip(nFaces);
-    std::vector<double> buf_sum_subl(nFaces);
+    std::vector<double> buf_Lehning_sum_subl(nFaces);
     std::vector<double> buf_hn(nFaces);
     std::vector<double> buf_rho_hn(nFaces);
     
@@ -681,7 +689,7 @@ void Lehning_snowpack::checkpoint(mesh& domain, netcdf& chkpt)
         buf_dIntEnergy[i] = Xdata.dIntEnergy;
         buf_ErosionMass[i] = Xdata.ErosionMass;
         buf_cum_precip[i] = d.cum_precip;
-        buf_sum_subl[i] = d.sum_subl;
+        buf_Lehning_sum_subl[i] = d.Lehning_sum_subl;
         buf_hn[i] = Xdata.hn;
         buf_rho_hn[i] = Xdata.rho_hn;
         
@@ -741,7 +749,7 @@ void Lehning_snowpack::checkpoint(mesh& domain, netcdf& chkpt)
     nc.getVar("snowpack:dIntEnergy").putVar(buf_dIntEnergy.data());
     nc.getVar("snowpack:ErosionMass").putVar(buf_ErosionMass.data());
     nc.getVar("snowpack:cum_precip").putVar(buf_cum_precip.data());
-    nc.getVar("snowpack:sum_subl").putVar(buf_sum_subl.data());
+    nc.getVar("snowpack:Lehning_sum_subl").putVar(buf_Lehning_sum_subl.data());
     nc.getVar("snowpack:hn").putVar(buf_hn.data());
     nc.getVar("snowpack:rho_hn").putVar(buf_rho_hn.data());
     
@@ -798,7 +806,7 @@ void Lehning_snowpack::load_checkpoint(mesh& domain, netcdf& chkpt)
     std::vector<double> buf_dIntEnergy(nFaces);
     std::vector<double> buf_ErosionMass(nFaces);
     std::vector<double> buf_cum_precip(nFaces);
-    std::vector<double> buf_sum_subl(nFaces);
+    std::vector<double> buf_Lehning_sum_subl(nFaces);
     std::vector<double> buf_hn(nFaces);
     std::vector<double> buf_rho_hn(nFaces);
     
@@ -844,7 +852,7 @@ void Lehning_snowpack::load_checkpoint(mesh& domain, netcdf& chkpt)
     nc.getVar("snowpack:dIntEnergy").getVar(buf_dIntEnergy.data());
     nc.getVar("snowpack:ErosionMass").getVar(buf_ErosionMass.data());
     nc.getVar("snowpack:cum_precip").getVar(buf_cum_precip.data());
-    nc.getVar("snowpack:sum_subl").getVar(buf_sum_subl.data());
+    nc.getVar("snowpack:Lehning_sum_subl").getVar(buf_Lehning_sum_subl.data());
     nc.getVar("snowpack:hn").getVar(buf_hn.data());
     nc.getVar("snowpack:rho_hn").getVar(buf_rho_hn.data());
     
@@ -926,7 +934,7 @@ void Lehning_snowpack::load_checkpoint(mesh& domain, netcdf& chkpt)
         Xdata.dIntEnergy = buf_dIntEnergy[i];
         Xdata.ErosionMass = buf_ErosionMass[i];
         d.cum_precip = buf_cum_precip[i];
-        d.sum_subl = buf_sum_subl[i];
+        d.Lehning_sum_subl = buf_Lehning_sum_subl[i];
         Xdata.hn = buf_hn[i];
         Xdata.rho_hn = buf_rho_hn[i];
         
@@ -1122,7 +1130,7 @@ void Lehning_snowpack::load_checkpoint(mesh& domain, netcdf& chkpt)
         
         (*face)["mass_snowpack_removed"_s] = Xdata.ErosionMass;
         (*face)["snow_albedo"_s] = Xdata.Albedo;
-        (*face)["sum_subl"_s] = d.sum_subl;
+        (*face)["Lehning_sum_subl"_s] = d.Lehning_sum_subl;
     }
     
     SPDLOG_INFO("Snowpack checkpoint loaded successfully for {} faces", nFaces);
