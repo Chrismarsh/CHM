@@ -798,15 +798,28 @@ bool VapourTransport::compDensityProfile(const CurrentMeteo& Mdata, SnowStation&
 		A.makeCompressed();
 
 		solver.compute(A);
-		if (solver.info() != Success) {
-			std::ostringstream err_msg;
-			err_msg << "Error computing 'A' with Eigen: " << Mdata.date << solver.info();
-			throw mio::IOException(err_msg.str(), AT);
+		bool solve_ok = (solver.info() == Success);
+		if (solve_ok) {
+			// Solve the equation
+			xx = solver.solve(b);
+			solve_ok = (solver.info() == Success);
 		}
 
-		// Solve the equation
-		xx = solver.solve(b);
-		if (solver.info() != Success) {
+		if (!solve_ok) {
+			// BiCGSTAB occasionally stagnates on these small systems even when the matrix is
+			// well conditioned. The system is tridiagonal and tiny, so a direct factorisation
+			// is cheap; use it as a fallback instead of aborting the whole simulation.
+			prn_msg(__FILE__, __LINE__, "wrn", Mdata.date,
+			        "Vapour transport solver did not converge (Eigen info=%d, nN=%zu); using a direct solve",
+			        (int)solver.info(), nN);
+			SparseLU<SparseMatrix<double>> lu(A);
+			if (lu.info() == Success) {
+				xx = lu.solve(b);
+				solve_ok = (lu.info() == Success);
+			}
+		}
+
+		if (!solve_ok) {
 			std::ostringstream err_msg;
 			err_msg << "Error solving 'b' with Eigen: " << Mdata.date << solver.info();
 			throw mio::IOException(err_msg.str(), AT);
