@@ -54,6 +54,7 @@ set(MODULE_SRCS
 		modules/scale_wind_vert.cpp
 		modules/sub_grid.cpp
     	modules/snow_slide.cpp
+        modules/snowslide_pde.cpp
 		modules/threshold_p_phase.cpp
 		modules/solar.cpp
 		modules/fast_shadow.cpp
@@ -413,6 +414,7 @@ if (BUILD_TESTS)
 
 	set(TEST_SRCS
 			tests/test_station.cpp
+			tests/test_snowslide_pde.cpp
 			tests/test_interpolation.cpp
 			tests/test_timeseries.cpp
 			tests/test_core.cpp
@@ -465,6 +467,16 @@ if (BUILD_TESTS)
 	if(NOT USE_OMP AND CHM_HAS_FNO_OPENMP)
 	  target_compile_options(runUnitTests PRIVATE -fno-openmp)
 	endif()
+
+    foreach(ranks RANGE 1 3)
+        if(NOT MPIEXEC_MAX_NUMPROCS OR ranks LESS_EQUAL MPIEXEC_MAX_NUMPROCS)
+            add_test(NAME snowslide_pde_mpi_${ranks}
+                COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${ranks} ${MPIEXEC_PREFLAGS}
+                        $<TARGET_FILE:runUnitTests> ${MPIEXEC_POSTFLAGS}
+                        --gtest_filter=SnowSlidePhysics.*:Boundary/SnowSlideFan.*)
+            set_tests_properties(snowslide_pde_mpi_${ranks} PROPERTIES PROCESSORS ${ranks})
+        endif()
+    endforeach()
 
 	#add the `make check` target that runs the unit tests
 	set(TEST_DIR ${CMAKE_BINARY_DIR}/tests)

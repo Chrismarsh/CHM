@@ -1474,7 +1474,7 @@ std::pair<Point_2,Point_2> face<Gt, Fb>::edge_vertexes(int i)
 {
     auto a = this->vertex(_domain->ccw(i))->point();
     auto b = this->vertex(_domain->cw(i))->point();
-    return std::make_pair(a,b);
+    return {Point_2(a.x(), a.y()), Point_2(b.x(), b.y())};
 };
 template < class Gt, class Fb>
 Point_2 face<Gt, Fb>::edge_midpoint(int i)

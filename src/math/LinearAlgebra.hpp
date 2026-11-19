@@ -69,6 +69,7 @@ namespace math
         {
             int numIters;
             double residual;
+            bool converged;
         };
 
         class NearestNeighborProblem
@@ -108,7 +109,7 @@ namespace math
 
             void rhsSumIntoGlobalValue(global_ordinal_type global_idx, double val);
 
-            SolveConverge Solve();
+            SolveConverge Solve(bool throw_on_failure = true);
 
             double getSolutionMax();
             double getRhsMax();

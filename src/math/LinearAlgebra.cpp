@@ -232,27 +232,19 @@ namespace math
             m_rhs->sumIntoGlobalValue(global_idx, 0, val, true);
         }
 
-        SolveConverge NearestNeighborProblem::Solve()
+        SolveConverge NearestNeighborProblem::Solve(bool throw_on_failure)
         {
             m_matrix->fillComplete();
             m_preconditioner->compute();
 
             // Solve the linear system.
             m_solver->reset(Belos::Problem);
-            {
-                Belos::ReturnType solveResult = m_solver->solve();
-                if (solveResult != Belos::Converged)
-                {
-                    if (m_comm->getRank() == 0)
-                    {
-                        CHM_THROW_EXCEPTION(module_error, "Belos solver failed to converge");
-                    }
-                    // return EXIT_FAILURE;
-                }
-            }
+            const bool converged = m_solver->solve() == Belos::Converged;
+            if (!converged && throw_on_failure)
+                CHM_THROW_EXCEPTION(module_error, "Belos solver failed to converge");
 
-            // Get (and return) convergence info
             SolveConverge tmp;
+            tmp.converged = converged;
             tmp.numIters = m_solver->getNumIters();
             tmp.residual = m_solver->achievedTol();
             return tmp;
