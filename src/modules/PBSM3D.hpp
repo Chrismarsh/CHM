@@ -32,7 +32,7 @@
 #include "math/coordinates.hpp"
 #include "math/LinearAlgebra.hpp"
 
-#include <physics/PhysConst.h>
+#include <physics/PhysConst.hpp>
 #include "physics/Atmosphere.h"
 
 #include <meteoio/MeteoIO.h>
