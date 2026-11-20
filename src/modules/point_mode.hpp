@@ -113,7 +113,7 @@ public:
     ~point_mode();
 
     virtual void run(mesh_elem &face);
-
+    virtual void init(mesh &domain);
 
     bool t ;
     bool rh ;
@@ -126,6 +126,9 @@ public:
     bool iswr_direct ;
     bool U_2m_above_srf ;
     bool T_g;
-
-
+    bool svf;
+    bool unit_test_new_modules;
+    bool unit_test_glacier_module;
+    double elevation = 0.0;
+    double soil_storage_at_freeze = 0.0;
 };
