@@ -63,6 +63,11 @@ core::~core()
         itr.first.reset();
     }
 
+    // The partitioner also constructs a core without initializing CHM logging.
+    if (log_file_path.empty())
+    {
+        return;
+    }
 
     // flush the logs and close the fhandles
     spdlog::shutdown();
@@ -1529,9 +1534,7 @@ void core::init(int argc, char **argv)
         boost::filesystem::create_directories(log_path);
     _comm_world.barrier();
 
-
-    log_file_path = log_path / log_name;
-    log_name =  log_file_path.string();
+    log_name = (log_path / log_name).string();
 
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     console_sink->set_level(spdlog::level::debug);
@@ -1546,6 +1549,7 @@ void core::init(int argc, char **argv)
     // make default logger
     // logger name is the current MPI rank
     spdlog::set_default_logger(std::make_shared<spdlog::logger>("rank " + std::to_string(_comm_world.rank()), spdlog::sinks_init_list({console_sink, file_sink})));
+    log_file_path = log_name;
 //    spdlog::set_pattern("[%P] [%s:%!:%#] [%^%l%$] %v");
     spdlog::set_level(spdlog::level::debug); // this is needed as well as the above levels
     spdlog::flush_on(spdlog::level::debug);
