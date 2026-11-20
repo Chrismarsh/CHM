@@ -2065,10 +2065,12 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
   std::vector<boost::mpi::request> reqs;
 
+  std::map<int, std::vector<double>> send_buffers;
   for(auto it : local_faces_to_send) {
     auto partner_id = it.first;
     auto faces = it.second;
-    std::vector<double> send_buffer(faces.size());
+    auto& send_buffer = send_buffers[partner_id];
+    send_buffer.resize(faces.size());
     std::transform(faces.begin(), faces.end(),
 		   send_buffer.begin(),
 		   [var](mesh_elem e){
@@ -2093,7 +2095,7 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
 
     // Send variables
     int send_tag = generate_unique_send_tag(_comm_world.rank(), partner_id);
-    _comm_world.isend(partner_id, send_tag, send_buffer);
+    reqs.push_back(_comm_world.isend(partner_id, send_tag, send_buffer));
 
   }
 
@@ -2108,7 +2110,6 @@ void triangulation::ghost_neighbors_communicate_variable(const uint64_t& var)
   for(auto it : ghost_faces_to_recv) {
     auto partner_id = it.first;
 
-    // Note only recv gets added to the list of requests to watch for
     int recv_tag = generate_unique_recv_tag(_comm_world.rank(), partner_id);
     reqs.push_back(_comm_world.irecv(partner_id, recv_tag, recv_buffer[partner_id] ));
   }
