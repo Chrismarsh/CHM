@@ -414,6 +414,11 @@ void PBSM3D::run(mesh& domain)
     suspension_present = false;
     deposition_present = false;
 
+    // The drift mass is only written when deposition_present is true; make sure any quiet
+    // step does not leave the previous step's value in place for the snowpack to ingest.
+    for (size_t i = 0; i < ntri; i++)
+        (*domain->face(i))["drift_mass"_s] = 0.;
+
 #pragma omp parallel
     {
         // Helpers for the u* iterative solver

@@ -22,7 +22,7 @@ spack:
     - "armadillo"
     - "tbb"
     - "eigen"
-    - "meteoio"
+    - "meteoio@2.11.0"
     - "func@2.2.0: ~openmp"
     - "trilinos@15: +mpi"
     - "jemalloc"

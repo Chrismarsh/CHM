@@ -40,9 +40,6 @@
 	#define SN_VERSION STR2( _VERSION )
 #endif
 
-/// @brief Initial value for stability parameter
-#define INIT_STABILITY 999.
-
 namespace Constants {
 	const double undefined = -999.; ///<This is the snowpack undefined value
 	const int iundefined = -999; ///<This is the snowpack undefined value
@@ -55,7 +52,7 @@ namespace Constants {
 
 	const double solcon = 1366.1; ///< Total Solar Irradiance (W m-2) (Froehlich, 2006)
 
-	const double gas_constant = 461.9; ///< (J mol-1 K-1)
+	const double gas_constant = 461.9; ///< (J kg-1 K-1)
 	const double gas_constant_air = 287.0; ///< for air (J kg-1 K-1)
 	const double gas_constant_mol = 8.31;  ///< (J mol-1 K-1)
 	const double karman = 0.4; ///< Karman constant
@@ -63,12 +60,14 @@ namespace Constants {
 	/// @name Albedo (1)
 	//@{
 	const double min_albedo = 0.3;
-	const double max_albedo = 0.99;
+	const double max_albedo = 0.9;
 	const double glacier_albedo = 0.3;
 	//@}
 	/// @name Emissivity (1)
 	//@{
 	const double emissivity_snow = 0.98;
+  const double emissivity_soil = 0.95;
+
 	//@}
 	/// @name Density (kg m-3)
 	//@{
@@ -76,12 +75,6 @@ namespace Constants {
 	const double density_ice = 917.0; ///< At T = 0 degC
 	const double density_water = 1000.0; ///<  At T = 0 degC
 	const double density_vapor = 1.0; ///< Approximation: use ideal gas law
-	/// @name Max and min densities (kg m-3)
-	//@{
-	const double min_rho = 5.0;
-	const double max_rho = 1000.0;
-	//@}
-	//@}
 
 	///@name Specific heat (J kg-1 K-1)
 	//@{
@@ -106,8 +99,7 @@ namespace Constants {
 
 	///@name Phase change constants
 	//@{
-	const double melting_tk = 273.15; ///< (K)
-	const double freezing_tk = 273.15; ///< (K)
+	const double meltfreeze_tk = 273.15; ///< (K)
 	const double triple_point_t = 273.16; ///< (K)
 	const double triple_point_p = 611.73; ///< (Pa)
 	const double lh_sublimation = 2.838e6; ///< (J kg-1) (solid to vapor)

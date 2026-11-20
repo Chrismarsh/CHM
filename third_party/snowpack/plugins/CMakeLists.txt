@@ -19,8 +19,7 @@ ENDIF(PLUGIN_IMISIO)
 
 IF(PLUGIN_CAAMLIO)
 	SET(plugins_sources ${plugins_sources} plugins/CaaMLIO.cc)
-	FIND_PACKAGE(LibXml2 REQUIRED)
-	INCLUDE_DIRECTORIES(SYSTEM ${LIBXML2_INCLUDE_DIR})
-	LINK_DIRECTORIES(${LIBXML2_LIBRARIES})
-	SET(extra_libs ${extra_libs} ${LIBXML2_LIBRARIES})
+	SET(plugins_sources ${plugins_sources} plugins/pugixml/pugixml.cpp)
+	set_source_files_properties(plugins/pugixml/pugixml.cpp PROPERTIES COMPILE_FLAGS "-w")
 ENDIF(PLUGIN_CAAMLIO)
+
