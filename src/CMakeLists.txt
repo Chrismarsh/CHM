@@ -77,6 +77,7 @@ set(CHM_SRCS
 		metdata.cpp
 
 		physics/Atmosphere.cpp
+		physics/PhysFunc.cpp
 
 		mesh/triangulation.cpp
         mesh/ugrid_writer.cpp

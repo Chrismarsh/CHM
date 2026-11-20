@@ -28,7 +28,7 @@
 #include "module_base.hpp"
 #include <meteoio/MeteoIO.h>
 #include <physics/Atmosphere.h>
-#include <physics/PhysConst.h>
+#include <physics/PhysConst.hpp>
 #include <physics/Vegetation.h>
 #include <string>
 

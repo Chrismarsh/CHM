@@ -173,14 +173,14 @@ void Simple_Canopy::run(mesh_elem &face)
     // Canopy temperature is first approximated by the air temperature.
     double T1 = ta + mio::Cst::t_water_freezing_pt; // Canopy temperature (C to K)
 
-    double rho = air_pressure*1000/(PhysConst::Rgas*T1); // density of Air (pressure kPa to Pa = *1000)
+    double rho = air_pressure*1000/(PhysConst::RgasDry*T1); // density of Air (pressure kPa to Pa = *1000)
 
     double U1 = U_R; // Wind speed (m/s) at height Z_vw [m] (top of canopy)
 
     // Aerodynamic resistance of canopy
     ra = (log(Zref/Z0snow)*log(Zwind/Z0snow))/pow(PhysConst::kappa,2)/U1; // (s/m)
 
-    double deltaX = 0.622*PhysConst::Ls*Qs(air_pressure, T1)/(PhysConst::Rgas*(pow(T1,2))); // Must be (kg K-1)
+    double deltaX = 0.622*PhysConst::Ls*Qs(air_pressure, T1)/(PhysConst::RgasDry*(pow(T1,2))); // Must be (kg K-1)
 
     double q = (rh/100)*Qs(air_pressure, T1); // specific humidity (kg/kg)
 
