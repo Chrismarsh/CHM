@@ -76,6 +76,21 @@ protected:
 //    ASSERT_ANY_THROW(c1.init(2,argv));
 //}
 
+TEST_F(CoreTest, PreservesDefaultLoggerWhenCoreWasNeverInitialized)
+{
+    const auto previous_logger = spdlog::default_logger();
+    const auto logger = std::make_shared<spdlog::logger>("partition-test");
+    spdlog::set_default_logger(logger);
+
+    {
+        core temporary_core;
+    }
+
+    EXPECT_EQ(spdlog::default_logger(), logger);
+    spdlog::drop(logger->name());
+    spdlog::set_default_logger(previous_logger);
+}
+
 TEST_F(CoreTest,ThrowsOnInvalidFile)
 {
 
