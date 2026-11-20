@@ -26,55 +26,52 @@
 namespace PhysConst {
     /********* Physical Constants ************/
     // Stefan-Boltzmann constant (W m-2 K-4)
-    inline double sbc() { return mio::Cst::stefan_boltzmann; }
+    const double sbc = mio::Cst::stefan_boltzmann;
     
     // Gas constant for dry air (J kg-1 K-1)
-    inline double RgasDry() { return mio::Cst::gaz_constant_dry_air; }
+    const double RgasDry = mio::Cst::gaz_constant_dry_air;
 	// Gas constant for water vapour (J kg-1 K-1) 
-    inline double RgasVapour() { return mio::Cst::gaz_constant_water_vapor; }
+    const double RgasVapour = mio::Cst::gaz_constant_water_vapor;
     // Von Karman constant (dimensionless)
-    constexpr double kappa() { return 0.4; }
+    constexpr double kappa = 0.4;
     
     // Latent heat of sublimation (J kg-1)
-    inline double Ls() { return mio::Cst::l_water_sublimation; }
+    const double Ls = mio::Cst::l_water_sublimation;
     
     // Specific heat of dry air at constant pressure (J kg-1 K-1)
-    inline double Cp() { return mio::Cst::specific_heat_air; }
+    const double Cp = mio::Cst::specific_heat_air;
     
     // Specific heat of ice (J kg-1 K-1)
-    inline double Ci() { return mio::Cst::specific_heat_ice; }
+    const double Ci = mio::Cst::specific_heat_ice;
     
     // Molecular weight of water (kg kmol-1)
-    constexpr double M() { return 18.01; }
+    constexpr double M = 18.01;
     
     // Universal gas constant (J mol-1 K-1)
-    inline double R() { return mio::Cst::gaz_constant; }
+    const double R = mio::Cst::gaz_constant;
     
     // Density of ice (kg m-3)
-    constexpr double rho_ice() { return 917.0; }
-    
+    constexpr double rho_ice = 917.0;
+
     // Volumetric heat capacity of soil (J m-3 K-1)
-    constexpr double Cs() { return 1.28E+06; }
+    constexpr double Cs = 1.28E+06;
     
     // Latent heat of vaporization, constant value (J kg-1)
-    constexpr double Lv() { return 2.501e6; }
-    
-    // Latent heat of vaporization with temperature dependence (J kg-1)
-    double Lv(double T);
+    constexpr double Lv =  2.501e6;
     
     // Latent heat of fusion (J kg-1)
-    constexpr double Lf() { return 0.334e6; }
+    constexpr double Lf = 0.334e6;
     
     // Stefan-Boltzmann constant, day units (MJ m-2 d-1)
-    constexpr double SB() { return 4.899e-09; }
+    constexpr double SB = 4.899e-09;
     
     // Ratio of molecular weights of water vapor to dry air (dimensionless)
-    constexpr double em() { return 0.622; }
+    constexpr double em = 0.622;
 
     // Acceleration due to gravity (m s-2)
-    constexpr auto g() {return 9.81;}
+    constexpr auto g = 9.81;
     
     // Reference density of water (kg m-3)
-    constexpr double water_reference_density() { return 1000.0; }
+    constexpr double water_reference_density = 1000.0;
 
 }
