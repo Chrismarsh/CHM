@@ -2500,9 +2500,17 @@ void core::run()
             SPDLOG_ERROR(e.what());
         }
 
+        // If any rank failed, stop every rank: otherwise the surviving ranks keep iterating
+        // and block in the next collective, and the job hangs instead of finishing with the
+        // (partial) output that was written up to this point.
+        {
+            bool my_failed = done;
+            boost::mpi::all_reduce(_comm_world, my_failed, done, boost::mpi::maximum<bool>());
+        }
 
         // ensure all ranks agree on this
-        bool my_shouldckp = _checkpoint_opts.should_checkpoint(current_ts,
+        // (never checkpoint a timestep that failed: the state on the failing rank is not usable)
+        bool my_shouldckp = !done && _checkpoint_opts.should_checkpoint(current_ts,
                                                (max_ts-1) == current_ts, // -1 because current_ts is 0 indexed
                                                _hpc_scheduler_info,
                                                _comm_world,

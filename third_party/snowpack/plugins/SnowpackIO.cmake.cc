@@ -20,8 +20,9 @@
 
 #include "SnowpackIO.h"
 
-#include "AsciiIO.h"
 #include "SmetIO.h"
+#include "AsciiIO.h"
+#include <stdexcept>
 
 #cmakedefine PLUGIN_IMISIO
 #cmakedefine PLUGIN_CAAMLIO
@@ -45,8 +46,16 @@ SnowpackIO::SnowpackIO(const SnowpackConfig& cfg):
 	output_ts_as_ascii(false), output_ts_as_smet(false), output_haz_as_imis(false)
 
 {
+	//enforce UTF8 output globally (ie also for cout, cerr)
+	std::locale utf8;
+	try {
+		utf8.global(std::locale(std::locale(), std::locale("C.UTF-8"), std::locale::ctype));
+	} catch (std::runtime_error&) {
+		//std::cerr << "[W] Could not force the output to be UTF8, some special characters might not be shown properly in output files.\n";
+	}
+	
 	//Format of initial snow profile:
-	const string in_snow = cfg.get("SNOW", "Input");
+	const std::string in_snow = cfg.get("SNOW", "Input", "SMET");
 	if (in_snow == "SNOOLD") {
 		input_snow_as_ascii = true;
 	} else if (in_snow == "CAAML") {
@@ -57,23 +66,28 @@ SnowpackIO::SnowpackIO(const SnowpackConfig& cfg):
 		throw InvalidArgumentException("Invalid input snow profile format '"+in_snow+"'. Please choose from SMET, CAAML, SNOOLD", AT);
 
 	//Format of transitional and final snow profile(s):
-	const string out_snow = cfg.get("SNOW", "Output");
-	if (out_snow == "SNOOLD") {
-		output_snow_as_ascii = true;
-		vecExtension.push_back("snoold");	//Snow-cover profile file (I/O)
-	} else if (out_snow == "CAAML") {
-		output_snow_as_caaml = true;
-		vecExtension.push_back("haz");	//Snow-cover profile file (I/O)
-		vecExtension.push_back("caaml");	//Snow-cover profile file (I/O & SnopViz)
-		vecExtension.push_back("acaaml");	//Aggregated snow-cover profile file (I/O & SnopViz)
-	} else if (out_snow == "SMET") {
-		output_snow_as_smet = true;
-		vecExtension.push_back("haz");	//Snow-cover profile file (I/O)
-		vecExtension.push_back("sno");	//Snow-cover profile file (I/O)
-	} else
-		throw InvalidArgumentException("Invalid output snow profile format '"+out_snow+"'. Please choose from SMET, CAAML, SNOOLD", AT);
+	const bool snow_out = cfg.get("SNOW_WRITE", "Output");
+	const bool haz_out = cfg.get("HAZ_WRITE", "Output");
+	const bool a3d_pts = cfg.get("ALPINE3D_PTS", "SnowpackAdvanced");
+	if (snow_out || a3d_pts) {
+		const string out_snow = cfg.get("SNOW", "Output");
+		if (out_snow == "SNOOLD") {
+			output_snow_as_ascii = true;
+			vecExtension.push_back("snoold");		//Snow-cover profile file (I/O)
+		} else if (out_snow == "CAAML") {
+			output_snow_as_caaml = true;
+			if (haz_out) vecExtension.push_back("haz");	//Snow-cover profile file (I/O)
+			vecExtension.push_back("caaml");		//Snow-cover profile file (I/O & SnopViz)
+			vecExtension.push_back("acaaml");		//Aggregated snow-cover profile file (I/O & SnopViz)
+		} else if (out_snow == "SMET") {
+			output_snow_as_smet = true;
+			if (haz_out) vecExtension.push_back("haz");	//Snow-cover profile file (I/O)
+			vecExtension.push_back("sno");			//Snow-cover profile file (I/O)
+		} else
+			throw InvalidArgumentException("Invalid output snow profile format '"+out_snow+"'. Please choose from SMET, CAAML, SNOOLD", AT);
+	}
 
-	std::vector<string> vecProfileFmt = cfg.get("PROF_FORMAT", "Output");
+	const std::vector<string> vecProfileFmt = cfg.get("PROF_FORMAT", "Output");
 	if (vecProfileFmt.size() > 3) {
 		throw InvalidArgumentException("The key PROF_FORMAT in [Output] can take three values at most", AT);
 	} else {
@@ -97,7 +111,7 @@ SnowpackIO::SnowpackIO(const SnowpackConfig& cfg):
 	//Format of meteo time series:
 	const bool ts_out = cfg.get("TS_WRITE", "Output");
 	if (ts_out==true) {
-		const std::string ts_format = cfg.get("TS_FORMAT", "Output");
+		const std::string ts_format = cfg.get("TS_FORMAT", "Output", "SMET");
 		if (ts_format=="SMET") {
 			output_ts_as_smet = true;
 			vecExtension.push_back("smet");	//Classical time series (meteo, snow temperatures, etc.)
@@ -107,7 +121,7 @@ SnowpackIO::SnowpackIO(const SnowpackConfig& cfg):
 		} else
 			throw InvalidArgumentException("The key TS_FORMAT in [Output] takes only SMET or MET as value", AT);
 	}
-	
+
 	vecExtension.push_back("ini");	//Record of run configuration
 
 	//set the "plugins" pointers
@@ -138,6 +152,7 @@ SnowpackIO::~SnowpackIO()
 	if (asciiio != NULL) delete asciiio;
 	if (caamlio != NULL) delete caamlio;
 	if (imisdbio != NULL) delete imisdbio;
+	locale::global(locale("C"));  //To suppress "still reachable" reports by valgrind, set locale back to default
 }
 
 std::vector<std::string> SnowpackIO::getExtensions()
@@ -159,16 +174,16 @@ bool SnowpackIO::snowCoverExists(const std::string& i_snowfile, const std::strin
 }
 
 void SnowpackIO::readSnowCover(const std::string& i_snowfile, const std::string& stationID,
-                               SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata)
+                               SN_SNOWSOIL_DATA& SSdata, ZwischenData& Zdata, const bool& read_salinity)
 {
 	if (input_snow_as_ascii) {
-		asciiio->readSnowCover(i_snowfile, stationID, SSdata, Zdata);
+		asciiio->readSnowCover(i_snowfile, stationID, SSdata, Zdata, read_salinity);
 #ifdef PLUGIN_CAAMLIO
 	} else if (input_snow_as_caaml) {
-		caamlio->readSnowCover(i_snowfile, stationID, SSdata, Zdata);
+		caamlio->readSnowCover(i_snowfile, stationID, SSdata, Zdata, read_salinity);
 #endif
 	} else {
-		smetio->readSnowCover(i_snowfile, stationID, SSdata, Zdata);
+		smetio->readSnowCover(i_snowfile, stationID, SSdata, Zdata, read_salinity);
 	}
 }
 

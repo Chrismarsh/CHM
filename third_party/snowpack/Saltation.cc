@@ -20,8 +20,8 @@
 
 #include <meteoio/MeteoIO.h>
 
-#include "Constants.h"
 #include "Saltation.h"
+#include "Constants.h"
 #include "Utils.h"
 #include <cmath>
 
@@ -63,10 +63,14 @@ const double Saltation::salt_height = 0.07;
  * non-static section                                       *
  ************************************************************/
 
-Saltation::Saltation(const SnowpackConfig& cfg) : saltation_model()
+static std::string get_model(const SnowpackConfig& cfg) 
 {
-	cfg.getValue("SALTATION_MODEL", "SnowpackAdvanced", saltation_model);
+	std::string model;
+	cfg.getValue("SALTATION_MODEL", "SnowpackAdvanced", model);
+	return model;
 }
+
+Saltation::Saltation(const SnowpackConfig& cfg) : saltation_model( get_model(cfg) ) {}
 
 /**
  * @brief Returns the wind profile
@@ -116,7 +120,7 @@ double Saltation::sa_vw2(const double& z, const double& tauA, const double& tauS
 
 	double u = 0., z_act = z0;
 	while (z_act < z) {
-		const double dz = 0.00002;
+		static const double dz = 0.00002;
 		z_act += dz;
 		const double ustarz = ustar * (1. - (1. - sqrt(r)) *  exp(-z_act / hs));
 		const double dudz = ustarz / Saltation::karman / z_act;
@@ -146,8 +150,8 @@ bool Saltation::sa_Traject(const double& u0, const double& angle_e_rad, const do
                            const double& tauA, const double& tauS, const double& z0,
                            double& ubar, double& u_i, double& angle_i_rad, double& t_i, double& z_max)
 {
-	const double DT = 0.0005; //time step in seconds
-	const double vis = 1.74e-5; //viscosity
+	static const double DT = 0.0005; //time step in seconds
+	static const double vis = 1.74e-5; //viscosity
 
 	// Initialize velocities of particle and position
 	double xdot = u0 * cos(angle_e_rad);
@@ -286,8 +290,8 @@ double Saltation::sa_AeroEntrain(const double& z0, const double& tauS, const dou
 	const double u0 = Saltation::ratio_ve_ustar * sqrt((tauS - tau_th) / Constants::density_air);
 	//  u0 = 3.7*sqrt(tauS-tau_th);
 
-	const double eps = 0.001;
-	const int maxit = 40;
+	static const double eps = 0.001;
+	static const int maxit = 40;
 	int iter=0;
 	double tauA_old, Nae;
 	double tauA = .5 * (tauS + tau_th);
@@ -391,14 +395,18 @@ int Saltation::sa_TestSaltation(const double& z0, const double& tauS, const doub
  * @return bool
 */
 bool Saltation::compSaltation(const double& i_tauS, const double& tau_th, const double& slope_angle, const double& dg,
-                                  double& massflux, double& c_salt)
+                                  double& massflux, double& c_salt) const
 {
 	if (saltation_model == "SORENSEN") { // Default model
-		// Sorensen
+		// Sorensen (1991), parameters from Lehning et al. (2008)
+		// Note that this equatin is expressed in the wrong units. See comment in: https://doi.org/10.5194/gmd-2022-28-RC1. The coefficients
+		// should have been converted from g/cm/s to kg/m/s. According to Vionnet, 2012 (https://pastel.archives-ouvertes.fr/tel-00781279v3/document,
+		// Fig. 5.3) SORENSEN2004 implemented below may be considered a better option.
 		const double tauS = i_tauS;
 		const double ustar = sqrt(tauS / Constants::density_air);
 		const double ustar_thresh = sqrt(tau_th / Constants::density_air);
 		if (ustar > ustar_thresh) {
+			// Eq. 2 in Lehning et al. (2008) [http://doi.org/10.1016/j.coldregions.2007.05.012]:
 			massflux = 0.0014 * Constants::density_air * ustar * (ustar - ustar_thresh) * (ustar + 7.6*ustar_thresh + 205.);
 			c_salt = massflux / ustar*0.001; // Arbitrary Scaling to match Doorschot concentration
 		} else {
@@ -406,8 +414,22 @@ bool Saltation::compSaltation(const double& i_tauS, const double& tau_th, const 
 			c_salt = 0.;
 		}
 	}
+	else if (saltation_model == "SORENSEN2004") {
+		// Sorensen (2004), parameters from Vionnet et al. (2014)
+		const double tauS = i_tauS;
+		const double ustar = sqrt(tauS / Constants::density_air);
+		const double ustar_thresh = sqrt(tau_th / Constants::density_air);
+		if (ustar > ustar_thresh) {
+			// Eq. 11 in Vionnet et al. (2014) [https://doi.org/10.5194/tc-8-395-2014]:
+			massflux = Constants::density_air / Constants::g * Optim::pow3(ustar) * (1. - Optim::pow2(ustar_thresh / ustar)) * (2.6 + 2.5 * Optim::pow2(ustar_thresh / ustar) + 2. * ustar_thresh / ustar);
+			c_salt = massflux / ustar*0.001; // Arbitrary Scaling to match Doorschot concentration
+		} else {
+			massflux = 0.;
+			c_salt = 0.;
+		}
+	}
 	else if (saltation_model == "DOORSCHOT") { // Judith Doorschot's model
-		int    k = 5;
+		int k = 5;
 		// Initialize Shear Stress Distribution
 		const double taumean = i_tauS;
 		const double taumax = 15.* i_tauS;
