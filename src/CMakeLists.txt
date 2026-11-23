@@ -334,7 +334,11 @@ endif()
 ### Targets for the preprocessing tools
 add_executable(
 		partition
-		preprocessing/partition/main.cpp # this needs to be here so we can reuse CHM_SRCS in the gtest build. but since it links it's own main, we cannot have this one.
+		preprocessing/partition/main.cpp
+		preprocessing/partition/convert_mesh.cpp
+		preprocessing/partition/partition_mesh.cpp
+		preprocessing/partition/partition_output.cpp
+		preprocessing/partition/partition_vtu.cpp
 		${CHM_SRCS}
 )
 target_compile_features(partition PRIVATE cxx_std_20)
