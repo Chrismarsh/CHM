@@ -2,13 +2,16 @@
 import argparse
 from pathlib import Path
 import json
-import os
 import shutil
 import subprocess
 import tempfile
 
-import h5py
-import numpy as np
+try:
+    import h5py
+    import numpy as np
+except ImportError as exc:
+    print(f"Partition regression requires h5py and NumPy: {exc}")
+    raise SystemExit(77)
 
 FIXTURE = Path(__file__).resolve().parent
 
@@ -108,6 +111,31 @@ def exercise(binary, launcher):
         for radius in [0, 0.25, 100, 400]:
             launch(binary, directory, ["-g", str(radius)], workers, launcher)
             verify(directory, all_ranks, radius)
+
+        # Interrupt a real fresh run after 30 committed pairs. A directory at the staging
+        # path makes the parameter writer fail after its mesh partner has been staged.
+        output = directory / "mesh.np31.partition.meshes"
+        bad_stage = output / "mesh.partition.30_param.h5.partial"
+        bad_stage.mkdir()
+        launch(binary, directory, [], expect_success=False)
+        assert not (directory / "mesh.np31.partition").exists()
+        before = (output / "mesh.partition.29_mesh.h5").stat().st_mtime_ns
+        bad_stage.rmdir()
+        assert "reused 30" in launch(binary, directory, ["--resume"], workers, launcher)
+        assert (output / "mesh.partition.29_mesh.h5").stat().st_mtime_ns == before
+        verify(directory, all_ranks, 100)
+
+        # Interrupted pair, truncated parameter file, and a corrupt marker each force a rewrite.
+        (output / "mesh.partition.7_mesh.h5").unlink()
+        (output / "mesh.partition.11_param.h5").write_bytes(b"incomplete")
+        (output / ".mesh.np31.partition" / "19.done.json").write_text("{")
+        assert "reused 28" in launch(binary, directory, ["--resume"], workers, launcher)
+        verify(directory, all_ranks, 100)
+        assert "reused 31" in launch(binary, directory, ["--resume"])
+        launch(binary, directory, ["--resume", "-g", "99"], expect_success=False)
+        with h5py.File(directory / "params.h5", "r+") as f:
+            f.attrs["new_run"] = 1
+        launch(binary, directory, ["--resume"], expect_success=False)
 
         with h5py.File(directory / "extra.h5", "w") as extra:
             extra.create_dataset("parameters/face_tag", data=np.arange(2618) + 0.25)

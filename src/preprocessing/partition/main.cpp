@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+#include "checkpoint.hpp"
 #include "convert_mesh.hpp"
 #include "partition_mesh.hpp"
 #include "partition_vtu.hpp"
@@ -10,6 +11,7 @@
 #include <iostream>
 #include <mpi.h>
 #include <numeric>
+#include <optional>
 
 namespace
 {
@@ -23,11 +25,29 @@ struct Options
     std::vector<int> selected;
     int ranks = 0, standalone = -1;
     double distance = 100;
-    bool vtu = false;
+    bool vtu = false, resume = false;
 };
 
 void partition(const Options& options, int worker, int workers)
 {
+    std::vector<fs::path> inputs{options.mesh};
+    inputs.insert(inputs.end(), options.params.begin(), options.params.end());
+    pt::ptree recipe;
+    if (worker == 0)
+    {
+        recipe.put("format", 1);
+        recipe.add_child("inputs", checkpoint::files(inputs));
+        recipe.put("target_ranks", options.ranks);
+        recipe.put("standalone", options.standalone);
+        recipe.put("max_ghost_distance", options.distance);
+        recipe.put("vtu", options.vtu);
+        if (options.vtu)
+            recipe.put("vtu_directory", fs::current_path().string());
+        pt::ptree kept;
+        for (int r : options.selected)
+            kept.push_back({"", pt::ptree(std::to_string(r))});
+        recipe.add_child("selected", kept);
+    }
     MeshInput input(options.mesh, options.ranks);
     Parameters parameters(options.params, input.offsets.back());
     // Distribute the one-time permutation check even when there are more workers than output files.
@@ -50,29 +70,59 @@ void partition(const Options& options, int worker, int workers)
         prefix.string() + (standalone ? ".standalone." + std::to_string(options.standalone) : "") + ".partition";
     auto basename = [&](int rank)
     { return stem + ".partition." + (standalone ? "standalone." : "") + std::to_string(rank); };
+    const fs::path state = dir / ("." + manifest.filename().string());
+    std::optional<checkpoint::Lock> lock;
+    std::string generation(36, ' ');
     if (worker == 0)
     {
-        fs::create_directories(dir);
+        lock.emplace(dir);
+        fs::create_directories(state);
+        generation = checkpoint::prepare(state / "run.json", recipe, options.resume);
+        if (generation.size() != 36)
+            throw std::runtime_error("Invalid partition checkpoint generation");
+        fs::remove(manifest);
         std::cout << "Partitioning " << n << " faces for " << ranks.size() << " output ranks with " << workers
                   << " MPI workers\n"
                   << std::flush;
-        if (options.vtu)
-            write_vtu("partition.vtu", input);
+        const std::vector<fs::path> overview{"partition.vtu"};
+        if (options.vtu && !(options.resume && checkpoint::complete(state / "overview.json", generation, overview)))
+        {
+            write_vtu("partition.vtu.partial", input);
+            fs::rename("partition.vtu.partial", overview.front());
+            checkpoint::finish(state / "overview.json", generation, overview);
+        }
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Bcast(generation.data(), 36, MPI_CHAR, 0, MPI_COMM_WORLD);
+    int reused = 0;
     for (size_t i = worker; i < ranks.size(); i += workers)
     {
         const int rank = ranks[i];
-        auto local = select_rank(input, rank, ranks, options.distance, standalone);
         auto base = (dir / basename(rank)).string();
-        write_mesh(base + "_mesh.h5", input, local, sizes, standalone);
-        parameters.write(base + "_param.h5", local.rows);
+        std::vector<fs::path> outputs{base + "_mesh.h5", base + "_param.h5"};
         if (options.vtu)
-            write_vtu("rank." + std::to_string(rank) + ".vtu", input, &local);
+            outputs.emplace_back("rank." + std::to_string(rank) + ".vtu");
+        auto marker = state / (std::to_string(rank) + ".done.json");
+        if (options.resume && checkpoint::complete(marker, generation, outputs))
+        {
+            ++reused;
+            continue;
+        }
+        fs::remove(marker);
+        auto local = select_rank(input, rank, ranks, options.distance, standalone);
+        write_mesh(outputs[0].string() + ".partial", input, local, sizes, standalone);
+        parameters.write(outputs[1].string() + ".partial", local.rows);
+        if (options.vtu)
+            write_vtu(outputs[2].string() + ".partial", input, &local);
+        for (const auto& path : outputs)
+            fs::rename(path.string() + ".partial", path);
+        checkpoint::finish(marker, generation, outputs);
     }
-    MPI_Barrier(MPI_COMM_WORLD);
+    int total_reused;
+    MPI_Reduce(&reused, &total_reused, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (worker == 0)
     {
+        if (recipe.get_child("inputs") != checkpoint::files(inputs))
+            throw std::runtime_error("Inputs changed while partitioning. Start a fresh run.");
         pt::ptree tree, meshes, params, local_sizes;
         tree.put("ranks", ranks.size());
         tree.put("max_ghost_distance", options.distance);
@@ -87,8 +137,9 @@ void partition(const Options& options, int worker, int workers)
         tree.add_child("meshes", meshes);
         tree.add_child("parameters", params);
         tree.add_child("local_sizes", local_sizes);
-        pt::write_json(manifest.string(), tree);
-        std::cout << "Wrote " << manifest << '\n';
+        checkpoint::publish(manifest, tree);
+        std::cout << "Completed " << ranks.size() - total_reused << " partitions, reused " << total_reused << ". Wrote "
+                  << manifest << '\n';
     }
 }
 
@@ -96,7 +147,9 @@ int run(int argc, char** argv, int worker, int workers)
 {
     Options options;
     po::options_description desc("CHM partition options");
-    desc.add_options()("help,h", "Show options")("mesh-file,m", po::value(&options.mesh)->required(), "Input mesh")(
+    desc.add_options()("help,h", "Show options")("resume", po::bool_switch(&options.resume),
+                                                 "Reuse finished HDF5 partitions from an interrupted run")(
+        "mesh-file,m", po::value(&options.mesh)->required(), "Input mesh")(
         "param-file,p", po::value(&options.params)->composing()->required(), "Input parameter file (repeatable)")(
         "mpi-ranks", po::value(&options.ranks), "Number of target partitions in the input mesh")(
         "max-ghost-distance,g", po::value(&options.distance), "Maximum ghost distance in metres (default 100)")(
@@ -121,9 +174,11 @@ int run(int argc, char** argv, int worker, int workers)
         throw std::runtime_error("Invalid ghost distance");
     if (vm.count("standalone"))
     {
-        if (!options.selected.empty() || options.standalone < 0 || options.standalone >= options.ranks)
-            throw std::runtime_error(
-                "--standalone requires one valid target rank and cannot be combined with --valid-ranks");
+        if (options.standalone < 0 || options.standalone >= options.ranks)
+            throw std::runtime_error("--standalone requires one valid target rank");
+        if (!options.selected.empty() &&
+            std::find(options.selected.begin(), options.selected.end(), options.standalone) == options.selected.end())
+            throw std::runtime_error("--standalone rank is outside --valid-ranks");
         options.selected = {options.standalone};
     }
     if (options.selected.empty())
@@ -139,6 +194,8 @@ int run(int argc, char** argv, int worker, int workers)
             std::adjacent_find(ranks.begin(), ranks.end()) != ranks.end())
             throw std::runtime_error("Invalid or repeated target rank");
     }
+    if (json && options.resume)
+        throw std::runtime_error("Use --resume with the converted _mesh.h5 and _param.h5 inputs");
     if (json)
     {
         if (worker == 0)

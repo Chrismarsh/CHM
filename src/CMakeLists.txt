@@ -415,6 +415,14 @@ endif()
 if (BUILD_TESTS)
 	message(STATUS "Tests enabled. Run with make check")
 
+    find_package(Python3 QUIET COMPONENTS Interpreter)
+    if(Python3_Interpreter_FOUND AND MPI_FOUND AND USE_MPI)
+        add_test(NAME partition_hdf5
+                 COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/functional_tests/mesh_versioning/test_partition.py
+                         $<TARGET_FILE:partition> --mpiexec ${MPIEXEC_EXECUTABLE})
+        set_tests_properties(partition_hdf5 PROPERTIES SKIP_RETURN_CODE 77 PROCESSORS 3)
+    endif()
+
 	set(TEST_SRCS
 			tests/test_station.cpp
 			tests/test_interpolation.cpp
