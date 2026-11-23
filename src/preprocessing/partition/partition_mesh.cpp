@@ -21,9 +21,11 @@ struct Face
 {
     Triple elem, neighbors;
     math::gis::Point_3 center;
-    int ghost = -1; // -1 denotes a probed face outside the output halo
+    int ghost = -1; // Loaded for a centroid test. Faces still marked -1 are omitted from the output.
 };
 
+// One cache per output rank. Overlapping boundary searches share geometry by source row and vertex ID.
+// Loading a candidate's centroid leaves its inclusion and ghost type for halo() to decide.
 class Geometry
 {
   public:
@@ -63,11 +65,14 @@ class Geometry
         }
     }
 
-    // Each bit is an independent boundary seed. A face reached from seed A can only expand
-    // seed A's search if its centroid is inside A's radius, even when other searches overlap.
+    // Tag every direct neighbor across an ownership boundary as type I, even at radius zero. For type II,
+    // follow neighbors from each owned boundary face (the seed). Every centroid along a path must lie
+    // within radius of the seed's centroid. The path may pass through owned faces or other ghosts.
     void halo(const std::vector<int>& owned, double radius)
     {
         std::vector<int> seeds, nearest;
+        // At entry the cache contains exactly the owned faces. Defer loading remote neighbors until all
+        // seeds have been identified so faces.contains(n) remains an ownership test throughout this loop.
         for (int id : owned)
         {
             bool boundary = false;
@@ -86,6 +91,8 @@ class Geometry
             faces.at(id).ghost = 1;
 
         auto distance = mesh.geographic ? math::gis::distance_latlong : math::gis::distance_UTM;
+        // Search up to 64 seeds together so their next faces can be fetched in a single batch of requests.
+        // Bit j at a face represents the search from seeds[start + j]. Each batch gets its own visit history.
         using Masks = std::unordered_map<int, uint64_t>;
         constexpr int bits = std::numeric_limits<uint64_t>::digits;
         for (size_t start = 0; start < seeds.size(); start += bits)
@@ -103,6 +110,8 @@ class Geometry
                 Masks next;
                 for (auto [id, mask] : frontier)
                 {
+                    // Each (face, seed) distance is fixed. Record rejected pairs too, since another path
+                    // from the same seed would give the same answer. Other seeds can still reach this face.
                     mask &= ~seen[id];
                     seen[id] |= mask;
                     auto& face = faces.at(id);
@@ -112,10 +121,11 @@ class Geometry
                         auto j = std::countr_zero(mask);
                         if (distance(faces.at(seeds[start + j]).center, face.center) <= radius)
                             accepted |= uint64_t{1} << j;
-                        mask &= mask - 1;
+                        mask &= mask - 1; // Clear the lowest set bit, the seed just tested.
                     }
                     if (!accepted)
                         continue;
+                    // Preserve the owned and direct-neighbor labels when a distance search reaches them.
                     if (face.ghost < 0)
                         face.ghost = 2;
                     for (int n : face.neighbors)
@@ -224,6 +234,9 @@ RankMesh select_rank(const MeshInput& input, int rank, std::span<const int> rank
         }
     }
 
+    // Filter to the requested owners after the halo search so paths can cross an omitted rank.
+    // For a subset, proxy[owner] gives its output rank and base[p] its first output face ID.
+    // Adding the face's index within its owner gives every worker the same ID for a shared ghost.
     std::vector<int> proxy(input.sizes.size(), -1), base(ranks.size() + 1, 0);
     for (size_t i = 0; i < ranks.size(); ++i)
     {
@@ -250,6 +263,7 @@ RankMesh select_rank(const MeshInput& input, int rank, std::span<const int> rank
         selected.push_back({id, row, p, local});
         output_id.emplace(row, id);
     }
+    // Apply this ordering once to geometry, metadata and the rows used later to gather parameters.
     std::sort(selected.begin(), selected.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
     RankMesh result;
     for (const auto& s : selected)

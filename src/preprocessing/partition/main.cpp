@@ -28,6 +28,8 @@ struct Options
     bool vtu = false, resume = false;
 };
 
+// worker identifies a process in this preprocessing job. options.selected identifies the METIS ranks
+// CHM will run. One worker may write several rank files over the course of the job.
 void partition(const Options& options, int worker, int workers)
 {
     std::vector<fs::path> inputs{options.mesh};
@@ -35,6 +37,8 @@ void partition(const Options& options, int worker, int workers)
     pt::ptree recipe;
     if (worker == 0)
     {
+        // Include every option that affects the products. Increment the format when an algorithm or layout
+        // change makes old rank files unsuitable for reuse. Changing the worker count only redistributes work.
         recipe.put("format", 1);
         recipe.add_child("inputs", checkpoint::files(inputs));
         recipe.put("target_ranks", options.ranks);
@@ -50,7 +54,8 @@ void partition(const Options& options, int worker, int workers)
     }
     MeshInput input(options.mesh, options.ranks);
     Parameters parameters(options.params, input.offsets.back());
-    // Distribute the one-time permutation check even when there are more workers than output files.
+    // Check disjoint slices of cell_global_id once. A mismatch anywhere requires every worker to use
+    // the explicit permutation when resolving ownership, including workers whose own slice was ordered.
     int64_t n = input.offsets.back();
     int ordered = input.ordered_range(n * worker / workers, n * (worker + 1) / workers);
     int all_ordered;
@@ -80,6 +85,7 @@ void partition(const Options& options, int worker, int workers)
         generation = checkpoint::prepare(state / "run.json", recipe, options.resume);
         if (generation.size() != 36)
             throw std::runtime_error("Invalid partition checkpoint generation");
+        // The manifest advertises a complete set to CHM. Withdraw it before replacing any rank files.
         fs::remove(manifest);
         std::cout << "Partitioning " << n << " faces for " << ranks.size() << " output ranks with " << workers
                   << " MPI workers\n"
@@ -107,6 +113,8 @@ void partition(const Options& options, int worker, int workers)
             ++reused;
             continue;
         }
+        // A rank's files are renamed individually. Retire the old marker first and publish its replacement
+        // after the last rename. A job killed between renames will rebuild the whole rank on resume.
         fs::remove(marker);
         auto local = select_rank(input, rank, ranks, options.distance, standalone);
         write_mesh(outputs[0].string() + ".partial", input, local, sizes, standalone);
@@ -118,6 +126,8 @@ void partition(const Options& options, int worker, int workers)
         checkpoint::finish(marker, generation, outputs);
     }
     int total_reused;
+    // Each worker reaches this reduction after writing or validating all its assigned ranks. Once worker zero
+    // has the total, it can recheck the inputs and publish the manifest for CHM.
     MPI_Reduce(&reused, &total_reused, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     if (worker == 0)
     {
@@ -196,6 +206,8 @@ int run(int argc, char** argv, int worker, int workers)
     }
     if (json && options.resume)
         throw std::runtime_error("Use --resume with the converted _mesh.h5 and _param.h5 inputs");
+    // Legacy JSON conversion builds the global triangulation on worker zero. The barrier lets all
+    // workers enter the HDF5 partition path only after both converted files have been closed.
     if (json)
     {
         if (worker == 0)

@@ -27,6 +27,8 @@ class JsonMesh : public triangulation
         if (!mesh.get_child_optional("mesh.cell_global_id"))
             SPDLOG_WARN("No face permutation was found in the mesh");
         from_json(mesh);
+        // The triangulation writer iterates _local_faces. This intermediate HDF5 file contains the
+        // entire permuted mesh, so expose every face to the writer on the converting process.
         _num_faces = _num_global_faces = _faces.size();
         _local_faces = _faces;
         to_hdf5(std::filesystem::path(path).stem().string());

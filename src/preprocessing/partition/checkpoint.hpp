@@ -17,6 +17,8 @@ namespace checkpoint
 namespace fs = std::filesystem;
 namespace pt = boost::property_tree;
 
+// Resume uses filesystem metadata so checking a multi-gigabyte HDF5 file takes one stat after
+// path resolution. The inode tracks replacement and ctime records changes even if mtime is restored.
 inline pt::ptree identity(const fs::path& path)
 {
     pt::ptree result;
@@ -74,6 +76,8 @@ class Lock
     boost::interprocess::file_lock lock;
 };
 
+// Every fresh run gets a new generation, even for an identical recipe. Old completion markers may
+// still exist on disk. Only a resume with a matching recipe adopts their generation.
 inline std::string prepare(const fs::path& path, const pt::ptree& recipe, bool resume)
 {
     pt::ptree checkpoint;
@@ -93,6 +97,8 @@ inline std::string prepare(const fs::path& path, const pt::ptree& recipe, bool r
     return id;
 }
 
+// A marker vouches for all products of one write. A missing or unreadable marker, or a change to
+// any recorded file, sends the caller back through the writer for the entire set.
 inline bool complete(const fs::path& marker, const std::string& generation, const std::vector<fs::path>& outputs)
 {
     if (!fs::exists(marker))

@@ -14,10 +14,13 @@ namespace chm_partition
 {
 using Triple = std::array<int, 3>;
 using XYZ = std::array<double, 3>;
+// Maximum rows per read_rows selection and per parameter buffer. Tune for I/O throughput and scratch memory.
 inline constexpr int batch_size = 8192;
 
 inline const H5::DataType& memory_type(int*) { return H5::PredType::NATIVE_INT; }
 inline const H5::DataType& memory_type(double*) { return H5::PredType::NATIVE_DOUBLE; }
+// CHM stores each XYZ or connectivity triple as one array-valued element of a one-dimensional dataset.
+// HDF5 row selections below therefore count complete vertices or triangles.
 template <class T> H5::ArrayType memory_type(std::array<T, 3>*)
 {
     const hsize_t three = 3;
@@ -44,7 +47,9 @@ template <class T> void read_range(const H5::DataSet& ds, int start, std::span<T
     ds.read(values.data(), memory_type(static_cast<T*>(nullptr)), H5::DataSpace(1, &length), disk);
 }
 
-// A contiguous owned run is a hyperslab. Sparse halo/vertex rows are one ordered point selection per batch.
+// Return values in the caller's row order, including sparse or permuted IDs. A contiguous batch uses a
+// hyperslab. For a sparse batch, HDF5 transfers points in selection order. The result spans all requested
+// rows, so callers that need bounded output buffers must pass one batch at a time.
 template <class T> std::vector<T> read_rows(const H5::DataSet& ds, std::span<const int> rows)
 {
     std::vector<T> values(rows.size());

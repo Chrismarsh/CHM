@@ -8,6 +8,8 @@ void write_mesh(const fs::path& path, const MeshInput& input, const RankMesh& me
     H5::H5File file(path.string(), H5F_ACC_TRUNC);
     {
         auto group = file.createGroup("/mesh");
+        // Every rank file records the owned counts for all selected ranks. The per-face arrays below
+        // also contain this rank's ghosts, so their lengths can exceed its entry in local_sizes.
         write_values(group, "local_sizes", sizes);
         write_values(group, "owner", mesh.owners);
         write_values(group, "cell_global_id", mesh.ids);
@@ -37,6 +39,8 @@ Parameters::Parameters(const std::vector<std::string>& paths, int faces)
             auto ds = group.openDataSet(name);
             if (row_count(ds) != faces)
                 throw std::runtime_error("Wrong parameter length: " + path + "/" + name);
+            // Later parameter files override earlier definitions of the same field. Retain the source
+            // group so each dataset and its HDF5 chunk cache can close after its column is copied.
             fields.insert_or_assign(name, group);
         }
     }
@@ -53,6 +57,8 @@ void Parameters::write(const fs::path& path, std::span<const int> rows) const
             auto dst = group.createDataSet(name, H5::PredType::NATIVE_DOUBLE, H5::DataSpace(1, &count));
             for (size_t start = 0; start < rows.size();)
             {
+                // rows maps output positions to source faces. Read those faces in this order, then
+                // write a contiguous slice starting at the matching position in the rank's parameter file.
                 auto block = rows.subspan(start, std::min<size_t>(batch_size, rows.size() - start));
                 auto values = read_rows<double>(src, block);
                 hsize_t offset = start, length = values.size();

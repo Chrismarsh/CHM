@@ -6,8 +6,8 @@
 
 namespace chm_partition
 {
-// The overview contains one connected VTK piece, even when read in many batches.
-// The optional diagnostic must not force rank zero to reconstruct a global triangulation.
+// A null rank requests the global overview. Stream one VTK piece with shared vertex indices across
+// batches. For a rank diagnostic, RankMesh already holds the compact connectivity and coordinates.
 void write_vtu(const fs::path& path, const MeshInput& mesh, const RankMesh* rank)
 {
     std::ofstream out;
@@ -41,6 +41,7 @@ void write_vtu(const fs::path& path, const MeshInput& mesh, const RankMesh* rank
     array("Points", "Float64", 3,
           [&]
           {
+              // Match CHM's vtk_writer display scale for lon/lat. HDF5 retains the source coordinates.
               double scale = mesh.geographic ? 100000. : 1.;
               for (int i = 0; i < nv;)
               {
@@ -62,7 +63,8 @@ void write_vtu(const fs::path& path, const MeshInput& mesh, const RankMesh* rank
     out << "</Points><PointData>";
     integers("global_id", nv, [&](int i) { return rank ? rank->vertex_ids[i] : i; });
     out << "</PointData><Cells>";
-    // Overview cells are emitted in partition order, with global vertex IDs.
+    // All overview cell arrays follow partition order. Use cell_global_id to fetch the corresponding
+    // connectivity and elevations even when the source geometry rows are permuted.
     auto cells = [&](auto consume)
     {
         for (int i = 0; i < nf;)
