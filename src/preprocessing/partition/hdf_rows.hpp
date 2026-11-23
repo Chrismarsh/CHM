@@ -77,9 +77,16 @@ template <class T> void write_values(H5::Group& group, const char* name, const s
         ds.write(values.data(), native);
 }
 
-inline std::string string_attribute(const H5::H5File& file, const char* name)
+inline H5::Attribute scalar_attribute(const H5::H5File& file, const char* name)
 {
     auto attr = file.openAttribute(name);
+    if (attr.getSpace().getSimpleExtentNpoints() != 1)
+        throw std::runtime_error("Expected one value for " + std::string(name));
+    return attr;
+}
+inline std::string string_attribute(const H5::H5File& file, const char* name)
+{
+    auto attr = scalar_attribute(file, name);
     std::string value;
     attr.read(attr.getStrType(), value);
     return value;
@@ -90,7 +97,9 @@ inline void write_attribute(H5::H5File& file, const char* name, const std::strin
     H5::StrType type(H5::PredType::C_S1, 256);
     if (value.size() >= type.getSize())
         throw std::runtime_error("CHM string attribute is too long: " + std::string(name));
-    file.createAttribute(name, type, H5::DataSpace(1, &one)).write(type, value);
+    std::array<char, 256> buffer{};
+    std::copy(value.begin(), value.end(), buffer.begin());
+    file.createAttribute(name, type, H5::DataSpace(1, &one)).write(type, buffer.data());
 }
 inline void write_flag(H5::H5File& file, const char* name, bool value)
 {

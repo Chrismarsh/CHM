@@ -37,7 +37,7 @@ Parameters::Parameters(const std::vector<std::string>& paths, int faces)
             auto ds = group.openDataSet(name);
             if (row_count(ds) != faces)
                 throw std::runtime_error("Wrong parameter length: " + path + "/" + name);
-            fields.insert_or_assign(name, std::move(ds));
+            fields.insert_or_assign(name, group);
         }
     }
 }
@@ -47,8 +47,9 @@ void Parameters::write(const fs::path& path, std::span<const int> rows) const
     {
         auto group = file.createGroup("/parameters");
         hsize_t count = rows.size();
-        for (const auto& [name, src] : fields)
+        for (const auto& [name, source_group] : fields)
         {
+            auto src = source_group.openDataSet(name);
             auto dst = group.createDataSet(name, H5::PredType::NATIVE_DOUBLE, H5::DataSpace(1, &count));
             for (size_t start = 0; start < rows.size();)
             {

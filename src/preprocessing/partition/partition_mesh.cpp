@@ -139,13 +139,13 @@ MeshInput::MeshInput(const fs::path& path, int ranks)
       method(string_attribute(file, "/mesh/partition_method")), vertex_count(row_count(vertices))
 {
     hbool_t flag{};
-    file.openAttribute("/mesh/is_geographic").read(H5::PredType::NATIVE_HBOOL, &flag);
+    scalar_attribute(file, "/mesh/is_geographic").read(H5::PredType::NATIVE_HBOOL, &flag);
     geographic = flag;
     if (std::stoi(string_attribute(file, "/mesh/version")) < 2)
         throw std::runtime_error("Mesh version 2 or newer required");
     if (file.attrExists("/mesh/is_partition"))
     {
-        file.openAttribute("/mesh/is_partition").read(H5::PredType::NATIVE_HBOOL, &flag);
+        scalar_attribute(file, "/mesh/is_partition").read(H5::PredType::NATIVE_HBOOL, &flag);
         if (flag)
             throw std::runtime_error("Expected a global mesh; input is already partitioned");
     }

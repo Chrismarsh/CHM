@@ -37,6 +37,6 @@ class Parameters
     void write(const fs::path& path, std::span<const int> rows) const;
 
   private:
-    std::map<std::string, H5::DataSet> fields;
+    std::map<std::string, H5::Group> fields;
 };
 } // namespace chm_partition
