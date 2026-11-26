@@ -1,4 +1,5 @@
 #include "crocus_bridge.hpp"
+#include "snow_transport.hpp"
 
 #include <algorithm>
 #include <array>
@@ -96,6 +97,50 @@ void reference(const std::string& directory)
     near(step, 24, 0, 0, "number of hours");
 }
 
+void snow_transport()
+{
+    // A 20 m2 donor loses 100 kg to a 50 m2 neighbour. The erosion crosses
+    // the first layer and removes a quarter of the second layer.
+    Point donor, receiver;
+    donor.state[0] = 4;
+    donor.state[1] = 4;
+    donor.state[density * layers] = 100;
+    donor.state[density * layers + 1] = 300;
+    donor.state[heat * layers] = -1400000;
+    donor.state[heat * layers + 1] = -1360000;
+    donor.state[age * layers + 1] = 3;
+    const double volume = .1;
+    const auto original = donor.state;
+    near(erode(layers, donor.state.data(), donor.pending, 9.), false, 0, 0, "overdrawn donor");
+    if (donor.state != original)
+        throw std::runtime_error("Rejected transfer mutated donor");
+    near(erode(layers, donor.state.data(), donor.pending, avalanche_mass_per_area(volume, 20)), true, 0, 0, "erosion");
+    near(donor.state[0], 3., 0, 0, "remaining mass");
+    near(donor.state[heat * layers], -1020000, 0, 0, "remaining heat");
+    near(donor.state[age * layers], 3., 0, 0, "surviving grain age");
+    near(donor.state[density * layers], 300., 0, 0, "surviving density");
+
+    Forcing met{2020, 1, 1, 0, 3600, 265, 85000, .002f, 2, 0, 260, 0, 0, 1, 1};
+    met.transported_mass = avalanche_mass_per_area(volume, 50);
+    met.transported_density = 500;
+    receiver.step(met);
+    const double surface_loss = (receiver.flux.runoff + receiver.flux.sublimation) * met.dt;
+    near(20 * donor.total() + 50 * (receiver.total() + surface_loss), 20 * 8., .002, 0, "domain transfer closure");
+    if (receiver.state[density * layers] < 480.f)
+        throw std::runtime_error("Lost deposition density");
+
+    // Save the actual interoperable state, including albedo, mid-event.
+    Point resumed = receiver;
+    met.transported_mass = 0;
+    met.sw = 160;
+    for (int k = 0; k < 5; ++k)
+    {
+        resumed.step(met);
+        receiver.step(met);
+    }
+    if (resumed.state != receiver.state || resumed.flux.albedo != receiver.flux.albedo)
+        throw std::runtime_error("Restart changed the column");
+}
 void water_balance()
 {
     Point p;
@@ -156,6 +201,7 @@ int main(int argc, char** argv)
         auto other = std::async(std::launch::async, reference, std::string(argv[1]));
         reference(argv[1]);
         water_balance();
+        snow_transport();
         other.get();
     }
     catch (const std::exception& e)

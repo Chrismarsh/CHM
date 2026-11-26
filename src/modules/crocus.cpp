@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "crocus.hpp"
+#include "snow_transport.hpp"
 
 #include <array>
 #include <cmath>
@@ -50,6 +51,9 @@ Crocus::Crocus(config_file cfg)
     for (const auto* name :
          {"iswr_subcanopy", "ilwr_subcanopy", "rh_subcanopy", "ta_subcanopy", "p_snow_subcanopy", "p_rain_subcanopy"})
         optional(name);
+    optional("drift_mass");
+    optional("delta_avalanche_mass");
+    optional("delta_avalanche_snowdepth");
     for (const auto* name : {"swe",
                              "snowdepthavg",
                              "snowdepthavg_vert",
@@ -142,6 +146,41 @@ void Crocus::run(mesh_elem& face)
     m.cos_slope = std::max(.001, std::cos(face->slope()));
     m.solar_zenith = (90. - std::clamp((*face)["solar_el"_s], -90., 90.)) * std::numbers::pi / 180.;
     auto* column = state_.data() + i * crocus::field_count * layers_;
+    const auto transfer = [&](const char* name, auto key)
+    {
+        if (!has_optional(name))
+            return 0.;
+        const double value = (*face)[key];
+        return is_nan(value) ? 0. : value;
+    };
+    const double drift = transfer("drift_mass", "drift_mass"_s);
+    const double avalanche_volume = transfer("delta_avalanche_mass", "delta_avalanche_mass"_s);
+    double avalanche = 0.;
+    if (avalanche_volume != 0.)
+    {
+        const double area = face->get_area();
+        if (!(area > 0.) || !std::isfinite(area))
+            CHM_THROW_EXCEPTION(module_error, "Crocus avalanche transfer requires a positive face area");
+        avalanche = crocus::avalanche_mass_per_area(avalanche_volume, area);
+    }
+    const double erosion = -std::min(0., drift) - std::min(0., avalanche);
+    if (!crocus::erode(layers_, column, pending_[i], erosion))
+        CHM_THROW_EXCEPTION(module_error, "Transport exceeds available Crocus SWE on face " +
+                                              std::to_string(face->cell_global_id) +
+                                              ". With PBSM3D and snow_slide enable snow_slide.reserve_drift_erosion.");
+
+    const double wind_deposit = std::max(0., drift);
+    const double avalanche_deposit = std::max(0., avalanche);
+    m.transported_mass = wind_deposit + avalanche_deposit;
+    if (m.transported_mass > 0)
+    {
+        const double snow_volume = transfer("delta_avalanche_snowdepth", "delta_avalanche_snowdepth"_s);
+        // Both native avalanche deltas are signed net volumes. Use their ratio only
+        // when it describes a physical deposit. Otherwise use the FSM deposition density.
+        const double density = snow_volume > 0 ? 1000. * avalanche_volume / snow_volume : 0.;
+        const double avalanche_density = density >= 50. && density <= 917. ? density : 500.;
+        m.transported_density = m.transported_mass / (wind_deposit / 300. + avalanche_deposit / avalanche_density);
+    }
     crocus::chm_crocus_step(layers_, column, &m, &ground_, &pending_[i], &fluxes_[i]);
     cumulative_subl_[i] += fluxes_[i].sublimation * m.dt;
     publish(face);

@@ -18,8 +18,9 @@ struct Forcing
 {
     int year, month, day, seconds;
     float dt, air_k, pressure_pa, specific_humidity, wind, sw, lw;
-    float snowfall, rainfall;      // kg m-2 s-1 at the snow surface
-    float cos_slope, solar_zenith; // radians for zenith
+    float snowfall, rainfall;                    // kg m-2 s-1 at the snow surface
+    float cos_slope, solar_zenith;               // radians for zenith
+    float transported_mass, transported_density; // positive kg/m2 per step, kg/m3
 };
 
 struct Boundary

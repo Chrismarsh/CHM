@@ -9,6 +9,7 @@ module chm_crocus_bridge
         integer(c_int) :: year, month, day, seconds
         real(c_float) :: dt, air_k, pressure_pa, specific_humidity, wind, sw, lw
         real(c_float) :: snowfall, rainfall, cos_slope, solar_zenith
+        real(c_float) :: transported_mass, transported_density
     end type
     type, bind(C) :: boundary
         real(c_float) :: ground_k, conductivity, ground_layer_m, ground_albedo
@@ -29,7 +30,7 @@ contains
     subroutine chm_crocus_step(n, state, met, ground, pending_snow, out) bind(C)
         use modd_csts, only: xrd, xrv, xcpd, xp00, xg, xstefan, xlstt
         use modd_type_date_surf, only: date_time
-        use modd_snow_metamo, only: xuepsi_smp
+        use modd_snow_metamo, only: xuepsi_smp, xuepsi
         use modi_snowcro
         use sfc_options, only: hsnowres
         integer(c_int), value :: n
@@ -50,13 +51,20 @@ contains
 
         ! The upstream fresh-snow routine has a single-precision mass threshold.
         ! Accumulate sub-threshold snowfall instead of losing water or calling with zero layers.
+        blowing = 0.
+        if (met%transported_mass > 200.0*xuepsi_smp .and. met%transported_mass/met%dt > xuepsi) then
+            ! Native Crocus accepts deposited snow separately from atmospheric snowfall.
+            blowing(1,:) = [met%transported_mass/met%dt, met%transported_density, 0.0003, 0.9]
+        else
+            pending_snow = pending_snow + met%transported_mass
+        end if
         pending_snow = pending_snow + met%snowfall * met%dt
         snow_rate = 0.
         if (pending_snow > 200.0*xuepsi_smp) then
             snow_rate = pending_snow / met%dt
             pending_snow = 0.
         end if
-        if (state(1,1,1) <= 0. .and. snow_rate <= 0.) then
+        if (state(1,1,1) <= 0. .and. snow_rate <= 0. .and. blowing(1,1) <= 0.) then
             out = fluxes(ground%ground_albedo, 0., 0., xstefan*ground%ground_k**4, met%rainfall, 0., 0., 0.)
             return
         end if
@@ -71,7 +79,6 @@ contains
         albedo = out%albedo
         wind = met%wind
         resistance = -1. ! use the native surface-exchange calculation
-        blowing = 0.
         incident = 0.
         basal = 0.
         short_net = 0.
