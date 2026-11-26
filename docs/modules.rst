@@ -61,3 +61,28 @@ By provides variable
     i.e.,  :code:`provides("t_"+some_var);`
 
 .. provides::
+
+Crocus snowpack
+---------------
+
+Select ``Crocus`` as the snow module in the CHM module list. Its lower boundary is a prescribed temperature in kelvin, constant across faces and time. The interface heat flux still responds to the temperature and properties of the basal snow layer. For example:
+
+.. code-block:: json
+
+   {
+     "config": {
+       "Crocus": {
+         "ground_temperature_k": 263.0,
+         "ground_conductivity": 1.5,
+         "ground_layer_thickness_m": 0.1,
+         "ground_albedo": 0.2,
+         "max_layers": 20
+       }
+     }
+   }
+
+These are the defaults. Conductivity is in W m⁻¹ K⁻¹. Crocus allocates 28 bytes per configured layer and owned face for layer state. With 20 layers this is 560 bytes per face plus diagnostics. Forcing uses 2 m wind, air temperature and humidity, incoming shortwave and longwave, and separate rain and snow increments. Where a canopy module provides a subcanopy value it is used for that forcing independently.
+
+Crocus supplies ``swe`` (mm), ``snowdepthavg`` (m perpendicular to the slope), ``snowdepthavg_vert`` (m vertical), ``Nsnow``, ``snow_albedo``, and the usual FSM energy and mass flux fields. ``H``, ``E``, and ``LWout`` / ``ilwr_out`` are W m⁻² positive upward. ``crocus_ground_heat_flux`` is positive toward the ground. ``melt_rate``, ``roff``, and ``subl`` are kg m⁻² s⁻¹, as in the FSM implementation. ``sum_snowpack_subl`` is kg m⁻². Outflow includes rain draining through the pack or onto bare ground. Trace snowfall counts toward SWE immediately and forms a layer once it exceeds the native threshold. The first three ``Tsnow`` and ``Sliq`` fields describe the surface layers. All four compatibility ``Tsoil`` fields report the prescribed temperature.
+
+Start the first Crocus run with a bare column. Subsequent runs can resume a Crocus checkpoint with the same layer capacity and prescribed temperature. Checkpoints retain every layer's water equivalent, density, enthalpy, optical diameter, sphericity, grain history and age, plus unlayered snowfall, albedo, fluxes and cumulative sublimation.

@@ -62,6 +62,7 @@ set(MODULE_SRCS
         modules/PBSM3D.cpp
 		modules/snobal.cpp
 		modules/fsm.cpp
+		modules/crocus.cpp
 
 		modules/testing/mpi_example.cpp
 
@@ -423,6 +424,7 @@ if (BUILD_TESTS)
 			tests/test_regexptokenizer.cpp
 			#    test_daily.cpp
             tests/test_triangulation.cpp
+            tests/test_crocus.cpp
 			tests/main.cpp
     )
 
@@ -460,6 +462,8 @@ if (BUILD_TESTS)
 			PROPERTIES
 			RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
 			)
+
+	add_test(NAME crocus_checkpoint COMMAND runUnitTests --gtest_filter=Crocus.*)
 
 	# Explicitly disable OpenMP on unit tests if requested and supported.
 	if(NOT USE_OMP AND CHM_HAS_FNO_OPENMP)
