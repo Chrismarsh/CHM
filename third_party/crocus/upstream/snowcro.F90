@@ -159,6 +159,7 @@
 !               ------------
 !
 USE MODD_TYPE_DATE_SURF, ONLY: DATE_TIME
+USE CHM_CROCUS_LOGGING, ONLY: CRO_LOG, CRO_DEBUG, CRO_INFO, CRO_WARN, CRO_VALUES, CRO_NL
 !
 USE MODD_CSTS, ONLY : XTT, XRHOLW, XLMTT,XLSTT,XLVTT, XCL, XCI, XPI, XRHOLI
 USE MODD_SNOW_PAR, ONLY : XZ0ICEZ0SNOW, XRHOTHRESHOLD_ICE, XPERCENTAGEPORE,             &
@@ -189,6 +190,7 @@ USE MODN_IO_OFFLINE,  ONLY : LFORCIMP
 !
 !
 IMPLICIT NONE
+CHARACTER(256) :: CLOG
 !
 !
 !*      0.1    declarations of arguments
@@ -728,9 +730,11 @@ IF (LCRODAILYINFO .OR. LCRODEBUG) THEN
   !  Print of some simulation characteristics
   IF(GCROINFOPRINT) THEN
     CALL SNOWCROPRINTDATE()
-    WRITE(*,FMT="(A12,I3,A12,I4)") 'nlayer:',INLVLS_USE(IDEBUG), ' nbpoints:', SIZE(ZSNOW)
+    WRITE(CLOG,FMT="(A12,I3,A12,I4)") 'nlayer:',INLVLS_USE(IDEBUG), ' nbpoints:', SIZE(ZSNOW)
+    CALL CRO_LOG(CRO_INFO, CLOG)
   !   WRITE(*,*) 'PZ0H: ', PZ0H(IDEBUG)
-    WRITE(*,*) 'Snow fraction =',PPSN3L(IDEBUG)
+    WRITE(CLOG,*) 'Snow fraction =',PPSN3L(IDEBUG)
+    CALL CRO_LOG(CRO_INFO, ADJUSTL(CLOG))
   END IF
   !
   !***************************************PRINT OUT*********************************************
@@ -804,11 +808,16 @@ END IF
 !
 IF (GCRODEBUGDETAILSPRINT) THEN
 
-  PRINT*, "natural snowfall: ", ZSR(IDEBUG)>XUEPSI, ZSR(IDEBUG)
-  PRINT*, "unloading: ", ZUNLOAD(IDEBUG)> XUEPSI, ZUNLOAD(IDEBUG) 
-  PRINT*, "blowing snow: ", PBLOWSNW(IDEBUG,1) > XUEPSI
-  PRINT*, "machine-made snow: ", PSNOWMAK(IDEBUG)*XRHO_SNOWMAK/PTSTEP > XUEPSI
-  PRINT*, "freezing rain / temperature: ", GFRZRAIN(IDEBUG), PRR(IDEBUG), PTA(IDEBUG)
+  WRITE(CLOG,*)  "natural snowfall: ", ZSR(IDEBUG)>XUEPSI, ZSR(IDEBUG)
+  CALL CRO_LOG(CRO_DEBUG, ADJUSTL(CLOG))
+  WRITE(CLOG,*)  "unloading: ", ZUNLOAD(IDEBUG)> XUEPSI, ZUNLOAD(IDEBUG)
+  CALL CRO_LOG(CRO_DEBUG, ADJUSTL(CLOG))
+  WRITE(CLOG,*)  "blowing snow: ", PBLOWSNW(IDEBUG,1) > XUEPSI
+  CALL CRO_LOG(CRO_DEBUG, ADJUSTL(CLOG))
+  WRITE(CLOG,*)  "machine-made snow: ", PSNOWMAK(IDEBUG)*XRHO_SNOWMAK/PTSTEP > XUEPSI
+  CALL CRO_LOG(CRO_DEBUG, ADJUSTL(CLOG))
+  WRITE(CLOG,*)  "freezing rain / temperature: ", GFRZRAIN(IDEBUG), PRR(IDEBUG), PTA(IDEBUG)
+  CALL CRO_LOG(CRO_DEBUG, ADJUSTL(CLOG))
 END IF
 
 ! For SVS2 call snow unloading before SNOWFALL
@@ -1907,23 +1916,21 @@ DO JJ = 1,SIZE(ZSNOW)
 ! PSNOWTEMP(jj,INLVLS_USE(JJ)),PSNOWTEMP(jj,1),PZENITH(JJ)
   DO JST = 1,INLVLS_USE(JJ)
     IF ( PSNOWTEMP(JJ,JST) < 100. ) THEN
-      WRITE(*,*) 'pb tempe snow :',PSNOWTEMP(JJ,JST)
-      WRITE(*,FMT='("DATE:",2(I2.2,"/"),I4.4,F3.0)')          &
-        TPTIME%TDATE%DAY,TPTIME%TDATE%MONTH,TPTIME%TDATE%YEAR,TPTIME%TIME/3600.
-      WRITE(*,*) 'point',JJ,"/",SIZE(ZSNOW)
-      WRITE(*,*) 'layer',JST
-      WRITE(*,*) 'pressure',PPS(JJ)
-      WRITE(*,*) 'slope',ACOS(PDIRCOSZW(JJ))*(180./XPI),"deg"
-      WRITE(*,*) 'XLAT=',PXLAT(JJ),'XLON=',PXLON(JJ)
-      WRITE(*,*) 'solar radiation=',PSW_RAD(JJ)
-      WRITE(*,*) 'INLVLS_USE(JJ):',INLVLS_USE(JJ)
-      WRITE(*,*) 'DZ',PSNOWDZ(JJ,1:INLVLS_USE(JJ))
-      WRITE(*,*) 'RHO',PSNOWRHO(JJ,1:INLVLS_USE(JJ))
-      WRITE(*,*) 'TEMP',PSNOWTEMP(JJ,1:INLVLS_USE(JJ))
-      WRITE(*,*) 'RADSINK',ZRADSINK(JJ,:)
-      WRITE(*,*) 'RADXS',ZRADXS(JJ)
-      WRITE(*,*) 'ZENITH',PZENITH(JJ)*(180./XPI)
-      CALL ABOR1_SFX('SNOWCRO: erreur tempe snow')
+      BLOCK
+        CHARACTER(160) :: layer, location, radiation
+        WRITE(layer,'("pb tempe snow : ",G0," K, layer ",I0,"/",I0,", point ",I0,"/",I0)') &
+          PSNOWTEMP(JJ,JST), JST, INLVLS_USE(JJ), JJ, SIZE(ZSNOW)
+        WRITE(location,'("DATE: ",2(I2.2,"/"),I4.4," hour ",F5.2," pressure ",G0," slope ",G0," deg XLAT=",G0," XLON=",G0)') &
+          TPTIME%TDATE%DAY, TPTIME%TDATE%MONTH, TPTIME%TDATE%YEAR, TPTIME%TIME/3600., &
+          PPS(JJ), ACOS(PDIRCOSZW(JJ))*(180./XPI), PXLAT(JJ), PXLON(JJ)
+        WRITE(radiation,'("solar radiation=",G0," RADXS ",G0," ZENITH ",G0)') &
+          PSW_RAD(JJ), ZRADXS(JJ), PZENITH(JJ)*(180./XPI)
+        CALL ABOR1_SFX('SNOWCRO: erreur tempe snow' // CRO_NL // TRIM(layer) // CRO_NL // TRIM(location) // &
+          CRO_NL // 'DZ (m)' // CRO_VALUES(PSNOWDZ(JJ,1:INLVLS_USE(JJ))) // &
+          CRO_NL // 'RHO (kg/m3)' // CRO_VALUES(PSNOWRHO(JJ,1:INLVLS_USE(JJ))) // &
+          CRO_NL // 'TEMP (K)' // CRO_VALUES(PSNOWTEMP(JJ,1:INLVLS_USE(JJ))) // &
+          CRO_NL // 'RADSINK' // CRO_VALUES(ZRADSINK(JJ,:)) // CRO_NL // TRIM(radiation))
+      END BLOCK
     END IF
   END DO
 END DO
@@ -3580,8 +3587,11 @@ END DO   ! loop JST active snow layers
 DO JST = 1,IMAX_USE
   DO JJ = 1,SIZE(PSNOWDZ,1)
      IF (JST <= KNLVLS_USE(JJ) .AND. PSNOWTEMP(JJ,JST)-XTT > XUEPSI) THEN
-       WRITE(*,*) 'pb dans MELT PSNOWTEMP(JJ,JST) >XTT:', JJ,JST, PSNOWTEMP(JJ,JST)
-       CALL ABOR1_SFX('SNOWCRO: pb dans MELT')
+       BLOCK
+         CHARACTER(128) :: detail
+         WRITE(detail,'("point ",I0," layer ",I0," PSNOWTEMP > XTT: ",G0," K")') JJ, JST, PSNOWTEMP(JJ,JST)
+         CALL ABOR1_SFX('SNOWCRO: pb dans MELT' // CRO_NL // TRIM(detail))
+       END BLOCK
      END IF
   END DO   ! loop JJ grid points
 END DO
@@ -5047,6 +5057,7 @@ SUBROUTINE SNOWCROPRINTPROFILE(HINFO,KLAYERS,OPRINTGRAN,PSNOWDZ,PSNOWRHO, &
 USE MODD_CSTS, ONLY : XRHOLI, XTT, XLMTT, XCI
 !
 IMPLICIT NONE
+CHARACTER(256) :: CLOG
 !
  CHARACTER(*), INTENT(IN) :: HINFO
 LOGICAL,       INTENT(IN) :: OPRINTGRAN
@@ -5069,8 +5080,8 @@ REAL(KIND=JPRB) :: ZHOOK_HANDLE
 !
 IF (LHOOK) CALL DR_HOOK('SNOWCRO:SNOWCROPRINTPROFILE',0,ZHOOK_HANDLE)
 !
-WRITE(*,*)
-WRITE(*,*)TRIM(HINFO)
+CALL CRO_LOG(CRO_DEBUG, '')
+CALL CRO_LOG(CRO_DEBUG, TRIM(HINFO))
 !
 IF (PRESENT(PSNOWIMPUR).AND. NIMPUR > 0) THEN
   GPRINTIMPUR= (HSNOWRAD=='T17')
@@ -5087,7 +5098,7 @@ IF (ALL(PSNOWDZ(1:KLAYERS)>0.) .AND. ALL(ZSCAP(1:KLAYERS)>0.)) THEN
                           PSNOWDZ(1:KLAYERS) / (XLMTT*XRHOLW)
   ZSNOWTEMP(1:KLAYERS) = MIN( XTT, ZSNOWTEMP(1:KLAYERS) )
 ELSE
-  PRINT*, "WARNING: UNABLE TO COMPUTE ZSNOWTEMP"
+  CALL CRO_LOG(CRO_WARN, "WARNING: UNABLE TO COMPUTE ZSNOWTEMP")
   ZSNOWTEMP (1:KLAYERS) = -999.
 END IF
 
@@ -5104,45 +5115,57 @@ IF (OPRINTGRAN) THEN
   END IF
   !
   !
-  WRITE(*,'(10(A12,"|"))')CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT
+  WRITE(CLOG,'(10(A12,"|"))')CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT
+  CALL CRO_LOG(CRO_DEBUG, CLOG)
   IF (GPRINTIMPUR) THEN
-    WRITE(*,'(10(A12,"|"))')"PSNOWDZ","PSNOWRHO","PSNOWLIQ","ZSNOWLIQ","ZSNOWTEMP","PSNOWHEAT",&
+    WRITE(CLOG,'(10(A12,"|"))')"PSNOWDZ","PSNOWRHO","PSNOWLIQ","ZSNOWLIQ","ZSNOWTEMP","PSNOWHEAT",&
         "PSNOWDIAMOPT","PSNOWSPHERI","PSNOWSSA","PSNOWIMPUR"
+    CALL CRO_LOG(CRO_DEBUG, CLOG)
   ELSE
-    WRITE(*,'(10(A12,"|"))')"PSNOWDZ","PSNOWRHO","PSNOWLIQ","ZSNOWLIQ","ZSNOWTEMP","PSNOWHEAT",&
+    WRITE(CLOG,'(10(A12,"|"))')"PSNOWDZ","PSNOWRHO","PSNOWLIQ","ZSNOWLIQ","ZSNOWTEMP","PSNOWHEAT",&
         "PSNOWDIAMOPT","PSNOWSPHERI","PSNOWSSA","PSNOWAGE"
+    CALL CRO_LOG(CRO_DEBUG, CLOG)
   END IF
-  WRITE(*,'(10(A12,"|"))')CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT
+  WRITE(CLOG,'(10(A12,"|"))')CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT,CCT
+  CALL CRO_LOG(CRO_DEBUG, CLOG)
   DO JST = 1,KLAYERS
     IF (GPRINTIMPUR) THEN
-      WRITE(*,'(10(ES12.3,"|")," L",I2.2)') PSNOWDZ(JST),PSNOWRHO(JST),    &
+      WRITE(CLOG,'(10(ES12.3,"|")," L",I2.2)') PSNOWDZ(JST),PSNOWRHO(JST),    &
                                           PSNOWLIQ(JST),ZSNOWLIQ(JST),ZSNOWTEMP(JST),PSNOWHEAT(JST),PSNOWDIAMOPT(JST), &
                                           PSNOWSPHERI(JST),ZSNOWSSA(JST),PSNOWIMPUR(JST,1),JST
+      CALL CRO_LOG(CRO_DEBUG, CLOG)
     ELSE
-      WRITE(*,'(10(ES12.3,"|")," L",I2.2)') PSNOWDZ(JST),PSNOWRHO(JST),    &
+      WRITE(CLOG,'(10(ES12.3,"|")," L",I2.2)') PSNOWDZ(JST),PSNOWRHO(JST),    &
                                           PSNOWLIQ(JST),ZSNOWLIQ(JST),ZSNOWTEMP(JST),PSNOWHEAT(JST),PSNOWDIAMOPT(JST), &
                                           PSNOWSPHERI(JST),ZSNOWSSA(JST),PSNOWAGE(JST),JST
+      CALL CRO_LOG(CRO_DEBUG, CLOG)
     END IF
   END DO
-  WRITE(*,'(10(A12,"|"))')"-------------","-------------","-------------",&
+  WRITE(CLOG,'(10(A12,"|"))')"-------------","-------------","-------------",&
         "-------------","-------------","-------------","-------------",&
         "-------------"
+  CALL CRO_LOG(CRO_DEBUG, CLOG)
   !
 ELSE
   !
-  WRITE(*,'(6(A12,"|"))')CCT,CCT,CCT,CCT,CCT,CCT
-  WRITE(*,'(6(A12,"|"))')"PSNOWDZ","PSNOWRHO","PSNOWLIQ","ZSNOWLIQ","ZSNOWTEMP","PSNOWHEAT"
-  WRITE(*,'(6(A12,"|"))')"------------","------------","------------",&
+  WRITE(CLOG,'(6(A12,"|"))')CCT,CCT,CCT,CCT,CCT,CCT
+  CALL CRO_LOG(CRO_DEBUG, CLOG)
+  WRITE(CLOG,'(6(A12,"|"))')"PSNOWDZ","PSNOWRHO","PSNOWLIQ","ZSNOWLIQ","ZSNOWTEMP","PSNOWHEAT"
+  CALL CRO_LOG(CRO_DEBUG, CLOG)
+  WRITE(CLOG,'(6(A12,"|"))')"------------","------------","------------",&
         "------------"
+  CALL CRO_LOG(CRO_DEBUG, CLOG)
   DO JST = 1,KLAYERS
-    WRITE(*,'(6(ES12.3,"|")," L",I2.2)') PSNOWDZ(JST),PSNOWRHO(JST),&
+    WRITE(CLOG,'(6(ES12.3,"|")," L",I2.2)') PSNOWDZ(JST),PSNOWRHO(JST),&
                                          PSNOWLIQ(JST),ZSNOWLIQ(JST),ZSNOWTEMP(JST),PSNOWHEAT(JST),JST
+    CALL CRO_LOG(CRO_DEBUG, CLOG)
   END DO
-  WRITE(*,'(6(A12,"|"))')CCT,CCT,CCT,CCT,CCT,CCT
+  WRITE(CLOG,'(6(A12,"|"))')CCT,CCT,CCT,CCT,CCT,CCT
+  CALL CRO_LOG(CRO_DEBUG, CLOG)
   !
 END IF
 !
-WRITE(*,*)
+CALL CRO_LOG(CRO_DEBUG, '')
 !
 IF (LHOOK) CALL DR_HOOK('SNOWCRO:SNOWCROPRINTPROFILE',1,ZHOOK_HANDLE)
 !
@@ -5157,6 +5180,7 @@ SUBROUTINE SNOWCROPRINTATM(CINFO,PTA,PQA,PVMOD,PRR,PSR,PSW_RAD,PLW_RAD, &
 ! and ground data
 
 IMPLICIT NONE
+CHARACTER(256) :: CLOG
 
  CHARACTER(*), INTENT(IN) :: CINFO
 REAL,          INTENT(IN) :: PTA,PQA,PVMOD,PRR,PSR,PSW_RAD,PLW_RAD
@@ -5168,34 +5192,49 @@ IF (LHOOK) CALL DR_HOOK('SNOWCRO:SNOWCROPRINTATM',0,ZHOOK_HANDLE)
 !
  CALL SNOWCROPRINTDATE()
 !
-WRITE(*,*)
-WRITE(*,*)TRIM(CINFO)
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, '')
+CALL CRO_LOG(CRO_DEBUG, TRIM(CINFO))
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
-WRITE(*,'(4(A12,"|"))')"PTA","PQA","PRR","PSR"
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"PTA","PQA","PRR","PSR"
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
-WRITE(*,'(4(ES12.3,"|")," meteo1")')PTA,PQA,PRR,PSR
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(ES12.3,"|")," meteo1")')PTA,PQA,PRR,PSR
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
-WRITE(*,'(4(A12,"|"))')"PSW_RAD","PLW_RAD","PVMOD","PBLOWSNW"
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"PSW_RAD","PLW_RAD","PVMOD","PBLOWSNW"
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
-WRITE(*,'(4(ES12.3,"|")," meteo2")')PSW_RAD,PLW_RAD,PVMOD,PBLOWSNW
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(ES12.3,"|")," meteo2")')PSW_RAD,PLW_RAD,PVMOD,PBLOWSNW
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
-WRITE(*,*)
-WRITE(*,*)"Ground :"
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+CALL CRO_LOG(CRO_DEBUG, '')
+CALL CRO_LOG(CRO_DEBUG, "Ground :")
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
-WRITE(*,'(4(A12,"|"))')"PTG","PSOILCOND","PD_G","PPSN3L"
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"PTG","PSOILCOND","PD_G","PPSN3L"
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
-WRITE(*,'(4(ES12.3,"|")," soil")')PTG,PSOILCOND,PD_G,PPSN3L
-WRITE(*,'(4(A12,"|"))')"------------","------------","------------",&
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(ES12.3,"|")," soil")')PTG,PSOILCOND,PD_G,PPSN3L
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,'(4(A12,"|"))')"------------","------------","------------",&
 "------------"
+CALL CRO_LOG(CRO_DEBUG, CLOG)
 !
 IF (LHOOK) CALL DR_HOOK('SNOWCRO:SNOWCROPRINTATM',1,ZHOOK_HANDLE)
 !
@@ -5237,6 +5276,7 @@ SUBROUTINE SNOWCROPRINTBALANCE(PSUMMASS_INI,PSUMHEAT_INI,PSUMMASS_FIN,PSUMHEAT_F
 ! Print energy and mass balances.
 !
 IMPLICIT NONE
+CHARACTER(256) :: CLOG
 !
 REAL, INTENT(IN) :: PSUMMASS_INI,PSUMHEAT_INI,PSUMMASS_FIN,PSUMHEAT_FIN
 REAL, INTENT(IN) :: PSR,PRR,PTHRUFAL,PEVAP,PEVAPCOR
@@ -5249,46 +5289,70 @@ REAL(KIND=JPRB) :: ZHOOK_HANDLE
 !
 IF (LHOOK) CALL DR_HOOK('SNOWCRO:SNOWCROPRINTBALANCE',0,ZHOOK_HANDLE)
 !
-WRITE(*,*) ' '
-WRITE(*,FMT='(A1,67("+"),A1)') "+","+"
+CALL CRO_LOG(CRO_DEBUG, '')
+WRITE(CLOG,FMT='(A1,67("+"),A1)') "+","+"
+CALL CRO_LOG(CRO_DEBUG, CLOG)
 !
  CALL SNOWCROPRINTDATE()
 !
-WRITE(*,*) ' '
+CALL CRO_LOG(CRO_DEBUG, '')
 !
 ! print des residus de bilan et des differents termes pour le point
-WRITE (*,FMT="(A25,1x,E17.10)") 'final mass (kg/m2) =' , PSUMMASS_FIN
-WRITE (*,FMT="(A25,1x,E17.10)") 'final energy (J/m2) =', ZSUMHEAT_FIN
-WRITE(*,*) ' '
+WRITE (CLOG,FMT="(A25,1x,E17.10)") 'final mass (kg/m2) =' , PSUMMASS_FIN
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE (CLOG,FMT="(A25,1x,E17.10)") 'final energy (J/m2) =', ZSUMHEAT_FIN
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+CALL CRO_LOG(CRO_DEBUG, '')
 !
-WRITE(*,FMT="(A25,1x,E17.10)") 'mass balance (kg/m2) =', PMASSBALANCE
+WRITE(CLOG,FMT="(A25,1x,E17.10)") 'mass balance (kg/m2) =', PMASSBALANCE
+CALL CRO_LOG(CRO_DEBUG, CLOG)
 !
-WRITE(*,*) ' '
-WRITE(*,FMT="(A35)") 'mass balance contribution (kg/m2) '
-WRITE(*,FMT="(A51,1x,E17.10)") 'delta mass:', (PSUMMASS_FIN-PSUMMASS_INI)
-WRITE(*,FMT="(A51,1x,E17.10)") 'hoar or condensation (>0 towards snow):', -PEVAP * PTSTEP
-WRITE(*,FMT="(A51,1x,E17.10)") 'rain:',    PRR * PTSTEP
-WRITE(*,FMT="(A51,1x,E17.10)") 'snow:',    PSR * PTSTEP
-WRITE(*,FMT="(A51,1x,E17.10)") 'run-off:', PTHRUFAL * PTSTEP
-WRITE(*,FMT="(A51,1x,E17.10)") 'evapcor:', PEVAPCOR * PTSTEP
+CALL CRO_LOG(CRO_DEBUG, '')
+WRITE(CLOG,FMT="(A35)") 'mass balance contribution (kg/m2) '
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'delta mass:', (PSUMMASS_FIN-PSUMMASS_INI)
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'hoar or condensation (>0 towards snow):', -PEVAP * PTSTEP
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'rain:',    PRR * PTSTEP
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'snow:',    PSR * PTSTEP
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'run-off:', PTHRUFAL * PTSTEP
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'evapcor:', PEVAPCOR * PTSTEP
+CALL CRO_LOG(CRO_DEBUG, CLOG)
 !
-WRITE(*,FMT='(A1,55("-"),A1)')"+","+"
-WRITE(*,*) ' '
+WRITE(CLOG,FMT='(A1,55("-"),A1)')"+","+"
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+CALL CRO_LOG(CRO_DEBUG, '')
 !
-WRITE(*,FMT="(A25,4(1x,E17.10))") 'energy balance (W/m2)=',PENERGYBALANCE
+WRITE(CLOG,FMT="(A25,4(1x,E17.10))") 'energy balance (W/m2)=',PENERGYBALANCE
+CALL CRO_LOG(CRO_DEBUG, CLOG)
 !
-WRITE(*,*) ' '
-WRITE(*,FMT="(A55)") 'energy balance contribution (W/m2) >0 towards snow :'
-WRITE(*,FMT="(A51,1x,E17.10)") 'delta heat:', (ZSUMHEAT_FIN-ZSUMHEAT_INI)/PTSTEP
-WRITE(*,FMT="(A51,1x,E17.10)") 'radiation (LW + SW):', PRNSNOW
-WRITE(*,FMT="(A51,1x,E17.10)") 'sensible flux :',      -PHSNOW
-WRITE(*,FMT="(A51,1x,E17.10)") 'ground heat flux :',   -PGRNDFLUX
-WRITE(*,FMT="(A51,1x,E17.10)") 'liquid latent flux:',  -PLEL3L
-WRITE(*,FMT="(A51,1x,E17.10)") 'solid latent flux:',   -PLES3L
-WRITE(*,FMT="(A51,1x,E17.10)") 'rain sensible heat:',  PHPSNOW
-WRITE(*,FMT="(A51,1x,E17.10)") 'snowfall/hoar heat (sensible + melt heat):', PSNOWHMASS/PTSTEP
-WRITE(*,FMT="(A51,1x,E17.10)") 'evapcor:', PEVAPCOR2
-WRITE(*,FMT='(A1,67("+"),A1)')"+","+"
+CALL CRO_LOG(CRO_DEBUG, '')
+WRITE(CLOG,FMT="(A55)") 'energy balance contribution (W/m2) >0 towards snow :'
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'delta heat:', (ZSUMHEAT_FIN-ZSUMHEAT_INI)/PTSTEP
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'radiation (LW + SW):', PRNSNOW
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'sensible flux :',      -PHSNOW
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'ground heat flux :',   -PGRNDFLUX
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'liquid latent flux:',  -PLEL3L
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'solid latent flux:',   -PLES3L
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'rain sensible heat:',  PHPSNOW
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'snowfall/hoar heat (sensible + melt heat):', PSNOWHMASS/PTSTEP
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT="(A51,1x,E17.10)") 'evapcor:', PEVAPCOR2
+CALL CRO_LOG(CRO_DEBUG, CLOG)
+WRITE(CLOG,FMT='(A1,67("+"),A1)')"+","+"
+CALL CRO_LOG(CRO_DEBUG, CLOG)
 !
 IF (LHOOK) CALL DR_HOOK('SNOWCRO:SNOWCROPRINTBALANCE',1,ZHOOK_HANDLE)
 !
@@ -5333,13 +5397,15 @@ END SUBROUTINE GET_BALANCE
 SUBROUTINE SNOWCROPRINTDATE()
 !
 IMPLICIT NONE
+CHARACTER(256) :: CLOG
 !
 REAL(KIND=JPRB) :: ZHOOK_HANDLE
 !
 IF (LHOOK) CALL DR_HOOK('SNOWCRO:SNOWCROPRINTDATE',0,ZHOOK_HANDLE)
 !
-WRITE(*,FMT='(I4.4,2("-",I2.2)," Hour=",F5.2)') &
+WRITE(CLOG,FMT='(I4.4,2("-",I2.2)," Hour=",F5.2)') &
   TPTIME%TDATE%YEAR, TPTIME%TDATE%MONTH, TPTIME%TDATE%DAY, TPTIME%TIME/3600.
+CALL CRO_LOG(CRO_DEBUG, CLOG)
 !
 IF (LHOOK) CALL DR_HOOK('SNOWCRO:SNOWCROPRINTDATE',1,ZHOOK_HANDLE)
 !

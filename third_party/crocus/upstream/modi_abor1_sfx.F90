@@ -52,7 +52,8 @@ END MODULE MODI_ABOR1_SFX
 !
 !
 USE ISO_C_BINDING, ONLY: C_INT
-USE ISO_FORTRAN_ENV, ONLY: OUTPUT_UNIT, ERROR_UNIT
+USE ISO_FORTRAN_ENV, ONLY: OUTPUT_UNIT
+USE CHM_CROCUS_LOGGING, ONLY: CRO_LOG, CRO_FATAL
 IMPLICIT NONE
 !
 !*       0.1   Declarations of arguments
@@ -70,8 +71,7 @@ END INTERFACE
 ! In CHM a process exit handler can enter collective HDF5 cleanup while the
 ! other MPI ranks are still in the timestep. Let the launcher see the failure.
 FLUSH(OUTPUT_UNIT)
-WRITE(ERROR_UNIT,'(A)') TRIM(YTEXT)
-FLUSH(ERROR_UNIT)
+CALL CRO_LOG(CRO_FATAL, YTEXT)
 CALL C_EXIT_IMMEDIATELY(1_C_INT)
 !
 END SUBROUTINE ABOR1_SFX
