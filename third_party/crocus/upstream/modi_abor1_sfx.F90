@@ -51,6 +51,8 @@ END MODULE MODI_ABOR1_SFX
 !              ------------
 !
 !
+USE ISO_C_BINDING, ONLY: C_INT
+USE ISO_FORTRAN_ENV, ONLY: OUTPUT_UNIT, ERROR_UNIT
 IMPLICIT NONE
 !
 !*       0.1   Declarations of arguments
@@ -58,11 +60,18 @@ IMPLICIT NONE
 !
  CHARACTER(LEN=*),  INTENT(IN)  :: YTEXT
 !
-!*       0.2   Declarations of local variables
-!              -------------------------------
+INTERFACE
+  SUBROUTINE C_EXIT_IMMEDIATELY(STATUS) BIND(C, NAME="_Exit")
+    IMPORT C_INT
+    INTEGER(C_INT), VALUE :: STATUS
+  END SUBROUTINE
+END INTERFACE
 !
-WRITE(*,*)YTEXT
-
-STOP
+! In CHM a process exit handler can enter collective HDF5 cleanup while the
+! other MPI ranks are still in the timestep. Let the launcher see the failure.
+FLUSH(OUTPUT_UNIT)
+WRITE(ERROR_UNIT,'(A)') TRIM(YTEXT)
+FLUSH(ERROR_UNIT)
+CALL C_EXIT_IMMEDIATELY(1_C_INT)
 !
 END SUBROUTINE ABOR1_SFX
