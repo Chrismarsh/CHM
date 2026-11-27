@@ -425,6 +425,7 @@ if (BUILD_TESTS)
 			#    test_daily.cpp
             tests/test_triangulation.cpp
             tests/test_crocus.cpp
+            tests/test_crocus_logging.cpp
 			tests/main.cpp
     )
 
