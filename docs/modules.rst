@@ -87,6 +87,11 @@ Crocus supplies ``swe`` (mm), ``snowdepthavg`` (m perpendicular to the slope), `
 
 Start the first Crocus run with a bare column. Subsequent runs can resume a Crocus checkpoint with the same layer capacity and prescribed temperature. Checkpoints retain every layer's water equivalent, density, enthalpy, optical diameter, sphericity, grain history and age, plus unlayered snowfall, albedo, fluxes and cumulative sublimation.
 
+Native Crocus diagnostics appear in the CHM rank log under ``[Crocus]``.
+Column messages include the global face ID, step and model time. A fatal
+temperature error includes the failing layer and its profile in the same
+critical entry. CHM flushes the entry before the rank exits.
+
 Lateral snow transport
 ^^^^^^^^^^^^^^^^^^^^^^
 

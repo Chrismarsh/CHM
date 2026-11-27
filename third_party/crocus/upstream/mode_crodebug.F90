@@ -58,6 +58,8 @@ REAL :: XWARNING_ENERGYBALANCE=1.E-4
 CONTAINS
 !
 SUBROUTINE INIT_CRODEBUG (HSNOW_SCHEME)
+USE CHM_CROCUS_LOGGING, ONLY: CRO_INFO, CRO_LOG
+CHARACTER(256) :: CLOG
 ! Check environment variables to activate crocus debugging mode if required
 !
 !
@@ -75,7 +77,7 @@ IF (HSNOW_SCHEME=='CRO') THEN
   CALL GET_ENVIRONMENT_VARIABLE("CROCUS_INFO",YCROCUS_INFO)
   SELECT CASE (YCROCUS_INFO)
     CASE ("1")
-      PRINT*,"CROCUS : print daily informations."
+      CALL CRO_LOG(CRO_INFO, "CROCUS : print daily informations.")
       LCRODAILYINFO=.TRUE.
     CASE DEFAULT
       LCRODAILYINFO=.FALSE.
@@ -84,33 +86,33 @@ IF (HSNOW_SCHEME=='CRO') THEN
   CALL GET_ENVIRONMENT_VARIABLE("CROCUS_DEBUG",YCROCUS_DEBUG)
   SELECT CASE (YCROCUS_DEBUG)
     CASE ("1")
-      PRINT*,"CROCUS DEBUGGING MODE : print snow profile at the end of each time step"
+      CALL CRO_LOG(CRO_INFO, "CROCUS DEBUGGING MODE : print snow profile at the end of each time step")
       LCRODEBUG=.TRUE.
       LCRODEBUGDETAILS=.FALSE.
       LCRODEBUGATM=.FALSE.
       LPRINTGRAN=.FALSE.
     CASE ("2")
-      PRINT*,"CROCUS DEBUGGING MODE : print snow profile after each CROCUS routine"
+      CALL CRO_LOG(CRO_INFO, "CROCUS DEBUGGING MODE : print snow profile after each CROCUS routine")
       LCRODEBUG=.TRUE.
       LCRODEBUGDETAILS=.TRUE.
       LCRODEBUGATM=.FALSE.
       LPRINTGRAN=.FALSE.
     CASE ("3")
-      PRINT*,"CROCUS DEBUGGING MODE : print snow profile at the end of each &
-            & time step and forcing data"
+      CALL CRO_LOG(CRO_INFO, "CROCUS DEBUGGING MODE : print snow profile at the end of each &
+            & time step and forcing data")
       LCRODEBUG=.TRUE.
       LCRODEBUGDETAILS=.FALSE.
       LCRODEBUGATM=.TRUE.
       LPRINTGRAN=.FALSE.
     CASE ("4")
-      PRINT*,"CROCUS DEBUGGING MODE : print snow profile after each CROCUS routine &
-            & and forcing data"
+      CALL CRO_LOG(CRO_INFO, "CROCUS DEBUGGING MODE : print snow profile after each CROCUS routine &
+            & and forcing data")
       LCRODEBUG=.TRUE.
       LCRODEBUGDETAILS=.TRUE.
       LCRODEBUGATM=.TRUE.
       LPRINTGRAN=.FALSE.
     CASE ("5")
-      PRINT*,"CROCUS DEBUGGING MODE : print everything"
+      CALL CRO_LOG(CRO_INFO, "CROCUS DEBUGGING MODE : print everything")
       LCRODEBUG=.TRUE.
       LCRODEBUGDETAILS=.TRUE.
       LCRODEBUGATM=.TRUE.
@@ -125,7 +127,7 @@ IF (HSNOW_SCHEME=='CRO') THEN
   CALL GET_ENVIRONMENT_VARIABLE("CROCUS_BALANCE",YCROCUS_BALANCE)
   SELECT CASE (YCROCUS_BALANCE)
     CASE ("1")
-      PRINT*,"CROCUS DEBUGGING MODE : print mass and energy balance diagnostics."
+      CALL CRO_LOG(CRO_INFO, "CROCUS DEBUGGING MODE : print mass and energy balance diagnostics.")
       LCONTROLBALANCE=.TRUE.
     CASE DEFAULT
       LCONTROLBALANCE=.FALSE.
@@ -136,7 +138,8 @@ IF (HSNOW_SCHEME=='CRO') THEN
     CALL GET_ENVIRONMENT_VARIABLE("CROCUS_DEBUG_DATE",YCROCUS_DEBUG_TIME)
     IF ( LEN_TRIM(YCROCUS_DEBUG_TIME)>0 ) THEN
       READ(YCROCUS_DEBUG_TIME,'(I8)')NTIMECRODEBUG
-      PRINT*,"after the date : ",NTIMECRODEBUG
+      WRITE(CLOG,*) "after the date : ",NTIMECRODEBUG
+      CALL CRO_LOG(CRO_INFO, ADJUSTL(CLOG))
     ELSE
       NTIMECRODEBUG = 0
     END IF
@@ -144,7 +147,8 @@ IF (HSNOW_SCHEME=='CRO') THEN
     CALL GET_ENVIRONMENT_VARIABLE("CROCUS_DEBUG_DATE_END",YCROCUS_DEBUG_TIME)
     IF (LEN_TRIM(YCROCUS_DEBUG_TIME)>0) THEN
       READ(YCROCUS_DEBUG_TIME,'(I8)')NENDCRODEBUG
-      PRINT*,"before the date : ",NENDCRODEBUG
+      WRITE(CLOG,*) "before the date : ",NENDCRODEBUG
+      CALL CRO_LOG(CRO_INFO, ADJUSTL(CLOG))
     ELSE
       NENDCRODEBUG = 99999999
     END IF
@@ -152,7 +156,8 @@ IF (HSNOW_SCHEME=='CRO') THEN
     CALL GET_ENVIRONMENT_VARIABLE("CROCUS_DEBUG_HOUR",YCROCUS_DEBUG_HOUR)
     IF (LEN_TRIM(YCROCUS_DEBUG_HOUR)>0) THEN
       READ(YCROCUS_DEBUG_HOUR,'(I2)')NHOURCRODEBUG
-      PRINT*,"after the hour : ",NHOURCRODEBUG
+      WRITE(CLOG,*) "after the hour : ",NHOURCRODEBUG
+      CALL CRO_LOG(CRO_INFO, ADJUSTL(CLOG))
     ELSE
       NHOURCRODEBUG = 0
     END IF

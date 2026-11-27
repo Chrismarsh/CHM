@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "crocus.hpp"
+#include "crocus_log_sink.hpp"
 #include "snow_transport.hpp"
 
 #include <array>
@@ -84,7 +85,12 @@ Crocus::Crocus(config_file cfg)
 void Crocus::init(mesh& domain)
 {
     static std::once_flag constants;
-    std::call_once(constants, crocus::chm_crocus_initialize);
+    std::call_once(constants,
+                   []
+                   {
+                       const crocus::LogScope log(crocus::log_to_chm);
+                       crocus::chm_crocus_initialize();
+                   });
     const size_t count = domain->size_local_faces();
     state_.assign(count * crocus::field_count * layers_, 0.f);
     pending_.assign(count, 0.f);
@@ -181,6 +187,8 @@ void Crocus::run(mesh_elem& face)
         const double avalanche_density = density >= 50. && density <= 917. ? density : 500.;
         m.transported_density = m.transported_mass / (wind_deposit / 300. + avalanche_deposit / avalanche_density);
     }
+    const crocus::ColumnLogContext context{face->cell_global_id, global_param->timestep_counter, m};
+    const crocus::LogScope log(crocus::log_to_chm, &context);
     crocus::chm_crocus_step(layers_, column, &m, &ground_, &pending_[i], &fluxes_[i]);
     cumulative_subl_[i] += fluxes_[i].sublimation * m.dt;
     publish(face);

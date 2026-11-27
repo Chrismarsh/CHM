@@ -1528,7 +1528,9 @@ USE MODD_CONST_TARTES,  ONLY : XSNOWIMP_DENSITY
 USE MODD_SURF_PAR,      ONLY : XUNDEF
 USE MODD_CSTS,          ONLY : XPI
 !
+USE CHM_CROCUS_LOGGING, ONLY: CRO_ERROR, CRO_LOG, CRO_VALUES, CRO_WARN
 IMPLICIT NONE
+CHARACTER(256) :: CLOG
 !
 REAL, DIMENSION(:,:), INTENT(IN)   :: PSNOWDIAMOPT,PSNOWSPHERI  ! (npoints,nlayer) 
 REAL, DIMENSION(:,:), INTENT(IN)   :: PSNOWRHO !snow density (kg/m^3) (npoints,nlayer)
@@ -1708,9 +1710,10 @@ IF ( IPOINTDAY>=1 ) THEN
            !Compute the impurity concentration of each layer(JST) for each type of impurity(JIMP) and each point (JJ) 
           ZSNOWIMP_CONTENT_P(JJ_P,JL,JIMP) = PSNOWIMPUR(JJ,JL,JIMP)/(1000.*PSNOWRHO  (JJ,JL)*PSNOWDZ   (JJ,JL)) !PSNOWIMP en g/m² et RHOxDZ en kg/m²
           IF (ZSNOWIMP_CONTENT_P(JJ_P,JL,JIMP)<0 .OR. ZSNOWIMP_CONTENT_P(JJ_P,JL,JIMP)>1.) THEN
-            PRINT*,"PROBLEME GRAVE"
-            PRINT*,"ATTENTION VALEURS ANORMALES CONCENTRATION IMPURETES"
-            PRINT*,'Before snowcro call Tartes, IMP',JIMP,'concentration =',ZSNOWIMP_CONTENT_P(JJ_P,:,JIMP)
+            CALL CRO_LOG(CRO_ERROR, "PROBLEME GRAVE")
+            CALL CRO_LOG(CRO_WARN, "ATTENTION VALEURS ANORMALES CONCENTRATION IMPURETES")
+            WRITE(CLOG,'("Before snowcro call Tartes, IMP ",I0," concentration =")') JIMP
+            CALL CRO_LOG(CRO_WARN, TRIM(CLOG) // CRO_VALUES(ZSNOWIMP_CONTENT_P(JJ_P,:,JIMP)))
           ENDIF   
           !
         ENDIF
@@ -1811,7 +1814,9 @@ USE MODD_CSTS, ONLY : XRHOLI,XPI
 !
 USE MODD_SNOW_METAMO,  ONLY : XUEPSI
 !
+USE CHM_CROCUS_LOGGING, ONLY: CRO_ERROR, CRO_LOG, CRO_NL, CRO_VALUES, CRO_WARN
 IMPLICIT NONE
+CHARACTER(256) :: CLOG
 
 REAL, DIMENSION(:,:), INTENT(IN)   :: PSNOWDIAMOPT,PSNOWSPHERI  ! (npoints,nlayer) 
 REAL, DIMENSION(:,:), INTENT(IN)   :: PSNOWRHO !snow density (kg/m^3) (npoints,nlayer)
@@ -1893,7 +1898,7 @@ DO JL = 1,SIZE(PSNOWRHO,2)
       IF (PSNOWRHO(JJ,JL) < 850.) THEN          !Check to detect ice layer
         ZSNOWSSA(JJ,JL) = 6. / (XRHOLI*PSNOWDIAMOPT(JJ,JL))               
         IF (ZSNOWSSA(JJ,JL)>100.) THEN
-          PRINT *, "SSA anomaly Tartes line 1724"
+          CALL CRO_LOG(CRO_WARN, "SSA anomaly Tartes line 1724")
           ZSNOWSSA(JJ,JL)=70.
         ENDIF
       ELSE                       !Set the SSA value of ice to the value prescribed in modd_const_tartes to reproduce ice albedo
@@ -1927,7 +1932,8 @@ ENDDO
 
     DO JJ=1,SIZE(PSW_RAD)
       IF (ABS(PSW_RAD(JJ)-(SUM(P_DIR_SW(JJ,:))+SUM(P_SCA_SW(JJ,:))))>0.1) THEN
-        PRINT*, "WARNING TOTAL SW RAD != DIR +DIF ",PSW_RAD(JJ),"SUM=",(SUM(P_DIR_SW(JJ,:))+SUM(P_SCA_SW(JJ,:)))  
+        WRITE(CLOG,*)  "WARNING TOTAL SW RAD != DIR +DIF ",PSW_RAD(JJ),"SUM=",(SUM(P_DIR_SW(JJ,:))+SUM(P_SCA_SW(JJ,:)))
+        CALL CRO_LOG(CRO_WARN, ADJUSTL(CLOG))
       ENDIF
     ENDDO
 
@@ -1989,7 +1995,8 @@ CALL TARTES(ZSNOWSSA,PSNOWRHO,PSNOWDZ,PSNOWG0,PSNOWY0,PSNOWW0,PSNOWB0,PSNOWIMP_D
               IF ((XPWAVELENGTHS(JB)<=1300) .AND.(ABS(ZSNOWENERGY_CUM(JJ)/ZMAX(JJ))>1.05)) THEN 
                 ! Tolerance 5% of excess energy in the visible
                 ! Above, the problem should never happen in visible
-                 PRINT*,"excess energy in snow, total snowpack Thickness : ", SUM(PSNOWDZ(JJ,1:KNLVLS_USE(JJ)))       
+                 WRITE(CLOG,*) "excess energy in snow, total snowpack Thickness : ", SUM(PSNOWDZ(JJ,1:KNLVLS_USE(JJ)))
+                 CALL CRO_LOG(CRO_WARN, ADJUSTL(CLOG))
               ENDIF   
               ! The layer absorbes all the remaining energy at this wavelength
               ZSNOWENERGY(JJ,JL,JB)=ZMAX(JJ)-ZSNOWENERGY_UPPER(JJ)
@@ -2006,7 +2013,8 @@ CALL TARTES(ZSNOWSSA,PSNOWRHO,PSNOWDZ,PSNOWG0,PSNOWY0,PSNOWW0,PSNOWB0,PSNOWIMP_D
         ZSNOWENERGY_CUM(JJ)=ZSNOWENERGY_CUM(JJ)+ZSOILENERGY(JJ,JB)
         IF (ZSNOWENERGY_CUM(JJ)>ZMAX(JJ)) THEN
           IF (XPWAVELENGTHS(JB)<=1300 .AND. ZSNOWENERGY_CUM(JJ)/ZMAX(JJ)>1.05) THEN  ! If there more than 5% overshoot in soil energy
-            PRINT *, "ERROR TARTES (significant soil excess energy in visible)!!", "Thickness:", SUM(PSNOWDZ(JJ,1:KNLVLS_USE(JJ)))
+            WRITE(CLOG,*)  "ERROR TARTES (significant soil excess energy in visible)!!", "Thickness:", SUM(PSNOWDZ(JJ,1:KNLVLS_USE(JJ)))
+            CALL CRO_LOG(CRO_ERROR, ADJUSTL(CLOG))
           ENDIF              
           ! If the overestimation of soil energy is relatively small, just adjust soil energy.
             ZSOILENERGY(JJ,JB)=ZMAX(JJ)-ZSNOWENERGY_UPPER(JJ)    ! The layer absorbes all the remaining energy at this wavelength
@@ -2078,12 +2086,11 @@ ENDIF
 !dEBUG
 DO JJ = 1,SIZE(PSNOWRHO,1)
   IF ( PSNOWALB(JJ)<0. .OR. PSNOWALB(JJ)>1. ) THEN
-    PRINT*, "ALB,", PSNOWALB(JJ)
-    PRINT*, "ZNIR_ABS,", ZNIR_ABS(JJ)
-    PRINT*, "SNOW_ENERGY", ZSNOWENERGY_BB(JJ,:)
-    PRINT*, "PSW_RAD",PSW_RAD(JJ),"ZTOTSNOWENERGY",ZTOTSNOWENERGY(JJ),"ZSOILENERGY",SUM(ZSOILENERGY(JJ,:))
-    PRINT*, "ZTOTSNOWENERGY-ZNIR_ABS: ",ZTOTSNOWENERGY(JJ)-ZNIR_ABS(JJ)
-    CALL ABOR1_SFX("FATAL ERROR IN_TARTES (Non physical value of broadband albedo in output of tartes)")
+    WRITE(CLOG,'("ALB ",G0," ZNIR_ABS ",G0," PSW_RAD ",G0," ZTOTSNOWENERGY ",G0," ZSOILENERGY ",G0, &
+      &" ZTOTSNOWENERGY-ZNIR_ABS ",G0)') PSNOWALB(JJ), ZNIR_ABS(JJ), PSW_RAD(JJ), ZTOTSNOWENERGY(JJ), &
+      SUM(ZSOILENERGY(JJ,:)), ZTOTSNOWENERGY(JJ)-ZNIR_ABS(JJ)
+    CALL ABOR1_SFX("FATAL ERROR IN_TARTES (Non physical value of broadband albedo in output of tartes)" // &
+      CRO_NL // TRIM(CLOG) // CRO_NL // 'SNOW_ENERGY' // CRO_VALUES(ZSNOWENERGY_BB(JJ,:)))
 !    DO JB = 1,NPNBANDS
 !     PRINT*, "Band:",JB, "ZSNOWENERGY",ZSNOWENERGY(JJ,1,JB)
 !      PRINT*, "Band:", JB, "ZSW_RAD_DIR,",ZSW_RAD_DIR(JJ,JB)
