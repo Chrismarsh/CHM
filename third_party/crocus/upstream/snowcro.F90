@@ -3497,6 +3497,7 @@ INTEGER, DIMENSION(:), INTENT(IN)   :: KNLVLS_USE
 REAL, DIMENSION(SIZE(PSNOWRHO,1),SIZE(PSNOWRHO,2)) :: ZPHASE, ZCMPRSFACT,   &
                                                       ZSNOWLWE,             &
                                                       ZSNOWMELT, ZSNOWTEMP
+REAL :: ZMELT_LIMIT ! latent heat required to melt the available ice (J/m2)
 !
 INTEGER :: JJ, JST ! looping indexes
 !
@@ -3528,10 +3529,12 @@ DO JST = 1,IMAX_USE
       ! Phase change (J/m2)
 !VV      ZPHASE(JJ,JST) = MIN( PSCAP(JJ,JST) * MAX(0.0,PSNOWTEMP(JJ,JST)-XTT) * PSNOWDZ(JJ,JST), &
 !VV                           MAX(0.0,ZSNOWLWE(JJ,JST)-PSNOWLIQ(JJ,JST)) * XLMTT * XRHOLW )
-!VV   Modification to run Crocus in single precision mode
+      ! Keep the single-precision thickness reserve. A trace layer can already
+      ! be thinner than the reserve, in which case no ice is available to melt.
+      ZMELT_LIMIT = MAX(0.0, (ZSNOWLWE(JJ,JST)-PSNOWLIQ(JJ,JST)) * XLMTT * XRHOLW &
+                                 - XUEPSI_SMP * XLMTT * PSNOWRHO(JJ,JST))
       ZPHASE(JJ,JST) = MIN( PSCAP(JJ,JST) * MAX(0.0,PSNOWTEMP(JJ,JST)-XTT) * PSNOWDZ(JJ,JST), &
-                           MAX(0.0,ZSNOWLWE(JJ,JST)-PSNOWLIQ(JJ,JST)) * XLMTT * XRHOLW-      &
-                               XUEPSI_SMP * XLMTT * PSNOWRHO(JJ,JST))                   
+                            ZMELT_LIMIT )
       !
       ! Update snow liq water content and temperature if melting:
       ! liquid water available for next layer from melting of snow
@@ -3545,7 +3548,10 @@ DO JST = 1,IMAX_USE
       ! because of the introduction of the tests in SNOWCROLAYER_GONE
       ! VV PSNOWTEMP(JJ,JST) =  ZSNOWTEMP(JJ,JST)
       !VV Modification to allow model run in single precision
-      PSNOWTEMP(JJ,JST) = MIN(ZSNOWTEMP(JJ,JST),XTT)         
+      PSNOWTEMP(JJ,JST) = MIN(ZSNOWTEMP(JJ,JST),XTT)
+      ! Leave the geometry and water as they are when no ice can melt. The
+      ! compression denominator below can be zero for an all-liquid layer.
+      IF (ZMELT_LIMIT == 0.) CYCLE
       !
       !
       ! Loss of snowpack depth: (m) and liquid equiv (m):

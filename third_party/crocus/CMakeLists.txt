@@ -58,4 +58,12 @@ if(BUILD_TESTS OR (PROJECT_NAME STREQUAL "CHMCrocus" AND BUILD_TESTING))
     add_executable(test_crocus_column tests/test_column.cpp)
     target_link_libraries(test_crocus_column PRIVATE chm_crocus Threads::Threads)
     add_test(NAME crocus_column COMMAND test_crocus_column "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    # A Fortran STOP can exit with status zero before the C++ driver finishes.
+    set_tests_properties(crocus_column PROPERTIES PASS_REGULAR_EXPRESSION "Crocus column tests completed")
+
+    add_executable(test_crocus_fatal tests/test_fatal.cpp tests/raise_crocus_error.f90)
+    target_link_libraries(test_crocus_fatal PRIVATE chm_crocus)
+    target_include_directories(test_crocus_fatal PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/mod")
+    add_test(NAME crocus_fatal COMMAND test_crocus_fatal)
+    set_tests_properties(crocus_fatal PROPERTIES WILL_FAIL TRUE)
 endif()

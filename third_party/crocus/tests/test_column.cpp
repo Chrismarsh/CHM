@@ -141,6 +141,28 @@ void snow_transport()
     if (resumed.state != receiver.state || resumed.flux.albedo != receiver.flux.albedo)
         throw std::runtime_error("Restart changed the column");
 }
+
+void trace_layer()
+{
+    Point p;
+    // A previous timestep can leave a layer thinner than the 1 micrometre melt reserve.
+    p.state[mass * layers] = .00006f;
+    p.state[density * layers] = 150.f;
+    p.state[heat * layers] = p.total() * (2106.f * (263.f - 273.16f) - 333700.f);
+    p.state[diameter * layers] = .0003f;
+    p.state[sphericity * layers] = .9f;
+    p.flux.albedo = .6f;
+    Forcing met{2017, 10, 1, 3600, 3600, 268.f, 90000.f, .002f, 3.f, 0.f, 200.f, 0.f, 0.f, 1.f, 2.f};
+    const float before = p.total();
+    p.step(met);
+    if (!(p.state[mass * layers] > 0))
+        throw std::runtime_error("Cold trace layer disappeared");
+    const float specific_enthalpy = p.state[heat * layers] / p.state[mass * layers] + 333700.f;
+    near(273.16f + specific_enthalpy / 2106.f, 262., 2., 0., "cold trace layer temperature");
+    near(p.flux.surface_melt, 0., 0., 0., "cold trace layer melt");
+    near(p.total() + (p.flux.sublimation + p.flux.runoff) * met.dt, before, 1e-8, 1e-5, "trace layer mass balance");
+}
+
 void water_balance()
 {
     Point p;
@@ -202,6 +224,7 @@ int main(int argc, char** argv)
         reference(argv[1]);
         water_balance();
         snow_transport();
+        trace_layer();
         other.get();
     }
     catch (const std::exception& e)
@@ -209,4 +232,5 @@ int main(int argc, char** argv)
         std::cerr << e.what() << '\n';
         return 1;
     }
+    std::cout << "Crocus column tests completed\n";
 }
