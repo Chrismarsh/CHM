@@ -7,6 +7,8 @@ endif()
 add_library(chm_crocus STATIC
     sfc_options.f90
     crocus_bridge.f90
+    crocus_log.cpp
+    crocus_logging.f90
     upstream/ini_csts.F90
     upstream/ini_surf_csts.F90
     upstream/modd_blowsnw_surf.F90
@@ -45,12 +47,13 @@ add_library(chm_crocus STATIC
 )
 target_compile_definitions(chm_crocus PRIVATE CROCUS_EXT ECCCGEM)
 target_include_directories(chm_crocus PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_features(chm_crocus PUBLIC cxx_std_17)
 set_target_properties(chm_crocus PROPERTIES Fortran_MODULE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mod")
 # The CHM face loop can enter the native column concurrently from OpenMP threads.
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(chm_crocus PRIVATE -frecursive -ffree-line-length-none)
+    target_compile_options(chm_crocus PRIVATE "$<$<COMPILE_LANGUAGE:Fortran>:-frecursive;-ffree-line-length-none>")
 elseif(CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    target_compile_options(chm_crocus PRIVATE -recursive)
+    target_compile_options(chm_crocus PRIVATE "$<$<COMPILE_LANGUAGE:Fortran>:-recursive>")
 endif()
 
 if(BUILD_TESTS OR (PROJECT_NAME STREQUAL "CHMCrocus" AND BUILD_TESTING))
@@ -66,4 +69,9 @@ if(BUILD_TESTS OR (PROJECT_NAME STREQUAL "CHMCrocus" AND BUILD_TESTING))
     target_include_directories(test_crocus_fatal PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/mod")
     add_test(NAME crocus_fatal COMMAND test_crocus_fatal)
     set_tests_properties(crocus_fatal PROPERTIES WILL_FAIL TRUE)
+
+    add_executable(test_crocus_logging tests/test_logging.cpp tests/native_warning.f90)
+    target_link_libraries(test_crocus_logging PRIVATE chm_crocus Threads::Threads)
+    target_include_directories(test_crocus_logging PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/mod")
+    add_test(NAME crocus_logging COMMAND test_crocus_logging)
 endif()
