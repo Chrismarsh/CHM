@@ -128,14 +128,9 @@ void snow_slide::run(mesh& domain)
                     if (reserve_drift_erosion && data.swe_copy > 0.)
                     {
                         const double drift = (*face)["drift_mass"_s];
-                        if (!is_nan(drift) && drift < 0.)
-                        {
-                            const double remaining = std::max(0., data.swe_copy + drift/1000.);
-                            const double fraction = remaining/data.swe_copy;
-                            data.snowdepthavg_copy *= fraction;
-                            data.snowdepthavg_vert_copy *= fraction;
-                            data.swe_copy = remaining;
-                        }
+                        if (!is_nan(drift))
+                            snowslide::reserve_wind_erosion(drift / 1000., data.swe_copy, data.snowdepthavg_copy,
+                                                            data.snowdepthavg_vert_copy);
                     }
 
                     // Initalize snow transport to zero

@@ -5,7 +5,7 @@ REGISTER_MODULE_CPP(snowslide_pde);
 
 namespace
 {
-// Volume diagnostics consumed by Snobal/FSM, including the pending increment on restart.
+// Volume diagnostics consumed by the snow column, including the pending increment on restart.
 constexpr std::array coupling = {"delta_avalanche_mass", "delta_avalanche_snowdepth", "delta_avalanche_mass_sum",
                                  "delta_avalanche_snowdepth_sum"};
 constexpr auto mobile_key = "snowslide_pde_mobile"_s;
@@ -80,6 +80,10 @@ snowslide_pde::snowslide_pde(config_file cfg) : module_base("snowslide_pde", par
     conflicts("snow_slide");
     for (auto key : {"swe", "snowdepthavg", "snowdepthavg_vert"})
         depends(key, SpatialType::neighbor);
+    reserve_drift_erosion = cfg.get("reserve_drift_erosion", false);
+    if (reserve_drift_erosion)
+        depends("drift_mass");
+    optional("crocus_pending_snow");
     for (auto key : coupling)
         provides(key);
     for (auto key :
@@ -329,17 +333,35 @@ void snowslide_pde::run(mesh& domain)
     Field state(cells.size());
     double released = 0;
     bool invalid = false;
+    const bool has_pending_snow = has_optional("crocus_pending_snow");
     for (size_t i = 0; i < cells.size(); ++i)
     {
         auto f = domain->face(i);
         auto& c = cells[i];
-        double w = (*f)["swe"_s], h = (*f)["snowdepthavg"_s], v = (*f)["snowdepthavg_vert"_s];
+        double swe = (*f)["swe"_s];
+        double normal = (*f)["snowdepthavg"_s];
+        double vertical = (*f)["snowdepthavg_vert"_s];
         // CHM may call redistribution before the snow column publishes its first state.
-        if (c.water || w == 0 || (global_param->first_time_step && is_nan(w)))
-            w = h = v = 0;
-        invalid |=
-            !(w >= 0 && std::isfinite(w) && std::isfinite(h) && std::isfinite(v) && (w == 0 || (h > 0 && v > 0)));
-        c.source = snowslide::release(profile, c.slope, c.vegetation, multiplier, exponent, w, h, v, deposit_density);
+        if (c.water || swe == 0 || (global_param->first_time_step && is_nan(swe)))
+            swe = normal = vertical = 0;
+        // Crocus counts unlayered snowfall in SWE. A trace-only face can still receive deposits.
+        else if (has_pending_snow && normal == 0 && vertical == 0 && swe > 0 && std::isfinite(swe) &&
+                 swe == (*f)["crocus_pending_snow"_s])
+            swe = 0;
+        if (!std::isfinite(swe) || swe < 0 || !std::isfinite(normal) || !std::isfinite(vertical) ||
+            (swe > 0 && (normal <= 0 || vertical <= 0)))
+        {
+            invalid = true;
+            continue;
+        }
+        if (reserve_drift_erosion && swe > 0)
+        {
+            const double drift = (*f)["drift_mass"_s]; // kg/m² per CHM step, numerically equal to mm SWE
+            if (!is_nan(drift))
+                snowslide::reserve_wind_erosion(drift, swe, normal, vertical);
+        }
+        c.source = snowslide::release(profile, c.slope, c.vegetation, multiplier, exponent, swe, normal, vertical,
+                                      deposit_density);
         state[i].mobile = c.source.mass;
         released += c.area * c.source.mass;
     }

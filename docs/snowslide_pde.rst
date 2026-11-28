@@ -28,6 +28,19 @@ reads the previous snow-column state, and Snobal consumes its increment once.
 Use the registered name ``FSM`` in place of ``snobal`` for FSM. On restart the
 module restores both the pending increments and the cumulative volume changes.
 
+With Crocus and PBSM3D, put ``"snowslide_pde": "Crocus"`` in the existing
+``remove_depency`` section and set ``config.snowslide_pde.reserve_drift_erosion``
+to ``true``. PBSM3D runs first. The PDE deducts wind erosion from each donor's
+previous SWE and reduces its normal and vertical depths in proportion before
+evaluating the release threshold. Crocus then applies the wind and avalanche
+increments once. Wind-deposited snow becomes eligible for release on the next
+CHM timestep. The reservation defaults to ``false`` and requires a provider
+of ``drift_mass`` when enabled.
+
+Crocus includes unlayered snowfall in ``swe`` and publishes that amount as
+``crocus_pending_snow`` (mm SWE). A face with zero snow depth and only pending
+snow can receive avalanche deposits. Its trace snow stays in the column.
+
 Holding depth
 -------------
 

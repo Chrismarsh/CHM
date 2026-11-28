@@ -34,6 +34,19 @@ inline double chm_depth(double radians, double canopy, double coefficient, doubl
                        canopy));
 }
 
+// SWE and signed drift must use the same units. Wind deposits enter the snow column after routing.
+inline void reserve_wind_erosion(double drift, double& swe, double& normal, double& vertical)
+{
+    if (drift < 0 && swe > 0)
+    {
+        const double remaining = std::max(0.0, swe + drift);
+        const double fraction = remaining / swe;
+        normal *= fraction;
+        vertical *= fraction;
+        swe = remaining;
+    }
+}
+
 struct Release
 {
     double mass;           // kg/m2

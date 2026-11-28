@@ -49,5 +49,5 @@ class snowslide_pde : public module_base
     snowslide::Profile profile;
     double mobility, mobile_density, deposit_density, multiplier, exponent;
     double max_step, min_step, abs_tol, rel_tol;
-    bool adaptive;
+    bool adaptive, reserve_drift_erosion;
 };

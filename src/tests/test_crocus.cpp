@@ -69,6 +69,7 @@ TEST(Crocus, RestoresLayerStateAndPreviousStepDiagnostics)
         checkpoint.open(path.string());
         model.load_checkpoint(domain, checkpoint);
         EXPECT_NEAR((*face)["swe"], 6.0001, 1e-7);
+        EXPECT_EQ((*face)["crocus_pending_snow"], .0001f);
         EXPECT_NEAR((*face)["snowdepthavg"], .03, 1e-8);
         EXPECT_EQ((*face)["Nsnow"], 3);
         EXPECT_EQ((*face)["sum_snowpack_subl"], 7.25);

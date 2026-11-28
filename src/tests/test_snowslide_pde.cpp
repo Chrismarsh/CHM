@@ -62,6 +62,24 @@ TEST(SnowSlidePhysics, TrackHoldsOnlyItsRemainingCapacity)
     EXPECT_NEAR(snowslide::deposit(100, 1, 0, false), 100 * (1 - std::exp(-1.)), 1e-12);
 }
 
+TEST(SnowSlidePhysics, WindErosionReducesMassAndBothDepthsBeforeRelease)
+{
+    double swe = 200, normal = 0.4, vertical = 2;
+    snowslide::reserve_wind_erosion(75, swe, normal, vertical);
+    EXPECT_DOUBLE_EQ(swe, 200);
+    EXPECT_DOUBLE_EQ(normal, 0.4);
+    EXPECT_DOUBLE_EQ(vertical, 2);
+    snowslide::reserve_wind_erosion(-100, swe, normal, vertical);
+    EXPECT_DOUBLE_EQ(swe, 100);
+    EXPECT_DOUBLE_EQ(normal, 0.2);
+    EXPECT_DOUBLE_EQ(vertical, 1);
+    EXPECT_DOUBLE_EQ(paper(80, swe, vertical).mass, 50);
+    snowslide::reserve_wind_erosion(-150, swe, normal, vertical);
+    EXPECT_DOUBLE_EQ(swe, 0);
+    EXPECT_DOUBLE_EQ(normal, 0);
+    EXPECT_DOUBLE_EQ(vertical, 0);
+}
+
 // The JSON reader loads a serial mesh. Give its four faces the same ownership,
 // halo metadata and row numbering used by CHM's partitioned mesh reader.
 class FanMesh : public triangulation
@@ -87,6 +105,7 @@ class FanMesh : public triangulation
 enum class Boundary
 {
     closed,
+    closed_with_wind,
     outlet,
     raised_fan,
     water
@@ -109,6 +128,8 @@ TEST_P(SnowSlideFan, TwoSourcesFeedTwoFanFacesAndCloseTheWaterBudget)
     pt::read_json(json, spec);
     const bool outlet = GetParam() == Boundary::outlet;
     const bool water = GetParam() == Boundary::water;
+    const bool wind = GetParam() == Boundary::closed_with_wind;
+    const bool trace = GetParam() == Boundary::closed || wind;
     if (GetParam() == Boundary::raised_fan)
         spec.get_child("mesh.vertex").back().second.back().second.put_value(0.3); // A 0.1 m adverse bed step.
     if (water)
@@ -125,10 +146,20 @@ TEST_P(SnowSlideFan, TwoSourcesFeedTwoFanFacesAndCloseTheWaterBudget)
     fan->from_json(spec);
     fan->face(3)->parameter("snowslide_outlet"_s) = outlet ? 1 : 0;
     mesh domain = fan;
-    snowslide_pde slide(config_file{});
+    config_file config;
+    if (wind)
+        config.put("reserve_drift_erosion", true);
+    snowslide_pde slide(config);
     slide.global_param = std::make_shared<global>();
     slide.global_param->parameters.put("landcover.1.is_water", true);
     std::set<std::string> variables{"swe", "snowdepthavg", "snowdepthavg_vert"};
+    if (wind)
+        variables.insert("drift_mass");
+    if (trace)
+    {
+        slide.set_optional_found("crocus_pending_snow");
+        variables.insert("crocus_pending_snow");
+    }
     for (const auto& v : *slide.provides())
         variables.insert(v.name);
     fan->init_timeseries(variables);
@@ -141,6 +172,16 @@ TEST_P(SnowSlideFan, TwoSourcesFeedTwoFanFacesAndCloseTheWaterBudget)
         (*f)["swe"_s] = source ? 200 : 0;
         (*f)["snowdepthavg"_s] = source ? 0.4 : 0;
         (*f)["snowdepthavg_vert"_s] = (*f)["snowdepthavg"_s] / std::cos(f->slope());
+        if (wind)
+        {
+            constexpr std::array drift{-100., 0., 100., -9999.};
+            (*f)["drift_mass"_s] = drift[f->cell_global_id];
+        }
+        if (trace)
+        {
+            (*f)["crocus_pending_snow"_s] = f->cell_global_id == 1 ? 0.00005 : 0;
+            (*f)["swe"_s] += (*f)["crocus_pending_snow"_s];
+        }
     }
     if (water)
         for (size_t i = 0; i < fan->size_local_faces(); ++i)
@@ -155,12 +196,15 @@ TEST_P(SnowSlideFan, TwoSourcesFeedTwoFanFacesAndCloseTheWaterBudget)
     {
         auto f = fan->face(i);
         const bool source = f->cell_global_id == 0 || f->cell_global_id == 2;
-        EXPECT_DOUBLE_EQ((*f)["avalanche_release_swe"_s], source ? 150 : 0);
+        const double source_release = wind && f->cell_global_id == 0 ? 50. : 150.;
+        EXPECT_DOUBLE_EQ((*f)["avalanche_release_swe"_s], source ? source_release : 0.);
         if (water && f->cell_global_id == 3)
             EXPECT_EQ((*f)["avalanche_deposit_swe"_s], 0.);
         else if (!source)
             EXPECT_GT((*f)["avalanche_deposit_swe"_s], 1.0);
         EXPECT_GE((*f)["avalanche_deposit_swe"_s], 0);
+        if (trace && f->cell_global_id == 1)
+            EXPECT_DOUBLE_EQ((*f)["swe"_s], 0.00005);
         net += (*f)["delta_avalanche_mass"_s];
         exported += (*f)["avalanche_export_volume"_s];
         RecordProperty("face_" + std::to_string(f->cell_global_id) + "_deposit_mm",
@@ -203,10 +247,12 @@ TEST_P(SnowSlideFan, TwoSourcesFeedTwoFanFacesAndCloseTheWaterBudget)
             EXPECT_DOUBLE_EQ((*fan->face(i))[keys[k]], saved[i][k]);
 
     // Repeat the same snapshot at a much finer fixed event step.
-    config_file fixed;
+    config_file fixed = config;
     fixed.put("adaptive", false);
     fixed.put("event_step", 0.005);
     snowslide_pde reference(fixed);
+    if (trace)
+        reference.set_optional_found("crocus_pending_snow");
     reference.global_param = slide.global_param;
     reference.init(domain);
     reference.run(domain);
@@ -219,7 +265,16 @@ TEST_P(SnowSlideFan, TwoSourcesFeedTwoFanFacesAndCloseTheWaterBudget)
     slide.run(domain);
     for (size_t i = 0; i < fan->size_local_faces(); ++i)
         EXPECT_EQ((*fan->face(i))["delta_avalanche_mass"_s], 0);
+    if (trace)
+    {
+        // A positive SWE with zero depths must be accounted for by the column's pending snow.
+        for (size_t i = 0; i < fan->size_local_faces(); ++i)
+            if (auto f = fan->face(i); f->cell_global_id == 1)
+                (*f)["swe"_s] = 1.;
+        EXPECT_THROW(slide.run(domain), module_error);
+    }
 }
 INSTANTIATE_TEST_SUITE_P(Boundary, SnowSlideFan,
-                         ::testing::Values(Boundary::closed, Boundary::outlet, Boundary::raised_fan, Boundary::water));
+                         ::testing::Values(Boundary::closed, Boundary::closed_with_wind, Boundary::outlet,
+                                           Boundary::raised_fan, Boundary::water));
 } // namespace
