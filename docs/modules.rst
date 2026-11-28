@@ -47,6 +47,11 @@ the :ref:`configuration:config` section. For more details on how modules work, p
 .. note::
    Unlike filters, modules are executed in an order to resolve the inter-module variable dependencies.
 
+.. toctree::
+   :maxdepth: 1
+
+   snowslide_pde
+
 Available modules
 ---------------------
 .. groups::
