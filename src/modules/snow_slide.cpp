@@ -22,6 +22,7 @@
 //
 
 #include "snow_slide.hpp"
+#include "snowslide_physics.hpp"
 REGISTER_MODULE_CPP(snow_slide);
 
 snow_slide::snow_slide(config_file cfg)
@@ -127,14 +128,9 @@ void snow_slide::run(mesh& domain)
                     if (reserve_drift_erosion && data.swe_copy > 0.)
                     {
                         const double drift = (*face)["drift_mass"_s];
-                        if (!is_nan(drift) && drift < 0.)
-                        {
-                            const double remaining = std::max(0., data.swe_copy + drift/1000.);
-                            const double fraction = remaining/data.swe_copy;
-                            data.snowdepthavg_copy *= fraction;
-                            data.snowdepthavg_vert_copy *= fraction;
-                            data.swe_copy = remaining;
-                        }
+                        if (!is_nan(drift))
+                            snowslide::reserve_wind_erosion(drift / 1000., data.swe_copy, data.snowdepthavg_copy,
+                                                            data.snowdepthavg_vert_copy);
                     }
 
                     // Initalize snow transport to zero
@@ -477,17 +473,7 @@ void snow_slide::init(mesh& domain)
             Z_CanTop = face->veg_attribute("CanopyHeight");
         }
 
-        // Parametrize the Minimum snow holding depth (taken vertically)
-        // Param is only valid for >10deg slopes
-        double slopeDeg = std::max(10.0,
-                                   face->slope()*180/M_PI);  // radians to degrees
-
-        // (m) Estimate min depth that avalanche occurs
-        // The max depth parameterization is defined for the vertical case, so we need to correct it to be valid for comparing
-        // against the "normal" snow depth
-        d.maxDepth = std::min(20.0,
-                              std::max(avalache_mult * pow(slopeDeg, avalache_pow) * std::max(0.01,cos(face->slope())),
-                                        Z_CanTop));
+        d.maxDepth = snowslide::chm_depth(face->slope(), Z_CanTop, avalache_mult, avalache_pow);
 
         // Max of either veg height or derived max holding snow depth.
         (*face)["maxDepth"_s]= d.maxDepth;

@@ -1,4 +1,5 @@
 #include "gtest/gtest.h"
+#include <Kokkos_Core.hpp>
 
 #ifdef USE_MPI
     #include <boost/mpi.hpp>
@@ -22,7 +23,9 @@ int main(int argc, char* argv[])
     }
 #endif
 //    MPI_Init(&argc, &argv);
+    Kokkos::initialize(argc, argv);
     result = RUN_ALL_TESTS();
+    Kokkos::finalize();
 
 //    MPI_Finalize();
 

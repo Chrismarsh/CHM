@@ -47,6 +47,11 @@ the :ref:`configuration:config` section. For more details on how modules work, p
 .. note::
    Unlike filters, modules are executed in an order to resolve the inter-module variable dependencies.
 
+.. toctree::
+   :maxdepth: 1
+
+   snowslide_pde
+
 Available modules
 ---------------------
 .. groups::
@@ -116,3 +121,7 @@ In a SnowCast configuration using both PBSM3D and SnowSlide, replace ``FSM`` in 
    }
 
 These dependency overrides let the transport and canopy modules read the previous snow state. The reservation schedules PBSM3D before SnowSlide and debits wind erosion from SnowSlide's donor stock before avalanche routing. Crocus then applies both signed transfers once. Enable the reservation only when a module provides ``drift_mass``.
+
+For :doc:`snowslide_pde`, use ``snowslide_pde`` in the module list, dependency
+override and reservation setting. Crocus publishes its unlayered snowfall as
+``crocus_pending_snow`` (mm SWE) so the PDE can recognize trace-only faces.

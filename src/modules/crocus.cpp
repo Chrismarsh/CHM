@@ -56,6 +56,7 @@ Crocus::Crocus(config_file cfg)
     optional("delta_avalanche_mass");
     optional("delta_avalanche_snowdepth");
     for (const auto* name : {"swe",
+                             "crocus_pending_snow",
                              "snowdepthavg",
                              "snowdepthavg_vert",
                              "H",
@@ -173,7 +174,7 @@ void Crocus::run(mesh_elem& face)
     if (!crocus::erode(layers_, column, pending_[i], erosion))
         CHM_THROW_EXCEPTION(module_error, "Transport exceeds available Crocus SWE on face " +
                                               std::to_string(face->cell_global_id) +
-                                              ". With PBSM3D and snow_slide enable snow_slide.reserve_drift_erosion.");
+                                              ". With PBSM3D, enable reserve_drift_erosion on the avalanche module.");
 
     const double wind_deposit = std::max(0., drift);
     const double avalanche_deposit = std::max(0., avalanche);
@@ -214,6 +215,7 @@ void Crocus::publish(mesh_elem& face)
         ++active;
     }
     (*face)["swe"_s] = swe;
+    (*face)["crocus_pending_snow"_s] = pending_[i];
     (*face)["snowdepthavg"_s] = depth;
     (*face)["snowdepthavg_vert"_s] = depth / std::max(.001, std::cos(face->slope()));
     (*face)["Nsnow"_s] = active;
