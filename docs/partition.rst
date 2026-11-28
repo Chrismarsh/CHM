@@ -35,6 +35,7 @@ Options:
    - ``--mpi-ranks``
    - ``--valid-ranks``, ``-v``
    - ``--write-vtu``
+   - ``--resume``
 
 
 ``--help``
@@ -76,8 +77,8 @@ configuration option for various modules.
 
 ``--standalone``
 ******************
-Produces a specific ranks' mesh in a way that allows it to be loaded by itself. This allows debugging on a
-an individual rank. In order to be able to be loaded, the mesh is written **without** ghost regions. Zero-indexed.
+Produces a mesh for debugging an individual rank. The mesh is written **without** ghost regions. Ranks are zero-indexed.
+A separate ``basename.npN.standalone.R.partition`` manifest describes this single output.
 
 .. code::
 
@@ -102,11 +103,29 @@ debugged in isolation.
 For example, suppose there is a 448 rank partition that has a problematic interaction on ranks 199 and 208. Using
 ``./partition -m my.partitioned.mesh.h5 -p params.h5 --mpi-ranks 448 -v 199 -v 208``
 will produce an output of only those two ranks, using the domain partition for the 448 ranks.
+Selected ranks are renumbered in ascending order. Their owned faces receive contiguous IDs in partition order;
+ghosts and neighbors use the same IDs. A standalone mesh uses local IDs starting at zero.
 
 
 ``--write-vtu``
 ****************
-Output each partition set as a separate vtu file for debugging.
+Write the global overview ``partition.vtu`` and one ``rank.N.vtu`` per selected partition.
+The overview is streamed in batches.
+
+``--resume``
+************
+Continue an interrupted HDF5 partition run using the same mesh, parameter files, target ranks and ghost
+distance. Use the same subset, standalone and VTU options. The number of MPI workers can change.
+For a run that started from JSON, pass the converted ``_mesh.h5`` and ``_param.h5`` files when resuming.
+
+Each worker closes and renames its mesh and parameter files before recording that rank as complete.
+Keep the hidden checkpoint directory alongside the output files. Resume checks the input and output file
+identities and rebuilds incomplete or changed output pairs. Run without ``--resume`` to start fresh after
+changing an input or partition setting. The tool publishes the ``.partition`` manifest after all ranks finish.
+
+.. code:: shell
+
+    mpirun -np 4 partition -m granger1m_mesh.h5 -p granger1m_param.h5 --mpi-ranks 20 --resume
 
 Output
 ++++++++
@@ -150,8 +169,14 @@ the ensure the file, when loaded, matches the runtime MPI configuration.
 Secondly a new folder is created ``basename_mesh.np<MPI_RANKS>.partition.meshes`` that holds the underlying h5 mesh and param files.
 
 Partition is MPI aware and can be run with multiple processors. This will not speed up the json -> h5 creation, but
-it will allow parallel decomposition. Each MPI rank must be able to hold the entire mesh in memory. The ranks used to run
-parition need not be the same number of ranks used in the domain decomp. For example,
+it distributes the HDF5 output partitions across the workers. Each worker holds the owned faces for one
+output partition, its connected ghost region and one ring of candidates used to test the distance limit.
+Parameter columns are read in batches. A larger ghost distance can increase the memory needed per partition.
+For a memory-constrained node, keep the target partition count in the METIS mesh and reduce the number of
+concurrent workers. Existing global HDF5 files with an explicit, nonsequential ID permutation use an additional
+bounded scan to resolve ownership.
+
+For example,
 
 .. code::
 
