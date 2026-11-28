@@ -430,6 +430,9 @@ void PBSM3D::run(mesh& domain)
 
             auto face = domain->face(i);
 
+            // A step without a deposition solve exports zero transport.
+            (*face)["drift_mass"_s] = 0.;
+
             auto& d = face->get_module_data<data>(ID);
             auto& m = d.m;
 

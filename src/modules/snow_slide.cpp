@@ -31,6 +31,9 @@ snow_slide::snow_slide(config_file cfg)
     depends("swe",SpatialType::neighbor);
 
     use_vertical_snow = cfg.get("use_vertical_snow",true);
+    reserve_drift_erosion = cfg.get("reserve_drift_erosion", false);
+    if (reserve_drift_erosion)
+        depends("drift_mass");
 
     provides("delta_avalanche_mass");
     provides("delta_avalanche_snowdepth");
@@ -119,6 +122,20 @@ void snow_slide::run(mesh& domain)
                     data.snowdepthavg_vert_copy = (*face)["snowdepthavg_vert"_s]; // Vertical snow depth
                     data.swe_copy = (*face)["swe"_s] / 1000.0;                    // mm to m
                     data.slope = face->slope();                                   // slope in rad
+
+                    // Reserve wind erosion on the donor before SnowSlide distributes mass.
+                    if (reserve_drift_erosion && data.swe_copy > 0.)
+                    {
+                        const double drift = (*face)["drift_mass"_s];
+                        if (!is_nan(drift) && drift < 0.)
+                        {
+                            const double remaining = std::max(0., data.swe_copy + drift/1000.);
+                            const double fraction = remaining/data.swe_copy;
+                            data.snowdepthavg_copy *= fraction;
+                            data.snowdepthavg_vert_copy *= fraction;
+                            data.swe_copy = remaining;
+                        }
+                    }
 
                     // Initalize snow transport to zero
                     data.delta_avalanche_snowdepth = 0.0;

@@ -77,9 +77,12 @@ target_compile_options(FSM PRIVATE -O3) # may need to be PUBLIC to work properly
 
 ###################################
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/crocus)
+
 set(THIRD_PARTY_TARGETS
   SNOWPACK
   SNOBAL
+  chm_crocus
   FSM
   )
 

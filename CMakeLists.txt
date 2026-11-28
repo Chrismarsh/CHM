@@ -125,6 +125,7 @@ endmacro()
 # ------ Start of find_package section --------------------------
 # ---------------------------------------------------------------
 if(BUILD_TESTS)
+    enable_testing()
     find_package(GTest CONFIG REQUIRED)
 endif(BUILD_TESTS)
 
